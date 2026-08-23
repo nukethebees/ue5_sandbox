@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from Codegen.nodes import (
+from Codegen.cpp import (
     CppType,
     MemberFunctionOperation,
     REMOVE_AT_SWAP,

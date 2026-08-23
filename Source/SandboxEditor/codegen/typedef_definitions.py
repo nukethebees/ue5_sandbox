@@ -5,7 +5,7 @@ Add new TypedefSpec entries to TYPEDEFS array to generate wrapper structs.
 
 from strong_typedefs import TypedefSpec, ConfigOptions
 
-wrappers = {}
+wrappers: dict[str, TypedefSpec] = {}
 wrappers["FIntPoint"] = TypedefSpec(
     name="",
     underlying_type="FIntPoint",
@@ -14,7 +14,7 @@ wrappers["FIntPoint"] = TypedefSpec(
     config=ConfigOptions(),
 )
 
-def make_typedefs():
+def make_typedefs() -> list[TypedefSpec]:
     typedefs = [
         TypedefSpec(
             name="StackSize",
@@ -39,8 +39,6 @@ def make_typedefs():
         )
     ]
 
-    point = wrappers["FIntPoint"]
-
-    return typedefs;
+    return typedefs
 
 TYPEDEFS = make_typedefs()

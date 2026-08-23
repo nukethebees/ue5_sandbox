@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from collections.abc import Iterable
+from typing import override
 
-from Codegen.cpp_types import qualified_type
-from Codegen.nodes import (
+from Codegen.project_types import qualified_type
+from Codegen.cpp import (
     FunctionBody,
     FunctionParameter,
     Member,
@@ -30,9 +31,11 @@ class FacadeForwardingBody(FunctionBody):
         self.target_function_name = target_function_name
         self.validation = validation
 
+    @override
     def children(self) -> Iterable[Node]:
         return (self.validation,) if self.validation is not None else ()
 
+    @override
     def render(self, context: RenderContext) -> str:
         arguments = ", ".join(parameter.name for parameter in self.function.parameters)
         call = (
@@ -94,7 +97,7 @@ class Facade:
         target_type: TypeLike,
         target_member_name: str,
         methods: Iterable[FacadeMethod],
-        validation: Node | None = None,
+        validation: object | None = None,
         export_specifier: str | None = None,
         bind_access: str = "public",
         method_access: str = "public",
@@ -105,6 +108,8 @@ class Facade:
         object.__setattr__(self, "target_type", target_type)
         object.__setattr__(self, "target_member_name", target_member_name)
         object.__setattr__(self, "methods", tuple(methods))
+        if validation is not None and not isinstance(validation, Node):
+            raise TypeError("Facade validation must be a codegen node")
         object.__setattr__(self, "validation", validation)
         object.__setattr__(self, "export_specifier", export_specifier)
         object.__setattr__(self, "bind_access", bind_access)
@@ -121,8 +126,6 @@ class Facade:
             raise ValueError(
                 f"Facade {self.name!r} has duplicate methods: {', '.join(duplicates)}"
             )
-        if self.validation is not None and not isinstance(self.validation, Node):
-            raise TypeError("Facade validation must be a codegen node")
         if self.bind_access not in ("public", "private"):
             raise ValueError("Facade bind access must be 'public' or 'private'")
         if self.method_access not in ("public", "private"):

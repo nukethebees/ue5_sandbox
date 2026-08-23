@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional, NewType, Any, Generator, Sequence
+from typing import Optional, NewType, Any, Generator
 
 from unreal_type import UnrealType
 from file_io import FileBuffer
@@ -87,8 +87,8 @@ class GeneratorSkill:
 class GeneratorSkillCategory:
     name: str
     skill_indexes: list[SkillId]
-    first_skill_index: SkillId = None
-    last_skill_index: SkillId = None
+    first_skill_index: SkillId | None = None
+    last_skill_index: SkillId | None = None
 
     def __len__(self) -> int:
         return len(self.skill_indexes)
@@ -106,8 +106,12 @@ class GeneratorSkillCategory:
     def lower_name(self) -> str:
         return self.name.lower()
     def first_skill(self, skills: list[GeneratorSkill]) -> GeneratorSkill:
+        if self.first_skill_index is None:
+            raise ValueError(f"Skill category {self.name!r} is empty")
         return skills[self.first_skill_index]
     def last_skill(self, skills: list[GeneratorSkill]) -> GeneratorSkill:
+        if self.last_skill_index is None:
+            raise ValueError(f"Skill category {self.name!r} is empty")
         return skills[self.last_skill_index]
     def skills(self, skills: list[GeneratorSkill]) -> Generator[GeneratorSkill]:
         for i in self.skill_indexes:
@@ -129,7 +133,8 @@ class SkillGenerator:
     source: FileBuffer
     ed_header: FileBuffer
     ed_source: FileBuffer
-    header_include_path: Path
+    header_include_path: str
+    ed_header_include_path: str
     
     namespace: str = "ml"
 
@@ -190,7 +195,7 @@ class SkillGenerator:
         return FileBuffer(self.generated_dir / name, "", self.namespace)
 
     def init_skills(self, player_skills: list[SkillConfig]) -> None:
-        active_category:str = None
+        active_category: str | None = None
 
         for skill in player_skills:
             if skill.category not in self.categories:
@@ -204,8 +209,8 @@ class SkillGenerator:
             skill.enum_typename = str(self.player_skills_enum)
             generator_skill = GeneratorSkill(
                 skill, 
-                len(self.skills), 
-                len(skill_category.skill_indexes)
+                SkillId(len(self.skills)),
+                CategoryIndex(len(skill_category.skill_indexes)),
             )
             
             self.skills.append(generator_skill)
@@ -268,19 +273,15 @@ class SkillGenerator:
 
     # Helpers
     def category_loop(self, 
-                      fn:Callable[[SkillGenerator, GeneratorSkill], None], 
-                      is_method:bool = False) -> None:
-        active_category = None
+                      fn: Callable[[GeneratorSkill], None]) -> None:
+        active_category: str | None = None
         for skill in self.skills:
             if active_category != skill.config.category:
                 if active_category is not None:
                     self.header += "\n"
                 active_category = skill.config.category
                 self.header += f"    // {active_category}"
-            if is_method:
-                fn(skill)
-            else:
-                fn(self, skill)
+            fn(skill)
     def create_constant(self, var_type:str, name:str, value:Any) -> str:
         return f"inline constexpr {var_type} {name}{{{value}}};"
     def newline(self):
@@ -338,7 +339,7 @@ class IDetailChildrenBuilder;"""
    
     # Enum generation
     def write_skills_enum(self) -> None:
-        def add_line(self: SkillGenerator, skill: GeneratorSkill):
+        def add_line(skill: GeneratorSkill) -> None:
             self.header += f"\n    {skill.config.name} UMETA(DisplayName = \"{skill.config.get_display_name()}\"),"
 
         self.header += f"""
@@ -480,9 +481,6 @@ enum class {self.player_skills_enum} : uint8 {{
         self.template {m.get_skill}<{key}>.set({input});
     }}"""
     def add_struct_accessor(self, skill: GeneratorSkill):
-        e = skill.config.get_full_enum_value()
-        indexed = self.index_skill(e)
-
         self.header += f"""
     auto {skill.config.get_view_name()}() {{ return get_view<{skill.config.get_full_enum_value()}>(); }}"""
     def add_struct_max_value_variable(self, skill:GeneratorSkill) -> None:
@@ -562,7 +560,7 @@ struct {self.player_skills_struct} {{
     }};"""
         self.write_struct_skill_enum_accessors()
         self.newline()
-        self.category_loop(self.add_struct_accessor, True)
+        self.category_loop(self.add_struct_accessor)
         self.newline()
         self.add_category_view_functions()
         self.newline()  

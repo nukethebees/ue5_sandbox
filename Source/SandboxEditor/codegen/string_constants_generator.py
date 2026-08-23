@@ -84,8 +84,6 @@ class ConstantGenerator:
                 value = f'TEXT("{name}")'
             case ConstantType.FText:
                 value = f'::FText::FromName(TEXT("{name}"))'
-            case _:
-                raise ValueError(f"Unhandled: {r_type}")
 
         out += f"\n{indent}static ::{r_type.name} const {v} {{{value}}};"
         out += f"\n{indent}return {v};"

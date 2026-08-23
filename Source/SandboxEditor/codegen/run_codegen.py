@@ -24,10 +24,8 @@ def generate_skills() -> None:
 
 
 def generate_string_constants() -> None:
-    CI = scg.ConstantInput
-
-    inputs: list[CI] = [
-        CI(*vals)
+    inputs: list[scg.ConstantInput] = [
+        scg.ConstantInput(*vals)
         for vals in (
             ["acceptable_radius"],
             ["attack_radius"],

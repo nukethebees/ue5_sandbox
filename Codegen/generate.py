@@ -4,8 +4,9 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
-from Codegen.manifest import PROJECT_ROOT, modules
-from Codegen.nodes import CppFile, Module
+from Codegen.manifest import modules
+from Codegen.manifests.common import PROJECT_ROOT
+from Codegen.cpp import CppFile, Module
 
 
 @dataclass(frozen=True)

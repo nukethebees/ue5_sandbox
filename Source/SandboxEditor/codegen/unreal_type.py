@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
+from typing import override
 
 @dataclass
 class UnrealType:
@@ -11,6 +12,7 @@ class UnrealType:
     name: str
     tag: Tag
 
+    @override
     def __str__(self) -> str:
         return self.typename()
 
@@ -24,10 +26,7 @@ class UnrealType:
                 return self.structname()
             case self.Tag.CLASS:
                 return self.classname()
-            case _:
-                return "???"
-            
-        return self.name
+
     def enumname(self) -> str:
         return "E" + self.name
     def classname(self) -> str:
