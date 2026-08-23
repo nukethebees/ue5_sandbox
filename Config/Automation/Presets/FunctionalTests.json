@@ -14,6 +14,7 @@
 		"Sandbox.LevelTests.PlayerShipVsCapital.Main",
 		"Sandbox.LevelTests.SpatialQueryLineOfSight.ResolvesLineOfSightBatches",
 		"Sandbox.LevelTests.SpatialQueryManager.ResolvesHitBatches",
+		"Sandbox.LevelTests.TestBatchOrchestratorReset.Main",
 		"Sandbox.LevelTests.TestBatchOrchestratorSetup.SimulationClockConversions",
 		"Sandbox.LevelTests.TestBatchOrchestratorSetup.SpawnMissingActors",
 		"Sandbox.LevelTests.TestCapitalShipProxy.ProxyHealthOverridesConfig",
