@@ -33,6 +33,8 @@ auto actor_is_any(AActor const& actor) -> bool {
     return (actor.IsA<T>() || ...);
 }
 
+auto SANDBOXCOREENGINE_API is_actor_in_world(UWorld const& world, AActor const* target) -> bool;
+
 template <typename T>
 auto get_or_create_actor_singleton(UWorld& world) -> T* {
     if (auto* const actor{get_first_actor<T>(world)}) {
