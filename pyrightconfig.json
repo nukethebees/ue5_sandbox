@@ -1,0 +1,17 @@
+{
+  "include": [
+    "Codegen",
+    "Scripts",
+    "Source/SandboxEditor/codegen"
+  ],
+  "pythonVersion": "3.14",
+  "typeCheckingMode": "strict",
+  "reportUnusedImport": "error",
+  "reportUnusedVariable": "error",
+  "reportUnusedFunction": "error",
+  "reportUnusedClass": "error",
+  "reportUnnecessaryTypeIgnoreComment": "error",
+  "reportImplicitOverride": "error",
+  "reportMatchNotExhaustive": "error",
+  "reportUnreachable": "error"
+}
