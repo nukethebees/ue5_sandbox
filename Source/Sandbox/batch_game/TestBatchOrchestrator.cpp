@@ -116,7 +116,12 @@ ATestBatchOrchestrator::ATestBatchOrchestrator()
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
-    begin_play();
+    state = EOrchestratorState::Uninitialised;
+    if (should_initialise_in_begin_play()) {
+        begin_play();
+    } else {
+        SetActorTickEnabled(false);
+    }
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     hud_manager.deactivate();
@@ -128,6 +133,10 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
 }
 
 void ATestBatchOrchestrator::start_simulation() {
+    if (state == EOrchestratorState::Uninitialised) {
+        begin_play();
+    }
+
     if (state != EOrchestratorState::Paused) {
         UE_LOG(LogSandbox,
                Error,
@@ -250,10 +259,13 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         apply_config(spinners, simulation_config->tube_spinners_config);
     }
 
-    begin_play();
-
     for (int32 i{0}; i < recreated_actor_count; ++i) {
         UGameplayStatics::FinishSpawningActor(recreated_actors[i], FTransform::Identity);
+    }
+
+    state = EOrchestratorState::Uninitialised;
+    if (should_initialise_in_begin_play()) {
+        begin_play();
     }
 
     on_reset.Broadcast(*this);
@@ -467,6 +479,10 @@ void ATestBatchOrchestrator::begin_play() {
     if (state == EOrchestratorState::Running) {
         start_visual_logging();
     }
+}
+auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
+    return start_mode == EOrchestratorStartMode::Automatic ||
+           start_mode == EOrchestratorStartMode::PausedInTest;
 }
 
 void ATestBatchOrchestrator::start_visual_logging() {

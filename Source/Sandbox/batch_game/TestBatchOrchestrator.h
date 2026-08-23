@@ -134,6 +134,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 #endif
   private:
     void begin_play();
+    auto should_initialise_in_begin_play() const noexcept -> bool;
     void validate_proxy_handles();
     void bind_simulation_dependencies();
     void start_visual_logging();
