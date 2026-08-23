@@ -71,6 +71,7 @@ Commands:
   cwb [branch]      Change to the worktree containing a branch, or list branches.
   cplugin <name>    Change to a project plugin directory.
   ctests            Change to Source\SandboxTests.
+d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
 
 Unreal build commands:
   Loading dev.ps1 disables MSBuild node reuse for the current user and shell.
@@ -190,4 +191,74 @@ function cplugin {
 
 function ctests {
     Set-Location -LiteralPath (Join-Path $script:dev_project_root 'Source\SandboxTests')
+}
+
+function reset-devs {
+    $dev_commit_lines = @(& git -C $script:dev_project_root rev-parse --verify 'refs/heads/dev^{commit}')
+
+    if ($LASTEXITCODE -ne 0 -or $dev_commit_lines.Count -ne 1) {
+        throw "Unable to resolve local branch 'dev' to a commit."
+    }
+
+    $dev_commit = $dev_commit_lines[0].Trim()
+    $branch_lines = @(& git -C $script:dev_project_root for-each-ref '--format=%(refname:short)' refs/heads/)
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to discover local branches from '$script:dev_project_root'."
+    }
+
+    $dev_branches = @($branch_lines | Where-Object { $_ -match '^dev[0-9]+$' } | Sort-Object)
+
+    if ($dev_branches.Count -eq 0) {
+        Write-Host 'No local devN branches found.'
+        return
+    }
+
+    $original_branch_lines = @(& git -C $script:dev_project_root branch --show-current)
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Unable to determine the current branch in '$script:dev_project_root'."
+    }
+
+    $original_branch = if ($original_branch_lines.Count -eq 1) {
+        $original_branch_lines[0].Trim()
+    } else {
+        ''
+    }
+
+    $original_commit_lines = @(& git -C $script:dev_project_root rev-parse --verify HEAD)
+
+    if ($LASTEXITCODE -ne 0 -or $original_commit_lines.Count -ne 1) {
+        throw "Unable to resolve HEAD in '$script:dev_project_root'."
+    }
+
+    $original_commit = $original_commit_lines[0].Trim()
+
+    try {
+        foreach ($branch in $dev_branches) {
+            & git -C $script:dev_project_root switch $branch
+
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "Skipping $branch because it could not be checked out in the current worktree."
+                continue
+            }
+
+            Write-Host "Resetting $branch to dev ($dev_commit)."
+            & git -C $script:dev_project_root reset --hard $dev_commit
+
+            if ($LASTEXITCODE -ne 0) {
+                throw "Unable to reset branch '$branch' to dev."
+            }
+        }
+    } finally {
+        if ([string]::IsNullOrWhiteSpace($original_branch)) {
+            & git -C $script:dev_project_root switch --detach $original_commit
+        } else {
+            & git -C $script:dev_project_root switch $original_branch
+        }
+
+        if ($LASTEXITCODE -ne 0) {
+            throw "Unable to restore the original Git state in '$script:dev_project_root'."
+        }
+    }
 }
