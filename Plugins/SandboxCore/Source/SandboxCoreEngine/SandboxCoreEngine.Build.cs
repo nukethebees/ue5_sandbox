@@ -13,6 +13,7 @@ public class SandboxCoreEngine : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "SlateCore",
         });
     }
 }

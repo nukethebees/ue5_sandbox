@@ -5,21 +5,21 @@
 
 #include "DebugGraphWidget.generated.h"
 
+class SGraphPlot;
+
 UCLASS()
 class SANDBOX_API UDebugGraphWidget : public UUserWidget {
     GENERATED_BODY()
   public:
     void set_samples(TConstArrayView<FVector2d> in_samples, int32 oldest_index);
-
-    int32 NativePaint(FPaintArgs const& args,
-                      FGeometry const& geometry,
-                      FSlateRect const& culling_rect,
-                      FSlateWindowElementList& out_draw_elements,
-                      int32 layer_id,
-                      FWidgetStyle const& widget_style,
-                      bool parent_enabled) const override;
+  protected:
+    TSharedRef<SWidget> RebuildWidget() override;
+    void ReleaseSlateResources(bool release_children) override;
   private:
-    TArray<FVector2d> samples;
-    int32 oldest_index{0};
-    double max_value{0.0};
+    void update_slate_series();
+
+    TArray<float> x_;
+    TArray<float> y_;
+    TSharedPtr<SGraphPlot> graph_widget_;
+    uint64 revision_{0};
 };
