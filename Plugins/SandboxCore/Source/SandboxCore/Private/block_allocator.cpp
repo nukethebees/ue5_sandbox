@@ -1,5 +1,4 @@
 #include <SandboxCore/block_allocator.h>
-#include <SandboxCore/log_categories.h>
 
 #include <HAL/UnrealMemory.h>
 #include <Misc/AssertionMacros.h>
@@ -8,51 +7,18 @@
 #include <limits>
 
 #if PLATFORM_WINDOWS
-#include "Windows/AllowWindowsPlatformTypes.h"
-
-#include <memoryapi.h>
-#include <windows.h>
-
-#include "Windows/HideWindowsPlatformTypes.h"
-
-extern "C" {
-    PVOID
-    WINAPI
-    VirtualAlloc2(_In_opt_ HANDLE Process,
-                  _In_opt_ PVOID BaseAddress,
-                  _In_ SIZE_T Size,
-                  _In_ ULONG AllocationType,
-                  _In_ ULONG PageProtection,
-                  _Inout_updates_opt_(ParameterCount) MEM_EXTENDED_PARAMETER* ExtendedParameters,
-                  _In_ ULONG ParameterCount);
-}
+#include "Windows/block_allocator_windows.h"
 #endif
 
 namespace ml {
-namespace {
-#if PLATFORM_WINDOWS
-auto allocate_virtual_alloc2(SIZE_T const bytes, SIZE_T const alignment) -> void* {
-    constexpr HANDLE process{nullptr};     // Use current process
-    constexpr PVOID base_address{nullptr}; // Let fn choose
-    constexpr ULONG allocation_type{MEM_RESERVE | MEM_COMMIT};
-    constexpr ULONG page_protection{PAGE_READWRITE};
-
-    MEM_EXTENDED_PARAMETER* extended_parameters{nullptr};
-    ULONG n_extended_parameters{0};
-
-    return VirtualAlloc2(process,
-                         base_address,
-                         bytes,
-                         allocation_type,
-                         page_protection,
-                         extended_parameters,
-                         n_extended_parameters);
+FBlockAllocator::FBlockAllocator(EBlockAllocationMode const mode,
+                                 EVirtualAlloc2PageMode const virtual_alloc2_page_mode) noexcept
+    : allocation_mode_{mode}
+    , virtual_alloc2_page_mode_{virtual_alloc2_page_mode} {
+    checkf(allocation_mode_ == EBlockAllocationMode::VirtualAlloc2 ||
+               virtual_alloc2_page_mode_ == EVirtualAlloc2PageMode::Default,
+           TEXT("VirtualAlloc2 page modes require the VirtualAlloc2 allocation mode."));
 }
-#endif
-}
-
-FBlockAllocator::FBlockAllocator(EBlockAllocationMode const mode) noexcept
-    : allocation_mode_{mode} {}
 
 FBlockAllocator::~FBlockAllocator() {
     release_allocations();
@@ -60,12 +26,14 @@ FBlockAllocator::~FBlockAllocator() {
 
 FBlockAllocator::FBlockAllocator(FBlockAllocator&& other) noexcept
     : allocation_mode_{other.allocation_mode_}
+    , virtual_alloc2_page_mode_{other.virtual_alloc2_page_mode_}
     , allocations_{MoveTemp(other.allocations_)} {}
 
 auto FBlockAllocator::operator=(FBlockAllocator&& other) noexcept -> FBlockAllocator& {
     if (this != &other) {
         release_allocations();
         allocation_mode_ = other.allocation_mode_;
+        virtual_alloc2_page_mode_ = other.virtual_alloc2_page_mode_;
         allocations_ = MoveTemp(other.allocations_);
     }
 
@@ -85,14 +53,7 @@ auto FBlockAllocator::allocate_impl(SIZE_T const bytes, SIZE_T const alignment) 
 
         case EBlockAllocationMode::VirtualAlloc2:
 #if PLATFORM_WINDOWS
-            data = allocate_virtual_alloc2(bytes, alignment);
-
-            if (!data) {
-                DWORD const error{GetLastError()};
-                UE_LOG(LogSandboxCore, Error, TEXT("VirtualAlloc2 failed: %lu"), error);
-                checkf(false, TEXT("VirtualAlloc2 failed: %lu"), error);
-            }
-
+            data = detail::allocate_virtual_alloc2(bytes, alignment, virtual_alloc2_page_mode_);
 #else
             checkf(false, TEXT("VirtualAlloc2 allocation mode is only supported on Windows."));
 #endif
@@ -124,7 +85,7 @@ void FBlockAllocator::free_allocation(void* const data) {
 
         case EBlockAllocationMode::VirtualAlloc2:
 #if PLATFORM_WINDOWS
-            check(VirtualFree(data, 0, MEM_RELEASE) != 0);
+            detail::free_virtual_alloc2(data);
 #else
             checkf(false, TEXT("VirtualAlloc2 allocation mode is only supported on Windows."));
 #endif

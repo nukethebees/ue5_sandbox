@@ -13,9 +13,17 @@ enum class EBlockAllocationMode : uint8 {
     VirtualAlloc2,
 };
 
+enum class EVirtualAlloc2PageMode : uint8 {
+    Default,
+    PreferHugePages,
+    RequireHugePages,
+};
+
 class SANDBOXCORE_API FBlockAllocator {
   public:
-    explicit FBlockAllocator(EBlockAllocationMode mode) noexcept;
+    explicit FBlockAllocator(
+        EBlockAllocationMode mode,
+        EVirtualAlloc2PageMode virtual_alloc2_page_mode = EVirtualAlloc2PageMode::Default) noexcept;
     ~FBlockAllocator();
 
     FBlockAllocator(FBlockAllocator const&) = delete;
@@ -24,6 +32,9 @@ class SANDBOXCORE_API FBlockAllocator {
     auto operator=(FBlockAllocator&& other) noexcept -> FBlockAllocator&;
 
     auto allocation_mode() const noexcept -> EBlockAllocationMode { return allocation_mode_; }
+    auto virtual_alloc2_page_mode() const noexcept -> EVirtualAlloc2PageMode {
+        return virtual_alloc2_page_mode_;
+    }
 
     template <typename T>
     auto allocate(int32 const count) -> T* {
@@ -47,6 +58,7 @@ class SANDBOXCORE_API FBlockAllocator {
     static constexpr int32 max_allocation_count{8};
 
     EBlockAllocationMode allocation_mode_;
+    EVirtualAlloc2PageMode virtual_alloc2_page_mode_;
     TFixedArray<FAllocation, max_allocation_count> allocations_{};
 };
 }
