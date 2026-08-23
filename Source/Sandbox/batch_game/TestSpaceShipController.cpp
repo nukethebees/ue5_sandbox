@@ -107,6 +107,7 @@ void ATestSpaceShipController::set_mapping_context(UInputMappingContext const* c
 void ATestSpaceShipController::BeginPlay() {
     Super::BeginPlay();
 
+    bind_orchestrator_reset();
     initialise_hud();
 
     if (!IsValid(GetPawn())) {
@@ -127,6 +128,10 @@ void ATestSpaceShipController::Tick(float dt) {
 }
 
 void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
+    if (auto* const orchestrator{hud_orchestrator.Get()}; IsValid(orchestrator)) {
+        orchestrator->on_reset.RemoveAll(this);
+    }
+
     if (IsValid(hud_widget)) {
         if (auto* const orchestrator{hud_orchestrator.Get()};
             IsValid(orchestrator) &&
@@ -196,6 +201,41 @@ void ATestSpaceShipController::OnUnPossess() {
 /* ---------------------------------------------------------------------------------------------- */
 // UI
 /* ---------------------------------------------------------------------------------------------- */
+void ATestSpaceShipController::bind_orchestrator_reset() {
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::bind_orchestrator_reset: World is invalid."));
+        return;
+    }
+
+    auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::bind_orchestrator_reset: Orchestrator is invalid."));
+        return;
+    }
+
+    hud_orchestrator = orchestrator;
+    orchestrator->on_reset.RemoveAll(this);
+    orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
+}
+void ATestSpaceShipController::on_orchestrator_reset(ATestBatchOrchestrator& orchestrator) {
+    auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator.get_player_ship())};
+    if (!IsValid(player_ship)) {
+        if (IsValid(GetPawn())) {
+            UnPossess();
+        }
+        return;
+    }
+
+    if (GetPawn() != player_ship) {
+        Possess(player_ship);
+    }
+}
+
 void ATestSpaceShipController::initialise_hud() {
     if (IsValid(hud_widget)) {
         return;

@@ -37,9 +37,11 @@ struct SANDBOX_API FTestMissionManager {
     GENERATED_BODY()
   public:
     void begin_play();
+    void reset_runtime_state();
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
     void set_world(UWorld& new_world) noexcept;
     void mission_tick();
+    void replace_startup_actor(AActor const* old_actor, AActor& new_actor);
 
     void set_mission_mode(ETestMissionMode new_mode);
     void set_target_time(float new_target_time);
@@ -59,9 +61,9 @@ struct SANDBOX_API FTestMissionManager {
     auto get_time_remaining() const noexcept -> float {
         return FMath::Max(0.f, target_time - mission_elapsed_seconds);
     }
-    auto get_kill_target() const noexcept -> int32 { return kill_target; }
+    auto get_kill_target() const noexcept -> int32 { return resolved_kill_target; }
     auto get_kills_remaining() const noexcept -> int32 {
-        return FMath::Max(0, kill_target - mission_kills);
+        return FMath::Max(0, resolved_kill_target - mission_kills);
     }
     auto get_mission_kills() const noexcept -> int32 { return mission_kills; }
     auto get_mission_fail_reason() const noexcept -> ETestMissionFailReason {
@@ -137,6 +139,8 @@ struct SANDBOX_API FTestMissionManager {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 kill_target{5};
+
+    int32 resolved_kill_target{5};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool save_mission_results{true};

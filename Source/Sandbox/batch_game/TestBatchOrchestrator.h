@@ -34,6 +34,7 @@ class ATestBatchOrchestrator;
 
 DECLARE_DELEGATE_OneParam(FOrchestratorEndTickTestHook, ATestBatchOrchestrator&);
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnProxyEntitiesBound, FProxyEntityMap const&);
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnOrchestratorReset, ATestBatchOrchestrator&);
 
 UENUM(BlueprintType)
 enum class EOrchestratorStartMode : uint8 {
@@ -63,6 +64,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void tick(time_type const dt);
     void start_simulation();
     void pause_simulation();
+    void reset_for_new_level();
 
     void set_test_config(UTestSimulationConfig const& config);
     void set_start_mode(EOrchestratorStartMode mode);
@@ -118,6 +120,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     void spawn_missing_actors();
 
     static FOnProxyEntitiesBound on_proxy_entities_bound;
+    FOnOrchestratorReset on_reset;
   protected:
     void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type end_play_reason) override;

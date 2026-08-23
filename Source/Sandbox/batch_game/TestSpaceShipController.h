@@ -34,6 +34,8 @@ class ATestSpaceShipController
     void EndPlay(EEndPlayReason::Type const reason) override;
 
     void initialise_hud();
+    void bind_orchestrator_reset();
+    void on_orchestrator_reset(ATestBatchOrchestrator& orchestrator);
 
     auto get_pawn() -> Pawn&;
 

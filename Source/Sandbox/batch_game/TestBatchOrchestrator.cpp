@@ -133,6 +133,82 @@ void ATestBatchOrchestrator::pause_simulation() {
     state = EOrchestratorState::Paused;
     SetActorTickEnabled(false);
 }
+void ATestBatchOrchestrator::reset_for_new_level() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::reset_for_new_level);
+
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("ATestBatchOrchestrator::reset_for_new_level: World is invalid"));
+        return;
+    }
+
+    SetActorTickEnabled(false);
+    stop_visual_logging();
+
+    auto recreate_actor{[this, world]<typename T>(TObjectPtr<T>& actor) {
+        if (!IsValid(actor)) {
+            return;
+        }
+
+        auto* const old_actor{actor.Get()};
+        UClass* const actor_class{old_actor->GetClass()};
+        if (!IsValid(actor_class)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Actor class is invalid"));
+            return;
+        }
+
+        if (!old_actor->Destroy()) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Failed to destroy %s"),
+                   *old_actor->GetName());
+            return;
+        }
+
+        auto* const replacement{world->SpawnActor<T>(actor_class, FTransform::Identity)};
+        if (!IsValid(replacement)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Failed to spawn %s"),
+                   *actor_class->GetName());
+            actor = nullptr;
+            return;
+        }
+
+        mission_manager.replace_startup_actor(old_actor, *replacement);
+        actor = replacement;
+    }};
+
+    recreate_actor(player_ship);
+    recreate_actor(lasers);
+    recreate_actor(capital_ships);
+    recreate_actor(capital_ship_fighters);
+    recreate_actor(turrets);
+    recreate_actor(spinners);
+    recreate_actor(niagara_spawner);
+
+    constexpr auto apply_config{[](auto const actor_ptr, auto const actor_config) {
+        if (IsValid(actor_ptr)) {
+            apply_actor_config(*actor_ptr, actor_config.Get());
+        }
+    }};
+
+    if (IsValid(simulation_config)) {
+        apply_config(player_ship, simulation_config->player_ship_config);
+        apply_config(lasers, simulation_config->lasers_config);
+        apply_config(capital_ships, simulation_config->capital_ships_config);
+        apply_config(capital_ship_fighters, simulation_config->capital_ship_fighters_config);
+        apply_config(turrets, simulation_config->static_turrets_config);
+        apply_config(spinners, simulation_config->tube_spinners_config);
+    }
+
+    begin_play();
+    on_reset.Broadcast(*this);
+}
 
 void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config) {
     if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) {
@@ -238,6 +314,7 @@ void ATestBatchOrchestrator::begin_play() {
     completed_ticks = 0;
     simulation_tick_loop.initialise();
     hud_tick_loop.initialise();
+    mission_manager.reset_runtime_state();
 
     auto* world{GetWorld()};
 
