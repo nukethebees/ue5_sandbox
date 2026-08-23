@@ -1,385 +1,237 @@
-#include <SandboxTests/support/SimulationTestAssets.h>
-#include <SandboxTests/support/TestActorSpawning.h>
+#include "test_entity_registry_scenario.h"
 
 #include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
+#include <Sandbox/batch_game/TestCapitalShipsConfig.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestTeam.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SandboxGameShared/utilities/enums.h>
 
-#include <SandboxTests/SandboxTestLogCategories.h>
-#include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
+#include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/array_math.h>
-#include <SandboxCore/container_ops.h>
-#include <SandboxCore/time_series_data.h>
 
-#include <SandboxCoreEngine/actor_utils.h>
+#include <UObject/SoftObjectPath.h>
 
-#include <Components/MapTestSpawner.h>
-#include <Containers/Map.h>
-#include <CQTest.h>
-#include <Editor.h>
-#include <Engine/World.h>
-#include <EngineUtils.h>
-#include <Misc/Optional.h>
+namespace ml {
+namespace {
+constexpr TStaticArray<int32, 6> expected_team_counts{0, 1, 2, 3, 4, 5};
+constexpr TCHAR capital_config_path[]{
+    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests/")
+        TEXT("FuncT_entity_registry/DA_TestCapitalShips_entity_registry")};
+}
 
-TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
-{
-    using ThisClass = TestEntityRegistry;
-    using time_type = ml::TestSimulationDriver::time_type;
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Shared test setup
-    /* ------------------------------------------------------------------------------------------ */
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
-    ml::FSoftTestAssertions checks{};
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Team-count test
-    /* ------------------------------------------------------------------------------------------ */
-    struct FTeamCountTestState {
-        ml::TimeSeriesData<FTestEntityRegistry::TeamCounts> alive_per_team;
-        ml::TimeSeriesData<FTestEntityRegistry::EntityCounts> alive_per_team_and_type;
-        TMap<ETestTeam, int32> expected_teams{
-            {ETestTeam::White, 0},
-            {ETestTeam::Red, 1},
-            {ETestTeam::Green, 2},
-            {ETestTeam::Blue, 3},
-            {ETestTeam::Orange, 4},
-            {ETestTeam::Yellow, 5},
-        };
-    };
-    TUniquePtr<FTeamCountTestState> team_count_state{nullptr};
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Variable player-kill test
-    /* ------------------------------------------------------------------------------------------ */
-    struct FVariableKillSample {
-        int32 player_kills{0};
-        int32 total_kills{0};
-        int32 alive_count{0};
-    };
-    struct FVariableKillTestState {
-        ml::TimeSeriesData<FVariableKillSample> samples;
-        TestEntityUniqueId player_id{};
-        int32 expected_kills{0};
-        int32 initial_alive_count{0};
-    };
-    TUniquePtr<FVariableKillTestState> variable_kill_state{nullptr};
-    FDelegateHandle player_spawn_map_change_handle{};
-    bool test_ready{false};
-
-    BEFORE_EACH()
-    {
-        test_driver.Reset();
-        ml::reset(spawner, team_count_state, variable_kill_state);
-        test_ready = false;
+FEntityRegistryScenario::FEntityRegistryScenario(FSimulationTestContext& context,
+                                                 EEntityRegistryScenario const scenario)
+    : FSimulationTestScenario{context}
+    , scenario_{scenario} {
+    switch (scenario_) {
+        case EEntityRegistryScenario::TeamCounts:
+            expected_kills = 0;
+            break;
+        case EEntityRegistryScenario::OnePlayerKill:
+            expected_kills = 1;
+            break;
+        case EEntityRegistryScenario::TwoPlayerKills:
+            expected_kills = 2;
+            break;
     }
-    AFTER_EACH()
-    {
-        if (player_spawn_map_change_handle.IsValid()) {
-            FEditorDelegates::MapChange.Remove(player_spawn_map_change_handle);
-            player_spawn_map_change_handle.Reset();
-        }
-        if (test_driver.IsSet()) {
-            test_driver->orchestrator.clear_end_tick_test_hook();
-            test_driver->orchestrator.pause_simulation();
-        }
+    TestCommandBuilder.Do([this] { spawn_fixture(); });
+}
 
-        ml::reset(test_driver, spawner, team_count_state, variable_kill_state);
+void FEntityRegistryScenario::tear_down() {
+    if (test_driver.IsSet()) {
+        test_driver->orchestrator.clear_end_tick_test_hook();
     }
-  private:
-    /* ------------------------------------------------------------------------------------------ */
-    // Team-count test
-    /* ------------------------------------------------------------------------------------------ */
-    void setup_team_count_level() {
-        spawner = ml::level_test_setup(TEXT("FuncT_entity_registry"), TestRunner, checks);
+}
+
+/* ------------------------------------------------------------------------------------------ */
+// Fixture
+/* ------------------------------------------------------------------------------------------ */
+void FEntityRegistryScenario::spawn_fixture() {
+    auto* const capital_config{
+        Cast<UTestCapitalShipsConfig>(FSoftObjectPath{capital_config_path}.TryLoad())};
+    auto* const capital_actor{
+        const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
+    if (!checks.not_nullptr(capital_config, TEXT("Entity registry capital config is loaded")) ||
+        !checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
+        return;
+    }
+    capital_actor->set_actor_config(capital_config);
+
+    if (scenario_ != EEntityRegistryScenario::TeamCounts) {
+        spawn_player();
     }
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Variable player-kill test
-    /* ------------------------------------------------------------------------------------------ */
-    void setup_variable_kill_level() {
-        player_spawn_map_change_handle =
-            FEditorDelegates::MapChange.AddLambda([this](uint32 const flags) {
-                if (test_ready || !(flags & MapChangeEventFlags::NewMap)) {
-                    return;
-                }
-
-                auto editor_world{ml::get_editor_world()};
-                if (!editor_world) {
-                    UE_LOG(LogSandboxTest, Error, TEXT("%s"), *editor_world.error());
-                    checks.is_true(false, TEXT("Editor world is available"));
-                    return;
-                }
-                auto* const world{*editor_world};
-
-                auto const* const test_config{ml::get_default_test_config(checks)};
-                auto const* const simulation_config{ml::get_default_simulation_config(checks)};
-                if (!test_config || !simulation_config) {
-                    return;
-                }
-
-                auto* const player_config{simulation_config->player_ship_config.Get()};
-                auto* const player_ship{ml::spawn_player_ship(
-                    *world, test_config->actor_classes.player_ship_class, player_config)};
-                if (!checks.is_valid(player_ship, TEXT("Player ship is spawned"))) {
-                    return;
-                }
-
-                auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
-                if (!checks.is_valid(orchestrator, TEXT("Orchestrator is available"))) {
-                    return;
-                }
-
-                orchestrator->set_player_ship(*player_ship);
-                test_ready = true;
-            });
-
-        spawner = ml::level_test_setup(TEXT("FuncT_entity_registry"), TestRunner, checks);
-    }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Team-count test
-    /* ------------------------------------------------------------------------------------------ */
-    static constexpr time_type test_time{0.1};
-
-    void initial_setup() {
-        team_count_state = MakeUnique<FTeamCountTestState>();
-        auto& world{spawner->GetWorld()};
-        test_driver = ml::TestSimulationDriver::from_world(world);
-        test_driver->orchestrator.start_simulation();
-    }
-
-    auto get_total_expected() const -> int32 {
-        check(team_count_state);
-        int32 total{0};
-
-        for (auto const& [_, v] : team_count_state->expected_teams) {
-            total += v;
-        }
-
-        return total;
-    }
-    void sample_values(ATestBatchOrchestrator&) {
-        check(team_count_state);
-        team_count_state->alive_per_team.add(test_driver->get_time(),
-                                             test_driver->registry.count_alive_per_team());
-        team_count_state->alive_per_team_and_type.add(
-            test_driver->get_time(), test_driver->registry.count_alive_per_team_and_type());
-    }
-    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
-        sample_values(orchestrator);
-        test_driver->timeline.tick(test_driver->get_time());
-    }
-
-    void run_checks() {
-        check(team_count_state);
-        count_teams(team_count_state->alive_per_team.nearest_index(test_time));
-
-        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-    }
-    auto get_expected_team_counts_msg() const -> FString {
-        check(team_count_state);
-        FString msg{TEXT("Expected team counts:")};
-
-        for (auto const& [k, v] : team_count_state->expected_teams) {
-            msg += FString::Printf(TEXT("\n    %s: %d"), *ml::to_string_without_type_prefix(k), v);
-        }
-
-        return msg;
-    }
-    auto get_team_counts(TConstArrayView<int32> const counts) const -> FString {
-        FString msg;
-
-        auto const n{ml::EnumCountTrait<ETestEntityType>::count_value};
-        for (int32 i{}; i < n; ++i) {
-            msg +=
-                FString::Printf(TEXT("\n%s: %d"),
-                                *ml::to_string_without_type_prefix(static_cast<ETestEntityType>(i)),
-                                counts[i]);
-        }
-
-        return msg;
-    }
-    void count_teams(int32 const sample_index) {
-        check(team_count_state);
-        TMap<ETestTeam, int32> teams_counted;
-
-        auto const& counts{team_count_state->alive_per_team.value_at(sample_index)};
-        auto const counts_view{TConstArrayView<int32>(counts)};
-        auto const count_sum{ml::sum(counts_view)};
-
-        checks.are_equal(get_total_expected(), count_sum, [&] -> FString {
-            FString msg{TEXT("Check entity total.")};
-            msg += get_team_counts(counts_view);
-            return msg;
-        }());
-
-        auto const n_teams{ml::EnumCountTrait<ETestTeam>::count_value};
-        for (int32 i{}; i < n_teams; ++i) {
-            teams_counted.Emplace(static_cast<ETestTeam>(i), counts[i]);
-        }
-
-        for (auto const& [team, exp_count] : team_count_state->expected_teams) {
-            auto const count{counts[std::to_underlying(team)]};
-            checks.are_equal(exp_count, count, [&] -> FString {
-                return FString::Printf(TEXT("Count team %s"),
-                                       *ml::to_string_without_type_prefix(team));
-            }());
-
-            auto const& type_counts{
-                team_count_state->alive_per_team_and_type.value_at(sample_index)};
-            int32 type_count{0};
-            constexpr auto n_types{ml::EnumCountTrait<ETestEntityType>::count_value};
-            for (int32 type{0}; type < n_types; ++type) {
-                type_count += type_counts[std::to_underlying(team)][type];
+    int32 actor_index{0};
+    for (int32 team_index{0}; team_index < expected_team_counts.Num(); ++team_index) {
+        auto const team{static_cast<ETestTeam>(team_index)};
+        for (int32 i{0}; i < expected_team_counts[team_index]; ++i) {
+            auto* const capital{
+                spawn_capital_proxy(context_.world,
+                                    context_.config,
+                                    checks,
+                                    FName{FString::Printf(TEXT("capital_%d"), actor_index)},
+                                    FVector{static_cast<float>(actor_index * 5000),
+                                            static_cast<float>(team_index * 5000),
+                                            4360.f})};
+            if (!checks.is_valid(capital, TEXT("Registry capital is spawned"))) {
+                return;
             }
-            checks.are_equal(count, type_count, [&] -> FString {
-                return FString::Printf(TEXT("Count team/type matrix for %s"),
-                                       *ml::to_string_without_type_prefix(team));
-            }());
+            capital->set_team(team);
+            capital->set_actor_config(capital_config);
+            capital->set_initial_spawn_delay(5.f);
+            capital->set_spawn_cooldown(60.f);
+            ++actor_index;
         }
     }
+}
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Variable player-kill test
-    /* ------------------------------------------------------------------------------------------ */
-    static constexpr time_type before_kill_time{0.05};
-    static constexpr time_type kill_time{0.1};
-    static constexpr time_type after_kill_time{0.3};
-    static constexpr time_type variable_kill_test_duration{0.35};
-
-    void begin_variable_kill_scenario(int32 const expected_kills) {
-        variable_kill_state = MakeUnique<FVariableKillTestState>();
-        auto& state{*variable_kill_state};
-        state.expected_kills = expected_kills;
-
-        test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
-        test_driver->orchestrator.start_simulation();
-
-        auto const& player_ship{test_driver->get_player_ship()};
-        state.player_id = player_ship.get_unique_id();
-        state.initial_alive_count = test_driver->registry.count_alive();
-
-        auto const available_targets{
-            test_driver->registry.get_handles_not_in_team(player_ship.get_team())};
-        if (!checks.is_greater_than(available_targets.Num(),
-                                    state.expected_kills - 1,
-                                    TEXT("Enough non-player-team targets are available"))) {
-            return;
-        }
-
-        TArray<FRegistryEntityHandle> targets;
-        targets.Append(available_targets.GetData(), state.expected_kills);
-
-        ml::reset_and_reserve_time_series(
-            test_driver->orchestrator, variable_kill_test_duration, state.samples);
-        test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_variable_kill_end_tick));
-        test_driver->timeline.then_after(
-            kill_time, [this, targets, player_handle = player_ship.get_entity_handle()] {
-                test_driver->queue_kills(targets, player_handle);
-            });
-        test_driver->timeline.finish_at(variable_kill_test_duration);
+void FEntityRegistryScenario::spawn_player() {
+    auto const* const simulation_config{context_.config.simulation_config.Get()};
+    if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available"))) {
+        return;
     }
-    void on_variable_kill_end_tick(ATestBatchOrchestrator&) {
-        check(variable_kill_state);
-
-        auto const& registry{test_driver->registry};
-        variable_kill_state->samples.add(test_driver->get_time(),
-                                         FVariableKillSample{static_cast<int32>(registry.get_kills(
-                                                                 variable_kill_state->player_id)),
-                                                             registry.count_kills(),
-                                                             registry.count_alive()});
-        test_driver->timeline.tick(test_driver->get_time());
+    auto* const player{spawn_player_ship(context_.world,
+                                         context_.config.actor_classes.player_ship_class,
+                                         simulation_config->player_ship_config)};
+    if (!checks.is_valid(player, TEXT("Player ship is spawned"))) {
+        return;
     }
-    void check_variable_kill_results() {
-        check(variable_kill_state);
-        auto const& state{*variable_kill_state};
+    context_.orchestrator.set_player_ship(*player);
+}
 
-        checks.is_greater_than(state.samples.num(), int32{0}, TEXT("Kill samples recorded"));
-        if (state.samples.is_empty()) {
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-            return;
+/* ------------------------------------------------------------------------------------------ */
+// Team counts
+/* ------------------------------------------------------------------------------------------ */
+void FEntityRegistryScenario::begin_team_count_scenario() {
+    test_driver = TestSimulationDriver::from_world(context_.world);
+    test_driver->orchestrator.start_simulation();
+    reset_and_reserve_time_series(
+        test_driver->orchestrator, team_count_test_time, alive_per_team, alive_per_team_and_type);
+    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+        this, &FEntityRegistryScenario::on_team_count_end_tick));
+    test_driver->timeline.finish_at(team_count_test_time);
+}
+
+void FEntityRegistryScenario::sample_team_counts() {
+    auto const time{test_driver->get_time()};
+    alive_per_team.add(time, test_driver->registry.count_alive_per_team());
+    alive_per_team_and_type.add(time, test_driver->registry.count_alive_per_team_and_type());
+}
+
+void FEntityRegistryScenario::on_team_count_end_tick(ATestBatchOrchestrator&) {
+    sample_team_counts();
+    test_driver->timeline.tick(test_driver->get_time());
+}
+
+void FEntityRegistryScenario::check_team_counts() {
+    auto const sample_index{alive_per_team.nearest_index(team_count_test_time)};
+    auto const& counts{alive_per_team.value_at(sample_index)};
+    checks.are_equal(15, sum(TConstArrayView<int32>{counts}), TEXT("Check entity total"));
+    for (int32 team_index{0}; team_index < expected_team_counts.Num(); ++team_index) {
+        auto const team{static_cast<ETestTeam>(team_index)};
+        checks.are_equal(
+            expected_team_counts[team_index],
+            counts[team_index],
+            FString::Printf(TEXT("Count team %s"), *to_string_without_type_prefix(team)));
+
+        auto const& type_counts{alive_per_team_and_type.value_at(sample_index)};
+        int32 type_count{0};
+        constexpr auto n_types{EnumCountTrait<ETestEntityType>::count_value};
+        for (int32 type{0}; type < n_types; ++type) {
+            type_count += type_counts[team_index][type];
         }
+        checks.are_equal(counts[team_index],
+                         type_count,
+                         FString::Printf(TEXT("Count team/type matrix for %s"),
+                                         *to_string_without_type_prefix(team)));
+    }
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
 
-        auto const& before_kills{state.samples.nearest_value(before_kill_time)};
-        auto const& after_kills{state.samples.nearest_value(after_kill_time)};
-        auto const& final_kills{state.samples.nearest_value(variable_kill_test_duration)};
+/* ------------------------------------------------------------------------------------------ */
+// Player kills
+/* ------------------------------------------------------------------------------------------ */
+void FEntityRegistryScenario::begin_variable_kill_scenario() {
+    test_driver = TestSimulationDriver::from_world(context_.world);
+    test_driver->orchestrator.start_simulation();
+    auto const& player{test_driver->get_player_ship()};
+    player_id = player.get_unique_id();
+    initial_alive_count = test_driver->registry.count_alive();
+    auto const available_targets{test_driver->registry.get_handles_not_in_team(player.get_team())};
+    if (!checks.is_greater_than(available_targets.Num(),
+                                expected_kills - 1,
+                                TEXT("Enough non-player-team targets are available"))) {
+        return;
+    }
 
-        checks.are_equal(0, before_kills.player_kills, TEXT("Player kills are zero before event"));
-        checks.are_equal(0, before_kills.total_kills, TEXT("Total kills are zero before event"));
-        checks.are_equal(state.initial_alive_count,
-                         before_kills.alive_count,
-                         TEXT("All entities are alive before event"));
+    TArray<FRegistryEntityHandle> targets;
+    targets.Append(available_targets.GetData(), expected_kills);
+    reset_and_reserve_time_series(
+        test_driver->orchestrator, variable_kill_test_duration, kill_samples);
+    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+        this, &FEntityRegistryScenario::on_variable_kill_end_tick));
+    test_driver->timeline.then_after(kill_time,
+                                     [this, targets, player_handle = player.get_entity_handle()] {
+                                         test_driver->queue_kills(targets, player_handle);
+                                     });
+    test_driver->timeline.finish_at(variable_kill_test_duration);
+}
 
-        checks.are_equal(state.expected_kills,
-                         after_kills.player_kills,
-                         TEXT("Kills are attributed to player ship"));
-        checks.are_equal(state.expected_kills,
-                         after_kills.total_kills,
-                         TEXT("Total kill count matches killed entities"));
-        checks.are_equal(state.initial_alive_count - state.expected_kills,
-                         after_kills.alive_count,
-                         TEXT("Alive count reflects killed entities"));
+void FEntityRegistryScenario::on_variable_kill_end_tick(ATestBatchOrchestrator&) {
+    auto const& registry{test_driver->registry};
+    kill_samples.add(test_driver->get_time(),
+                     FVariableKillSample{
+                         static_cast<int32>(registry.get_kills(player_id)),
+                         registry.count_kills(),
+                         registry.count_alive(),
+                     });
+    test_driver->timeline.tick(test_driver->get_time());
+}
 
-        checks.are_equal(state.expected_kills,
-                         final_kills.player_kills,
-                         TEXT("Player kill count remains correct after event"));
-        checks.are_equal(state.expected_kills,
-                         final_kills.total_kills,
-                         TEXT("Total kill count remains correct after event"));
-        checks.are_equal(state.initial_alive_count - state.expected_kills,
-                         final_kills.alive_count,
-                         TEXT("Alive count remains correct after event"));
-
+void FEntityRegistryScenario::check_variable_kill_results() {
+    checks.is_greater_than(kill_samples.num(), int32{0}, TEXT("Kill samples recorded"));
+    if (kill_samples.is_empty()) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        return;
     }
-    void run_variable_kill_scenario(int32 const expected_kills) {
-        setup_variable_kill_level();
-        TestCommandBuilder.StartWhen([this] { return test_ready; })
-            .Then([this, expected_kills] { begin_variable_kill_scenario(expected_kills); })
+    auto const& before{kill_samples.nearest_value(before_kill_time)};
+    auto const& after{kill_samples.nearest_value(after_kill_time)};
+    auto const& final{kill_samples.nearest_value(variable_kill_test_duration)};
+    checks.are_equal(0, before.player_kills, TEXT("Player kills are zero before event"));
+    checks.are_equal(0, before.total_kills, TEXT("Total kills are zero before event"));
+    checks.are_equal(
+        initial_alive_count, before.alive_count, TEXT("All entities are alive before event"));
+    checks.are_equal(
+        expected_kills, after.player_kills, TEXT("Kills are attributed to player ship"));
+    checks.are_equal(
+        expected_kills, after.total_kills, TEXT("Total kill count matches killed entities"));
+    checks.are_equal(initial_alive_count - expected_kills,
+                     after.alive_count,
+                     TEXT("Alive count reflects killed entities"));
+    checks.are_equal(expected_kills, final.player_kills, TEXT("Player kill count remains correct"));
+    checks.are_equal(expected_kills, final.total_kills, TEXT("Total kill count remains correct"));
+    checks.are_equal(initial_alive_count - expected_kills,
+                     final.alive_count,
+                     TEXT("Alive count remains correct"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FEntityRegistryScenario::run() {
+    if (scenario_ == EEntityRegistryScenario::TeamCounts) {
+        TestCommandBuilder.Do([this] { begin_team_count_scenario(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-            .Then([this] { check_variable_kill_results(); });
+            .Then([this] { check_team_counts(); });
+        return;
     }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Team-count test
-    /* ------------------------------------------------------------------------------------------ */
-    TEST_METHOD(MainTest)
-    {
-        setup_team_count_level();
-        TestCommandBuilder
-            .Do([this] {
-                initial_setup();
-                ml::reset_and_reserve_time_series(test_driver->orchestrator,
-                                                  test_time,
-                                                  team_count_state->alive_per_team,
-                                                  team_count_state->alive_per_team_and_type);
-                test_driver->orchestrator.set_end_tick_test_hook(
-                    FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
-                test_driver->timeline.finish_at(test_time);
-            })
-            .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-            .Then([this] { run_checks(); });
-    }
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Variable player-kill test
-    /* ------------------------------------------------------------------------------------------ */
-    TEST_METHOD(OnePlayerKill)
-    { run_variable_kill_scenario(1); }
-
-    TEST_METHOD(TwoPlayerKills)
-    { run_variable_kill_scenario(2); }
-};
+    TestCommandBuilder.Do([this] { begin_variable_kill_scenario(); })
+        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
+        .Then([this] { check_variable_kill_results(); });
+}
+}

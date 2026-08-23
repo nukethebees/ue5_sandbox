@@ -5,7 +5,6 @@
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -196,31 +195,4 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
     return true;
 }
 
-auto level_test_setup(FString const& map_directory,
-                      FString const& map_name,
-                      FAutomationTestBase* test_runner,
-                      FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner> {
-    auto spawner{MakeUnique<FMapTestSpawner>(map_directory, map_name)};
-    spawner->AddWaitUntilLoadedCommand(test_runner);
-
-    checks.test_runner = test_runner;
-    checks.all_passed = true;
-
-#if WITH_EDITOR
-    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-    checks.log_successful_assertions = settings->log_successful_assertions;
-#endif
-
-    return spawner;
-}
-
-auto level_test_setup(FString const& map_name,
-                      FAutomationTestBase* test_runner,
-                      FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner> {
-    return ml::level_test_setup(
-        TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests"),
-        map_name,
-        test_runner,
-        checks);
-}
 }

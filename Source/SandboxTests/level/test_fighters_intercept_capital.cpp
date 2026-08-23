@@ -1,195 +1,191 @@
+#include "test_fighters_intercept_capital_scenario.h"
+
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <Sandbox/batch_game/TestCapitalShipProxy.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestTeam.h>
 
-#include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestFightersInterceptCapitalResults.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <SandboxCore/time_series_data.h>
+namespace ml {
+FFightersInterceptCapitalScenario::FFightersInterceptCapitalScenario(
+    FSimulationTestContext& context)
+    : FSimulationTestScenario{context} {
+    TestCommandBuilder.Do([this] { spawn_fixture(); });
+}
 
-#include <Components/MapTestSpawner.h>
-#include <CQTest.h>
-#include <Misc/Optional.h>
-
-TEST_CLASS(FightersInterceptCapital, "Sandbox.LevelTests")
-{
-    using ThisClass = FightersInterceptCapital;
-    using time_type = ml::TestSimulationDriver::time_type;
-
-    struct FSimulationSample {
-        FRegistryEntityHandle parent_target;
-        TArray<FRegistryEntityHandle> fighter_targets;
-        int32 fighter_count{0};
-    };
-
-    static constexpr time_type test_duration{20.0};
-    static constexpr time_type initial_setup_duration{2.0 / 60.0};
-
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    ml::FSoftTestAssertions checks{};
-    TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
-
-    ATestCapitalShips const* capitals{nullptr};
-    ATestCapitalShipFighters const* fighters{nullptr};
-    ml::TimeSeriesData<FSimulationSample> samples;
-
-    int32 hero_capital_index{INDEX_NONE};
-    FRegistryEntityHandle hero_capital;
-    FRegistryEntityHandle original_target;
-    FRegistryEntityHandle intercept_target;
-
-    BEFORE_EACH()
-    {
-        spawner =
-            ml::level_test_setup(TEXT("FuncT_fighters_intercept_capital"), TestRunner, checks);
+void FFightersInterceptCapitalScenario::tear_down() {
+    if (test_driver.IsSet()) {
+        test_driver->orchestrator.clear_end_tick_test_hook();
     }
-    AFTER_EACH()
-    {
-        if (test_driver.IsSet()) {
-            test_driver->orchestrator.clear_end_tick_test_hook();
-        }
-        test_driver->orchestrator.pause_simulation();
-    }
-  private:
-    void sample_values(ATestBatchOrchestrator&) {
-        auto const fighter_handles{capitals->get_fighter_handles(hero_capital_index)};
+}
 
-        FSimulationSample sample{};
-        sample.parent_target = capitals->get_target_handle(hero_capital_index);
-        sample.fighter_count = fighter_handles.Num();
-        sample.fighter_targets.Reserve(fighter_handles.Num());
-        for (auto const fighter_handle : fighter_handles) {
-            sample.fighter_targets.Add(fighters->get_target_handle(fighter_handle));
-        }
-
-        samples.add(test_driver->get_time(), MoveTemp(sample));
+/* ------------------------------------------------------------------------------------------ */
+// Setup
+/* ------------------------------------------------------------------------------------------ */
+void FFightersInterceptCapitalScenario::spawn_fixture() {
+    auto* const green{spawn_capital_proxy(context_.world,
+                                          context_.config,
+                                          checks,
+                                          TEXT("green_capital"),
+                                          FVector{-61180.f, 2170.f, 4360.f})};
+    auto* const red{spawn_capital_proxy(context_.world,
+                                        context_.config,
+                                        checks,
+                                        TEXT("red_capital"),
+                                        FVector{77320.f, 2170.f, 4360.f})};
+    auto* const blue{spawn_capital_proxy(context_.world,
+                                         context_.config,
+                                         checks,
+                                         TEXT("blue_capital"),
+                                         FVector{3590.f, 3240.f, 4360.f})};
+    if (!checks.is_valid(green, TEXT("Green capital is spawned")) ||
+        !checks.is_valid(red, TEXT("Red capital is spawned")) ||
+        !checks.is_valid(blue, TEXT("Blue capital is spawned"))) {
+        return;
     }
 
-    void on_end_tick(ATestBatchOrchestrator & orchestrator) {
-        sample_values(orchestrator);
-        test_driver->timeline.tick(test_driver->get_time());
+    green->set_team(ETestTeam::Green);
+    green->set_target_ship(red);
+    green->set_spawn_cooldown(60.f);
+    red->set_team(ETestTeam::Red);
+    red->set_target_ship(green);
+    red->set_initial_spawn_delay(600.f);
+    blue->set_team(ETestTeam::Blue);
+    blue->set_target_ship(green);
+    blue->set_initial_spawn_delay(600.f);
+}
+
+void FFightersInterceptCapitalScenario::initial_setup() {
+    test_driver = TestSimulationDriver::from_world(context_.world);
+    test_driver->orchestrator.start_simulation();
+    capitals = &test_driver->get_capital_ships();
+    fighters = &test_driver->get_capital_ship_fighters();
+
+    auto const hero_index{capitals->find_first_index_on_team(ETestTeam::Green)};
+    auto const red_handle{capitals->find_first_handle_on_team(ETestTeam::Red)};
+    auto const blue_handle{capitals->find_first_handle_on_team(ETestTeam::Blue)};
+    if (!checks.is_true(hero_index.has_value(), TEXT("Find green capital")) ||
+        !checks.is_true(red_handle.has_value(), TEXT("Find red capital")) ||
+        !checks.is_true(blue_handle.has_value(), TEXT("Find blue capital"))) {
+        return;
     }
+    hero_capital_index = *hero_index;
+    hero_capital = capitals->get_handle(hero_capital_index);
+    original_target = *red_handle;
+    intercept_target = *blue_handle;
 
-    void initial_setup() {
-        test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
-        test_driver->orchestrator.start_simulation();
+    reset_and_reserve_time_series(test_driver->orchestrator, test_duration, samples);
+    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+        this, &FFightersInterceptCapitalScenario::on_end_tick));
+    test_driver->timeline.finish_at(test_duration);
+}
 
-        capitals = &test_driver->get_capital_ships();
-        fighters = &test_driver->get_capital_ship_fighters();
-
-        hero_capital_index = *capitals->find_first_index_on_team(ETestTeam::Green);
-        hero_capital = capitals->get_handle(hero_capital_index);
-        original_target = *capitals->find_first_handle_on_team(ETestTeam::Red);
-        intercept_target = *capitals->find_first_handle_on_team(ETestTeam::Blue);
-
-        ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, samples);
-        test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
-        test_driver->timeline.finish_at(test_duration);
+/* ------------------------------------------------------------------------------------------ */
+// Samples and checks
+/* ------------------------------------------------------------------------------------------ */
+void FFightersInterceptCapitalScenario::sample_values() {
+    auto const fighter_handles{capitals->get_fighter_handles(hero_capital_index)};
+    FSimulationSample sample{};
+    sample.parent_target = capitals->get_target_handle(hero_capital_index);
+    sample.fighter_count = fighter_handles.Num();
+    sample.fighter_targets.Reserve(fighter_handles.Num());
+    for (auto const fighter_handle : fighter_handles) {
+        sample.fighter_targets.Add(fighters->get_target_handle(fighter_handle));
     }
+    samples.add(test_driver->get_time(), MoveTemp(sample));
+}
 
-    void check_fighters_share_target(FSimulationSample const& sample, FString const& description) {
-        auto const& fighter_targets{sample.fighter_targets};
-        if (!checks.is_greater_than(fighter_targets.Num(), int32{0}, description)) {
-            return;
-        }
+void FFightersInterceptCapitalScenario::on_end_tick(ATestBatchOrchestrator&) {
+    sample_values();
+    test_driver->timeline.tick(test_driver->get_time());
+}
 
-        auto const shared_target{fighter_targets[0]};
-        for (int32 fighter_index{1}; fighter_index < fighter_targets.Num(); ++fighter_index) {
-            checks.are_equal(
-                shared_target, fighter_targets[fighter_index], description, fighter_index);
-        }
+void FFightersInterceptCapitalScenario::check_fighters_share_target(FSimulationSample const& sample,
+                                                                    FString const& description) {
+    if (!checks.is_greater_than(sample.fighter_targets.Num(), int32{0}, description)) {
+        return;
     }
+    auto const shared_target{sample.fighter_targets[0]};
+    for (int32 i{1}; i < sample.fighter_targets.Num(); ++i) {
+        checks.are_equal(shared_target, sample.fighter_targets[i], description, i);
+    }
+}
 
-    void full_checks() {
-        auto const& start{samples.nearest_value(initial_setup_duration)};
-        auto const& end{samples.nearest_value(test_duration)};
-
-        checks.is_greater_than(start.fighter_targets.Num(), int32{0}, TEXT("Parent has fighters"));
-        checks.is_greater_than(
-            end.fighter_targets.Num(), int32{0}, TEXT("Parent has fighters at end"));
+void FFightersInterceptCapitalScenario::full_checks() {
+    auto const& start{samples.nearest_value(initial_setup_duration)};
+    auto const& end{samples.nearest_value(test_duration)};
+    checks.is_greater_than(start.fighter_targets.Num(), int32{0}, TEXT("Parent has fighters"));
+    checks.is_greater_than(end.fighter_targets.Num(), int32{0}, TEXT("Parent has fighters at end"));
+    checks.are_equal(
+        original_target, start.parent_target, TEXT("Green capital initially targets red capital"));
+    for (int32 i{0}; i < start.fighter_targets.Num(); ++i) {
         checks.are_equal(original_target,
-                         start.parent_target,
-                         TEXT("Green capital initially targets red capital"));
-
-        for (int32 fighter_index{0}; fighter_index < start.fighter_targets.Num(); ++fighter_index) {
-            checks.are_equal(original_target,
-                             start.fighter_targets[fighter_index],
-                             TEXT("Initial fighter target matches red parent target"),
-                             fighter_index);
-        }
-
-        for (int32 fighter_index{0}; fighter_index < end.fighter_targets.Num(); ++fighter_index) {
-            checks.are_equal(intercept_target,
-                             end.fighter_targets[fighter_index],
-                             TEXT("Final fighter target is blue capital"),
-                             fighter_index);
-        }
-
-        check_fighters_share_target(start, TEXT("Fighters share their initial target"));
-        check_fighters_share_target(end, TEXT("Fighters share their final target"));
+                         start.fighter_targets[i],
+                         TEXT("Initial fighter target matches red parent target"),
+                         i);
     }
+    for (int32 i{0}; i < end.fighter_targets.Num(); ++i) {
+        checks.are_equal(intercept_target,
+                         end.fighter_targets[i],
+                         TEXT("Final fighter target is blue capital"),
+                         i);
+    }
+    check_fighters_share_target(start, TEXT("Fighters share their initial target"));
+    check_fighters_share_target(end, TEXT("Fighters share their final target"));
+}
 
-    void export_data() const {
-        auto const result_asset{
-            ml::FTestResultAsset{TEXT("fighters_intercept_capital"), *TestRunner}};
-        auto* results{
-            result_asset.load_or_create<UTestFightersInterceptCapitalResults>(TEXT("data_asset"))};
-        auto* curves{result_asset.load_or_create<UCurveTable>(TEXT("data_curve"))};
+void FFightersInterceptCapitalScenario::export_data() const {
+    auto const result_asset{FTestResultAsset{TEXT("fighters_intercept_capital"), *TestRunner}};
+    auto* results{
+        result_asset.load_or_create<UTestFightersInterceptCapitalResults>(TEXT("data_asset"))};
+    auto* curves{result_asset.load_or_create<UCurveTable>(TEXT("data_curve"))};
+    results->hero_capital = hero_capital.to_string();
+    results->original_target = original_target.to_string();
+    results->intercept_target = intercept_target.to_string();
 
-        results->hero_capital = hero_capital.to_string();
-        results->original_target = original_target.to_string();
-        results->intercept_target = intercept_target.to_string();
+    auto const sample_times{samples.times()};
+    auto const sample_values{samples.values()};
+    curves->EmptyTable();
+    TArray<float> curve_times;
+    TArray<int32> fighter_counts;
+    curve_times.Reserve(sample_values.Num());
+    fighter_counts.Reserve(sample_values.Num());
+    results->time_series_results.Reset(sample_values.Num());
+    for (int32 i{0}; i < sample_values.Num(); ++i) {
+        auto const& sample{sample_values[i]};
+        FFightersInterceptCapitalTimeSeriesRow row{};
+        row.time = sample_times[i];
+        row.parent_target = sample.parent_target.to_string();
+        row.fighter_targets.Reserve(sample.fighter_targets.Num());
+        for (auto const target : sample.fighter_targets) {
+            row.fighter_targets.Add(target.to_string());
+        }
+        curve_times.Add(static_cast<float>(sample_times[i]));
+        fighter_counts.Add(sample.fighter_count);
+        results->time_series_results.Add(MoveTemp(row));
+    }
+    add_simple_curve_row(*curves,
+                         TEXT("fighter_count"),
+                         TConstArrayView<int32>{fighter_counts},
+                         TConstArrayView<float>{curve_times});
+    result_asset.save(*results);
+    result_asset.save(*curves);
+}
 
-        auto const sample_times{samples.times()};
-        auto const sample_values{samples.values()};
-        curves->EmptyTable();
-        TArray<float> curve_times;
-        TArray<int32> fighter_counts;
-        curve_times.Reserve(sample_values.Num());
-        fighter_counts.Reserve(sample_values.Num());
-        results->time_series_results.Reset(sample_values.Num());
-        for (int32 sample_index{0}; sample_index < sample_values.Num(); ++sample_index) {
-            auto const& sample{sample_values[sample_index]};
-
-            FFightersInterceptCapitalTimeSeriesRow row{};
-            row.time = sample_times[sample_index];
-            row.parent_target = sample.parent_target.to_string();
-            row.fighter_targets.Reserve(sample.fighter_targets.Num());
-            for (auto const fighter_target : sample.fighter_targets) {
-                row.fighter_targets.Add(fighter_target.to_string());
+void FFightersInterceptCapitalScenario::run() {
+    TestCommandBuilder.Do([this] { initial_setup(); })
+        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 21})
+        .Then([this] {
+            full_checks();
+            if (!checks.all_passed || test_driver->should_export_results()) {
+                export_data();
             }
-
-            curve_times.Add(static_cast<float>(sample_times[sample_index]));
-            fighter_counts.Add(sample.fighter_count);
-            results->time_series_results.Add(MoveTemp(row));
-        }
-
-        ml::add_simple_curve_row(*curves,
-                                 TEXT("fighter_count"),
-                                 TConstArrayView<int32>{fighter_counts},
-                                 TConstArrayView<float>{curve_times});
-
-        result_asset.save(*results);
-        result_asset.save(*curves);
-    }
-
-    TEST_METHOD(MainTest)
-    {
-        TestCommandBuilder.StartWhen([this] { return nullptr != spawner->FindFirstPlayerPawn(); })
-            .Then([this] { initial_setup(); })
-            .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 11})
-            .Then([this] {
-                full_checks();
-                if (!checks.all_passed || test_driver->should_export_results()) {
-                    export_data();
-                }
-                SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-            });
-    }
-};
+            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        });
+}
+}

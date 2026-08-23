@@ -1,11 +1,21 @@
 #include "test_batch_orchestrator_reset_scenario.h"
 #include "test_batch_orchestrator_setup_scenario.h"
+#include "test_capital_command_fighters_scenario.h"
+#include "test_capital_fighter_handles_scenario.h"
 #include "test_capital_ship_proxy_scenario.h"
+#include "test_entity_interface_scenario.h"
+#include "test_entity_registry_scenario.h"
+#include "test_fighter_attack_scenario.h"
+#include "test_fighter_los_failure_scenario.h"
+#include "test_fighters_intercept_capital_scenario.h"
 #include "test_fighters_standby_transition_scenario.h"
 #include "test_hud_manager_scenario.h"
 #include "test_mission_manager_scenario.h"
 #include "test_player_ship_death_scenario.h"
+#include "test_player_ship_vs_capital_scenario.h"
 #include "test_spatial_query_line_of_sight_scenario.h"
+#include "test_spatial_query_resolution_scenario.h"
+#include "test_turret_combat_scenario.h"
 #include "test_turret_line_of_sight_blocking_scenario.h"
 #include "test_turret_search_requires_line_of_sight_scenario.h"
 
@@ -82,8 +92,47 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     TEST_METHOD(CapitalShipProxy_HealthOverridesConfig)
     { run_scenario<ml::FTestCapitalShipProxyScenario>(); }
 
+    TEST_METHOD(CapitalCommandFighters_RetargetAfterKills)
+    { run_scenario<ml::FCapitalCommandFightersScenario>(); }
+
+    TEST_METHOD(CapitalFighterHandles_KillFightersOnly)
+    {
+        run_scenario<ml::FCapitalFighterHandlesScenario>(
+            ml::ECapitalFighterHandlesScenario::KillFightersOnly);
+    }
+
+    TEST_METHOD(CapitalFighterHandles_KillCapital)
+    {
+        run_scenario<ml::FCapitalFighterHandlesScenario>(
+            ml::ECapitalFighterHandlesScenario::KillCapital);
+    }
+
+    TEST_METHOD(CapitalFighterHandles_All)
+    { run_scenario<ml::FCapitalFighterHandlesScenario>(ml::ECapitalFighterHandlesScenario::All); }
+
+    TEST_METHOD(Fighters_LineOfSightFailureHandling)
+    { run_scenario<ml::FFighterLosFailureScenario>(); }
+
+    TEST_METHOD(EntityInterface_ConvertsProxiesAndResolvesTargets)
+    { run_scenario<ml::FEntityInterfaceScenario>(); }
+
+    TEST_METHOD(EntityRegistry_CountsTeams)
+    { run_scenario<ml::FEntityRegistryScenario>(ml::EEntityRegistryScenario::TeamCounts); }
+
+    TEST_METHOD(EntityRegistry_OnePlayerKill)
+    { run_scenario<ml::FEntityRegistryScenario>(ml::EEntityRegistryScenario::OnePlayerKill); }
+
+    TEST_METHOD(EntityRegistry_TwoPlayerKills)
+    { run_scenario<ml::FEntityRegistryScenario>(ml::EEntityRegistryScenario::TwoPlayerKills); }
+
     TEST_METHOD(Fighters_StandbyTransition)
     { run_scenario<ml::FFightersStandbyTransitionScenario>(); }
+
+    TEST_METHOD(Fighters_InterceptCapital)
+    { run_scenario<ml::FFightersInterceptCapitalScenario>(); }
+
+    TEST_METHOD(Fighters_AttackCapital)
+    { run_scenario<ml::FFighterAttackScenario>(); }
 
     TEST_METHOD(HUD_InitialCachesPopulateWithoutHUD)
     {
@@ -142,11 +191,23 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     TEST_METHOD(PlayerShip_LethalDamageDestroysPlayerShip)
     { run_scenario<ml::FTestPlayerShipDeathScenario>(); }
 
+    TEST_METHOD(PlayerShip_VersusCapital)
+    { run_scenario<ml::FPlayerShipVsCapitalScenario>(); }
+
     TEST_METHOD(SpatialQuery_ResolvesLineOfSightBatches)
     { run_scenario<ml::FSpatialQueryLineOfSightScenario>(); }
 
+    TEST_METHOD(SpatialQuery_ResolvesHitBatches)
+    { run_scenario<ml::FSpatialQueryResolutionScenario>(); }
+
     TEST_METHOD(Turrets_LineOfSightBlocking)
     { run_scenario<ml::FTurretLineOfSightBlockingScenario>(); }
+
+    TEST_METHOD(Turrets_KillEnemy)
+    { run_scenario<ml::FTurretCombatScenario>(ml::ETurretCombatScenario::KillEnemy); }
+
+    TEST_METHOD(Turrets_ZeroDamage)
+    { run_scenario<ml::FTurretCombatScenario>(ml::ETurretCombatScenario::ZeroDamage); }
 
     TEST_METHOD(Turrets_SearchRequiresLineOfSight)
     { run_scenario<ml::FTurretSearchRequiresLineOfSightScenario>(); }

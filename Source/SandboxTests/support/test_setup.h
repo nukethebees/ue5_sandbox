@@ -54,14 +54,6 @@ class FTestBatchOrchestratorLevelSetup {
     int32 construction_count{0};
 };
 
-auto level_test_setup(FString const& map_directory,
-                      FString const& map_name,
-                      FAutomationTestBase* test_runner,
-                      FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner>;
-auto level_test_setup(FString const& map_name,
-                      FAutomationTestBase* test_runner,
-                      FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner>;
-
 auto get_editor_world() -> std::expected<UWorld*, FErrorMsg>;
 auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName name) -> AActor*;
 }
