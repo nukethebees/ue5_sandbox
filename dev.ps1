@@ -6,12 +6,18 @@ param(
 )
 
 $navigation_path = Join-Path $PSScriptRoot 'PowerShell\Navigation.ps1'
+$unreal_build_path = Join-Path $PSScriptRoot 'PowerShell\UnrealBuild.ps1'
 
 if (-not (Test-Path -LiteralPath $navigation_path -PathType Leaf)) {
     throw "Development command module was not found: $navigation_path"
 }
 
+if (-not (Test-Path -LiteralPath $unreal_build_path -PathType Leaf)) {
+    throw "Unreal build command module was not found: $unreal_build_path"
+}
+
 . $navigation_path
+. $unreal_build_path
 
 $show_help = $Help -or ($RemainingArguments.Count -eq 1 -and $RemainingArguments[0] -eq '--help')
 

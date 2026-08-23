@@ -72,6 +72,13 @@ Commands:
   cplugin <name>    Change to a project plugin directory.
   ctests            Change to Source\SandboxTests.
 
+Unreal build commands:
+  Loading dev.ps1 disables MSBuild node reuse for the current user and shell.
+  enable-ubt-build-safety  Persist disabled MSBuild node reuse for the current user.
+  get-ubt-build-state      List Sandbox CMake, UBT, and UE MSBuild processes.
+  reset-ubt-build-state    Shut down orphan UE MSBuild workers when no build is active.
+                           Pass -Force to stop matching active Sandbox build trees first.
+
 Run .\dev.ps1 --help to view this help without loading commands into your session.
 '@
 }
