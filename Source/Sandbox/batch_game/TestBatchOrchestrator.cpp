@@ -19,10 +19,20 @@
 #include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/invoke.h>
+#include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <CoreGlobals.h>
+#include <Engine/LevelScriptActor.h>
 #include <EngineUtils.h>
+#include <GameFramework/GameModeBase.h>
+#include <GameFramework/GameStateBase.h>
+#include <GameFramework/HUD.h>
+#include <GameFramework/PhysicsVolume.h>
+#include <GameFramework/PlayerController.h>
+#include <GameFramework/PlayerState.h>
+#include <GameFramework/WorldSettings.h>
+#include <Kismet/GameplayStatics.h>
 #include <VisualLogger/VisualLogger.h>
 
 namespace {
@@ -147,7 +157,10 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     SetActorTickEnabled(false);
     stop_visual_logging();
 
-    auto recreate_actor{[this, world]<typename T>(TObjectPtr<T>& actor) {
+    TStaticArray<AActor*, 7> recreated_actors{};
+    int32 recreated_actor_count{0};
+    auto recreate_actor{[this, world, &recreated_actors, &recreated_actor_count]<typename T>(
+                            TObjectPtr<T>& actor) {
         if (!IsValid(actor)) {
             return;
         }
@@ -169,7 +182,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
             return;
         }
 
-        auto* const replacement{world->SpawnActor<T>(actor_class, FTransform::Identity)};
+        auto* const replacement{world->SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
         if (!IsValid(replacement)) {
             UE_LOG(LogSandbox,
                    Fatal,
@@ -181,6 +194,8 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
         mission_manager.replace_startup_actor(old_actor, *replacement);
         actor = replacement;
+        recreated_actors[recreated_actor_count] = replacement;
+        ++recreated_actor_count;
     }};
 
     recreate_actor(player_ship);
@@ -190,6 +205,35 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     recreate_actor(turrets);
     recreate_actor(spinners);
     recreate_actor(niagara_spawner);
+
+    auto is_retained_actor{[this, &recreated_actors](AActor const* const actor) {
+        if (actor == this || ml::actor_is_any<AWorldSettings,
+                                              AGameModeBase,
+                                              AGameStateBase,
+                                              APlayerController,
+                                              APlayerState,
+                                              AHUD,
+                                              ALevelScriptActor,
+                                              APhysicsVolume>(*actor)) {
+            return true;
+        }
+
+        for (auto* const recreated_actor : recreated_actors) {
+            if (actor == recreated_actor) {
+                return true;
+            }
+        }
+
+        return false;
+    }};
+    for (TActorIterator<AActor> it{world}; it;) {
+        auto* const actor{*it};
+        ++it;
+
+        if (!is_retained_actor(actor)) {
+            actor->Destroy();
+        }
+    }
 
     constexpr auto apply_config{[](auto const actor_ptr, auto const actor_config) {
         if (IsValid(actor_ptr)) {
@@ -207,6 +251,11 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     }
 
     begin_play();
+
+    for (int32 i{0}; i < recreated_actor_count; ++i) {
+        UGameplayStatics::FinishSpawningActor(recreated_actors[i], FTransform::Identity);
+    }
+
     on_reset.Broadcast(*this);
 }
 
