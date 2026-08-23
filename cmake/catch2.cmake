@@ -18,7 +18,7 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
     TEST_NAME "\\1"
     TEST_ARGS "\\1"
     TEST_PROPERTIES
-    LABELS unit
+    LABELS "unit;all"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   )
 endfunction()

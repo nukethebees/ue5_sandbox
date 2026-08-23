@@ -122,24 +122,36 @@ include(cmake/catch2.cmake)
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
+set(SANDBOX_UNIT_AUTOMATION_FILTERS
+  Sandbox.enum
+  Sandbox.fighters
+  Sandbox.geometry
+  Sandbox.levels
+  Sandbox.UnitTests
+  Sandbox.USFPathValidation
+  SandboxCoreEngine.UnitTests
+)
+set(SANDBOX_LEVEL_AUTOMATION_FILTERS
+  Sandbox.LevelTests
+  SandboxCoreEngine.LevelTests
+)
+
 add_unreal_automation_test(
   Sandbox.UnitTests
-  FILTERS
-    Sandbox.enum
-    Sandbox.fighters
-    Sandbox.geometry
-    Sandbox.levels
-    Sandbox.UnitTests
-    Sandbox.USFPathValidation
-    SandboxCoreEngine.UnitTests
+  FILTERS ${SANDBOX_UNIT_AUTOMATION_FILTERS}
   LABELS unit
 )
 add_unreal_automation_test(
   Sandbox.LevelTests
-  FILTERS
-    Sandbox.LevelTests
-    SandboxCoreEngine.LevelTests
+  FILTERS ${SANDBOX_LEVEL_AUTOMATION_FILTERS}
   LABELS level
+)
+add_unreal_automation_test(
+  Sandbox.AllAutomationTests
+  FILTERS
+    ${SANDBOX_UNIT_AUTOMATION_FILTERS}
+    ${SANDBOX_LEVEL_AUTOMATION_FILTERS}
+  LABELS all
 )
 
 add_custom_target(dev-core
