@@ -168,15 +168,11 @@ void ATestStaticTurrets::end_tick() {
 // Visuals
 void ATestStaticTurrets::configure_ismc() {
     RootComponent->SetMobility(EComponentMobility::Static);
-
-    instances->SetCanEverAffectNavigation(false);
-    instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-
-    check(instances->SetStaticMesh(actor_config->mesh));
-
-    instances->SetRemoveSwap();
-
-    instances->SetNumCustomDataFloats(n_custom_ismc_floats);
+    ml::batch::configure_ismc(*instances,
+                              {
+                                  .mesh = actor_config->mesh.Get(),
+                                  .num_custom_data_floats = n_custom_ismc_floats,
+                              });
 }
 
 // Entity data

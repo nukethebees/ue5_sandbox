@@ -24,7 +24,6 @@
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCore/transforms.h>
 #include <SandboxCoreEngine/actor_utils.h>
-#include <SandboxCoreEngine/collision_settings.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -660,16 +659,12 @@ void ATestCapitalShips::queue_fighter_orders() {
 
 // Visuals
 void ATestCapitalShips::configure_ismc() {
-    check(instances->SetStaticMesh(actor_config->mesh));
-    instances->SetMaterial(0, actor_config->material);
-    instances->SetCanEverAffectNavigation(false);
-
-    instances->SetRemoveSwap();
-
-    instances->SetNumCustomDataFloats(n_custom_ismc_floats);
-
-    // Collision
-    ml::apply_collision_settings(*instances, actor_config->collision_settings);
+    ml::batch::configure_ismc(*instances,
+                              {
+                                  .mesh = actor_config->mesh.Get(),
+                                  .material = actor_config->material.Get(),
+                                  .num_custom_data_floats = n_custom_ismc_floats,
+                              });
 }
 
 void ATestCapitalShips::trigger_death_effects() {

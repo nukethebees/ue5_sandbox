@@ -212,8 +212,7 @@ void ATestTubeSpinners::rotate_instances(float const dt) {
 
 // Visuals
 void ATestTubeSpinners::configure_ismc() {
-    check(instances->SetStaticMesh(actor_config->mesh));
-    instances->SetCanEverAffectNavigation(false);
+    ml::batch::configure_ismc(*instances, {.mesh = actor_config->mesh.Get()});
 }
 void ATestTubeSpinners::update_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_ismc_transforms);
