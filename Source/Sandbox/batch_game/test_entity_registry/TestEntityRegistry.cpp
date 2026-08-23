@@ -30,8 +30,11 @@ void SpawnedEntityHandles::add_uninitialised(int32 const count) {
 void FTestEntityRegistry::reset() {
     entity_data.reset();
     queued_entity_data.reset();
+    unique_entities.reset();
+    queued_death_infos.reset();
 
     ml::reset(generations,
+              unique_ids,
               queued_entity_update_handles,
               queued_direct_damage_events,
               dead_entities_this_frame,
