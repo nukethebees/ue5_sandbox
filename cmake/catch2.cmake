@@ -19,6 +19,7 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
     TEST_ARGS "\\1"
     TEST_PROPERTIES
     LABELS "unit;all;${ARGN}"
+    SKIP_REGULAR_EXPRESSION "SKIPPED:"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   )
 endfunction()

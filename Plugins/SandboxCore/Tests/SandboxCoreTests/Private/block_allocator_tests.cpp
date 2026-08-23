@@ -203,10 +203,9 @@ TEST_CASE("SandboxCore.FBlockAllocator.VirtualAlloc2 allocations are committed a
 
 TEST_CASE("SandboxCore.FBlockAllocator.VirtualAlloc2 allocates real 1 GiB pages") {
     FPrivilegeResult const privilege{enable_lock_memory_privilege()};
-    INFO("Grant this account 'Lock pages in memory' in Local Security Policy, then sign out and "
-         "back in. Windows error: "
-         << privilege.error);
-    REQUIRE(privilege.enabled);
+    if (!privilege.enabled) {
+        SKIP("Requires 'Lock pages in memory' in Local Security Policy. Windows error: " << privilege.error);
+    }
 
     auto run{[](ml::EVirtualAlloc2PageMode const page_mode) {
         constexpr SIZE_T huge_page_bytes{SIZE_T{1} << 30};
