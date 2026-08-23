@@ -1,8 +1,5 @@
 #!/usr/bin/env python3
-"""
-Cross-platform script to run clang-format on all C++ files
-in Source and Plugins/USFLoader directories recursively.
-"""
+"""Cross-platform script to run clang-format on project source files."""
 
 import os
 import sys
@@ -60,6 +57,55 @@ def find_files(directory: Path, extensions: set[str]) -> list[Path]:
     return files
 
 
+def is_within_directory(file_path: Path, directory: Path) -> bool:
+    """Return whether a file belongs to a formatting directory."""
+    try:
+        file_path.relative_to(directory)
+        return True
+    except ValueError:
+        return False
+
+
+def find_changed_files(script_dir: Path, directories: list[Path], extensions: set[str]) -> list[Path]:
+    """Find changed and untracked format candidates reported by Git."""
+    changed_paths: set[Path] = set()
+
+    for command in (
+        ["git", "diff", "--name-only", "-z", "HEAD"],
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
+    ):
+        try:
+            result = subprocess.run(
+                command,
+                cwd=script_dir,
+                capture_output=True,
+                timeout=30,
+            )
+        except FileNotFoundError:
+            raise RuntimeError("git not found in PATH")
+        except subprocess.TimeoutExpired:
+            raise RuntimeError("git command timed out")
+
+        if result.returncode != 0:
+            error = result.stderr.decode(errors="replace").strip()
+            raise RuntimeError(error or f"{' '.join(command)} failed")
+
+        for raw_path in result.stdout.split(b'\0'):
+            if raw_path:
+                changed_paths.add((script_dir / raw_path.decode(errors="surrogateescape")).resolve())
+
+    files = []
+    for file_path in changed_paths:
+        if 'generated' in file_path.parts:
+            continue
+        if not file_path.is_file() or file_path.suffix.lower() not in extensions:
+            continue
+        if any(is_within_directory(file_path, directory) for directory in directories):
+            files.append(file_path)
+
+    return sorted(files)
+
+
 def format_file(file_path: Path) -> tuple[bool, Optional[str]]:
     """Format a single file with clang-format."""
     try:
@@ -86,9 +132,17 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Format C++ files with clang-format")
     parser.add_argument("--verbose", action="store_true", help="Show detailed progress for each file")
     parser.add_argument("--format-hlsl", action="store_true", default=True, help="Include HLSL files (default: True)")
+    parser.add_argument(
+        "--changed",
+        action="store_true",
+        help="Format files changed from HEAD and untracked non-ignored files",
+    )
     args = parser.parse_args()
 
-    print("Running clang-format recursively on the current directory.")
+    if args.changed:
+        print("Running clang-format on Git-changed files.")
+    else:
+        print("Running clang-format recursively on project source directories.")
 
     # Check if clang-format is available
     if not check_clang_format():
@@ -99,12 +153,11 @@ def main() -> None:
 
     # Define directories to search (relative to script location)
     directories = [
-        script_dir / "Source",
-        script_dir / "Plugins" / "USFLoader",
-        script_dir / "Plugins" / "SandboxCore",
-        script_dir / "Plugins" / "SandboxEditorTools",
-        script_dir / "Plugins" / "SandboxMaterialExprs",
-        script_dir / "Plugins" / "USFLoader",
+        (script_dir / "Source").resolve(),
+        (script_dir / "Plugins" / "USFLoader").resolve(),
+        (script_dir / "Plugins" / "SandboxCore").resolve(),
+        (script_dir / "Plugins" / "SandboxEditorTools").resolve(),
+        (script_dir / "Plugins" / "SandboxMaterialExprs").resolve(),
     ]
 
     # Get file extensions to format
@@ -114,27 +167,33 @@ def main() -> None:
     formatted_files = 0
     errors = []
 
-    # Process each directory
-    for directory in directories:
-        if args.verbose:
-            print(f"Processing directory: {directory.relative_to(script_dir)}")
-
-        cpp_files = find_files(directory, extensions)
-
-        for file_path in cpp_files:
-            total_files += 1
-            relative_path = file_path.relative_to(script_dir)
-
+    if args.changed:
+        try:
+            cpp_files = find_changed_files(script_dir, directories, extensions)
+        except RuntimeError as error:
+            print(f"ERROR: Failed to get changed files from Git: {error}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        cpp_files = []
+        for directory in directories:
             if args.verbose:
-                print(f"Formatting: {relative_path}")
+                print(f"Processing directory: {directory.relative_to(script_dir)}")
+            cpp_files.extend(find_files(directory, extensions))
 
-            success, error_msg = format_file(file_path)
+    for file_path in cpp_files:
+        total_files += 1
+        relative_path = file_path.relative_to(script_dir)
 
-            if success:
-                formatted_files += 1
-            else:
-                errors.append(f"{relative_path}: {error_msg}")
-                print(f"ERROR formatting {relative_path}: {error_msg}")
+        if args.verbose:
+            print(f"Formatting: {relative_path}")
+
+        success, error_msg = format_file(file_path)
+
+        if success:
+            formatted_files += 1
+        else:
+            errors.append(f"{relative_path}: {error_msg}")
+            print(f"ERROR formatting {relative_path}: {error_msg}")
 
     # Print summary
     print(f"Successfully formatted {formatted_files}/{total_files} files.")

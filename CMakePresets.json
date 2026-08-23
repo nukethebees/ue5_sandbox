@@ -98,6 +98,16 @@
       "targets": ["generate-project-files"]
     },
     {
+      "name": "format-code",
+      "configurePreset": "debug-game",
+      "targets": ["format-code"]
+    },
+    {
+      "name": "format-all-code",
+      "configurePreset": "debug-game",
+      "targets": ["format-all-code"]
+    },
+    {
       "name": "benchmark",
       "configurePreset": "benchmark",
       "targets": ["benchmarks"]
@@ -213,6 +223,20 @@
       "steps": [
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "generate-project-files" }
+      ]
+    },
+    {
+      "name": "format-code",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "format-code" }
+      ]
+    },
+    {
+      "name": "format-all-code",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "format-all-code" }
       ]
     },
     {
