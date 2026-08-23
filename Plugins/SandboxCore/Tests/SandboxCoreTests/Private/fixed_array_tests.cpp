@@ -1,4 +1,5 @@
 #include <SandboxCore/fixed_array.h>
+#include <SandboxCore/fixed_storage.h>
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"
@@ -84,6 +85,46 @@ auto write_handle_results(TArrayView<FTestRegistryEntityHandle> const out_handle
 
     return result_count;
 }
+}
+
+TEST_CASE("SandboxCore.TFixedStorage defers and exposes element lifetime") {
+    CHECK(FLifetimeTrackedValue::live_count == 0);
+
+    {
+        ml::TFixedStorage<FLifetimeTrackedValue, 3> storage{};
+
+        static_assert(ml::TFixedStorage<FLifetimeTrackedValue, 3>::capacity() == 3);
+        static_assert(ml::TFixedStorage<FLifetimeTrackedValue, 0>::capacity() == 0);
+        CHECK(FLifetimeTrackedValue::live_count == 0);
+
+        auto& first{storage.construct_at(0, 10)};
+        auto& second{storage.construct_at(1, 20)};
+
+        CHECK(FLifetimeTrackedValue::live_count == 2);
+        CHECK(storage.data() == &first);
+        CHECK(storage[0].value == 10);
+        CHECK(storage[1].value == 20);
+
+        storage.destroy_at(1);
+        storage.destroy_at(0);
+        CHECK(FLifetimeTrackedValue::live_count == 0);
+    }
+
+    CHECK(FLifetimeTrackedValue::live_count == 0);
+}
+
+TEST_CASE("SandboxCore.TFixedStorage is aligned and supports zero capacity") {
+    ml::TFixedStorage<FOverAlignedValue, 1> aligned_storage{};
+    ml::TFixedStorage<int32, 0> empty_storage{};
+
+    auto& value{aligned_storage.construct_at(0, 42)};
+    auto const data_address{reinterpret_cast<uintptr_t>(aligned_storage.data())};
+
+    CHECK(data_address % alignof(FOverAlignedValue) == 0);
+    CHECK(value.value == 42);
+    CHECK(empty_storage.capacity() == 0);
+
+    aligned_storage.destroy_at(0);
 }
 
 TEST_CASE("SandboxCore.TFixedArray.Default construction has fixed capacity and no elements") {

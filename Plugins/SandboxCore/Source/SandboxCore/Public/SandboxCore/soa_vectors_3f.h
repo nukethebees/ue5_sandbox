@@ -6,13 +6,17 @@
 
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/fixed_storage.h"
 #include "SandboxCore/soa_concepts.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
+#include "Templates/UnrealTemplate.h"
 
+#include <memory>
+#include <type_traits>
 #include <utility>
 
 struct FVectors3fView;
@@ -280,5 +284,334 @@ struct SANDBOXCORE_API FVectors3f {
     TArray<float> xs;
     TArray<float> ys;
     TArray<float> zs;
+};
+
+template <int32 Capacity>
+    requires (Capacity >= 0)
+struct TVectors3fFixedStorage {
+    using View = FVectors3fView;
+    using ConstView = FVectors3fConstView;
+
+    auto get_view(int32 const offset, int32 const count) -> View {
+        return View{TArrayView<float>{xs_.data() + offset, count}, TArrayView<float>{ys_.data() + offset, count}, TArrayView<float>{zs_.data() + offset, count}};
+    }
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView {
+        return ConstView{TConstArrayView<float>{xs_.data() + offset, count}, TConstArrayView<float>{ys_.data() + offset, count}, TConstArrayView<float>{zs_.data() + offset, count}};
+    }
+
+    template <typename TArg0, typename TArg1, typename TArg2>
+    void construct_at(int32 const index, TArg0&& new_xs, TArg1&& new_ys, TArg2&& new_zs) {
+        xs_.construct_at(index, std::forward<TArg0>(new_xs));
+        ys_.construct_at(index, std::forward<TArg1>(new_ys));
+        zs_.construct_at(index, std::forward<TArg2>(new_zs));
+    }
+
+    void default_construct_at(int32 const index) {
+        xs_.construct_at(index);
+        ys_.construct_at(index);
+        zs_.construct_at(index);
+    }
+
+    void copy_construct_at(int32 const index, TVectors3fFixedStorage const& other, int32 const other_index) {
+        xs_.construct_at(index, other.xs_[other_index]);
+        ys_.construct_at(index, other.ys_[other_index]);
+        zs_.construct_at(index, other.zs_[other_index]);
+    }
+
+    void move_construct_at(int32 const index, TVectors3fFixedStorage& other, int32 const other_index) {
+        xs_.construct_at(index, MoveTemp(other.xs_[other_index]));
+        ys_.construct_at(index, MoveTemp(other.ys_[other_index]));
+        zs_.construct_at(index, MoveTemp(other.zs_[other_index]));
+    }
+
+    template <typename SourceView>
+    void construct_from_view_at(int32 const index, SourceView const& source, int32 const source_index) {
+        xs_.construct_at(index, source.xs[source_index]);
+        ys_.construct_at(index, source.ys[source_index]);
+        zs_.construct_at(index, source.zs[source_index]);
+    }
+
+    template <typename SourceView>
+    void copy_assign_from_view_at(int32 const dst_index, SourceView const& source, int32 const source_index) {
+        xs_[dst_index] = source.xs[source_index];
+        ys_[dst_index] = source.ys[source_index];
+        zs_[dst_index] = source.zs[source_index];
+    }
+
+    void move_assign_at(int32 const dst_index, TVectors3fFixedStorage& other, int32 const source_index) {
+        xs_[dst_index] = MoveTemp(other.xs_[source_index]);
+        ys_[dst_index] = MoveTemp(other.ys_[source_index]);
+        zs_[dst_index] = MoveTemp(other.zs_[source_index]);
+    }
+
+    void destroy_at(int32 const index) noexcept {
+        zs_.destroy_at(index);
+        ys_.destroy_at(index);
+        xs_.destroy_at(index);
+    }
+
+    ml::TFixedStorage<float, Capacity> xs_;
+    ml::TFixedStorage<float, Capacity> ys_;
+    ml::TFixedStorage<float, Capacity> zs_;
+};
+
+template <int32 Capacity>
+    requires (Capacity >= 0)
+struct TFixedVectors3f {
+    using size_type = int32;
+    using View = FVectors3fView;
+    using ConstView = FVectors3fConstView;
+    using equivalent_type = FVector3f;
+
+    static constexpr size_type capacity_value{Capacity};
+
+    TFixedVectors3f() noexcept = default;
+    TFixedVectors3f(TFixedVectors3f const& other)
+        requires (std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>)
+    {
+        for (size_type i{}; i < other.size_; ++i) {
+            storage_.copy_construct_at(size_, other.storage_, i);
+            ++size_;
+        }
+    }
+    TFixedVectors3f(TFixedVectors3f const&)
+        requires (!(std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>))
+    = delete;
+    TFixedVectors3f(TFixedVectors3f&& other) noexcept(std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float>)
+        requires (std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>)
+    {
+        for (size_type i{}; i < other.size_; ++i) {
+            storage_.move_construct_at(size_, other.storage_, i);
+            ++size_;
+        }
+        other.reset();
+    }
+    TFixedVectors3f(TFixedVectors3f&&)
+        requires (!(std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>))
+    = delete;
+    ~TFixedVectors3f() { reset(); }
+
+    auto operator=(TFixedVectors3f const& other) -> TFixedVectors3f&
+        requires (std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>)
+    {
+        if (this != std::addressof(other)) {
+            reset();
+            auto const source{other.get_const_view()};
+            append_from(source);
+        }
+        return *this;
+    }
+    auto operator=(TFixedVectors3f const&) -> TFixedVectors3f&
+        requires (!(std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>))
+    = delete;
+    auto operator=(TFixedVectors3f&& other) noexcept(std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float>) -> TFixedVectors3f&
+        requires (std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>)
+    {
+        if (this != std::addressof(other)) {
+            reset();
+            for (size_type i{}; i < other.size_; ++i) {
+                storage_.move_construct_at(size_, other.storage_, i);
+                ++size_;
+            }
+            other.reset();
+        }
+        return *this;
+    }
+    auto operator=(TFixedVectors3f&&) -> TFixedVectors3f&
+        requires (!(std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>))
+    = delete;
+
+    static constexpr auto capacity() noexcept -> size_type { return capacity_value; }
+    auto num() const noexcept -> size_type { return size_; }
+    auto is_empty() const noexcept -> bool { return size_ == 0; }
+    auto is_full() const noexcept -> bool { return size_ == capacity(); }
+
+    auto get_view() -> View { return storage_.get_view(0, size_); }
+    auto get_view(size_type const offset, size_type const count) -> View {
+        check_view_range(offset, count);
+        return storage_.get_view(offset, count);
+    }
+    auto get_view() const -> ConstView { return get_const_view(); }
+    auto get_view(size_type const offset, size_type const count) const -> ConstView {
+        return get_const_view(offset, count);
+    }
+    auto get_const_view() const -> ConstView { return storage_.get_const_view(0, size_); }
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+        check_view_range(offset, count);
+        return storage_.get_const_view(offset, count);
+    }
+    auto slice(size_type const offset, size_type const count) -> View { return get_view(offset, count); }
+    auto left(size_type const count) -> View { return slice(0, count); }
+    auto right(size_type const count) -> View { return slice(size_ - count, count); }
+    auto slice(size_type const offset, size_type const count) const -> ConstView { return get_const_view(offset, count); }
+    auto left(size_type const count) const -> ConstView { return slice(0, count); }
+    auto right(size_type const count) const -> ConstView { return slice(size_ - count, count); }
+
+    template <typename TFunc>
+    auto apply_arrays(TFunc&& func) -> decltype(auto) {
+        auto view{get_view()};
+        return view.apply_arrays(std::forward<TFunc>(func));
+    }
+    template <typename TFunc>
+    auto apply_arrays(TFunc&& func) const -> decltype(auto) {
+        auto view{get_const_view()};
+        return view.apply_arrays(std::forward<TFunc>(func));
+    }
+
+    auto operator[](size_type const index) const -> equivalent_type {
+        return get_const_view()[index];
+    }
+    auto at(size_type const index) const -> equivalent_type {
+        check_index(index);
+        return (*this)[index];
+    }
+
+    template <typename TArg0, typename TArg1, typename TArg2>
+        requires (std::is_constructible_v<float, TArg0&&> && std::is_constructible_v<float, TArg1&&> && std::is_constructible_v<float, TArg2&&>)
+    auto emplace_back(TArg0&& new_xs, TArg1&& new_ys, TArg2&& new_zs) -> size_type {
+        check_has_sufficient_capacity(1);
+        auto const index{size_};
+        storage_.construct_at(index, std::forward<TArg0>(new_xs), std::forward<TArg1>(new_ys), std::forward<TArg2>(new_zs));
+        ++size_;
+        return index;
+    }
+    template <typename TArg0, typename TArg1, typename TArg2>
+        requires (std::is_constructible_v<float, TArg0&&> && std::is_constructible_v<float, TArg1&&> && std::is_constructible_v<float, TArg2&&>)
+    auto add(TArg0&& new_xs, TArg1&& new_ys, TArg2&& new_zs) -> size_type {
+        return emplace_back(std::forward<TArg0>(new_xs), std::forward<TArg1>(new_ys), std::forward<TArg2>(new_zs));
+    }
+
+    void add_defaulted(size_type const count = 1)
+        requires (std::is_default_constructible_v<float> && std::is_default_constructible_v<float> && std::is_default_constructible_v<float>)
+    {
+        check_has_sufficient_capacity(count);
+        for (size_type i{}; i < count; ++i) {
+            storage_.default_construct_at(size_);
+            ++size_;
+        }
+    }
+    void set_num(size_type const new_size)
+        requires (std::is_default_constructible_v<float> && std::is_default_constructible_v<float> && std::is_default_constructible_v<float>)
+    {
+        check(new_size >= 0);
+        check(new_size <= capacity());
+        if (new_size < size_) {
+            destroy_from(new_size);
+            return;
+        }
+        add_defaulted(new_size - size_);
+    }
+    void set_num(size_type const new_size, EAllowShrinking const)
+        requires (std::is_default_constructible_v<float> && std::is_default_constructible_v<float> && std::is_default_constructible_v<float>)
+    {
+        set_num(new_size);
+    }
+
+    auto capacity_view() -> View
+        requires ((std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>))
+    {
+        return storage_.get_view(0, capacity());
+    }
+    void set_num_uninitialised(size_type const new_size)
+        requires ((std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>))
+    {
+        check(new_size >= 0);
+        check(new_size <= capacity());
+        size_ = new_size;
+    }
+    void add_uninitialised(size_type const count)
+        requires ((std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>))
+    {
+        check_has_sufficient_capacity(count);
+        size_ += count;
+    }
+
+    void pop() {
+        check(!is_empty());
+        --size_;
+        storage_.destroy_at(size_);
+    }
+    void reset() noexcept { destroy_from(0); }
+    void empty() noexcept { reset(); }
+    void reserve(size_type const requested_capacity) const {
+        check(requested_capacity >= 0);
+        check(requested_capacity <= capacity());
+    }
+
+    void remove_at_swap(size_type const index,
+                        size_type const count,
+                        EAllowShrinking const) {
+        check(index >= 0);
+        check(count >= 0);
+        check(index + count <= size_);
+        if (count == 0) {
+            return;
+        }
+        auto const available_tail{size_ - (index + count)};
+        auto const move_count{count < available_tail ? count : available_tail};
+        auto const source_begin{size_ - move_count};
+        for (size_type i{}; i < move_count; ++i) {
+            storage_.move_assign_at(index + i, storage_, source_begin + i);
+        }
+        destroy_from(size_ - count);
+    }
+
+    template <typename Other>
+    void copy_element(size_type const dst_index, Other const& other, size_type const source_index) {
+        check_index(dst_index);
+        auto const source{other.get_const_view()};
+        check(source_index >= 0);
+        check(source_index < source.num());
+        storage_.copy_assign_from_view_at(dst_index, source, source_index);
+    }
+    template <typename Other>
+    void copy_elements(size_type const dst_index,
+                       Other const& other,
+                       size_type const source_index,
+                       size_type const count) {
+        check(dst_index >= 0);
+        check(source_index >= 0);
+        check(count >= 0);
+        check(dst_index + count <= size_);
+        auto const source{other.get_const_view()};
+        check(source_index + count <= source.num());
+        for (size_type i{}; i < count; ++i) {
+            storage_.copy_assign_from_view_at(dst_index + i, source, source_index + i);
+        }
+    }
+    template <typename Other>
+    void append_from(Other const& other) {
+        auto const source{other.get_const_view()};
+        auto const count{source.num()};
+        check_has_sufficient_capacity(count);
+        for (size_type i{}; i < count; ++i) {
+            storage_.construct_from_view_at(size_, source, i);
+            ++size_;
+        }
+    }
+
+  private:
+    void check_index(size_type const index) const {
+        check(index >= 0);
+        check(index < size_);
+    }
+    void check_view_range(size_type const offset, size_type const count) const {
+        check(offset >= 0);
+        check(count >= 0);
+        check(offset + count <= size_);
+    }
+    void check_has_sufficient_capacity(size_type const count) const {
+        check(count >= 0);
+        check(count <= capacity() - size_);
+    }
+    void destroy_from(size_type const first_index) noexcept {
+        for (size_type i{size_}; i > first_index; --i) {
+            storage_.destroy_at(i - 1);
+        }
+        size_ = first_index;
+    }
+
+    TVectors3fFixedStorage<Capacity> storage_;
+    size_type size_{};
 };
 // clang-format on
