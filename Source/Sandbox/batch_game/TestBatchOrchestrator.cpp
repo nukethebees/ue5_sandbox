@@ -129,6 +129,7 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
     state = EOrchestratorState::Stopped;
     SetActorTickEnabled(false);
     stop_visual_logging();
+    clear_end_tick_test_hook();
 
     Super::EndPlay(end_play_reason);
 }
@@ -166,6 +167,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     SetActorTickEnabled(false);
     stop_visual_logging();
+    clear_end_tick_test_hook();
 
     TStaticArray<AActor*, 7> recreated_actors{};
     int32 recreated_actor_count{0};
