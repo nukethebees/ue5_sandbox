@@ -11,8 +11,8 @@
 #include <Sandbox/utilities/DrawDebugConfig.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
-#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/fixed_array.h>
+#include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
 #include <SandboxCore/soa_vectors.h>
 #include <SandboxCore/tick_countdown.h>
@@ -39,16 +39,6 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::test_static_turrets {
-struct FSearchScratch {
-    FVectors3f candidate_locations;
-    TFixedArray<uint8, 128> has_line_of_sight;
-
-    void reset() {
-        candidate_locations.reset();
-        has_line_of_sight.reset();
-    }
-};
-
 class PhaseInterface;
 }
 
@@ -160,7 +150,6 @@ class SANDBOX_API ATestStaticTurrets : public AActor {
     int32 search_slice_size{64};
 
     int32 target_refresh_next_offset{0};
-    TArray<ml::test_static_turrets::FSearchScratch> search_scratch_buffers;
 
     // Firing
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))

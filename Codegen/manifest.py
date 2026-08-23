@@ -51,6 +51,7 @@ from Codegen.cpp_types import (
 )
 from Codegen.facade import Facade, FacadeMethod, lower_facade, lower_facade_with_source
 from Codegen.soa import (
+    FixedSoAArray,
     ForEachSoAMemberCall,
     HomogeneousSoALayout,
     HomogeneousSoAValueType,
@@ -83,6 +84,14 @@ SANDBOX_CORE_PRIVATE_DIR = (
     / "SandboxCore"
     / "Source"
     / "SandboxCore"
+    / "Private"
+)
+SANDBOX_CORE_TEST_PRIVATE_DIR = (
+    PROJECT_ROOT
+    / "Plugins"
+    / "SandboxCore"
+    / "Tests"
+    / "SandboxCoreTests"
     / "Private"
 )
 ALL_STORAGE_OPERATIONS = tuple(SoAStorageOperation)
@@ -271,6 +280,12 @@ def vector_soa_module(
         ),
         equivalent_type=equivalent_type,
         copy_element_memberwise=True,
+        fixed_storage_name=("TVectors3fFixedStorage" if name == "FVectors3f" else None),
+        fixed_arrays=(
+            (FixedSoAArray("TFixedVectors3f"),)
+            if name == "FVectors3f"
+            else ()
+        ),
     )
     lowered = lower_soa_structs_with_source((vectors,))
     header_path = SANDBOX_CORE_PUBLIC_DIR / header_name
@@ -1366,6 +1381,49 @@ def registry_entity_handles_soa_module() -> Module:
     )
 
 
+def fixed_soa_test_types_module() -> Module:
+    string_type = TypeDependency("FString", "CoreMinimal.h")
+    shared_ptr_type = TypeDependency("TSharedPtr<int32>", "Templates/SharedPointer.h")
+    child = SoAStruct(
+        SoAStructNames("FTestFixedChild"),
+        (
+            tarray_member("names", string_type),
+            tarray_member("references", shared_ptr_type),
+        ),
+        fixed_storage_name="TTestFixedChildStorage",
+    )
+    rows = SoAStruct(
+        SoAStructNames("FTestFixedRows"),
+        (
+            soa_member("children", "FTestFixedChild", fixed_schema=child),
+            tarray_member("ids", "int32"),
+        ),
+        fixed_storage_name="TTestFixedRowsStorage",
+        fixed_arrays=(
+            FixedSoAArray("TTestFixedRowsArray"),
+            FixedSoAArray("TTestFixedRowsArrayAlternate"),
+        ),
+    )
+    lowered = lower_soa_structs_with_source((child, rows))
+    header_path = SANDBOX_CORE_TEST_PRIVATE_DIR / "fixed_soa_test_types.h"
+    return Module(
+        name="fixed_soa_test_types",
+        header=CppFile(
+            path=header_path,
+            clang_format_off=True,
+            include_order=INCLUDE_ORDER,
+            nodes=(
+                IncludeDependencies(),
+                NewLines(2),
+                Namespace("ml::fixed_soa_tests", lowered.header_nodes),
+            ),
+        ),
+        source=soa_source_file(
+            header_path, lowered.source_nodes, "ml::fixed_soa_tests"
+        ),
+    )
+
+
 def modules() -> tuple[Module, ...]:
     return (
         countdown_timers_module(),
@@ -1388,4 +1446,5 @@ def modules() -> tuple[Module, ...]:
         entity_registry_data_soa_module(),
         registry_entity_handles_soa_module(),
         entity_death_info_module(),
+        fixed_soa_test_types_module(),
     )

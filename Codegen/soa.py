@@ -45,7 +45,18 @@ SOA_CONCEPTS = TypeDependency(
 SOA_PERMUTATION = TypeDependency("ml::apply_permutation", "SandboxCore/soa_permutation.h")
 FILL_INDICES = TypeDependency("ml::fill_indices", "SandboxCore/array_utils.h")
 CHECK = TypeDependency("check", "CoreMinimal.h")
+FIXED_STORAGE = TypeDependency("ml::TFixedStorage", "SandboxCore/fixed_storage.h")
+MOVE_TEMP = TypeDependency("MoveTemp", "Templates/UnrealTemplate.h")
 TARRAY_REMOVE_AT_SWAP = MemberFunctionOperation("RemoveAtSwap")
+
+
+@dataclass(frozen=True)
+class FixedSoAArray:
+    name: str
+
+    def __post_init__(self) -> None:
+        if not self.name.strip():
+            raise ValueError("Fixed SOA array name must not be empty")
 
 
 @dataclass(frozen=True)
@@ -56,11 +67,15 @@ class SoAMember:
     name: str
     view_function: str | None = None
     const_view_function: str | None = None
+    element_type: CppType | None = None
+    fixed_schema: SoAStruct | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "container_type", cpp_type(self.container_type))
         object.__setattr__(self, "view_type", cpp_type(self.view_type))
         object.__setattr__(self, "const_view_type", cpp_type(self.const_view_type))
+        if self.element_type is not None:
+            object.__setattr__(self, "element_type", cpp_type(self.element_type))
         types = (self.container_type, self.view_type, self.const_view_type)
         if any(not type_spelling(value).strip() for value in types) or not self.name.strip():
             raise ValueError("SOA member types and name must not be empty")
@@ -343,6 +358,7 @@ def tarray_member(
             f"TConstArrayView<{element}>", value_type, header="Containers/ArrayView.h"
         ),
         name=name,
+        element_type=cpp_type(value_type),
     )
 
 
@@ -351,6 +367,8 @@ def soa_member(
     container_type: TypeLike,
     view_type: TypeLike | None = None,
     const_view_type: TypeLike | None = None,
+    *,
+    fixed_schema: SoAStruct | None = None,
 ) -> SoAMember:
     container_spelling = type_spelling(container_type)
     return SoAMember(
@@ -362,6 +380,7 @@ def soa_member(
         name=name,
         view_function="get_view",
         const_view_function="get_const_view",
+        fixed_schema=fixed_schema,
     )
 
 
@@ -392,12 +411,15 @@ class SoAStruct:
     source_nodes: tuple[Node, ...] = ()
     equivalent_type: TypeLike | None = None
     copy_element_memberwise: bool = False
+    fixed_storage_name: str | None = None
+    fixed_arrays: tuple[FixedSoAArray, ...] = ()
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "members", tuple(self.members))
         object.__setattr__(self, "storage_operations", tuple(self.storage_operations))
         object.__setattr__(self, "nodes", tuple(self.nodes))
         object.__setattr__(self, "source_nodes", tuple(self.source_nodes))
+        object.__setattr__(self, "fixed_arrays", tuple(self.fixed_arrays))
         if not self.members:
             raise ValueError(
                 f"SOA struct {self.names.name!r} must contain at least one member"
@@ -411,6 +433,26 @@ class SoAStruct:
             )
         if len(set(self.storage_operations)) != len(self.storage_operations):
             raise ValueError("SOA storage operations must not contain duplicates")
+        if self.fixed_storage_name is not None and not self.fixed_storage_name.strip():
+            raise ValueError("Fixed SOA storage name must not be empty")
+        if self.fixed_arrays and self.fixed_storage_name is None:
+            raise ValueError("Fixed SOA arrays require a fixed storage name")
+        fixed_array_names = tuple(array.name for array in self.fixed_arrays)
+        if len(set(fixed_array_names)) != len(fixed_array_names):
+            raise ValueError("Fixed SOA array names must not contain duplicates")
+        if self.fixed_storage_name is not None:
+            for member in self.members:
+                if member.element_type is not None:
+                    continue
+                if (
+                    member.fixed_schema is not None
+                    and member.fixed_schema.fixed_storage_name is not None
+                ):
+                    continue
+                raise ValueError(
+                    f"Fixed SOA storage {self.fixed_storage_name!r} cannot represent "
+                    f"member {member.name!r} without an element type or fixed schema"
+                )
 
 
 @dataclass(frozen=True)
@@ -1005,6 +1047,516 @@ def _storage_struct(
     )
 
 
+def _fixed_leaf_members(
+    soa: SoAStruct, prefix: tuple[str, ...] = ()
+) -> tuple[tuple[tuple[str, ...], CppType], ...]:
+    leaves: list[tuple[tuple[str, ...], CppType]] = []
+    for member in soa.members:
+        path = (*prefix, member.name)
+        if member.element_type is not None:
+            leaves.append((path, member.element_type))
+        else:
+            assert member.fixed_schema is not None
+            leaves.extend(_fixed_leaf_members(member.fixed_schema, path))
+    return tuple(leaves)
+
+
+def _fixed_member_leaf_count(member: SoAMember) -> int:
+    if member.element_type is not None:
+        return 1
+    assert member.fixed_schema is not None
+    return len(_fixed_leaf_members(member.fixed_schema))
+
+
+def _fixed_storage_member_type(member: SoAMember) -> str:
+    if member.element_type is not None:
+        return f"ml::TFixedStorage<{type_spelling(member.element_type)}, Capacity>"
+    assert member.fixed_schema is not None
+    assert member.fixed_schema.fixed_storage_name is not None
+    return f"{member.fixed_schema.fixed_storage_name}<Capacity>"
+
+
+def _fixed_member_view(member: SoAMember, is_const: bool) -> str:
+    if member.element_type is not None:
+        view = "TConstArrayView" if is_const else "TArrayView"
+        return (
+            f"{view}<{type_spelling(member.element_type)}>{{"
+            f"{member.name}_.data() + offset, count}}"
+        )
+    function = "get_const_view" if is_const else "get_view"
+    return f"{member.name}_.{function}(offset, count)"
+
+
+def _fixed_construct_lines(
+    soa: SoAStruct, operation: str, argument_names: tuple[str, ...] = ()
+) -> tuple[str, ...]:
+    lines: list[str] = []
+    argument_index = 0
+    for member in soa.members:
+        leaf_count = _fixed_member_leaf_count(member)
+        args = argument_names[argument_index : argument_index + leaf_count]
+        argument_index += leaf_count
+        name = f"{member.name}_"
+        if operation == "default":
+            call = (
+                f"{name}.construct_at(index);"
+                if member.element_type is not None
+                else f"{name}.default_construct_at(index);"
+            )
+        elif operation == "arguments":
+            call = f"{name}.construct_at(index, {comma_separated(args)});"
+        elif operation == "copy":
+            call = (
+                f"{name}.construct_at(index, other.{name}[other_index]);"
+                if member.element_type is not None
+                else f"{name}.copy_construct_at(index, other.{name}, other_index);"
+            )
+        elif operation == "move":
+            call = (
+                f"{name}.construct_at(index, MoveTemp(other.{name}[other_index]));"
+                if member.element_type is not None
+                else f"{name}.move_construct_at(index, other.{name}, other_index);"
+            )
+        elif operation == "view":
+            call = (
+                f"{name}.construct_at(index, source.{member.name}[source_index]);"
+                if member.element_type is not None
+                else f"{name}.construct_from_view_at(index, source.{member.name}, source_index);"
+            )
+        else:
+            raise ValueError(f"Unsupported fixed construction operation: {operation}")
+        lines.append(call)
+    return tuple(lines)
+
+
+def _fixed_storage_projection(soa: SoAStruct) -> Raw:
+    assert soa.fixed_storage_name is not None
+    leaves = _fixed_leaf_members(soa)
+    forwarded_arguments = tuple(
+        f"std::forward<TArg{i}>(new_{'_'.join(path)})"
+        for i, (path, _) in enumerate(leaves)
+    )
+    template_parameters = comma_separated(
+        f"typename TArg{i}" for i in range(len(leaves))
+    )
+    function_parameters = comma_separated(
+        f"TArg{i}&& new_{'_'.join(path)}" for i, (path, _) in enumerate(leaves)
+    )
+    members = "\n".join(
+        f"    {_fixed_storage_member_type(member)} {member.name}_;"
+        for member in soa.members
+    )
+    mutable_views = comma_separated(_fixed_member_view(member, False) for member in soa.members)
+    const_views = comma_separated(_fixed_member_view(member, True) for member in soa.members)
+    destroy_lines = "\n".join(
+        (
+            f"        {member.name}_.destroy_at(index);"
+            if member.element_type is not None
+            else f"        {member.name}_.destroy_at(index);"
+        )
+        for member in reversed(soa.members)
+    )
+    copy_assign = "\n".join(
+        (
+            f"        {member.name}_[dst_index] = source.{member.name}[source_index];"
+            if member.element_type is not None
+            else f"        {member.name}_.copy_assign_from_view_at(dst_index, source.{member.name}, source_index);"
+        )
+        for member in soa.members
+    )
+    move_assign = "\n".join(
+        (
+            f"        {member.name}_[dst_index] = MoveTemp(other.{member.name}_[source_index]);"
+            if member.element_type is not None
+            else f"        {member.name}_.move_assign_at(dst_index, other.{member.name}_, source_index);"
+        )
+        for member in soa.members
+    )
+    text = f"""template <int32 Capacity>
+    requires (Capacity >= 0)
+struct {soa.fixed_storage_name} {{
+    using View = {soa.names.view_name};
+    using ConstView = {soa.names.const_view_name};
+
+    auto get_view(int32 const offset, int32 const count) -> View {{
+        return View{{{mutable_views}}};
+    }}
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView {{
+        return ConstView{{{const_views}}};
+    }}
+
+    template <{template_parameters}>
+    void construct_at(int32 const index, {function_parameters}) {{
+{chr(10).join(f'        {line}' for line in _fixed_construct_lines(soa, 'arguments', forwarded_arguments))}
+    }}
+
+    void default_construct_at(int32 const index) {{
+{chr(10).join(f'        {line}' for line in _fixed_construct_lines(soa, 'default'))}
+    }}
+
+    void copy_construct_at(int32 const index, {soa.fixed_storage_name} const& other, int32 const other_index) {{
+{chr(10).join(f'        {line}' for line in _fixed_construct_lines(soa, 'copy'))}
+    }}
+
+    void move_construct_at(int32 const index, {soa.fixed_storage_name}& other, int32 const other_index) {{
+{chr(10).join(f'        {line}' for line in _fixed_construct_lines(soa, 'move'))}
+    }}
+
+    template <typename SourceView>
+    void construct_from_view_at(int32 const index, SourceView const& source, int32 const source_index) {{
+{chr(10).join(f'        {line}' for line in _fixed_construct_lines(soa, 'view'))}
+    }}
+
+    template <typename SourceView>
+    void copy_assign_from_view_at(int32 const dst_index, SourceView const& source, int32 const source_index) {{
+{copy_assign}
+    }}
+
+    void move_assign_at(int32 const dst_index, {soa.fixed_storage_name}& other, int32 const source_index) {{
+{move_assign}
+    }}
+
+    void destroy_at(int32 const index) noexcept {{
+{destroy_lines}
+    }}
+
+{members}
+}};"""
+    dependencies: list[TypeDependency] = [
+        FIXED_STORAGE,
+        TARRAY_VIEW,
+        STD_FORWARD,
+        MOVE_TEMP,
+    ]
+    for _, element_type in leaves:
+        dependencies.extend(element_type.type_dependencies)
+    return Raw(text, dependencies)
+
+
+def _fixed_trait_expression(soa: SoAStruct, trait: str) -> str:
+    return " && ".join(
+        f"std::{trait}<{type_spelling(element_type)}>"
+        for _, element_type in _fixed_leaf_members(soa)
+    )
+
+
+def _fixed_array_struct(soa: SoAStruct, declaration: FixedSoAArray) -> Raw:
+    assert soa.fixed_storage_name is not None
+    leaves = _fixed_leaf_members(soa)
+    template_parameters = comma_separated(f"typename TArg{i}" for i in range(len(leaves)))
+    function_parameters = comma_separated(
+        f"TArg{i}&& new_{'_'.join(path)}" for i, (path, _) in enumerate(leaves)
+    )
+    forwarded_arguments = comma_separated(
+        f"std::forward<TArg{i}>(new_{'_'.join(path)})"
+        for i, (path, _) in enumerate(leaves)
+    )
+    constructible = " && ".join(
+        f"std::is_constructible_v<{type_spelling(element_type)}, TArg{i}&&>"
+        for i, (_, element_type) in enumerate(leaves)
+    )
+    copy_constructible = _fixed_trait_expression(soa, "is_copy_constructible_v")
+    move_constructible = _fixed_trait_expression(soa, "is_move_constructible_v")
+    nothrow_move_constructible = _fixed_trait_expression(
+        soa, "is_nothrow_move_constructible_v"
+    )
+    default_constructible = _fixed_trait_expression(soa, "is_default_constructible_v")
+    trivial = " && ".join(
+        f"(std::is_trivially_copyable_v<{type_spelling(element_type)}> && "
+        f"std::is_trivially_destructible_v<{type_spelling(element_type)}>)"
+        for _, element_type in leaves
+    )
+    equivalent_alias = (
+        f"\n    using equivalent_type = {type_spelling(soa.equivalent_type)};"
+        if soa.equivalent_type is not None
+        else ""
+    )
+    equivalent_access = (
+        """
+
+    auto operator[](size_type const index) const -> equivalent_type {
+        return get_const_view()[index];
+    }
+    auto at(size_type const index) const -> equivalent_type {
+        check_index(index);
+        return (*this)[index];
+    }"""
+        if soa.equivalent_type is not None
+        else ""
+    )
+    name = declaration.name
+    text = f"""template <int32 Capacity>
+    requires (Capacity >= 0)
+struct {name} {{
+    using size_type = int32;
+    using View = {soa.names.view_name};
+    using ConstView = {soa.names.const_view_name};{equivalent_alias}
+
+    static constexpr size_type capacity_value{{Capacity}};
+
+    {name}() noexcept = default;
+    {name}({name} const& other)
+        requires ({copy_constructible})
+    {{
+        for (size_type i{{}}; i < other.size_; ++i) {{
+            storage_.copy_construct_at(size_, other.storage_, i);
+            ++size_;
+        }}
+    }}
+    {name}({name} const&)
+        requires (!({copy_constructible}))
+    = delete;
+    {name}({name}&& other) noexcept({nothrow_move_constructible})
+        requires ({move_constructible})
+    {{
+        for (size_type i{{}}; i < other.size_; ++i) {{
+            storage_.move_construct_at(size_, other.storage_, i);
+            ++size_;
+        }}
+        other.reset();
+    }}
+    {name}({name}&&)
+        requires (!({move_constructible}))
+    = delete;
+    ~{name}() {{ reset(); }}
+
+    auto operator=({name} const& other) -> {name}&
+        requires ({copy_constructible})
+    {{
+        if (this != std::addressof(other)) {{
+            reset();
+            auto const source{{other.get_const_view()}};
+            append_from(source);
+        }}
+        return *this;
+    }}
+    auto operator=({name} const&) -> {name}&
+        requires (!({copy_constructible}))
+    = delete;
+    auto operator=({name}&& other) noexcept({nothrow_move_constructible}) -> {name}&
+        requires ({move_constructible})
+    {{
+        if (this != std::addressof(other)) {{
+            reset();
+            for (size_type i{{}}; i < other.size_; ++i) {{
+                storage_.move_construct_at(size_, other.storage_, i);
+                ++size_;
+            }}
+            other.reset();
+        }}
+        return *this;
+    }}
+    auto operator=({name}&&) -> {name}&
+        requires (!({move_constructible}))
+    = delete;
+
+    static constexpr auto capacity() noexcept -> size_type {{ return capacity_value; }}
+    auto num() const noexcept -> size_type {{ return size_; }}
+    auto is_empty() const noexcept -> bool {{ return size_ == 0; }}
+    auto is_full() const noexcept -> bool {{ return size_ == capacity(); }}
+
+    auto get_view() -> View {{ return storage_.get_view(0, size_); }}
+    auto get_view(size_type const offset, size_type const count) -> View {{
+        check_view_range(offset, count);
+        return storage_.get_view(offset, count);
+    }}
+    auto get_view() const -> ConstView {{ return get_const_view(); }}
+    auto get_view(size_type const offset, size_type const count) const -> ConstView {{
+        return get_const_view(offset, count);
+    }}
+    auto get_const_view() const -> ConstView {{ return storage_.get_const_view(0, size_); }}
+    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {{
+        check_view_range(offset, count);
+        return storage_.get_const_view(offset, count);
+    }}
+    auto slice(size_type const offset, size_type const count) -> View {{ return get_view(offset, count); }}
+    auto left(size_type const count) -> View {{ return slice(0, count); }}
+    auto right(size_type const count) -> View {{ return slice(size_ - count, count); }}
+    auto slice(size_type const offset, size_type const count) const -> ConstView {{ return get_const_view(offset, count); }}
+    auto left(size_type const count) const -> ConstView {{ return slice(0, count); }}
+    auto right(size_type const count) const -> ConstView {{ return slice(size_ - count, count); }}
+
+    template <typename TFunc>
+    auto apply_arrays(TFunc&& func) -> decltype(auto) {{
+        auto view{{get_view()}};
+        return view.apply_arrays(std::forward<TFunc>(func));
+    }}
+    template <typename TFunc>
+    auto apply_arrays(TFunc&& func) const -> decltype(auto) {{
+        auto view{{get_const_view()}};
+        return view.apply_arrays(std::forward<TFunc>(func));
+    }}{equivalent_access}
+
+    template <{template_parameters}>
+        requires ({constructible})
+    auto emplace_back({function_parameters}) -> size_type {{
+        check_has_sufficient_capacity(1);
+        auto const index{{size_}};
+        storage_.construct_at(index, {forwarded_arguments});
+        ++size_;
+        return index;
+    }}
+    template <{template_parameters}>
+        requires ({constructible})
+    auto add({function_parameters}) -> size_type {{
+        return emplace_back({forwarded_arguments});
+    }}
+
+    void add_defaulted(size_type const count = 1)
+        requires ({default_constructible})
+    {{
+        check_has_sufficient_capacity(count);
+        for (size_type i{{}}; i < count; ++i) {{
+            storage_.default_construct_at(size_);
+            ++size_;
+        }}
+    }}
+    void set_num(size_type const new_size)
+        requires ({default_constructible})
+    {{
+        check(new_size >= 0);
+        check(new_size <= capacity());
+        if (new_size < size_) {{
+            destroy_from(new_size);
+            return;
+        }}
+        add_defaulted(new_size - size_);
+    }}
+    void set_num(size_type const new_size, EAllowShrinking const)
+        requires ({default_constructible})
+    {{
+        set_num(new_size);
+    }}
+
+    auto capacity_view() -> View
+        requires ({trivial})
+    {{
+        return storage_.get_view(0, capacity());
+    }}
+    void set_num_uninitialised(size_type const new_size)
+        requires ({trivial})
+    {{
+        check(new_size >= 0);
+        check(new_size <= capacity());
+        size_ = new_size;
+    }}
+    void add_uninitialised(size_type const count)
+        requires ({trivial})
+    {{
+        check_has_sufficient_capacity(count);
+        size_ += count;
+    }}
+
+    void pop() {{
+        check(!is_empty());
+        --size_;
+        storage_.destroy_at(size_);
+    }}
+    void reset() noexcept {{ destroy_from(0); }}
+    void empty() noexcept {{ reset(); }}
+    void reserve(size_type const requested_capacity) const {{
+        check(requested_capacity >= 0);
+        check(requested_capacity <= capacity());
+    }}
+
+    void remove_at_swap(size_type const index,
+                        size_type const count,
+                        EAllowShrinking const) {{
+        check(index >= 0);
+        check(count >= 0);
+        check(index + count <= size_);
+        if (count == 0) {{
+            return;
+        }}
+        auto const available_tail{{size_ - (index + count)}};
+        auto const move_count{{count < available_tail ? count : available_tail}};
+        auto const source_begin{{size_ - move_count}};
+        for (size_type i{{}}; i < move_count; ++i) {{
+            storage_.move_assign_at(index + i, storage_, source_begin + i);
+        }}
+        destroy_from(size_ - count);
+    }}
+
+    template <typename Other>
+    void copy_element(size_type const dst_index, Other const& other, size_type const source_index) {{
+        check_index(dst_index);
+        auto const source{{other.get_const_view()}};
+        check(source_index >= 0);
+        check(source_index < source.num());
+        storage_.copy_assign_from_view_at(dst_index, source, source_index);
+    }}
+    template <typename Other>
+    void copy_elements(size_type const dst_index,
+                       Other const& other,
+                       size_type const source_index,
+                       size_type const count) {{
+        check(dst_index >= 0);
+        check(source_index >= 0);
+        check(count >= 0);
+        check(dst_index + count <= size_);
+        auto const source{{other.get_const_view()}};
+        check(source_index + count <= source.num());
+        for (size_type i{{}}; i < count; ++i) {{
+            storage_.copy_assign_from_view_at(dst_index + i, source, source_index + i);
+        }}
+    }}
+    template <typename Other>
+    void append_from(Other const& other) {{
+        auto const source{{other.get_const_view()}};
+        auto const count{{source.num()}};
+        check_has_sufficient_capacity(count);
+        for (size_type i{{}}; i < count; ++i) {{
+            storage_.construct_from_view_at(size_, source, i);
+            ++size_;
+        }}
+    }}
+
+  private:
+    void check_index(size_type const index) const {{
+        check(index >= 0);
+        check(index < size_);
+    }}
+    void check_view_range(size_type const offset, size_type const count) const {{
+        check(offset >= 0);
+        check(count >= 0);
+        check(offset + count <= size_);
+    }}
+    void check_has_sufficient_capacity(size_type const count) const {{
+        check(count >= 0);
+        check(count <= capacity() - size_);
+    }}
+    void destroy_from(size_type const first_index) noexcept {{
+        for (size_type i{{size_}}; i > first_index; --i) {{
+            storage_.destroy_at(i - 1);
+        }}
+        size_ = first_index;
+    }}
+
+    {soa.fixed_storage_name}<Capacity> storage_;
+    size_type size_{{}};
+}};"""
+    dependencies: list[TypeDependency] = [
+        ALLOW_SHRINKING,
+        CHECK,
+        MOVE_TEMP,
+        STD_FORWARD,
+        TypeDependency("std::addressof", "memory"),
+        TypeDependency("std::is_constructible_v", "type_traits"),
+    ]
+    for _, element_type in leaves:
+        dependencies.extend(element_type.type_dependencies)
+    return Raw(text, dependencies)
+
+
+def _fixed_soa_nodes(soa: SoAStruct) -> tuple[Node, ...]:
+    if soa.fixed_storage_name is None:
+        return ()
+    nodes: list[Node] = [_fixed_storage_projection(soa)]
+    for declaration in soa.fixed_arrays:
+        nodes.extend((NewLines(2), _fixed_array_struct(soa, declaration)))
+    return tuple(nodes)
+
+
 @dataclass(frozen=True)
 class SoAStructLowering:
     header_nodes: tuple[Node, ...]
@@ -1016,6 +1568,7 @@ def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
     const_view_specs = _common_soa_function_specs(soa, True)
     view_specs = _common_soa_function_specs(soa)
     storage_specs = _common_soa_function_specs(soa)
+    fixed_nodes = _fixed_soa_nodes(soa)
     header_nodes = (
         ForwardDeclaration(soa.names.view_name),
         NewLines(1),
@@ -1026,6 +1579,7 @@ def lower_soa_struct_with_source(soa: SoAStruct) -> SoAStructLowering:
         _view_struct(soa, soa.names.view_name, False),
         NewLines(2),
         _storage_struct(soa, operation_specs),
+        *((NewLines(2), *fixed_nodes) if fixed_nodes else ()),
     )
     source_functions = (
         *(

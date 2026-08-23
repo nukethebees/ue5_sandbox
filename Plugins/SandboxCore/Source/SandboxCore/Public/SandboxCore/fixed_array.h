@@ -1,12 +1,11 @@
 #pragma once
 
-#include <HAL/Platform.h>
-#include <Misc/AssertionMacros.h>
+#include "fixed_storage.h"
+
 #include <Templates/UnrealTemplate.h>
 
 #include <initializer_list>
 #include <memory>
-#include <new>
 #include <type_traits>
 #include <utility>
 
@@ -110,12 +109,8 @@ class TFixedArray {
     auto is_empty() const noexcept -> bool { return size_ == 0; }
     auto is_full() const noexcept -> bool { return size_ == capacity(); }
 
-    auto data() noexcept -> value_type* {
-        return reinterpret_cast<value_type*>(std::addressof(storage_));
-    }
-    auto data() const noexcept -> value_type const* {
-        return reinterpret_cast<value_type const*>(std::addressof(storage_));
-    }
+    auto data() noexcept -> value_type* { return storage_.data(); }
+    auto data() const noexcept -> value_type const* { return storage_.data(); }
     auto capacity_view() noexcept -> TArrayView<T> { return {data(), capacity()}; }
 
     auto begin() noexcept -> iterator { return data(); }
@@ -127,12 +122,12 @@ class TFixedArray {
 
     auto operator[](size_type const index) noexcept -> value_type& {
         check_index(index);
-        return *value_at_storage(index);
+        return storage_[index];
     }
 
     auto operator[](size_type const index) const noexcept -> value_type const& {
         check_index(index);
-        return *value_at_storage(index);
+        return storage_[index];
     }
 
     auto first() noexcept -> value_type& { return (*this)[0]; }
@@ -161,9 +156,9 @@ class TFixedArray {
     auto emplace_back(Args&&... args) -> value_type& {
         check_has_sufficient_capacity(1);
 
-        auto* value{std::construct_at(data() + size_, std::forward<Args>(args)...)};
+        auto& value{storage_.construct_at(size_, std::forward<Args>(args)...)};
         ++size_;
-        return *value;
+        return value;
     }
 
     void add_defaulted(size_type const count = 1)
@@ -203,28 +198,11 @@ class TFixedArray {
     void pop() {
         check(!is_empty());
         --size_;
-        std::destroy_at(value_at_storage(size_));
+        storage_.destroy_at(size_);
     }
 
     void reset() noexcept { destroy_from(0); }
   private:
-    static constexpr size_type storage_count{N > 0 ? N : 1};
-
-    union FStorage {
-        FStorage() noexcept {}
-        ~FStorage() {}
-
-        value_type values[storage_count];
-    };
-
-    auto value_at_storage(size_type const index) noexcept -> value_type* {
-        return std::addressof(storage_.values[index]);
-    }
-
-    auto value_at_storage(size_type const index) const noexcept -> value_type const* {
-        return std::addressof(storage_.values[index]);
-    }
-
     void check_index(size_type const index) const {
         check(index >= 0);
         check(index < size_);
@@ -237,13 +215,13 @@ class TFixedArray {
 
     void destroy_from(size_type const first_index) noexcept {
         for (size_type i{size_}; i > first_index; --i) {
-            std::destroy_at(value_at_storage(i - 1));
+            storage_.destroy_at(i - 1);
         }
 
         size_ = first_index;
     }
 
-    FStorage storage_;
+    TFixedStorage<value_type, N> storage_;
     size_type size_{0};
 };
 }

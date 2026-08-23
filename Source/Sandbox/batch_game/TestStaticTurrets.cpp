@@ -233,10 +233,6 @@ void ATestStaticTurrets::perform_search() {
     auto const n_jobs{FMath::Min(hardware_thread_count, max_jobs_for_grain_size)};
     auto const turrets_per_job{FMath::DivideAndRoundUp(n_turrets, n_jobs)};
 
-    if (search_scratch_buffers.Num() < n_jobs) {
-        search_scratch_buffers.SetNum(n_jobs);
-    }
-
     ParallelFor(n_jobs, [=, this](int32 const i) {
         perform_search_on_slice(i, n_turrets, turrets_per_job, radius);
     });
@@ -247,7 +243,8 @@ void ATestStaticTurrets::perform_search_on_slice(int32 const job_index,
                                                  float const radius) {
     auto const begin{job_index * turrets_per_job};
     auto const end{FMath::Min(begin + turrets_per_job, n_turrets)};
-    auto& search_scratch{search_scratch_buffers[job_index]};
+    TFixedVectors3f<128> candidate_locations;
+    ml::TFixedArray<uint8, 128> has_line_of_sight;
 
     for (int32 i{begin}; i < end; ++i) {
         if (!entities.target_refresh_countdowns.try_consume(i)) {
@@ -266,19 +263,20 @@ void ATestStaticTurrets::perform_search_on_slice(int32 const job_index,
             entities.target_handles[i] = FRegistryEntityHandle{};
 
             auto const target_count{target_handles.num()};
-            search_scratch.candidate_locations.set_num_uninitialised(target_count);
-            search_scratch.has_line_of_sight.set_num_uninitialised(target_count);
+            candidate_locations.set_num_uninitialised(target_count);
+            has_line_of_sight.set_num_uninitialised(target_count);
+            auto candidate_locations_view{candidate_locations.get_view()};
             for (int32 target_index{}; target_index < target_count; ++target_index) {
-                ml::assign(search_scratch.candidate_locations,
+                ml::assign(candidate_locations_view,
                            target_index,
                            entity_registry->get_location(target_handles[target_index]));
             }
 
             spatial_query_manager->has_line_of_sight_to_targets(
                 ml::get_vector3f(entities.fire_point_locations, i),
-                search_scratch.candidate_locations.get_const_view(),
+                candidate_locations.get_const_view(),
                 target_handles,
-                search_scratch.has_line_of_sight);
+                has_line_of_sight);
 
             auto const target_offset{target_count == 0
                                          ? 0
@@ -288,7 +286,7 @@ void ATestStaticTurrets::perform_search_on_slice(int32 const job_index,
             for (auto const bounds : loop_bounds) {
                 for (int32 target_index{bounds.begin}; target_index < bounds.end; ++target_index) {
                     auto const target_handle{target_handles[target_index]};
-                    if (search_scratch.has_line_of_sight[target_index] == 0) {
+                    if (has_line_of_sight[target_index] == 0) {
                         continue;
                     }
                     if (this_team == entity_registry->get_team(target_handle)) {
@@ -540,9 +538,6 @@ void ATestStaticTurrets::clear_runtime_state() {
     instances->ClearInstances();
     ml::reset(entities, ismc_transforms);
     target_refresh_next_offset = 0;
-    for (auto& search_scratch : search_scratch_buffers) {
-        search_scratch.reset();
-    }
     clear_tick_buffers();
 }
 void ATestStaticTurrets::clear_tick_buffers() {
