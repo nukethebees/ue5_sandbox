@@ -17,7 +17,6 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/LevelScriptActor.h>
 #include <EngineUtils.h>
@@ -30,6 +29,10 @@
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
 #include <Misc/Optional.h>
+
+namespace {
+ml::FTestBatchOrchestratorLevelSetup orchestrator_reset_level_setup{};
+}
 
 TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
 {
@@ -46,8 +49,6 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
     };
 
     FTimespan const timeout{0, 0, 3};
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::TimeSeriesData<FSimulationSample> initial_samples;
@@ -79,12 +80,9 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
         initial_actor_count = 0;
         reset_complete = false;
 
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        level_setup.Emplace(*spawner, *TestRunner, checks);
-        level_setup->setup(TestCommandBuilder,
-                           [this](UWorld& world, UTestSimulationConfig const&) {
-                               spawn_blockers(world);
-                           });
+        orchestrator_reset_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+        TestCommandBuilder.Do(
+            [this] { spawn_blockers(orchestrator_reset_level_setup.get_world()); });
     }
     AFTER_EACH()
     {
@@ -93,9 +91,11 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
             test_driver->orchestrator.pause_simulation();
         }
 
-        level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+        orchestrator_reset_level_setup.end_test();
+    }
+    AFTER_ALL()
+    {
+        orchestrator_reset_level_setup.teardown();
     }
   private:
     void spawn_blockers(UWorld& world) {
@@ -163,7 +163,8 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
         sample(orchestrator);
     }
     void start_initial_simulation() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        test_driver =
+            ml::TestSimulationDriver::from_world(orchestrator_reset_level_setup.get_world());
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         ml::reset_and_reserve_time_series(

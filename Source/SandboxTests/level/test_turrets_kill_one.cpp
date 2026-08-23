@@ -29,6 +29,8 @@ constexpr time_type test_time{3.0};
 constexpr ETestTeam hero_team{ETestTeam::Blue};
 constexpr ETestTeam enemy_team{ETestTeam::Red};
 FTimespan const timeout{0, 0, 4};
+ml::FTestBatchOrchestratorLevelSetup turret_los_blocking_level_setup{};
+ml::FTestBatchOrchestratorLevelSetup turret_search_los_level_setup{};
 
 struct FTurretTestState {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
@@ -147,6 +149,7 @@ void check_initial_state(FTurretTestState& state) {
 
 void begin_simulation(FTurretTestState& state, FOrchestratorEndTickTestHook hook) {
     state.test_driver = ml::TestSimulationDriver::from_world(state.spawner->GetWorld());
+    state.test_driver->orchestrator.start_simulation();
     check_initial_state(state);
 
     if (!state.checks.all_passed) {
@@ -162,7 +165,6 @@ void begin_simulation(FTurretTestState& state, FOrchestratorEndTickTestHook hook
                                       state.turret_healths);
     state.test_driver->orchestrator.set_end_tick_test_hook(MoveTemp(hook));
     state.test_driver->timeline.finish_at(test_time);
-    state.test_driver->orchestrator.start_simulation();
 }
 
 void teardown_test_state(FTurretTestState& state, void const* const listener) {
@@ -375,8 +377,6 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         {{5000.f, 0.f, 0.f}, ETestTeam::Red},
     };
 
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::TimeSeriesData<int32> laser_counts;
@@ -392,9 +392,9 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         test_driver.Reset();
         blocker_spawn_time.Reset();
 
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        level_setup.Emplace(*spawner, *TestRunner, checks);
-        level_setup->setup(TestCommandBuilder, [this](UWorld& world, UTestSimulationConfig const&) {
+        turret_los_blocking_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+        TestCommandBuilder.Do([this] {
+            auto& world{turret_los_blocking_level_setup.get_world()};
             ml::spawn_actors<ATestStaticTurretsProxy, turret_count>(
                 world, [&](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
                     if (phase == ESpawnPhase::PreSpawn) {
@@ -414,9 +414,11 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
             test_driver->orchestrator.pause_simulation();
         }
 
-        level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+        turret_los_blocking_level_setup.end_test();
+    }
+    AFTER_ALL()
+    {
+        turret_los_blocking_level_setup.teardown();
     }
   private:
     void spawn_line_of_sight_blocker() {
@@ -448,7 +450,8 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     }
 
     void initial_setup() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        test_driver =
+            ml::TestSimulationDriver::from_world(turret_los_blocking_level_setup.get_world());
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         ml::reset_and_reserve_time_series(test_driver->orchestrator,
@@ -562,8 +565,6 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
     FName const blocked_enemy_name{TEXT("BlockedEnemy")};
     FName const visible_enemy_name{TEXT("VisibleEnemy")};
 
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
@@ -578,9 +579,9 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
         blocked_enemy_handle.reset();
         visible_enemy_handle.reset();
 
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        level_setup.Emplace(*spawner, *TestRunner, checks);
-        level_setup->setup(TestCommandBuilder, [this](UWorld& world, UTestSimulationConfig const&) {
+        turret_search_los_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+        TestCommandBuilder.Do([this] {
+            auto& world{turret_search_los_level_setup.get_world()};
             ml::spawn_actors<ATestStaticTurretsProxy, 3>(
                 world, [this](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
                     if (phase == ESpawnPhase::PreSpawn) {
@@ -615,9 +616,11 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
             test_driver->orchestrator.clear_end_tick_test_hook();
             test_driver->orchestrator.pause_simulation();
         }
-        level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+        turret_search_los_level_setup.end_test();
+    }
+    AFTER_ALL()
+    {
+        turret_search_los_level_setup.teardown();
     }
   private:
     void bind(FProxyEntityMap const& proxy_entities) {
@@ -643,7 +646,9 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
         test_driver->timeline.tick(test_driver->get_time());
     }
     void initial_setup() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        test_driver =
+            ml::TestSimulationDriver::from_world(turret_search_los_level_setup.get_world());
+        test_driver->orchestrator.start_simulation();
         checks.is_true(blocked_enemy_handle.is_valid(), TEXT("Blocked enemy handle is bound"));
         checks.is_true(visible_enemy_handle.is_valid(), TEXT("Visible enemy handle is bound"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -653,7 +658,6 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.finish_at(test_end_time);
-        test_driver->orchestrator.start_simulation();
     }
     void full_checks() {
         checks.is_true(!target_handles.is_empty(), TEXT("Turret target handles are sampled"));

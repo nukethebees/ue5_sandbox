@@ -20,6 +20,10 @@
 
 #include <functional>
 
+namespace {
+ml::FTestBatchOrchestratorLevelSetup spatial_query_los_level_setup{};
+}
+
 TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
 {
     using ThisClass = SpatialQueryManager;
@@ -68,6 +72,7 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
     void initial_setup() {
         test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
         auto& orchestrator{test_driver->orchestrator};
+        orchestrator.start_simulation();
         capitals = const_cast<ATestCapitalShips*>(orchestrator.get_capital_ships());
         fighters = const_cast<ATestCapitalShipFighters*>(orchestrator.get_capital_ship_fighters());
 
@@ -81,7 +86,6 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
         orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.at(query_time, [this] { resolve_hits(); }).finish_at(query_time);
-        orchestrator.start_simulation();
     }
 
     void resolve_hits() {
@@ -154,8 +158,6 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
     using ThisClass = SpatialQueryLineOfSight;
 
     static constexpr float distance{30000.f};
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> driver{NullOpt};
 
@@ -181,14 +183,14 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
         checks.test_runner = TestRunner;
         checks.all_passed = true;
 
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-
-        auto const n_names{names.Num()};
-        setup.Emplace(*spawner, *TestRunner, checks);
         expected.Init({}, names.Num());
-        setup->setup(TestCommandBuilder, [&](UWorld& world, UTestSimulationConfig const&) {
+        spatial_query_los_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+        TestCommandBuilder.Do([this] {
+            auto& world{spatial_query_los_level_setup.get_world()};
             ml::spawn_actors<ATestCapitalShipProxy, 4>(
-                world, [&](ATestCapitalShipProxy& actor, int32 const i, ESpawnPhase const phase) {
+                world, [this](ATestCapitalShipProxy& actor,
+                              int32 const i,
+                              ESpawnPhase const phase) {
                     if (phase == ESpawnPhase::PreSpawn) {
                         actor.set_test_name(names[i]);
                         actor.set_initial_spawn_delay(spawn_cooldown);
@@ -207,8 +209,11 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
         ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
         check(driver);
         driver->orchestrator.clear_end_tick_test_hook();
-        driver->orchestrator.pause_simulation();
-        setup->teardown();
+        spatial_query_los_level_setup.end_test();
+    }
+    AFTER_ALL()
+    {
+        spatial_query_los_level_setup.teardown();
     }
   private:
     void bind(FProxyEntityMap const& proxies) {
@@ -306,7 +311,8 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
     {
         TestCommandBuilder
             .Do([this] {
-                driver = ml::TestSimulationDriver::from_world(setup->get_world());
+                driver = ml::TestSimulationDriver::from_world(
+                    spatial_query_los_level_setup.get_world());
                 driver->orchestrator.set_end_tick_test_hook(
                     FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
                 driver->timeline.at(0.1, [this] { run_queries(); }).finish_at(0.2);

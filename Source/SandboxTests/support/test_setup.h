@@ -17,18 +17,11 @@ class AActor;
 class ATestBatchOrchestrator;
 
 namespace ml {
-using FConfigureBatchTestLevel = TFunction<void(UWorld&, UTestSimulationConfig const&)>;
-using FConfigureBatchTestOrchestrator =
-    TFunction<void(UWorld&, UTestSimulationConfig const&, ATestBatchOrchestrator&)>;
-
 enum class ETestLevelState : uint8 { Unconstructed, Constructing, Constructed };
 
 class FTestBatchOrchestratorLevelSetup {
   public:
     FTestBatchOrchestratorLevelSetup() = default;
-    FTestBatchOrchestratorLevelSetup(FMapTestSpawner& spawner,
-                                     FAutomationTestBase& test_runner,
-                                     FSoftTestAssertions& checks);
     FTestBatchOrchestratorLevelSetup(FTestBatchOrchestratorLevelSetup const&) = delete;
     FTestBatchOrchestratorLevelSetup(FTestBatchOrchestratorLevelSetup&&) = delete;
     auto operator=(FTestBatchOrchestratorLevelSetup const&)
@@ -41,9 +34,6 @@ class FTestBatchOrchestratorLevelSetup {
                     FSoftTestAssertions& checks);
     void end_test();
     void teardown();
-    void setup(FTestCommandBuilder& command_builder,
-               FConfigureBatchTestLevel configure_level = {},
-               FConfigureBatchTestOrchestrator configure_orchestrator = {});
 
     auto get_orchestrator() const -> ATestBatchOrchestrator* { return orchestrator.Get(); }
     auto get_config() const -> UTestSimulationConfig const&;
@@ -55,11 +45,6 @@ class FTestBatchOrchestratorLevelSetup {
     auto construct_level() -> bool;
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    FMapTestSpawner* legacy_spawner{nullptr};
-    FAutomationTestBase* legacy_test_runner{nullptr};
-    FSoftTestAssertions* legacy_checks{nullptr};
-    FConfigureBatchTestLevel legacy_configure_level{};
-    FConfigureBatchTestOrchestrator legacy_configure_orchestrator{};
     TWeakObjectPtr<ATestBatchOrchestrator> orchestrator{nullptr};
     TObjectPtr<UTestSimulationConfig const> config{nullptr};
     FString map_directory{};

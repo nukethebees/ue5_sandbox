@@ -16,10 +16,13 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/World.h>
 #include <Misc/Optional.h>
+
+namespace {
+ml::FTestBatchOrchestratorLevelSetup mission_manager_level_setup{};
+}
 
 TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
 {
@@ -43,8 +46,6 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     static constexpr float long_mission_time{10.f};
     inline static FTimespan const timeout{0, 0, 2};
 
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     EScenario scenario{EScenario::SurviveTime};
@@ -56,8 +57,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         checks.all_passed = true;
         test_driver.Reset();
         samples = {};
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        level_setup.Emplace(*spawner, *TestRunner, checks);
+        mission_manager_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
     }
 
     AFTER_EACH()
@@ -65,9 +65,12 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         if (test_driver.IsSet()) {
             test_driver->orchestrator.clear_end_tick_test_hook();
         }
-        level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+        mission_manager_level_setup.end_test();
+    }
+
+    AFTER_ALL()
+    {
+        mission_manager_level_setup.teardown();
     }
   private:
     static void configure_level(UWorld & world,
@@ -146,15 +149,15 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
 
     void setup_scenario(EScenario const new_scenario) {
         scenario = new_scenario;
-        level_setup->setup(
-            TestCommandBuilder,
-            [this, new_scenario](UWorld& world, UTestSimulationConfig const& config) {
-                configure_level(world, config, checks, new_scenario);
-            },
-            [new_scenario](
-                UWorld& world, UTestSimulationConfig const&, ATestBatchOrchestrator& orchestrator) {
-                configure_mission_manager(world, orchestrator, new_scenario);
-            });
+        TestCommandBuilder.Do([this, new_scenario] {
+            auto& world{mission_manager_level_setup.get_world()};
+            configure_level(
+                world, mission_manager_level_setup.get_config(), checks, new_scenario);
+            auto* const orchestrator{mission_manager_level_setup.get_orchestrator()};
+            if (checks.is_valid(orchestrator, TEXT("Orchestrator is available"))) {
+                configure_mission_manager(world, *orchestrator, new_scenario);
+            }
+        });
 
         TestCommandBuilder.Do([this] { start_scenario(); })
             .Until([this] { return mission_has_ended(); }, timeout)
@@ -162,10 +165,20 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     }
 
     void start_scenario() {
-        auto& world{level_setup->get_world()};
+        auto& world{mission_manager_level_setup.get_world()};
         test_driver = ml::TestSimulationDriver::from_world(world);
 
         auto* const manager{&test_driver->orchestrator.get_mission_manager()};
+
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
+        if (scenario == EScenario::KillEnemies) {
+            test_driver->timeline.then_after(0.01, [this, manager] { queue_enemy_kill(*manager); });
+        } else if (scenario == EScenario::DefenceObjective) {
+            test_driver->timeline.then_after(
+                0.01, [this, manager] { queue_defended_entity_kill(*manager); });
+        }
+        test_driver->orchestrator.start_simulation();
 
         TestRunner->TestEqual(TEXT("Mission starts running"),
                               manager->get_mission_state(),
@@ -190,16 +203,6 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
                                   surviving_health[0].health,
                                   surviving_health[0].max_health);
         }
-
-        test_driver->orchestrator.set_end_tick_test_hook(
-            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
-        if (scenario == EScenario::KillEnemies) {
-            test_driver->timeline.then_after(0.01, [this, manager] { queue_enemy_kill(*manager); });
-        } else if (scenario == EScenario::DefenceObjective) {
-            test_driver->timeline.then_after(
-                0.01, [this, manager] { queue_defended_entity_kill(*manager); });
-        }
-        test_driver->orchestrator.start_simulation();
     }
 
     void on_end_tick(ATestBatchOrchestrator&) {

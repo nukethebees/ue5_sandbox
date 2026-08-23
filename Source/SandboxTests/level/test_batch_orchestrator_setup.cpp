@@ -56,9 +56,9 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
 
             auto& world{level_setup.get_world()};
 
-            TestRunner->TestTrue(TEXT("Paused test start mode initialises the orchestrator"),
-                                 orchestrator->get_state() == EOrchestratorState::Paused);
-            TestRunner->TestFalse(TEXT("Paused orchestrator does not tick"),
+            TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
+                                 orchestrator->get_state() == EOrchestratorState::Uninitialised);
+            TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
                                   orchestrator->IsActorTickEnabled());
 
             TestRunner->TestEqual(
@@ -115,8 +115,8 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
             TestRunner->TestEqual(TEXT("Reusable level is constructed once"),
                                   level_setup.get_construction_count(),
                                   1);
-            TestRunner->TestTrue(TEXT("Reset restores the paused orchestrator state"),
-                                 orchestrator->get_state() == EOrchestratorState::Paused);
+            TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
+                                 orchestrator->get_state() == EOrchestratorState::Uninitialised);
 
             ml::test_batch_orchestrator::SimulationClockInterface clock;
             clock.bind(*orchestrator);

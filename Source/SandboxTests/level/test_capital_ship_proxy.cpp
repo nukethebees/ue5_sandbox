@@ -12,9 +12,11 @@
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
-#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
-#include <Misc/Optional.h>
+
+namespace {
+ml::FTestBatchOrchestratorLevelSetup level_setup{};
+}
 
 TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
 {
@@ -23,8 +25,6 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
     inline static FName const default_health_capital_name{TEXT("default_health_capital")};
     inline static FName const overridden_health_capital_name{TEXT("overridden_health_capital")};
 
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     FRegistryEntityHandle default_health_handle;
     FRegistryEntityHandle overridden_health_handle;
@@ -38,8 +38,6 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
     {
         checks.test_runner = TestRunner;
         checks.all_passed = true;
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        level_setup.Emplace(*spawner, *TestRunner, checks);
         default_health_handle = {};
         overridden_health_handle = {};
         default_health_unique_id = {};
@@ -48,18 +46,20 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
         overridden_health = 0;
         proxy_handles_bound = false;
 
-        level_setup->setup(TestCommandBuilder,
-                           [this](UWorld& world, UTestSimulationConfig const& config) {
-                               spawn_proxies(world, config);
-                           });
+        level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+        TestCommandBuilder.Do(
+            [this] { spawn_proxies(level_setup.get_world(), level_setup.get_config()); });
     }
 
     AFTER_EACH()
     {
         ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-        level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+        level_setup.end_test();
+    }
+
+    AFTER_ALL()
+    {
+        level_setup.teardown();
     }
 
     TEST_METHOD(ProxyHealthOverridesConfig)
@@ -119,11 +119,13 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
     }
 
     void check_proxy_healths() {
+        auto test_driver{ml::TestSimulationDriver::from_world(level_setup.get_world())};
+        test_driver.orchestrator.start_simulation();
+
         checks.is_true(proxy_handles_bound,
                        TEXT("Capital proxy handles are resolved when proxies are bound"));
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-        auto test_driver{ml::TestSimulationDriver::from_world(level_setup->get_world())};
         auto const& capitals{test_driver.get_capital_ships()};
 
         checks.are_equal(2,

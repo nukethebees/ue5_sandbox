@@ -265,6 +265,7 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
         state.expected_kills = expected_kills;
 
         test_driver = ml::TestSimulationDriver::from_world(spawner->GetWorld());
+        test_driver->orchestrator.start_simulation();
 
         auto const& player_ship{test_driver->get_player_ship()};
         state.player_id = player_ship.get_unique_id();
@@ -290,7 +291,6 @@ TEST_CLASS(TestEntityRegistry, "Sandbox.LevelTests")
                 test_driver->queue_kills(targets, player_handle);
             });
         test_driver->timeline.finish_at(variable_kill_test_duration);
-        test_driver->orchestrator.start_simulation();
     }
     void on_variable_kill_end_tick(ATestBatchOrchestrator&) {
         check(variable_kill_state);

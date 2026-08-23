@@ -486,7 +486,7 @@ void ATestBatchOrchestrator::begin_play() {
 }
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
     return start_mode == EOrchestratorStartMode::Automatic ||
-           start_mode == EOrchestratorStartMode::PausedInTest;
+           (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting);
 }
 
 void ATestBatchOrchestrator::start_visual_logging() {

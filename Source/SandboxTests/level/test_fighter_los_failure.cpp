@@ -62,6 +62,7 @@ TEST_CLASS(FighterLosFailureHandling, "Sandbox.LevelTests")
     void initial_setup() {
         auto& world{spawner->GetWorld()};
         test_driver = ml::TestSimulationDriver::from_world(world);
+        test_driver->orchestrator.start_simulation();
 
         auto const maybe_enemy{
             test_driver->get_capital_ships().find_first_handle_on_team(enemy_team)};
@@ -76,7 +77,6 @@ TEST_CLASS(FighterLosFailureHandling, "Sandbox.LevelTests")
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->timeline.finish_at(test_duration);
-        test_driver->orchestrator.start_simulation();
     }
 
     void check_fighter_spawns_and_survival() {

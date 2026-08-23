@@ -15,10 +15,13 @@
 
 #include <SandboxCore/time_series_data.h>
 
-#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
 #include <Engine/World.h>
 #include <Misc/Optional.h>
+
+namespace {
+ml::FTestBatchOrchestratorLevelSetup fighters_standby_level_setup{};
+}
 
 TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
 {
@@ -37,8 +40,6 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
     static constexpr time_type post_kill_wait{0.1};
     inline static FTimespan const timeout{0, 0, 2};
 
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
@@ -56,12 +57,11 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
         pre_kill_time.Reset();
         post_kill_time.Reset();
 
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        level_setup.Emplace(*spawner, *TestRunner, checks);
-        level_setup->setup(TestCommandBuilder,
-                           [this](UWorld& world, UTestSimulationConfig const& config) {
-                               spawn_capitals(world, config);
-                           });
+        fighters_standby_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+        TestCommandBuilder.Do([this] {
+            spawn_capitals(fighters_standby_level_setup.get_world(),
+                           fighters_standby_level_setup.get_config());
+        });
     }
     AFTER_EACH()
     {
@@ -69,9 +69,11 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
             test_driver->orchestrator.clear_end_tick_test_hook();
         }
 
-        level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+        fighters_standby_level_setup.end_test();
+    }
+    AFTER_ALL()
+    {
+        fighters_standby_level_setup.teardown();
     }
   private:
     /* ------------------------------------------------------------------------------------------ */
@@ -94,7 +96,9 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
     }
 
     void initial_setup() {
-        test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
+        test_driver =
+            ml::TestSimulationDriver::from_world(fighters_standby_level_setup.get_world());
+        test_driver->orchestrator.start_simulation();
 
         auto const& capitals{test_driver->get_capital_ships()};
         checks.are_equal(2, capitals.get_num_instances(), TEXT("Two capitals are registered"));
@@ -118,7 +122,6 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
                         })
             .then_after(post_kill_wait, [this] { post_kill_time = test_driver->get_time(); })
             .finish_after(0.0);
-        test_driver->orchestrator.start_simulation();
     }
 
     void on_end_tick(ATestBatchOrchestrator&) {
