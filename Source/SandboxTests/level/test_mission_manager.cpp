@@ -4,6 +4,7 @@
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include "simulation_test_scenarios.h"
 
 #include <SandboxCore/time_series_data.h>
 
@@ -16,24 +17,13 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <CQTest.h>
 #include <Engine/World.h>
 #include <Misc/Optional.h>
 
-namespace {
-ml::FTestBatchOrchestratorLevelSetup mission_manager_level_setup{};
-}
-
-TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
-{
-    using ThisClass = TestMissionManager;
-
-    enum class EScenario : uint8 {
-        SurviveTime,
-        KillEnemies,
-        KillEnemiesWithinTime,
-        DefenceObjective,
-    };
+namespace ml {
+class FTestMissionManagerScenario final : public FSimulationTestScenario {
+    using ThisClass = FTestMissionManagerScenario;
+    using EScenario = EMissionManagerScenario;
 
     struct FSimulationSample {
         ETestMissionState mission_state{ETestMissionState::NotStarted};
@@ -46,32 +36,23 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     static constexpr float long_mission_time{10.f};
     inline static FTimespan const timeout{0, 0, 2};
 
-    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
-    EScenario scenario{EScenario::SurviveTime};
+    EScenario scenario;
     ml::TimeSeriesData<FSimulationSample> samples;
 
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
+  public:
+    FTestMissionManagerScenario(FSimulationTestContext& context, EScenario const new_scenario)
+        : FSimulationTestScenario{context}, scenario{new_scenario} {
         test_driver.Reset();
         samples = {};
-        mission_manager_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
     }
 
-    AFTER_EACH()
-    {
+    void tear_down() override {
         if (test_driver.IsSet()) {
             test_driver->orchestrator.clear_end_tick_test_hook();
         }
-        mission_manager_level_setup.end_test();
     }
 
-    AFTER_ALL()
-    {
-        mission_manager_level_setup.teardown();
-    }
   private:
     static void configure_level(UWorld & world,
                                 UTestSimulationConfig const& config,
@@ -150,10 +131,9 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     void setup_scenario(EScenario const new_scenario) {
         scenario = new_scenario;
         TestCommandBuilder.Do([this, new_scenario] {
-            auto& world{mission_manager_level_setup.get_world()};
-            configure_level(
-                world, mission_manager_level_setup.get_config(), checks, new_scenario);
-            auto* const orchestrator{mission_manager_level_setup.get_orchestrator()};
+            auto& world{context_.world};
+            configure_level(world, context_.config, checks, new_scenario);
+            auto* const orchestrator{&context_.orchestrator};
             if (checks.is_valid(orchestrator, TEXT("Orchestrator is available"))) {
                 configure_mission_manager(world, *orchestrator, new_scenario);
             }
@@ -165,7 +145,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
     }
 
     void start_scenario() {
-        auto& world{mission_manager_level_setup.get_world()};
+        auto& world{context_.world};
         test_driver = ml::TestSimulationDriver::from_world(world);
 
         auto* const manager{&test_driver->orchestrator.get_mission_manager()};
@@ -314,15 +294,13 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         }
     }
 
-    TEST_METHOD(SurviveTime)
-    { setup_scenario(EScenario::SurviveTime); }
-
-    TEST_METHOD(KillEnemies)
-    { setup_scenario(EScenario::KillEnemies); }
-
-    TEST_METHOD(KillEnemiesWithinTime)
-    { setup_scenario(EScenario::KillEnemiesWithinTime); }
-
-    TEST_METHOD(DefenceObjective)
-    { setup_scenario(EScenario::DefenceObjective); }
+  public:
+    void run() override { setup_scenario(scenario); }
 };
+
+auto make_mission_manager_scenario(FSimulationTestContext& context,
+                                   EMissionManagerScenario const scenario)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FTestMissionManagerScenario>(context, scenario);
+}
+}

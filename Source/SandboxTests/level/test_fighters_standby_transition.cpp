@@ -12,20 +12,16 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
+#include "simulation_test_scenarios.h"
 
 #include <SandboxCore/time_series_data.h>
 
-#include <CQTest.h>
 #include <Engine/World.h>
 #include <Misc/Optional.h>
 
-namespace {
-ml::FTestBatchOrchestratorLevelSetup fighters_standby_level_setup{};
-}
-
-TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
-{
-    using ThisClass = FightersStandbyTransition;
+namespace ml {
+class FFightersStandbyTransitionScenario final : public FSimulationTestScenario {
+    using ThisClass = FFightersStandbyTransitionScenario;
     using Task = ATestCapitalShipFighters::Task;
     using time_type = ml::TestSimulationDriver::time_type;
 
@@ -40,7 +36,6 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
     static constexpr time_type post_kill_wait{0.1};
     inline static FTimespan const timeout{0, 0, 2};
 
-    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
 
     FRegistryEntityHandle enemy_capital;
@@ -48,32 +43,22 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
     TOptional<time_type> pre_kill_time{NullOpt};
     TOptional<time_type> post_kill_time{NullOpt};
 
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
+  public:
+    explicit FFightersStandbyTransitionScenario(FSimulationTestContext& context)
+        : FSimulationTestScenario{context} {
         enemy_capital = {};
         samples = {};
         pre_kill_time.Reset();
         post_kill_time.Reset();
 
-        fighters_standby_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
         TestCommandBuilder.Do([this] {
-            spawn_capitals(fighters_standby_level_setup.get_world(),
-                           fighters_standby_level_setup.get_config());
+            spawn_capitals(context_.world, context_.config);
         });
     }
-    AFTER_EACH()
-    {
+    void tear_down() override {
         if (test_driver.IsSet()) {
             test_driver->orchestrator.clear_end_tick_test_hook();
         }
-
-        fighters_standby_level_setup.end_test();
-    }
-    AFTER_ALL()
-    {
-        fighters_standby_level_setup.teardown();
     }
   private:
     /* ------------------------------------------------------------------------------------------ */
@@ -96,8 +81,7 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
     }
 
     void initial_setup() {
-        test_driver =
-            ml::TestSimulationDriver::from_world(fighters_standby_level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(context_.world);
         test_driver->orchestrator.start_simulation();
 
         auto const& capitals{test_driver->get_capital_ships()};
@@ -215,10 +199,16 @@ TEST_CLASS(FightersStandbyTransition, "Sandbox.LevelTests")
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
-    TEST_METHOD(Main)
-    {
+  public:
+    void run() override {
         TestCommandBuilder.Do([this] { initial_setup(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { full_checks(); });
     }
 };
+
+auto make_fighters_standby_scenario(FSimulationTestContext& context)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FFightersStandbyTransitionScenario>(context);
+}
+}

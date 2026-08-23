@@ -1,4 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
+#include "simulation_test_scenarios.h"
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
@@ -17,7 +18,6 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <CQTest.h>
 #include <Engine/LevelScriptActor.h>
 #include <EngineUtils.h>
 #include <GameFramework/Actor.h>
@@ -30,13 +30,10 @@
 #include <GameFramework/WorldSettings.h>
 #include <Misc/Optional.h>
 
-namespace {
-ml::FTestBatchOrchestratorLevelSetup orchestrator_reset_level_setup{};
-}
-
-TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
-{
-    using ThisClass = TestBatchOrchestratorReset;
+namespace ml {
+class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario {
+  public:
+    using ThisClass = FTestBatchOrchestratorResetScenario;
     using time_type = ml::TestSimulationDriver::time_type;
 
     static constexpr int32 blocker_count{3};
@@ -49,7 +46,6 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
     };
 
     FTimespan const timeout{0, 0, 3};
-    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::TimeSeriesData<FSimulationSample> initial_samples;
     ml::TimeSeriesData<FSimulationSample> reset_samples;
@@ -60,10 +56,8 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
     int32 initial_actor_count{0};
     bool reset_complete{false};
 
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
+    explicit FTestBatchOrchestratorResetScenario(FSimulationTestContext& context)
+        : FSimulationTestScenario{context} {
         test_driver.Reset();
         initial_samples.reset();
         reset_samples.reset();
@@ -80,22 +74,14 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
         initial_actor_count = 0;
         reset_complete = false;
 
-        orchestrator_reset_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
-        TestCommandBuilder.Do(
-            [this] { spawn_blockers(orchestrator_reset_level_setup.get_world()); });
+        TestCommandBuilder.Do([this] { spawn_blockers(context_.world); });
     }
-    AFTER_EACH()
-    {
+
+    void tear_down() override {
         if (test_driver.IsSet()) {
             test_driver->orchestrator.clear_end_tick_test_hook();
             test_driver->orchestrator.pause_simulation();
         }
-
-        orchestrator_reset_level_setup.end_test();
-    }
-    AFTER_ALL()
-    {
-        orchestrator_reset_level_setup.teardown();
     }
   private:
     void spawn_blockers(UWorld& world) {
@@ -164,7 +150,7 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
     }
     void start_initial_simulation() {
         test_driver =
-            ml::TestSimulationDriver::from_world(orchestrator_reset_level_setup.get_world());
+            ml::TestSimulationDriver::from_world(context_.world);
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         ml::reset_and_reserve_time_series(
@@ -181,6 +167,8 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
         save_old_transient_actors(test_driver->orchestrator);
         test_driver->orchestrator.reset_for_new_level();
         reset_complete = true;
+        test_driver->orchestrator.set_end_tick_test_hook(
+            FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         test_driver->orchestrator.start_simulation();
     }
     void check_reset() {
@@ -230,8 +218,8 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
-    TEST_METHOD(Main)
-    {
+  public:
+    void run() override {
         TestCommandBuilder.Do([this] { start_initial_simulation(); })
             .Until([this] { return test_driver->get_time() >= reset_time; }, timeout)
             .Then([this] { reset_simulation(); })
@@ -239,3 +227,9 @@ TEST_CLASS(TestBatchOrchestratorReset, "Sandbox.LevelTests")
             .Then([this] { check_reset(); });
     }
 };
+
+auto make_orchestrator_reset_scenario(FSimulationTestContext& context)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FTestBatchOrchestratorResetScenario>(context);
+}
+}

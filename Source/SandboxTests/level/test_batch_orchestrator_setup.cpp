@@ -1,4 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
+#include "simulation_test_scenarios.h"
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
@@ -16,45 +17,32 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <CQTest.h>
+namespace ml {
+class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario {
+  public:
+    FTestBatchOrchestratorSetupScenario(FSimulationTestContext& context,
+                                        EOrchestratorSetupScenario const scenario)
+        : FSimulationTestScenario{context}, scenario_{scenario} {}
 
-namespace {
-
-ml::FTestBatchOrchestratorLevelSetup level_setup{};
-
-} // namespace
-
-TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
-{
-    ml::FSoftTestAssertions checks{};
-
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
-
-        level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+    void run() override {
+        switch (scenario_) {
+            case EOrchestratorSetupScenario::SpawnMissingActors:
+                spawn_missing_actors();
+                break;
+            case EOrchestratorSetupScenario::SimulationClockConversions:
+                simulation_clock_conversions();
+                break;
+        }
     }
-
-    AFTER_EACH()
-    {
-        level_setup.end_test();
-    }
-
-    AFTER_ALL()
-    {
-        level_setup.teardown();
-    }
-
-    TEST_METHOD(SpawnMissingActors)
-    {
+  private:
+    void spawn_missing_actors() {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup.get_orchestrator()};
+            auto* const orchestrator{&context_.orchestrator};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
 
-            auto& world{level_setup.get_world()};
+            auto& world{context_.world};
 
             TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
                                  orchestrator->get_state() == EOrchestratorState::Uninitialised);
@@ -104,16 +92,15 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
         });
     }
 
-    TEST_METHOD(SimulationClockConversions)
-    {
+    void simulation_clock_conversions() {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup.get_orchestrator()};
+            auto* const orchestrator{&context_.orchestrator};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
 
             TestRunner->TestEqual(TEXT("Reusable level is constructed once"),
-                                  level_setup.get_construction_count(),
+                                  context_.level_construction_count,
                                   1);
             TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
                                  orchestrator->get_state() == EOrchestratorState::Uninitialised);
@@ -140,4 +127,12 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
                 TEXT("Duration periods round up"), clock.duration_to_tick_period(0.025), uint64{2});
         });
     }
+    EOrchestratorSetupScenario scenario_;
 };
+
+auto make_orchestrator_setup_scenario(FSimulationTestContext& context,
+                                      EOrchestratorSetupScenario const scenario)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FTestBatchOrchestratorSetupScenario>(context, scenario);
+}
+}

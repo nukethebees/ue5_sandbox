@@ -1,4 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
+#include "simulation_test_scenarios.h"
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
@@ -12,20 +13,13 @@
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
-#include <CQTest.h>
-
-namespace {
-ml::FTestBatchOrchestratorLevelSetup level_setup{};
-}
-
-TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
-{
-    using ThisClass = TestCapitalShipProxy;
+namespace ml {
+class FTestCapitalShipProxyScenario final : public FSimulationTestScenario {
+    using ThisClass = FTestCapitalShipProxyScenario;
 
     inline static FName const default_health_capital_name{TEXT("default_health_capital")};
     inline static FName const overridden_health_capital_name{TEXT("overridden_health_capital")};
 
-    ml::FSoftTestAssertions checks{};
     FRegistryEntityHandle default_health_handle;
     FRegistryEntityHandle overridden_health_handle;
     TestEntityUniqueId default_health_unique_id;
@@ -34,10 +28,9 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
     int32 overridden_health{0};
     bool proxy_handles_bound{false};
 
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
+  public:
+    explicit FTestCapitalShipProxyScenario(FSimulationTestContext& context)
+        : FSimulationTestScenario{context} {
         default_health_handle = {};
         overridden_health_handle = {};
         default_health_unique_id = {};
@@ -46,24 +39,14 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
         overridden_health = 0;
         proxy_handles_bound = false;
 
-        level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
-        TestCommandBuilder.Do(
-            [this] { spawn_proxies(level_setup.get_world(), level_setup.get_config()); });
+        TestCommandBuilder.Do([this] { spawn_proxies(context_.world, context_.config); });
     }
 
-    AFTER_EACH()
-    {
+    void tear_down() override {
         ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-        level_setup.end_test();
     }
 
-    AFTER_ALL()
-    {
-        level_setup.teardown();
-    }
-
-    TEST_METHOD(ProxyHealthOverridesConfig)
-    {
+    void run() override {
         TestCommandBuilder.Do([this] { check_proxy_healths(); });
     }
   private:
@@ -119,7 +102,7 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
     }
 
     void check_proxy_healths() {
-        auto test_driver{ml::TestSimulationDriver::from_world(level_setup.get_world())};
+        auto test_driver{ml::TestSimulationDriver::from_world(context_.world)};
         test_driver.orchestrator.start_simulation();
 
         checks.is_true(proxy_handles_bound,
@@ -147,3 +130,9 @@ TEST_CLASS(TestCapitalShipProxy, "Sandbox.LevelTests")
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 };
+
+auto make_capital_ship_proxy_scenario(FSimulationTestContext& context)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FTestCapitalShipProxyScenario>(context);
+}
+}

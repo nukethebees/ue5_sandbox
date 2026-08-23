@@ -12,6 +12,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
+#include "simulation_test_scenarios.h"
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/MapTestSpawner.h>
@@ -19,10 +20,6 @@
 #include <Misc/Optional.h>
 
 #include <functional>
-
-namespace {
-ml::FTestBatchOrchestratorLevelSetup spatial_query_los_level_setup{};
-}
 
 TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
 {
@@ -153,12 +150,11 @@ TEST_CLASS(SpatialQueryManager, "Sandbox.LevelTests")
     }
 };
 
-TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
-{
-    using ThisClass = SpatialQueryLineOfSight;
+namespace ml {
+class FSpatialQueryLineOfSightScenario final : public FSimulationTestScenario {
+    using ThisClass = FSpatialQueryLineOfSightScenario;
 
     static constexpr float distance{30000.f};
-    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> driver{NullOpt};
 
     TArray<FName> names{
@@ -178,15 +174,11 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
 
     static constexpr float spawn_cooldown{999.f};
   public:
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
-
+    explicit FSpatialQueryLineOfSightScenario(FSimulationTestContext& context)
+        : FSimulationTestScenario{context} {
         expected.Init({}, names.Num());
-        spatial_query_los_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
         TestCommandBuilder.Do([this] {
-            auto& world{spatial_query_los_level_setup.get_world()};
+            auto& world{context_.world};
             ml::spawn_actors<ATestCapitalShipProxy, 4>(
                 world, [this](ATestCapitalShipProxy& actor,
                               int32 const i,
@@ -204,16 +196,11 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
             ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this, &ThisClass::bind);
         });
     }
-    AFTER_EACH()
-    {
+    void tear_down() override {
         ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-        check(driver);
-        driver->orchestrator.clear_end_tick_test_hook();
-        spatial_query_los_level_setup.end_test();
-    }
-    AFTER_ALL()
-    {
-        spatial_query_los_level_setup.teardown();
+        if (driver.IsSet()) {
+            driver->orchestrator.clear_end_tick_test_hook();
+        }
     }
   private:
     void bind(FProxyEntityMap const& proxies) {
@@ -307,12 +294,11 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
     void on_end_tick(ATestBatchOrchestrator&) {
         driver->timeline.tick(driver->get_time());
     }
-    TEST_METHOD(ResolvesLineOfSightBatches)
-    {
+  public:
+    void run() override {
         TestCommandBuilder
             .Do([this] {
-                driver = ml::TestSimulationDriver::from_world(
-                    spatial_query_los_level_setup.get_world());
+                driver = ml::TestSimulationDriver::from_world(context_.world);
                 driver->orchestrator.set_end_tick_test_hook(
                     FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
                 driver->timeline.at(0.1, [this] { run_queries(); }).finish_at(0.2);
@@ -322,3 +308,9 @@ TEST_CLASS(SpatialQueryLineOfSight, "Sandbox.LevelTests")
             .Then([this] { SANDBOX_TESTS_ASSERT_ALL_PASSED(checks); });
     }
 };
+
+auto make_spatial_query_line_of_sight_scenario(FSimulationTestContext& context)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FSpatialQueryLineOfSightScenario>(context);
+}
+}

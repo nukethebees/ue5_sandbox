@@ -9,6 +9,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
+#include "simulation_test_scenarios.h"
 
 #include <SandboxCore/fixed_array.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -29,8 +30,6 @@ constexpr time_type test_time{3.0};
 constexpr ETestTeam hero_team{ETestTeam::Blue};
 constexpr ETestTeam enemy_team{ETestTeam::Red};
 FTimespan const timeout{0, 0, 4};
-ml::FTestBatchOrchestratorLevelSetup turret_los_blocking_level_setup{};
-ml::FTestBatchOrchestratorLevelSetup turret_search_los_level_setup{};
 
 struct FTurretTestState {
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
@@ -355,9 +354,9 @@ TEST_CLASS(ZeroDamageTurrets, "Sandbox.LevelTests")
     }
 };
 
-TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
-{
-    using ThisClass = TurretLineOfSightBlocking;
+namespace ml {
+class FTurretLineOfSightBlockingScenario final : public FSimulationTestScenario {
+    using ThisClass = FTurretLineOfSightBlockingScenario;
     using time_type = ml::TestSimulationDriver::time_type;
 
     static constexpr time_type initial_enemy_check_time{1.0};
@@ -377,7 +376,6 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         {{5000.f, 0.f, 0.f}, ETestTeam::Red},
     };
 
-    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::TimeSeriesData<int32> laser_counts;
     ml::TimeSeriesData<int32> entity_counts;
@@ -385,16 +383,14 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     ml::TimeSeriesData<TArray<FVector3f>> registry_locations;
     TOptional<time_type> blocker_spawn_time{NullOpt};
 
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
+  public:
+    explicit FTurretLineOfSightBlockingScenario(FSimulationTestContext& context)
+        : FSimulationTestScenario{context} {
         test_driver.Reset();
         blocker_spawn_time.Reset();
 
-        turret_los_blocking_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
         TestCommandBuilder.Do([this] {
-            auto& world{turret_los_blocking_level_setup.get_world()};
+            auto& world{context_.world};
             ml::spawn_actors<ATestStaticTurretsProxy, turret_count>(
                 world, [&](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
                     if (phase == ESpawnPhase::PreSpawn) {
@@ -407,18 +403,11 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
                 });
         });
     }
-    AFTER_EACH()
-    {
+    void tear_down() override {
         if (test_driver.IsSet()) {
             test_driver->orchestrator.clear_end_tick_test_hook();
             test_driver->orchestrator.pause_simulation();
         }
-
-        turret_los_blocking_level_setup.end_test();
-    }
-    AFTER_ALL()
-    {
-        turret_los_blocking_level_setup.teardown();
     }
   private:
     void spawn_line_of_sight_blocker() {
@@ -450,8 +439,7 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     }
 
     void initial_setup() {
-        test_driver =
-            ml::TestSimulationDriver::from_world(turret_los_blocking_level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(context_.world);
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
         ml::reset_and_reserve_time_series(test_driver->orchestrator,
@@ -543,8 +531,8 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
         }
     }
 
-    TEST_METHOD(MainTest)
-    {
+  public:
+    void run() override {
         TestCommandBuilder.Do([this] { initial_setup(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] {
@@ -554,9 +542,8 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     }
 };
 
-TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
-{
-    using ThisClass = TurretSearchRequiresLineOfSight;
+class FTurretSearchRequiresLineOfSightScenario final : public FSimulationTestScenario {
+    using ThisClass = FTurretSearchRequiresLineOfSightScenario;
     using time_type = ml::TestSimulationDriver::time_type;
 
     static constexpr time_type test_end_time{1.0};
@@ -565,23 +552,20 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
     FName const blocked_enemy_name{TEXT("BlockedEnemy")};
     FName const visible_enemy_name{TEXT("VisibleEnemy")};
 
-    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     ml::TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
     FRegistryEntityHandle blocked_enemy_handle;
     FRegistryEntityHandle visible_enemy_handle;
 
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
+  public:
+    explicit FTurretSearchRequiresLineOfSightScenario(FSimulationTestContext& context)
+        : FSimulationTestScenario{context} {
         test_driver.Reset();
         blocked_enemy_handle.reset();
         visible_enemy_handle.reset();
 
-        turret_search_los_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
         TestCommandBuilder.Do([this] {
-            auto& world{turret_search_los_level_setup.get_world()};
+            auto& world{context_.world};
             ml::spawn_actors<ATestStaticTurretsProxy, 3>(
                 world, [this](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
                     if (phase == ESpawnPhase::PreSpawn) {
@@ -609,18 +593,12 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
             ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this, &ThisClass::bind);
         });
     }
-    AFTER_EACH()
-    {
+    void tear_down() override {
         ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
         if (test_driver.IsSet()) {
             test_driver->orchestrator.clear_end_tick_test_hook();
             test_driver->orchestrator.pause_simulation();
         }
-        turret_search_los_level_setup.end_test();
-    }
-    AFTER_ALL()
-    {
-        turret_search_los_level_setup.teardown();
     }
   private:
     void bind(FProxyEntityMap const& proxy_entities) {
@@ -646,8 +624,7 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
         test_driver->timeline.tick(test_driver->get_time());
     }
     void initial_setup() {
-        test_driver =
-            ml::TestSimulationDriver::from_world(turret_search_los_level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(context_.world);
         test_driver->orchestrator.start_simulation();
         checks.is_true(blocked_enemy_handle.is_valid(), TEXT("Blocked enemy handle is bound"));
         checks.is_true(visible_enemy_handle.is_valid(), TEXT("Visible enemy handle is bound"));
@@ -671,8 +648,8 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
                        TEXT("Blocked enemy is not selected as a target"));
     }
 
-    TEST_METHOD(MainTest)
-    {
+  public:
+    void run() override {
         TestCommandBuilder.Do([this] { initial_setup(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] {
@@ -681,3 +658,14 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
             });
     }
 };
+
+auto make_turret_line_of_sight_blocking_scenario(FSimulationTestContext& context)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FTurretLineOfSightBlockingScenario>(context);
+}
+
+auto make_turret_search_line_of_sight_scenario(FSimulationTestContext& context)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FTurretSearchRequiresLineOfSightScenario>(context);
+}
+}

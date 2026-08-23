@@ -4,6 +4,7 @@
 
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
@@ -92,8 +93,26 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
         return;
     }
 
+    orchestrator->clear_end_tick_test_hook();
     orchestrator->pause_simulation();
+
+    auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator->get_player_ship())};
+    if (IsValid(player_ship)) {
+        player_ship->Destroy();
+    }
+    orchestrator->clear_player_ship();
     orchestrator->reset_for_new_level();
+
+    reset_test_configuration();
+}
+
+void FTestBatchOrchestratorLevelSetup::reset_test_configuration() {
+    check(orchestrator.IsValid());
+    auto& mission_manager{orchestrator->get_mission_manager()};
+    mission_manager.set_mission_mode(ETestMissionMode::None);
+    mission_manager.set_target_time(60.f);
+    mission_manager.set_kill_target(5);
+    mission_manager.set_save_mission_results(false);
 }
 
 void FTestBatchOrchestratorLevelSetup::teardown() {
@@ -173,6 +192,7 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
 
     orchestrator = Cast<ATestBatchOrchestrator>(finished_orchestrator);
     state = ETestLevelState::Constructed;
+    reset_test_configuration();
     return true;
 }
 

@@ -5,6 +5,7 @@
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/time_series_test_data.h>
+#include "simulation_test_scenarios.h"
 
 #include <SandboxCore/time_series_data.h>
 
@@ -14,19 +15,14 @@
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestSpaceShipController.h>
 
-#include <CQTest.h>
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
 #include <Engine/World.h>
 #include <Misc/Optional.h>
 
-namespace {
-ml::FTestBatchOrchestratorLevelSetup player_ship_death_level_setup{};
-}
-
-TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
-{
-    using ThisClass = TestPlayerShipDeath;
+namespace ml {
+class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
+    using ThisClass = FTestPlayerShipDeathScenario;
 
     struct FSimulationSample {
         bool player_handle_is_dead{false};
@@ -38,47 +34,33 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
     static constexpr double kill_time{0.1};
     static constexpr double post_kill_time{0.4};
 
-    ml::FSoftTestAssertions checks{};
     TOptional<ml::TestSimulationDriver> test_driver{NullOpt};
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
     FRegistryEntityHandle player_ship_handle{};
     TestEntityUniqueId player_ship_id{};
     ml::TimeSeriesData<FSimulationSample> samples;
 
-    BEFORE_EACH()
-    {
+  public:
+    explicit FTestPlayerShipDeathScenario(FSimulationTestContext& context)
+        : FSimulationTestScenario{context} {
         test_driver.Reset();
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
         samples = {};
-        player_ship_death_level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
         TestCommandBuilder.Do([this] {
-            auto& world{player_ship_death_level_setup.get_world()};
-            auto const& config{player_ship_death_level_setup.get_config()};
+            auto& world{context_.world};
+            auto const& config{context_.config};
             player_ship_pre_begin_play(world, config);
-            auto* const orchestrator{player_ship_death_level_setup.get_orchestrator()};
+            auto* const orchestrator{&context_.orchestrator};
             if (checks.is_valid(orchestrator, TEXT("Orchestrator is available"))) {
                 player_ship_post_orchestrator_spawn(world, config, *orchestrator);
             }
         });
     }
 
-    AFTER_EACH()
-    {
-        if (auto* orchestrator{player_ship_death_level_setup.get_orchestrator()};
-            IsValid(orchestrator)) {
-            orchestrator->clear_end_tick_test_hook();
-        }
-        player_ship_death_level_setup.end_test();
+    void tear_down() override {
+        context_.orchestrator.clear_end_tick_test_hook();
     }
 
-    AFTER_ALL()
-    {
-        player_ship_death_level_setup.teardown();
-    }
-
-    TEST_METHOD(LethalDamageDestroysPlayerShip)
-    {
+    void run() override {
         TestCommandBuilder.Do([this] { queue_player_ship_death(); })
             .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
             .Then([this] { check_player_ship_death(); });
@@ -106,8 +88,7 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
     }
 
     void queue_player_ship_death() {
-        test_driver =
-            ml::TestSimulationDriver::from_world(player_ship_death_level_setup.get_world());
+        test_driver = ml::TestSimulationDriver::from_world(context_.world);
         test_driver->orchestrator.start_simulation();
 
         auto* const ship{test_driver->orchestrator.get_player_ship()};
@@ -166,3 +147,9 @@ TEST_CLASS(TestPlayerShipDeath, "Sandbox.LevelTests")
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 };
+
+auto make_player_ship_death_scenario(FSimulationTestContext& context)
+    -> TUniquePtr<FSimulationTestScenario> {
+    return MakeUnique<FTestPlayerShipDeathScenario>(context);
+}
+}

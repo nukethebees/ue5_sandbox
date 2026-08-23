@@ -41,6 +41,7 @@ class FTestBatchOrchestratorLevelSetup {
     auto get_state() const noexcept -> ETestLevelState { return state; }
     auto get_construction_count() const noexcept -> int32 { return construction_count; }
   private:
+    void reset_test_configuration();
     auto spawn_orchestrator(UWorld& world) -> bool;
     auto construct_level() -> bool;
 
