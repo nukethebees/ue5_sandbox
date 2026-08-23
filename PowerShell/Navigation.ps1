@@ -7,17 +7,39 @@ function Get-DevWorktree {
         throw "Unable to discover Git worktrees from '$script:dev_project_root'."
     }
 
+    $current_worktree = $null
+
     foreach ($line in $worktree_lines) {
-        if (-not $line.StartsWith('worktree ')) {
+        if ($line.StartsWith('worktree ')) {
+            if ($null -ne $current_worktree) {
+                [PSCustomObject]$current_worktree
+            }
+
+            $worktree_path = $line.Substring('worktree '.Length)
+            $current_worktree = [ordered]@{
+                Name = Split-Path -Leaf $worktree_path
+                Path = $worktree_path
+                Branch = $null
+            }
+
             continue
         }
 
-        $worktree_path = $line.Substring('worktree '.Length)
-
-        [PSCustomObject]@{
-            Name = Split-Path -Leaf $worktree_path
-            Path = $worktree_path
+        if ($null -eq $current_worktree -or -not $line.StartsWith('branch ')) {
+            continue
         }
+
+        $branch = $line.Substring('branch '.Length)
+
+        if ($branch.StartsWith('refs/heads/')) {
+            $branch = $branch.Substring('refs/heads/'.Length)
+        }
+
+        $current_worktree.Branch = $branch
+    }
+
+    if ($null -ne $current_worktree) {
+        [PSCustomObject]$current_worktree
     }
 }
 
@@ -45,7 +67,8 @@ The leading dot matters: it keeps the project's functions available after the sc
 Commands:
   dev-help          Show this help text.
   croot             Change to this repository/worktree root.
-  cwt <name>        Change to a Git worktree, matched by its directory name.
+  cwt <name>        Change to a Git worktree by directory name.
+  cwb [branch]      Change to the worktree containing a branch, or list branches.
   cplugin <name>    Change to a project plugin directory.
   ctests            Change to Source\SandboxTests.
 
@@ -84,6 +107,47 @@ function cwt {
 
     if ($matching_worktrees.Count -gt 1) {
         throw "Worktree name '$name' is ambiguous: $($matching_worktrees.Path -join ', ')."
+    }
+
+    Set-Location -LiteralPath $matching_worktrees[0].Path
+}
+
+function cwb {
+    param(
+        [ArgumentCompleter({
+                param($command_name, $parameter_name, $word_to_complete)
+
+                Get-DevWorktree |
+                    Where-Object {
+                        -not [string]::IsNullOrWhiteSpace($_.Branch) -and
+                        $_.Branch -like "$word_to_complete*"
+                    } |
+                    ForEach-Object {
+                        [System.Management.Automation.CompletionResult]::new(
+                            $_.Branch,
+                            $_.Branch,
+                            'ParameterValue',
+                            $_.Path)
+                    }
+            })]
+        [string]$branch
+    )
+
+    $worktrees = @(Get-DevWorktree | Where-Object { -not [string]::IsNullOrWhiteSpace($_.Branch) })
+
+    if ([string]::IsNullOrWhiteSpace($branch)) {
+        $worktrees | Select-Object Branch, Path
+        return
+    }
+
+    $matching_worktrees = @($worktrees | Where-Object { $_.Branch -eq $branch })
+
+    if ($matching_worktrees.Count -eq 0) {
+        throw "Branch '$branch' is not checked out in a worktree."
+    }
+
+    if ($matching_worktrees.Count -gt 1) {
+        throw "Branch '$branch' is checked out in multiple worktrees: $($matching_worktrees.Path -join ', ')."
     }
 
     Set-Location -LiteralPath $matching_worktrees[0].Path

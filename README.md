@@ -57,8 +57,9 @@ the root script:
 
 The leading dot matters: it loads the project's functions into the current session.
 Use `.\dev.ps1 --help` to discover commands without loading them. The initial commands
-are `croot`, `cwt <name>`, `cplugin <name>`, and `ctests`; `dev-help` repeats the help
-after loading.
+are `croot`, `cwt <name>`, `cwb [branch]`, `cplugin <name>`, and `ctests`; `dev-help`
+repeats the help after loading. Run `cwb` without a branch to list checked-out branches
+and their worktree directories.
 
 ## Command-line builds
 
