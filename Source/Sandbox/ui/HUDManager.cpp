@@ -25,6 +25,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     kill_data_buffers = {};
     player_status_data_buffers = {};
     player_flight_data_buffers = {};
+    selected_mapping_context.Reset();
     has_mission_data = false;
 #if WITH_EDITOR
     sampled_speed_data_buffers = {};

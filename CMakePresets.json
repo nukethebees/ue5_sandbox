@@ -121,8 +121,8 @@
         "outputOnFailure": true
       },
       "filter": {
-        "exclude": {
-          "label": "benchmark"
+        "include": {
+          "label": "^all$"
         }
       },
       "execution": {

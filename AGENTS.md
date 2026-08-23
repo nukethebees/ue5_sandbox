@@ -27,7 +27,8 @@ Unreal Engine 5.8 project.
 * Keep exploration targeted to directly relevant files and dependencies. Do not launch broad or parallel repository searches by default.
 * Do not inspect Unreal Engine source unless necessary to resolve an API or engine-behaviour question.
 * Once enough context exists to proceed safely, stop exploring and implement.
-* Prefer the smallest change that satisfies the request. Do not perform unrelated refactors.
+* Prefer the smallest coherent change that fully implements the requested design. Measure scope by conceptual and behavioural completeness, not by minimizing edited lines.
+* Do not preserve an architecture the user asked to replace by adding wrappers, adapters, compatibility layers, or other indirection solely to reduce the diff. Do not perform unrelated refactors.
 * If the user says "engage in freedom", "use your judgement", or otherwise grants autonomy, resolve reasonable ambiguities yourself while keeping scope controlled.
 
 # Coding Style

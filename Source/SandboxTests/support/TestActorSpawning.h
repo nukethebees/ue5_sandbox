@@ -32,4 +32,9 @@ auto spawn_capital_proxy(UWorld& world,
                          FSoftTestAssertions& checks,
                          FName const test_name,
                          FVector const& location) -> ATestCapitalShipProxy*;
+auto spawn_capital_proxy(UWorld& world,
+                         UTestSimulationConfig const& config,
+                         FSoftTestAssertions& checks,
+                         FName const test_name,
+                         FTransform const& transform) -> ATestCapitalShipProxy*;
 }

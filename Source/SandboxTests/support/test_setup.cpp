@@ -4,7 +4,7 @@
 
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+#include <Sandbox/batch_game/TestSpaceShip.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -87,82 +87,34 @@ void FTestBatchOrchestratorLevelSetup::begin_test(FTestCommandBuilder& command_b
     checks.is_valid(orchestrator.Get(), TEXT("Reusable test orchestrator is valid"));
 }
 
-FTestBatchOrchestratorLevelSetup::FTestBatchOrchestratorLevelSetup(
-    FMapTestSpawner& new_spawner,
-    FAutomationTestBase& new_test_runner,
-    FSoftTestAssertions& new_checks)
-    : legacy_spawner{&new_spawner}
-    , legacy_test_runner{&new_test_runner}
-    , legacy_checks{&new_checks} {}
-
 void FTestBatchOrchestratorLevelSetup::end_test() {
     if (!orchestrator.IsValid()) {
         return;
     }
 
+    orchestrator->clear_end_tick_test_hook();
     orchestrator->pause_simulation();
+
+    auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator->get_player_ship())};
+    if (IsValid(player_ship)) {
+        player_ship->Destroy();
+    }
+    orchestrator->clear_player_ship();
     orchestrator->reset_for_new_level();
+
+    reset_test_configuration();
 }
 
-void FTestBatchOrchestratorLevelSetup::setup(
-    FTestCommandBuilder& command_builder,
-    FConfigureBatchTestLevel new_configure_level,
-    FConfigureBatchTestOrchestrator new_configure_orchestrator) {
-    check(legacy_spawner);
-    check(legacy_test_runner);
-    check(legacy_checks);
-
-    legacy_configure_level = MoveTemp(new_configure_level);
-    legacy_configure_orchestrator = MoveTemp(new_configure_orchestrator);
-    legacy_spawner->AddWaitUntilLoadedCommand(legacy_test_runner);
-    command_builder.Do([this] {
-        auto& world{legacy_spawner->GetWorld()};
-        auto const* const loaded_config{load_default_test_simulation_config()};
-        if (!legacy_checks->not_nullptr(loaded_config,
-                                        TEXT("Default test simulation config loads")) ||
-            !legacy_checks->is_true(loaded_config->is_valid(),
-                                    TEXT("Default test simulation config is valid"))) {
-            return;
-        }
-
-        if (legacy_configure_level) {
-            legacy_configure_level(world, *loaded_config);
-        }
-
-        auto* const new_orchestrator{world.SpawnActorDeferred<ATestBatchOrchestrator>(
-            ATestBatchOrchestrator::StaticClass(), FTransform::Identity)};
-        if (!legacy_checks->is_valid(new_orchestrator, TEXT("Deferred orchestrator is spawned"))) {
-            return;
-        }
-
-        new_orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
-        new_orchestrator->set_test_config(*loaded_config);
-        new_orchestrator->spawn_missing_actors();
-        if (legacy_configure_orchestrator) {
-            legacy_configure_orchestrator(world, *loaded_config, *new_orchestrator);
-        }
-
-        orchestrator = Cast<ATestBatchOrchestrator>(
-            UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity));
-        legacy_checks->is_valid(orchestrator.Get(), TEXT("Orchestrator finish spawning succeeded"));
-    });
+void FTestBatchOrchestratorLevelSetup::reset_test_configuration() {
+    check(orchestrator.IsValid());
+    auto& mission_manager{orchestrator->get_mission_manager()};
+    mission_manager.set_mission_mode(ETestMissionMode::None);
+    mission_manager.set_target_time(60.f);
+    mission_manager.set_kill_target(5);
+    mission_manager.set_save_mission_results(false);
 }
 
 void FTestBatchOrchestratorLevelSetup::teardown() {
-    if (legacy_spawner) {
-        if (orchestrator.IsValid()) {
-            orchestrator->pause_simulation();
-        }
-
-        orchestrator.Reset();
-        legacy_spawner = nullptr;
-        legacy_test_runner = nullptr;
-        legacy_checks = nullptr;
-        legacy_configure_level = {};
-        legacy_configure_orchestrator = {};
-        return;
-    }
-
     if (IsValid(GUnrealEd->PlayWorld)) {
         GUnrealEd->EndPlayMap();
     }
@@ -188,8 +140,8 @@ auto FTestBatchOrchestratorLevelSetup::get_config() const -> UTestSimulationConf
 }
 
 auto FTestBatchOrchestratorLevelSetup::get_world() const -> UWorld& {
-    check(spawner || legacy_spawner);
-    return spawner ? spawner->GetWorld() : legacy_spawner->GetWorld();
+    check(spawner);
+    return spawner->GetWorld();
 }
 
 auto FTestBatchOrchestratorLevelSetup::construct_level() -> bool {
@@ -239,34 +191,8 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
 
     orchestrator = Cast<ATestBatchOrchestrator>(finished_orchestrator);
     state = ETestLevelState::Constructed;
+    reset_test_configuration();
     return true;
 }
 
-auto level_test_setup(FString const& map_directory,
-                      FString const& map_name,
-                      FAutomationTestBase* test_runner,
-                      FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner> {
-    auto spawner{MakeUnique<FMapTestSpawner>(map_directory, map_name)};
-    spawner->AddWaitUntilLoadedCommand(test_runner);
-
-    checks.test_runner = test_runner;
-    checks.all_passed = true;
-
-#if WITH_EDITOR
-    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
-    checks.log_successful_assertions = settings->log_successful_assertions;
-#endif
-
-    return spawner;
-}
-
-auto level_test_setup(FString const& map_name,
-                      FAutomationTestBase* test_runner,
-                      FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner> {
-    return ml::level_test_setup(
-        TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests"),
-        map_name,
-        test_runner,
-        checks);
-}
 }

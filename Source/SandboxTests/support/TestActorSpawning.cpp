@@ -96,13 +96,21 @@ auto spawn_capital_proxy(UWorld& world,
                          FSoftTestAssertions& checks,
                          FName const test_name,
                          FVector const& location) -> ATestCapitalShipProxy* {
+    return spawn_capital_proxy(
+        world, config, checks, test_name, FTransform{FRotator::ZeroRotator, location});
+}
+
+auto spawn_capital_proxy(UWorld& world,
+                         UTestSimulationConfig const& config,
+                         FSoftTestAssertions& checks,
+                         FName const test_name,
+                         FTransform const& transform) -> ATestCapitalShipProxy* {
     auto const proxy_class{config.actor_classes.capital_ship_proxy_class};
     if (!checks.is_true(IsValid(proxy_class), TEXT("Capital proxy actor class is available"))) {
         return nullptr;
     }
 
-    auto* const proxy{world.SpawnActorDeferred<ATestCapitalShipProxy>(
-        proxy_class, FTransform{FRotator::ZeroRotator, location})};
+    auto* const proxy{world.SpawnActorDeferred<ATestCapitalShipProxy>(proxy_class, transform)};
     if (!checks.is_valid(proxy, TEXT("Deferred capital proxy is spawned"))) {
         return nullptr;
     }
@@ -118,8 +126,7 @@ auto spawn_capital_proxy(UWorld& world,
     proxy->set_actor_config(capital_config);
     proxy->set_test_name(test_name);
 
-    auto* finished_actor{
-        UGameplayStatics::FinishSpawningActor(proxy, FTransform{FRotator::ZeroRotator, location})};
+    auto* finished_actor{UGameplayStatics::FinishSpawningActor(proxy, transform)};
     if (!checks.is_valid(finished_actor, TEXT("Finish spawning succeeded."))) {
         return nullptr;
     }

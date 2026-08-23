@@ -44,6 +44,7 @@ class ATestCapitalShipProxy
     auto get_spawn_cooldown() const noexcept { return spawn_cooldown; }
 
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
+    void set_target_ship(AActor* const new_target_ship) noexcept { target_ship = new_target_ship; }
     void set_health(TOptional<int32> const new_health) noexcept { health = new_health; }
     void set_initial_spawn_delay(TOptional<float> const new_delay) noexcept {
         initial_spawn_delay = new_delay;

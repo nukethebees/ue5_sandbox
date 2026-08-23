@@ -129,6 +129,7 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
     state = EOrchestratorState::Stopped;
     SetActorTickEnabled(false);
     stop_visual_logging();
+    clear_end_tick_test_hook();
 
     Super::EndPlay(end_play_reason);
 }
@@ -166,6 +167,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     SetActorTickEnabled(false);
     stop_visual_logging();
+    clear_end_tick_test_hook();
 
     TStaticArray<AActor*, 7> recreated_actors{};
     int32 recreated_actor_count{0};
@@ -264,6 +266,8 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         UGameplayStatics::FinishSpawningActor(recreated_actors[i], FTransform::Identity);
     }
 
+    mission_manager.reset_runtime_state();
+    completed_ticks = 0;
     state = EOrchestratorState::Uninitialised;
     if (should_initialise_in_begin_play()) {
         begin_play();
@@ -368,6 +372,9 @@ auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
 }
 void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
     player_ship = &new_player_ship;
+}
+void ATestBatchOrchestrator::clear_player_ship() {
+    player_ship = nullptr;
 }
 
 void ATestBatchOrchestrator::begin_play() {
@@ -485,7 +492,7 @@ void ATestBatchOrchestrator::begin_play() {
 }
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
     return start_mode == EOrchestratorStartMode::Automatic ||
-           start_mode == EOrchestratorStartMode::PausedInTest;
+           (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting);
 }
 
 void ATestBatchOrchestrator::start_visual_logging() {

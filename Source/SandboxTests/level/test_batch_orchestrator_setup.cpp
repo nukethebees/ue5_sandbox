@@ -1,4 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
+#include "test_batch_orchestrator_setup_scenario.h"
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
@@ -16,128 +17,108 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <CQTest.h>
+namespace ml {
+FTestBatchOrchestratorSetupScenario::FTestBatchOrchestratorSetupScenario(
+    FSimulationTestContext& context, EOrchestratorSetupScenario const scenario)
+    : FSimulationTestScenario{context}
+    , scenario_{scenario} {}
 
-namespace {
-
-ml::FTestBatchOrchestratorLevelSetup level_setup{};
-
-} // namespace
-
-TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
-{
-    ml::FSoftTestAssertions checks{};
-
-    BEFORE_EACH()
-    {
-        checks.test_runner = TestRunner;
-        checks.all_passed = true;
-
-        level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
+void FTestBatchOrchestratorSetupScenario::run() {
+    switch (scenario_) {
+        case EOrchestratorSetupScenario::SpawnMissingActors:
+            spawn_missing_actors();
+            break;
+        case EOrchestratorSetupScenario::SimulationClockConversions:
+            simulation_clock_conversions();
+            break;
     }
+}
 
-    AFTER_EACH()
-    {
-        level_setup.end_test();
-    }
+void FTestBatchOrchestratorSetupScenario::spawn_missing_actors() {
+    TestCommandBuilder.Do([this] {
+        auto* const orchestrator{&context_.orchestrator};
+        if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
+            return;
+        }
 
-    AFTER_ALL()
-    {
-        level_setup.teardown();
-    }
+        auto& world{context_.world};
 
-    TEST_METHOD(SpawnMissingActors)
-    {
-        TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup.get_orchestrator()};
-            if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
-                return;
-            }
+        TestRunner->TestTrue(TEXT("Paused test start mode defers orchestrator initialisation"),
+                             orchestrator->get_state() == EOrchestratorState::Uninitialised);
+        TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
+                              orchestrator->IsActorTickEnabled());
 
-            auto& world{level_setup.get_world()};
+        TestRunner->TestEqual(
+            TEXT("One lasers actor exists"), ml::count_actors<ATestLasers>(world), 1);
+        TestRunner->TestEqual(
+            TEXT("One capital ships actor exists"), ml::count_actors<ATestCapitalShips>(world), 1);
+        TestRunner->TestEqual(TEXT("One fighters actor exists"),
+                              ml::count_actors<ATestCapitalShipFighters>(world),
+                              1);
+        TestRunner->TestEqual(
+            TEXT("One turrets actor exists"), ml::count_actors<ATestStaticTurrets>(world), 1);
+        TestRunner->TestEqual(
+            TEXT("One spinners actor exists"), ml::count_actors<ATestTubeSpinners>(world), 1);
+        TestRunner->TestEqual(
+            TEXT("One Niagara spawner exists"), ml::count_actors<ADelayedNiagaraSpawner>(world), 1);
 
-            TestRunner->TestTrue(TEXT("Paused test start mode initialises the orchestrator"),
-                                 orchestrator->get_state() == EOrchestratorState::Paused);
-            TestRunner->TestFalse(TEXT("Paused orchestrator does not tick"),
-                                  orchestrator->IsActorTickEnabled());
+        TestRunner->TestNotNull(TEXT("Lasers are bound"), orchestrator->get_lasers());
+        TestRunner->TestNotNull(TEXT("Capital ships are bound"), orchestrator->get_capital_ships());
+        TestRunner->TestNotNull(TEXT("Fighters are bound"),
+                                orchestrator->get_capital_ship_fighters());
+        TestRunner->TestNotNull(TEXT("Turrets are bound"), orchestrator->get_turrets());
+        TestRunner->TestNotNull(TEXT("Spinners are bound"), orchestrator->get_spinners());
+        TestRunner->TestNotNull(TEXT("Entity registry is embedded"),
+                                &orchestrator->get_entity_registry());
+        TestRunner->TestNotNull(TEXT("Mission manager is embedded"),
+                                &orchestrator->get_mission_manager());
+        TestRunner->TestNotNull(TEXT("Niagara spawner is bound"),
+                                orchestrator->get_niagara_spawner());
 
-            TestRunner->TestEqual(
-                TEXT("One lasers actor exists"), ml::count_actors<ATestLasers>(world), 1);
-            TestRunner->TestEqual(TEXT("One capital ships actor exists"),
-                                  ml::count_actors<ATestCapitalShips>(world),
-                                  1);
-            TestRunner->TestEqual(TEXT("One fighters actor exists"),
-                                  ml::count_actors<ATestCapitalShipFighters>(world),
-                                  1);
-            TestRunner->TestEqual(
-                TEXT("One turrets actor exists"), ml::count_actors<ATestStaticTurrets>(world), 1);
-            TestRunner->TestEqual(
-                TEXT("One spinners actor exists"), ml::count_actors<ATestTubeSpinners>(world), 1);
-            TestRunner->TestEqual(TEXT("One Niagara spawner exists"),
-                                  ml::count_actors<ADelayedNiagaraSpawner>(world),
-                                  1);
+        auto const completed_ticks{orchestrator->get_completed_ticks()};
+        orchestrator->start_simulation();
 
-            TestRunner->TestNotNull(TEXT("Lasers are bound"), orchestrator->get_lasers());
-            TestRunner->TestNotNull(TEXT("Capital ships are bound"),
-                                    orchestrator->get_capital_ships());
-            TestRunner->TestNotNull(TEXT("Fighters are bound"),
-                                    orchestrator->get_capital_ship_fighters());
-            TestRunner->TestNotNull(TEXT("Turrets are bound"), orchestrator->get_turrets());
-            TestRunner->TestNotNull(TEXT("Spinners are bound"), orchestrator->get_spinners());
-            TestRunner->TestNotNull(TEXT("Entity registry is embedded"),
-                                    &orchestrator->get_entity_registry());
-            TestRunner->TestNotNull(TEXT("Mission manager is embedded"),
-                                    &orchestrator->get_mission_manager());
-            TestRunner->TestNotNull(TEXT("Niagara spawner is bound"),
-                                    orchestrator->get_niagara_spawner());
+        TestRunner->TestTrue(TEXT("Starting transitions the orchestrator to running"),
+                             orchestrator->get_state() == EOrchestratorState::Running);
+        TestRunner->TestTrue(TEXT("Running orchestrator ticks"),
+                             orchestrator->IsActorTickEnabled());
+        TestRunner->TestEqual(TEXT("Starting does not immediately advance simulation"),
+                              orchestrator->get_completed_ticks(),
+                              completed_ticks);
+    });
+}
 
-            auto const completed_ticks{orchestrator->get_completed_ticks()};
-            orchestrator->start_simulation();
+void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
+    TestCommandBuilder.Do([this] {
+        auto* const orchestrator{&context_.orchestrator};
+        if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
+            return;
+        }
 
-            TestRunner->TestTrue(TEXT("Starting transitions the orchestrator to running"),
-                                 orchestrator->get_state() == EOrchestratorState::Running);
-            TestRunner->TestTrue(TEXT("Running orchestrator ticks"),
-                                 orchestrator->IsActorTickEnabled());
-            TestRunner->TestEqual(TEXT("Starting does not immediately advance simulation"),
-                                  orchestrator->get_completed_ticks(),
-                                  completed_ticks);
-        });
-    }
+        TestRunner->TestEqual(
+            TEXT("Reusable level is constructed once"), context_.level_construction_count, 1);
+        TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
+                             orchestrator->get_state() == EOrchestratorState::Uninitialised);
 
-    TEST_METHOD(SimulationClockConversions)
-    {
-        TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup.get_orchestrator()};
-            if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
-                return;
-            }
+        ml::test_batch_orchestrator::SimulationClockInterface clock;
+        clock.bind(*orchestrator);
 
-            TestRunner->TestEqual(TEXT("Reusable level is constructed once"),
-                                  level_setup.get_construction_count(),
-                                  1);
-            TestRunner->TestTrue(TEXT("Reset restores the paused orchestrator state"),
-                                 orchestrator->get_state() == EOrchestratorState::Paused);
-
-            ml::test_batch_orchestrator::SimulationClockInterface clock;
-            clock.bind(*orchestrator);
-
-            TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
-                                  clock.frequency_to_tick_period(60.0),
-                                  uint64{1});
-            TestRunner->TestEqual(TEXT("Frequency periods round up"),
-                                  clock.frequency_to_tick_period(24.0),
-                                  uint64{3});
-            TestRunner->TestEqual(TEXT("Above-tick-rate frequency has a one-tick period"),
-                                  clock.frequency_to_tick_period(120.0),
-                                  uint64{1});
-            TestRunner->TestEqual(TEXT("Zero duration has a zero-tick period"),
-                                  clock.duration_to_tick_period(0.0),
-                                  uint64{0});
-            TestRunner->TestEqual(TEXT("One second uses the configured tick rate"),
-                                  clock.duration_to_tick_period(1.0),
-                                  uint64{60});
-            TestRunner->TestEqual(
-                TEXT("Duration periods round up"), clock.duration_to_tick_period(0.025), uint64{2});
-        });
-    }
-};
+        TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
+                              clock.frequency_to_tick_period(60.0),
+                              uint64{1});
+        TestRunner->TestEqual(
+            TEXT("Frequency periods round up"), clock.frequency_to_tick_period(24.0), uint64{3});
+        TestRunner->TestEqual(TEXT("Above-tick-rate frequency has a one-tick period"),
+                              clock.frequency_to_tick_period(120.0),
+                              uint64{1});
+        TestRunner->TestEqual(TEXT("Zero duration has a zero-tick period"),
+                              clock.duration_to_tick_period(0.0),
+                              uint64{0});
+        TestRunner->TestEqual(TEXT("One second uses the configured tick rate"),
+                              clock.duration_to_tick_period(1.0),
+                              uint64{60});
+        TestRunner->TestEqual(
+            TEXT("Duration periods round up"), clock.duration_to_tick_period(0.025), uint64{2});
+    });
+}
+}
