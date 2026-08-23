@@ -1,111 +1,53 @@
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
 
-#include "Styling/CoreStyle.h"
-
-#include <limits>
+#include "SandboxCore/graph_plot.h"
+#include "SandboxCoreEngine/widgets/SGraphPlot.h"
+#include "Widgets/DeclarativeSyntaxSupport.h"
 
 void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
                                     int32 const new_oldest_index) {
-    samples.Reset(in_samples.Num());
-    samples.Append(in_samples.GetData(), in_samples.Num());
-    oldest_index = new_oldest_index;
+    auto const sample_count{in_samples.Num()};
+    x_.Reset(sample_count);
+    y_.Reset(sample_count);
 
-    for (auto const& elem : samples) {
-        max_value = FMath::Max(max_value, FMath::Abs(elem.Y));
+    if (sample_count > 0) {
+        check(new_oldest_index >= 0 && new_oldest_index < sample_count);
+        auto const oldest_index{new_oldest_index};
+        auto const first_x{in_samples[oldest_index].X};
+        for (int32 i = 0; i < sample_count; ++i) {
+            auto const index{(oldest_index + i) % sample_count};
+            auto const& sample{in_samples[index]};
+            x_.Add(static_cast<float>(sample.X - first_x));
+            y_.Add(static_cast<float>(sample.Y));
+        }
     }
 
-    if (max_value < 1e-9) {
-        max_value = 1.0;
-    }
-
-    Invalidate(EInvalidateWidget::Paint);
+    ++revision_;
+    update_slate_series();
 }
 
-int32 UDebugGraphWidget::NativePaint(FPaintArgs const& args,
-                                     FGeometry const& geometry,
-                                     FSlateRect const& culling_rect,
-                                     FSlateWindowElementList& out_draw_elements,
-                                     int32 layer_id,
-                                     FWidgetStyle const& widget_style,
-                                     bool parent_enabled) const {
-    auto const size{geometry.GetLocalSize()};
+TSharedRef<SWidget> UDebugGraphWidget::RebuildWidget() {
+    SAssignNew(graph_widget_, SGraphPlot);
+    update_slate_series();
+    return graph_widget_.ToSharedRef();
+}
 
-    if (size.X <= 1.0f || size.Y <= 1.0f) {
-        return layer_id;
+void UDebugGraphWidget::ReleaseSlateResources(bool const release_children) {
+    Super::ReleaseSlateResources(release_children);
+    graph_widget_.Reset();
+}
+
+void UDebugGraphWidget::update_slate_series() {
+    if (!graph_widget_.IsValid()) {
+        return;
     }
 
-    constexpr float padding{6.0f};
-    FVector2d const origin{padding, padding};
-    FVector2d const graph_size{size.X - padding * 2.0f, size.Y - padding * 2.0f};
-
-    // ------------------------------------------------------------
-    // Background
-    // ------------------------------------------------------------
-    FSlateDrawElement::MakeBox(out_draw_elements,
-                               layer_id,
-                               geometry.ToPaintGeometry(),
-                               FCoreStyle::Get().GetBrush("WhiteBrush"),
-                               ESlateDrawEffect::None,
-                               FLinearColor(0.0f, 0.0f, 0.0f, 0.4f));
-
-    ++layer_id;
-
-    // ------------------------------------------------------------
-    // Axes
-    // ------------------------------------------------------------
-    TArray<FVector2D> axis_lines;
-    axis_lines.Reserve(4);
-
-    // X axis
-    axis_lines.Add(origin);
-    axis_lines.Add(origin + FVector2D{graph_size.X, 0.0f});
-
-    // Y axis
-    axis_lines.Add(origin);
-    axis_lines.Add(origin + FVector2D{0.0f, graph_size.Y});
-
-    FSlateDrawElement::MakeLines(out_draw_elements,
-                                 layer_id,
-                                 geometry.ToPaintGeometry(),
-                                 axis_lines,
-                                 ESlateDrawEffect::None,
-                                 FLinearColor::White,
-                                 true,
-                                 1.0f);
-
-    ++layer_id;
-
-    // ------------------------------------------------------------
-    // Graph line
-    // ------------------------------------------------------------
-    auto const n_samples{samples.Num()};
-
-    if (n_samples >= 2) {
-        TArray<FVector2D> points;
-        points.Reserve(n_samples);
-
-        for (int32 i = 0; i < n_samples; ++i) {
-            auto const index{(oldest_index + i) % n_samples};
-            auto const& sample{samples[index]};
-
-            float const x_alpha = static_cast<float>(i) / (n_samples - 1);
-            auto const y_alpha{sample.Y / max_value};
-
-            points.Emplace(origin.X + x_alpha * graph_size.X,
-                           origin.Y + (1.0f - y_alpha) * graph_size.Y);
-        }
-
-        FSlateDrawElement::MakeLines(out_draw_elements,
-                                     layer_id,
-                                     geometry.ToPaintGeometry(),
-                                     points,
-                                     ESlateDrawEffect::None,
-                                     FLinearColor::Green,
-                                     true,
-                                     1.5f);
-
-        ++layer_id;
-    }
-
-    return layer_id;
+    static FText const speed_series_name{FText::FromString(TEXT("Speed"))};
+    FGraphSeriesView const series{
+        .name = speed_series_name,
+        .x = x_,
+        .y = y_,
+        .style = {.color = FLinearColor::Green, .thickness = 1.0f, .antialias = false},
+    };
+    (void)graph_widget_->set_series(MakeArrayView(&series, 1), revision_);
 }
