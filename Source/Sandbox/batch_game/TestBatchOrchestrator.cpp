@@ -19,11 +19,21 @@
 #include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/invoke.h>
+#include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <CoreGlobals.h>
+#include <Engine/LevelScriptActor.h>
 #include <EngineUtils.h>
 #include <HAL/PlatformMisc.h>
+#include <GameFramework/GameModeBase.h>
+#include <GameFramework/GameStateBase.h>
+#include <GameFramework/HUD.h>
+#include <GameFramework/PhysicsVolume.h>
+#include <GameFramework/PlayerController.h>
+#include <GameFramework/PlayerState.h>
+#include <GameFramework/WorldSettings.h>
+#include <Kismet/GameplayStatics.h>
 #include <VisualLogger/VisualLogger.h>
 
 namespace {
@@ -107,7 +117,12 @@ ATestBatchOrchestrator::ATestBatchOrchestrator()
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
-    begin_play();
+    state = EOrchestratorState::Uninitialised;
+    if (should_initialise_in_begin_play()) {
+        begin_play();
+    } else {
+        SetActorTickEnabled(false);
+    }
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     hud_manager.deactivate();
@@ -119,6 +134,10 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
 }
 
 void ATestBatchOrchestrator::start_simulation() {
+    if (state == EOrchestratorState::Uninitialised) {
+        begin_play();
+    }
+
     if (state != EOrchestratorState::Paused) {
         UE_LOG(LogSandbox,
                Error,
@@ -133,6 +152,124 @@ void ATestBatchOrchestrator::start_simulation() {
 void ATestBatchOrchestrator::pause_simulation() {
     state = EOrchestratorState::Paused;
     SetActorTickEnabled(false);
+}
+void ATestBatchOrchestrator::reset_for_new_level() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::reset_for_new_level);
+
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("ATestBatchOrchestrator::reset_for_new_level: World is invalid"));
+        return;
+    }
+
+    SetActorTickEnabled(false);
+    stop_visual_logging();
+
+    TStaticArray<AActor*, 7> recreated_actors{};
+    int32 recreated_actor_count{0};
+    auto recreate_actor{[this, world, &recreated_actors, &recreated_actor_count]<typename T>(
+                            TObjectPtr<T>& actor) {
+        if (!IsValid(actor)) {
+            return;
+        }
+
+        auto* const old_actor{actor.Get()};
+        UClass* const actor_class{old_actor->GetClass()};
+        if (!IsValid(actor_class)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Actor class is invalid"));
+            return;
+        }
+
+        if (!old_actor->Destroy()) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Failed to destroy %s"),
+                   *old_actor->GetName());
+            return;
+        }
+
+        auto* const replacement{world->SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
+        if (!IsValid(replacement)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("ATestBatchOrchestrator::reset_for_new_level: Failed to spawn %s"),
+                   *actor_class->GetName());
+            actor = nullptr;
+            return;
+        }
+
+        mission_manager.replace_startup_actor(old_actor, *replacement);
+        actor = replacement;
+        recreated_actors[recreated_actor_count] = replacement;
+        ++recreated_actor_count;
+    }};
+
+    recreate_actor(player_ship);
+    recreate_actor(lasers);
+    recreate_actor(capital_ships);
+    recreate_actor(capital_ship_fighters);
+    recreate_actor(turrets);
+    recreate_actor(spinners);
+    recreate_actor(niagara_spawner);
+
+    auto is_retained_actor{[this, &recreated_actors](AActor const* const actor) {
+        if (actor == this || ml::actor_is_any<AWorldSettings,
+                                              AGameModeBase,
+                                              AGameStateBase,
+                                              APlayerController,
+                                              APlayerState,
+                                              AHUD,
+                                              ALevelScriptActor,
+                                              APhysicsVolume>(*actor)) {
+            return true;
+        }
+
+        for (auto* const recreated_actor : recreated_actors) {
+            if (actor == recreated_actor) {
+                return true;
+            }
+        }
+
+        return false;
+    }};
+    for (TActorIterator<AActor> it{world}; it;) {
+        auto* const actor{*it};
+        ++it;
+
+        if (!is_retained_actor(actor)) {
+            actor->Destroy();
+        }
+    }
+
+    constexpr auto apply_config{[](auto const actor_ptr, auto const actor_config) {
+        if (IsValid(actor_ptr)) {
+            apply_actor_config(*actor_ptr, actor_config.Get());
+        }
+    }};
+
+    if (IsValid(simulation_config)) {
+        apply_config(player_ship, simulation_config->player_ship_config);
+        apply_config(lasers, simulation_config->lasers_config);
+        apply_config(capital_ships, simulation_config->capital_ships_config);
+        apply_config(capital_ship_fighters, simulation_config->capital_ship_fighters_config);
+        apply_config(turrets, simulation_config->static_turrets_config);
+        apply_config(spinners, simulation_config->tube_spinners_config);
+    }
+
+    for (int32 i{0}; i < recreated_actor_count; ++i) {
+        UGameplayStatics::FinishSpawningActor(recreated_actors[i], FTransform::Identity);
+    }
+
+    state = EOrchestratorState::Uninitialised;
+    if (should_initialise_in_begin_play()) {
+        begin_play();
+    }
+
+    on_reset.Broadcast(*this);
 }
 
 void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config) {
@@ -239,6 +376,7 @@ void ATestBatchOrchestrator::begin_play() {
     completed_ticks = 0;
     simulation_tick_loop.initialise();
     hud_tick_loop.initialise();
+    mission_manager.reset_runtime_state();
 
     auto* world{GetWorld()};
 
@@ -344,6 +482,10 @@ void ATestBatchOrchestrator::begin_play() {
     if (state == EOrchestratorState::Running) {
         start_visual_logging();
     }
+}
+auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
+    return start_mode == EOrchestratorStartMode::Automatic ||
+           start_mode == EOrchestratorStartMode::PausedInTest;
 }
 
 void ATestBatchOrchestrator::start_visual_logging() {

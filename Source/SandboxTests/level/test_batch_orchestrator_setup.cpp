@@ -16,43 +16,47 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <Components/MapTestSpawner.h>
 #include <CQTest.h>
-#include <Misc/Optional.h>
+
+namespace {
+
+ml::FTestBatchOrchestratorLevelSetup level_setup{};
+
+} // namespace
 
 TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
 {
-    TUniquePtr<FMapTestSpawner> spawner{nullptr};
-    TOptional<ml::FTestBatchOrchestratorLevelSetup> level_setup{NullOpt};
     ml::FSoftTestAssertions checks{};
 
     BEFORE_EACH()
     {
         checks.test_runner = TestRunner;
         checks.all_passed = true;
-        spawner = FMapTestSpawner::CreateFromTempLevel(TestCommandBuilder);
-        level_setup.Emplace(*spawner, *TestRunner, checks);
-        level_setup->setup(TestCommandBuilder);
+
+        level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
     }
 
     AFTER_EACH()
     {
-        level_setup->teardown();
-        level_setup.Reset();
-        spawner.Reset();
+        level_setup.end_test();
+    }
+
+    AFTER_ALL()
+    {
+        level_setup.teardown();
     }
 
     TEST_METHOD(SpawnMissingActors)
     {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup->get_orchestrator()};
+            auto* const orchestrator{level_setup.get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
 
-            auto& world{level_setup->get_world()};
+            auto& world{level_setup.get_world()};
 
-            TestRunner->TestTrue(TEXT("Orchestrator begins paused in an automation test"),
+            TestRunner->TestTrue(TEXT("Paused test start mode initialises the orchestrator"),
                                  orchestrator->get_state() == EOrchestratorState::Paused);
             TestRunner->TestFalse(TEXT("Paused orchestrator does not tick"),
                                   orchestrator->IsActorTickEnabled());
@@ -103,10 +107,16 @@ TEST_CLASS(TestBatchOrchestratorSetup, "Sandbox.LevelTests")
     TEST_METHOD(SimulationClockConversions)
     {
         TestCommandBuilder.Do([this] {
-            auto* const orchestrator{level_setup->get_orchestrator()};
+            auto* const orchestrator{level_setup.get_orchestrator()};
             if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
                 return;
             }
+
+            TestRunner->TestEqual(TEXT("Reusable level is constructed once"),
+                                  level_setup.get_construction_count(),
+                                  1);
+            TestRunner->TestTrue(TEXT("Reset restores the paused orchestrator state"),
+                                 orchestrator->get_state() == EOrchestratorState::Paused);
 
             ml::test_batch_orchestrator::SimulationClockInterface clock;
             clock.bind(*orchestrator);

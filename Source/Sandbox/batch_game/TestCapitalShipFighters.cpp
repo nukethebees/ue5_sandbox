@@ -588,17 +588,11 @@ auto ATestCapitalShipFighters::get_const_task_view(Task task) const noexcept
 
 // Visuals
 void ATestCapitalShipFighters::configure_ismc() {
-    check(instances->SetStaticMesh(actor_config->mesh));
-
-    instances->SetCanEverAffectNavigation(false);
-
-    instances->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-
-    instances->SetGenerateOverlapEvents(false);
-    instances->SetReceivesDecals(false);
-
-    instances->SetRemoveSwap();
-    instances->SetNumCustomDataFloats(n_custom_ismc_floats);
+    ml::batch::configure_ismc(*instances,
+                              {
+                                  .mesh = actor_config->mesh.Get(),
+                                  .num_custom_data_floats = n_custom_ismc_floats,
+                              });
 }
 void ATestCapitalShipFighters::prepare_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::prepare_ismc_transforms);

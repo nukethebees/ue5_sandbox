@@ -11,6 +11,35 @@
 #include <HAL/Platform.h>
 
 namespace ml::batch {
+void configure_ismc(UInstancedStaticMeshComponent& instances, FIsmcConfig const& config) {
+    instances.SetMobility(EComponentMobility::Movable);
+    check(instances.SetStaticMesh(config.mesh));
+    instances.SetMobility(EComponentMobility::Static);
+
+    if (IsValid(config.material)) {
+        instances.SetMaterial(0, config.material);
+    }
+
+    instances.SetCanEverAffectNavigation(false);
+    instances.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    instances.SetCollisionResponseToAllChannels(ECR_Ignore);
+    instances.SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    instances.SetGenerateOverlapEvents(false);
+    instances.SetCastShadow(false);
+    instances.SetAffectDistanceFieldLighting(false);
+    instances.SetReceivesDecals(false);
+    instances.SetRemoveSwap();
+
+    if (config.cull_distances.IsSet()) {
+        auto const& cull_distances{config.cull_distances.GetValue()};
+        instances.SetCullDistances(cull_distances.min_distance, cull_distances.max_distance);
+    }
+
+    if (config.num_custom_data_floats.IsSet()) {
+        instances.SetNumCustomDataFloats(config.num_custom_data_floats.GetValue());
+    }
+}
+
 namespace {
 void apply_damage(int32 const local_index,
                   int32 const damage_amount,

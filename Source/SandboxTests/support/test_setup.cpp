@@ -15,11 +15,43 @@
 #include <Components/MapTestSpawner.h>
 #include <CoreMinimal.h>
 #include <Editor.h>
+#include <Editor/UnrealEdEngine.h>
 #include <Engine/World.h>
 #include <GameFramework/Actor.h>
+#include <HAL/FileManager.h>
 #include <Kismet/GameplayStatics.h>
+#include <LevelEditorSubsystem.h>
+#include <Misc/PackageName.h>
+#include <Misc/Paths.h>
+#include <Tests/AutomationEditorCommon.h>
+#include <UnrealEdGlobals.h>
 
 namespace ml {
+auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName const name)
+    -> AActor* {
+    auto* const blocker{world.SpawnActor<AActor>(AActor::StaticClass(), transform)};
+    if (!IsValid(blocker)) {
+        return nullptr;
+    }
+
+    auto* const collision{NewObject<UBoxComponent>(blocker, name)};
+    if (!IsValid(collision)) {
+        blocker->Destroy();
+        return nullptr;
+    }
+
+    blocker->AddInstanceComponent(collision);
+    blocker->SetRootComponent(collision);
+    collision->SetBoxExtent(FVector{100.f, 1000.f, 1000.f});
+    collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    collision->SetCollisionObjectType(ECC_WorldStatic);
+    collision->SetCollisionResponseToAllChannels(ECR_Ignore);
+    collision->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    collision->RegisterComponent();
+    blocker->SetActorTransform(transform);
+    return blocker;
+}
+
 auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
     if (!GEditor) {
         return std::unexpected(FErrorMsg{TEXT("GEditor is nullptr")});
@@ -33,138 +65,181 @@ auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
     return world;
 }
 
-auto spawn_visibility_blocker(UWorld& world,
-                              FVector const location,
-                              FVector const extent,
-                              FName const name) -> AActor* {
-    auto* const blocker{world.SpawnActor<AActor>(
-        AActor::StaticClass(), location, FRotator::ZeroRotator)};
-    if (!IsValid(blocker)) {
-        return nullptr;
+void FTestBatchOrchestratorLevelSetup::begin_test(FTestCommandBuilder& command_builder,
+                                                  FAutomationTestBase& test_runner,
+                                                  FSoftTestAssertions& checks) {
+    if (state == ETestLevelState::Unconstructed) {
+        if (!checks.is_true(construct_level(), TEXT("Reusable temporary level is constructed"))) {
+            return;
+        }
+
+        spawner->AddWaitUntilLoadedCommand(&test_runner);
+        command_builder.Do([this, &checks] {
+            if (!spawn_orchestrator(get_world())) {
+                checks.all_passed = false;
+            }
+        });
+        return;
     }
 
-    auto* const collision{NewObject<UBoxComponent>(blocker, name)};
-    if (!IsValid(collision)) {
-        return nullptr;
-    }
-
-    blocker->AddInstanceComponent(collision);
-    blocker->SetRootComponent(collision);
-    collision->SetBoxExtent(extent);
-    collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    collision->SetCollisionObjectType(ECC_WorldStatic);
-    collision->SetCollisionResponseToAllChannels(ECR_Ignore);
-    collision->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
-    collision->RegisterComponent();
-    return blocker;
+    checks.is_true(state == ETestLevelState::Constructed,
+                   TEXT("Reusable temporary level is constructed before use"));
+    checks.is_valid(orchestrator.Get(), TEXT("Reusable test orchestrator is valid"));
 }
-
-FTestBatchOrchestratorLevelSetup::~FTestBatchOrchestratorLevelSetup() = default;
 
 FTestBatchOrchestratorLevelSetup::FTestBatchOrchestratorLevelSetup(
     FMapTestSpawner& new_spawner,
     FAutomationTestBase& new_test_runner,
     FSoftTestAssertions& new_checks)
-    : spawner{&new_spawner}
-    , test_runner{&new_test_runner}
-    , checks{&new_checks} {}
+    : legacy_spawner{&new_spawner}
+    , legacy_test_runner{&new_test_runner}
+    , legacy_checks{&new_checks} {}
+
+void FTestBatchOrchestratorLevelSetup::end_test() {
+    if (!orchestrator.IsValid()) {
+        return;
+    }
+
+    orchestrator->pause_simulation();
+    orchestrator->reset_for_new_level();
+}
 
 void FTestBatchOrchestratorLevelSetup::setup(
     FTestCommandBuilder& command_builder,
     FConfigureBatchTestLevel new_configure_level,
     FConfigureBatchTestOrchestrator new_configure_orchestrator) {
-    check(spawner);
-    check(test_runner);
-    check(checks);
+    check(legacy_spawner);
+    check(legacy_test_runner);
+    check(legacy_checks);
 
-    configure_level = MoveTemp(new_configure_level);
-    configure_orchestrator = MoveTemp(new_configure_orchestrator);
-    orchestrator = nullptr;
-    actors_spawned = false;
-
-    map_change_handle = FEditorDelegates::MapChange.AddLambda([this](uint32 const flags) {
-        if (actors_spawned || !(flags & MapChangeEventFlags::NewMap)) {
+    legacy_configure_level = MoveTemp(new_configure_level);
+    legacy_configure_orchestrator = MoveTemp(new_configure_orchestrator);
+    legacy_spawner->AddWaitUntilLoadedCommand(legacy_test_runner);
+    command_builder.Do([this] {
+        auto& world{legacy_spawner->GetWorld()};
+        auto const* const loaded_config{load_default_test_simulation_config()};
+        if (!legacy_checks->not_nullptr(loaded_config,
+                                        TEXT("Default test simulation config loads")) ||
+            !legacy_checks->is_true(loaded_config->is_valid(),
+                                    TEXT("Default test simulation config is valid"))) {
             return;
         }
 
-        check(checks);
-        if (!checks->not_nullptr(GEditor, TEXT("Editor is available"))) {
+        if (legacy_configure_level) {
+            legacy_configure_level(world, *loaded_config);
+        }
+
+        auto* const new_orchestrator{world.SpawnActorDeferred<ATestBatchOrchestrator>(
+            ATestBatchOrchestrator::StaticClass(), FTransform::Identity)};
+        if (!legacy_checks->is_valid(new_orchestrator, TEXT("Deferred orchestrator is spawned"))) {
             return;
         }
 
-        auto* const world{GEditor->GetEditorWorldContext().World()};
-        if (!checks->not_nullptr(world, TEXT("Editor world is available"))) {
-            return;
+        new_orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
+        new_orchestrator->set_test_config(*loaded_config);
+        new_orchestrator->spawn_missing_actors();
+        if (legacy_configure_orchestrator) {
+            legacy_configure_orchestrator(world, *loaded_config, *new_orchestrator);
         }
 
-        actors_spawned = spawn_orchestrator(*world);
+        orchestrator = Cast<ATestBatchOrchestrator>(
+            UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity));
+        legacy_checks->is_valid(orchestrator.Get(), TEXT("Orchestrator finish spawning succeeded"));
     });
-
-    spawner->AddWaitUntilLoadedCommand(test_runner);
-    command_builder.Do([this] { resolve_orchestrator(); });
 }
 
 void FTestBatchOrchestratorLevelSetup::teardown() {
-    if (map_change_handle.IsValid()) {
-        FEditorDelegates::MapChange.Remove(map_change_handle);
-        map_change_handle.Reset();
+    if (legacy_spawner) {
+        if (orchestrator.IsValid()) {
+            orchestrator->pause_simulation();
+        }
+
+        orchestrator.Reset();
+        legacy_spawner = nullptr;
+        legacy_test_runner = nullptr;
+        legacy_checks = nullptr;
+        legacy_configure_level = {};
+        legacy_configure_orchestrator = {};
+        return;
     }
 
-    if (IsValid(orchestrator)) {
-        orchestrator->pause_simulation();
+    if (IsValid(GUnrealEd->PlayWorld)) {
+        GUnrealEd->EndPlayMap();
     }
 
-    orchestrator = nullptr;
-    test_runner = nullptr;
-    configure_level = {};
-    configure_orchestrator = {};
-    actors_spawned = false;
+    FAutomationEditorCommonUtils::CreateNewMap();
+    spawner.Reset();
+    orchestrator.Reset();
+    config = nullptr;
+
+    if (!map_directory.IsEmpty()) {
+        IFileManager::Get().DeleteDirectory(*map_directory, false, true);
+    }
+
+    map_directory.Reset();
+    map_name.Reset();
+    state = ETestLevelState::Unconstructed;
+    construction_count = 0;
+}
+
+auto FTestBatchOrchestratorLevelSetup::get_config() const -> UTestSimulationConfig const& {
+    check(IsValid(config));
+    return *config;
 }
 
 auto FTestBatchOrchestratorLevelSetup::get_world() const -> UWorld& {
-    check(spawner);
-    return spawner->GetWorld();
+    check(spawner || legacy_spawner);
+    return spawner ? spawner->GetWorld() : legacy_spawner->GetWorld();
+}
+
+auto FTestBatchOrchestratorLevelSetup::construct_level() -> bool {
+    check(state == ETestLevelState::Unconstructed);
+
+    if (IsValid(GUnrealEd->PlayWorld)) {
+        GUnrealEd->EndPlayMap();
+    }
+
+    map_directory = FPaths::Combine(FPaths::ProjectContentDir(),
+                                    TEXT("SandboxReusableTestLevels"),
+                                    FGuid::NewGuid().ToString(EGuidFormats::Digits));
+    map_name = TEXT("level");
+    auto const package_name{
+        FPackageName::FilenameToLongPackageName(FPaths::Combine(map_directory, map_name))};
+    auto* const level_editor_subsystem{GEditor->GetEditorSubsystem<ULevelEditorSubsystem>()};
+    if (!IsValid(level_editor_subsystem) || !level_editor_subsystem->NewLevel(package_name)) {
+        return false;
+    }
+
+    spawner = MakeUnique<FMapTestSpawner>(map_directory, map_name);
+    state = ETestLevelState::Constructing;
+    ++construction_count;
+    return true;
 }
 
 auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool {
-    auto const* const config{load_default_test_simulation_config()};
-    if (!checks->not_nullptr(config, TEXT("Default test simulation config loads"))) {
+    config = load_default_test_simulation_config();
+    if (!IsValid(config) || !config->is_valid()) {
         return false;
-    }
-    if (!checks->is_true(config->is_valid(), TEXT("Default test simulation config is valid"))) {
-        return false;
-    }
-
-    if (configure_level) {
-        configure_level(world, *config);
     }
 
     auto* const new_orchestrator{world.SpawnActorDeferred<ATestBatchOrchestrator>(
         ATestBatchOrchestrator::StaticClass(), FTransform::Identity)};
-    if (!checks->is_valid(new_orchestrator, TEXT("Deferred orchestrator is spawned"))) {
+    if (!IsValid(new_orchestrator)) {
         return false;
     }
 
     new_orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
     new_orchestrator->set_test_config(*config);
     new_orchestrator->spawn_missing_actors();
-
-    if (configure_orchestrator) {
-        configure_orchestrator(world, *config, *new_orchestrator);
-    }
-
     auto* const finished_orchestrator{
         UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity)};
-    return checks->is_valid(finished_orchestrator, TEXT("Orchestrator finish spawning succeeded"));
-}
-
-void FTestBatchOrchestratorLevelSetup::resolve_orchestrator() {
-    if (!checks->is_true(actors_spawned, TEXT("Actors are spawned from the map-change callback"))) {
-        return;
+    if (!IsValid(finished_orchestrator)) {
+        return false;
     }
 
-    orchestrator = ml::get_first_actor<ATestBatchOrchestrator>(spawner->GetWorld());
-    checks->is_valid(orchestrator, TEXT("PIE orchestrator is available"));
+    orchestrator = Cast<ATestBatchOrchestrator>(finished_orchestrator);
+    state = ETestLevelState::Constructed;
+    return true;
 }
 
 auto level_test_setup(FString const& map_directory,

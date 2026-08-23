@@ -420,9 +420,8 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     }
   private:
     void spawn_line_of_sight_blocker() {
-        auto& world{*test_driver->get_world()};
         auto* const blocker{ml::spawn_visibility_blocker(
-            world, FVector::ZeroVector, FVector{100.f, 1000.f, 1000.f}, TEXT("line_of_sight_blocker"))};
+            *test_driver->get_world(), FTransform::Identity, TEXT("line_of_sight_blocker"))};
         if (!checks.is_valid(blocker, TEXT("Line-of-sight blocker is spawned"))) {
             return;
         }
@@ -598,8 +597,10 @@ TEST_CLASS(TurretSearchRequiresLineOfSight, "Sandbox.LevelTests")
                                                             : FVector{1000.f, 1000.f, 0.f}));
                 });
 
-            auto* const blocker{ml::spawn_visibility_blocker(
-                world, FVector::ZeroVector, FVector{100.f, 200.f, 1000.f}, TEXT("search_los_blocker"))};
+            auto blocker_transform{FTransform::Identity};
+            blocker_transform.SetScale3D(FVector{1.f, 0.2f, 1.f});
+            auto* const blocker{
+                ml::spawn_visibility_blocker(world, blocker_transform, TEXT("search_los_blocker"))};
             if (!checks.is_valid(blocker, TEXT("Line-of-sight blocker is spawned"))) {
                 return;
             }

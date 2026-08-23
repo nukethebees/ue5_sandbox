@@ -416,7 +416,9 @@ void ATestLasers::merge_collision_data() {
 
 // Visuals
 void ATestLasers::configure_ismc() {
+    instances->SetMobility(EComponentMobility::Movable);
     check(instances->SetStaticMesh(actor_config->mesh));
+    instances->SetMobility(EComponentMobility::Static);
     instances->SetMaterial(0, actor_config->material);
 
     instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);

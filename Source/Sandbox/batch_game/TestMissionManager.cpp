@@ -22,8 +22,6 @@ void FTestMissionManager::begin_play() {
     check(entity_registry);
 
     startup_data.prune_invalid_actors();
-    mission_fail_reason = ETestMissionFailReason::None;
-    mission_kills = 0;
     initialise_entity_health_that_must_survive();
 
     switch (mission_mode) {
@@ -55,9 +53,9 @@ void FTestMissionManager::begin_play() {
                 break;
             }
 
-            if (kill_target <= 0) {
+            if (resolved_kill_target <= 0) {
                 auto const hero_team{entity_registry->get_team(hero_entity_handles[0])};
-                kill_target = entity_registry->count_alive_not_on_team(hero_team);
+                resolved_kill_target = entity_registry->count_alive_not_on_team(hero_team);
             }
 
             set_mission_state(ETestMissionState::Running);
@@ -70,7 +68,6 @@ void FTestMissionManager::begin_play() {
         }
     }
 
-    mission_elapsed_seconds = 0.f;
 }
 
 void FTestMissionManager::bind_simulation_clock(
@@ -79,6 +76,39 @@ void FTestMissionManager::bind_simulation_clock(
 }
 void FTestMissionManager::set_world(UWorld& new_world) noexcept {
     world = &new_world;
+}
+void FTestMissionManager::replace_startup_actor(AActor const* const old_actor,
+                                                AActor& new_actor) {
+    if (!old_actor) {
+        return;
+    }
+
+    auto replace_actor{[old_actor, &new_actor](TObjectPtr<AActor>& actor) {
+        if (actor == old_actor) {
+            actor = &new_actor;
+        }
+    }};
+
+    for (auto& actor : startup_data.hero_entities) {
+        replace_actor(actor);
+    }
+    for (auto& actor : startup_data.entities_must_survive) {
+        replace_actor(actor);
+    }
+}
+
+void FTestMissionManager::reset_runtime_state() {
+    hero_entity_handles.Reset();
+    hero_entity_ids.Reset();
+    entity_handles_that_must_survive.Reset();
+    entity_ids_that_must_survive.Reset();
+    entity_types_that_must_survive.Reset();
+    entity_health_that_must_survive.Reset();
+    mission_state = ETestMissionState::NotStarted;
+    mission_fail_reason = ETestMissionFailReason::None;
+    mission_kills = 0;
+    mission_elapsed_seconds = 0.f;
+    resolved_kill_target = kill_target;
 }
 
 void FTestMissionManager::set_mission_mode(ETestMissionMode const new_mode) {
@@ -93,6 +123,7 @@ void FTestMissionManager::set_target_time(float const new_target_time) {
 void FTestMissionManager::set_kill_target(int32 const new_kill_target) {
     check(mission_state == ETestMissionState::NotStarted);
     kill_target = new_kill_target;
+    resolved_kill_target = new_kill_target;
 }
 void FTestMissionManager::set_save_mission_results(bool const should_save) noexcept {
     check(mission_state == ETestMissionState::NotStarted);
@@ -268,14 +299,14 @@ void FTestMissionManager::mission_tick_survive_seconds() {
 void FTestMissionManager::mission_tick_kill_enemies() {
     update_mission_kills();
 
-    if (mission_kills >= kill_target) {
+    if (mission_kills >= resolved_kill_target) {
         set_mission_state(ETestMissionState::Succeeded);
     }
 }
 void FTestMissionManager::mission_tick_kill_enemies_within_time() {
     update_mission_kills();
 
-    if (mission_kills >= kill_target) {
+    if (mission_kills >= resolved_kill_target) {
         set_mission_state(ETestMissionState::Succeeded);
         return;
     }
@@ -349,7 +380,7 @@ void FTestMissionManager::handle_mission_ended(ETestMissionFailReason const fail
         .fail_reason = fail_reason,
         .kills = mission_kills,
         .time_seconds = mission_elapsed_seconds,
-        .target_kills = kill_target,
+        .target_kills = resolved_kill_target,
         .target_completion_time = target_time,
     };
 
