@@ -5,15 +5,19 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import override
 
 
 SCRIPT_PATH = Path(__file__).with_name("format-cpp.py")
 SPEC = importlib.util.spec_from_file_location("format_cpp", SCRIPT_PATH)
+if SPEC is None or SPEC.loader is None:
+    raise RuntimeError(f"Unable to load formatter module from {SCRIPT_PATH}")
 format_cpp = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(format_cpp)
 
 
 class FormatCppSelectionTests(unittest.TestCase):
+    @override
     def setUp(self) -> None:
         self.temporary_directory = tempfile.TemporaryDirectory()
         self.repository_root = Path(self.temporary_directory.name)
@@ -24,6 +28,7 @@ class FormatCppSelectionTests(unittest.TestCase):
         self.run_git("config", "user.email", "format-test@example.com")
         self.run_git("config", "user.name", "Format Test")
 
+    @override
     def tearDown(self) -> None:
         self.temporary_directory.cleanup()
 

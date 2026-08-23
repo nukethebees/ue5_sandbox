@@ -33,7 +33,7 @@ def get_file_extensions(format_hlsl: bool) -> set[str]:
 
 def find_files(directory: Path, extensions: set[str]) -> list[Path]:
     """Find all files with the given extensions recursively in the given directory."""
-    files = []
+    files: list[Path] = []
     if not directory.exists():
         print(f"WARNING: Directory not found: {directory}")
         return files
@@ -201,7 +201,7 @@ def main() -> None:
     if not check_clang_format():
         sys.exit(1)
 
-    errors = []
+    errors: list[str] = []
     for file_path in files:
         relative_path = file_path.relative_to(project_root)
         if args.verbose:
@@ -218,6 +218,8 @@ def main() -> None:
         sys.exit(1)
 
     if args.staged:
+        if repository_root is None:
+            raise RuntimeError("Repository root was not resolved for staged formatting")
         try:
             stage_files(repository_root, files)
         except RuntimeError as error:

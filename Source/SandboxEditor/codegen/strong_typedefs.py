@@ -3,11 +3,13 @@ Strong typedef code generator for Unreal Engine structs.
 Generates type-safe wrapper structs with reflection support.
 """
 
-import os
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List
+
+
+def string_list() -> list[str]:
+    return []
 
 
 @dataclass
@@ -24,9 +26,9 @@ class TypedefSpec:
     """Specification for a strong typedef to generate."""
     name: str                                           # "Ammo" -> FAmmoStrong
     underlying_type: str                                # "float", "uint32", etc.
-    ops: List[str] = field(default_factory=list)        # ["comparison", "arithmetic"]
-    members: List[str] = field(default_factory=list)    # ["clamp", "sqrt"]
-    includes: List[str] = field(default_factory=list)   # ["Sandbox/interfaces/inventory/InventoryItem.h"]
+    ops: list[str] = field(default_factory=string_list)        # ["comparison", "arithmetic"]
+    members: list[str] = field(default_factory=string_list)    # ["clamp", "sqrt"]
+    includes: list[str] = field(default_factory=string_list)   # ["Sandbox/interfaces/inventory/InventoryItem.h"]
     config: ConfigOptions = field(default_factory=ConfigOptions)
 
 
@@ -36,7 +38,7 @@ class StrongTypedefGenerator:
     def __init__(self, output_dir: str):
         self.output_dir = Path(output_dir)
 
-    def generate_all(self, typedefs: List[TypedefSpec]) -> bool:
+    def generate_all(self, typedefs: list[TypedefSpec]) -> bool:
         """Generate all typedef files."""
         print(f"Generating {len(typedefs)} strong typedefs...")
 
@@ -155,7 +157,7 @@ struct {struct_name} {{
 
         return content
 
-    def _generate_operators(self, op_group: str, spec: TypedefSpec, struct_name: str) -> List[str]:
+    def _generate_operators(self, op_group: str, spec: TypedefSpec, struct_name: str) -> list[str]:
         """Generate operators for a specific operator group."""
         comment = f"    // {op_group.capitalize()} operators"
 

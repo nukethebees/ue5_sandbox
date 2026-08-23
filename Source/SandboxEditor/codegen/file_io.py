@@ -9,8 +9,6 @@ class FileBuffer:
     namespace: Optional[str] = None
 
     def __iadd__(self, other: str) -> FileBuffer:
-        if not isinstance(other, str):
-            raise ValueError("Not a string")
         self.content += other
         return self
 
