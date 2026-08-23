@@ -57,6 +57,7 @@ Unreal Engine 5.8 project.
 * Only create tests when explicitly asked.
 * Run C++/Unreal builds and the available CTest suites yourself through the CMake workflows and presets. Do not launch Unreal or run Unreal automation tests outside the CMake flow unless explicitly asked.
 * Python scripts may be run when needed.
+* When editing Python, run Pyright on the changed files.
 * Use `FSoftTestAssertions` as the default assertion mechanism for level-based tests.
 * `SANDBOX_TESTS_ASSERT_ALL_PASSED` returns when a soft assertion has failed; use it to end assertion stages instead of adding duplicate failure branches.
 * All test levels that use the orchestrator and run a simulation must use `TestSimulationDriver` and call `start_simulation` when the test starts.
