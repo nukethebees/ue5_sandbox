@@ -83,3 +83,61 @@ TEST_CASE("SandboxCore.TimeSeriesData.Nearest lookup resolves ties to earlier en
     CHECK(data.nearest_time(4.0) == 2.0);
     CHECK(data.nearest_value(4.0) == 20);
 }
+
+TEST_CASE("SandboxCore.XYSeriesData.Integer X axis stores ticks and values") {
+    ml::XYSeriesData<uint64, FString> data;
+    FString const first_value{TEXT("first")};
+
+    data.add(10, first_value);
+    data.add(20, FString{TEXT("second")});
+
+    CHECK(data.times()[0] == 10);
+    CHECK(data.values()[0] == TEXT("first"));
+    CHECK(data.time_at(1) == 20);
+    CHECK(data.value_at(1) == TEXT("second"));
+    CHECK(data.last_time() == 20);
+    CHECK(data.last_value() == TEXT("second"));
+}
+
+TEST_CASE("SandboxCore.XYSeriesData.Integer X axis supports nearest lookup") {
+    ml::XYSeriesData<uint64, int32> data;
+    data.add(10, 100);
+    data.add(20, 200);
+    data.add(40, 400);
+
+    SECTION("before the first tick") {
+        CHECK(data.nearest_index(0) == 0);
+        CHECK(data.nearest_time(0) == 10);
+        CHECK(data.nearest_value(0) == 100);
+    }
+
+    SECTION("at a tick") {
+        CHECK(data.nearest_index(20) == 1);
+        CHECK(data.nearest_time(20) == 20);
+        CHECK(data.nearest_value(20) == 200);
+    }
+
+    SECTION("nearer the earlier tick") {
+        CHECK(data.nearest_index(13) == 0);
+        CHECK(data.nearest_time(13) == 10);
+        CHECK(data.nearest_value(13) == 100);
+    }
+
+    SECTION("nearer the later tick") {
+        CHECK(data.nearest_index(18) == 1);
+        CHECK(data.nearest_time(18) == 20);
+        CHECK(data.nearest_value(18) == 200);
+    }
+
+    SECTION("equidistant between ticks") {
+        CHECK(data.nearest_index(15) == 0);
+        CHECK(data.nearest_time(15) == 10);
+        CHECK(data.nearest_value(15) == 100);
+    }
+
+    SECTION("after the last tick") {
+        CHECK(data.nearest_index(50) == 2);
+        CHECK(data.nearest_time(50) == 40);
+        CHECK(data.nearest_value(50) == 400);
+    }
+}
