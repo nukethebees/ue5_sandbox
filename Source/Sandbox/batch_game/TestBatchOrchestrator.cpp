@@ -264,6 +264,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         UGameplayStatics::FinishSpawningActor(recreated_actors[i], FTransform::Identity);
     }
 
+    mission_manager.reset_runtime_state();
     state = EOrchestratorState::Uninitialised;
     if (should_initialise_in_begin_play()) {
         begin_play();
