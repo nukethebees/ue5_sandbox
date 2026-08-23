@@ -107,7 +107,10 @@ add_custom_target(format-all-code
 )
 
 add_custom_target(generate-project-files
-  COMMAND "${UE_GENERATE_PROJECT_FILES_SCRIPT}" "-Project=${SANDBOX_UPROJECT}" -WaitMutex
+  COMMAND "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
+    "-Project=${SANDBOX_UPROJECT}"
+    -Game
+    -WaitMutex
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "Generating Visual Studio project files for ${SANDBOX_UPROJECT}"
   USES_TERMINAL
