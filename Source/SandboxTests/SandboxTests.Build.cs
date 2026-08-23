@@ -35,6 +35,7 @@ public class SandboxTests : ModuleRules
             "AssetRegistry",
             "RenderCore",
             "UnrealEd",
+            "LevelEditor",
             "CQTest",
             "EnhancedInput",
             "UMG",
