@@ -14,6 +14,7 @@ class FAutomationTestBase;
 class FTestCommandBuilder;
 class UTestSimulationConfig;
 class UWorld;
+class AActor;
 class ATestBatchOrchestrator;
 
 namespace ml {
@@ -65,4 +66,5 @@ auto level_test_setup(FString const& map_name,
                       FSoftTestAssertions& checks) -> TUniquePtr<FMapTestSpawner>;
 
 auto get_editor_world() -> std::expected<UWorld*, FErrorMsg>;
+auto spawn_line_of_sight_blocker(UWorld& world, FTransform const& transform) -> AActor*;
 }

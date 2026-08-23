@@ -11,13 +11,39 @@
 #include <SandboxCore/error_msg.h>
 
 #include <Commands/TestCommandBuilder.h>
+#include <Components/BoxComponent.h>
 #include <Components/MapTestSpawner.h>
 #include <CoreMinimal.h>
 #include <Editor.h>
 #include <Engine/World.h>
+#include <GameFramework/Actor.h>
 #include <Kismet/GameplayStatics.h>
 
 namespace ml {
+auto spawn_line_of_sight_blocker(UWorld& world, FTransform const& transform) -> AActor* {
+    auto* const blocker{world.SpawnActor<AActor>(AActor::StaticClass(), transform)};
+    if (!IsValid(blocker)) {
+        return nullptr;
+    }
+
+    auto* const collision{NewObject<UBoxComponent>(blocker, TEXT("line_of_sight_blocker"))};
+    if (!IsValid(collision)) {
+        blocker->Destroy();
+        return nullptr;
+    }
+
+    blocker->AddInstanceComponent(collision);
+    blocker->SetRootComponent(collision);
+    collision->SetBoxExtent(FVector{100.f, 1000.f, 1000.f});
+    collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    collision->SetCollisionObjectType(ECC_WorldStatic);
+    collision->SetCollisionResponseToAllChannels(ECR_Ignore);
+    collision->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    collision->RegisterComponent();
+    blocker->SetActorTransform(transform);
+    return blocker;
+}
+
 auto get_editor_world() -> std::expected<UWorld*, FErrorMsg> {
     if (!GEditor) {
         return std::unexpected(FErrorMsg{TEXT("GEditor is nullptr")});

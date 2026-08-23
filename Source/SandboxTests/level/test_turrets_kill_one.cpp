@@ -15,14 +15,12 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <Components/BoxComponent.h>
 #include <Components/MapTestSpawner.h>
 #include <Containers/Set.h>
 #include <CQTest.h>
 #include <Editor.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
-#include <GameFramework/Actor.h>
 
 namespace {
 using time_type = ml::TestSimulationDriver::time_type;
@@ -422,26 +420,11 @@ TEST_CLASS(TurretLineOfSightBlocking, "Sandbox.LevelTests")
     }
   private:
     void spawn_line_of_sight_blocker() {
-        auto& world{*test_driver->get_world()};
-        auto* const blocker{world.SpawnActor<AActor>(
-            AActor::StaticClass(), FVector::ZeroVector, FRotator::ZeroRotator)};
+        auto* const blocker{
+            ml::spawn_line_of_sight_blocker(*test_driver->get_world(), FTransform::Identity)};
         if (!checks.is_valid(blocker, TEXT("Line-of-sight blocker is spawned"))) {
             return;
         }
-
-        auto* const collision{NewObject<UBoxComponent>(blocker, TEXT("line_of_sight_blocker"))};
-        if (!checks.not_nullptr(collision, TEXT("Line-of-sight blocker collision is created"))) {
-            return;
-        }
-
-        blocker->AddInstanceComponent(collision);
-        blocker->SetRootComponent(collision);
-        collision->SetBoxExtent(FVector{100.f, 1000.f, 1000.f});
-        collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-        collision->SetCollisionObjectType(ECC_WorldStatic);
-        collision->SetCollisionResponseToAllChannels(ECR_Ignore);
-        collision->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
-        collision->RegisterComponent();
 
         blocker_spawn_time = test_driver->get_time();
     }
