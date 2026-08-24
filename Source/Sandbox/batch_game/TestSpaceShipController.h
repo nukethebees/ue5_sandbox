@@ -11,7 +11,6 @@
 
 class UShipHudWidget;
 class UTestBatchGameUiData;
-class UInputAction;
 class ATestSpaceShip;
 class ATestBatchOrchestrator;
 
@@ -93,6 +92,8 @@ class ATestSpaceShipController
     void stop_brake(FInputActionValue const& value);
     UFUNCTION()
     void cycle_input_mapping_context();
+    UFUNCTION()
+    void toggle_pause_game();
 
     // Combat
     UFUNCTION()
@@ -123,23 +124,6 @@ class ATestSpaceShipController
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* lateral_move_input{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* vertical_move_input{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* sample_and_hold_input{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* ship_2d_control{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* ship_1d_control_x{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* ship_1d_control_y{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* cycle_next_control_mode_input{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
-    UInputAction* cycle_previous_control_mode_input{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     int32 input_mapping_context_index{0};

@@ -38,27 +38,27 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(input.move, Triggered, &ThisClass::set_move_input);
     bind(input.move, Completed, &ThisClass::move_completed);
 
-    bind(lateral_move_input, Triggered, &ThisClass::set_lateral_move_input);
-    bind(lateral_move_input, Completed, &ThisClass::lateral_move_completed);
-    bind(vertical_move_input, Triggered, &ThisClass::set_vertical_move_input);
-    bind(vertical_move_input, Completed, &ThisClass::vertical_move_completed);
+    bind(input.lateral_move, Triggered, &ThisClass::set_lateral_move_input);
+    bind(input.lateral_move, Completed, &ThisClass::lateral_move_completed);
+    bind(input.vertical_move, Triggered, &ThisClass::set_vertical_move_input);
+    bind(input.vertical_move, Completed, &ThisClass::vertical_move_completed);
 
-    bind(ship_2d_control, Started, &ThisClass::set_ship_2d_control_started);
-    bind(ship_2d_control, Triggered, &ThisClass::set_ship_2d_control);
-    bind(ship_2d_control, Completed, &ThisClass::ship_2d_control_completed);
+    bind(input.ship_2d_control, Started, &ThisClass::set_ship_2d_control_started);
+    bind(input.ship_2d_control, Triggered, &ThisClass::set_ship_2d_control);
+    bind(input.ship_2d_control, Completed, &ThisClass::ship_2d_control_completed);
 
-    bind(ship_1d_control_x, Started, &ThisClass::set_ship_2d_control_started);
-    bind(ship_1d_control_x, Triggered, &ThisClass::set_ship_1d_control_x);
-    bind(ship_1d_control_x, Completed, &ThisClass::ship_2d_control_completed);
-    bind(ship_1d_control_y, Started, &ThisClass::set_ship_2d_control_started);
-    bind(ship_1d_control_y, Triggered, &ThisClass::set_ship_1d_control_y);
-    bind(ship_1d_control_y, Completed, &ThisClass::ship_2d_control_completed);
+    bind(input.ship_1d_control_x, Started, &ThisClass::set_ship_2d_control_started);
+    bind(input.ship_1d_control_x, Triggered, &ThisClass::set_ship_1d_control_x);
+    bind(input.ship_1d_control_x, Completed, &ThisClass::ship_2d_control_completed);
+    bind(input.ship_1d_control_y, Started, &ThisClass::set_ship_2d_control_started);
+    bind(input.ship_1d_control_y, Triggered, &ThisClass::set_ship_1d_control_y);
+    bind(input.ship_1d_control_y, Completed, &ThisClass::ship_2d_control_completed);
 
-    bind(cycle_next_control_mode_input, Started, &ThisClass::cycle_next_control_mode);
-    bind(cycle_previous_control_mode_input, Started, &ThisClass::cycle_previous_control_mode);
+    bind(input.cycle_next_control_mode, Started, &ThisClass::cycle_next_control_mode);
+    bind(input.cycle_previous_control_mode, Started, &ThisClass::cycle_previous_control_mode);
 
-    bind(sample_and_hold_input, Started, &ThisClass::start_sampling);
-    bind(sample_and_hold_input, Completed, &ThisClass::stop_sampling);
+    bind(input.sample_and_hold, Started, &ThisClass::start_sampling);
+    bind(input.sample_and_hold, Completed, &ThisClass::stop_sampling);
 
     bind(input.turn, Triggered, &ThisClass::turn);
     bind(input.turn, Completed, &ThisClass::turn_completed);
@@ -77,6 +77,7 @@ void ATestSpaceShipController::SetupInputComponent() {
     bind(input.cycle_prev_fire_rate, Started, &ThisClass::cycle_prev_fire_rate);
     bind(input.cycle_next_fire_rate, Started, &ThisClass::cycle_next_fire_rate);
     bind(input.cycle_input_mapping_context, Started, &ThisClass::cycle_input_mapping_context);
+    bind(input.pause_game, Started, &ThisClass::toggle_pause_game);
 }
 void ATestSpaceShipController::set_mapping_context(UInputMappingContext const* context) {
     TRY_INIT_PTR(local_player, GetLocalPlayer());
@@ -389,6 +390,33 @@ void ATestSpaceShipController::cycle_input_mapping_context() {
     input_mapping_context_index = (input_mapping_context_index + 1) % n_contexts;
 
     set_mapping_context(input.mapping_contexts[input_mapping_context_index]);
+}
+void ATestSpaceShipController::toggle_pause_game() {
+    auto* const orchestrator{hud_orchestrator.Get()};
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::toggle_pause_game: Orchestrator is invalid."));
+        return;
+    }
+
+    switch (orchestrator->get_state()) {
+        case EOrchestratorState::Running: {
+            orchestrator->pause_simulation();
+            break;
+        }
+        case EOrchestratorState::Uninitialised:
+        case EOrchestratorState::Paused: {
+            orchestrator->start_simulation();
+            break;
+        }
+        case EOrchestratorState::Stopped: {
+            UE_LOG(LogSandboxController,
+                   Error,
+                   TEXT("ATestSpaceShipController::toggle_pause_game: Orchestrator is stopped."));
+            break;
+        }
+    }
 }
 
 // Laser
