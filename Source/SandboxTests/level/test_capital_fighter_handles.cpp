@@ -20,7 +20,6 @@
 
 #include <Containers/Set.h>
 #include <Misc/Optional.h>
-#include <UObject/SoftObjectPath.h>
 
 /*
 This test relies on a long spawn delay to ensure more fighters are not spawned.
@@ -42,20 +41,28 @@ void FCapitalFighterHandlesScenario::tear_down() {
 }
 
 void FCapitalFighterHandlesScenario::spawn_fixture() {
-    auto* const capital_config{Cast<UTestCapitalShipsConfig>(
-        FSoftObjectPath{FLevelTestConfigPaths::capital_fighter_handles_capital_config}.TryLoad())};
-    auto* const fighter_config{Cast<UTestCapitalShipFightersConfig>(
-        FSoftObjectPath{FLevelTestConfigPaths::capital_fighter_handles_fighter_config}.TryLoad())};
     auto* const capital_actor{
         const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
     auto* const fighter_actor{
         const_cast<ATestCapitalShipFighters*>(context_.orchestrator.get_capital_ship_fighters())};
-    if (!checks.not_nullptr(capital_config, TEXT("Capital handles capital config is loaded")) ||
-        !checks.not_nullptr(fighter_config, TEXT("Capital handles fighter config is loaded")) ||
-        !checks.is_valid(capital_actor, TEXT("Capital batch actor is available")) ||
+    if (!checks.is_valid(capital_actor, TEXT("Capital batch actor is available")) ||
         !checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available"))) {
         return;
     }
+
+    auto* const capital_config{duplicate_capital_ships_config(context_.config, *capital_actor)};
+    auto* const fighter_config{
+        duplicate_capital_ship_fighters_config(context_.config, *fighter_actor)};
+    if (!checks.not_nullptr(capital_config, TEXT("Capital handles capital config is created")) ||
+        !checks.not_nullptr(fighter_config, TEXT("Capital handles fighter config is created"))) {
+        return;
+    }
+    capital_config->spawn_delay = 10.f;
+    capital_config->max_health = 10000;
+    capital_config->visual_logger_style = nullptr;
+    fighter_config->speed = 2000.f;
+    fighter_config->laser_max_distance = 15000.f;
+    fighter_config->visual_logger_style = nullptr;
     capital_actor->set_actor_config(capital_config);
     fighter_actor->set_actor_config(fighter_config);
 

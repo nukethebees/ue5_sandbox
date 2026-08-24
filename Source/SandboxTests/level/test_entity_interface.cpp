@@ -18,8 +18,6 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <UObject/SoftObjectPath.h>
-
 namespace ml {
 FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
@@ -37,15 +35,20 @@ void FEntityInterfaceScenario::tear_down() {
 /* ------------------------------------------------------------------------------------------ */
 void FEntityInterfaceScenario::spawn_fixture() {
     auto const* const simulation_config{context_.config.simulation_config.Get()};
-    auto* const capital_config{Cast<UTestCapitalShipsConfig>(
-        FSoftObjectPath{FLevelTestConfigPaths::entity_interface_capital_config}.TryLoad())};
     auto* const capital_actor{
         const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
     if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available")) ||
-        !checks.not_nullptr(capital_config, TEXT("Entity interface capital config is loaded")) ||
         !checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
         return;
     }
+
+    auto* const capital_config{duplicate_capital_ships_config(context_.config, *capital_actor)};
+    if (!checks.not_nullptr(capital_config, TEXT("Entity interface capital config is created"))) {
+        return;
+    }
+    capital_config->spawn_delay = 10.f;
+    capital_config->max_health = 10000;
+    capital_config->visual_logger_style = nullptr;
     capital_actor->set_actor_config(capital_config);
 
     auto* const player{spawn_player_ship(context_.world,

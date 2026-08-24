@@ -1,11 +1,14 @@
 #include "SimulationTestAssets.h"
 
 #include <Sandbox/batch_game/SimulationConfig.h>
+#include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
+#include <Sandbox/batch_game/TestCapitalShipsConfig.h>
 #include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
+#include <UObject/UObjectGlobals.h>
 
 namespace ml {
 auto load_default_simulation_config() -> USimulationConfig const* {
@@ -46,5 +49,26 @@ auto get_default_test_config(FSoftTestAssertions& checks) -> UTestSimulationConf
         return nullptr;
     }
     return config;
+}
+
+auto duplicate_capital_ships_config(UTestSimulationConfig const& config, UObject& outer)
+    -> UTestCapitalShipsConfig* {
+    auto* const simulation_config{config.simulation_config.Get()};
+    auto* const capital_config{
+        IsValid(simulation_config) ? simulation_config->capital_ships_config.Get() : nullptr};
+    return IsValid(capital_config)
+             ? DuplicateObject<UTestCapitalShipsConfig>(capital_config, &outer)
+             : nullptr;
+}
+
+auto duplicate_capital_ship_fighters_config(UTestSimulationConfig const& config, UObject& outer)
+    -> UTestCapitalShipFightersConfig* {
+    auto* const simulation_config{config.simulation_config.Get()};
+    auto* const fighter_config{IsValid(simulation_config)
+                                   ? simulation_config->capital_ship_fighters_config.Get()
+                                   : nullptr};
+    return IsValid(fighter_config)
+             ? DuplicateObject<UTestCapitalShipFightersConfig>(fighter_config, &outer)
+             : nullptr;
 }
 }

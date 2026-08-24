@@ -17,8 +17,6 @@
 
 #include <SandboxCore/array_math.h>
 
-#include <UObject/SoftObjectPath.h>
-
 namespace ml {
 namespace {
 constexpr TStaticArray<int32, 6> expected_team_counts{0, 1, 2, 3, 4, 5};
@@ -52,14 +50,17 @@ void FEntityRegistryScenario::tear_down() {
 // Fixture
 /* ------------------------------------------------------------------------------------------ */
 void FEntityRegistryScenario::spawn_fixture() {
-    auto* const capital_config{Cast<UTestCapitalShipsConfig>(
-        FSoftObjectPath{FLevelTestConfigPaths::entity_registry_capital_config}.TryLoad())};
     auto* const capital_actor{
         const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
-    if (!checks.not_nullptr(capital_config, TEXT("Entity registry capital config is loaded")) ||
-        !checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
+    if (!checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
         return;
     }
+
+    auto* const capital_config{duplicate_capital_ships_config(context_.config, *capital_actor)};
+    if (!checks.not_nullptr(capital_config, TEXT("Entity registry capital config is created"))) {
+        return;
+    }
+    capital_config->visual_logger_style = nullptr;
     capital_actor->set_actor_config(capital_config);
 
     if (scenario_ != EEntityRegistryScenario::TeamCounts) {
