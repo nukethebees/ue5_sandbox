@@ -150,11 +150,21 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     initial_actor_count = initial_samples.last_value().actor_count;
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
+    auto const& telemetry{
+        test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
+    checks.is_true(!telemetry.is_empty(), TEXT("Initial level telemetry is populated"));
     test_driver->orchestrator.reset_for_new_level();
+    checks.is_true(telemetry.is_empty(), TEXT("Level reset clears telemetry"));
     reset_complete = true;
     test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorResetScenario::on_end_tick));
     test_driver->orchestrator.start_simulation();
+    checks.are_equal(int32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
+    checks.are_equal(uint64{0}, telemetry.last_time(), TEXT("Restart baseline uses tick zero"));
+    checks.are_equal(test_driver->registry.get_num_alive_active_entities(),
+                     telemetry.last_value(),
+                     TEXT("Restart baseline records active entities"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
 void FTestBatchOrchestratorResetScenario::check_reset() {

@@ -86,6 +86,12 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             ml::EOrchestratorSetupScenario::SimulationClockConversions);
     }
 
+    TEST_METHOD(Orchestrator_LevelTelemetry)
+    {
+        run_scenario<ml::FTestBatchOrchestratorSetupScenario>(
+            ml::EOrchestratorSetupScenario::LevelTelemetry);
+    }
+
     TEST_METHOD(Orchestrator_ResetForNewLevel)
     { run_scenario<ml::FTestBatchOrchestratorResetScenario>(); }
 
