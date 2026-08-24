@@ -3,8 +3,10 @@
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
+#include <Sandbox/batch_game/LevelTelemetryManager.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
@@ -16,6 +18,8 @@
 #include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
+
+#include <Misc/AutomationTest.h>
 
 namespace ml {
 FTestBatchOrchestratorSetupScenario::FTestBatchOrchestratorSetupScenario(
@@ -31,6 +35,16 @@ void FTestBatchOrchestratorSetupScenario::run() {
         case EOrchestratorSetupScenario::SimulationClockConversions:
             simulation_clock_conversions();
             break;
+        case EOrchestratorSetupScenario::LevelTelemetry:
+            level_telemetry();
+            break;
+    }
+}
+
+void FTestBatchOrchestratorSetupScenario::tear_down() {
+    if (test_driver.IsSet()) {
+        test_driver->orchestrator.clear_end_tick_test_hook();
+        test_driver->orchestrator.pause_simulation();
     }
 }
 
@@ -121,4 +135,148 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
             TEXT("Duration periods round up"), clock.duration_to_tick_period(0.025), uint64{2});
     });
 }
+
+void FTestBatchOrchestratorSetupScenario::level_telemetry() {
+    TestCommandBuilder.Do([this] { begin_level_telemetry(); })
+        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
+        .Then([this] { check_level_telemetry(); });
+}
+
+void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
+    test_driver = TestSimulationDriver::from_world(context_.world);
+    telemetry_observations.reset();
+    telemetry_observations.reserve(16);
+
+    test_driver->orchestrator.start_simulation();
+    initial_active_entity_count = test_driver->registry.get_num_alive_active_entities();
+    test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
+        this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
+    test_driver->timeline.then_after(0.05, [this] { add_telemetry_test_entity(); });
+    test_driver->timeline.finish_at(0.15);
+}
+
+void FTestBatchOrchestratorSetupScenario::add_telemetry_test_entity() {
+    auto const& telemetry{
+        test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
+    telemetry_samples_before_change = telemetry.num();
+
+    ml::entity_registry::EntityData entity_data;
+    entity_data.add_defaulted(1);
+    entity_data.set_all_alive();
+    test_driver->registry.add_entities(entity_data.get_const_view());
+}
+
+void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
+    ATestBatchOrchestrator& orchestrator) {
+    auto const& telemetry{
+        orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
+    check(!telemetry.is_empty());
+
+    telemetry_observations.add(
+        test_driver->get_time(),
+        FTelemetryObservation{
+            .completed_ticks = orchestrator.get_completed_ticks(),
+            .telemetry_sample_count = telemetry.num(),
+            .last_telemetry_tick = telemetry.last_time(),
+            .telemetry_entity_count = telemetry.last_value(),
+            .registry_entity_count = test_driver->registry.get_num_alive_active_entities(),
+        });
+    test_driver->timeline.tick(test_driver->get_time());
+}
+
+void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
+    checks.is_greater_than(
+        telemetry_observations.num(), int32{0}, TEXT("Telemetry observations recorded"));
+    if (telemetry_observations.is_empty()) {
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        return;
+    }
+
+    auto const& initial_observation{telemetry_observations.value_at(0)};
+    checks.are_equal(
+        int32{1}, initial_observation.telemetry_sample_count, TEXT("Tick-zero baseline recorded"));
+    checks.are_equal(
+        uint64{0}, initial_observation.last_telemetry_tick, TEXT("Baseline uses tick zero"));
+    checks.are_equal(initial_active_entity_count,
+                     initial_observation.telemetry_entity_count,
+                     TEXT("Baseline records initial active entities"));
+
+    int32 changed_observation_index{INDEX_NONE};
+    auto const observation_count{telemetry_observations.num()};
+    for (int32 i{0}; i < observation_count; ++i) {
+        if (telemetry_observations.value_at(i).telemetry_sample_count >
+            telemetry_samples_before_change) {
+            changed_observation_index = i;
+            break;
+        }
+    }
+    checks.is_true(changed_observation_index != INDEX_NONE,
+                   TEXT("Changed active entity count is sampled"));
+    if (changed_observation_index == INDEX_NONE) {
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        return;
+    }
+
+    auto const& changed_observation{telemetry_observations.value_at(changed_observation_index)};
+    checks.are_equal(changed_observation.completed_ticks,
+                     changed_observation.last_telemetry_tick,
+                     TEXT("Telemetry updates before the end-tick hook"));
+    checks.are_equal(changed_observation.registry_entity_count,
+                     changed_observation.telemetry_entity_count,
+                     TEXT("Telemetry records the active registry count"));
+    checks.are_equal(initial_active_entity_count + 1,
+                     changed_observation.telemetry_entity_count,
+                     TEXT("Added entity changes the telemetry count"));
+
+    auto const& final_observation{telemetry_observations.last_value()};
+    checks.are_equal(telemetry_samples_before_change + 1,
+                     final_observation.telemetry_sample_count,
+                     TEXT("Unchanged ticks do not add telemetry samples"));
+    checks.is_greater_than(final_observation.completed_ticks,
+                           final_observation.last_telemetry_tick,
+                           TEXT("Simulation continues after the last changed sample"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryManagerTest,
+                                 "Sandbox.level_telemetry_manager.active_entity_count",
+                                 EAutomationTestFlags::EditorContext |
+                                     EAutomationTestFlags::EngineFilter)
+
+auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
+    FTestEntityRegistry entity_registry;
+    FLevelTelemetryManager telemetry_manager;
+
+    telemetry_manager.initialise(entity_registry);
+    auto const& initial_data{telemetry_manager.get_active_entity_count_data()};
+    TestEqual(TEXT("Initialisation records one sample"), initial_data.num(), int32{1});
+    TestEqual(TEXT("Initial sample uses tick zero"), initial_data.last_time(), uint64{0});
+    TestEqual(TEXT("Initial sample records the active count"), initial_data.last_value(), 0);
+
+    telemetry_manager.tick(1, entity_registry);
+    TestEqual(TEXT("Unchanged count does not add a sample"), initial_data.num(), int32{1});
+
+    ml::entity_registry::EntityData entity_data;
+    entity_data.add_defaulted(2);
+    entity_data.set_all_alive();
+    entity_registry.add_entities(entity_data.get_const_view());
+
+    telemetry_manager.tick(2, entity_registry);
+    TestEqual(TEXT("Changed count adds a sample"), initial_data.num(), int32{2});
+    TestEqual(TEXT("Changed sample uses the supplied tick"), initial_data.last_time(), uint64{2});
+    TestEqual(TEXT("Changed sample records the active count"), initial_data.last_value(), 2);
+
+    telemetry_manager.tick(3, entity_registry);
+    TestEqual(TEXT("Repeated changed count remains sparse"), initial_data.num(), int32{2});
+
+    telemetry_manager.reset();
+    TestTrue(TEXT("Reset clears telemetry"), initial_data.is_empty());
+
+    telemetry_manager.initialise(entity_registry);
+    TestEqual(TEXT("Reinitialisation records one sample"), initial_data.num(), int32{1});
+    TestEqual(TEXT("Reinitialisation returns to tick zero"), initial_data.last_time(), uint64{0});
+    TestEqual(TEXT("Reinitialisation records the current count"), initial_data.last_value(), 2);
+
+    return true;
 }

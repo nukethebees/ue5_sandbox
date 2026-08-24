@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Sandbox/batch_game/LevelTelemetryManager.h>
 #include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/SimulationActorClasses.h>
 #include <Sandbox/batch_game/SimulationConfig.h>
@@ -96,6 +97,9 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
     auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
         return entity_registry;
     }
+    auto get_level_telemetry_manager() const noexcept -> FLevelTelemetryManager const& {
+        return level_telemetry_manager;
+    }
     auto get_entity_type(FRegistryEntityHandle const handle) const -> ETestEntityType {
         return entity_registry.get_entity_type(handle);
     }
@@ -162,6 +166,7 @@ class SANDBOX_API ATestBatchOrchestrator : public AActor {
 
     FHUDManager hud_manager;
     FTestEntityRegistry entity_registry;
+    FLevelTelemetryManager level_telemetry_manager;
     ml::FSpatialQueryManager query_manager;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))

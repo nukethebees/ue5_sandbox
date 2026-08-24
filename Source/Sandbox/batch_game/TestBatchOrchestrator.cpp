@@ -168,6 +168,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     SetActorTickEnabled(false);
     stop_visual_logging();
     clear_end_tick_test_hook();
+    level_telemetry_manager.reset();
 
     TStaticArray<AActor*, 7> recreated_actors{};
     int32 recreated_actor_count{0};
@@ -448,6 +449,7 @@ void ATestBatchOrchestrator::begin_play() {
 
     entity_registry.commit_updates();
     entity_registry.end_tick();
+    level_telemetry_manager.initialise(entity_registry);
 
     mission_manager.begin_play();
 
@@ -735,6 +737,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 #endif
 
         ++completed_ticks;
+        level_telemetry_manager.tick(completed_ticks, entity_registry);
         end_tick_test_hook.ExecuteIfBound(*this);
     }
 
