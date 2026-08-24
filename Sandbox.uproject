@@ -449,6 +449,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxUI",
+			"Enabled": true
+		},
+		{
 			"Name": "SandboxGameShared",
 			"Enabled": true
 		},
