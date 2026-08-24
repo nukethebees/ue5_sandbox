@@ -3,6 +3,7 @@
 #include "WidgetBlueprintGeneratorTestWidgets.h"
 
 #include <AssetRegistry/AssetData.h>
+#include <AssetRegistry/AssetRegistryModule.h>
 #include <Blueprint/WidgetTree.h>
 #include <Components/CanvasPanel.h>
 #include <Components/TextBlock.h>
@@ -26,9 +27,15 @@ FWidgetBlueprintGenerationEntry& add_test_entry(UWidgetBlueprintGenerationDataAs
     return entry;
 }
 
-bool delete_generated_widget(FWidgetBlueprintGenerationEntry& entry,
-                             UWidgetBlueprint* const widget_blueprint) {
-    entry.existing_widget = nullptr;
+UWidgetBlueprint* find_generated_widget(FName const widget_name) {
+    auto const widget_name_string{widget_name.ToString()};
+    FSoftObjectPath const object_path{FString::Printf(
+        TEXT("%s/%s.%s"), *test_output_directory, *widget_name_string, *widget_name_string)};
+    auto const asset_data{FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(object_path)};
+    return asset_data.IsValid() ? Cast<UWidgetBlueprint>(asset_data.GetAsset()) : nullptr;
+}
+
+bool delete_generated_widget(UWidgetBlueprint* const widget_blueprint) {
     if (!IsValid(widget_blueprint)) {
         return true;
     }
@@ -52,15 +59,15 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
                                    TEXT("WBP_GeneratorDefaultRootTest"))};
         generator->generate_widgets();
 
-        auto* const widget_blueprint{entry.existing_widget.Get()};
+        auto* const widget_blueprint{find_generated_widget(entry.widget_name)};
         TestRunner->TestFalse(TEXT("Successful generation clears the row"), entry.generate);
-        if (TestRunner->TestTrue(TEXT("Generated Widget Blueprint is recorded and valid"),
+        if (TestRunner->TestTrue(TEXT("Generated Widget Blueprint is registered and valid"),
                                  IsValid(widget_blueprint))) {
             auto* const widget_tree{widget_blueprint->WidgetTree.Get()};
             if (!TestRunner->TestTrue(TEXT("Generated Widget Blueprint has a valid Widget Tree"),
                                       IsValid(widget_tree))) {
                 TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
-                                     delete_generated_widget(entry, widget_blueprint));
+                                     delete_generated_widget(widget_blueprint));
                 return;
             }
 
@@ -81,7 +88,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
         }
 
         TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
-                             delete_generated_widget(entry, widget_blueprint));
+                             delete_generated_widget(widget_blueprint));
     }
 
     TEST_METHOD(PanelRoot)
@@ -92,15 +99,15 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
                                    TEXT("WBP_GeneratorPanelRootTest"))};
         generator->generate_widgets();
 
-        auto* const widget_blueprint{entry.existing_widget.Get()};
+        auto* const widget_blueprint{find_generated_widget(entry.widget_name)};
         TestRunner->TestFalse(TEXT("Successful generation clears the row"), entry.generate);
-        if (TestRunner->TestTrue(TEXT("Generated Widget Blueprint is recorded and valid"),
+        if (TestRunner->TestTrue(TEXT("Generated Widget Blueprint is registered and valid"),
                                  IsValid(widget_blueprint))) {
             auto* const widget_tree{widget_blueprint->WidgetTree.Get()};
             if (!TestRunner->TestTrue(TEXT("Generated Widget Blueprint has a valid Widget Tree"),
                                       IsValid(widget_tree))) {
                 TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
-                                     delete_generated_widget(entry, widget_blueprint));
+                                     delete_generated_widget(widget_blueprint));
                 return;
             }
 
@@ -138,7 +145,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
         }
 
         TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
-                             delete_generated_widget(entry, widget_blueprint));
+                             delete_generated_widget(widget_blueprint));
     }
 
     TEST_METHOD(NonPanelRootFails)
@@ -152,7 +159,7 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
 
         TestRunner->TestTrue(TEXT("Invalid GeneratorRoot leaves the row selected"), entry.generate);
         TestRunner->TestTrue(TEXT("Invalid GeneratorRoot does not generate an asset"),
-                             entry.existing_widget == nullptr);
+                             find_generated_widget(entry.widget_name) == nullptr);
     }
 
     TEST_METHOD(MultipleRootsFail)
@@ -167,6 +174,31 @@ TEST_CLASS(WidgetBlueprintGenerator, "SandboxEditor.UnitTests")
         TestRunner->TestTrue(TEXT("Multiple GeneratorRoot properties leave the row selected"),
                              entry.generate);
         TestRunner->TestTrue(TEXT("Multiple GeneratorRoot properties do not generate an asset"),
-                             entry.existing_widget == nullptr);
+                             find_generated_widget(entry.widget_name) == nullptr);
+    }
+
+    TEST_METHOD(ExistingAssetIsNotOverwritten)
+    {
+        Assert.ExpectError(TEXT("asset already exists"));
+        auto* const generator{create_generator()};
+        auto& entry{add_test_entry(*generator,
+                                   *UWidgetBlueprintGeneratorDefaultRootTestWidget::StaticClass(),
+                                   TEXT("WBP_GeneratorExistingAssetTest"))};
+        generator->generate_widgets();
+
+        auto* const original_widget_blueprint{find_generated_widget(entry.widget_name)};
+        if (TestRunner->TestTrue(TEXT("Initial Widget Blueprint is generated"),
+                                 IsValid(original_widget_blueprint))) {
+            entry.generate = true;
+            generator->generate_widgets();
+
+            TestRunner->TestTrue(TEXT("Existing asset leaves the row selected"), entry.generate);
+            TestRunner->TestTrue(TEXT("Existing Widget Blueprint is preserved"),
+                                 find_generated_widget(entry.widget_name) ==
+                                     original_widget_blueprint);
+        }
+
+        TestRunner->TestTrue(TEXT("Generated Widget Blueprint is deleted during cleanup"),
+                             delete_generated_widget(original_widget_blueprint));
     }
 };

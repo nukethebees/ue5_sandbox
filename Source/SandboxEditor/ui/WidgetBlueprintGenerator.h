@@ -6,8 +6,6 @@
 
 #include "WidgetBlueprintGenerator.generated.h"
 
-class UWidgetBlueprint;
-
 USTRUCT()
 struct SANDBOXEDITOR_API FWidgetBlueprintGenerationEntry {
     GENERATED_BODY()
@@ -23,9 +21,6 @@ struct SANDBOXEDITOR_API FWidgetBlueprintGenerationEntry {
 
     UPROPERTY(EditAnywhere, Category = "Generation")
     FName widget_name;
-
-    UPROPERTY(VisibleAnywhere, Transient, Category = "Generation")
-    TObjectPtr<UWidgetBlueprint> existing_widget{nullptr};
 };
 
 UCLASS(BlueprintType)
@@ -38,9 +33,7 @@ class SANDBOXEDITOR_API UWidgetBlueprintGenerationDataAsset : public UDataAsset 
     UFUNCTION(CallInEditor, Category = "Generation")
     void generate_widgets();
 
-    void PostLoad() override;
     void PostEditChangeProperty(FPropertyChangedEvent& event) override;
   private:
     void fill_empty_output_directories();
-    void refresh_existing_widgets();
 };

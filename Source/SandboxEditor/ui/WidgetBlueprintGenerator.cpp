@@ -9,7 +9,6 @@
 #include "Components/CanvasPanel.h"
 #include "Components/PanelWidget.h"
 #include "Misc/PackageName.h"
-#include "ObjectTools.h"
 #include "UObject/Package.h"
 #include "UObject/UnrealType.h"
 #include "WidgetBlueprint.h"
@@ -179,80 +178,6 @@ bool validate_entry(FWidgetBlueprintGenerationEntry const& entry,
                     *property_class->GetPathName());
             return false;
         }
-    }
-
-    return true;
-}
-
-bool delete_existing_asset(FWidgetBlueprintGenerationEntry& entry,
-                           int32 const entry_index,
-                           FSoftObjectPath const& object_path) {
-    auto& asset_registry{FAssetRegistryModule::GetRegistry()};
-    auto const asset_data{asset_registry.GetAssetByObjectPath(object_path)};
-    if (!asset_data.IsValid()) {
-        LOG_LOG("Widget generation row %d has no existing asset at '%s'.",
-                entry_index,
-                *object_path.ToString());
-        return true;
-    }
-
-    LOG_LOG("Widget generation row %d is deleting existing asset '%s'.",
-            entry_index,
-            *object_path.ToString());
-    LOG_LOG("Widget generation row %d stored existing_widget before clear: '%s'.",
-            entry_index,
-            *GetPathNameSafe(entry.existing_widget.Get()));
-    entry.existing_widget = nullptr;
-    LOG_LOG("Widget generation row %d stored existing_widget after clear: '%s'.",
-            entry_index,
-            *GetPathNameSafe(entry.existing_widget.Get()));
-
-    TWeakObjectPtr<UObject> asset_to_delete{asset_data.GetAsset()};
-    if (!asset_to_delete.IsValid()) {
-        LOG_ERR("Widget generation row %d could not load existing asset '%s' for deletion.",
-                entry_index,
-                *object_path.ToString());
-        return false;
-    }
-
-    bool is_referenced{false};
-    bool is_referenced_by_undo{false};
-    FReferencerInformationList referencers;
-    ObjectTools::GatherObjectReferencersForDeletion(
-        asset_to_delete.Get(), is_referenced, is_referenced_by_undo, &referencers);
-    LOG_LOG("Widget generation row %d delete preflight: stored existing_widget='%s', "
-            "referenced=%s, referenced_by_undo=%s, external_referencers=%d.",
-            entry_index,
-            *GetPathNameSafe(entry.existing_widget.Get()),
-            is_referenced ? TEXT("true") : TEXT("false"),
-            is_referenced_by_undo ? TEXT("true") : TEXT("false"),
-            referencers.ExternalReferences.Num());
-
-    auto const external_referencer_count{referencers.ExternalReferences.Num()};
-    for (int32 referencer_index{0}; referencer_index < external_referencer_count;
-         ++referencer_index) {
-        auto const& referencer{referencers.ExternalReferences[referencer_index]};
-        LOG_LOG("Widget generation row %d old asset is referenced by '%s'.",
-                entry_index,
-                *GetPathNameSafe(referencer.Referencer));
-    }
-
-    asset_to_delete.Reset();
-    TArray<FAssetData> assets_to_delete{asset_data};
-    auto const deleted_asset_count{ObjectTools::DeleteAssets(assets_to_delete, false)};
-    auto const asset_still_registered{asset_registry.GetAssetByObjectPath(object_path).IsValid()};
-    LOG_LOG("Widget generation row %d delete result: deleted=%d, requested=%d, "
-            "asset_still_registered=%s, stored existing_widget='%s'.",
-            entry_index,
-            deleted_asset_count,
-            assets_to_delete.Num(),
-            asset_still_registered ? TEXT("true") : TEXT("false"),
-            *GetPathNameSafe(entry.existing_widget.Get()));
-    if (deleted_asset_count != assets_to_delete.Num() || asset_still_registered) {
-        LOG_ERR("Widget generation row %d could not delete existing asset '%s'.",
-                entry_index,
-                *object_path.ToString());
-        return false;
     }
 
     return true;
@@ -512,16 +437,11 @@ void UWidgetBlueprintGenerationDataAsset::generate_widgets() {
     }
 
     if (selected_widget_count == 0) {
-        refresh_existing_widgets();
         LOG_WARN("Widget generation was requested, but no rows are selected.");
         return;
     }
 
     LOG_LOG("Preparing to generate %d Widget Blueprint row(s).", selected_widget_count);
-    for (auto& entry : widgets) {
-        entry.existing_widget = nullptr;
-    }
-    LOG_LOG("Cleared derived ExistingWidget references before generation.");
 
     auto const widget_count{widgets.Num()};
     for (int32 widget_index{0}; widget_index < widget_count; ++widget_index) {
@@ -541,7 +461,11 @@ void UWidgetBlueprintGenerationDataAsset::generate_widgets() {
             continue;
         }
 
-        if (!delete_existing_asset(entry, widget_index, object_path)) {
+        if (FAssetRegistryModule::GetRegistry().GetAssetByObjectPath(object_path).IsValid()) {
+            LOG_ERR("Widget generation row %d cannot create '%s' because the asset already "
+                    "exists. Delete the existing asset before generating it again.",
+                    widget_index,
+                    *object_path.ToString());
             continue;
         }
 
@@ -552,19 +476,12 @@ void UWidgetBlueprintGenerationDataAsset::generate_widgets() {
         }
 
         Modify();
-        entry.existing_widget = widget_blueprint;
         entry.generate = false;
         LOG_LOG("Widget generation row %d completed successfully.", widget_index);
     }
 
-    refresh_existing_widgets();
     MarkPackageDirty();
     LOG_LOG("Widget Blueprint generation finished.");
-}
-
-void UWidgetBlueprintGenerationDataAsset::PostLoad() {
-    Super::PostLoad();
-    refresh_existing_widgets();
 }
 
 void UWidgetBlueprintGenerationDataAsset::PostEditChangeProperty(FPropertyChangedEvent& event) {
@@ -574,8 +491,6 @@ void UWidgetBlueprintGenerationDataAsset::PostEditChangeProperty(FPropertyChange
         GET_MEMBER_NAME_CHECKED(UWidgetBlueprintGenerationDataAsset, widgets)) {
         fill_empty_output_directories();
     }
-
-    refresh_existing_widgets();
 }
 
 void UWidgetBlueprintGenerationDataAsset::fill_empty_output_directories() {
@@ -588,30 +503,6 @@ void UWidgetBlueprintGenerationDataAsset::fill_empty_output_directories() {
         if (entry.output_directory.Path.IsEmpty()) {
             entry.output_directory.Path = package_directory;
         }
-    }
-}
-
-void UWidgetBlueprintGenerationDataAsset::refresh_existing_widgets() {
-    auto& asset_registry{FAssetRegistryModule::GetRegistry()};
-    for (auto& entry : widgets) {
-        FString package_path;
-        FSoftObjectPath object_path;
-        FText path_error;
-        if (!try_make_asset_paths(entry, package_path, object_path, path_error)) {
-            entry.existing_widget = nullptr;
-            continue;
-        }
-
-        auto const asset_data{asset_registry.GetAssetByObjectPath(object_path)};
-        auto* const refreshed_widget{
-            asset_data.IsValid() ? Cast<UWidgetBlueprint>(asset_data.GetAsset()) : nullptr};
-        if (entry.existing_widget != refreshed_widget) {
-            LOG_LOG("Refreshing stored existing_widget for '%s' from '%s' to '%s'.",
-                    *object_path.ToString(),
-                    *GetPathNameSafe(entry.existing_widget.Get()),
-                    *GetPathNameSafe(refreshed_widget));
-        }
-        entry.existing_widget = refreshed_widget;
     }
 }
 
