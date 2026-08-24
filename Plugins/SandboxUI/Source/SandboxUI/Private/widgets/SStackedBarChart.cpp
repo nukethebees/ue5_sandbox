@@ -8,13 +8,13 @@ auto positive_value(float const value) -> float {
     return FMath::IsFinite(value) && value > 0.0f ? value : 0.0f;
 }
 
-void draw_box(FSlateWindowElementList& out_draw_elements,
-              int32 const layer_id,
-              FGeometry const& geometry,
-              FVector2f const position,
-              FVector2f const size,
-              ESlateDrawEffect const draw_effect,
-              FLinearColor const color) {
+void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,
+                          int32 const layer_id,
+                          FGeometry const& geometry,
+                          FVector2f const position,
+                          FVector2f const size,
+                          ESlateDrawEffect const draw_effect,
+                          FLinearColor const color) {
     if (size.X <= 0.0f || size.Y <= 0.0f) {
         return;
     }
@@ -159,13 +159,13 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
             allotted_geometry.ToPaintGeometry(plot_size, FSlateLayoutTransform{plot_origin})};
         out_draw_elements.PushClip(FSlateClippingZone{clip_geometry});
         for (auto const& segment : chart_geometry.segments) {
-            draw_box(out_draw_elements,
-                     segment_layer,
-                     allotted_geometry,
-                     plot_origin + segment.position,
-                     segment.size,
-                     draw_effect,
-                     segment.color * inherited_tint);
+            draw_stacked_bar_box(out_draw_elements,
+                                 segment_layer,
+                                 allotted_geometry,
+                                 plot_origin + segment.position,
+                                 segment.size,
+                                 draw_effect,
+                                 segment.color * inherited_tint);
         }
         out_draw_elements.PopClip();
     }
@@ -173,20 +173,20 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
     auto const axis_layer{segment_layer + 1};
     auto const axis_tint{style_.axis_color * inherited_tint};
     auto const axis_origin{FVector2f{style_.chart_padding.Left, style_.chart_padding.Top}};
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             axis_origin,
-             {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
-             draw_effect,
-             axis_tint);
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             {axis_origin.X, axis_origin.Y + plot_size.Y},
-             {plot_size.X + style_.axis_thickness, style_.axis_thickness},
-             draw_effect,
-             axis_tint);
+    draw_stacked_bar_box(out_draw_elements,
+                         axis_layer,
+                         allotted_geometry,
+                         axis_origin,
+                         {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
+                         draw_effect,
+                         axis_tint);
+    draw_stacked_bar_box(out_draw_elements,
+                         axis_layer,
+                         allotted_geometry,
+                         {axis_origin.X, axis_origin.Y + plot_size.Y},
+                         {plot_size.X + style_.axis_thickness, style_.axis_thickness},
+                         draw_effect,
+                         axis_tint);
 
     if (label_height <= 0.0f || chart_geometry.slot_width <= 0.0f) {
         return axis_layer;

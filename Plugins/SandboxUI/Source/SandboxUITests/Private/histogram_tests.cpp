@@ -5,10 +5,10 @@
 #include <limits>
 
 namespace {
-void test_float(FAutomationTestBase& test,
-                TCHAR const* const message,
-                float const actual,
-                float const expected) {
+void test_histogram_float(FAutomationTestBase& test,
+                          TCHAR const* const message,
+                          float const actual,
+                          float const expected) {
     test.TestTrue(message, FMath::IsNearlyEqual(actual, expected));
 }
 }
@@ -73,21 +73,25 @@ TEST_CLASS(HistogramGeometry, "SandboxUI.UnitTests")
 
         TestRunner->TestEqual(
             TEXT("The largest bin sets the shared scale"), geometry.maximum_count, 4);
-        test_float(*TestRunner, TEXT("Bins receive equal slots"), geometry.slot_width, 40.0f);
-        test_float(
+        test_histogram_float(
+            *TestRunner, TEXT("Bins receive equal slots"), geometry.slot_width, 40.0f);
+        test_histogram_float(
             *TestRunner, TEXT("The configured gap reduces bar width"), geometry.bar_width, 36.0f);
         TestRunner->TestEqual(TEXT("Only non-empty bins emit bars"), geometry.bars.Num(), 2);
 
         auto const& first{geometry.bars[0]};
         TestRunner->TestEqual(TEXT("Bar geometry retains its bin index"), first.bin_index, 0);
         TestRunner->TestEqual(TEXT("Bar geometry retains its count"), first.count, 2);
-        test_float(*TestRunner, TEXT("Half the maximum produces half height"), first.size.Y, 50.0f);
-        test_float(
+        test_histogram_float(
+            *TestRunner, TEXT("Half the maximum produces half height"), first.size.Y, 50.0f);
+        test_histogram_float(
             *TestRunner, TEXT("Short bars start above the baseline"), first.position.Y, 50.0f);
 
         auto const& second{geometry.bars[1]};
-        test_float(*TestRunner, TEXT("The maximum bin fills the plot"), second.size.Y, 100.0f);
-        test_float(*TestRunner, TEXT("The maximum bin reaches the top"), second.position.Y, 0.0f);
+        test_histogram_float(
+            *TestRunner, TEXT("The maximum bin fills the plot"), second.size.Y, 100.0f);
+        test_histogram_float(
+            *TestRunner, TEXT("The maximum bin reaches the top"), second.position.Y, 0.0f);
     }
 
     TEST_METHOD(HandlesEmptyAndZeroCounts)
@@ -100,7 +104,8 @@ TEST_CLASS(HistogramGeometry, "SandboxUI.UnitTests")
         TestRunner->TestTrue(TEXT("Empty bins emit no bars"), empty.bars.IsEmpty());
         TestRunner->TestEqual(TEXT("Zero bins have a zero maximum"), zero.maximum_count, 0);
         TestRunner->TestTrue(TEXT("Zero bins emit no bars"), zero.bars.IsEmpty());
-        test_float(*TestRunner, TEXT("Zero bins retain stable slots"), zero.slot_width, 50.0f);
+        test_histogram_float(
+            *TestRunner, TEXT("Zero bins retain stable slots"), zero.slot_width, 50.0f);
     }
 };
 
@@ -113,7 +118,7 @@ TEST_CLASS(HistogramData, "SandboxUI.UnitTests")
         widget->set_samples(samples);
         samples[0] = 3.5f;
 
-        test_float(
+        test_histogram_float(
             *TestRunner, TEXT("Lvalue snapshots are copied"), widget->get_samples()[0], 0.5f);
         TestRunner->TestEqual(TEXT("Owned samples are binned"), widget->get_bins()[0], 1);
 

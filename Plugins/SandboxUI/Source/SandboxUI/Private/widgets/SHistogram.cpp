@@ -5,13 +5,13 @@
 #include "Styling/CoreStyle.h"
 
 namespace {
-void draw_box(FSlateWindowElementList& out_draw_elements,
-              int32 const layer_id,
-              FGeometry const& geometry,
-              FVector2f const position,
-              FVector2f const size,
-              ESlateDrawEffect const draw_effect,
-              FLinearColor const color) {
+void draw_histogram_box(FSlateWindowElementList& out_draw_elements,
+                        int32 const layer_id,
+                        FGeometry const& geometry,
+                        FVector2f const position,
+                        FVector2f const size,
+                        ESlateDrawEffect const draw_effect,
+                        FLinearColor const color) {
     if (size.X <= 0.0f || size.Y <= 0.0f) {
         return;
     }
@@ -25,15 +25,15 @@ void draw_box(FSlateWindowElementList& out_draw_elements,
                                color);
 }
 
-void draw_label(FSlateWindowElementList& out_draw_elements,
-                int32 const layer_id,
-                FGeometry const& geometry,
-                FVector2f const position,
-                FVector2f const size,
-                FText const& label,
-                FSlateFontInfo const& font,
-                ESlateDrawEffect const draw_effect,
-                FLinearColor const color) {
+void draw_histogram_label(FSlateWindowElementList& out_draw_elements,
+                          int32 const layer_id,
+                          FGeometry const& geometry,
+                          FVector2f const position,
+                          FVector2f const size,
+                          FText const& label,
+                          FSlateFontInfo const& font,
+                          ESlateDrawEffect const draw_effect,
+                          FLinearColor const color) {
     if (size.X <= 0.0f || size.Y <= 0.0f || label.IsEmpty()) {
         return;
     }
@@ -207,13 +207,13 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
             allotted_geometry.ToPaintGeometry(plot_size, FSlateLayoutTransform{plot_origin})};
         out_draw_elements.PushClip(FSlateClippingZone{clip_geometry});
         for (auto const& bar : histogram_geometry.bars) {
-            draw_box(out_draw_elements,
-                     bar_layer,
-                     allotted_geometry,
-                     plot_origin + bar.position,
-                     bar.size,
-                     draw_effect,
-                     style_.bar_color * inherited_tint);
+            draw_histogram_box(out_draw_elements,
+                               bar_layer,
+                               allotted_geometry,
+                               plot_origin + bar.position,
+                               bar.size,
+                               draw_effect,
+                               style_.bar_color * inherited_tint);
         }
         out_draw_elements.PopClip();
     }
@@ -221,20 +221,20 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
     auto const axis_layer{bar_layer + 1};
     auto const axis_tint{style_.axis_color * inherited_tint};
     auto const axis_origin{FVector2f{style_.chart_padding.Left, style_.chart_padding.Top}};
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             axis_origin,
-             {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
-             draw_effect,
-             axis_tint);
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             {axis_origin.X, axis_origin.Y + plot_size.Y},
-             {plot_size.X + style_.axis_thickness, style_.axis_thickness},
-             draw_effect,
-             axis_tint);
+    draw_histogram_box(out_draw_elements,
+                       axis_layer,
+                       allotted_geometry,
+                       axis_origin,
+                       {style_.axis_thickness, plot_size.Y + style_.axis_thickness},
+                       draw_effect,
+                       axis_tint);
+    draw_histogram_box(out_draw_elements,
+                       axis_layer,
+                       allotted_geometry,
+                       {axis_origin.X, axis_origin.Y + plot_size.Y},
+                       {plot_size.X + style_.axis_thickness, style_.axis_thickness},
+                       draw_effect,
+                       axis_tint);
 
     if (label_height <= 0.0f || plot_size.X <= 0.0f ||
         !has_valid_domain(domain_minimum_, domain_maximum_)) {
@@ -244,24 +244,24 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
     auto const label_y{plot_origin.Y + plot_size.Y + style_.axis_thickness};
     auto const label_tint{style_.label_color * inherited_tint};
     auto const label_width{plot_size.X * 0.5f};
-    draw_label(out_draw_elements,
-               axis_layer,
-               allotted_geometry,
-               {plot_origin.X, label_y},
-               {label_width, label_height},
-               FText::AsNumber(domain_minimum_),
-               style_.label_font,
-               draw_effect,
-               label_tint);
-    draw_label(out_draw_elements,
-               axis_layer,
-               allotted_geometry,
-               {plot_origin.X + label_width, label_y},
-               {label_width, label_height},
-               FText::AsNumber(domain_maximum_),
-               style_.label_font,
-               draw_effect,
-               label_tint);
+    draw_histogram_label(out_draw_elements,
+                         axis_layer,
+                         allotted_geometry,
+                         {plot_origin.X, label_y},
+                         {label_width, label_height},
+                         FText::AsNumber(domain_minimum_),
+                         style_.label_font,
+                         draw_effect,
+                         label_tint);
+    draw_histogram_label(out_draw_elements,
+                         axis_layer,
+                         allotted_geometry,
+                         {plot_origin.X + label_width, label_y},
+                         {label_width, label_height},
+                         FText::AsNumber(domain_maximum_),
+                         style_.label_font,
+                         draw_effect,
+                         label_tint);
     return axis_layer;
 }
 
