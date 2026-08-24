@@ -9,6 +9,7 @@
 #include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestPlayerShipVsCapitalResults.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
@@ -18,12 +19,6 @@
 #include <UObject/SoftObjectPath.h>
 
 namespace ml {
-namespace {
-constexpr TCHAR fighter_config_path[]{
-    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests/")
-        TEXT("FuncT_player_ship_vs_capital/DA_TestCapitalShipFighters")};
-}
-
 FPlayerShipVsCapitalScenario::FPlayerShipVsCapitalScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     TestCommandBuilder.Do([this] { spawn_fixture(); });
@@ -39,8 +34,8 @@ void FPlayerShipVsCapitalScenario::tear_down() {
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FPlayerShipVsCapitalScenario::spawn_fixture() {
-    auto* const fighter_config{
-        Cast<UTestCapitalShipFightersConfig>(FSoftObjectPath{fighter_config_path}.TryLoad())};
+    auto* const fighter_config{Cast<UTestCapitalShipFightersConfig>(
+        FSoftObjectPath{FLevelTestConfigPaths::player_ship_vs_capital_fighter_config}.TryLoad())};
     auto* const fighter_actor{
         const_cast<ATestCapitalShipFighters*>(context_.orchestrator.get_capital_ship_fighters())};
     auto const* const simulation_config{context_.config.simulation_config.Get()};

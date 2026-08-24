@@ -9,6 +9,7 @@
 #include <Sandbox/batch_game/TestCapitalShipsConfig.h>
 #include <Sandbox/batch_game/TestTeam.h>
 
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
@@ -27,15 +28,6 @@ The assumption is that there is one wave of fighters total.
 */
 
 namespace ml {
-namespace {
-constexpr TCHAR capital_config_path[]{
-    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests/")
-        TEXT("FuncT_capital_fighter_handles/DA_TestCapitalShips_capital_fighter_handles")};
-constexpr TCHAR fighter_config_path[]{
-    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests/")
-        TEXT("FuncT_capital_fighter_handles/DA_TestCapitalShipFighters_capital_fighter_handles")};
-}
-
 FCapitalFighterHandlesScenario::FCapitalFighterHandlesScenario(
     FSimulationTestContext& context, ECapitalFighterHandlesScenario const scenario)
     : FSimulationTestScenario{context}
@@ -50,10 +42,10 @@ void FCapitalFighterHandlesScenario::tear_down() {
 }
 
 void FCapitalFighterHandlesScenario::spawn_fixture() {
-    auto* const capital_config{
-        Cast<UTestCapitalShipsConfig>(FSoftObjectPath{capital_config_path}.TryLoad())};
-    auto* const fighter_config{
-        Cast<UTestCapitalShipFightersConfig>(FSoftObjectPath{fighter_config_path}.TryLoad())};
+    auto* const capital_config{Cast<UTestCapitalShipsConfig>(
+        FSoftObjectPath{FLevelTestConfigPaths::capital_fighter_handles_capital_config}.TryLoad())};
+    auto* const fighter_config{Cast<UTestCapitalShipFightersConfig>(
+        FSoftObjectPath{FLevelTestConfigPaths::capital_fighter_handles_fighter_config}.TryLoad())};
     auto* const capital_actor{
         const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
     auto* const fighter_actor{

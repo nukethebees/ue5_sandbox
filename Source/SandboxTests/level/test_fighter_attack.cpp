@@ -9,18 +9,13 @@
 #include <Sandbox/batch_game/TestCapitalShips.h>
 
 #include <SandboxTests/support/level_checks.h>
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <UObject/SoftObjectPath.h>
 
 namespace ml {
-namespace {
-constexpr TCHAR fighter_config_path[]{
-    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests/")
-        TEXT("FuncT_fighter_attack/DA_TestCapitalShipFighters")};
-}
-
 FFighterAttackScenario::FFighterAttackScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     TestCommandBuilder.Do([this] { spawn_fixture(); });
@@ -37,8 +32,8 @@ void FFighterAttackScenario::tear_down() {
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FFighterAttackScenario::spawn_fixture() {
-    auto* const fighter_config{
-        Cast<UTestCapitalShipFightersConfig>(FSoftObjectPath{fighter_config_path}.TryLoad())};
+    auto* const fighter_config{Cast<UTestCapitalShipFightersConfig>(
+        FSoftObjectPath{FLevelTestConfigPaths::fighter_attack_fighter_config}.TryLoad())};
     auto* const fighter_actor{
         const_cast<ATestCapitalShipFighters*>(context_.orchestrator.get_capital_ship_fighters())};
     if (!checks.not_nullptr(fighter_config, TEXT("Fighter attack config is loaded")) ||

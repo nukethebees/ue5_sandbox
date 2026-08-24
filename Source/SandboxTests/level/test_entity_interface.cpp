@@ -12,6 +12,7 @@
 #include <Sandbox/batch_game/TestTeam.h>
 #include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
 
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
@@ -20,12 +21,6 @@
 #include <UObject/SoftObjectPath.h>
 
 namespace ml {
-namespace {
-constexpr TCHAR capital_config_path[]{
-    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests/")
-        TEXT("FuncT_simple_batch/DA_TestCapitalShips")};
-}
-
 FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     TestCommandBuilder.Do([this] { spawn_fixture(); });
@@ -42,8 +37,8 @@ void FEntityInterfaceScenario::tear_down() {
 /* ------------------------------------------------------------------------------------------ */
 void FEntityInterfaceScenario::spawn_fixture() {
     auto const* const simulation_config{context_.config.simulation_config.Get()};
-    auto* const capital_config{
-        Cast<UTestCapitalShipsConfig>(FSoftObjectPath{capital_config_path}.TryLoad())};
+    auto* const capital_config{Cast<UTestCapitalShipsConfig>(
+        FSoftObjectPath{FLevelTestConfigPaths::entity_interface_capital_config}.TryLoad())};
     auto* const capital_actor{
         const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
     if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available")) ||

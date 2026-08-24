@@ -11,6 +11,7 @@
 #include <Sandbox/batch_game/TestTeam.h>
 #include <SandboxGameShared/utilities/enums.h>
 
+#include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
@@ -21,9 +22,6 @@
 namespace ml {
 namespace {
 constexpr TStaticArray<int32, 6> expected_team_counts{0, 1, 2, 3, 4, 5};
-constexpr TCHAR capital_config_path[]{
-    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/test_levels/functional_tests/")
-        TEXT("FuncT_entity_registry/DA_TestCapitalShips_entity_registry")};
 }
 
 FEntityRegistryScenario::FEntityRegistryScenario(FSimulationTestContext& context,
@@ -54,8 +52,8 @@ void FEntityRegistryScenario::tear_down() {
 // Fixture
 /* ------------------------------------------------------------------------------------------ */
 void FEntityRegistryScenario::spawn_fixture() {
-    auto* const capital_config{
-        Cast<UTestCapitalShipsConfig>(FSoftObjectPath{capital_config_path}.TryLoad())};
+    auto* const capital_config{Cast<UTestCapitalShipsConfig>(
+        FSoftObjectPath{FLevelTestConfigPaths::entity_registry_capital_config}.TryLoad())};
     auto* const capital_actor{
         const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
     if (!checks.not_nullptr(capital_config, TEXT("Entity registry capital config is loaded")) ||
