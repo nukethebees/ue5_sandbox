@@ -33,6 +33,7 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
     struct FDefenceSample {
         ETestMissionState mission_state{ETestMissionState::NotStarted};
         int32 defended_entity_health{INDEX_NONE};
+        int32 required_kill_entity_health{INDEX_NONE};
         float mission_stopwatch{0.f};
         int32 registered_hud_count{0};
     };

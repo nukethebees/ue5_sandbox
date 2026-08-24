@@ -16,6 +16,8 @@ enum class EMissionManagerScenario : uint8 {
     KillEnemies,
     KillEnemiesWithinTime,
     DefenceObjective,
+    RequiredKillsObjective,
+    RequiredKillsTimeElapsed,
 };
 
 class FTestMissionManagerScenario final : public FSimulationTestScenario {
@@ -26,6 +28,7 @@ class FTestMissionManagerScenario final : public FSimulationTestScenario {
         ETestMissionFailReason mission_fail_reason{ETestMissionFailReason::None};
         int32 mission_kills{0};
         TArray<int32> surviving_entity_health;
+        TArray<int32> required_kill_entity_health;
     };
 
     static constexpr float short_mission_time{0.1f};
@@ -48,6 +51,7 @@ class FTestMissionManagerScenario final : public FSimulationTestScenario {
     void on_end_tick(ATestBatchOrchestrator& orchestrator);
     void queue_enemy_kill(FTestMissionManager const& manager);
     void queue_defended_entity_kill(FTestMissionManager const& manager);
+    void queue_required_entity_kill(FTestMissionManager const& manager);
     auto mission_has_ended() const -> bool;
     void check_scenario_result();
 

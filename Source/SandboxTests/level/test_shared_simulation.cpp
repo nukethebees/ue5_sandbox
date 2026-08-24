@@ -194,6 +194,18 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             ml::EMissionManagerScenario::DefenceObjective);
     }
 
+    TEST_METHOD(Mission_RequiredKillsObjective)
+    {
+        run_scenario<ml::FTestMissionManagerScenario>(
+            ml::EMissionManagerScenario::RequiredKillsObjective);
+    }
+
+    TEST_METHOD(Mission_RequiredKillsTimeElapsed)
+    {
+        run_scenario<ml::FTestMissionManagerScenario>(
+            ml::EMissionManagerScenario::RequiredKillsTimeElapsed);
+    }
+
     TEST_METHOD(PlayerShip_LethalDamageDestroysPlayerShip)
     { run_scenario<ml::FTestPlayerShipDeathScenario>(); }
 

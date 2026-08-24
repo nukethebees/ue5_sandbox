@@ -122,18 +122,30 @@ void FTestHUDManagerScenario::defence_pre_begin_play(UWorld& world,
     if (!IsValid(defended)) {
         return;
     }
+    ml::spawn_capital_proxy(
+        world, config, checks, FName{TEXT("required_enemy_capital")}, FVector{2000.f, 0.f, 0.f});
 }
 
 void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
                                                         ATestBatchOrchestrator& orchestrator) {
-    auto* const defended{ml::get_first_actor<ATestCapitalShipProxy>(world)};
-    check(defended);
+    auto const capitals{ml::get_actors<ATestCapitalShipProxy>(world)};
+    auto const find_capital{[&capitals](FName const test_name) {
+        auto* const* const capital{
+            capitals.FindByPredicate([test_name](ATestCapitalShipProxy const* const candidate) {
+                return candidate->get_test_name() == test_name;
+            })};
+        check(capital);
+        return *capital;
+    }};
+    auto* const defended{find_capital(FName{TEXT("defended_capital")})};
+    auto* const required_enemy{find_capital(FName{TEXT("required_enemy_capital")})};
 
     auto& mission_manager{orchestrator.get_mission_manager()};
     mission_manager.set_save_mission_results(false);
     mission_manager.set_mission_mode(ETestMissionMode::SurviveTime);
     mission_manager.set_target_time(10.f);
     mission_manager.add_entity_that_must_survive(*defended);
+    mission_manager.add_entity_required_to_kill(*required_enemy);
 }
 
 void FTestHUDManagerScenario::defence_begin() {
@@ -152,12 +164,28 @@ void FTestHUDManagerScenario::defence_begin() {
                      TEXT("Must-survive health is cached"));
     checks.is_true(initial_data.status_data.surviving_entity_health[0].health > 0,
                    TEXT("Must-survive entity starts healthy"));
+    checks.are_equal(1,
+                     initial_data.static_data.required_kill_entity_ids.Num(),
+                     TEXT("Required-kill ID is cached"));
+    checks.are_equal(1,
+                     initial_data.static_data.required_kill_entity_types.Num(),
+                     TEXT("Required-kill type is cached"));
+    checks.are_equal(1,
+                     initial_data.status_data.required_kill_entity_health.Num(),
+                     TEXT("Required-kill health is cached"));
+    checks.is_true(initial_data.status_data.required_kill_entity_health[0].health > 0,
+                   TEXT("Required-kill entity starts healthy"));
 
     auto const handles{
         test_driver->orchestrator.get_mission_manager().get_entity_handles_that_must_survive()};
     check(handles.Num() == 1);
-    test_driver->timeline.then_after(damage_queue_time,
-                                     [this, handles] { test_driver->queue_kills(handles); });
+    auto const required_handles{
+        test_driver->orchestrator.get_mission_manager().get_entity_handles_required_to_kill()};
+    check(required_handles.Num() == 1);
+    test_driver->timeline.then_after(damage_queue_time, [this, handles, required_handles] {
+        test_driver->queue_kills(required_handles);
+        test_driver->queue_kills(handles);
+    });
     ml::reset_and_reserve_time_series(test_driver->orchestrator, test_duration, defence_samples);
     test_driver->orchestrator.set_end_tick_test_hook(
         FOrchestratorEndTickTestHook::CreateRaw(this, &FTestHUDManagerScenario::defence_on_tick));
@@ -175,6 +203,9 @@ void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
     if (data.status_data.surviving_entity_health.Num() == 1) {
         sample.defended_entity_health = data.status_data.surviving_entity_health[0].health;
     }
+    if (data.status_data.required_kill_entity_health.Num() == 1) {
+        sample.required_kill_entity_health = data.status_data.required_kill_entity_health[0].health;
+    }
     defence_samples.add(test_driver->get_time(), sample);
     test_driver->timeline.tick(test_driver->get_time());
 }
@@ -188,6 +219,8 @@ void FTestHUDManagerScenario::defence_process_samples() {
         ETestMissionState::Failed, sample.mission_state, TEXT("Defence mission failure is cached"));
     checks.is_less_equal_than(
         sample.defended_entity_health, 0, TEXT("Destroyed must-survive health is cached"));
+    checks.is_less_equal_than(
+        sample.required_kill_entity_health, 0, TEXT("Destroyed required-kill health is cached"));
     checks.is_true(sample.mission_stopwatch > 0.f,
                    TEXT("Mission stopwatch follows simulation time"));
     checks.are_equal(0, sample.registered_hud_count, TEXT("Mission updates without a HUD"));
@@ -551,6 +584,12 @@ void FTestHUDManagerScenario::check_mission_data_equal(
     checks.is_true(local_static_data.surviving_entity_types ==
                        simulation_static_data.surviving_entity_types,
                    TEXT("Headless and simulation surviving mission entity types match"));
+    checks.is_true(local_static_data.required_kill_entity_ids ==
+                       simulation_static_data.required_kill_entity_ids,
+                   TEXT("Headless and simulation required-kill mission entity IDs match"));
+    checks.is_true(local_static_data.required_kill_entity_types ==
+                       simulation_static_data.required_kill_entity_types,
+                   TEXT("Headless and simulation required-kill mission entity types match"));
 
     auto const& local_status_data{local.status_data};
     auto const& simulation_status_data{simulation.status_data};
@@ -584,6 +623,28 @@ void FTestHUDManagerScenario::check_mission_data_equal(
                          simulation_health.max_health,
                          TEXT("Headless and simulation surviving mission maximum health matches"),
                          i);
+    }
+
+    auto const local_required_health_count{local_status_data.required_kill_entity_health.Num()};
+    auto const simulation_required_health_count{
+        simulation_status_data.required_kill_entity_health.Num()};
+    checks.are_equal(local_required_health_count,
+                     simulation_required_health_count,
+                     TEXT("Headless and simulation required-kill mission health counts match"));
+    auto const required_health_count{
+        FMath::Min(local_required_health_count, simulation_required_health_count)};
+    for (int32 i{0}; i < required_health_count; ++i) {
+        auto const& local_health{local_status_data.required_kill_entity_health[i]};
+        auto const& simulation_health{simulation_status_data.required_kill_entity_health[i]};
+        checks.are_equal(local_health.health,
+                         simulation_health.health,
+                         TEXT("Headless and simulation required-kill mission health matches"),
+                         i);
+        checks.are_equal(
+            local_health.max_health,
+            simulation_health.max_health,
+            TEXT("Headless and simulation required-kill mission maximum health matches"),
+            i);
     }
 }
 
