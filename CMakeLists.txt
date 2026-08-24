@@ -130,6 +130,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.UnitTests
   Sandbox.USFPathValidation
   SandboxCoreEngine.UnitTests
+  SandboxUI.UnitTests
 )
 set(SANDBOX_LEVEL_AUTOMATION_FILTERS
   Sandbox.LevelTests
