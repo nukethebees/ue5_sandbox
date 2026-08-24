@@ -30,7 +30,7 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
     void simulation_clock_conversions();
     void level_telemetry();
     void begin_level_telemetry();
-    void add_telemetry_test_entity();
+    void kill_telemetry_test_entity();
     void on_level_telemetry_end_tick(ATestBatchOrchestrator& orchestrator);
     void check_level_telemetry();
 

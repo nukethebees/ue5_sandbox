@@ -2,16 +2,18 @@
 #include "test_batch_orchestrator_setup_scenario.h"
 
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/TestActorSpawning.h>
 
 #include <Sandbox/batch_game/LevelTelemetryManager.h>
 #include <Sandbox/batch_game/SimulationClockInterface.h>
+#include <Sandbox/batch_game/SimulationConfig.h>
 #include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 #include <Sandbox/batch_game/TestCapitalShips.h>
 #include <Sandbox/batch_game/TestLasers.h>
 #include <Sandbox/batch_game/TestMissionManager.h>
+#include <Sandbox/batch_game/TestSimulationConfig.h>
 #include <Sandbox/batch_game/TestSpaceShip.h>
 #include <Sandbox/batch_game/TestStaticTurrets.h>
 #include <Sandbox/batch_game/TestTubeSpinners.h>
@@ -138,11 +140,28 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
 
 void FTestBatchOrchestratorSetupScenario::level_telemetry() {
     TestCommandBuilder.Do([this] { begin_level_telemetry(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
+        .Until(
+            [this] {
+                return !checks.all_passed ||
+                       (test_driver.IsSet() && test_driver->timeline.is_finished());
+            },
+            FTimespan{0, 0, 1})
         .Then([this] { check_level_telemetry(); });
 }
 
 void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
+    auto const* const simulation_config{context_.config.simulation_config.Get()};
+    if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available"))) {
+        return;
+    }
+    auto* const player{spawn_player_ship(context_.world,
+                                         context_.config.actor_classes.player_ship_class,
+                                         simulation_config->player_ship_config)};
+    if (!checks.is_valid(player, TEXT("Telemetry player ship is spawned"))) {
+        return;
+    }
+    context_.orchestrator.set_player_ship(*player);
+
     test_driver = TestSimulationDriver::from_world(context_.world);
     telemetry_observations.reset();
     telemetry_observations.reserve(16);
@@ -151,19 +170,18 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
     initial_active_entity_count = test_driver->registry.get_num_alive_active_entities();
     test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
-    test_driver->timeline.then_after(0.05, [this] { add_telemetry_test_entity(); });
+    test_driver->timeline.then_after(0.05, [this] { kill_telemetry_test_entity(); });
     test_driver->timeline.finish_at(0.15);
 }
 
-void FTestBatchOrchestratorSetupScenario::add_telemetry_test_entity() {
+void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
     auto const& telemetry{
         test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
     telemetry_samples_before_change = telemetry.num();
 
-    ml::entity_registry::EntityData entity_data;
-    entity_data.add_defaulted(1);
-    entity_data.set_all_alive();
-    test_driver->registry.add_entities(entity_data.get_const_view());
+    TStaticArray<FRegistryEntityHandle, 1> const targets{
+        test_driver->get_player_ship().get_entity_handle()};
+    test_driver->queue_kills(targets);
 }
 
 void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
@@ -185,6 +203,8 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
 }
 
 void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+
     checks.is_greater_than(
         telemetry_observations.num(), int32{0}, TEXT("Telemetry observations recorded"));
     if (telemetry_observations.is_empty()) {
@@ -224,9 +244,9 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(changed_observation.registry_entity_count,
                      changed_observation.telemetry_entity_count,
                      TEXT("Telemetry records the active registry count"));
-    checks.are_equal(initial_active_entity_count + 1,
+    checks.are_equal(initial_active_entity_count - 1,
                      changed_observation.telemetry_entity_count,
-                     TEXT("Added entity changes the telemetry count"));
+                     TEXT("Killed entity changes the telemetry count"));
 
     auto const& final_observation{telemetry_observations.last_value()};
     checks.are_equal(telemetry_samples_before_change + 1,
@@ -240,7 +260,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryManagerTest,
-                                 "Sandbox.level_telemetry_manager.active_entity_count",
+                                 "Sandbox.UnitTests.LevelTelemetryManager.ActiveEntityCount",
                                  EAutomationTestFlags::EditorContext |
                                      EAutomationTestFlags::EngineFilter)
 
@@ -257,26 +277,13 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     telemetry_manager.tick(1, entity_registry);
     TestEqual(TEXT("Unchanged count does not add a sample"), initial_data.num(), int32{1});
 
-    ml::entity_registry::EntityData entity_data;
-    entity_data.add_defaulted(2);
-    entity_data.set_all_alive();
-    entity_registry.add_entities(entity_data.get_const_view());
-
-    telemetry_manager.tick(2, entity_registry);
-    TestEqual(TEXT("Changed count adds a sample"), initial_data.num(), int32{2});
-    TestEqual(TEXT("Changed sample uses the supplied tick"), initial_data.last_time(), uint64{2});
-    TestEqual(TEXT("Changed sample records the active count"), initial_data.last_value(), 2);
-
-    telemetry_manager.tick(3, entity_registry);
-    TestEqual(TEXT("Repeated changed count remains sparse"), initial_data.num(), int32{2});
-
     telemetry_manager.reset();
     TestTrue(TEXT("Reset clears telemetry"), initial_data.is_empty());
 
     telemetry_manager.initialise(entity_registry);
     TestEqual(TEXT("Reinitialisation records one sample"), initial_data.num(), int32{1});
     TestEqual(TEXT("Reinitialisation returns to tick zero"), initial_data.last_time(), uint64{0});
-    TestEqual(TEXT("Reinitialisation records the current count"), initial_data.last_value(), 2);
+    TestEqual(TEXT("Reinitialisation records the current count"), initial_data.last_value(), 0);
 
     return true;
 }
