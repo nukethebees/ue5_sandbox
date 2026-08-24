@@ -1,6 +1,6 @@
 #include "ExampleDataAsset.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 void UExampleDataAsset::example_call_in_editor() {
     UE_LOG(LogSandbox,

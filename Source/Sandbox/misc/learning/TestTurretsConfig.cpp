@@ -1,6 +1,6 @@
 #include "TestTurretsConfig.h"
 
-#include "Sandbox/combat/weapons/ShipLaser.h"
+#include "SpaceGame/combat/weapons/ShipLaser.h"
 
 UTestTurretsConfig::UTestTurretsConfig() {
 #if WITH_EDITOR

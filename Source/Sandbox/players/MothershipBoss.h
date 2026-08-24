@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/players/DamageableShip.h"
+#include "SpaceGame/ships/player/legacy/DamageableShip.h"
 #include "SandboxGameShared/core/Cooldown.h"
 
 #include "CoreMinimal.h"

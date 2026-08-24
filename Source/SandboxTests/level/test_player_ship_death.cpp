@@ -9,11 +9,11 @@
 
 #include <SandboxCore/time_series_data.h>
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/batch_game/TestSpaceShipController.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/ships/player/TestSpaceShipController.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>

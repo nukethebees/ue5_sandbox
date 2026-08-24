@@ -3,13 +3,13 @@
 #include <SandboxTests/support/TestSimulationDriver.h>
 #include "test_capital_ship_proxy_scenario.h"
 
-#include <Sandbox/batch_game/ProxyEntityMap.h>
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestCapitalShipsConfig.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
+#include <SpaceGame/entities/ProxyEntityMap.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 

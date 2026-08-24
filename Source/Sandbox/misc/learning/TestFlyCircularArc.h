@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Sandbox/logging/ActorLoggingConfig.h"
-#include "Sandbox/utilities/DrawDebugConfig.h"
+#include "SpaceGame/support/logging/ActorLoggingConfig.h"
+#include "SpaceGame/support/DrawDebugConfig.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

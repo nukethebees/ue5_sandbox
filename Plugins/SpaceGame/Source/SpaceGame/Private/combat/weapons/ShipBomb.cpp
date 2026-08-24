@@ -1,0 +1,178 @@
+#include "SpaceGame/combat/weapons/ShipBomb.h"
+
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/ships/player/legacy/DamageableShip.h"
+#include "SpaceGame/ships/player/legacy/ShipScoringSubsystem.h"
+#include "SandboxGameShared/constants/collision_channels.h"
+
+#include "Components/BoxComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/World.h"
+#include "GameFramework/Pawn.h"
+#include "NiagaraComponent.h"
+#include "NiagaraFunctionLibrary.h"
+
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
+AShipBomb::AShipBomb()
+    : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))}
+    , collision_box{CreateDefaultSubobject<UBoxComponent>(TEXT("collision_box"))} {
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
+
+    RootComponent = collision_box;
+    collision_box->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    collision_box->SetCollisionObjectType(ECollisionChannel::ECC_WorldDynamic);
+
+    mesh_component->SetupAttachment(RootComponent);
+    mesh_component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+}
+
+void AShipBomb::Tick(float dt) {
+    Super::Tick(dt);
+
+    if (explosion_complete()) {
+        Destroy();
+    }
+
+    TRY_INIT_PTR(world, GetWorld());
+
+    if (!detonated) {
+        if (IsValid(target)) {
+            if (time_since_detonation > lock_on_fuse_time) {
+                detonate();
+                return;
+            }
+
+            auto const cur_loc{GetActorLocation()};
+            auto const tgt_loc{target->GetActorLocation()};
+
+            auto const direction{(tgt_loc - cur_loc).GetSafeNormal()};
+            auto const delta_movement{speed * dt};
+            auto const new_loc{cur_loc + direction * delta_movement};
+
+            FCollisionQueryParams params;
+            params.AddIgnoredActor(GetInstigator());
+            params.AddIgnoredActor(this);
+            FHitResult hit;
+
+            FCollisionObjectQueryParams obj_params;
+            obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldStatic);
+            obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_WorldDynamic);
+            obj_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
+
+            if (world->LineTraceSingleByObjectType(hit, cur_loc, new_loc, obj_params, params)) {
+                detonate();
+                return;
+            }
+            SetActorLocation(new_loc);
+        } else {
+            if (time_since_detonation > fuse_time) {
+                detonate();
+                return;
+            }
+
+            auto const velocity{GetActorForwardVector() * speed};
+            auto const delta_pos{velocity * dt};
+            SetActorLocation(GetActorLocation() + delta_pos);
+        }
+    } else {
+        TRY_INIT_PTR(instigator, GetInstigator());
+
+        TArray<FHitResult> hits;
+        FCollisionQueryParams params;
+        params.AddIgnoredActor(this);
+        params.AddIgnoredActor(instigator);
+        auto const loc{GetActorLocation()};
+
+        world->SweepMultiByChannel(hits,
+                                   loc,
+                                   loc,
+                                   FQuat::Identity,
+                                   ml::collision::projectile,
+                                   FCollisionShape::MakeSphere(explosion_radius),
+                                   params);
+
+        for (auto& hit : hits) {
+            auto* actor_hit{hit.GetActor()};
+            if (actors_hit.Contains(actor_hit)) {
+                continue;
+            }
+            actors_hit.Add(actor_hit);
+
+            auto* ship{Cast<IDamageableShip>(actor_hit)};
+            if (!ship) {
+                continue;
+            }
+
+            auto const damage_result{ship->apply_damage({damage, *instigator, *hit.Component})};
+            if (damage_result.was_killed()) {
+                TRY_INIT_PTR(ss, world->GetSubsystem<UShipScoringSubsystem>());
+                FShipAttackResult kill_result{
+                    instigator, EShipProjectileType::bomb, FShipAttackResult::Actors{actor_hit}};
+                ss->register_kills(kill_result);
+            }
+        }
+
+        time_since_detonation += dt;
+    }
+}
+void AShipBomb::BeginPlay() {
+    Super::BeginPlay();
+}
+
+void AShipBomb::detonate() {
+    UE_LOG(LogSandboxActor, Verbose, TEXT("Bomb detonating."));
+
+    speed = 0.f;
+    mesh_component->SetVisibility(false, true);
+    detonated = true;
+
+#if WITH_EDITOR
+    if (debug_explosion) {
+        draw_debug_sphere();
+    }
+#endif
+
+    if (explosion_effect) {
+        auto* sys{UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(),
+                                                                 explosion_effect,
+                                                                 GetActorLocation(),
+                                                                 GetActorRotation(),
+                                                                 FVector::OneVector,
+                                                                 true,
+                                                                 false)};
+        if (sys) {
+            sys->SetFloatParameter(TEXT("explosion_radius"), explosion_radius);
+            sys->Activate();
+        } else {
+            WARN_IS_FALSE(LogSandboxActor, explosion_effect);
+        }
+    } else {
+        WARN_IS_FALSE(LogSandboxActor, explosion_effect);
+    }
+
+    time_since_detonation = 0.f;
+}
+
+#if WITH_EDITOR
+void AShipBomb::draw_debug_sphere() {
+    TRY_INIT_PTR(world, GetWorld());
+    auto const location{GetActorLocation()};
+
+    constexpr bool persistent_lines{false};
+    constexpr int32 segments{16};
+    constexpr uint8 depth_priority{0};
+    constexpr auto thickness{15.0f};
+    DrawDebugSphere(world,
+                    location,
+                    explosion_radius,
+                    segments,
+                    FColor::Orange,
+                    persistent_lines,
+                    explosion_lifetime,
+                    depth_priority,
+                    thickness);
+}
+#endif

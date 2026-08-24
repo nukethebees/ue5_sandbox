@@ -3,7 +3,7 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>

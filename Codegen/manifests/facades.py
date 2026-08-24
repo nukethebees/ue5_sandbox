@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 from Codegen.cpp import (
     CppFile,
     ForwardDeclaration,
@@ -20,10 +22,16 @@ from Codegen.project_types import (
 from Codegen.facade import Facade, FacadeMethod, lower_facade, lower_facade_with_source
 
 from Codegen.manifests.common import (
-    BATCH_GAME_DIR,
     CHECK,
     INCLUDE_ORDER,
-    SANDBOX_API,
+    SPACE_GAME_CAPITAL_SHIPS_DIR,
+    SPACE_GAME_FIGHTERS_DIR,
+    SPACE_GAME_LASERS_DIR,
+    SPACE_GAME_PRIVATE_DIR,
+    SPACE_GAME_PUBLIC_DIR,
+    SPACE_GAME_SPINNERS_DIR,
+    SPACE_GAME_TURRETS_DIR,
+    SPACEGAME_API,
     SPAWNED_ENTITY_HANDLES,
     TEST_CAPITAL_SHIP_FIGHTERS,
     TEST_CAPITAL_SHIP_FIGHTER_ORDER_QUEUE,
@@ -82,9 +90,9 @@ def capital_ship_fighters_command_interface_module() -> Module:
             ),
         ),
         validation=Raw("check(IsValid(fighters));", (CHECK,)),
-        export_specifier=SANDBOX_API,
+        export_specifier=SPACEGAME_API,
     )
-    header_path = BATCH_GAME_DIR / "TestCapitalShipFightersCommandInterface.h"
+    header_path = SPACE_GAME_FIGHTERS_DIR / "TestCapitalShipFightersCommandInterface.h"
     return Module(
         name="test_capital_ship_fighters_command_interface",
         header=CppFile(
@@ -104,6 +112,7 @@ def phase_facade_module(
     module_name: str,
     actor_name: str,
     actor_header: str,
+    header_directory: Path,
     namespace: str,
     methods: tuple[FacadeMethod, ...],
 ) -> Module:
@@ -112,14 +121,15 @@ def phase_facade_module(
         actor_name,
         "actor",
         methods,
-        export_specifier=SANDBOX_API,
+        export_specifier=SPACEGAME_API,
         bind_access="private",
         method_access="private",
         friends=(actor_name, "ATestBatchOrchestrator"),
         definitions_in_source=True,
     )
     lowered = lower_facade_with_source(facade)
-    header_path = BATCH_GAME_DIR / f"{actor_name.removeprefix('A')}PhaseInterface.h"
+    header_path = header_directory / f"{actor_name.removeprefix('A')}PhaseInterface.h"
+    relative_header_path = header_path.relative_to(SPACE_GAME_PUBLIC_DIR)
     return Module(
         name=module_name,
         header=CppFile(
@@ -136,12 +146,12 @@ def phase_facade_module(
             ),
         ),
         source=CppFile(
-            path=header_path.with_suffix(".cpp"),
+            path=SPACE_GAME_PRIVATE_DIR / relative_header_path.with_suffix(".cpp"),
             pragma_once=False,
             clang_format_off=True,
             include_order=INCLUDE_ORDER,
             nodes=(
-                Include(header_path.name, system=False),
+                Include(f"SpaceGame/{relative_header_path.as_posix()}", system=False),
                 NewLines(2),
                 Include(actor_header, system=False),
                 NewLines(2),
@@ -159,7 +169,8 @@ def phase_facade_modules() -> tuple[Module, ...]:
         phase_facade_module(
             "test_space_ship_phase_interface",
             "ATestSpaceShip",
-            "Sandbox/batch_game/TestSpaceShip.h",
+            "SpaceGame/ships/player/TestSpaceShip.h",
+            SPACE_GAME_PUBLIC_DIR / "ships" / "player",
             "ml::test_space_ship",
             (
                 FacadeMethod("begin_play", "void", ()),
@@ -178,7 +189,8 @@ def phase_facade_modules() -> tuple[Module, ...]:
         phase_facade_module(
             "test_lasers_phase_interface",
             "ATestLasers",
-            "Sandbox/batch_game/TestLasers.h",
+            "SpaceGame/combat/lasers/TestLasers.h",
+            SPACE_GAME_LASERS_DIR,
             "ml::test_lasers",
             (
                 FacadeMethod("clear_runtime_state", "void", ()),
@@ -194,7 +206,8 @@ def phase_facade_modules() -> tuple[Module, ...]:
         phase_facade_module(
             "test_capital_ships_phase_interface",
             "ATestCapitalShips",
-            "Sandbox/batch_game/TestCapitalShips.h",
+            "SpaceGame/ships/capital/TestCapitalShips.h",
+            SPACE_GAME_CAPITAL_SHIPS_DIR,
             "ml::test_capital_ships",
             (
                 FacadeMethod("clear_runtime_state", "void", ()),
@@ -213,7 +226,8 @@ def phase_facade_modules() -> tuple[Module, ...]:
         phase_facade_module(
             "test_capital_ship_fighters_phase_interface",
             "ATestCapitalShipFighters",
-            "Sandbox/batch_game/TestCapitalShipFighters.h",
+            "SpaceGame/ships/fighters/TestCapitalShipFighters.h",
+            SPACE_GAME_FIGHTERS_DIR,
             "ml::test_capital_ship_fighters",
             (
                 FacadeMethod("clear_runtime_state", "void", ()),
@@ -234,7 +248,8 @@ def phase_facade_modules() -> tuple[Module, ...]:
         phase_facade_module(
             "test_static_turrets_phase_interface",
             "ATestStaticTurrets",
-            "Sandbox/batch_game/TestStaticTurrets.h",
+            "SpaceGame/defences/turrets/TestStaticTurrets.h",
+            SPACE_GAME_TURRETS_DIR,
             "ml::test_static_turrets",
             (
                 FacadeMethod("clear_runtime_state", "void", ()),
@@ -254,7 +269,8 @@ def phase_facade_modules() -> tuple[Module, ...]:
         phase_facade_module(
             "test_tube_spinners_phase_interface",
             "ATestTubeSpinners",
-            "Sandbox/batch_game/TestTubeSpinners.h",
+            "SpaceGame/defences/spinners/TestTubeSpinners.h",
+            SPACE_GAME_SPINNERS_DIR,
             "ml::test_tube_spinners",
             (
                 FacadeMethod("clear_runtime_state", "void", ()),

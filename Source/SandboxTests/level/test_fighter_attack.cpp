@@ -1,12 +1,12 @@
 #include "test_fighter_attack_scenario.h"
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/entities/TestEntityRegistryData.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SimulationTestAssets.h>

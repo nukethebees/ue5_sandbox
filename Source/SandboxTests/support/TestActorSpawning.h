@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Sandbox/batch_game/ProxyEntityMap.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
+#include <SpaceGame/entities/ProxyEntityMap.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 
 #include <CoreMinimal.h>
 

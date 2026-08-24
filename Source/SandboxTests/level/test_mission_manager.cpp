@@ -8,12 +8,12 @@
 
 #include <SandboxCore/time_series_data.h>
 
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestMissionManager.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

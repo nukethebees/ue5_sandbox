@@ -1,4 +1,4 @@
-#include <Sandbox/batch_game/AttackDistanceBand.h>
+#include <SpaceGame/combat/lasers/AttackDistanceBand.h>
 
 #include <CQTest.h>
 

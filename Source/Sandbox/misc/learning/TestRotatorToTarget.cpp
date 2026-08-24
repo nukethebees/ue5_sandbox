@@ -1,6 +1,6 @@
 #include "TestRotatorToTarget.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>

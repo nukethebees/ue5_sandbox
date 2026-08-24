@@ -1,6 +1,6 @@
 #include "Sandbox/items/ShipLifeItem.h"
 
-#include "Sandbox/players/SpaceShip.h"
+#include "SpaceGame/ships/player/legacy/SpaceShip.h"
 #include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
 
 #include "Components/BoxComponent.h"

@@ -1,12 +1,12 @@
 #include <SandboxTests/support/SimulationTestAssets.h>
 
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
-#include <Sandbox/batch_game/TestCapitalShipsConfig.h>
-#include <Sandbox/batch_game/TestLasersConfig.h>
-#include <Sandbox/batch_game/TestSpaceShipData.h>
-#include <Sandbox/batch_game/TestStaticTurretsConfig.h>
-#include <Sandbox/batch_game/TestTubeSpinnersConfig.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
+#include <SpaceGame/combat/lasers/TestLasersConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShipData.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinnersConfig.h>
 
 #include <CQTest.h>
 

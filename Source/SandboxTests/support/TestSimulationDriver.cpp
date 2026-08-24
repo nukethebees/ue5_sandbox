@@ -2,12 +2,12 @@
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 
-#include <Sandbox/batch_game/test_entity_registry/DirectDamageEvents.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
+#include <SpaceGame/entities/DirectDamageEvents.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 
 #include <SandboxCoreEngine/actor_utils.h>

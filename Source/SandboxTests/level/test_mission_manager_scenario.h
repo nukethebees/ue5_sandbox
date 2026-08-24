@@ -3,8 +3,8 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <Sandbox/batch_game/TestMissionFailReason.h>
-#include <Sandbox/batch_game/TestMissionState.h>
+#include <SpaceGame/missions/TestMissionFailReason.h>
+#include <SpaceGame/missions/TestMissionState.h>
 
 #include <SandboxCore/time_series_data.h>
 

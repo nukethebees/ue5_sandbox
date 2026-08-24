@@ -1,0 +1,39 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+
+#include "Vector2DWidget.generated.h"
+
+class UBorder;
+class UCanvasPanel;
+class UTextBlock;
+
+UCLASS()
+class SPACEGAME_API UVector2DWidget : public UUserWidget {
+    GENERATED_BODY()
+  public:
+    void NativeConstruct() override;
+
+    void update(FVector2D const value);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
+  protected:
+    UPROPERTY(meta = (BindWidget))
+    UCanvasPanel* canvas_panel{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UBorder* background_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UBorder* cursor_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* name_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* value_text{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    FText name;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    bool show_value{true};
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    int32 font_size{24};
+};

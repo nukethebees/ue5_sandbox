@@ -1,7 +1,7 @@
 #include "TestTurrets.h"
 
-#include "Sandbox/batch_game/TestLasers.h"
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/combat/lasers/TestLasers.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
 #include "TestTurretsConfig.h"

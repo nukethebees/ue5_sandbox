@@ -21,7 +21,7 @@
 
 #include <SandboxTests/support/test_setup.h>
 
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <CQTest.h>
 

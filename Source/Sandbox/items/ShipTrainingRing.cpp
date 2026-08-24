@@ -1,8 +1,8 @@
 #include "Sandbox/items/ShipTrainingRing.h"
 
 #include "Sandbox/items/ShipHealthItemConfig.h"
-#include "Sandbox/players/ShipScoringSubsystem.h"
-#include "Sandbox/players/SpaceShip.h"
+#include "SpaceGame/ships/player/legacy/ShipScoringSubsystem.h"
+#include "SpaceGame/ships/player/legacy/SpaceShip.h"
 #include "SandboxGameShared/environment/effects/RotatingActorComponent.h"
 
 #include "Components/BoxComponent.h"

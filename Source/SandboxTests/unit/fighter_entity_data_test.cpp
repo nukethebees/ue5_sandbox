@@ -1,4 +1,4 @@
-#include "Sandbox/batch_game/TestCapitalShipFighters.h"
+#include "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
 
 #include "Misc/AutomationTest.h"
 

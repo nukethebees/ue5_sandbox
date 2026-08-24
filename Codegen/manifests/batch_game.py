@@ -41,9 +41,13 @@ from Codegen.soa import (
 
 from Codegen.manifests.common import (
     ALL_STORAGE_OPERATIONS,
-    BATCH_GAME_DIR,
     INCLUDE_ORDER,
-    SANDBOX_API,
+    SPACE_GAME_CAPITAL_SHIPS_DIR,
+    SPACE_GAME_FIGHTERS_DIR,
+    SPACE_GAME_LASERS_DIR,
+    SPACE_GAME_SPINNERS_DIR,
+    SPACE_GAME_TURRETS_DIR,
+    SPACEGAME_API,
     soa_source_file,
 )
 
@@ -80,10 +84,10 @@ def fighter_soa_module() -> Module:
         SoAStructNames("EntityData"),
         members,
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((entity_data,))
-    header_path = BATCH_GAME_DIR / "TestCapitalShipFightersSoA.h"
+    header_path = SPACE_GAME_FIGHTERS_DIR / "TestCapitalShipFightersSoA.h"
     return Module(
         name="test_capital_ship_fighters_soa",
         header=CppFile(
@@ -118,7 +122,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("spawn_cooldowns", "float"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     entity_tick_data = SoAStruct(
         SoAStructNames("EntityTickData"),
@@ -127,7 +131,7 @@ def capital_ships_soa_module() -> Module:
             soa_member("fighter_queue", TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     entity_data = SoAStruct(
         SoAStructNames("EntityData"),
@@ -143,7 +147,7 @@ def capital_ships_soa_module() -> Module:
             tarray_member("target_handles", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     fighter_reassignment_members = (
         tarray_member("capital_handles", F_REGISTRY_ENTITY_HANDLE),
@@ -153,7 +157,7 @@ def capital_ships_soa_module() -> Module:
         SoAStructNames("FighterReassignment"),
         fighter_reassignment_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
         nodes=(
             MemberFunctionSpec(
                 "add",
@@ -170,7 +174,7 @@ def capital_ships_soa_module() -> Module:
     lowered = lower_soa_structs_with_source(
         (spawn_data, entity_tick_data, entity_data, fighter_reassignment)
     )
-    header_path = BATCH_GAME_DIR / "TestCapitalShipsSoA.h"
+    header_path = SPACE_GAME_CAPITAL_SHIPS_DIR / "TestCapitalShipsSoA.h"
     return Module(
         name="test_capital_ships_soa",
         header=CppFile(
@@ -230,7 +234,7 @@ def lasers_soa_module() -> Module:
             tarray_member("colours", F_LINEAR_COLOR),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
         nodes=(
             set_damages.header_node(),
             NewLines(1),
@@ -254,7 +258,7 @@ def lasers_soa_module() -> Module:
             tarray_member("instigator_handles", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     hit_details = SoAStruct(
         SoAStructNames("HitDetails"),
@@ -263,10 +267,10 @@ def lasers_soa_module() -> Module:
             tarray_member("colours", F_LINEAR_COLOR),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((spawn_requests, entities, hit_details))
-    header_path = BATCH_GAME_DIR / "TestLasersSoA.h"
+    header_path = SPACE_GAME_LASERS_DIR / "TestLasersSoA.h"
     return Module(
         name="test_lasers_soa",
         header=CppFile(
@@ -296,10 +300,10 @@ def laser_collision_data_soa_module() -> Module:
             tarray_member("next_write_indices", "int32"),
         ),
         storage_operations=(SoAStorageOperation.RESET,),
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((component_hit_ranges,))
-    header_path = BATCH_GAME_DIR / "TestLaserCollisionDataSoA.h"
+    header_path = SPACE_GAME_LASERS_DIR / "TestLaserCollisionDataSoA.h"
     return Module(
         name="test_laser_collision_data_soa",
         header=CppFile(
@@ -329,10 +333,10 @@ def fighter_spawn_queue_soa_module() -> Module:
             tarray_member("targets", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((queue,))
-    header_path = BATCH_GAME_DIR / "TestCapitalShipFighterSpawnQueueSoA.h"
+    header_path = SPACE_GAME_FIGHTERS_DIR / "TestCapitalShipFighterSpawnQueueSoA.h"
     return Module(
         name="test_capital_ship_fighter_spawn_queue_soa",
         header=CppFile(
@@ -360,7 +364,7 @@ def fighter_order_queue_module() -> Module:
         SoAStructNames("TestCapitalShipFighterOrderQueue"),
         order_queue_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
         nodes=(
             UsingDeclaration("Task", E_TEST_CAPITAL_SHIP_FIGHTERS_TASK),
             NewLines(1),
@@ -381,7 +385,7 @@ def fighter_order_queue_module() -> Module:
         ),
     )
     lowered = lower_soa_structs_with_source((order_queue,))
-    header_path = BATCH_GAME_DIR / "TestCapitalShipFighterOrderQueue.h"
+    header_path = SPACE_GAME_FIGHTERS_DIR / "TestCapitalShipFighterOrderQueue.h"
     return Module(
         name="test_capital_ship_fighter_order_queue",
         header=CppFile(
@@ -416,10 +420,10 @@ def static_turrets_soa_module() -> Module:
             tarray_member("healths", "int32"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((entity_data,))
-    header_path = BATCH_GAME_DIR / "TestStaticTurretsSoA.h"
+    header_path = SPACE_GAME_TURRETS_DIR / "TestStaticTurretsSoA.h"
     return Module(
         name="test_static_turrets_soa",
         header=CppFile(
@@ -449,10 +453,10 @@ def tube_spinners_soa_module() -> Module:
             tarray_member("next_fire_point_indices", "int32"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((entity_data,))
-    header_path = BATCH_GAME_DIR / "TestTubeSpinnersSoA.h"
+    header_path = SPACE_GAME_SPINNERS_DIR / "TestTubeSpinnersSoA.h"
     return Module(
         name="test_tube_spinners_soa",
         header=CppFile(

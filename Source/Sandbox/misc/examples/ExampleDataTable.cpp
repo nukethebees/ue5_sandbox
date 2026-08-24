@@ -1,6 +1,6 @@
 #include "ExampleDataTable.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 auto FExampleDataTableRow::example_row_function() const -> float {
     return example_float + static_cast<float>(example_int);

@@ -1,6 +1,6 @@
 #include "Sandbox/players/ShipTrainingTarget.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/constants/collision_channels.h"
 
 #include "Components/BoxComponent.h"

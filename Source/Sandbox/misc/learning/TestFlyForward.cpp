@@ -1,6 +1,6 @@
 #include "TestFlyForward.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include "Engine/HitResult.h"
 #include "Engine/World.h"

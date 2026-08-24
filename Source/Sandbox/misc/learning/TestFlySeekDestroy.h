@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Sandbox/logging/ActorLoggingConfig.h"
+#include "SpaceGame/support/logging/ActorLoggingConfig.h"
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
-#include "Sandbox/utilities/DrawDebugConfig.h"
+#include "SpaceGame/support/DrawDebugConfig.h"
 #include "SandboxGameShared/combat/BurstFire.h"
 #include "SandboxGameShared/players/VisionConfig.h"
 #include "TestFlyBase.h"

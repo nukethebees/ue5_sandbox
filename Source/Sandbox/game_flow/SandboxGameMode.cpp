@@ -1,6 +1,6 @@
 #include "SandboxGameMode.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/core/SandboxDeveloperSettings.h"
 
 #include "Engine/World.h"

@@ -3,7 +3,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include "EngineUtils.h"
 #include "Sandbox/environment/SandboxActorSpawner.h"
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "Sandbox/players/MothershipBoss.h"
 
 #include "EngineUtils.h"

@@ -35,9 +35,9 @@ from Codegen.manifests.common import (
     ALL_STORAGE_OPERATIONS,
     ARRAY_FILL,
     INCLUDE_ORDER,
-    SANDBOX_API,
+    SPACE_GAME_ENTITIES_DIR,
+    SPACEGAME_API,
     SOA_VECTOR_FILL,
-    TEST_ENTITY_REGISTRY_DIR,
     soa_source_file,
 )
 
@@ -53,7 +53,7 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("instigators", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     resolved = SoAStruct(
         SoAStructNames("CollisionDamageEvents"),
@@ -64,10 +64,10 @@ def collision_damage_events_soa_module() -> Module:
             tarray_member("instigators", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((unresolved, resolved))
-    header_path = TEST_ENTITY_REGISTRY_DIR / "CollisionDamageEventsSoA.h"
+    header_path = SPACE_GAME_ENTITIES_DIR / "CollisionDamageEventsSoA.h"
     return Module(
         name="collision_damage_events_soa",
         header=CppFile(
@@ -116,7 +116,7 @@ def entity_death_info_module() -> Module:
         SoAStructNames("EntityDeathInfo"),
         entity_death_info_members,
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
         nodes=(
             add_function.declaration_node(),
             NewLines(1),
@@ -124,7 +124,7 @@ def entity_death_info_module() -> Module:
         ),
     )
     lowered = lower_soa_structs_with_source((entity_death_info,))
-    header_path = TEST_ENTITY_REGISTRY_DIR / "EntityDeathInfo.h"
+    header_path = SPACE_GAME_ENTITIES_DIR / "EntityDeathInfo.h"
     return Module(
         name="entity_death_info",
         header=CppFile(
@@ -157,10 +157,10 @@ def direct_damage_events_soa_module() -> Module:
             tarray_member("instigators", F_REGISTRY_ENTITY_HANDLE),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
     )
     lowered = lower_soa_structs_with_source((events,))
-    header_path = TEST_ENTITY_REGISTRY_DIR / "DirectDamageEventsSoA.h"
+    header_path = SPACE_GAME_ENTITIES_DIR / "DirectDamageEventsSoA.h"
     return Module(
         name="direct_damage_events_soa",
         header=CppFile(
@@ -193,11 +193,11 @@ def unique_entity_data_soa_module() -> Module:
             tarray_member("death_reason", E_TEST_DEATH_REASON),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
         nodes=(UsingDeclaration("kills_type", "uint32"),),
     )
     lowered = lower_soa_structs_with_source((entity_data,))
-    header_path = TEST_ENTITY_REGISTRY_DIR / "TestEntityUniqueEntityDataSoA.h"
+    header_path = SPACE_GAME_ENTITIES_DIR / "TestEntityUniqueEntityDataSoA.h"
     return Module(
         name="test_entity_unique_entity_data_soa",
         header=CppFile(
@@ -275,7 +275,7 @@ def entity_registry_data_soa_module() -> Module:
         ),
     )
     lowered = lower_soa_structs_with_source((entity_data,))
-    header_path = TEST_ENTITY_REGISTRY_DIR / "TestEntityRegistryData.h"
+    header_path = SPACE_GAME_ENTITIES_DIR / "TestEntityRegistryData.h"
     return Module(
         name="test_entity_registry_data_soa",
         header=CppFile(
@@ -333,7 +333,7 @@ def registry_entity_handles_soa_module() -> Module:
             tarray_member("generations", "int32"),
         ),
         storage_operations=ALL_STORAGE_OPERATIONS,
-        storage_export_specifier=SANDBOX_API,
+        storage_export_specifier=SPACEGAME_API,
         nodes=(
             add.header_node(),
             NewLines(1),
@@ -351,7 +351,7 @@ def registry_entity_handles_soa_module() -> Module:
         equivalent_type=F_REGISTRY_ENTITY_HANDLE,
     )
     lowered = lower_soa_structs_with_source((handles,))
-    header_path = TEST_ENTITY_REGISTRY_DIR / "RegistryEntityHandles.h"
+    header_path = SPACE_GAME_ENTITIES_DIR / "RegistryEntityHandles.h"
     return Module(
         name="registry_entity_handles_soa",
         header=CppFile(

@@ -2,7 +2,7 @@
 
 #include <Containers/ArrayView.h>
 #include <CoreMinimal.h>
-#include <Sandbox/batch_game/TestTeam.h>
+#include <SpaceGame/entities/TestTeam.h>
 
 namespace ml {
 struct TestSimulationDriver;

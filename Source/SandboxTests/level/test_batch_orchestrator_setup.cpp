@@ -4,20 +4,20 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 
-#include <Sandbox/batch_game/LevelTelemetryManager.h>
-#include <Sandbox/batch_game/SimulationClockInterface.h>
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestLasers.h>
-#include <Sandbox/batch_game/TestMissionManager.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/batch_game/TestStaticTurrets.h>
-#include <Sandbox/batch_game/TestTubeSpinners.h>
-#include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/simulation/LevelTelemetryManager.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
+#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

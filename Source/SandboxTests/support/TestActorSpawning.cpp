@@ -4,12 +4,12 @@
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestEntity.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/batch_game/TestSpaceShipData.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/entities/TestEntity.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/ships/player/TestSpaceShipData.h>
 
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>

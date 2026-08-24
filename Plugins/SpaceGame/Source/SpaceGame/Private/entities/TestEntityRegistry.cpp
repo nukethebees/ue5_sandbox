@@ -1,0 +1,644 @@
+#include "SpaceGame/entities/TestEntityRegistry.h"
+
+#include <SpaceGame/entities/DirectDamageEvents.h>
+#include <SpaceGame/entities/EntityDeathInfo.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
+
+#include <SandboxCore/array_checks.h>
+#include <SandboxCore/array_utils.h>
+#include <SandboxCore/soa_rotator_utils.h>
+#include <SandboxCore/soa_vector_utils.h>
+
+#include <utility>
+
+/* ------------------------------------------------------------------------------------------ */
+// NewEntities
+/* ------------------------------------------------------------------------------------------ */
+auto SpawnedEntityHandles::num() const -> int32 {
+    return registry_handles.num();
+}
+void SpawnedEntityHandles::reset() {
+    registry_handles.reset();
+}
+void SpawnedEntityHandles::add_defaulted(int32 const count) {
+    registry_handles.add_defaulted(count);
+}
+void SpawnedEntityHandles::add_uninitialised(int32 const count) {
+    registry_handles.add_uninitialised(count);
+}
+
+void FTestEntityRegistry::reset() {
+    entity_data.reset();
+    queued_entity_data.reset();
+    unique_entities.reset();
+    queued_death_infos.reset();
+
+    ml::reset(generations,
+              unique_ids,
+              queued_entity_update_handles,
+              queued_direct_damage_events,
+              dead_entities_this_frame,
+              free_indices);
+}
+
+// Lifecycle
+void FTestEntityRegistry::commit_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_updates);
+
+    commit_entity_updates();
+    commit_death_updates();
+
+    validate_array_sizes();
+}
+void FTestEntityRegistry::refresh_free_indices() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::refresh_free_indices);
+
+    free_indices.Reset();
+    auto const n{entity_data.num()};
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.alive[i] == 0u) {
+            free_indices.Add(i);
+        }
+    }
+}
+void FTestEntityRegistry::end_tick() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::end_tick);
+
+    refresh_free_indices();
+
+    ml::reset(queued_entity_data,
+              queued_entity_update_handles,
+              queued_death_infos,
+              queued_direct_damage_events,
+              dead_entities_this_frame);
+
+    validate_array_sizes();
+    validate_unique_ids();
+    validate_unique_entity_data();
+}
+
+// Entity creation
+auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::add_entities);
+
+    view.validate_array_sizes();
+
+    auto const count{view.num()};
+    SpawnedEntityHandles new_entities;
+
+    if (count < 1) {
+        return new_entities;
+    }
+
+    new_entities.first_id = {
+        .id = unique_entities.num(),
+    };
+    unique_entities.add_defaulted(count);
+    auto const first_id{new_entities.first_id};
+
+    auto const n_free_indices{free_indices.Num()};
+    auto const free_to_reserve{FMath::Min(n_free_indices, count)};
+
+    int32 new_entity_index{0};
+
+    auto set_up_unique_data{[&](int32 const view_index, int32 const entity_index) {
+        auto const unique_id{first_id + new_entity_index};
+        unique_ids[entity_index] = unique_id;
+
+        new_entities.registry_handles.add(entity_index, generations[entity_index]);
+
+        auto const i{unique_id.id};
+
+        unique_entities.registry_indices[i] = entity_index;
+        unique_entities.registry_generations[i] = generations[entity_index];
+        unique_entities.alive[i] = view.alive[view_index];
+        unique_entities.entity_types[i] = view.entity_types[view_index];
+        unique_entities.teams[i] = view.teams[view_index];
+
+        new_entity_index++;
+    }};
+
+    for (int32 i{0}; i < free_to_reserve; ++i) {
+        auto const entity_index{free_indices.Pop(EAllowShrinking::No)};
+
+        ml::assign_from(entity_data.locations, entity_index, view.locations, i);
+        ml::assign_from(entity_data.velocities, entity_index, view.velocities, i);
+
+        entity_data.radii[entity_index] = view.radii[i];
+        entity_data.healths[entity_index] = view.healths[i];
+        entity_data.teams[entity_index] = view.teams[i];
+        entity_data.alive[entity_index] = view.alive[i];
+        entity_data.entity_types[entity_index] = view.entity_types[i];
+
+        ++generations[entity_index];
+
+        set_up_unique_data(i, entity_index);
+    }
+
+    auto const indices_left_to_reserve{count - new_entities.registry_handles.num()};
+    auto start_index{get_num_elements()};
+
+    generations.AddZeroed(indices_left_to_reserve);
+    unique_ids.AddDefaulted(indices_left_to_reserve);
+
+    entity_data.append_from(view.get_view(ml::num(new_entities), indices_left_to_reserve));
+
+    for (int32 i{0}; i < indices_left_to_reserve; ++i) {
+        auto const entity_index{start_index + i};
+        set_up_unique_data(free_to_reserve + i, entity_index);
+    }
+
+    validate_array_sizes();
+    validate_unique_ids();
+
+    return new_entities;
+}
+
+// Queued updates
+void FTestEntityRegistry::queue_entity_updates(ConstView const view,
+                                               EntityDeathInfo const& death_info) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::queue_entity_updates);
+
+    queued_entity_data.append_from(view.data);
+    queued_entity_update_handles.Append(view.indices);
+
+    death_info.validate_array_sizes();
+    queued_death_infos.reasons.Append(death_info.reasons);
+    queued_death_infos.victims.Append(death_info.victims);
+    queued_death_infos.killers.Append(death_info.killers);
+}
+void FTestEntityRegistry::commit_entity_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_entity_updates);
+
+    auto const n{queued_entity_data.num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const entity_handle{queued_entity_update_handles[i]};
+        check(is_valid_handle(entity_handle));
+
+        auto const entity_index{entity_handle.index};
+
+        ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
+        ml::assign_from(entity_data.velocities, entity_index, queued_entity_data.velocities, i);
+        entity_data.healths[entity_index] = queued_entity_data.healths[i];
+        entity_data.teams[entity_index] = queued_entity_data.teams[i];
+        entity_data.alive[entity_index] = queued_entity_data.alive[i];
+
+        auto const unique_id{unique_ids[entity_index]};
+        unique_entities.alive[unique_id.id] = queued_entity_data.alive[i];
+    }
+}
+void FTestEntityRegistry::commit_death_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_death_updates);
+
+    dead_entities_this_frame.Reset();
+    queued_death_infos.validate_array_sizes();
+
+    auto const n_deaths{queued_death_infos.num()};
+    for (int32 i{0}; i < n_deaths; ++i) {
+        auto const victim_handle{queued_death_infos.victims[i]};
+        auto const victim_id{find_unique_id(victim_handle)};
+
+        dead_entities_this_frame.Add(victim_handle);
+
+        unique_entities.alive[victim_id.id] = 0;
+        unique_entities.death_reason[victim_id.id] = queued_death_infos.reasons[i];
+
+        auto const killer_handle{queued_death_infos.killers[i]};
+
+        if (killer_handle.is_valid()) {
+            auto const killer_id{find_unique_id(killer_handle)};
+            unique_entities.killed_by[victim_id.id] = killer_id;
+            unique_entities.kills[killer_id.id] += 1;
+        }
+    }
+}
+
+// Damage events
+void FTestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
+    damage_events.validate_array_sizes();
+
+    queued_direct_damage_events.append_from(damage_events);
+}
+auto FTestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
+    return queued_direct_damage_events;
+}
+
+// Handle queries
+auto FTestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
+    -> ERegistryHandleState {
+    if (handle.is_null()) {
+        return ERegistryHandleState::Null;
+    }
+    if (!generations.IsValidIndex(handle.index)) {
+        return ERegistryHandleState::Invalid;
+    }
+    auto const current_generation{generations[handle.index]};
+    if (current_generation == handle.generation) {
+        return ERegistryHandleState::Active;
+    }
+    if (current_generation > handle.generation) {
+        return ERegistryHandleState::Stale;
+    }
+
+    return ERegistryHandleState::Invalid;
+}
+auto FTestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> bool {
+    return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
+}
+
+// Entity data updates
+void FTestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> const handles) const {
+    for (auto& handle : handles) {
+        auto const handle_state{analyse_handle(handle)};
+
+        switch (handle_state) {
+            case ERegistryHandleState::Invalid: {
+                check(false);
+                break;
+            }
+            case ERegistryHandleState::Null: {
+                break;
+            }
+            case ERegistryHandleState::Stale: {
+                handle.reset();
+                break;
+            }
+            case ERegistryHandleState::Active: {
+                if (!entity_data.alive[handle.index]) {
+                    handle.reset();
+                }
+                break;
+            }
+        }
+    }
+}
+
+void FTestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
+                                            FVectors3f::View const& locations) {
+    auto const n{handles.Num()};
+    check(ml::num(locations) == n);
+
+    for (int32 i{}; i < n; ++i) {
+        auto const handle{handles[i]};
+        if (handle.is_null()) {
+            locations.xs[i] = 0.f;
+            locations.ys[i] = 0.f;
+            locations.zs[i] = 0.f;
+        } else {
+            check(generations.IsValidIndex(handle.index));
+            check(handle.generation == generations[handle.index]);
+
+            locations.xs[i] = entity_data.locations.xs[handle.index];
+            locations.ys[i] = entity_data.locations.ys[handle.index];
+            locations.zs[i] = entity_data.locations.zs[handle.index];
+        }
+    }
+}
+void FTestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> handles,
+                                              FVectors3f::View const& locations,
+                                              FVectors3f::View const& velocities,
+                                              TArrayView<float> const radii) {
+    auto const n_handles{ml::num(handles)};
+    if (n_handles == 0) {
+        return;
+    }
+
+    auto should_update_view{[n_handles](auto const& view) -> bool {
+        auto const n_view{ml::num(view)};
+        auto const should_update{n_view == n_handles};
+
+        if (!((n_view == 0) || should_update)) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("View has %d elements but got %d handles"),
+                   n_view,
+                   n_handles);
+        }
+
+        return should_update;
+    }};
+
+    refresh_handles(handles);
+
+    if (should_update_view(locations)) {
+        refresh_locations(handles, locations);
+    }
+
+    if (should_update_view(velocities)) {
+        for (int32 i{}; i < n_handles; ++i) {
+            auto const handle{handles[i]};
+
+            if (handle.is_null()) {
+                velocities.xs[i] = 0.0f;
+                velocities.ys[i] = 0.0f;
+                velocities.zs[i] = 0.0f;
+                continue;
+            }
+
+            ml::assign_from(velocities, i, entity_data.velocities, handle.index);
+        }
+    }
+
+    if (should_update_view(radii)) {
+        for (int32 i{}; i < n_handles; ++i) {
+            auto const handle{handles[i]};
+            radii[i] = handle.is_null() ? 0.f : entity_data.radii[handle.index];
+        }
+    }
+}
+
+// Entity data queries
+auto FTestEntityRegistry::get_location(FRegistryEntityHandle const index) const -> FVector3f {
+    check(is_valid_handle(index));
+    return ml::get_vector3f(entity_data.locations, index.index);
+}
+auto FTestEntityRegistry::get_velocity(FRegistryEntityHandle const index) const -> FVector3f {
+    check(is_valid_handle(index));
+    return ml::get_vector3f(entity_data.velocities, index.index);
+}
+auto FTestEntityRegistry::get_health(FRegistryEntityHandle const index) const -> int32 {
+    check(is_valid_handle(index));
+    return entity_data.healths[index.index];
+}
+auto FTestEntityRegistry::get_team(FRegistryEntityHandle const index) const -> ETestTeam {
+    check(is_valid_handle(index));
+    return entity_data.teams[index.index];
+}
+auto FTestEntityRegistry::get_entity_type(FRegistryEntityHandle const index) const
+    -> ETestEntityType {
+    check(is_valid_handle(index));
+    return entity_data.entity_types[index.index];
+}
+auto FTestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> bool {
+    check(is_valid_handle(index));
+    return static_cast<bool>(entity_data.alive[index.index]);
+}
+
+// Entity collection queries
+auto FTestEntityRegistry::get_dead_entities_this_frame() const
+    -> TConstArrayView<FRegistryEntityHandle> {
+    return dead_entities_this_frame;
+}
+auto FTestEntityRegistry::get_handles_not_in_team(ETestTeam const team) const
+    -> TArray<FRegistryEntityHandle> {
+    TArray<FRegistryEntityHandle> out;
+    get_handles_not_in_team(team, out);
+    return out;
+}
+void FTestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
+                                                  TArray<FRegistryEntityHandle>& out) const {
+    out.Reset();
+
+    auto const n{get_num_elements()};
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.teams[i] == team) {
+            continue;
+        }
+        if (entity_data.alive[i] <= 0) {
+            continue;
+        }
+
+        out.Emplace(i, generations[i]);
+    }
+}
+
+// Aggregate queries
+auto FTestEntityRegistry::get_num_elements() const noexcept -> int32 {
+    return entity_data.num();
+}
+auto FTestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
+    int32 total{0};
+
+    for (auto const& alive : entity_data.alive) {
+        if (alive) {
+            ++total;
+        }
+    }
+
+    return total;
+}
+
+auto FTestEntityRegistry::count_kills() const noexcept -> int32 {
+    int32 n{get_num_unique_ids_issued()};
+
+    int32 total{0};
+    for (auto const& kills : unique_entities.kills) {
+        total += kills;
+    }
+
+    return total;
+}
+auto FTestEntityRegistry::count_alive() const noexcept -> int32 {
+    int32 total{0};
+    for (auto const& alive : unique_entities.alive) {
+        if (alive) {
+            ++total;
+        }
+    }
+
+    return total;
+}
+auto FTestEntityRegistry::count_alive(ETestEntityType const type) const noexcept -> int32 {
+    int32 n{get_num_unique_ids_issued()};
+
+    int32 total{0};
+    for (int32 i{0}; i < n; ++i) {
+        auto const alive{unique_entities.alive[i]};
+        auto const entity_type{unique_entities.entity_types[i]};
+
+        if (alive && (entity_type == type)) {
+            ++total;
+        }
+    }
+
+    return total;
+}
+auto FTestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
+    TeamCounts out{};
+
+    int32 n{get_num_unique_ids_issued()};
+
+    int32 total{0};
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.alive[i]) {
+            out[std::to_underlying(entity_data.teams[i])] += 1;
+        }
+    }
+
+    return out;
+}
+auto FTestEntityRegistry::count_alive_per_team_and_type() const noexcept -> EntityCounts {
+    EntityCounts out{};
+
+    auto const n{get_num_elements()};
+    for (int32 i{0}; i < n; ++i) {
+        if (!entity_data.alive[i]) {
+            continue;
+        }
+
+        auto const team{std::to_underlying(entity_data.teams[i])};
+        auto const type{std::to_underlying(entity_data.entity_types[i])};
+        constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+        constexpr auto type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
+        if ((team < 0) || (team >= team_count) || (type < 0) || (type >= type_count)) {
+            continue;
+        }
+
+        ++out[team][type];
+    }
+
+    return out;
+}
+auto FTestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
+    auto const n{get_num_elements()};
+    int32 count{0};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (entity_data.alive[i] && (entity_data.teams[i] != team)) {
+            ++count;
+        }
+    }
+
+    return count;
+}
+// Unique entity queries
+auto FTestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
+    return id.is_valid() && (id.id < get_num_unique_ids_issued());
+}
+auto FTestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) const
+    -> TestEntityUniqueId {
+    auto const handle_state{analyse_handle(handle)};
+
+    switch (handle_state) {
+        case ERegistryHandleState::Null:
+            [[fallthrough]];
+        case ERegistryHandleState::Invalid: {
+            check(false);
+            return {};
+        }
+        case ERegistryHandleState::Active: {
+            return unique_ids[handle.index];
+        }
+        case ERegistryHandleState::Stale: {
+            break;
+        }
+        default: {
+            check(false);
+            return {};
+        }
+    }
+
+    auto const n_unique{unique_entities.num()};
+
+    for (int32 i{0}; i < n_unique; ++i) {
+        if ((unique_entities.registry_indices[i] == handle.index) &&
+            (unique_entities.registry_generations[i] == handle.generation)) {
+            return {.id = i};
+        }
+    }
+
+    checkf(false, TEXT("A missing unique ID should be impossible here."));
+    return {};
+}
+
+auto FTestEntityRegistry::get_kills(TestEntityUniqueId const id) const
+    -> TestEntityUniqueEntityData::kills_type {
+    check(is_valid_unique_id(id));
+    return unique_entities.kills[id.id];
+}
+
+// Spatial queries
+auto FTestEntityRegistry::collect_entities_in_range(
+    FVector3f const& origin,
+    float const radius,
+    TArrayView<FRegistryEntityHandle> const out_entities) const -> int32 {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::collect_entities_in_range);
+
+    int32 count{0};
+
+    auto const radius_squared{radius * radius};
+    auto const n{get_num_elements()};
+    auto const n_out_limit{out_entities.Num()};
+
+    auto const ox{origin.X};
+    auto const oy{origin.Y};
+    auto const oz{origin.Z};
+
+    for (int32 i{0}; i < n; ++i) {
+        auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
+
+        if (dist_sq <= radius_squared) {
+            out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
+        }
+
+        if (count >= n_out_limit) {
+            break;
+        }
+    }
+
+    return count;
+}
+// Validation
+void FTestEntityRegistry::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        SANDBOX_NAMED_NUM(entity_data),
+        SANDBOX_NAMED_NUM(generations),
+        SANDBOX_NAMED_NUM(unique_ids),
+    });
+
+    entity_data.validate_array_sizes();
+    queued_direct_damage_events.validate_array_sizes();
+
+    auto const num_ids_issued{static_cast<int32>(get_num_unique_ids_issued())};
+    if (unique_entities.num() != num_ids_issued) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("%d unique ids != %d ids issued"),
+               unique_entities.num(),
+               num_ids_issued);
+    }
+}
+void FTestEntityRegistry::validate_unique_ids() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_unique_ids);
+
+    // Development-time validation for the unique id system
+    auto const n{unique_ids.Num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        if (!is_valid_unique_id(unique_ids[i])) {
+            UE_LOG(LogSandbox,
+                   Fatal,
+                   TEXT("Invalid unique id detected: (id[%d] = %u)"),
+                   i,
+                   unique_ids[i].id);
+        }
+    }
+}
+void FTestEntityRegistry::validate_unique_entity_data() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_death_reasons);
+
+    auto const n{unique_entities.num()};
+
+    for (int32 i{0}; i < n; ++i) {
+        FRegistryEntityHandle const handle{
+            unique_entities.registry_indices[i],
+            unique_entities.registry_generations[i],
+        };
+        auto const handle_status{analyse_handle(handle)};
+        check(handle_status != ERegistryHandleState::Invalid);
+        check(handle_status != ERegistryHandleState::Null);
+
+        if (unique_entities.alive[i]) {
+            continue;
+        }
+        check(unique_entities.death_reason[i] != ETestDeathReason::Unset);
+    }
+}
+void FTestEntityRegistry::validate_handles(TConstArrayView<FRegistryEntityHandle> const handles) {
+    for (auto const handle : handles) {
+        if (!is_valid_handle(handle)) {
+            UE_LOG(LogSandbox, Fatal, TEXT("Handle is invalid"));
+        }
+    }
+}

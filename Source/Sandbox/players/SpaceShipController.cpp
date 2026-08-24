@@ -1,10 +1,10 @@
 #include "Sandbox/players/SpaceShipController.h"
 
-#include "Sandbox/batch_game/TestBatchGameUiData.h"
-#include "Sandbox/health/ShipHealthComponent.h"
-#include "Sandbox/logging/SandboxLogCategories.h"
-#include "Sandbox/players/SpaceShip.h"
-#include "Sandbox/ui/ship_hud/ShipHudWidget.h"
+#include "SpaceGame/presentation/TestBatchGameUiData.h"
+#include "SpaceGame/ships/common/ShipHealthComponent.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/ships/player/legacy/SpaceShip.h"
+#include "SpaceGame/presentation/widgets/ShipHudWidget.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Engine/LocalPlayer.h"

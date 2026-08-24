@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/players/ShipLaserMode.h"
+#include "SpaceGame/ships/common/ShipLaserMode.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

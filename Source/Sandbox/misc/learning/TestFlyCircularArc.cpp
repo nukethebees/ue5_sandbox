@@ -1,6 +1,6 @@
 #include "TestFlyCircularArc.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/utilities/geometry.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

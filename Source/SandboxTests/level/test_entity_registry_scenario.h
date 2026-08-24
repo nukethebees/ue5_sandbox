@@ -3,7 +3,7 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 
 #include <SandboxCore/time_series_data.h>
 

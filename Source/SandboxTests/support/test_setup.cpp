@@ -2,9 +2,9 @@
 
 #include "SimulationTestAssets.h"
 
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

@@ -1,10 +1,10 @@
-#include <Sandbox/batch_game/SpatialQueryManager.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestEntity.h>
-#include <Sandbox/batch_game/TestEntityType.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/entities/TestEntity.h>
+#include <SpaceGame/entities/TestEntityType.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

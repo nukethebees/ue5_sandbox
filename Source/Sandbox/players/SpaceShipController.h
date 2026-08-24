@@ -1,10 +1,10 @@
 #pragma once
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "Sandbox/players/BarrelRollInputData.h"
-#include "Sandbox/players/LaserFiringState.h"
-#include "Sandbox/players/SpaceShipControllerInputs.h"
-#include "Sandbox/ui/HudCrosshairDistances.h"
+#include "SpaceGame/ships/common/LaserFiringState.h"
+#include "SpaceGame/ships/common/SpaceShipControllerInputs.h"
+#include "SpaceGame/presentation/HudCrosshairDistances.h"
 #include "SandboxGameShared/input/EnhancedInputMixin.hpp"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 

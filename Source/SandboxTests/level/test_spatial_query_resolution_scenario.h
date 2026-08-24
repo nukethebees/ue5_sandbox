@@ -3,8 +3,8 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <Sandbox/batch_game/SpatialQueryHit.h>
-#include <Sandbox/batch_game/TestEntityType.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SpaceGame/entities/TestEntityType.h>
 
 class ATestCapitalShipFighters;
 class ATestCapitalShips;

@@ -48,30 +48,30 @@ F_REGISTRY_ENTITY_HANDLE_ARRAY = composed_type(
 )
 E_TEST_DEATH_REASON = dependent_type(
     "ETestDeathReason",
-    "Sandbox/batch_game/test_entity_registry/TestDeathReason.h",
+    "SpaceGame/entities/TestDeathReason.h",
 )
 TEST_ENTITY_UNIQUE_ID = dependent_type(
     "TestEntityUniqueId",
-    "Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h",
+    "SpaceGame/entities/TestEntityUniqueId.h",
 )
 E_TEST_CAPITAL_SHIP_FIGHTERS_TASK = dependent_type(
     "ETestCapitalShipFightersTask",
-    "Sandbox/batch_game/TestCapitalShipFightersTask.h",
+    "SpaceGame/ships/fighters/TestCapitalShipFightersTask.h",
 )
 TEST_CAPITAL_SHIP_FIGHTER_ORDER = dependent_type(
     "TestCapitalShipFighterOrder",
-    "Sandbox/batch_game/TestCapitalShipFighterOrder.h",
+    "SpaceGame/ships/fighters/TestCapitalShipFighterOrder.h",
 )
 TEST_CAPITAL_SHIP_FIGHTER_SPAWN_QUEUE = dependent_type(
     "TestCapitalShipFighterSpawnQueue",
-    "Sandbox/batch_game/TestCapitalShipFighterSpawnQueue.h",
+    "SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h",
     {REMOVE_AT_SWAP: LOWERCASE_REMOVE_AT_SWAP},
 )
 E_TEST_ENTITY_TYPE = dependent_type(
-    "ETestEntityType", "Sandbox/batch_game/TestEntityType.h"
+    "ETestEntityType", "SpaceGame/entities/TestEntityType.h"
 )
-E_TEST_TEAM = dependent_type("ETestTeam", "Sandbox/batch_game/TestTeam.h")
-F_INDEX_SPAN = dependent_type("FIndexSpan", "Sandbox/utilities/IndexSpan.h")
+E_TEST_TEAM = dependent_type("ETestTeam", "SpaceGame/entities/TestTeam.h")
+F_INDEX_SPAN = dependent_type("FIndexSpan", "SpaceGame/support/IndexSpan.h")
 
 F_COUNTDOWN_TIMERS = dependent_type(
     "FCountdownTimers",

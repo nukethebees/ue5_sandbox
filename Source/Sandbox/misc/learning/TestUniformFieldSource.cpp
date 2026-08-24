@@ -1,6 +1,6 @@
 #include "TestUniformFieldSource.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "TestUniformField.h"

@@ -9,6 +9,28 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
+	"Plugins": [
+		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		},
+		{
+			"Name": "Niagara",
+			"Enabled": true
+		},
+		{
+			"Name": "SandboxCore",
+			"Enabled": true
+		},
+		{
+			"Name": "SandboxGameShared",
+			"Enabled": true
+		},
+		{
+			"Name": "SandboxUI",
+			"Enabled": true
+		}
+	],
 	"Modules": [
 		{
 			"Name": "SpaceGame",

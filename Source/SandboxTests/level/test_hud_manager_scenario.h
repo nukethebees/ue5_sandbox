@@ -3,10 +3,10 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <Sandbox/batch_game/TestEntityType.h>
-#include <Sandbox/batch_game/TestMissionState.h>
-#include <Sandbox/batch_game/TestTeam.h>
-#include <Sandbox/ui/HUDManager.h>
+#include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/presentation/HUDManager.h>
 
 #include <SandboxCore/time_series_data.h>
 

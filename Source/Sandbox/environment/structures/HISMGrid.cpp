@@ -1,6 +1,6 @@
 #include "Sandbox/environment/structures/HISMGrid.h"
 
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"

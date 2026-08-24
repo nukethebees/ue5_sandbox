@@ -1,11 +1,11 @@
-#include <Sandbox/batch_game/ProxyEntityMap.h>
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestLasers.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestStaticTurrets.h>
-#include <Sandbox/batch_game/TestStaticTurretsProxy.h>
+#include <SpaceGame/entities/ProxyEntityMap.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>

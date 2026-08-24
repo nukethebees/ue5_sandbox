@@ -3,7 +3,7 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>

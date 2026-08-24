@@ -1,10 +1,10 @@
 #include "test_fighters_intercept_capital_scenario.h"
 
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestTeam.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/entities/TestTeam.h>
 
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestFightersInterceptCapitalResults.h>

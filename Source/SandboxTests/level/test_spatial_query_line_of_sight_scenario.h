@@ -3,7 +3,7 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 
-#include <Sandbox/batch_game/ProxyEntityMap.h>
+#include <SpaceGame/entities/ProxyEntityMap.h>
 
 #include <SandboxNative/RegistryEntityHandle.h>
 

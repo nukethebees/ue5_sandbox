@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Sandbox/utilities/DrawDebugConfig.h"
+#include "SpaceGame/support/DrawDebugConfig.h"
 
 #include "CoreMinimal.h"
 #include "CollisionShape.h"

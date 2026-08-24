@@ -1,13 +1,13 @@
 #include "test_player_ship_vs_capital_scenario.h"
 
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>

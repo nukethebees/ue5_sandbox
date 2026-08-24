@@ -1,9 +1,9 @@
 #include "SimulationTestAssets.h"
 
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/TestCapitalShipFightersConfig.h>
-#include <Sandbox/batch_game/TestCapitalShipsConfig.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 
 #include <UObject/SoftObjectPath.h>

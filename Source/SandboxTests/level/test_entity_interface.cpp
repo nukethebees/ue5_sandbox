@@ -1,16 +1,16 @@
 #include "test_entity_interface_scenario.h"
 
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestCapitalShipsConfig.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/batch_game/TestStaticTurretsProxy.h>
-#include <Sandbox/batch_game/TestTeam.h>
-#include <Sandbox/batch_game/TestTubeSpinnerProxy.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
+#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>

@@ -1,7 +1,7 @@
 #include "level_checks.h"
 
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistryData.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/entities/TestEntityRegistryData.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestSimulationDriver.h>

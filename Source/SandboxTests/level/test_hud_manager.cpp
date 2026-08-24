@@ -10,17 +10,17 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <Sandbox/batch_game/SimulationConfig.h>
-#include <Sandbox/batch_game/test_entity_registry/TestEntityRegistry.h>
-#include <Sandbox/batch_game/TestBatchGameUiData.h>
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipProxy.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestMissionManager.h>
-#include <Sandbox/batch_game/TestSimulationConfig.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/ui/HUDManager.h>
-#include <Sandbox/ui/ship_hud/ShipHudWidget.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/presentation/HUDManager.h>
+#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SandboxGameShared/utilities/enums.h>
 
 #include <Engine/World.h>

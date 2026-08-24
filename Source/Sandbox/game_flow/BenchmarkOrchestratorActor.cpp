@@ -2,7 +2,7 @@
 
 #include "BenchmarkOrchestratorActor.h"
 
-#include <Sandbox/logging/SandboxLogCategories.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include "Camera/CameraActor.h"
 #include "Engine/World.h"

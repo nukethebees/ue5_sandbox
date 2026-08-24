@@ -6,14 +6,14 @@
 #include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <Sandbox/batch_game/TestBatchOrchestrator.h>
-#include <Sandbox/batch_game/TestCapitalShipFighters.h>
-#include <Sandbox/batch_game/TestCapitalShips.h>
-#include <Sandbox/batch_game/TestLasers.h>
-#include <Sandbox/batch_game/TestSpaceShip.h>
-#include <Sandbox/batch_game/TestStaticTurrets.h>
-#include <Sandbox/batch_game/TestTubeSpinners.h>
-#include <Sandbox/environment/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
+#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>

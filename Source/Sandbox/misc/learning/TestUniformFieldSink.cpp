@@ -1,7 +1,7 @@
 #include "TestUniformFieldSink.h"
 
 #include <SandboxCoreEngine/actor_utils.h>
-#include "Sandbox/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "TestUniformField.h"
 
