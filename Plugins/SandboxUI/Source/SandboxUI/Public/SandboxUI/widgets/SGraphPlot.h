@@ -1,10 +1,21 @@
 #pragma once
 
-#include "SandboxCore/graph_plot.h"
+#include "Containers/Array.h"
 #include "Fonts/SlateFontInfo.h"
+#include "SandboxCore/graph_plot.h"
 #include "Widgets/SLeafWidget.h"
 
-struct SANDBOXCOREENGINE_API FGraphPlotStyle {
+struct SANDBOXUI_API FGraphSeries {
+    FText name;
+
+    // Empty x means implicit x = sample index.
+    TArray<float> x;
+    TArray<float> y;
+
+    FGraphSeriesStyle style;
+};
+
+struct SANDBOXUI_API FGraphPlotStyle {
     FGraphPlotStyle();
 
     FVector2f desired_size{320.0f, 180.0f};
@@ -23,8 +34,7 @@ struct SANDBOXCOREENGINE_API FGraphPlotStyle {
     bool show_legend{true};
 };
 
-/** Lightweight, non-owning Slate line graph. The caller must keep supplied sample arrays alive. */
-class SANDBOXCOREENGINE_API SGraphPlot : public SLeafWidget {
+class SANDBOXUI_API SGraphPlot : public SLeafWidget {
   public:
     SLATE_BEGIN_ARGS(SGraphPlot) {}
     SLATE_ARGUMENT(FGraphPlotStyle, Style)
@@ -34,10 +44,12 @@ class SANDBOXCOREENGINE_API SGraphPlot : public SLeafWidget {
 
     void Construct(FArguments const& args);
 
-    [[nodiscard]] bool set_series(TConstArrayView<FGraphSeriesView> series, uint64 data_revision);
+    void set_series(TArray<FGraphSeries> series);
+    void clear_series();
     [[nodiscard]] bool set_axis_settings(FGraphAxisSettings x_axis, FGraphAxisSettings y_axis);
     void set_style(FGraphPlotStyle style);
 
+    auto get_series() const noexcept -> TConstArrayView<FGraphSeries> { return series_; }
     auto get_cache_stats() const noexcept -> FGraphCacheStats const& { return cache_.get_stats(); }
 
     FVector2D ComputeDesiredSize(float layout_scale_multiplier) const override;
@@ -56,14 +68,17 @@ class SANDBOXCOREENGINE_API SGraphPlot : public SLeafWidget {
     };
 
     void rebuild_ticks();
+    void refresh_cache_series();
     static void build_ticks(
         FGraphRange range, float extent, int32 target_count, bool invert, TArray<FTick>& out_ticks);
 
+    TArray<FGraphSeries> series_;
     FGraphRenderCache cache_;
     FGraphPlotStyle style_;
     TArray<FTick> x_ticks_;
     TArray<FTick> y_ticks_;
     FVector2f plot_origin_{0.0f, 0.0f};
     FVector2f plot_size_{0.0f, 0.0f};
+    uint64 data_revision_{0};
     bool ticks_dirty_{true};
 };

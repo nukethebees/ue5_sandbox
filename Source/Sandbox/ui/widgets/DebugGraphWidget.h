@@ -21,5 +21,4 @@ class SANDBOX_API UDebugGraphWidget : public UUserWidget {
     TArray<float> x_;
     TArray<float> y_;
     TSharedPtr<SGraphPlot> graph_widget_;
-    uint64 revision_{0};
 };

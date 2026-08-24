@@ -1,7 +1,6 @@
 #include "Sandbox/ui/widgets/DebugGraphWidget.h"
 
-#include "SandboxCore/graph_plot.h"
-#include "SandboxCoreEngine/widgets/SGraphPlot.h"
+#include "SandboxUI/widgets/SGraphPlot.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
 void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
@@ -22,7 +21,6 @@ void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
         }
     }
 
-    ++revision_;
     update_slate_series();
 }
 
@@ -43,11 +41,13 @@ void UDebugGraphWidget::update_slate_series() {
     }
 
     static FText const speed_series_name{FText::FromString(TEXT("Speed"))};
-    FGraphSeriesView const series{
+    FGraphSeries series{
         .name = speed_series_name,
         .x = x_,
         .y = y_,
         .style = {.color = FLinearColor::Green, .thickness = 1.0f, .antialias = false},
     };
-    (void)graph_widget_->set_series(MakeArrayView(&series, 1), revision_);
+    TArray<FGraphSeries> series_snapshot;
+    series_snapshot.Add(MoveTemp(series));
+    graph_widget_->set_series(MoveTemp(series_snapshot));
 }
