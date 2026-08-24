@@ -1,0 +1,19 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Space Game",
+	"Description": "Game-specific runtime code and content for the space game.",
+	"Category": "Sandbox",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SpaceGame",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
