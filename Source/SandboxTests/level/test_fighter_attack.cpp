@@ -13,8 +13,6 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <UObject/SoftObjectPath.h>
-
 namespace ml {
 FFighterAttackScenario::FFighterAttackScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
@@ -32,14 +30,20 @@ void FFighterAttackScenario::tear_down() {
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FFighterAttackScenario::spawn_fixture() {
-    auto* const fighter_config{Cast<UTestCapitalShipFightersConfig>(
-        FSoftObjectPath{FLevelTestConfigPaths::fighter_attack_fighter_config}.TryLoad())};
     auto* const fighter_actor{
         const_cast<ATestCapitalShipFighters*>(context_.orchestrator.get_capital_ship_fighters())};
-    if (!checks.not_nullptr(fighter_config, TEXT("Fighter attack config is loaded")) ||
-        !checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available"))) {
+    if (!checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available"))) {
         return;
     }
+
+    auto* const fighter_config{
+        duplicate_capital_ship_fighters_config(context_.config, *fighter_actor)};
+    if (!checks.not_nullptr(fighter_config, TEXT("Fighter attack config is created"))) {
+        return;
+    }
+    fighter_config->laser_speed = 20000.f;
+    fighter_config->laser_max_distance = 25000.f;
+    fighter_config->visual_logger_style = nullptr;
     fighter_actor->set_actor_config(fighter_config);
 
     auto* const hero_proxy{spawn_capital_proxy(context_.world,

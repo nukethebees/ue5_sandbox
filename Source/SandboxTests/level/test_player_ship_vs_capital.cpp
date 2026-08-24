@@ -16,7 +16,6 @@
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <Engine/DataTable.h>
-#include <UObject/SoftObjectPath.h>
 
 namespace ml {
 FPlayerShipVsCapitalScenario::FPlayerShipVsCapitalScenario(FSimulationTestContext& context)
@@ -34,17 +33,23 @@ void FPlayerShipVsCapitalScenario::tear_down() {
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FPlayerShipVsCapitalScenario::spawn_fixture() {
-    auto* const fighter_config{Cast<UTestCapitalShipFightersConfig>(
-        FSoftObjectPath{FLevelTestConfigPaths::player_ship_vs_capital_fighter_config}.TryLoad())};
     auto* const fighter_actor{
         const_cast<ATestCapitalShipFighters*>(context_.orchestrator.get_capital_ship_fighters())};
     auto const* const simulation_config{context_.config.simulation_config.Get()};
-    if (!checks.not_nullptr(fighter_config,
-                            TEXT("Player-versus-capital fighter config is loaded")) ||
-        !checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available")) ||
+    if (!checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available")) ||
         !checks.not_nullptr(simulation_config, TEXT("Simulation config is available"))) {
         return;
     }
+
+    auto* const fighter_config{
+        duplicate_capital_ship_fighters_config(context_.config, *fighter_actor)};
+    if (!checks.not_nullptr(fighter_config,
+                            TEXT("Player-versus-capital fighter config is created"))) {
+        return;
+    }
+    fighter_config->laser_speed = 20000.f;
+    fighter_config->laser_max_distance = 1.f;
+    fighter_config->visual_logger_style = nullptr;
     fighter_actor->set_actor_config(fighter_config);
 
     auto* const player{spawn_player_ship(context_.world,
