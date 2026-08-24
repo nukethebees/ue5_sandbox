@@ -1,15 +1,15 @@
-#include "SandboxCoreEngine/widgets/SGraphPlot.h"
+#include "SandboxUI/widgets/SGraphPlot.h"
 
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
 
 namespace {
-void draw_box(FSlateWindowElementList& out_draw_elements,
-              int32 layer_id,
-              FGeometry const& geometry,
-              FVector2f position,
-              FVector2f size,
-              FLinearColor color) {
+void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
+                         int32 layer_id,
+                         FGeometry const& geometry,
+                         FVector2f position,
+                         FVector2f size,
+                         FLinearColor color) {
     if (size.X <= 0.0f || size.Y <= 0.0f) {
         return;
     }
@@ -33,13 +33,20 @@ void SGraphPlot::Construct(FArguments const& args) {
     SetCanTick(true);
 }
 
-bool SGraphPlot::set_series(TConstArrayView<FGraphSeriesView> const series,
-                            uint64 const data_revision) {
-    auto const changed{cache_.set_series(series, data_revision)};
-    if (changed) {
-        Invalidate(EInvalidateWidgetReason::Paint);
+void SGraphPlot::set_series(TArray<FGraphSeries> series) {
+    series_ = MoveTemp(series);
+    refresh_cache_series();
+    Invalidate(EInvalidateWidgetReason::Paint);
+}
+
+void SGraphPlot::clear_series() {
+    if (series_.IsEmpty()) {
+        return;
     }
-    return changed;
+
+    series_.Reset();
+    refresh_cache_series();
+    Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 bool SGraphPlot::set_axis_settings(FGraphAxisSettings const x_axis,
@@ -87,83 +94,83 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                           FWidgetStyle const&,
                           bool) const {
     auto const local_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    draw_box(out_draw_elements,
-             layer_id,
-             allotted_geometry,
-             FVector2f::ZeroVector,
-             local_size,
-             style_.background_color);
-    draw_box(out_draw_elements,
-             layer_id,
-             allotted_geometry,
-             plot_origin_,
-             plot_size_,
-             style_.plot_color);
+    draw_graph_plot_box(out_draw_elements,
+                        layer_id,
+                        allotted_geometry,
+                        FVector2f::ZeroVector,
+                        local_size,
+                        style_.background_color);
+    draw_graph_plot_box(out_draw_elements,
+                        layer_id,
+                        allotted_geometry,
+                        plot_origin_,
+                        plot_size_,
+                        style_.plot_color);
 
     auto const grid_layer{layer_id + 1};
     for (auto const& tick : x_ticks_) {
-        draw_box(out_draw_elements,
-                 grid_layer,
-                 allotted_geometry,
-                 plot_origin_ + FVector2f{tick.position, 0.0f},
-                 FVector2f{1.0f, plot_size_.Y},
-                 style_.grid_color);
+        draw_graph_plot_box(out_draw_elements,
+                            grid_layer,
+                            allotted_geometry,
+                            plot_origin_ + FVector2f{tick.position, 0.0f},
+                            FVector2f{1.0f, plot_size_.Y},
+                            style_.grid_color);
     }
     for (auto const& tick : y_ticks_) {
-        draw_box(out_draw_elements,
-                 grid_layer,
-                 allotted_geometry,
-                 plot_origin_ + FVector2f{0.0f, tick.position},
-                 FVector2f{plot_size_.X, 1.0f},
-                 style_.grid_color);
+        draw_graph_plot_box(out_draw_elements,
+                            grid_layer,
+                            allotted_geometry,
+                            plot_origin_ + FVector2f{0.0f, tick.position},
+                            FVector2f{plot_size_.X, 1.0f},
+                            style_.grid_color);
     }
 
     auto const axis_layer{grid_layer + 1};
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             plot_origin_,
-             FVector2f{plot_size_.X, 1.0f},
-             style_.axis_color);
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             plot_origin_ + FVector2f{0.0f, plot_size_.Y - 1.0f},
-             FVector2f{plot_size_.X, 1.0f},
-             style_.axis_color);
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             plot_origin_,
-             FVector2f{1.0f, plot_size_.Y},
-             style_.axis_color);
+    draw_graph_plot_box(out_draw_elements,
+                        axis_layer,
+                        allotted_geometry,
+                        plot_origin_,
+                        FVector2f{plot_size_.X, 1.0f},
+                        style_.axis_color);
+    draw_graph_plot_box(out_draw_elements,
+                        axis_layer,
+                        allotted_geometry,
+                        plot_origin_ + FVector2f{0.0f, plot_size_.Y - 1.0f},
+                        FVector2f{plot_size_.X, 1.0f},
+                        style_.axis_color);
+    draw_graph_plot_box(out_draw_elements,
+                        axis_layer,
+                        allotted_geometry,
+                        plot_origin_,
+                        FVector2f{1.0f, plot_size_.Y},
+                        style_.axis_color);
 
     auto const x_range{cache_.get_x_range()};
     if (x_range.min < 0.0 && x_range.max > 0.0) {
         auto const x{static_cast<float>(-x_range.min / (x_range.max - x_range.min)) * plot_size_.X};
-        draw_box(out_draw_elements,
-                 axis_layer,
-                 allotted_geometry,
-                 plot_origin_ + FVector2f{x, 0.0f},
-                 FVector2f{1.0f, plot_size_.Y},
-                 style_.axis_color);
+        draw_graph_plot_box(out_draw_elements,
+                            axis_layer,
+                            allotted_geometry,
+                            plot_origin_ + FVector2f{x, 0.0f},
+                            FVector2f{1.0f, plot_size_.Y},
+                            style_.axis_color);
     }
     auto const y_range{cache_.get_y_range()};
     if (y_range.min < 0.0 && y_range.max > 0.0) {
         auto const y{static_cast<float>(y_range.max / (y_range.max - y_range.min)) * plot_size_.Y};
-        draw_box(out_draw_elements,
-                 axis_layer,
-                 allotted_geometry,
-                 plot_origin_ + FVector2f{0.0f, y},
-                 FVector2f{plot_size_.X, 1.0f},
-                 style_.axis_color);
+        draw_graph_plot_box(out_draw_elements,
+                            axis_layer,
+                            allotted_geometry,
+                            plot_origin_ + FVector2f{0.0f, y},
+                            FVector2f{plot_size_.X, 1.0f},
+                            style_.axis_color);
     }
-    draw_box(out_draw_elements,
-             axis_layer,
-             allotted_geometry,
-             plot_origin_ + FVector2f{plot_size_.X - 1.0f, 0.0f},
-             FVector2f{1.0f, plot_size_.Y},
-             style_.axis_color);
+    draw_graph_plot_box(out_draw_elements,
+                        axis_layer,
+                        allotted_geometry,
+                        plot_origin_ + FVector2f{plot_size_.X - 1.0f, 0.0f},
+                        FVector2f{1.0f, plot_size_.Y},
+                        style_.axis_color);
 
     auto const plot_geometry{
         allotted_geometry.ToPaintGeometry(plot_size_, FSlateLayoutTransform(plot_origin_))};
@@ -181,12 +188,12 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                                          series.style.thickness);
         } else if (series.render_points.Num() == 1) {
             auto const point{series.render_points[0]};
-            draw_box(out_draw_elements,
-                     series_layer,
-                     allotted_geometry,
-                     plot_origin_ + point - FVector2f{1.5f, 1.5f},
-                     FVector2f{3.0f, 3.0f},
-                     series.style.color);
+            draw_graph_plot_box(out_draw_elements,
+                                series_layer,
+                                allotted_geometry,
+                                plot_origin_ + point - FVector2f{1.5f, 1.5f},
+                                FVector2f{3.0f, 3.0f},
+                                series.style.color);
         }
     }
     out_draw_elements.PopClip();
@@ -241,6 +248,18 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
 void SGraphPlot::rebuild_ticks() {
     build_ticks(cache_.get_x_range(), plot_size_.X, style_.target_x_ticks, false, x_ticks_);
     build_ticks(cache_.get_y_range(), plot_size_.Y, style_.target_y_ticks, true, y_ticks_);
+}
+
+void SGraphPlot::refresh_cache_series() {
+    TArray<FGraphSeriesView> series_views;
+    series_views.Reserve(series_.Num());
+    for (auto const& series : series_) {
+        series_views.Add(
+            {.name = series.name, .x = series.x, .y = series.y, .style = series.style});
+    }
+
+    ++data_revision_;
+    (void)cache_.set_series(series_views, data_revision_);
 }
 
 void SGraphPlot::build_ticks(FGraphRange const range,

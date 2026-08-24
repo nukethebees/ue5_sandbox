@@ -47,6 +47,7 @@ public class Sandbox : ModuleRules
             "SlateCore",
             "TraceLog",
             "UMG",
+            "SandboxUI",
         });
         
         if (Target.bBuildEditor)
