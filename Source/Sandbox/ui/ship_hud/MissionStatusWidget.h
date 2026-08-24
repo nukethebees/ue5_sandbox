@@ -49,6 +49,9 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UVerticalBox* surviving_entities_box{nullptr};
 
+    UPROPERTY(meta = (BindWidget))
+    UVerticalBox* required_kill_entities_box{nullptr};
+
     UPROPERTY(EditAnywhere, Category = "UI|Format")
     FName mission_mode_format{TEXT("{0} ({1})")};
 
@@ -70,15 +73,25 @@ class SANDBOX_API UMissionStatusWidget : public UUserWidget {
                             float const mission_time,
                             float const time_remaining,
                             int32 const enemies_remaining,
-                            TConstArrayView<TestEntityUniqueId> const entity_ids,
-                            TConstArrayView<ETestEntityType> const entity_types,
-                            TConstArrayView<FShipHealth> const health_values);
+                            TConstArrayView<TestEntityUniqueId> const surviving_entity_ids,
+                            TConstArrayView<ETestEntityType> const surviving_entity_types,
+                            TConstArrayView<FShipHealth> const surviving_entity_health,
+                            TConstArrayView<TestEntityUniqueId> const required_kill_entity_ids,
+                            TConstArrayView<ETestEntityType> const required_kill_entity_types,
+                            TConstArrayView<FShipHealth> const required_kill_entity_health);
     auto check_widget_bindings() const -> bool;
-    auto reconstruct_surviving_entity_widgets(TConstArrayView<TestEntityUniqueId> entity_ids,
-                                              TConstArrayView<ETestEntityType> entity_types,
-                                              TConstArrayView<FShipHealth> health_values) -> bool;
+    auto update_entity_widgets(UVerticalBox& entity_box,
+                               FStringView widget_name_prefix,
+                               TConstArrayView<TestEntityUniqueId> entity_ids,
+                               TConstArrayView<ETestEntityType> entity_types,
+                               TConstArrayView<FShipHealth> health_values,
+                               TArray<TestEntityUniqueId>& cached_entity_ids,
+                               TArray<TObjectPtr<UMissionEntityHealthRowWidget>>& entity_widgets)
+        -> bool;
 
     TArray<TestEntityUniqueId> surviving_entity_ids{};
     TArray<TObjectPtr<UMissionEntityHealthRowWidget>> surviving_entity_widgets{};
+    TArray<TestEntityUniqueId> required_kill_entity_ids{};
+    TArray<TObjectPtr<UMissionEntityHealthRowWidget>> required_kill_entity_widgets{};
     ETestMissionMode current_mission_mode{ETestMissionMode::None};
 };

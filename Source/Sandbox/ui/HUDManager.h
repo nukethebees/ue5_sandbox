@@ -55,6 +55,8 @@ struct FMissionStaticDataCache {
     ETestMissionMode mission_mode{ETestMissionMode::None};
     TArray<TestEntityUniqueId> surviving_entity_ids;
     TArray<ETestEntityType> surviving_entity_types;
+    TArray<TestEntityUniqueId> required_kill_entity_ids;
+    TArray<ETestEntityType> required_kill_entity_types;
 };
 
 struct FMissionStatusDataCache {
@@ -65,6 +67,7 @@ struct FMissionStatusDataCache {
     float time_remaining{0.f};
     int32 enemies_remaining{0};
     TArray<FShipHealth> surviving_entity_health;
+    TArray<FShipHealth> required_kill_entity_health;
 };
 
 struct FMissionDataCache {

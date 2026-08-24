@@ -30,6 +30,8 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         KillEnemies,
         KillEnemiesWithinTime,
         DefenceObjective,
+        RequiredKillsObjective,
+        RequiredKillsTimeElapsed,
     };
 
     struct FSimulationSample {
@@ -37,6 +39,7 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         ETestMissionFailReason mission_fail_reason{ETestMissionFailReason::None};
         int32 mission_kills{0};
         TArray<int32> surviving_entity_health;
+        TArray<int32> required_kill_entity_health;
     };
 
     static constexpr float short_mission_time{0.1f};
@@ -96,6 +99,27 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
             case EScenario::DefenceObjective: {
                 break;
             }
+            case EScenario::RequiredKillsObjective: {
+                ml::spawn_capital_proxy(world,
+                                        config,
+                                        checks,
+                                        FName{TEXT("ordinary_enemy_capital")},
+                                        FVector{2000.f, 0.f, 0.f});
+                ml::spawn_capital_proxy(world,
+                                        config,
+                                        checks,
+                                        FName{TEXT("required_enemy_capital")},
+                                        FVector{4000.f, 0.f, 0.f});
+                break;
+            }
+            case EScenario::RequiredKillsTimeElapsed: {
+                ml::spawn_capital_proxy(world,
+                                        config,
+                                        checks,
+                                        FName{TEXT("required_enemy_capital")},
+                                        FVector{2000.f, 0.f, 0.f});
+                break;
+            }
             default: {
                 checkNoEntry();
                 break;
@@ -105,8 +129,16 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
 
     static void configure_mission_manager(
         UWorld & world, ATestBatchOrchestrator & orchestrator, EScenario const scenario) {
-        auto* const first_capital{ml::get_first_actor<ATestCapitalShipProxy>(world)};
-        check(first_capital);
+        auto const capitals{ml::get_actors<ATestCapitalShipProxy>(world)};
+        auto const find_capital{[&capitals](FName const test_name) {
+            auto* const* const capital{
+                capitals.FindByPredicate([test_name](ATestCapitalShipProxy const* const candidate) {
+                    return candidate->get_test_name() == test_name;
+                })};
+            check(capital);
+            return *capital;
+        }};
+        auto* const first_capital{find_capital(FName{TEXT("hero_capital")})};
 
         auto& manager{orchestrator.get_mission_manager()};
         manager.set_save_mission_results(false);
@@ -135,6 +167,22 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
                 manager.set_mission_mode(ETestMissionMode::SurviveTime);
                 manager.set_target_time(long_mission_time);
                 manager.add_entity_that_must_survive(*first_capital);
+                break;
+            }
+            case EScenario::RequiredKillsObjective: {
+                manager.set_mission_mode(ETestMissionMode::KillEnemies);
+                manager.set_kill_target(1);
+                manager.add_hero_entity(*first_capital);
+                manager.add_entity_required_to_kill(
+                    *find_capital(FName{TEXT("required_enemy_capital")}));
+                break;
+            }
+            case EScenario::RequiredKillsTimeElapsed: {
+                manager.set_mission_mode(ETestMissionMode::SurviveTime);
+                manager.set_target_time(short_mission_time);
+                manager.add_entity_that_must_survive(*first_capital);
+                manager.add_entity_required_to_kill(
+                    *find_capital(FName{TEXT("required_enemy_capital")}));
                 break;
             }
             default: {
@@ -191,6 +239,24 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
                                   surviving_health[0].max_health);
         }
 
+        auto const required_kill_health{manager->get_entity_health_required_to_kill()};
+        TestRunner->TestEqual(TEXT("Required-kill health data matches objective handles"),
+                              required_kill_health.Num(),
+                              manager->get_entity_handles_required_to_kill().Num());
+        TestRunner->TestEqual(TEXT("Required-kill IDs match objective handles"),
+                              manager->get_entity_ids_required_to_kill().Num(),
+                              manager->get_entity_handles_required_to_kill().Num());
+        TestRunner->TestEqual(TEXT("Required-kill types match objective handles"),
+                              manager->get_entity_types_required_to_kill().Num(),
+                              manager->get_entity_handles_required_to_kill().Num());
+        if (!required_kill_health.IsEmpty()) {
+            TestRunner->TestTrue(TEXT("Required-kill health captures a positive maximum"),
+                                 required_kill_health[0].max_health > 0);
+            TestRunner->TestEqual(TEXT("Initial required-kill health is full"),
+                                  required_kill_health[0].health,
+                                  required_kill_health[0].max_health);
+        }
+
         test_driver->orchestrator.set_end_tick_test_hook(
             FOrchestratorEndTickTestHook::CreateRaw(this, &ThisClass::on_end_tick));
         if (scenario == EScenario::KillEnemies) {
@@ -198,6 +264,9 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         } else if (scenario == EScenario::DefenceObjective) {
             test_driver->timeline.then_after(
                 0.01, [this, manager] { queue_defended_entity_kill(*manager); });
+        } else if (scenario == EScenario::RequiredKillsObjective) {
+            test_driver->timeline.then_after(0.01, [this, manager] { queue_enemy_kill(*manager); })
+                .then_after(0.19, [this, manager] { queue_required_entity_kill(*manager); });
         }
         test_driver->orchestrator.start_simulation();
     }
@@ -212,6 +281,9 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         for (auto const& health : manager.get_entity_health_that_must_survive()) {
             sample.surviving_entity_health.Add(health.health);
         }
+        for (auto const& health : manager.get_entity_health_required_to_kill()) {
+            sample.required_kill_entity_health.Add(health.health);
+        }
 
         samples.add(test_driver->get_time(), MoveTemp(sample));
         test_driver->timeline.tick(test_driver->get_time());
@@ -222,13 +294,14 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
         check(hero_handles.Num() == 1);
 
         auto const hero{hero_handles[0]};
+        auto const required_handles{manager.get_entity_handles_required_to_kill()};
         auto const& capitals{test_driver->get_capital_ships()};
         auto const n{capitals.get_num_instances()};
 
         FRegistryEntityHandle enemy;
         for (int32 i{0}; i < n; ++i) {
             auto const handle{capitals.get_handle(i)};
-            if (handle != hero) {
+            if (handle != hero && !required_handles.Contains(handle)) {
                 enemy = handle;
                 break;
             }
@@ -245,6 +318,15 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
 
         TArray<FRegistryEntityHandle> const targets{defended_handles[0]};
         auto const damage{test_driver->get_capital_ships().get_health(defended_handles[0])};
+        test_driver->queue_damage(targets, damage);
+    }
+
+    void queue_required_entity_kill(FTestMissionManager const& manager) {
+        auto const required_handles{manager.get_entity_handles_required_to_kill()};
+        check(required_handles.Num() == 1);
+
+        TArray<FRegistryEntityHandle> const targets{required_handles[0]};
+        auto const damage{test_driver->get_capital_ships().get_health(required_handles[0])};
         test_driver->queue_damage(targets, damage);
     }
 
@@ -304,6 +386,44 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
                 }
                 break;
             }
+            case EScenario::RequiredKillsObjective: {
+                auto const& gated_sample{samples.nearest_value(0.1)};
+                TestRunner->TestEqual(TEXT("Normal kill target does not bypass required kill"),
+                                      gated_sample.mission_state,
+                                      ETestMissionState::Running);
+                TestRunner->TestEqual(TEXT("Normal kill target is met before required kill"),
+                                      gated_sample.mission_kills,
+                                      1);
+                TestRunner->TestTrue(TEXT("Required target remains healthy while mission is gated"),
+                                     !gated_sample.required_kill_entity_health.IsEmpty() &&
+                                         gated_sample.required_kill_entity_health[0] > 0);
+                TestRunner->TestEqual(TEXT("Required-kill mission succeeds"),
+                                      sample.mission_state,
+                                      ETestMissionState::Succeeded);
+                TestRunner->TestEqual(TEXT("Uncredited required kill preserves mission kills"),
+                                      sample.mission_kills,
+                                      1);
+                TestRunner->TestTrue(TEXT("Required-kill health is sampled"),
+                                     !sample.required_kill_entity_health.IsEmpty());
+                if (!sample.required_kill_entity_health.IsEmpty()) {
+                    TestRunner->TestEqual(TEXT("Destroyed required target reports zero health"),
+                                          sample.required_kill_entity_health[0],
+                                          0);
+                }
+                break;
+            }
+            case EScenario::RequiredKillsTimeElapsed: {
+                TestRunner->TestEqual(TEXT("Incomplete required kill fails survive-time mission"),
+                                      sample.mission_state,
+                                      ETestMissionState::Failed);
+                TestRunner->TestEqual(TEXT("Incomplete required kill reports elapsed time"),
+                                      sample.mission_fail_reason,
+                                      ETestMissionFailReason::TimeElapsed);
+                TestRunner->TestTrue(TEXT("Required target remains alive at timeout"),
+                                     !sample.required_kill_entity_health.IsEmpty() &&
+                                         sample.required_kill_entity_health[0] > 0);
+                break;
+            }
             default: {
                 checkNoEntry();
                 break;
@@ -322,4 +442,10 @@ TEST_CLASS(TestMissionManager, "Sandbox.LevelTests")
 
     TEST_METHOD(DefenceObjective)
     { setup_scenario(EScenario::DefenceObjective); }
+
+    TEST_METHOD(RequiredKillsObjective)
+    { setup_scenario(EScenario::RequiredKillsObjective); }
+
+    TEST_METHOD(RequiredKillsTimeElapsed)
+    { setup_scenario(EScenario::RequiredKillsTimeElapsed); }
 };

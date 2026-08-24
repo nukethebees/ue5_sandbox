@@ -30,6 +30,9 @@ struct FTestMissionStartupData {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TArray<TObjectPtr<AActor>> entities_must_survive;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox")
+    TArray<TObjectPtr<AActor>> entities_required_to_kill;
 };
 
 USTRUCT()
@@ -49,6 +52,7 @@ struct SANDBOX_API FTestMissionManager {
     void set_save_mission_results(bool should_save) noexcept;
     void add_hero_entity(AActor& actor);
     void add_entity_that_must_survive(AActor& actor);
+    void add_entity_required_to_kill(AActor& actor);
 
     void on_proxy_entities_bound(FProxyEntityMap const& proxy_entities);
 
@@ -86,6 +90,19 @@ struct SANDBOX_API FTestMissionManager {
     auto get_entity_types_that_must_survive() const noexcept -> TConstArrayView<ETestEntityType> {
         return entity_types_that_must_survive;
     }
+    auto get_entity_handles_required_to_kill() const noexcept
+        -> TConstArrayView<FRegistryEntityHandle> {
+        return entity_handles_required_to_kill;
+    }
+    auto get_entity_health_required_to_kill() const noexcept -> TConstArrayView<FShipHealth> {
+        return entity_health_required_to_kill;
+    }
+    auto get_entity_ids_required_to_kill() const noexcept -> TConstArrayView<TestEntityUniqueId> {
+        return entity_ids_required_to_kill;
+    }
+    auto get_entity_types_required_to_kill() const noexcept -> TConstArrayView<ETestEntityType> {
+        return entity_types_required_to_kill;
+    }
 
     auto get_mission_stopwatch() const noexcept -> float { return mission_elapsed_seconds; }
     auto mission_running() const noexcept -> bool {
@@ -107,6 +124,9 @@ struct SANDBOX_API FTestMissionManager {
     void initialise_entity_health_that_must_survive();
     void update_entity_health_that_must_survive();
     auto entities_that_must_survive_are_alive() const -> bool;
+    void initialise_entity_health_required_to_kill();
+    void update_entity_health_required_to_kill();
+    auto entities_required_to_kill_are_dead() const -> bool;
 
     void handle_mission_ended(ETestMissionFailReason const fail_reason);
     void handle_mission_success();
@@ -124,6 +144,10 @@ struct SANDBOX_API FTestMissionManager {
     TArray<TestEntityUniqueId> entity_ids_that_must_survive{};
     TArray<ETestEntityType> entity_types_that_must_survive{};
     TArray<FShipHealth> entity_health_that_must_survive{};
+    TArray<FRegistryEntityHandle> entity_handles_required_to_kill{};
+    TArray<TestEntityUniqueId> entity_ids_required_to_kill{};
+    TArray<ETestEntityType> entity_types_required_to_kill{};
+    TArray<FShipHealth> entity_health_required_to_kill{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionState mission_state{ETestMissionState::NotStarted};

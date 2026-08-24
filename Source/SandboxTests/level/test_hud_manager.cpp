@@ -45,6 +45,7 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
     struct FDefenceSample {
         ETestMissionState mission_state{ETestMissionState::NotStarted};
         int32 defended_entity_health{INDEX_NONE};
+        int32 required_kill_entity_health{INDEX_NONE};
         float mission_stopwatch{0.f};
         int32 registered_hud_count{0};
     };
@@ -226,16 +227,31 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         if (!IsValid(defended)) {
             return;
         }
+        ml::spawn_capital_proxy(world,
+                                config,
+                                checks,
+                                FName{TEXT("required_enemy_capital")},
+                                FVector{2000.f, 0.f, 0.f});
     }
     void configure_defence_mission(UWorld & world, ATestBatchOrchestrator & orchestrator) {
-        auto* const defended{ml::get_first_actor<ATestCapitalShipProxy>(world)};
-        check(defended);
+        auto const capitals{ml::get_actors<ATestCapitalShipProxy>(world)};
+        auto const find_capital{[&capitals](FName const test_name) {
+            auto* const* const capital{
+                capitals.FindByPredicate([test_name](ATestCapitalShipProxy const* const candidate) {
+                    return candidate->get_test_name() == test_name;
+                })};
+            check(capital);
+            return *capital;
+        }};
+        auto* const defended{find_capital(FName{TEXT("defended_capital")})};
+        auto* const required_enemy{find_capital(FName{TEXT("required_enemy_capital")})};
 
         auto& mission_manager{orchestrator.get_mission_manager()};
         mission_manager.set_save_mission_results(false);
         mission_manager.set_mission_mode(ETestMissionMode::SurviveTime);
         mission_manager.set_target_time(10.f);
         mission_manager.add_entity_that_must_survive(*defended);
+        mission_manager.add_entity_required_to_kill(*required_enemy);
     }
     void defence_begin() {
         test_driver = ml::TestSimulationDriver::from_world(level_setup->get_world());
@@ -254,12 +270,28 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
                          TEXT("Must-survive health is cached"));
         checks.is_true(initial_data.status_data.surviving_entity_health[0].health > 0,
                        TEXT("Must-survive entity starts healthy"));
+        checks.are_equal(1,
+                         initial_data.static_data.required_kill_entity_ids.Num(),
+                         TEXT("Required-kill ID is cached"));
+        checks.are_equal(1,
+                         initial_data.static_data.required_kill_entity_types.Num(),
+                         TEXT("Required-kill type is cached"));
+        checks.are_equal(1,
+                         initial_data.status_data.required_kill_entity_health.Num(),
+                         TEXT("Required-kill health is cached"));
+        checks.is_true(initial_data.status_data.required_kill_entity_health[0].health > 0,
+                       TEXT("Required-kill entity starts healthy"));
 
         auto const handles{
             test_driver->orchestrator.get_mission_manager().get_entity_handles_that_must_survive()};
         check(handles.Num() == 1);
-        test_driver->timeline.then_after(damage_queue_time,
-                                         [this, handles] { test_driver->queue_kills(handles); });
+        auto const required_handles{
+            test_driver->orchestrator.get_mission_manager().get_entity_handles_required_to_kill()};
+        check(required_handles.Num() == 1);
+        test_driver->timeline.then_after(damage_queue_time, [this, handles, required_handles] {
+            test_driver->queue_kills(required_handles);
+            test_driver->queue_kills(handles);
+        });
         ml::reset_and_reserve_time_series(
             test_driver->orchestrator, test_duration, defence_samples);
         test_driver->orchestrator.set_end_tick_test_hook(
@@ -278,6 +310,10 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
         if (data.status_data.surviving_entity_health.Num() == 1) {
             sample.defended_entity_health = data.status_data.surviving_entity_health[0].health;
         }
+        if (data.status_data.required_kill_entity_health.Num() == 1) {
+            sample.required_kill_entity_health =
+                data.status_data.required_kill_entity_health[0].health;
+        }
         defence_samples.add(test_driver->get_time(), sample);
         test_driver->timeline.tick(test_driver->get_time());
     }
@@ -291,6 +327,9 @@ TEST_CLASS(TestHUDManager, "Sandbox.LevelTests")
                          TEXT("Defence mission failure is cached"));
         checks.is_less_equal_than(
             sample.defended_entity_health, 0, TEXT("Destroyed must-survive health is cached"));
+        checks.is_less_equal_than(sample.required_kill_entity_health,
+                                  0,
+                                  TEXT("Destroyed required-kill health is cached"));
         checks.is_true(sample.mission_stopwatch > 0.f,
                        TEXT("Mission stopwatch follows simulation time"));
         checks.are_equal(0, sample.registered_hud_count, TEXT("Mission updates without a HUD"));

@@ -201,6 +201,8 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     static_data.mission_mode = mission_manager->get_mission_mode();
     static_data.surviving_entity_ids = mission_manager->get_entity_ids_that_must_survive();
     static_data.surviving_entity_types = mission_manager->get_entity_types_that_must_survive();
+    static_data.required_kill_entity_ids = mission_manager->get_entity_ids_required_to_kill();
+    static_data.required_kill_entity_types = mission_manager->get_entity_types_required_to_kill();
 
     auto& status_data{out.status_data};
     status_data.mission_state = mission_manager->get_mission_state();
@@ -208,6 +210,7 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     status_data.time_remaining = mission_manager->get_time_remaining();
     status_data.enemies_remaining = mission_manager->get_kills_remaining();
     status_data.surviving_entity_health = mission_manager->get_entity_health_that_must_survive();
+    status_data.required_kill_entity_health = mission_manager->get_entity_health_required_to_kill();
 }
 bool FHUDManager::collect_entity_count_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_entity_count_data);
