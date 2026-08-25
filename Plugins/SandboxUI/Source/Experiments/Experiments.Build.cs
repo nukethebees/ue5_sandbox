@@ -12,20 +12,18 @@ public class Experiments : ModuleRules
         {
             "Core",
             "CoreUObject",
+            "Blutility",
             "SlateCore",
             "UMG",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
-            "Blutility",
             "Engine",
             "Projects",
             "RenderCore",
             "RHI",
             "Slate",
-            "UnrealEd",
-            "WorkspaceMenuStructure",
         });
     }
 }

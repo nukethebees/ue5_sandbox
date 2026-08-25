@@ -12,3 +12,7 @@ editor tab.
 When a reusable SandboxUI widget is added, a representative live example should normally be added
 to this gallery as well. Keep example-only data and presentation in `SandboxUIExamples`; production
 widgets must not depend on the showcase.
+
+`EUW_HeatmapRDGShowcase` is a separate editor utility for the experimental RDG/GPU heatmap path.
+Its UI is implemented by `UHeatmapRDGShowcase` in the editor-only `Experiments` module. Right-click
+the asset and choose **Run Editor Utility Widget** to compare deterministic patterns and grid sizes.

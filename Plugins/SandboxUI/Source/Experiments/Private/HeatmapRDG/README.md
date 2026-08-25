@@ -31,13 +31,14 @@ thread, `CreateStructuredBuffer` exposes that snapshot as an RDG structured buff
 marked `NoCopy` because the command owns the array until the graph has executed; it does not mean
 that the CPU data bypasses the RHI upload.
 
-The graph registers the widget's persistent `UTextureRenderTarget2D` RHI texture as an external
-RDG texture. One 8x8-thread-group global compute pass reads one float per cell, clamps it to
-`[0, 1]`, maps it through a fixed colour ramp, and writes one `PF_R8G8B8A8` output pixel per cell.
-The graph leaves the external texture in shader-resource access for Slate.
+The graph registers the widget's persistent 512x512 `UTextureRenderTarget2D` RHI texture as an
+external RDG texture. One 8x8-thread-group global compute pass reads one float per cell, clamps it
+to `[0, 1]`, maps it through a fixed colour ramp, and writes one `PF_R8G8B8A8` output pixel per
+cell. Smaller grids occupy the top-left of that texture and the Slate brush samples only the
+written UV region. The graph leaves the external texture in shader-resource access for Slate.
 
-The render target is recreated only when grid dimensions change. Same-sized updates reuse the
-texture and only submit a new snapshot, upload, and compute pass.
+Keeping one output allocation avoids render-target lifecycle gaps when changing input resolution.
+The CPU upload and compute dispatch still remain proportional to the selected grid size.
 
 ## Slate and editor utility presentation
 
@@ -46,20 +47,21 @@ transient render target directly, so Slate samples the GPU result without readba
 constant with respect to cell count: it produces one image element, not one element per cell.
 Nearest filtering keeps individual cells visible when the widget is enlarged.
 
-The example frontend is `UHeatmapRDGEditorUtilityWidget`, a native C++ editor utility widget. The
-module registers it as a nomad editor tab and builds its controls and layout directly in Slate, so
-there is no Widget Blueprint or content asset to maintain.
+The example frontend is `UHeatmapRDGShowcase`, a native C++ editor utility widget. Its controls,
+layout, patterns, and heatmap are implemented in C++; `EUW_HeatmapRDGShowcase` is only the minimal
+Editor Utility Widget Blueprint asset Unreal requires for Content Browser discovery and launch.
 
 To view the demo:
 
-1. Open **Tools > Developer Tools > Miscellaneous** in the Unreal Editor.
-2. Select **RDG Heatmap Experiment**.
-3. Use the size buttons to submit 32x32 through 512x512 grids, and switch between the deterministic
-   hotspot and gradient/checker patterns.
+1. Show plugin content in the Content Browser and open `SandboxUI/Examples`.
+2. Right-click `EUW_HeatmapRDGShowcase` and select **Run Editor Utility Widget**.
+3. Choose an input grid resolution from 32x32 through 512x512, and switch between the deterministic
+   hotspot and gradient/checker patterns. Changing resolution regenerates the selected pattern.
 
 The widget submits a deterministic 128x128 multi-hotspot pattern on first construction. The
-pattern controls exercise same-size content updates, while the size controls also exercise output
-texture recreation. C++ callers can call `set_grid` with their own `FHeatmapGrid`, or call
+pattern controls exercise same-size content updates, while the resolution controls change upload
+and dispatch sizes without replacing the output texture. C++ callers can call `set_grid` with their
+own `FHeatmapGrid` up to 512x512, or call
 `generate_demo_grid` with another size. `Experiments` is an editor-only module and is not loaded
 by normal game or shipping targets.
 

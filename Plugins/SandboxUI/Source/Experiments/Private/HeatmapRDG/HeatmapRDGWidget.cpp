@@ -11,9 +11,14 @@
 DEFINE_LOG_CATEGORY_STATIC(LogHeatmapRDGWidget, Log, All);
 
 namespace {
+constexpr int32 output_texture_dimension{512};
+
+auto maximum_heatmap_dimension() -> int32 {
+    return FMath::Min(output_texture_dimension, static_cast<int32>(GetMax2DTextureDimension()));
+}
+
 auto are_supported_heatmap_dimensions(int32 const width, int32 const height) -> bool {
-    auto const maximum_dimension{static_cast<int32>(GetMax2DTextureDimension())};
-    return width <= maximum_dimension && height <= maximum_dimension;
+    return width <= maximum_heatmap_dimension() && height <= maximum_heatmap_dimension();
 }
 }
 
@@ -47,16 +52,27 @@ bool UHeatmapRDGWidget::set_grid(FHeatmapGrid const& grid) {
     if (!are_supported_heatmap_dimensions(grid.width, grid.height)) {
         UE_LOG(LogHeatmapRDGWidget,
                Warning,
-               TEXT("Rejected heatmap grid %dx%d because the maximum texture dimension is %u."),
+               TEXT("Rejected heatmap grid %dx%d because the experiment supports at most %dx%d."),
                grid.width,
                grid.height,
-               GetMax2DTextureDimension());
+               maximum_heatmap_dimension(),
+               maximum_heatmap_dimension());
         return false;
     }
 
-    auto const dimensions{FIntPoint{grid.width, grid.height}};
-    if (!ensure_output_texture(dimensions)) {
+    auto const grid_dimensions{FIntPoint{grid.width, grid.height}};
+    auto const output_dimensions{FIntPoint{output_texture_dimension, output_texture_dimension}};
+    if (!ensure_output_texture(output_dimensions)) {
         return false;
+    }
+
+    auto const uv_max{FVector2f{static_cast<float>(grid.width) / output_texture_dimension,
+                                static_cast<float>(grid.height) / output_texture_dimension}};
+    brush_.SetUVRegion(FBox2f{FVector2f::ZeroVector, uv_max});
+    brush_.ImageSize = FVector2D{grid_dimensions};
+    if (image_.IsValid()) {
+        image_->SetImage(static_cast<FSlateBrush const*>(nullptr));
+        image_->SetImage(&brush_);
     }
 
     auto* const output_resource{output_texture_->GameThread_GetRenderTargetResource()};
@@ -69,9 +85,9 @@ bool UHeatmapRDGWidget::set_grid(FHeatmapGrid const& grid) {
 
     TArray<float> values_snapshot{grid.values};
     ENQUEUE_RENDER_COMMAND(RenderHeatmapRDG)
-    ([values = MoveTemp(values_snapshot), dimensions, output_resource](
+    ([values = MoveTemp(values_snapshot), grid_dimensions, output_resource](
          FRHICommandListImmediate& rhi_command_list) mutable {
-        render_heatmap_rdg(rhi_command_list, MoveTemp(values), dimensions, output_resource);
+        render_heatmap_rdg(rhi_command_list, MoveTemp(values), grid_dimensions, output_resource);
     });
 
     has_submitted_grid_ = true;
@@ -87,10 +103,11 @@ void UHeatmapRDGWidget::generate_demo_grid(int32 const width, int32 const height
     if (!are_supported_heatmap_dimensions(width, height)) {
         UE_LOG(LogHeatmapRDGWidget,
                Warning,
-               TEXT("Rejected demo heatmap %dx%d because the maximum texture dimension is %u."),
+               TEXT("Rejected demo heatmap %dx%d because the experiment supports at most %dx%d."),
                width,
                height,
-               GetMax2DTextureDimension());
+               maximum_heatmap_dimension(),
+               maximum_heatmap_dimension());
         return;
     }
 
@@ -134,7 +151,7 @@ void UHeatmapRDGWidget::generate_demo_grid(int32 const width, int32 const height
 
 TSharedRef<SWidget> UHeatmapRDGWidget::RebuildWidget() {
     SAssignNew(image_, SImage).Image(&brush_);
-    if (!has_submitted_grid_) {
+    if (!has_submitted_grid_ && !GUsingNullRHI) {
         generate_demo_grid(128, 128);
     }
     return image_.ToSharedRef();
@@ -172,8 +189,8 @@ auto UHeatmapRDGWidget::ensure_output_texture(FIntPoint const dimensions) -> boo
     output_texture_ = output_texture;
     output_size_ = dimensions;
     brush_.SetResourceObject(output_texture_);
-    brush_.ImageSize = FVector2D{dimensions};
     if (image_.IsValid()) {
+        image_->SetImage(static_cast<FSlateBrush const*>(nullptr));
         image_->SetImage(&brush_);
     }
     return true;
