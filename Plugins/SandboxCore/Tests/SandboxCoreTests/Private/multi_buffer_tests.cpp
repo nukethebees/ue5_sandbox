@@ -39,6 +39,27 @@ TEST_CASE("SandboxCore.MultiBuffer.Double MultiBuffer wraps correctly") {
     CHECK(buffer.next() == 10);
 }
 
+TEST_CASE("SandboxCore.MultiBuffer.Complete cycles preserve roles and values") {
+    ml::MultiBuffer<int32, 3> buffer{{10, 20, 30}};
+
+    buffer.next() = 21;
+    buffer.cycle();
+    buffer.next() = 31;
+    buffer.cycle();
+    buffer.next() = 11;
+    buffer.cycle();
+
+    CHECK(buffer.previous() == 31);
+    CHECK(buffer.current() == 11);
+    CHECK(buffer.next() == 21);
+
+    buffer.cycle();
+
+    CHECK(buffer.previous() == 11);
+    CHECK(buffer.current() == 21);
+    CHECK(buffer.next() == 31);
+}
+
 TEST_CASE("SandboxCore.MultiBuffer.ForEachVisitsAndMutatesEveryBuffer") {
     ml::MultiBuffer<int32, 3> buffer{{10, 20, 30}};
     int32 visit_count{0};

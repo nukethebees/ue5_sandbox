@@ -50,6 +50,23 @@ TEST_CASE("SandboxCore.PeriodicCountdownTimers.TickAndConsume") {
     CHECK(timers.remaining_times[0] == 1.f);
 }
 
+TEST_CASE("SandboxCore.PeriodicCountdownTimers.ConsumeDiscardsOvershoot") {
+    FPeriodicCountdownTimers timers;
+    timers.add_started(1.f);
+
+    timers.tick(2.5f);
+
+    CHECK(timers.remaining_times[0] == -1.5f);
+    CHECK(timers.try_consume(0));
+    CHECK(timers.remaining_times[0] == 1.f);
+    CHECK_FALSE(timers.try_consume(0));
+
+    timers.tick(1.f);
+    CHECK(timers.remaining_times[0] == 0.f);
+    CHECK(timers.try_consume(0));
+    CHECK(timers.remaining_times[0] == 1.f);
+}
+
 TEST_CASE("SandboxCore.PeriodicCountdownTimers.SupportsSoAOperations") {
     FPeriodicCountdownTimers source;
     source.add_started(1.f);
