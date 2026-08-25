@@ -1,19 +1,13 @@
 #pragma once
 
+#include <codegen/ast.h>
+#include <codegen/generated_file.h>
 #include <codegen/schema.h>
 
 #include <filesystem>
-#include <string>
 #include <vector>
 
 namespace codegen {
-
-struct GeneratedFile {
-    std::filesystem::path path;
-    std::string content;
-
-    auto operator==(GeneratedFile const&) const -> bool = default;
-};
 
 auto lower_modules(Manifest const& manifest) -> std::vector<Module>;
 auto render_modules(std::vector<Module> const& modules) -> std::vector<GeneratedFile>;
