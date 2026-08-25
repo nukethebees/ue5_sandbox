@@ -43,6 +43,23 @@ TEST_CASE("SandboxCore.TimeSeriesData.Add forwards move-only values") {
     CHECK(*data.value_at(0) == 42);
 }
 
+TEST_CASE("SandboxCore.TimeSeriesData.Reset clears and permits an earlier timeline") {
+    ml::TimeSeriesData<int32> data;
+    data.add(10.0, 100);
+    data.add(20.0, 200);
+
+    data.reset();
+
+    CHECK(data.is_empty());
+    CHECK(data.times().IsEmpty());
+    CHECK(data.values().IsEmpty());
+
+    data.add(1.0, 10);
+    REQUIRE(data.num() == 1);
+    CHECK(data.last_time() == 1.0);
+    CHECK(data.last_value() == 10);
+}
+
 TEST_CASE("SandboxCore.TimeSeriesData.Nearest lookup finds closest entry") {
     ml::TimeSeriesData<int32> data;
     data.add(1.0, 10);

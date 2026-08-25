@@ -32,3 +32,21 @@ TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc.Removes from paired
     REQUIRE(ids == expected_ids);
     REQUIRE(weights == expected_weights);
 }
+
+TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc.Ignores duplicate indices") {
+    TArray<int32> values{0, 10, 20, 30, 40};
+    TArray<int32> const indices{3, 3, 1, 1};
+
+    ml::remove_at_swap_many_sorted_desc(indices, values);
+
+    CHECK((values == TArray<int32>{0, 40, 20}));
+}
+
+TEST_CASE("SandboxCore.Array.remove_at_swap_many_sorted_desc.Empty indices leave arrays unchanged") {
+    TArray<int32> values{0, 10, 20};
+    TArray<int32> const indices;
+
+    ml::remove_at_swap_many_sorted_desc(indices, values);
+
+    CHECK((values == TArray<int32>{0, 10, 20}));
+}
