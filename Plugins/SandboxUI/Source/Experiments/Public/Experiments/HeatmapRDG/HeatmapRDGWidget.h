@@ -13,7 +13,7 @@ class SImage;
 class UTextureRenderTarget2D;
 
 USTRUCT(BlueprintType)
-struct EXPERIMENTS_API FHeatmapGrid {
+struct EXPERIMENTS_API FHeatmapRDGGrid {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heatmap")
@@ -35,7 +35,7 @@ class EXPERIMENTS_API UHeatmapRDGWidget : public UWidget {
     UHeatmapRDGWidget();
 
     UFUNCTION(BlueprintCallable, Category = "Heatmap|Experiment")
-    [[nodiscard]] bool set_grid(FHeatmapGrid const& grid);
+    [[nodiscard]] bool set_grid(FHeatmapRDGGrid const& grid);
 
     UFUNCTION(BlueprintCallable, Category = "Heatmap|Experiment")
     void generate_demo_grid(int32 width = 128, int32 height = 128);

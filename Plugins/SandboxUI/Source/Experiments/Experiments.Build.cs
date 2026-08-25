@@ -23,6 +23,7 @@ public class Experiments : ModuleRules
             "Projects",
             "RenderCore",
             "RHI",
+            "SandboxUI",
             "Slate",
         });
     }

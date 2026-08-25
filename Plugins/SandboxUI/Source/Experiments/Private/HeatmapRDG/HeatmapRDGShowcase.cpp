@@ -1,8 +1,10 @@
 #include "Experiments/HeatmapRDG/HeatmapRDGShowcase.h"
 
+#include "Benchmarks/Heatmap/HeatmapBenchmark.h"
 #include "Experiments/HeatmapRDG/HeatmapRDGWidget.h"
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
@@ -83,6 +85,26 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
                       [SNew(SButton)
                            .Text(NSLOCTEXT("HeatmapRDG", "Gradient", "Gradient + checker"))
                            .OnClicked_UObject(this, &UHeatmapRDGShowcase::show_gradient)]] +
+             SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
+                 [SNew(SVerticalBox) +
+                  SVerticalBox::Slot().AutoHeight()
+                      [SNew(SButton)
+                           .Text(NSLOCTEXT("HeatmapRDG",
+                                           "RunBenchmark",
+                                           "Benchmark RDG vs Slate custom vertices"))
+                           .ToolTipText(
+                               NSLOCTEXT("HeatmapRDG",
+                                         "RunBenchmarkTooltip",
+                                         "Runs a short CPU benchmark at 32x32 through 512x512."))
+                           .OnClicked_UObject(this, &UHeatmapRDGShowcase::run_benchmark)] +
+                  SVerticalBox::Slot().AutoHeight().Padding(
+                      0.0f, 4.0f, 0.0f, 0.0f)[SNew(SBox).HeightOverride(
+                      180.0f)[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
+                                  .IsReadOnly(true)
+                                  .Text(NSLOCTEXT("HeatmapRDG",
+                                                  "BenchmarkInstructions",
+                                                  "Results appear here. The CLI writes the same "
+                                                  "stages to CSV."))]]] +
              SVerticalBox::Slot().FillHeight(
                  1.0f)[SNew(SBox).MinDesiredWidth(512.0f).MinDesiredHeight(
                  512.0f)[heatmap_widget_->TakeWidget()]]];
@@ -106,6 +128,15 @@ auto UHeatmapRDGShowcase::show_gradient() -> FReply {
     return FReply::Handled();
 }
 
+auto UHeatmapRDGShowcase::run_benchmark() -> FReply {
+    FHeatmapBenchmarkOptions options;
+    options.warmup_iterations = 2;
+    options.measured_iterations = 10;
+    auto const report{run_heatmap_benchmark(options)};
+    benchmark_output_->SetText(FText::FromString(report.to_text()));
+    return FReply::Handled();
+}
+
 void UHeatmapRDGShowcase::regenerate_selected_pattern() {
     if (selected_pattern_ == EPattern::Hotspots) {
         heatmap_widget_->generate_demo_grid(grid_size_, grid_size_);
@@ -116,7 +147,7 @@ void UHeatmapRDGShowcase::regenerate_selected_pattern() {
 }
 
 void UHeatmapRDGShowcase::generate_gradient_grid() {
-    FHeatmapGrid grid;
+    FHeatmapRDGGrid grid;
     grid.width = grid_size_;
     grid.height = grid_size_;
     grid.values.SetNumUninitialized(grid.width * grid.height);

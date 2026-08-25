@@ -22,7 +22,7 @@ auto are_supported_heatmap_dimensions(int32 const width, int32 const height) -> 
 }
 }
 
-auto FHeatmapGrid::is_valid() const noexcept -> bool {
+auto FHeatmapRDGGrid::is_valid() const noexcept -> bool {
     if (width <= 0 || height <= 0) {
         return false;
     }
@@ -37,7 +37,7 @@ UHeatmapRDGWidget::UHeatmapRDGWidget() {
     brush_.Tiling = ESlateBrushTileType::NoTile;
 }
 
-bool UHeatmapRDGWidget::set_grid(FHeatmapGrid const& grid) {
+bool UHeatmapRDGWidget::set_grid(FHeatmapRDGGrid const& grid) {
     check(IsInGameThread());
 
     if (!grid.is_valid()) {
@@ -95,7 +95,7 @@ bool UHeatmapRDGWidget::set_grid(FHeatmapGrid const& grid) {
 }
 
 void UHeatmapRDGWidget::generate_demo_grid(int32 const width, int32 const height) {
-    FHeatmapGrid grid{.width = width, .height = height};
+    FHeatmapRDGGrid grid{.width = width, .height = height};
     if (width <= 0 || height <= 0) {
         [[maybe_unused]] auto const submitted{set_grid(grid)};
         return;

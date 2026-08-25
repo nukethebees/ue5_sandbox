@@ -7,6 +7,7 @@
 #include "HeatmapRDGShowcase.generated.h"
 
 class UHeatmapRDGWidget;
+class SMultiLineEditableTextBox;
 
 UCLASS(Blueprintable)
 class EXPERIMENTS_API UHeatmapRDGShowcase : public UEditorUtilityWidget {
@@ -21,12 +22,14 @@ class EXPERIMENTS_API UHeatmapRDGShowcase : public UEditorUtilityWidget {
     auto select_grid_size(int32 grid_size) -> FReply;
     auto show_hotspots() -> FReply;
     auto show_gradient() -> FReply;
+    auto run_benchmark() -> FReply;
     void regenerate_selected_pattern();
     void generate_gradient_grid();
 
     UPROPERTY(Transient)
     TObjectPtr<UHeatmapRDGWidget> heatmap_widget_;
 
+    TSharedPtr<SMultiLineEditableTextBox> benchmark_output_;
     int32 grid_size_{128};
     EPattern selected_pattern_{EPattern::Hotspots};
 };

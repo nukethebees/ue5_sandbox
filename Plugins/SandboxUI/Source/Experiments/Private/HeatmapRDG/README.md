@@ -5,7 +5,7 @@ single Slate image for presentation. The caller remains responsible for binning 
 into a dense, row-major scalar grid.
 
 ```text
-caller-owned FHeatmapGrid
+caller-owned FHeatmapRDGGrid
         |
         | game-thread validation and snapshot
         v
@@ -61,7 +61,7 @@ To view the demo:
 The widget submits a deterministic 128x128 multi-hotspot pattern on first construction. The
 pattern controls exercise same-size content updates, while the resolution controls change upload
 and dispatch sizes without replacing the output texture. C++ callers can call `set_grid` with their
-own `FHeatmapGrid` up to 512x512, or call
+own `FHeatmapRDGGrid` up to 512x512, or call
 `generate_demo_grid` with another size. `Experiments` is an editor-only module and is not loaded
 by normal game or shipping targets.
 
@@ -89,7 +89,10 @@ boundaries separate when comparing against the existing Slate/custom-vertex heat
 - the named `HeatmapRDG.Render` upload/compute GPU work;
 - Slate paint and batch cost for the single image.
 
-Likely first-version bottlenecks are the full CPU snapshot, full structured-buffer upload, render
-target recreation when dimensions change, and one GPU dispatch per submitted update. This
-experiment deliberately omits dirty regions, persistent upload buffers, mapped memory, double
-buffering, sparse grids, and a benchmark harness.
+Likely first-version bottlenecks are the full CPU snapshot, full structured-buffer upload, and one
+GPU dispatch per submitted update. This experiment deliberately omits dirty regions, persistent
+upload buffers, mapped memory, double buffering, and sparse grids.
+
+`Private/Benchmarks/Heatmap` contains a shared CLI/EUW benchmark runner that compares the RDG CPU
+submission boundary with the existing `SHeatmap2D` API and custom-vertex preparation stages using
+identical grids.
