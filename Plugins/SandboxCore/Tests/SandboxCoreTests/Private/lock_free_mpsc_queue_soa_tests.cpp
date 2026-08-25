@@ -22,6 +22,35 @@ struct FIntVectorQueueView {
     std::span<std::int32_t const> integers;
     std::span<FVector const> vectors;
 };
+
+template <std::int32_t Tag>
+struct TLifetimeTrackedValue {
+    explicit TLifetimeTrackedValue(std::int32_t const in_value) noexcept
+        : value{in_value} {
+        ++live_count;
+    }
+
+    TLifetimeTrackedValue(TLifetimeTrackedValue&& other) noexcept
+        : value{other.value} {
+        ++live_count;
+        other.value = -1;
+    }
+
+    ~TLifetimeTrackedValue() { --live_count; }
+
+    std::int32_t value{};
+    inline static std::int32_t live_count{};
+};
+
+using FFirstLifetimeValue = TLifetimeTrackedValue<0>;
+using FSecondLifetimeValue = TLifetimeTrackedValue<1>;
+
+struct alignas(64) FOverAlignedQueueValue {
+    explicit FOverAlignedQueueValue(std::int32_t const in_value) noexcept
+        : value{in_value} {}
+
+    std::int32_t value{};
+};
 }
 
 TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Default queue is uninitialised") {
@@ -158,4 +187,57 @@ TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Accepts multiple concurrent producer
         CHECK(pairs[i].first == i);
         CHECK(pairs[i].second == i + value_count);
     }
+}
+
+TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Destroys every column as buffers rotate") {
+    CHECK(FFirstLifetimeValue::live_count == 0);
+    CHECK(FSecondLifetimeValue::live_count == 0);
+
+    {
+        ml::LockFreeMPSCQueueSoA<void, FFirstLifetimeValue, FSecondLifetimeValue> queue{};
+        REQUIRE(queue.init(2) == ml::ELockFreeMPSCQueueInitResult::Success);
+        REQUIRE(queue.enqueue(10, 110) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        REQUIRE(queue.enqueue(20, 120) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        CHECK(queue.enqueue(30, 130) == ml::ELockFreeMPSCQueueEnqueueResult::Full);
+        CHECK(FFirstLifetimeValue::live_count == 2);
+        CHECK(FSecondLifetimeValue::live_count == 2);
+
+        auto const [first_values, second_values]{queue.swap_and_consume()};
+        REQUIRE(first_values.size() == 2);
+        REQUIRE(second_values.size() == 2);
+        CHECK(first_values[1].value == 20);
+        CHECK(second_values[1].value == 120);
+
+        REQUIRE(queue.enqueue(30, 130) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        CHECK(FFirstLifetimeValue::live_count == 3);
+        CHECK(FSecondLifetimeValue::live_count == 3);
+
+        auto const [next_first_values, next_second_values]{queue.swap_and_consume()};
+        REQUIRE(next_first_values.size() == 1);
+        REQUIRE(next_second_values.size() == 1);
+        CHECK(next_first_values[0].value == 30);
+        CHECK(next_second_values[0].value == 130);
+        CHECK(FFirstLifetimeValue::live_count == 1);
+        CHECK(FSecondLifetimeValue::live_count == 1);
+
+        REQUIRE(queue.enqueue(40, 140) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    }
+
+    CHECK(FFirstLifetimeValue::live_count == 0);
+    CHECK(FSecondLifetimeValue::live_count == 0);
+}
+
+TEST_CASE("SandboxCore.LockFreeMPSCQueueSoA.Aligns every column") {
+    ml::LockFreeMPSCQueueSoA<void, std::uint8_t, FOverAlignedQueueValue, std::uint16_t> queue{};
+    REQUIRE(queue.init(3) == ml::ELockFreeMPSCQueueInitResult::Success);
+    REQUIRE(queue.enqueue(std::uint8_t{1}, 10, std::uint16_t{100}) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+
+    auto const [bytes, aligned_values, shorts]{queue.swap_and_consume()};
+    REQUIRE(bytes.size() == 1);
+    REQUIRE(aligned_values.size() == 1);
+    REQUIRE(shorts.size() == 1);
+    CHECK(reinterpret_cast<uintptr_t>(bytes.data()) % alignof(std::uint8_t) == 0);
+    CHECK(reinterpret_cast<uintptr_t>(aligned_values.data()) % alignof(FOverAlignedQueueValue) == 0);
+    CHECK(reinterpret_cast<uintptr_t>(shorts.data()) % alignof(std::uint16_t) == 0);
+    CHECK(aligned_values[0].value == 10);
 }

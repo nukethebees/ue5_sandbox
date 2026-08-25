@@ -10,6 +10,26 @@
 #include <thread>
 #include <vector>
 
+namespace {
+struct FLifetimeTrackedQueueValue {
+    explicit FLifetimeTrackedQueueValue(std::int32_t const in_value) noexcept
+        : value{in_value} {
+        ++live_count;
+    }
+
+    FLifetimeTrackedQueueValue(FLifetimeTrackedQueueValue&& other) noexcept
+        : value{other.value} {
+        ++live_count;
+        other.value = -1;
+    }
+
+    ~FLifetimeTrackedQueueValue() { --live_count; }
+
+    std::int32_t value{};
+    inline static std::int32_t live_count{};
+};
+}
+
 TEST_CASE("SandboxCore.LockFreeMPSCQueue.Default queue is uninitialised") {
     ml::LockFreeMPSCQueue<std::int32_t> queue{};
 
@@ -130,4 +150,48 @@ TEST_CASE("SandboxCore.LockFreeMPSCQueue.Accepts multiple concurrent producers")
     for (std::int32_t i{0}; i < value_count; ++i) {
         CHECK(sorted_values[i] == i);
     }
+}
+
+TEST_CASE("SandboxCore.LockFreeMPSCQueue.Destroys values as buffers rotate") {
+    CHECK(FLifetimeTrackedQueueValue::live_count == 0);
+
+    {
+        ml::LockFreeMPSCQueue<FLifetimeTrackedQueueValue> queue{};
+        REQUIRE(queue.init(2) == ml::ELockFreeMPSCQueueInitResult::Success);
+        REQUIRE(queue.enqueue(10) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        REQUIRE(queue.enqueue(20) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        CHECK(FLifetimeTrackedQueueValue::live_count == 2);
+
+        auto const first_batch{queue.swap_and_consume()};
+        REQUIRE(first_batch.size() == 2);
+        CHECK(first_batch[0].value == 10);
+        CHECK(first_batch[1].value == 20);
+
+        REQUIRE(queue.enqueue(30) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        CHECK(FLifetimeTrackedQueueValue::live_count == 3);
+
+        auto const second_batch{queue.swap_and_consume()};
+        REQUIRE(second_batch.size() == 1);
+        CHECK(second_batch[0].value == 30);
+        CHECK(FLifetimeTrackedQueueValue::live_count == 1);
+
+        REQUIRE(queue.enqueue(40) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        CHECK(FLifetimeTrackedQueueValue::live_count == 2);
+    }
+
+    CHECK(FLifetimeTrackedQueueValue::live_count == 0);
+}
+
+TEST_CASE("SandboxCore.LockFreeMPSCQueue.Full enqueue does not construct a value") {
+    CHECK(FLifetimeTrackedQueueValue::live_count == 0);
+
+    {
+        ml::LockFreeMPSCQueue<FLifetimeTrackedQueueValue> queue{};
+        REQUIRE(queue.init(1) == ml::ELockFreeMPSCQueueInitResult::Success);
+        REQUIRE(queue.enqueue(10) == ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        CHECK(queue.enqueue(20) == ml::ELockFreeMPSCQueueEnqueueResult::Full);
+        CHECK(FLifetimeTrackedQueueValue::live_count == 1);
+    }
+
+    CHECK(FLifetimeTrackedQueueValue::live_count == 0);
 }
