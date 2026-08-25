@@ -33,22 +33,6 @@ namespace ml {
 FTestBatchOrchestratorResetScenario::FTestBatchOrchestratorResetScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    initial_samples.reset();
-    reset_samples.reset();
-    for (auto& blocker : blockers) {
-        blocker.Reset();
-    }
-    for (auto& actor : old_owned_actors) {
-        actor = nullptr;
-    }
-    for (auto& actor : old_transient_actors) {
-        actor = nullptr;
-    }
-    old_transient_actor_count = 0;
-    initial_actor_count = 0;
-    reset_complete = false;
-
     TestCommandBuilder.Do([this] { spawn_blockers(context_.world); });
 }
 

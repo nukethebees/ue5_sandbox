@@ -15,14 +15,6 @@
 namespace ml {
 FTestCapitalShipProxyScenario::FTestCapitalShipProxyScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    default_health_handle = {};
-    overridden_health_handle = {};
-    default_health_unique_id = {};
-    overridden_health_unique_id = {};
-    default_health = 0;
-    overridden_health = 0;
-    proxy_handles_bound = false;
-
     TestCommandBuilder.Do([this] { spawn_proxies(context_.world, context_.config); });
 }
 

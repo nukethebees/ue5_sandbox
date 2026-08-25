@@ -211,9 +211,6 @@ void FTurretCombatScenario::run() {
 FTurretLineOfSightBlockingScenario::FTurretLineOfSightBlockingScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    blocker_spawn_time.Reset();
-
     TestCommandBuilder.Do([this] {
         auto& world{context_.world};
         ml::spawn_actors<ATestStaticTurretsProxy, turret_count>(
@@ -361,10 +358,6 @@ void FTurretLineOfSightBlockingScenario::run() {
 FTurretSearchRequiresLineOfSightScenario::FTurretSearchRequiresLineOfSightScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    blocked_enemy_handle.reset();
-    visible_enemy_handle.reset();
-
     TestCommandBuilder.Do([this] {
         auto& world{context_.world};
         ml::spawn_actors<ATestStaticTurretsProxy, 3>(

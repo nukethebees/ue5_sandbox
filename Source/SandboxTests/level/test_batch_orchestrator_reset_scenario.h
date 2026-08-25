@@ -35,7 +35,7 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
     FTimespan const timeout{0, 0, 3};
     TimeSeriesData<FSimulationSample> initial_samples;
     TimeSeriesData<FSimulationSample> reset_samples;
-    TStaticArray<TWeakObjectPtr<AActor>, blocker_count> blockers;
+    TStaticArray<TWeakObjectPtr<AActor>, blocker_count> blockers{};
     TStaticArray<AActor*, owned_actor_count> old_owned_actors{};
     TStaticArray<AActor*, max_transient_actor_count> old_transient_actors{};
     int32 old_transient_actor_count{0};

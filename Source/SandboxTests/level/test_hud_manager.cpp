@@ -42,13 +42,6 @@ FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context
         mission_manager.set_mission_mode(ETestMissionMode::None);
         mission_manager.set_save_mission_results(true);
     });
-    test_driver.Reset();
-    headless_hud_manager.Reset();
-    initial_alive_count = 0;
-    entity_count_samples = {};
-    defence_samples = {};
-    player_samples = {};
-    mission_time_samples = {};
 }
 
 void FTestHUDManagerScenario::on_tear_down() {

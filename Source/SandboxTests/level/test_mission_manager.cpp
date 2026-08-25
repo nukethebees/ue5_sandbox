@@ -23,10 +23,7 @@ namespace ml {
 FTestMissionManagerScenario::FTestMissionManagerScenario(FSimulationTestContext& context,
                                                          EScenario const new_scenario)
     : FSimulationTestScenario{context}
-    , scenario{new_scenario} {
-    test_driver.Reset();
-    samples = {};
-}
+    , scenario{new_scenario} {}
 
 void FTestMissionManagerScenario::configure_level(UWorld& world,
                                                   UTestSimulationConfig const& config,

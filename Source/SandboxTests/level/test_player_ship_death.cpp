@@ -22,8 +22,6 @@
 namespace ml {
 FTestPlayerShipDeathScenario::FTestPlayerShipDeathScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    samples = {};
     TestCommandBuilder.Do([this] {
         auto& world{context_.world};
         auto const& config{context_.config};

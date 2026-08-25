@@ -33,7 +33,7 @@ class FFightersStandbyTransitionScenario final : public FSimulationTestScenario 
     void check_post_kill_state(FSimulationSample const& sample);
     void full_checks();
 
-    FRegistryEntityHandle enemy_capital;
+    FRegistryEntityHandle enemy_capital{};
     TimeSeriesData<FSimulationSample> samples;
     TOptional<time_type> pre_kill_time{NullOpt};
     TOptional<time_type> post_kill_time{NullOpt};

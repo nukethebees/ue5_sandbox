@@ -22,11 +22,6 @@ namespace ml {
 FFightersStandbyTransitionScenario::FFightersStandbyTransitionScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    enemy_capital = {};
-    samples = {};
-    pre_kill_time.Reset();
-    post_kill_time.Reset();
-
     TestCommandBuilder.Do([this] { spawn_capitals(context_.world, context_.config); });
 }
 
