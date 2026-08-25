@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <Sandbox/batch_game/SpatialQueryHit.h>
 #include <Sandbox/batch_game/TestEntityType.h>
@@ -13,13 +12,11 @@ class UPrimitiveComponent;
 
 namespace ml {
 class FSpatialQueryResolutionScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
     static constexpr time_type query_time{0.2};
     inline static FTimespan const timeout{0, 0, 4};
   public:
     explicit FSpatialQueryResolutionScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     static auto make_hit(UPrimitiveComponent const& component, int32 item) -> FSpatialQueryHit;
     static void sort_hits_by_component(TArray<FSpatialQueryHit>& hits);
@@ -30,7 +27,6 @@ class FSpatialQueryResolutionScenario final : public FSimulationTestScenario {
     void on_end_tick(ATestBatchOrchestrator& orchestrator);
     void run_checks();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     ATestCapitalShips* capitals{nullptr};
     ATestCapitalShipFighters* fighters{nullptr};
     UInstancedStaticMeshComponent* capital_instances{nullptr};

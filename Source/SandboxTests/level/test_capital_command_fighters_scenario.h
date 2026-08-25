@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
 
@@ -14,7 +13,6 @@ class ATestCapitalShips;
 namespace ml {
 class FCapitalCommandFightersScenario final : public FSimulationTestScenario {
     using Task = ATestCapitalShipFighters::Task;
-    using time_type = TestSimulationDriver::time_type;
 
     struct FSimulationSample {
         FRegistryEntityHandle capital_target;
@@ -29,7 +27,6 @@ class FCapitalCommandFightersScenario final : public FSimulationTestScenario {
   public:
     explicit FCapitalCommandFightersScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_fixture();
     void sample_values();
@@ -46,7 +43,6 @@ class FCapitalCommandFightersScenario final : public FSimulationTestScenario {
     void kill_all_not_on_main_team();
     void full_checks();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
     FRegistryEntityHandle capital_first_target;

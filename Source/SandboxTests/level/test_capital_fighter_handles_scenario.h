@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
 #include <Sandbox/batch_game/TestCapitalShipFighters.h>
@@ -17,7 +16,6 @@ enum class ECapitalFighterHandlesScenario : uint8 { KillFightersOnly, KillCapita
 
 class FCapitalFighterHandlesScenario final : public FSimulationTestScenario {
     using Task = ATestCapitalShipFighters::Task;
-    using time_type = TestSimulationDriver::time_type;
 
     struct FCapitalSample {
         FRegistryEntityHandle handle;
@@ -53,7 +51,6 @@ class FCapitalFighterHandlesScenario final : public FSimulationTestScenario {
     FCapitalFighterHandlesScenario(FSimulationTestContext& context,
                                    ECapitalFighterHandlesScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_fixture();
     void sample_values(ATestBatchOrchestrator& orchestrator);
@@ -83,7 +80,6 @@ class FCapitalFighterHandlesScenario final : public FSimulationTestScenario {
     void run_test(FName test_name, bool should_kill_fighters, bool should_kill_capital);
 
     ECapitalFighterHandlesScenario scenario_;
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
     TimeSeriesData<ATestBatchOrchestrator::tick_type> orchestrator_tick_samples;

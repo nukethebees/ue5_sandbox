@@ -19,11 +19,8 @@ FFighterAttackScenario::FFighterAttackScenario(FSimulationTestContext& context)
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FFighterAttackScenario::tear_down() {
+void FFighterAttackScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -82,7 +79,7 @@ void FFighterAttackScenario::bind_proxy_entities(FProxyEntityMap const& proxy_en
 }
 
 void FFighterAttackScenario::initial_setup_and_stimuli() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
 
     checks.is_true(test_driver->registry.is_valid_handle(hero), TEXT("Read hero handle"));
@@ -112,7 +109,7 @@ void FFighterAttackScenario::sample_values() {
 
 void FFighterAttackScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FFighterAttackScenario::check_fighters_team(FSimulationSample const& sample) {

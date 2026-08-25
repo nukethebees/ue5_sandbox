@@ -1,19 +1,16 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
 class FEntityInterfaceScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
     static constexpr time_type test_time{0.25};
   public:
     explicit FEntityInterfaceScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_fixture();
     void initial_setup();
@@ -23,7 +20,6 @@ class FEntityInterfaceScenario final : public FSimulationTestScenario {
     void check_capital_targets(int32 sample_index);
     void main_checks();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     TimeSeriesData<int32> capital_proxy_counts;
     TimeSeriesData<int32> turret_proxy_counts;
     TimeSeriesData<int32> spinner_proxy_counts;

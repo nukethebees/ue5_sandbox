@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <Sandbox/batch_game/TestEntityType.h>
 #include <Sandbox/batch_game/TestMissionState.h>
@@ -51,8 +50,8 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
   public:
     FTestHUDManagerScenario(FSimulationTestContext& context, EHUDManagerScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void initial_caches_process_samples();
     void defence_pre_begin_play(UWorld& world, UTestSimulationConfig const& config);
     void configure_defence_mission(UWorld& world, ATestBatchOrchestrator& orchestrator);
@@ -84,7 +83,6 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
 #endif
     static auto count_cached_entities(FHUDManager const& manager) -> int32;
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     TOptional<FHUDManager> headless_hud_manager{NullOpt};
     int32 initial_alive_count{0};
     TimeSeriesData<FEntityCountSample> entity_count_samples;

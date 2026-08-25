@@ -1,9 +1,11 @@
 #pragma once
 
 #include "SoftTestAssertions.h"
+#include "TestSimulationDriver.h"
 
-#include <CQTest.h>
 #include <CoreMinimal.h>
+#include <CQTest.h>
+#include <Misc/Optional.h>
 #include <Templates/UniquePtr.h>
 
 class ATestBatchOrchestrator;
@@ -26,20 +28,26 @@ struct FSimulationTestContext {
 class FSimulationTestScenario {
   public:
     explicit FSimulationTestScenario(FSimulationTestContext& context)
-        : context_{context},
-          TestRunner{&context.automation_test},
-          TestCommandBuilder{context.command_builder},
-          checks{context.checks},
-          Assert{context.automation_test} {}
+        : context_{context}
+        , TestRunner{&context.automation_test}
+        , TestCommandBuilder{context.command_builder}
+        , checks{context.checks}
+        , Assert{context.automation_test} {}
     virtual ~FSimulationTestScenario() = default;
 
     virtual void run() = 0;
-    virtual void tear_down() {}
+    void tear_down();
   protected:
+    using time_type = TestSimulationDriver::time_type;
+
+    auto initialise_test_driver() -> TestSimulationDriver&;
+    virtual void on_tear_down() {}
+
     FSimulationTestContext& context_;
     FAutomationTestBase* TestRunner;
     FTestCommandBuilder& TestCommandBuilder;
     FSoftTestAssertions& checks;
     FNoDiscardAsserter Assert;
+    TOptional<TestSimulationDriver> test_driver{NullOpt};
 };
 }

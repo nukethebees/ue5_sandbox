@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <Sandbox/batch_game/ProxyEntityMap.h>
 #include <Sandbox/batch_game/TestTeam.h>
@@ -11,7 +10,6 @@
 
 namespace ml {
 class FFighterAttackScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
 
     struct FSimulationSample {
         int32 enemy_health{0};
@@ -25,8 +23,8 @@ class FFighterAttackScenario final : public FSimulationTestScenario {
   public:
     explicit FFighterAttackScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void spawn_fixture();
     void bind_proxy_entities(FProxyEntityMap const& proxy_entities);
     void sample_values();
@@ -35,7 +33,6 @@ class FFighterAttackScenario final : public FSimulationTestScenario {
     void check_fighters_team(FSimulationSample const& sample);
     void full_checks();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     FRegistryEntityHandle hero;
     FRegistryEntityHandle enemy;
     ETestTeam hero_team{ETestTeam::Green};

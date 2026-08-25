@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
@@ -11,7 +10,6 @@ class ATestCapitalShips;
 
 namespace ml {
 class FFightersInterceptCapitalScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
 
     struct FSimulationSample {
         FRegistryEntityHandle parent_target;
@@ -24,7 +22,6 @@ class FFightersInterceptCapitalScenario final : public FSimulationTestScenario {
   public:
     explicit FFightersInterceptCapitalScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_fixture();
     void sample_values();
@@ -34,7 +31,6 @@ class FFightersInterceptCapitalScenario final : public FSimulationTestScenario {
     void full_checks();
     void export_data() const;
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};
     TimeSeriesData<FSimulationSample> samples;

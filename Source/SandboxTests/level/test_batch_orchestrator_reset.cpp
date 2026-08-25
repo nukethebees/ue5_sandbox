@@ -3,7 +3,6 @@
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <Sandbox/batch_game/TestBatchOrchestrator.h>
@@ -51,13 +50,6 @@ FTestBatchOrchestratorResetScenario::FTestBatchOrchestratorResetScenario(
     reset_complete = false;
 
     TestCommandBuilder.Do([this] { spawn_blockers(context_.world); });
-}
-
-void FTestBatchOrchestratorResetScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-        test_driver->orchestrator.pause_simulation();
-    }
 }
 
 void FTestBatchOrchestratorResetScenario::spawn_blockers(UWorld& world) {
@@ -134,7 +126,7 @@ void FTestBatchOrchestratorResetScenario::on_end_tick(ATestBatchOrchestrator& or
 }
 
 void FTestBatchOrchestratorResetScenario::start_initial_simulation() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     ml::reset_and_reserve_time_series(

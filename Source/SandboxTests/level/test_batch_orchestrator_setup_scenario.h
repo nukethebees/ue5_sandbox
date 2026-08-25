@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -24,7 +23,6 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
     FTestBatchOrchestratorSetupScenario(FSimulationTestContext& context,
                                         EOrchestratorSetupScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_missing_actors();
     void simulation_clock_conversions();
@@ -35,7 +33,6 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
     void check_level_telemetry();
 
     EOrchestratorSetupScenario scenario_;
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     TimeSeriesData<FTelemetryObservation> telemetry_observations;
     int32 initial_active_entity_count{0};
     int32 telemetry_samples_before_change{0};

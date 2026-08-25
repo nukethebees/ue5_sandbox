@@ -40,12 +40,6 @@ FEntityRegistryScenario::FEntityRegistryScenario(FSimulationTestContext& context
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FEntityRegistryScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
-}
-
 /* ------------------------------------------------------------------------------------------ */
 // Fixture
 /* ------------------------------------------------------------------------------------------ */
@@ -109,7 +103,7 @@ void FEntityRegistryScenario::spawn_player() {
 // Team counts
 /* ------------------------------------------------------------------------------------------ */
 void FEntityRegistryScenario::begin_team_count_scenario() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
     reset_and_reserve_time_series(
         test_driver->orchestrator, team_count_test_time, alive_per_team, alive_per_team_and_type);
@@ -126,7 +120,7 @@ void FEntityRegistryScenario::sample_team_counts() {
 
 void FEntityRegistryScenario::on_team_count_end_tick(ATestBatchOrchestrator&) {
     sample_team_counts();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FEntityRegistryScenario::check_team_counts() {
@@ -158,7 +152,7 @@ void FEntityRegistryScenario::check_team_counts() {
 // Player kills
 /* ------------------------------------------------------------------------------------------ */
 void FEntityRegistryScenario::begin_variable_kill_scenario() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
     auto const& player{test_driver->get_player_ship()};
     player_id = player.get_unique_id();
@@ -191,7 +185,7 @@ void FEntityRegistryScenario::on_variable_kill_end_tick(ATestBatchOrchestrator&)
                          registry.count_kills(),
                          registry.count_alive(),
                      });
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FEntityRegistryScenario::check_variable_kill_results() {

@@ -13,7 +13,6 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
@@ -32,12 +31,6 @@ FCapitalFighterHandlesScenario::FCapitalFighterHandlesScenario(
     : FSimulationTestScenario{context}
     , scenario_{scenario} {
     TestCommandBuilder.Do([this] { spawn_fixture(); });
-}
-
-void FCapitalFighterHandlesScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
 }
 
 void FCapitalFighterHandlesScenario::spawn_fixture() {
@@ -169,7 +162,7 @@ void FCapitalFighterHandlesScenario::sample_values(ATestBatchOrchestrator& orche
 
 void FCapitalFighterHandlesScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
     sample_values(orchestrator);
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 auto FCapitalFighterHandlesScenario::find_main_capital_index() const -> TOptional<int32> {
@@ -184,7 +177,7 @@ auto FCapitalFighterHandlesScenario::find_main_capital_index() const -> TOptiona
 }
 
 void FCapitalFighterHandlesScenario::initial_setup() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     checks.are_equal(ATestBatchOrchestrator::tick_type{0},
                      test_driver->orchestrator.get_completed_ticks(),
                      TEXT("Simulation is paused before the test starts it"));

@@ -1,6 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -27,12 +26,6 @@ FTestMissionManagerScenario::FTestMissionManagerScenario(FSimulationTestContext&
     , scenario{new_scenario} {
     test_driver.Reset();
     samples = {};
-}
-
-void FTestMissionManagerScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
 }
 
 void FTestMissionManagerScenario::configure_level(UWorld& world,
@@ -172,8 +165,7 @@ void FTestMissionManagerScenario::setup_scenario(EScenario const new_scenario) {
 }
 
 void FTestMissionManagerScenario::start_scenario() {
-    auto& world{context_.world};
-    test_driver = ml::TestSimulationDriver::from_world(world);
+    initialise_test_driver();
 
     auto* const manager{&test_driver->orchestrator.get_mission_manager()};
 
@@ -247,7 +239,7 @@ void FTestMissionManagerScenario::on_end_tick(ATestBatchOrchestrator&) {
     }
 
     samples.add(test_driver->get_time(), MoveTemp(sample));
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTestMissionManagerScenario::queue_enemy_kill(FTestMissionManager const& manager) {

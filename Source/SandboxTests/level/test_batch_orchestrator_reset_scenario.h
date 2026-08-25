@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -9,7 +8,6 @@ class AActor;
 
 namespace ml {
 class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
 
     static constexpr int32 blocker_count{3};
     static constexpr time_type reset_time{2.0};
@@ -22,7 +20,6 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
   public:
     explicit FTestBatchOrchestratorResetScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_blockers(UWorld& world);
     auto count_actors(UWorld const& world) const -> int32;
@@ -36,7 +33,6 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
     void check_reset();
 
     FTimespan const timeout{0, 0, 3};
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     TimeSeriesData<FSimulationSample> initial_samples;
     TimeSeriesData<FSimulationSample> reset_samples;
     TStaticArray<TWeakObjectPtr<AActor>, blocker_count> blockers;

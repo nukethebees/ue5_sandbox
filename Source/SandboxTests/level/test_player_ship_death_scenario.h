@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <Sandbox/batch_game/test_entity_registry/TestEntityUniqueId.h>
 
@@ -24,7 +23,6 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
   public:
     explicit FTestPlayerShipDeathScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void player_ship_pre_begin_play(UWorld& world, UTestSimulationConfig const& config);
     void player_ship_post_orchestrator_spawn(UWorld& world,
@@ -34,7 +32,6 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     void on_end_tick(ATestBatchOrchestrator& orchestrator);
     void check_player_ship_death();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     TWeakObjectPtr<ATestSpaceShip> player_ship{nullptr};
     FRegistryEntityHandle player_ship_handle{};
     TestEntityUniqueId player_ship_id{};

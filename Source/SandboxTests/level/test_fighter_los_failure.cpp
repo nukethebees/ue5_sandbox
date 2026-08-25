@@ -15,12 +15,6 @@ FFighterLosFailureScenario::FFighterLosFailureScenario(FSimulationTestContext& c
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FFighterLosFailureScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
-}
-
 /* ------------------------------------------------------------------------------------------ */
 // Setup
 /* ------------------------------------------------------------------------------------------ */
@@ -50,7 +44,7 @@ void FFighterLosFailureScenario::spawn_fixture() {
 }
 
 void FFighterLosFailureScenario::initial_setup() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
 
     auto const maybe_enemy{test_driver->get_capital_ships().find_first_handle_on_team(enemy_team)};
@@ -78,7 +72,7 @@ void FFighterLosFailureScenario::sample_values() {
 
 void FFighterLosFailureScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FFighterLosFailureScenario::check_fighter_spawns_and_survival() {
