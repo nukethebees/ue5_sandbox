@@ -5,7 +5,7 @@
 	"FriendlyName": "Sandbox UI",
 	"Description": "Reusable, game-independent UI primitives.",
 	"Category": "Sandbox",
-	"CanContainContent": false,
+	"CanContainContent": true,
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
@@ -23,6 +23,11 @@
 		},
 		{
 			"Name": "SandboxUITests",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SandboxUIExamples",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
 		}
