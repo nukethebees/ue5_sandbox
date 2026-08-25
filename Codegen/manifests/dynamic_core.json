@@ -1,0 +1,35 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "sandbox_core_countdown_timers",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/countdown_timers.cpp",
+      "header_include": "SandboxCore/countdown_timers.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "structs": [
+        {
+          "name": "FCountdownTimers",
+          "export_specifier": "SANDBOXCORE_API",
+          "members": [
+            {"name": "remaining_times", "kind": "array", "type": "float"}
+          ],
+          "operations": ["all"],
+          "functions": [
+            {
+              "name": "tick",
+              "return_type": "void",
+              "parameters": [
+                {"name": "dt", "type": {"name": "float", "suffix": " const"}}
+              ],
+              "body": ["ml::subtract_in_place(remaining_times, dt);"],
+              "dependencies": ["array_math"],
+              "suffix": " noexcept",
+              "definition_in_source": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

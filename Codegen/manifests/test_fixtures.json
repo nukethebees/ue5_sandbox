@@ -1,0 +1,33 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "fixed_soa_test_types",
+      "header": "Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.h",
+      "source": "Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.cpp",
+      "namespace": "ml::fixed_soa_tests",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "structs": [
+        {
+          "name": "FTestFixedChild",
+          "members": [
+            {"name": "names", "kind": "array", "type": "@fstring"},
+            {"name": "references", "kind": "array", "type": "@shared_ptr_int32"}
+          ],
+          "fixed": {"storage_name": "TTestFixedChildStorage", "containers": []}
+        },
+        {
+          "name": "FTestFixedRows",
+          "members": [
+            {"name": "children", "kind": "nested", "type": "FTestFixedChild", "fixed_schema": "FTestFixedChild"},
+            {"name": "ids", "kind": "array", "type": "int32"}
+          ],
+          "fixed": {
+            "storage_name": "TTestFixedRowsStorage",
+            "containers": ["TTestFixedRowsArray", "TTestFixedRowsArrayAlternate"]
+          }
+        }
+      ]
+    }
+  ]
+}

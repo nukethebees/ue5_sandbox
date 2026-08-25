@@ -33,17 +33,17 @@ The project utilizes a custom plugin to extend the engine's capabilities:
 
 ## Code generation
 
-Generated C++ files are defined in `Codegen/manifest.py`. After changing the manifest or
-Codegen implementation, regenerate them from the repository root:
+Generated C++ files are defined by the JSON schemas in `Codegen/manifests`. The standalone
+C++ generator is built with CMake and regenerates the files from the repository root:
 
 ```bash
-python3 -m Codegen.generate
+cmake --workflow --preset generate-code
 ```
 
 To verify that committed generated files are current without writing them:
 
 ```bash
-python3 -m Codegen.generate --check
+cmake --build --preset codegen --target check-generated-code
 ```
 
 ## Development commands

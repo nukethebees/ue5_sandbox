@@ -1,8 +1,16 @@
 cmake_minimum_required(VERSION 4.4.2)
 
-project(SandboxUnrealBuild NONE)
+project(SandboxUnrealBuild LANGUAGES CXX)
 
 enable_testing()
+
+option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
+
+add_subdirectory(Codegen)
+
+if(SANDBOX_CODEGEN_ONLY)
+  return()
+endif()
 
 set(CACHE{UE_ROOT}
   TYPE PATH
@@ -122,6 +130,8 @@ include(cmake/catch2.cmake)
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
+add_dependencies(editor generate-code)
+add_dependencies(game generate-code)
 set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.enum
   Sandbox.fighters
@@ -163,9 +173,13 @@ add_custom_target(dev-core
 
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
   add_low_level_test_suite(benchmarks SandboxCoreBenchmarks SandboxCore benchmark)
+  add_dependencies(benchmarks generate-code)
 elseif(SANDBOX_TEST_SUITE STREQUAL "default")
   add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore low-level-core)
   add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative low-level-native)
+
+  add_dependencies(core-tests generate-code)
+  add_dependencies(native-tests generate-code)
 
   add_dependencies(dev-core
     core-tests

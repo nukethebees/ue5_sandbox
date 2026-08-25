@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "types": "types.json",
+  "modules": [
+    "dynamic_core.json",
+    "core_layouts.json",
+    "test_fixtures.json",
+    "dynamic_entities.json",
+    "entity_registry.json",
+    "batch_game.json",
+    "facades.json"
+  ]
+}

@@ -10,7 +10,17 @@
       "name": "base",
       "hidden": true,
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/out/build/${presetName}"
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+    },
+    {
+      "name": "codegen",
+      "displayName": "Code generator",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "SANDBOX_CODEGEN_ONLY": true
+      }
     },
     {
       "name": "debug",
@@ -63,6 +73,16 @@
   ],
   "buildPresets": [
     {
+      "name": "codegen",
+      "configurePreset": "codegen",
+      "targets": ["sandbox-codegen", "codegen-tests"]
+    },
+    {
+      "name": "generate-code",
+      "configurePreset": "codegen",
+      "targets": ["generate-code"]
+    },
+    {
       "name": "debug",
       "configurePreset": "debug",
       "targets": ["dev-core"]
@@ -114,6 +134,21 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "codegen-tests",
+      "configurePreset": "codegen",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "codegen"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
     {
       "name": "debug-game-tests",
       "configurePreset": "debug-game",
@@ -176,6 +211,21 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "codegen",
+      "steps": [
+        { "type": "configure", "name": "codegen" },
+        { "type": "build", "name": "codegen" },
+        { "type": "test", "name": "codegen-tests" }
+      ]
+    },
+    {
+      "name": "generate-code",
+      "steps": [
+        { "type": "configure", "name": "codegen" },
+        { "type": "build", "name": "generate-code" }
+      ]
+    },
     {
       "name": "debug",
       "steps": [

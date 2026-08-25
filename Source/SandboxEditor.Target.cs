@@ -12,13 +12,5 @@ public class SandboxEditorTarget : TargetRules
         IncludeOrderVersion = EngineIncludeOrderVersion.Latest;
         ExtraModuleNames.AddRange(new string[] { "Sandbox", "SandboxEditor" });
 
-        if (BuildHostPlatform.Current.Platform == UnrealTargetPlatform.Win64)
-        {
-            PreBuildSteps.Add("cd /d \"$(ProjectDir)\" && py -3 -m Codegen.generate");
-        }
-        else
-        {
-            PreBuildSteps.Add("cd \"$(ProjectDir)\" && python3 -m Codegen.generate");
-        }
     }
 }

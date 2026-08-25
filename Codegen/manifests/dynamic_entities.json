@@ -1,0 +1,24 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "direct_damage_events_soa",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/DirectDamageEventsSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/DirectDamageEventsSoA.cpp",
+      "header_include": "SpaceGame/entities/DirectDamageEventsSoA.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "structs": [
+        {
+          "name": "DirectDamageEvents",
+          "export_specifier": "SPACEGAME_API",
+          "members": [
+            {"name": "damaged_entities", "kind": "array", "type": "@registry_handle"},
+            {"name": "damage_amounts", "kind": "array", "type": "int32"},
+            {"name": "instigators", "kind": "array", "type": "@registry_handle"}
+          ],
+          "operations": ["all"]
+        }
+      ]
+    }
+  ]
+}

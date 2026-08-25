@@ -1,0 +1,146 @@
+{
+  "modules": [
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_2f",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2f.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2f.cpp",
+      "header_include": "SandboxCore/soa_vectors_2f.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors2f",
+      "value_type": "float",
+      "components": ["xs", "ys"],
+      "equivalent_type": "@vector_2f",
+      "export_specifier": "SANDBOXCORE_API"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_2d",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2d.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2d.cpp",
+      "header_include": "SandboxCore/soa_vectors_2d.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors2d",
+      "value_type": "double",
+      "components": ["xs", "ys"],
+      "equivalent_type": "@vector_2d",
+      "export_specifier": "SANDBOXCORE_API"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_2i32",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2i32.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2i32.cpp",
+      "header_include": "SandboxCore/soa_vectors_2i32.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors2i32",
+      "value_type": "int32",
+      "components": ["xs", "ys"],
+      "equivalent_type": "@int_point",
+      "export_specifier": "SANDBOXCORE_API"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_2u32",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2u32.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2u32.cpp",
+      "header_include": "SandboxCore/soa_vectors_2u32.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors2u32",
+      "value_type": "uint32",
+      "components": ["xs", "ys"],
+      "equivalent_type": "@uint_point",
+      "export_specifier": "SANDBOXCORE_API"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_3f",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3f.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3f.cpp",
+      "header_include": "SandboxCore/soa_vectors_3f.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors3f",
+      "value_type": "float",
+      "components": ["xs", "ys", "zs"],
+      "equivalent_type": "@vector_3f_value",
+      "export_specifier": "SANDBOXCORE_API",
+      "fixed": {
+        "storage_name": "TVectors3fFixedStorage",
+        "containers": ["TFixedVectors3f"]
+      }
+    },
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_3d",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3d.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3d.cpp",
+      "header_include": "SandboxCore/soa_vectors_3d.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors3d",
+      "value_type": "double",
+      "components": ["xs", "ys", "zs"],
+      "equivalent_type": "@vector_3d",
+      "export_specifier": "SANDBOXCORE_API"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_3i32",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3i32.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3i32.cpp",
+      "header_include": "SandboxCore/soa_vectors_3i32.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors3i32",
+      "value_type": "int32",
+      "components": ["xs", "ys", "zs"],
+      "equivalent_type": "@int_vector",
+      "export_specifier": "SANDBOXCORE_API"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "soa_vectors_3u32",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3u32.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3u32.cpp",
+      "header_include": "SandboxCore/soa_vectors_3u32.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "storage_name": "FVectors3u32",
+      "value_type": "uint32",
+      "components": ["xs", "ys", "zs"],
+      "equivalent_type": "@uint_vector_3",
+      "export_specifier": "SANDBOXCORE_API"
+    },
+    {
+      "kind": "umbrella",
+      "name": "sandbox_core_soa_vectors",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors.h",
+      "headers": [
+        "SandboxCore/soa_vectors_2f.h",
+        "SandboxCore/soa_vectors_2d.h",
+        "SandboxCore/soa_vectors_2i32.h",
+        "SandboxCore/soa_vectors_2u32.h",
+        "SandboxCore/soa_vectors_3f.h",
+        "SandboxCore/soa_vectors_3d.h",
+        "SandboxCore/soa_vectors_3i32.h",
+        "SandboxCore/soa_vectors_3u32.h"
+      ]
+    },
+    {
+      "kind": "homogeneous_soa",
+      "name": "sandbox_core_soa_rotators",
+      "header": "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_rotators.h",
+      "source": "Plugins/SandboxCore/Source/SandboxCore/Private/soa_rotators.cpp",
+      "header_include": "SandboxCore/soa_rotators.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "layouts": [
+        {
+          "name": "Rotators",
+          "components": ["pitches", "yaws", "rolls"],
+          "value_types": [
+            {"type": "float", "suffix": "f"},
+            {"type": "double", "suffix": "d"}
+          ],
+          "export_specifier": "SANDBOXCORE_API"
+        }
+      ]
+    }
+  ]
+}
