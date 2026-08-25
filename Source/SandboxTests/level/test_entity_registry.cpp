@@ -218,13 +218,13 @@ void FEntityRegistryScenario::check_variable_kill_results() {
 
 void FEntityRegistryScenario::run() {
     if (scenario_ == EEntityRegistryScenario::TeamCounts) {
-        TestCommandBuilder.Do([this] { begin_team_count_scenario(); })
-            .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-            .Then([this] { check_team_counts(); });
+        run_until_timeline_finished([this] { begin_team_count_scenario(); },
+                                    FTimespan{0, 0, 1},
+                                    [this] { check_team_counts(); });
         return;
     }
-    TestCommandBuilder.Do([this] { begin_variable_kill_scenario(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-        .Then([this] { check_variable_kill_results(); });
+    run_until_timeline_finished([this] { begin_variable_kill_scenario(); },
+                                FTimespan{0, 0, 1},
+                                [this] { check_variable_kill_results(); });
 }
 }

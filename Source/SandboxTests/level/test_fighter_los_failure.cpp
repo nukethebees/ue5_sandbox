@@ -101,8 +101,6 @@ void FFighterLosFailureScenario::full_checks() {
 
 void FFighterLosFailureScenario::run() {
     FTimespan const timeout{0, 0, static_cast<int32>(test_duration) + 1};
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { full_checks(); });
+    run_until_timeline_finished([this] { initial_setup(); }, timeout, [this] { full_checks(); });
 }
 }

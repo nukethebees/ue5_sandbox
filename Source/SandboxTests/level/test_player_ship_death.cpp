@@ -34,9 +34,8 @@ FTestPlayerShipDeathScenario::FTestPlayerShipDeathScenario(FSimulationTestContex
 }
 
 void FTestPlayerShipDeathScenario::run() {
-    TestCommandBuilder.Do([this] { queue_player_ship_death(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { check_player_ship_death(); });
+    run_until_timeline_finished(
+        [this] { queue_player_ship_death(); }, timeout, [this] { check_player_ship_death(); });
 }
 
 void FTestPlayerShipDeathScenario::player_ship_pre_begin_play(UWorld& world,

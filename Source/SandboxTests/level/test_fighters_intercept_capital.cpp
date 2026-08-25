@@ -172,14 +172,15 @@ void FFightersInterceptCapitalScenario::export_data() const {
 }
 
 void FFightersInterceptCapitalScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 21})
-        .Then([this] {
-            full_checks();
-            if (!checks.all_passed || test_driver->should_export_results()) {
-                export_data();
-            }
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                FTimespan{0, 0, 21},
+                                [this] {
+                                    full_checks();
+                                    if (!checks.all_passed ||
+                                        test_driver->should_export_results()) {
+                                        export_data();
+                                    }
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 }

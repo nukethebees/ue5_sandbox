@@ -41,6 +41,16 @@ class FSimulationTestScenario {
     using time_type = TestSimulationDriver::time_type;
 
     auto initialise_test_driver() -> TestSimulationDriver&;
+
+    template <typename Setup, typename Completion>
+    void run_until_timeline_finished(Setup&& setup,
+                                     FTimespan const timeout,
+                                     Completion&& completion) {
+        TestCommandBuilder.Do(Forward<Setup>(setup))
+            .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
+            .Then(Forward<Completion>(completion));
+    }
+
     virtual void on_tear_down() {}
 
     FSimulationTestContext& context_;

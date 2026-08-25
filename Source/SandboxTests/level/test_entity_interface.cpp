@@ -177,8 +177,7 @@ void FEntityInterfaceScenario::main_checks() {
 }
 
 void FEntityInterfaceScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-        .Then([this] { main_checks(); });
+    run_until_timeline_finished(
+        [this] { initial_setup(); }, FTimespan{0, 0, 1}, [this] { main_checks(); });
 }
 }

@@ -678,42 +678,42 @@ void FTestHUDManagerScenario::run() {
             TestCommandBuilder.Do([this] { initial_caches_process_samples(); });
             break;
         case EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     entity_count_pre_begin_play(context_.world, context_.config);
                     entity_count_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { entity_count_process_samples(); });
+                },
+                timeout,
+                [this] { entity_count_process_samples(); });
             break;
         case EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     defence_pre_begin_play(context_.world, context_.config);
                     configure_defence_mission(context_.world, context_.orchestrator);
                     defence_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { defence_process_samples(); });
+                },
+                timeout,
+                [this] { defence_process_samples(); });
             break;
         case EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     player_kill_pre_begin_play(context_.world, context_.config);
                     player_kill_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { player_kill_process_samples(); });
+                },
+                timeout,
+                [this] { player_kill_process_samples(); });
             break;
         case EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     mission_time_pre_begin_play(context_.world, context_.config);
                     configure_defence_mission(context_.world, context_.orchestrator);
                     mission_time_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { mission_time_process_samples(); });
+                },
+                timeout,
+                [this] { mission_time_process_samples(); });
             break;
         case EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters:
             TestCommandBuilder.Do([this] { registration_process_samples(); });

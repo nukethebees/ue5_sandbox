@@ -196,16 +196,16 @@ void FTurretCombatScenario::check_zero_damage_results() {
 }
 
 void FTurretCombatScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] {
-            if (scenario_ == ETurretCombatScenario::KillEnemy) {
-                check_kill_enemy_results();
-            } else {
-                check_zero_damage_results();
-            }
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                timeout,
+                                [this] {
+                                    if (scenario_ == ETurretCombatScenario::KillEnemy) {
+                                        check_kill_enemy_results();
+                                    } else {
+                                        check_zero_damage_results();
+                                    }
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 
 FTurretLineOfSightBlockingScenario::FTurretLineOfSightBlockingScenario(
@@ -347,12 +347,12 @@ void FTurretLineOfSightBlockingScenario::full_checks() {
 }
 
 void FTurretLineOfSightBlockingScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] {
-            full_checks();
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                timeout,
+                                [this] {
+                                    full_checks();
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 
 FTurretSearchRequiresLineOfSightScenario::FTurretSearchRequiresLineOfSightScenario(
@@ -443,11 +443,11 @@ void FTurretSearchRequiresLineOfSightScenario::full_checks() {
 }
 
 void FTurretSearchRequiresLineOfSightScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] {
-            full_checks();
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                timeout,
+                                [this] {
+                                    full_checks();
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 }

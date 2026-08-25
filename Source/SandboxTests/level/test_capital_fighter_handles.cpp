@@ -570,13 +570,13 @@ void FCapitalFighterHandlesScenario::export_data(FName const test_name) const {
 void FCapitalFighterHandlesScenario::run_test(FName const test_name,
                                               bool const should_kill_fighters,
                                               bool const should_kill_capital) {
-    TestCommandBuilder
-        .Do([this, should_kill_fighters, should_kill_capital] {
+    run_until_timeline_finished(
+        [this, should_kill_fighters, should_kill_capital] {
             initial_setup();
             configure_timeline(should_kill_fighters, should_kill_capital);
-        })
-        .Until([this] { return test_driver->timeline.is_finished(); }, default_timeout)
-        .Then([this, test_name, should_kill_fighters, should_kill_capital] {
+        },
+        default_timeout,
+        [this, test_name, should_kill_fighters, should_kill_capital] {
             full_checks(should_kill_fighters, should_kill_capital);
             if (!checks.all_passed || test_driver->should_export_results()) {
                 export_data(test_name);

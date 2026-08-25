@@ -153,8 +153,7 @@ void FCapitalCommandFightersScenario::full_checks() {
 }
 
 void FCapitalCommandFightersScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup_and_stimuli(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-        .Then([this] { full_checks(); });
+    run_until_timeline_finished(
+        [this] { initial_setup_and_stimuli(); }, FTimespan{0, 0, 1}, [this] { full_checks(); });
 }
 }

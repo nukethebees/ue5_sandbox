@@ -128,8 +128,7 @@ void FFighterAttackScenario::full_checks() {
 }
 
 void FFighterAttackScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup_and_stimuli(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { full_checks(); });
+    run_until_timeline_finished(
+        [this] { initial_setup_and_stimuli(); }, timeout, [this] { full_checks(); });
 }
 }

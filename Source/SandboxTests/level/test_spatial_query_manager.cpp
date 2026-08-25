@@ -133,9 +133,7 @@ void FSpatialQueryResolutionScenario::run_checks() {
 }
 
 void FSpatialQueryResolutionScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { run_checks(); });
+    run_until_timeline_finished([this] { initial_setup(); }, timeout, [this] { run_checks(); });
 }
 
 FSpatialQueryLineOfSightScenario::FSpatialQueryLineOfSightScenario(FSimulationTestContext& context)
@@ -255,16 +253,16 @@ void FSpatialQueryLineOfSightScenario::on_end_tick(ATestBatchOrchestrator&) {
 }
 
 void FSpatialQueryLineOfSightScenario::run() {
-    TestCommandBuilder
-        .Do([this] {
+    run_until_timeline_finished(
+        [this] {
             initialise_test_driver();
             test_driver->orchestrator.set_end_tick_test_hook(
                 FOrchestratorEndTickTestHook::CreateRaw(
                     this, &FSpatialQueryLineOfSightScenario::on_end_tick));
             test_driver->timeline.at(0.1, [this] { run_queries(); }).finish_at(0.2);
             test_driver->orchestrator.start_simulation();
-        })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 2})
-        .Then([this] { SANDBOX_TESTS_ASSERT_ALL_PASSED(checks); });
+        },
+        FTimespan{0, 0, 2},
+        [this] { SANDBOX_TESTS_ASSERT_ALL_PASSED(checks); });
 }
 }

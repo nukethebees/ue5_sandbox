@@ -163,8 +163,6 @@ void FFightersStandbyTransitionScenario::full_checks() {
 }
 
 void FFightersStandbyTransitionScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { full_checks(); });
+    run_until_timeline_finished([this] { initial_setup(); }, timeout, [this] { full_checks(); });
 }
 }
