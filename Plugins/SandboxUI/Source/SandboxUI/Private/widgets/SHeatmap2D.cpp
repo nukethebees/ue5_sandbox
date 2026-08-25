@@ -383,7 +383,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
 
     auto const heatmap_layer{layer_id + 1};
     if (!cache.local_batches.IsEmpty() && FSlateApplicationBase::IsInitialized()) {
-        auto const& white_brush{*FCoreStyle::Get().GetBrush("WhiteBrush")};
+        auto const& white_brush{*FCoreStyle::Get().GetBrush("GenericWhiteBox")};
         auto* const renderer{FSlateApplicationBase::Get().GetRenderer()};
         if (ensureMsgf(renderer != nullptr, TEXT("Heatmap rendering requires a Slate renderer."))) {
             auto const resource_handle{renderer->GetResourceHandle(white_brush)};
