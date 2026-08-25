@@ -16,7 +16,7 @@ namespace ml {
 FSpatialQueryEmptyScenario::FSpatialQueryEmptyScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {}
 
-void FSpatialQueryEmptyScenario::tear_down() {
+void FSpatialQueryEmptyScenario::on_tear_down() {
     if (driver.IsSet()) {
         driver->orchestrator.clear_end_tick_test_hook();
     }
@@ -101,7 +101,7 @@ FSpatialQueryRangeScenario::FSpatialQueryRangeScenario(FSimulationTestContext& c
     });
 }
 
-void FSpatialQueryRangeScenario::tear_down() {
+void FSpatialQueryRangeScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
     if (driver.IsSet()) {
         driver->orchestrator.clear_end_tick_test_hook();

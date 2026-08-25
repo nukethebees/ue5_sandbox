@@ -24,12 +24,6 @@ FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& conte
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FEntityInterfaceScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
-}
-
 /* ------------------------------------------------------------------------------------------ */
 // Setup
 /* ------------------------------------------------------------------------------------------ */
@@ -117,7 +111,7 @@ void FEntityInterfaceScenario::spawn_fixture() {
 }
 
 void FEntityInterfaceScenario::initial_setup() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
     reset_and_reserve_time_series(test_driver->orchestrator,
                                   test_time,
@@ -155,7 +149,7 @@ void FEntityInterfaceScenario::sample_values() {
 
 void FEntityInterfaceScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FEntityInterfaceScenario::check_no_proxies_alive(int32 const sample_index) {
@@ -183,8 +177,7 @@ void FEntityInterfaceScenario::main_checks() {
 }
 
 void FEntityInterfaceScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-        .Then([this] { main_checks(); });
+    run_until_timeline_finished(
+        [this] { initial_setup(); }, FTimespan{0, 0, 1}, [this] { main_checks(); });
 }
 }

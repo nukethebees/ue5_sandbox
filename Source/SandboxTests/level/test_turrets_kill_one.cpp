@@ -9,7 +9,6 @@
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 #include "test_turret_combat_scenario.h"
 #include "test_turret_line_of_sight_blocking_scenario.h"
@@ -31,11 +30,8 @@ FTurretCombatScenario::FTurretCombatScenario(FSimulationTestContext& context,
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FTurretCombatScenario::tear_down() {
+void FTurretCombatScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -106,7 +102,7 @@ void FTurretCombatScenario::check_initial_state() {
 }
 
 void FTurretCombatScenario::initial_setup() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
     check_initial_state();
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -145,7 +141,7 @@ void FTurretCombatScenario::sample_values() {
 
 void FTurretCombatScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTurretCombatScenario::check_kill_enemy_results() {
@@ -200,24 +196,21 @@ void FTurretCombatScenario::check_zero_damage_results() {
 }
 
 void FTurretCombatScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] {
-            if (scenario_ == ETurretCombatScenario::KillEnemy) {
-                check_kill_enemy_results();
-            } else {
-                check_zero_damage_results();
-            }
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                timeout,
+                                [this] {
+                                    if (scenario_ == ETurretCombatScenario::KillEnemy) {
+                                        check_kill_enemy_results();
+                                    } else {
+                                        check_zero_damage_results();
+                                    }
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 
 FTurretLineOfSightBlockingScenario::FTurretLineOfSightBlockingScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    blocker_spawn_time.Reset();
-
     TestCommandBuilder.Do([this] {
         auto& world{context_.world};
         ml::spawn_actors<ATestStaticTurretsProxy, turret_count>(
@@ -231,13 +224,6 @@ FTurretLineOfSightBlockingScenario::FTurretLineOfSightBlockingScenario(
                 actor.SetActorLocation(turret_infos[i].location);
             });
     });
-}
-
-void FTurretLineOfSightBlockingScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-        test_driver->orchestrator.pause_simulation();
-    }
 }
 
 void FTurretLineOfSightBlockingScenario::spawn_line_of_sight_blocker() {
@@ -266,11 +252,11 @@ void FTurretLineOfSightBlockingScenario::sample_laser_count(ATestBatchOrchestrat
 
 void FTurretLineOfSightBlockingScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
     sample_laser_count(orchestrator);
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTurretLineOfSightBlockingScenario::initial_setup() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     ml::reset_and_reserve_time_series(test_driver->orchestrator,
@@ -361,21 +347,17 @@ void FTurretLineOfSightBlockingScenario::full_checks() {
 }
 
 void FTurretLineOfSightBlockingScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] {
-            full_checks();
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                timeout,
+                                [this] {
+                                    full_checks();
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 
 FTurretSearchRequiresLineOfSightScenario::FTurretSearchRequiresLineOfSightScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    blocked_enemy_handle.reset();
-    visible_enemy_handle.reset();
-
     TestCommandBuilder.Do([this] {
         auto& world{context_.world};
         ml::spawn_actors<ATestStaticTurretsProxy, 3>(
@@ -407,12 +389,8 @@ FTurretSearchRequiresLineOfSightScenario::FTurretSearchRequiresLineOfSightScenar
     });
 }
 
-void FTurretSearchRequiresLineOfSightScenario::tear_down() {
+void FTurretSearchRequiresLineOfSightScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-        test_driver->orchestrator.pause_simulation();
-    }
 }
 
 void FTurretSearchRequiresLineOfSightScenario::bind(FProxyEntityMap const& proxy_entities) {
@@ -436,11 +414,11 @@ void FTurretSearchRequiresLineOfSightScenario::on_end_tick(ATestBatchOrchestrato
     check(turrets);
     target_handles.add(test_driver->get_time(),
                        TArray<FRegistryEntityHandle>{turrets->get_target_handles()});
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTurretSearchRequiresLineOfSightScenario::initial_setup() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
     checks.is_true(blocked_enemy_handle.is_valid(), TEXT("Blocked enemy handle is bound"));
     checks.is_true(visible_enemy_handle.is_valid(), TEXT("Visible enemy handle is bound"));
@@ -465,11 +443,11 @@ void FTurretSearchRequiresLineOfSightScenario::full_checks() {
 }
 
 void FTurretSearchRequiresLineOfSightScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] {
-            full_checks();
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                timeout,
+                                [this] {
+                                    full_checks();
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 }

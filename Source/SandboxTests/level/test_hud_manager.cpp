@@ -1,6 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -43,17 +42,9 @@ FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context
         mission_manager.set_mission_mode(ETestMissionMode::None);
         mission_manager.set_save_mission_results(true);
     });
-    test_driver.Reset();
-    headless_hud_manager.Reset();
-    initial_alive_count = 0;
-    entity_count_samples = {};
-    defence_samples = {};
-    player_samples = {};
-    mission_time_samples = {};
 }
 
-void FTestHUDManagerScenario::tear_down() {
-    context_.orchestrator.clear_end_tick_test_hook();
+void FTestHUDManagerScenario::on_tear_down() {
     check_headless_hud_manager_matches_simulation();
     ml::reset(checks, test_driver, headless_hud_manager);
 }
@@ -149,7 +140,7 @@ void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
 }
 
 void FTestHUDManagerScenario::defence_begin() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     if (!initialise_headless_hud_manager()) {
         return;
     }
@@ -207,7 +198,7 @@ void FTestHUDManagerScenario::defence_on_tick(ATestBatchOrchestrator&) {
         sample.required_kill_entity_health = data.status_data.required_kill_entity_health[0].health;
     }
     defence_samples.add(test_driver->get_time(), sample);
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::defence_process_samples() {
@@ -237,7 +228,7 @@ void FTestHUDManagerScenario::mission_time_pre_begin_play(UWorld& world,
 }
 
 void FTestHUDManagerScenario::mission_time_begin() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     if (!initialise_headless_hud_manager()) {
         return;
     }
@@ -258,7 +249,7 @@ void FTestHUDManagerScenario::mission_time_on_tick(ATestBatchOrchestrator& orche
                              FMissionTimeSample{mission_data.status_data.mission_stopwatch,
                                                 mission_manager.get_mission_stopwatch(),
                                                 hud_manager.get_registered_hud_count()});
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::mission_time_process_samples() {
@@ -302,7 +293,7 @@ void FTestHUDManagerScenario::player_kill_pre_begin_play(UWorld& world,
 }
 
 void FTestHUDManagerScenario::player_kill_begin() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
 
     auto* player_ship{ml::get_first_actor<ATestSpaceShip>(test_driver->world)};
     if (!checks.is_true(IsValid(player_ship), TEXT("Got player ship"))) {
@@ -353,7 +344,7 @@ void FTestHUDManagerScenario::player_kill_on_tick(ATestBatchOrchestrator&) {
                                      top_killer_kills,
                                      player_team_matrix_kills,
                                      hud_manager.get_registered_hud_count()});
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::player_kill_process_samples() {
@@ -443,7 +434,7 @@ void FTestHUDManagerScenario::entity_count_pre_begin_play(UWorld& world,
 }
 
 void FTestHUDManagerScenario::entity_count_begin() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     if (!initialise_headless_hud_manager()) {
         return;
     }
@@ -471,7 +462,7 @@ void FTestHUDManagerScenario::entity_count_on_tick(ATestBatchOrchestrator& orche
         test_driver->get_time(),
         FEntityCountSample{count_cached_entities(get_headless_hud_manager()),
                            orchestrator.get_hud_manager().get_registered_hud_count()});
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTestHUDManagerScenario::entity_count_process_samples() {
@@ -687,42 +678,42 @@ void FTestHUDManagerScenario::run() {
             TestCommandBuilder.Do([this] { initial_caches_process_samples(); });
             break;
         case EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     entity_count_pre_begin_play(context_.world, context_.config);
                     entity_count_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { entity_count_process_samples(); });
+                },
+                timeout,
+                [this] { entity_count_process_samples(); });
             break;
         case EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     defence_pre_begin_play(context_.world, context_.config);
                     configure_defence_mission(context_.world, context_.orchestrator);
                     defence_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { defence_process_samples(); });
+                },
+                timeout,
+                [this] { defence_process_samples(); });
             break;
         case EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     player_kill_pre_begin_play(context_.world, context_.config);
                     player_kill_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { player_kill_process_samples(); });
+                },
+                timeout,
+                [this] { player_kill_process_samples(); });
             break;
         case EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD:
-            TestCommandBuilder
-                .Do([this] {
+            run_until_timeline_finished(
+                [this] {
                     mission_time_pre_begin_play(context_.world, context_.config);
                     configure_defence_mission(context_.world, context_.orchestrator);
                     mission_time_begin();
-                })
-                .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-                .Then([this] { mission_time_process_samples(); });
+                },
+                timeout,
+                [this] { mission_time_process_samples(); });
             break;
         case EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters:
             TestCommandBuilder.Do([this] { registration_process_samples(); });

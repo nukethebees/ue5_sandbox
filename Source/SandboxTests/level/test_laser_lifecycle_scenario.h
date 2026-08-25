@@ -21,8 +21,8 @@ class FLaserLifecycleScenario final : public FSimulationTestScenario {
   public:
     FLaserLifecycleScenario(FSimulationTestContext& context, ELaserLifecycleScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void spawn_fixture();
     void bind_fixture(FProxyEntityMap const& proxy_entities);
     void begin_scenario();

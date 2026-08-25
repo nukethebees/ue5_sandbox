@@ -1,6 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include "test_capital_ship_proxy_scenario.h"
 
 #include <SpaceGame/entities/ProxyEntityMap.h>
@@ -16,18 +15,10 @@
 namespace ml {
 FTestCapitalShipProxyScenario::FTestCapitalShipProxyScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    default_health_handle = {};
-    overridden_health_handle = {};
-    default_health_unique_id = {};
-    overridden_health_unique_id = {};
-    default_health = 0;
-    overridden_health = 0;
-    proxy_handles_bound = false;
-
     TestCommandBuilder.Do([this] { spawn_proxies(context_.world, context_.config); });
 }
 
-void FTestCapitalShipProxyScenario::tear_down() {
+void FTestCapitalShipProxyScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
 }
 
@@ -87,14 +78,14 @@ void FTestCapitalShipProxyScenario::resolve_proxy_handles(FProxyEntityMap const&
 }
 
 void FTestCapitalShipProxyScenario::check_proxy_healths() {
-    auto test_driver{ml::TestSimulationDriver::from_world(context_.world)};
-    test_driver.orchestrator.start_simulation();
+    auto& driver{initialise_test_driver()};
+    driver.orchestrator.start_simulation();
 
     checks.is_true(proxy_handles_bound,
                    TEXT("Capital proxy handles are resolved when proxies are bound"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
-    auto const& capitals{test_driver.get_capital_ships()};
+    auto const& capitals{driver.get_capital_ships()};
 
     checks.are_equal(
         2, capitals.get_num_instances(), TEXT("Two capital ships are spawned from the proxies"));

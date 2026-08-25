@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 
@@ -11,7 +10,6 @@
 namespace ml {
 class FFightersStandbyTransitionScenario final : public FSimulationTestScenario {
     using Task = ATestCapitalShipFighters::Task;
-    using time_type = TestSimulationDriver::time_type;
 
     struct FSimulationSample {
         int32 capital_count{0};
@@ -26,7 +24,6 @@ class FFightersStandbyTransitionScenario final : public FSimulationTestScenario 
   public:
     explicit FFightersStandbyTransitionScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_capitals(UWorld& world, UTestSimulationConfig const& config);
     void initial_setup();
@@ -36,8 +33,7 @@ class FFightersStandbyTransitionScenario final : public FSimulationTestScenario 
     void check_post_kill_state(FSimulationSample const& sample);
     void full_checks();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
-    FRegistryEntityHandle enemy_capital;
+    FRegistryEntityHandle enemy_capital{};
     TimeSeriesData<FSimulationSample> samples;
     TOptional<time_type> pre_kill_time{NullOpt};
     TOptional<time_type> post_kill_time{NullOpt};

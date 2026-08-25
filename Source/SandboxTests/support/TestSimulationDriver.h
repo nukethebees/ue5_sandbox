@@ -46,6 +46,7 @@ struct TestSimulationDriver {
     bool tick_wait_completed() const;
 
     auto get_time() const -> time_type;
+    void advance_timeline() { timeline.tick(get_time()); }
     void set_delta_time_wait(time_type dt);
     void set_time_wait(time_type dt);
     bool time_wait_completed() const;

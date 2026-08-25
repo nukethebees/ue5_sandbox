@@ -10,7 +10,6 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 #include "test_fighters_standby_transition_scenario.h"
 
@@ -23,19 +22,9 @@ namespace ml {
 FFightersStandbyTransitionScenario::FFightersStandbyTransitionScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    enemy_capital = {};
-    samples = {};
-    pre_kill_time.Reset();
-    post_kill_time.Reset();
-
     TestCommandBuilder.Do([this] { spawn_capitals(context_.world, context_.config); });
 }
 
-void FFightersStandbyTransitionScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
-}
 /* ------------------------------------------------------------------------------------------ */
 // Setup
 /* ------------------------------------------------------------------------------------------ */
@@ -57,7 +46,7 @@ void FFightersStandbyTransitionScenario::spawn_capitals(UWorld& world,
 }
 
 void FFightersStandbyTransitionScenario::initial_setup() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
 
     auto const& capitals{test_driver->get_capital_ships()};
@@ -86,7 +75,7 @@ void FFightersStandbyTransitionScenario::initial_setup() {
 
 void FFightersStandbyTransitionScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -174,8 +163,6 @@ void FFightersStandbyTransitionScenario::full_checks() {
 }
 
 void FFightersStandbyTransitionScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { full_checks(); });
+    run_until_timeline_finished([this] { initial_setup(); }, timeout, [this] { full_checks(); });
 }
 }

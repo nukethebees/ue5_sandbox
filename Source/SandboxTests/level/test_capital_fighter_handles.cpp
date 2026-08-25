@@ -13,7 +13,6 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SandboxCore/time_series_data.h>
@@ -32,12 +31,6 @@ FCapitalFighterHandlesScenario::FCapitalFighterHandlesScenario(
     : FSimulationTestScenario{context}
     , scenario_{scenario} {
     TestCommandBuilder.Do([this] { spawn_fixture(); });
-}
-
-void FCapitalFighterHandlesScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
 }
 
 void FCapitalFighterHandlesScenario::spawn_fixture() {
@@ -169,7 +162,7 @@ void FCapitalFighterHandlesScenario::sample_values(ATestBatchOrchestrator& orche
 
 void FCapitalFighterHandlesScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
     sample_values(orchestrator);
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 auto FCapitalFighterHandlesScenario::find_main_capital_index() const -> TOptional<int32> {
@@ -184,7 +177,7 @@ auto FCapitalFighterHandlesScenario::find_main_capital_index() const -> TOptiona
 }
 
 void FCapitalFighterHandlesScenario::initial_setup() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     checks.are_equal(ATestBatchOrchestrator::tick_type{0},
                      test_driver->orchestrator.get_completed_ticks(),
                      TEXT("Simulation is paused before the test starts it"));
@@ -577,13 +570,13 @@ void FCapitalFighterHandlesScenario::export_data(FName const test_name) const {
 void FCapitalFighterHandlesScenario::run_test(FName const test_name,
                                               bool const should_kill_fighters,
                                               bool const should_kill_capital) {
-    TestCommandBuilder
-        .Do([this, should_kill_fighters, should_kill_capital] {
+    run_until_timeline_finished(
+        [this, should_kill_fighters, should_kill_capital] {
             initial_setup();
             configure_timeline(should_kill_fighters, should_kill_capital);
-        })
-        .Until([this] { return test_driver->timeline.is_finished(); }, default_timeout)
-        .Then([this, test_name, should_kill_fighters, should_kill_capital] {
+        },
+        default_timeout,
+        [this, test_name, should_kill_fighters, should_kill_capital] {
             full_checks(should_kill_fighters, should_kill_capital);
             if (!checks.all_passed || test_driver->should_export_results()) {
                 export_data(test_name);

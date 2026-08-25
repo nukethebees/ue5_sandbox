@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SpaceGame/missions/TestMissionFailReason.h>
 #include <SpaceGame/missions/TestMissionState.h>
@@ -41,7 +40,6 @@ class FTestMissionManagerScenario final : public FSimulationTestScenario {
   public:
     FTestMissionManagerScenario(FSimulationTestContext& context, EScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
     static void configure_level(UWorld& world,
                                 UTestSimulationConfig const& config,
@@ -59,7 +57,6 @@ class FTestMissionManagerScenario final : public FSimulationTestScenario {
     auto mission_has_ended() const -> bool;
     void check_scenario_result();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     EScenario scenario;
     TimeSeriesData<FSimulationSample> samples;
 };

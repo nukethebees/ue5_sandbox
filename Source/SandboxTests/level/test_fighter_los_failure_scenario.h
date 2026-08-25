@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SpaceGame/entities/TestTeam.h>
 
@@ -18,7 +17,6 @@ class FFighterLosFailureScenario final : public FSimulationTestScenario {
   public:
     explicit FFighterLosFailureScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_fixture();
     void sample_values();
@@ -27,7 +25,6 @@ class FFighterLosFailureScenario final : public FSimulationTestScenario {
     void check_fighter_spawns_and_survival();
     void full_checks();
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     FRegistryEntityHandle enemy;
     ETestTeam hero_team{ETestTeam::Blue};
     ETestTeam enemy_team{ETestTeam::Red};

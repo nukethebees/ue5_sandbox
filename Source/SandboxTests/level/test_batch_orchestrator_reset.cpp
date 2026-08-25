@@ -4,7 +4,6 @@
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SpaceGame/combat/lasers/TestLasers.h>
@@ -36,31 +35,7 @@ namespace ml {
 FTestBatchOrchestratorResetScenario::FTestBatchOrchestratorResetScenario(
     FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    initial_samples.reset();
-    reset_samples.reset();
-    for (auto& blocker : blockers) {
-        blocker.Reset();
-    }
-    for (auto& actor : old_owned_actors) {
-        actor = nullptr;
-    }
-    for (auto& actor : old_transient_actors) {
-        actor = nullptr;
-    }
-    old_transient_actor_count = 0;
-    initial_actor_count = 0;
-    initial_registry_alive = 0;
-    reset_complete = false;
-
     TestCommandBuilder.Do([this] { spawn_blockers(context_.world); });
-}
-
-void FTestBatchOrchestratorResetScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-        test_driver->orchestrator.pause_simulation();
-    }
 }
 
 void FTestBatchOrchestratorResetScenario::spawn_blockers(UWorld& world) {
@@ -147,7 +122,7 @@ void FTestBatchOrchestratorResetScenario::on_end_tick(ATestBatchOrchestrator& or
 }
 
 void FTestBatchOrchestratorResetScenario::start_initial_simulation() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     ml::reset_and_reserve_time_series(

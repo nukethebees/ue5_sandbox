@@ -43,13 +43,6 @@ void FTestBatchOrchestratorSetupScenario::run() {
     }
 }
 
-void FTestBatchOrchestratorSetupScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-        test_driver->orchestrator.pause_simulation();
-    }
-}
-
 void FTestBatchOrchestratorSetupScenario::spawn_missing_actors() {
     TestCommandBuilder.Do([this] {
         auto* const orchestrator{&context_.orchestrator};
@@ -162,7 +155,7 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
     }
     context_.orchestrator.set_player_ship(*player);
 
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     telemetry_observations.reset();
     telemetry_observations.reserve(16);
 
@@ -199,7 +192,7 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
             .telemetry_entity_count = telemetry.last_value(),
             .registry_entity_count = test_driver->registry.get_num_alive_active_entities(),
         });
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {

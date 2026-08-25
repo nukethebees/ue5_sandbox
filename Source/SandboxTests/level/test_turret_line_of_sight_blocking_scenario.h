@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SpaceGame/entities/TestTeam.h>
 
@@ -11,7 +10,6 @@
 
 namespace ml {
 class FTurretLineOfSightBlockingScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
 
     static constexpr time_type initial_enemy_check_time{1.0};
     static constexpr time_type blocker_scheduled_spawn_time{2.0};
@@ -26,7 +24,6 @@ class FTurretLineOfSightBlockingScenario final : public FSimulationTestScenario 
   public:
     explicit FTurretLineOfSightBlockingScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_line_of_sight_blocker();
     void sample_laser_count(ATestBatchOrchestrator& orchestrator);
@@ -39,7 +36,6 @@ class FTurretLineOfSightBlockingScenario final : public FSimulationTestScenario 
         {{-5000.f, 0.f, 0.f}, ETestTeam::Blue},
         {{5000.f, 0.f, 0.f}, ETestTeam::Red},
     };
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     TimeSeriesData<int32> laser_counts;
     TimeSeriesData<int32> entity_counts;
     TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;

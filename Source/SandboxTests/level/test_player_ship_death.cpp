@@ -1,6 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -23,8 +22,6 @@
 namespace ml {
 FTestPlayerShipDeathScenario::FTestPlayerShipDeathScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
-    test_driver.Reset();
-    samples = {};
     TestCommandBuilder.Do([this] {
         auto& world{context_.world};
         auto const& config{context_.config};
@@ -36,14 +33,9 @@ FTestPlayerShipDeathScenario::FTestPlayerShipDeathScenario(FSimulationTestContex
     });
 }
 
-void FTestPlayerShipDeathScenario::tear_down() {
-    context_.orchestrator.clear_end_tick_test_hook();
-}
-
 void FTestPlayerShipDeathScenario::run() {
-    TestCommandBuilder.Do([this] { queue_player_ship_death(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { check_player_ship_death(); });
+    run_until_timeline_finished(
+        [this] { queue_player_ship_death(); }, timeout, [this] { check_player_ship_death(); });
 }
 
 void FTestPlayerShipDeathScenario::player_ship_pre_begin_play(UWorld& world,
@@ -69,7 +61,7 @@ void FTestPlayerShipDeathScenario::player_ship_post_orchestrator_spawn(
 }
 
 void FTestPlayerShipDeathScenario::queue_player_ship_death() {
-    test_driver = ml::TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
 
     auto* const ship{test_driver->orchestrator.get_player_ship()};
@@ -111,7 +103,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
                 FSimulationSample{test_driver->registry.is_valid_dead(player_ship_handle),
                                   IsValid(player_ship.Get()),
                                   static_cast<bool>(unique_entities.alive[player_ship_id.id])});
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FTestPlayerShipDeathScenario::check_player_ship_death() {

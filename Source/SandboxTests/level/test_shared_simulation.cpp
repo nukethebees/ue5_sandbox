@@ -29,6 +29,10 @@
 
 #include <CQTest.h>
 
+#define SHARED_SIMULATION_TEST(METHOD_NAME, SCENARIO_TYPE, ...) \
+    TEST_METHOD(METHOD_NAME)                                    \
+    { run_scenario<SCENARIO_TYPE>(__VA_ARGS__); }
+
 TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 {
     inline static ml::FTestBatchOrchestratorLevelSetup level_setup{};
@@ -78,222 +82,138 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
         scenario->run();
     }
   public:
-    TEST_METHOD(Orchestrator_SpawnMissingActors)
-    {
-        run_scenario<ml::FTestBatchOrchestratorSetupScenario>(
-            ml::EOrchestratorSetupScenario::SpawnMissingActors);
-    }
+    SHARED_SIMULATION_TEST(Orchestrator_SpawnMissingActors,
+                           ml::FTestBatchOrchestratorSetupScenario,
+                           ml::EOrchestratorSetupScenario::SpawnMissingActors)
+    SHARED_SIMULATION_TEST(Orchestrator_SimulationClockConversions,
+                           ml::FTestBatchOrchestratorSetupScenario,
+                           ml::EOrchestratorSetupScenario::SimulationClockConversions)
+    SHARED_SIMULATION_TEST(Orchestrator_LevelTelemetry,
+                           ml::FTestBatchOrchestratorSetupScenario,
+                           ml::EOrchestratorSetupScenario::LevelTelemetry)
+    SHARED_SIMULATION_TEST(Orchestrator_ResetForNewLevel, ml::FTestBatchOrchestratorResetScenario)
 
-    TEST_METHOD(Orchestrator_SimulationClockConversions)
-    {
-        run_scenario<ml::FTestBatchOrchestratorSetupScenario>(
-            ml::EOrchestratorSetupScenario::SimulationClockConversions);
-    }
+    SHARED_SIMULATION_TEST(CapitalShipProxy_HealthOverridesConfig,
+                           ml::FTestCapitalShipProxyScenario)
+    SHARED_SIMULATION_TEST(CapitalCommandFighters_RetargetAfterKills,
+                           ml::FCapitalCommandFightersScenario)
+    SHARED_SIMULATION_TEST(CapitalFighterHandles_KillFightersOnly,
+                           ml::FCapitalFighterHandlesScenario,
+                           ml::ECapitalFighterHandlesScenario::KillFightersOnly)
+    SHARED_SIMULATION_TEST(CapitalFighterHandles_KillCapital,
+                           ml::FCapitalFighterHandlesScenario,
+                           ml::ECapitalFighterHandlesScenario::KillCapital)
+    SHARED_SIMULATION_TEST(CapitalFighterHandles_All,
+                           ml::FCapitalFighterHandlesScenario,
+                           ml::ECapitalFighterHandlesScenario::All)
 
-    TEST_METHOD(Orchestrator_LevelTelemetry)
-    {
-        run_scenario<ml::FTestBatchOrchestratorSetupScenario>(
-            ml::EOrchestratorSetupScenario::LevelTelemetry);
-    }
+    SHARED_SIMULATION_TEST(Fighters_LineOfSightFailureHandling, ml::FFighterLosFailureScenario)
+    SHARED_SIMULATION_TEST(EntityInterface_ConvertsProxiesAndResolvesTargets,
+                           ml::FEntityInterfaceScenario)
+    SHARED_SIMULATION_TEST(EntityRegistry_CountsTeams,
+                           ml::FEntityRegistryScenario,
+                           ml::EEntityRegistryScenario::TeamCounts)
+    SHARED_SIMULATION_TEST(EntityRegistry_OnePlayerKill,
+                           ml::FEntityRegistryScenario,
+                           ml::EEntityRegistryScenario::OnePlayerKill)
+    SHARED_SIMULATION_TEST(EntityRegistry_TwoPlayerKills,
+                           ml::FEntityRegistryScenario,
+                           ml::EEntityRegistryScenario::TwoPlayerKills)
+    SHARED_SIMULATION_TEST(Fighters_StandbyTransition, ml::FFightersStandbyTransitionScenario)
+    SHARED_SIMULATION_TEST(Fighters_InterceptCapital, ml::FFightersInterceptCapitalScenario)
+    SHARED_SIMULATION_TEST(Fighters_AttackCapital, ml::FFighterAttackScenario)
 
-    TEST_METHOD(Orchestrator_ResetForNewLevel)
-    { run_scenario<ml::FTestBatchOrchestratorResetScenario>(); }
+    SHARED_SIMULATION_TEST(HUD_InitialCachesPopulateWithoutHUD,
+                           ml::FTestHUDManagerScenario,
+                           ml::EHUDManagerScenario::InitialCachesPopulateWithoutHUD)
+    SHARED_SIMULATION_TEST(HUD_EntityCountPollingContinuesWithoutHUD,
+                           ml::FTestHUDManagerScenario,
+                           ml::EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD)
+    SHARED_SIMULATION_TEST(HUD_MissionAndDefenceDataUpdateWithoutHUD,
+                           ml::FTestHUDManagerScenario,
+                           ml::EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD)
+    SHARED_SIMULATION_TEST(HUD_PlayerStateAndKillsUpdateWithoutHUD,
+                           ml::FTestHUDManagerScenario,
+                           ml::EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD)
+    SHARED_SIMULATION_TEST(HUD_MissionTimeUsesSimulationClockWithoutHUD,
+                           ml::FTestHUDManagerScenario,
+                           ml::EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD)
+    SHARED_SIMULATION_TEST(HUD_LateRegistrationSynchronisesAndUnregisters,
+                           ml::FTestHUDManagerScenario,
+                           ml::EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters)
 
-    TEST_METHOD(Orchestrator_FixedStepPauseResumeAndCatchUp)
-    {
-        run_scenario<ml::FSimulationCoreRegressionScenario>(
-            ml::ESimulationCoreRegressionScenario::FixedTickLifecycle);
-    }
+    SHARED_SIMULATION_TEST(Orchestrator_FixedStepPauseResumeAndCatchUp,
+                           ml::FSimulationCoreRegressionScenario,
+                           ml::ESimulationCoreRegressionScenario::FixedTickLifecycle)
+    SHARED_SIMULATION_TEST(Entities_NonLethalThenLethalDamageCleansUpAtomically,
+                           ml::FSimulationCoreRegressionScenario,
+                           ml::ESimulationCoreRegressionScenario::DamageLifecycle)
 
-    TEST_METHOD(Entities_NonLethalThenLethalDamageCleansUpAtomically)
-    {
-        run_scenario<ml::FSimulationCoreRegressionScenario>(
-            ml::ESimulationCoreRegressionScenario::DamageLifecycle);
-    }
+    SHARED_SIMULATION_TEST(Mission_SurviveTime,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::SurviveTime)
+    SHARED_SIMULATION_TEST(Mission_KillEnemies,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::KillEnemies)
+    SHARED_SIMULATION_TEST(Mission_KillEnemiesWithinTime,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::KillEnemiesWithinTime)
+    SHARED_SIMULATION_TEST(Mission_DefenceObjective,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::DefenceObjective)
+    SHARED_SIMULATION_TEST(Mission_RequiredKillsObjective,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::RequiredKillsObjective)
+    SHARED_SIMULATION_TEST(Mission_RequiredKillsTimeElapsed,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::RequiredKillsTimeElapsed)
+    SHARED_SIMULATION_TEST(Mission_AutomaticKillTargetIncludesLastEnemy,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::AutomaticKillTarget)
+    SHARED_SIMULATION_TEST(Mission_SuccessIsTerminal,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::SuccessIsTerminal)
 
-    TEST_METHOD(CapitalShipProxy_HealthOverridesConfig)
-    { run_scenario<ml::FTestCapitalShipProxyScenario>(); }
+    SHARED_SIMULATION_TEST(PlayerShip_LethalDamageDestroysPlayerShip,
+                           ml::FTestPlayerShipDeathScenario)
+    SHARED_SIMULATION_TEST(PlayerShip_VersusCapital, ml::FPlayerShipVsCapitalScenario)
 
-    TEST_METHOD(CapitalCommandFighters_RetargetAfterKills)
-    { run_scenario<ml::FCapitalCommandFightersScenario>(); }
+    SHARED_SIMULATION_TEST(Lasers_QueuedSpawnHitsOnLaterTick,
+                           ml::FLaserLifecycleScenario,
+                           ml::ELaserLifecycleScenario::Hit)
+    SHARED_SIMULATION_TEST(Lasers_SimultaneousHitsCauseOneDeath,
+                           ml::FLaserLifecycleScenario,
+                           ml::ELaserLifecycleScenario::SimultaneousLethalHits)
+    SHARED_SIMULATION_TEST(Lasers_MissExpiresWithoutDamage,
+                           ml::FLaserLifecycleScenario,
+                           ml::ELaserLifecycleScenario::Miss)
+    SHARED_SIMULATION_TEST(Lasers_WorldBlockerConsumesProjectileWithoutEntityDamage,
+                           ml::FLaserLifecycleScenario,
+                           ml::ELaserLifecycleScenario::WorldBlocker)
 
-    TEST_METHOD(CapitalFighterHandles_KillFightersOnly)
-    {
-        run_scenario<ml::FCapitalFighterHandlesScenario>(
-            ml::ECapitalFighterHandlesScenario::KillFightersOnly);
-    }
+    SHARED_SIMULATION_TEST(SpatialQuery_ResolvesLineOfSightBatches,
+                           ml::FSpatialQueryLineOfSightScenario)
+    SHARED_SIMULATION_TEST(SpatialQuery_EmptyBatchesAndWorld, ml::FSpatialQueryEmptyScenario)
+    SHARED_SIMULATION_TEST(SpatialQuery_TeamAndInclusiveRadiusFiltering,
+                           ml::FSpatialQueryRangeScenario)
+    SHARED_SIMULATION_TEST(SpatialQuery_ResolvesHitBatches, ml::FSpatialQueryResolutionScenario)
 
-    TEST_METHOD(CapitalFighterHandles_KillCapital)
-    {
-        run_scenario<ml::FCapitalFighterHandlesScenario>(
-            ml::ECapitalFighterHandlesScenario::KillCapital);
-    }
-
-    TEST_METHOD(CapitalFighterHandles_All)
-    { run_scenario<ml::FCapitalFighterHandlesScenario>(ml::ECapitalFighterHandlesScenario::All); }
-
-    TEST_METHOD(Fighters_LineOfSightFailureHandling)
-    { run_scenario<ml::FFighterLosFailureScenario>(); }
-
-    TEST_METHOD(EntityInterface_ConvertsProxiesAndResolvesTargets)
-    { run_scenario<ml::FEntityInterfaceScenario>(); }
-
-    TEST_METHOD(EntityRegistry_CountsTeams)
-    { run_scenario<ml::FEntityRegistryScenario>(ml::EEntityRegistryScenario::TeamCounts); }
-
-    TEST_METHOD(EntityRegistry_OnePlayerKill)
-    { run_scenario<ml::FEntityRegistryScenario>(ml::EEntityRegistryScenario::OnePlayerKill); }
-
-    TEST_METHOD(EntityRegistry_TwoPlayerKills)
-    { run_scenario<ml::FEntityRegistryScenario>(ml::EEntityRegistryScenario::TwoPlayerKills); }
-
-    TEST_METHOD(Fighters_StandbyTransition)
-    { run_scenario<ml::FFightersStandbyTransitionScenario>(); }
-
-    TEST_METHOD(Fighters_InterceptCapital)
-    { run_scenario<ml::FFightersInterceptCapitalScenario>(); }
-
-    TEST_METHOD(Fighters_AttackCapital)
-    { run_scenario<ml::FFighterAttackScenario>(); }
-
-    TEST_METHOD(HUD_InitialCachesPopulateWithoutHUD)
-    {
-        run_scenario<ml::FTestHUDManagerScenario>(
-            ml::EHUDManagerScenario::InitialCachesPopulateWithoutHUD);
-    }
-
-    TEST_METHOD(HUD_EntityCountPollingContinuesWithoutHUD)
-    {
-        run_scenario<ml::FTestHUDManagerScenario>(
-            ml::EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD);
-    }
-
-    TEST_METHOD(HUD_MissionAndDefenceDataUpdateWithoutHUD)
-    {
-        run_scenario<ml::FTestHUDManagerScenario>(
-            ml::EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD);
-    }
-
-    TEST_METHOD(HUD_PlayerStateAndKillsUpdateWithoutHUD)
-    {
-        run_scenario<ml::FTestHUDManagerScenario>(
-            ml::EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD);
-    }
-
-    TEST_METHOD(HUD_MissionTimeUsesSimulationClockWithoutHUD)
-    {
-        run_scenario<ml::FTestHUDManagerScenario>(
-            ml::EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD);
-    }
-
-    TEST_METHOD(HUD_LateRegistrationSynchronisesAndUnregisters)
-    {
-        run_scenario<ml::FTestHUDManagerScenario>(
-            ml::EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters);
-    }
-
-    TEST_METHOD(Mission_SurviveTime)
-    { run_scenario<ml::FTestMissionManagerScenario>(ml::EMissionManagerScenario::SurviveTime); }
-
-    TEST_METHOD(Mission_KillEnemies)
-    { run_scenario<ml::FTestMissionManagerScenario>(ml::EMissionManagerScenario::KillEnemies); }
-
-    TEST_METHOD(Mission_KillEnemiesWithinTime)
-    {
-        run_scenario<ml::FTestMissionManagerScenario>(
-            ml::EMissionManagerScenario::KillEnemiesWithinTime);
-    }
-
-    TEST_METHOD(Mission_DefenceObjective)
-    {
-        run_scenario<ml::FTestMissionManagerScenario>(
-            ml::EMissionManagerScenario::DefenceObjective);
-    }
-
-    TEST_METHOD(Mission_RequiredKillsObjective)
-    {
-        run_scenario<ml::FTestMissionManagerScenario>(
-            ml::EMissionManagerScenario::RequiredKillsObjective);
-    }
-
-    TEST_METHOD(Mission_RequiredKillsTimeElapsed)
-    {
-        run_scenario<ml::FTestMissionManagerScenario>(
-            ml::EMissionManagerScenario::RequiredKillsTimeElapsed);
-    }
-
-    TEST_METHOD(Mission_AutomaticKillTargetIncludesLastEnemy)
-    {
-        run_scenario<ml::FTestMissionManagerScenario>(
-            ml::EMissionManagerScenario::AutomaticKillTarget);
-    }
-
-    TEST_METHOD(Mission_SuccessIsTerminal)
-    {
-        run_scenario<ml::FTestMissionManagerScenario>(
-            ml::EMissionManagerScenario::SuccessIsTerminal);
-    }
-
-    TEST_METHOD(PlayerShip_LethalDamageDestroysPlayerShip)
-    { run_scenario<ml::FTestPlayerShipDeathScenario>(); }
-
-    TEST_METHOD(PlayerShip_VersusCapital)
-    { run_scenario<ml::FPlayerShipVsCapitalScenario>(); }
-
-    TEST_METHOD(Lasers_QueuedSpawnHitsOnLaterTick)
-    { run_scenario<ml::FLaserLifecycleScenario>(ml::ELaserLifecycleScenario::Hit); }
-
-    TEST_METHOD(Lasers_SimultaneousHitsCauseOneDeath)
-    {
-        run_scenario<ml::FLaserLifecycleScenario>(
-            ml::ELaserLifecycleScenario::SimultaneousLethalHits);
-    }
-
-    TEST_METHOD(Lasers_MissExpiresWithoutDamage)
-    { run_scenario<ml::FLaserLifecycleScenario>(ml::ELaserLifecycleScenario::Miss); }
-
-    TEST_METHOD(Lasers_WorldBlockerConsumesProjectileWithoutEntityDamage)
-    { run_scenario<ml::FLaserLifecycleScenario>(ml::ELaserLifecycleScenario::WorldBlocker); }
-
-    TEST_METHOD(SpatialQuery_ResolvesLineOfSightBatches)
-    { run_scenario<ml::FSpatialQueryLineOfSightScenario>(); }
-
-    TEST_METHOD(SpatialQuery_EmptyBatchesAndWorld)
-    { run_scenario<ml::FSpatialQueryEmptyScenario>(); }
-
-    TEST_METHOD(SpatialQuery_TeamAndInclusiveRadiusFiltering)
-    { run_scenario<ml::FSpatialQueryRangeScenario>(); }
-
-    TEST_METHOD(SpatialQuery_ResolvesHitBatches)
-    { run_scenario<ml::FSpatialQueryResolutionScenario>(); }
-
-    TEST_METHOD(Turrets_LineOfSightBlocking)
-    { run_scenario<ml::FTurretLineOfSightBlockingScenario>(); }
-
-    TEST_METHOD(Turrets_KillEnemy)
-    { run_scenario<ml::FTurretCombatScenario>(ml::ETurretCombatScenario::KillEnemy); }
-
-    TEST_METHOD(Turrets_ZeroDamage)
-    { run_scenario<ml::FTurretCombatScenario>(ml::ETurretCombatScenario::ZeroDamage); }
-
-    TEST_METHOD(Turrets_SearchRequiresLineOfSight)
-    { run_scenario<ml::FTurretSearchRequiresLineOfSightScenario>(); }
-
-    TEST_METHOD(Turrets_NoOtherEntityRemainsIdle)
-    {
-        run_scenario<ml::FTurretAcquisitionRegressionScenario>(
-            ml::ETurretAcquisitionRegressionScenario::NoOtherEntity);
-    }
-
-    TEST_METHOD(Turrets_FriendlyOnlyRemainsIdle)
-    {
-        run_scenario<ml::FTurretAcquisitionRegressionScenario>(
-            ml::ETurretAcquisitionRegressionScenario::FriendlyOnly);
-    }
-
-    TEST_METHOD(Turrets_EnemyOutsideDetectionRadiusRemainsIdle)
-    {
-        run_scenario<ml::FTurretAcquisitionRegressionScenario>(
-            ml::ETurretAcquisitionRegressionScenario::EnemyOutsideRadius);
-    }
+    SHARED_SIMULATION_TEST(Turrets_LineOfSightBlocking, ml::FTurretLineOfSightBlockingScenario)
+    SHARED_SIMULATION_TEST(
+        Turrets_KillEnemy, ml::FTurretCombatScenario, ml::ETurretCombatScenario::KillEnemy)
+    SHARED_SIMULATION_TEST(
+        Turrets_ZeroDamage, ml::FTurretCombatScenario, ml::ETurretCombatScenario::ZeroDamage)
+    SHARED_SIMULATION_TEST(Turrets_SearchRequiresLineOfSight,
+                           ml::FTurretSearchRequiresLineOfSightScenario)
+    SHARED_SIMULATION_TEST(Turrets_NoOtherEntityRemainsIdle,
+                           ml::FTurretAcquisitionRegressionScenario,
+                           ml::ETurretAcquisitionRegressionScenario::NoOtherEntity)
+    SHARED_SIMULATION_TEST(Turrets_FriendlyOnlyRemainsIdle,
+                           ml::FTurretAcquisitionRegressionScenario,
+                           ml::ETurretAcquisitionRegressionScenario::FriendlyOnly)
+    SHARED_SIMULATION_TEST(Turrets_EnemyOutsideDetectionRadiusRemainsIdle,
+                           ml::FTurretAcquisitionRegressionScenario,
+                           ml::ETurretAcquisitionRegressionScenario::EnemyOutsideRadius)
 };
+
+#undef SHARED_SIMULATION_TEST

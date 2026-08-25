@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
 
@@ -11,7 +10,6 @@ namespace ml {
 enum class EEntityRegistryScenario : uint8 { TeamCounts, OnePlayerKill, TwoPlayerKills };
 
 class FEntityRegistryScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
 
     struct FVariableKillSample {
         int32 player_kills{0};
@@ -27,7 +25,6 @@ class FEntityRegistryScenario final : public FSimulationTestScenario {
   public:
     FEntityRegistryScenario(FSimulationTestContext& context, EEntityRegistryScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_fixture();
     void spawn_player();
@@ -40,7 +37,6 @@ class FEntityRegistryScenario final : public FSimulationTestScenario {
     void check_variable_kill_results();
 
     EEntityRegistryScenario scenario_;
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     TimeSeriesData<FTestEntityRegistry::TeamCounts> alive_per_team;
     TimeSeriesData<FTestEntityRegistry::EntityCounts> alive_per_team_and_type;
     TimeSeriesData<FVariableKillSample> kill_samples;

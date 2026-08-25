@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -14,7 +13,6 @@ class ATestSpaceShip;
 
 namespace ml {
 class FPlayerShipVsCapitalScenario final : public FSimulationTestScenario {
-    using time_type = TestSimulationDriver::time_type;
     static constexpr time_type initial_wait{0.1};
     static constexpr time_type track_time{0.5};
     static constexpr time_type t_start{0.0};
@@ -25,7 +23,6 @@ class FPlayerShipVsCapitalScenario final : public FSimulationTestScenario {
   public:
     explicit FPlayerShipVsCapitalScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
     void spawn_fixture();
     void sample_values(ATestBatchOrchestrator& orchestrator);
@@ -35,7 +32,6 @@ class FPlayerShipVsCapitalScenario final : public FSimulationTestScenario {
     void fail_self_analysis();
     void export_failure_data() const;
 
-    TOptional<TestSimulationDriver> test_driver{NullOpt};
     ATestSpaceShip const* player_ship{nullptr};
     ATestCapitalShips const* capitals{nullptr};
     ATestCapitalShipFighters const* fighters{nullptr};

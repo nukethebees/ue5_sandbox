@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxTests/support/SimulationTestScenario.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 
 #include <SpaceGame/entities/ProxyEntityMap.h>
 
@@ -14,13 +13,12 @@ class FSpatialQueryLineOfSightScenario final : public FSimulationTestScenario {
   public:
     explicit FSpatialQueryLineOfSightScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void bind(FProxyEntityMap const& proxies);
     void run_queries();
     void on_end_tick(ATestBatchOrchestrator& orchestrator);
 
-    TOptional<TestSimulationDriver> driver{NullOpt};
     TArray<FName> names{TEXT("North"), TEXT("South"), TEXT("East"), TEXT("West")};
     TArray<FVector3f> locations{
         {0.f, distance, 0.f}, {0.f, -distance, 0.f}, {distance, 0.f, 0.f}, {-distance, 0.f, 0.f}};

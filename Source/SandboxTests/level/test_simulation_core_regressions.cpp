@@ -25,7 +25,7 @@ FSimulationCoreRegressionScenario::FSimulationCoreRegressionScenario(
     }
 }
 
-void FSimulationCoreRegressionScenario::tear_down() {
+void FSimulationCoreRegressionScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
     if (test_driver.IsSet()) {
         test_driver->orchestrator.clear_end_tick_test_hook();

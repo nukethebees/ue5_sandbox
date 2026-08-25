@@ -15,12 +15,6 @@ FCapitalCommandFightersScenario::FCapitalCommandFightersScenario(FSimulationTest
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FCapitalCommandFightersScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
-}
-
 /* ------------------------------------------------------------------------------------------ */
 // Setup
 /* ------------------------------------------------------------------------------------------ */
@@ -55,7 +49,7 @@ void FCapitalCommandFightersScenario::spawn_fixture() {
 }
 
 void FCapitalCommandFightersScenario::initial_setup() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
 
     capitals = &test_driver->get_capital_ships();
@@ -102,7 +96,7 @@ void FCapitalCommandFightersScenario::sample_values() {
 
 void FCapitalCommandFightersScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -159,8 +153,7 @@ void FCapitalCommandFightersScenario::full_checks() {
 }
 
 void FCapitalCommandFightersScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup_and_stimuli(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 1})
-        .Then([this] { full_checks(); });
+    run_until_timeline_finished(
+        [this] { initial_setup_and_stimuli(); }, FTimespan{0, 0, 1}, [this] { full_checks(); });
 }
 }

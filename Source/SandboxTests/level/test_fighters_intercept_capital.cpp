@@ -18,12 +18,6 @@ FFightersInterceptCapitalScenario::FFightersInterceptCapitalScenario(
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FFightersInterceptCapitalScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
-}
-
 /* ------------------------------------------------------------------------------------------ */
 // Setup
 /* ------------------------------------------------------------------------------------------ */
@@ -61,7 +55,7 @@ void FFightersInterceptCapitalScenario::spawn_fixture() {
 }
 
 void FFightersInterceptCapitalScenario::initial_setup() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
     capitals = &test_driver->get_capital_ships();
     fighters = &test_driver->get_capital_ship_fighters();
@@ -102,7 +96,7 @@ void FFightersInterceptCapitalScenario::sample_values() {
 
 void FFightersInterceptCapitalScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample_values();
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FFightersInterceptCapitalScenario::check_fighters_share_target(FSimulationSample const& sample,
@@ -178,14 +172,15 @@ void FFightersInterceptCapitalScenario::export_data() const {
 }
 
 void FFightersInterceptCapitalScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, FTimespan{0, 0, 21})
-        .Then([this] {
-            full_checks();
-            if (!checks.all_passed || test_driver->should_export_results()) {
-                export_data();
-            }
-            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
-        });
+    run_until_timeline_finished([this] { initial_setup(); },
+                                FTimespan{0, 0, 21},
+                                [this] {
+                                    full_checks();
+                                    if (!checks.all_passed ||
+                                        test_driver->should_export_results()) {
+                                        export_data();
+                                    }
+                                    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+                                });
 }
 }

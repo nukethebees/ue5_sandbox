@@ -17,8 +17,8 @@ class FSpatialQueryEmptyScenario final : public FSimulationTestScenario {
   public:
     explicit FSpatialQueryEmptyScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void run_queries();
     void on_end_tick(ATestBatchOrchestrator& orchestrator);
     void check_results();
@@ -32,8 +32,8 @@ class FSpatialQueryRangeScenario final : public FSimulationTestScenario {
   public:
     explicit FSpatialQueryRangeScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void bind(FProxyEntityMap const& proxies);
     void run_query();
     void on_end_tick(ATestBatchOrchestrator& orchestrator);

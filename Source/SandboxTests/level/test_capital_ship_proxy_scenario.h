@@ -14,16 +14,16 @@ class FTestCapitalShipProxyScenario final : public FSimulationTestScenario {
   public:
     explicit FTestCapitalShipProxyScenario(FSimulationTestContext& context);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void spawn_proxies(UWorld& world, UTestSimulationConfig const& config);
     void resolve_proxy_handles(FProxyEntityMap const& proxy_entities);
     void check_proxy_healths();
 
-    FRegistryEntityHandle default_health_handle;
-    FRegistryEntityHandle overridden_health_handle;
-    TestEntityUniqueId default_health_unique_id;
-    TestEntityUniqueId overridden_health_unique_id;
+    FRegistryEntityHandle default_health_handle{};
+    FRegistryEntityHandle overridden_health_handle{};
+    TestEntityUniqueId default_health_unique_id{};
+    TestEntityUniqueId overridden_health_unique_id{};
     int32 default_health{0};
     int32 overridden_health{0};
     bool proxy_handles_bound{false};

@@ -32,7 +32,7 @@ FLaserLifecycleScenario::FLaserLifecycleScenario(FSimulationTestContext& context
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FLaserLifecycleScenario::tear_down() {
+void FLaserLifecycleScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
     if (driver.IsSet()) {
         driver->orchestrator.clear_end_tick_test_hook();

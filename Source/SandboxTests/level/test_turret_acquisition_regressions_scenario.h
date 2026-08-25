@@ -18,8 +18,8 @@ class FTurretAcquisitionRegressionScenario final : public FSimulationTestScenari
     FTurretAcquisitionRegressionScenario(FSimulationTestContext& context,
                                          ETurretAcquisitionRegressionScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void spawn_fixture();
     void on_end_tick(ATestBatchOrchestrator& orchestrator);
     void check_results();

@@ -23,12 +23,6 @@ FPlayerShipVsCapitalScenario::FPlayerShipVsCapitalScenario(FSimulationTestContex
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FPlayerShipVsCapitalScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
-}
-
 /* ------------------------------------------------------------------------------------------ */
 // Setup
 /* ------------------------------------------------------------------------------------------ */
@@ -76,7 +70,7 @@ void FPlayerShipVsCapitalScenario::spawn_fixture() {
 }
 
 void FPlayerShipVsCapitalScenario::initial_setup() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     test_driver->orchestrator.start_simulation();
     player_ship = &test_driver->get_player_ship();
     capitals = &test_driver->get_capital_ships();
@@ -109,7 +103,7 @@ void FPlayerShipVsCapitalScenario::sample_values(ATestBatchOrchestrator& orchest
 
 void FPlayerShipVsCapitalScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
     sample_values(orchestrator);
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FPlayerShipVsCapitalScenario::full_checks() {

@@ -527,6 +527,9 @@ void ATestLasers::spawn_hit_effects() {
             auto_destroy,
             auto_activate,
             ENCPoolMethod::AutoRelease)};
+        if (!IsValid(system)) {
+            continue;
+        }
 
         constexpr double colour_scale{20.0};
         auto const colour{hit_details.colours[i] * colour_scale};

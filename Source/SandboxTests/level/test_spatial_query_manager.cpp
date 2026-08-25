@@ -11,7 +11,6 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
-#include <SandboxTests/support/TestSimulationDriver.h>
 #include "test_spatial_query_line_of_sight_scenario.h"
 #include "test_spatial_query_resolution_scenario.h"
 
@@ -24,12 +23,6 @@ namespace ml {
 FSpatialQueryResolutionScenario::FSpatialQueryResolutionScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     TestCommandBuilder.Do([this] { spawn_fixture(); });
-}
-
-void FSpatialQueryResolutionScenario::tear_down() {
-    if (test_driver.IsSet()) {
-        test_driver->orchestrator.clear_end_tick_test_hook();
-    }
 }
 
 void FSpatialQueryResolutionScenario::spawn_fixture() {
@@ -73,7 +66,7 @@ auto FSpatialQueryResolutionScenario::get_expected_type(
 }
 
 void FSpatialQueryResolutionScenario::initial_setup() {
-    test_driver = TestSimulationDriver::from_world(context_.world);
+    initialise_test_driver();
     auto& orchestrator{test_driver->orchestrator};
     orchestrator.start_simulation();
     capitals = const_cast<ATestCapitalShips*>(orchestrator.get_capital_ships());
@@ -131,7 +124,7 @@ void FSpatialQueryResolutionScenario::resolve_hits() {
 }
 
 void FSpatialQueryResolutionScenario::on_end_tick(ATestBatchOrchestrator&) {
-    test_driver->timeline.tick(test_driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FSpatialQueryResolutionScenario::run_checks() {
@@ -140,9 +133,7 @@ void FSpatialQueryResolutionScenario::run_checks() {
 }
 
 void FSpatialQueryResolutionScenario::run() {
-    TestCommandBuilder.Do([this] { initial_setup(); })
-        .Until([this] { return test_driver->timeline.is_finished(); }, timeout)
-        .Then([this] { run_checks(); });
+    run_until_timeline_finished([this] { initial_setup(); }, timeout, [this] { run_checks(); });
 }
 
 FSpatialQueryLineOfSightScenario::FSpatialQueryLineOfSightScenario(FSimulationTestContext& context)
@@ -167,11 +158,8 @@ FSpatialQueryLineOfSightScenario::FSpatialQueryLineOfSightScenario(FSimulationTe
     });
 }
 
-void FSpatialQueryLineOfSightScenario::tear_down() {
+void FSpatialQueryLineOfSightScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-    if (driver.IsSet()) {
-        driver->orchestrator.clear_end_tick_test_hook();
-    }
 }
 
 void FSpatialQueryLineOfSightScenario::bind(FProxyEntityMap const& proxies) {
@@ -213,7 +201,7 @@ void FSpatialQueryLineOfSightScenario::run_queries() {
     TArray<FRegistryEntityHandle> results;
     results.SetNumUninitialized(ends.num());
 
-    driver->orchestrator.get_spatial_query_manager().trace_line_of_sight(
+    test_driver->orchestrator.get_spatial_query_manager().trace_line_of_sight(
         starts.get_const_view(), ends.get_const_view(), results);
 
     auto const n_names{names.Num()};
@@ -234,7 +222,7 @@ void FSpatialQueryLineOfSightScenario::run_queries() {
 
     TArray<uint8> has_los;
     has_los.SetNumUninitialized(ends.num());
-    driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
+    test_driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
         FVector3f::ZeroVector, ends.get_const_view(), targets, has_los);
 
     auto const n_endpoints{ends.num()};
@@ -248,7 +236,7 @@ void FSpatialQueryLineOfSightScenario::run_queries() {
         targets[i + 2 * n_names] = expected[other_target_index];
     }
 
-    driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
+    test_driver->orchestrator.get_spatial_query_manager().has_line_of_sight_to_targets(
         FVector3f::ZeroVector, ends.get_const_view(), targets, has_los);
 
     for (int32 i{}; i < n_names; ++i) {
@@ -261,19 +249,20 @@ void FSpatialQueryLineOfSightScenario::run_queries() {
 }
 
 void FSpatialQueryLineOfSightScenario::on_end_tick(ATestBatchOrchestrator&) {
-    driver->timeline.tick(driver->get_time());
+    test_driver->advance_timeline();
 }
 
 void FSpatialQueryLineOfSightScenario::run() {
-    TestCommandBuilder
-        .Do([this] {
-            driver = ml::TestSimulationDriver::from_world(context_.world);
-            driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
-                this, &FSpatialQueryLineOfSightScenario::on_end_tick));
-            driver->timeline.at(0.1, [this] { run_queries(); }).finish_at(0.2);
-            driver->orchestrator.start_simulation();
-        })
-        .Until([this] { return driver->timeline.is_finished(); }, FTimespan{0, 0, 2})
-        .Then([this] { SANDBOX_TESTS_ASSERT_ALL_PASSED(checks); });
+    run_until_timeline_finished(
+        [this] {
+            initialise_test_driver();
+            test_driver->orchestrator.set_end_tick_test_hook(
+                FOrchestratorEndTickTestHook::CreateRaw(
+                    this, &FSpatialQueryLineOfSightScenario::on_end_tick));
+            test_driver->timeline.at(0.1, [this] { run_queries(); }).finish_at(0.2);
+            test_driver->orchestrator.start_simulation();
+        },
+        FTimespan{0, 0, 2},
+        [this] { SANDBOX_TESTS_ASSERT_ALL_PASSED(checks); });
 }
 }

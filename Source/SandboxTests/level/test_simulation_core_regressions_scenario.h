@@ -21,8 +21,8 @@ class FSimulationCoreRegressionScenario final : public FSimulationTestScenario {
     FSimulationCoreRegressionScenario(FSimulationTestContext& context,
                                       ESimulationCoreRegressionScenario scenario);
     void run() override;
-    void tear_down() override;
   private:
+    void on_tear_down() override;
     void spawn_damage_fixture();
     void bind_damage_fixture(FProxyEntityMap const& proxy_entities);
     void run_fixed_tick_lifecycle();

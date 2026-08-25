@@ -22,7 +22,7 @@ FTurretAcquisitionRegressionScenario::FTurretAcquisitionRegressionScenario(
     TestCommandBuilder.Do([this] { spawn_fixture(); });
 }
 
-void FTurretAcquisitionRegressionScenario::tear_down() {
+void FTurretAcquisitionRegressionScenario::on_tear_down() {
     if (driver.IsSet()) {
         driver->orchestrator.clear_end_tick_test_hook();
     }
