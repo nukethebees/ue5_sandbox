@@ -10,11 +10,15 @@
 #include "test_fighters_intercept_capital_scenario.h"
 #include "test_fighters_standby_transition_scenario.h"
 #include "test_hud_manager_scenario.h"
+#include "test_laser_lifecycle_scenario.h"
 #include "test_mission_manager_scenario.h"
 #include "test_player_ship_death_scenario.h"
 #include "test_player_ship_vs_capital_scenario.h"
+#include "test_simulation_core_regressions_scenario.h"
+#include "test_spatial_query_empty_scenario.h"
 #include "test_spatial_query_line_of_sight_scenario.h"
 #include "test_spatial_query_resolution_scenario.h"
+#include "test_turret_acquisition_regressions_scenario.h"
 #include "test_turret_combat_scenario.h"
 #include "test_turret_line_of_sight_blocking_scenario.h"
 #include "test_turret_search_requires_line_of_sight_scenario.h"
@@ -94,6 +98,18 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
     TEST_METHOD(Orchestrator_ResetForNewLevel)
     { run_scenario<ml::FTestBatchOrchestratorResetScenario>(); }
+
+    TEST_METHOD(Orchestrator_FixedStepPauseResumeAndCatchUp)
+    {
+        run_scenario<ml::FSimulationCoreRegressionScenario>(
+            ml::ESimulationCoreRegressionScenario::FixedTickLifecycle);
+    }
+
+    TEST_METHOD(Entities_NonLethalThenLethalDamageCleansUpAtomically)
+    {
+        run_scenario<ml::FSimulationCoreRegressionScenario>(
+            ml::ESimulationCoreRegressionScenario::DamageLifecycle);
+    }
 
     TEST_METHOD(CapitalShipProxy_HealthOverridesConfig)
     { run_scenario<ml::FTestCapitalShipProxyScenario>(); }
@@ -206,14 +222,47 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             ml::EMissionManagerScenario::RequiredKillsTimeElapsed);
     }
 
+    TEST_METHOD(Mission_AutomaticKillTargetIncludesLastEnemy)
+    {
+        run_scenario<ml::FTestMissionManagerScenario>(
+            ml::EMissionManagerScenario::AutomaticKillTarget);
+    }
+
+    TEST_METHOD(Mission_SuccessIsTerminal)
+    {
+        run_scenario<ml::FTestMissionManagerScenario>(
+            ml::EMissionManagerScenario::SuccessIsTerminal);
+    }
+
     TEST_METHOD(PlayerShip_LethalDamageDestroysPlayerShip)
     { run_scenario<ml::FTestPlayerShipDeathScenario>(); }
 
     TEST_METHOD(PlayerShip_VersusCapital)
     { run_scenario<ml::FPlayerShipVsCapitalScenario>(); }
 
+    TEST_METHOD(Lasers_QueuedSpawnHitsOnLaterTick)
+    { run_scenario<ml::FLaserLifecycleScenario>(ml::ELaserLifecycleScenario::Hit); }
+
+    TEST_METHOD(Lasers_SimultaneousHitsCauseOneDeath)
+    {
+        run_scenario<ml::FLaserLifecycleScenario>(
+            ml::ELaserLifecycleScenario::SimultaneousLethalHits);
+    }
+
+    TEST_METHOD(Lasers_MissExpiresWithoutDamage)
+    { run_scenario<ml::FLaserLifecycleScenario>(ml::ELaserLifecycleScenario::Miss); }
+
+    TEST_METHOD(Lasers_WorldBlockerConsumesProjectileWithoutEntityDamage)
+    { run_scenario<ml::FLaserLifecycleScenario>(ml::ELaserLifecycleScenario::WorldBlocker); }
+
     TEST_METHOD(SpatialQuery_ResolvesLineOfSightBatches)
     { run_scenario<ml::FSpatialQueryLineOfSightScenario>(); }
+
+    TEST_METHOD(SpatialQuery_EmptyBatchesAndWorld)
+    { run_scenario<ml::FSpatialQueryEmptyScenario>(); }
+
+    TEST_METHOD(SpatialQuery_TeamAndInclusiveRadiusFiltering)
+    { run_scenario<ml::FSpatialQueryRangeScenario>(); }
 
     TEST_METHOD(SpatialQuery_ResolvesHitBatches)
     { run_scenario<ml::FSpatialQueryResolutionScenario>(); }
@@ -229,4 +278,22 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
     TEST_METHOD(Turrets_SearchRequiresLineOfSight)
     { run_scenario<ml::FTurretSearchRequiresLineOfSightScenario>(); }
+
+    TEST_METHOD(Turrets_NoOtherEntityRemainsIdle)
+    {
+        run_scenario<ml::FTurretAcquisitionRegressionScenario>(
+            ml::ETurretAcquisitionRegressionScenario::NoOtherEntity);
+    }
+
+    TEST_METHOD(Turrets_FriendlyOnlyRemainsIdle)
+    {
+        run_scenario<ml::FTurretAcquisitionRegressionScenario>(
+            ml::ETurretAcquisitionRegressionScenario::FriendlyOnly);
+    }
+
+    TEST_METHOD(Turrets_EnemyOutsideDetectionRadiusRemainsIdle)
+    {
+        run_scenario<ml::FTurretAcquisitionRegressionScenario>(
+            ml::ETurretAcquisitionRegressionScenario::EnemyOutsideRadius);
+    }
 };

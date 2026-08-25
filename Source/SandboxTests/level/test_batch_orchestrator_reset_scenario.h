@@ -18,6 +18,10 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
 
     struct FSimulationSample {
         int32 actor_count{0};
+        int32 registry_alive{0};
+        int32 capital_count{0};
+        int32 fighter_count{0};
+        int32 laser_count{0};
     };
   public:
     explicit FTestBatchOrchestratorResetScenario(FSimulationTestContext& context);
@@ -44,6 +48,7 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
     TStaticArray<AActor*, max_transient_actor_count> old_transient_actors{};
     int32 old_transient_actor_count{0};
     int32 initial_actor_count{0};
+    int32 initial_registry_alive{0};
     bool reset_complete{false};
 };
 }

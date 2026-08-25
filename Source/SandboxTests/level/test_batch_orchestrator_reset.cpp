@@ -3,17 +3,19 @@
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
+#include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestSimulationDriver.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinners.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -48,6 +50,7 @@ FTestBatchOrchestratorResetScenario::FTestBatchOrchestratorResetScenario(
     }
     old_transient_actor_count = 0;
     initial_actor_count = 0;
+    initial_registry_alive = 0;
     reset_complete = false;
 
     TestCommandBuilder.Do([this] { spawn_blockers(context_.world); });
@@ -69,6 +72,12 @@ void FTestBatchOrchestratorResetScenario::spawn_blockers(UWorld& world) {
         }
 
         blockers[i] = blocker;
+    }
+
+    auto* const capital{spawn_capital_proxy(
+        world, context_.config, checks, TEXT("reset_capital"), FVector{5000.f, 0.f, 0.f})};
+    if (IsValid(capital)) {
+        capital->set_initial_spawn_delay(60.f);
     }
 }
 
@@ -120,6 +129,10 @@ void FTestBatchOrchestratorResetScenario::save_old_transient_actors(
 void FTestBatchOrchestratorResetScenario::sample(ATestBatchOrchestrator& orchestrator) {
     FSimulationSample const sample{
         .actor_count = count_actors(*test_driver->get_world()),
+        .registry_alive = test_driver->registry.count_alive(),
+        .capital_count = orchestrator.get_capital_ships()->get_num_instances(),
+        .fighter_count = orchestrator.get_capital_ship_fighters()->get_num_instances(),
+        .laser_count = orchestrator.get_lasers()->get_num_instances(),
     };
 
     if (reset_complete) {
@@ -148,6 +161,7 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     check(!initial_samples.is_empty());
 
     initial_actor_count = initial_samples.last_value().actor_count;
+    initial_registry_alive = initial_samples.last_value().registry_alive;
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
     auto const& telemetry{
@@ -175,6 +189,11 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
     auto const& reset_sample{reset_samples.last_value()};
     checks.is_true(reset_sample.actor_count < initial_actor_count,
                    TEXT("Reset removes transient level actors"));
+    checks.are_equal(1, initial_registry_alive, TEXT("Initial simulation contains one entity"));
+    checks.are_equal(0, reset_sample.registry_alive, TEXT("Reset clears registry entities"));
+    checks.are_equal(0, reset_sample.capital_count, TEXT("Reset clears capital instances"));
+    checks.are_equal(0, reset_sample.fighter_count, TEXT("Reset clears fighter instances"));
+    checks.are_equal(0, reset_sample.laser_count, TEXT("Reset clears projectile instances"));
 
     for (auto const& blocker : blockers) {
         checks.is_true(!ml::is_actor_in_world(*test_driver->get_world(), blocker.Get()),

@@ -18,6 +18,8 @@ enum class EMissionManagerScenario : uint8 {
     DefenceObjective,
     RequiredKillsObjective,
     RequiredKillsTimeElapsed,
+    AutomaticKillTarget,
+    SuccessIsTerminal,
 };
 
 class FTestMissionManagerScenario final : public FSimulationTestScenario {
@@ -27,6 +29,8 @@ class FTestMissionManagerScenario final : public FSimulationTestScenario {
         ETestMissionState mission_state{ETestMissionState::NotStarted};
         ETestMissionFailReason mission_fail_reason{ETestMissionFailReason::None};
         int32 mission_kills{0};
+        int32 kill_target{0};
+        bool surviving_entity_alive{false};
         TArray<int32> surviving_entity_health;
         TArray<int32> required_kill_entity_health;
     };

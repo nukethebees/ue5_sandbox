@@ -8,11 +8,11 @@
 
 #include <SandboxCore/time_series_data.h>
 
-#include <SpaceGame/simulation/SimulationConfig.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
@@ -82,6 +82,32 @@ void FTestMissionManagerScenario::configure_level(UWorld& world,
                                     FVector{2000.f, 0.f, 0.f});
             break;
         }
+        case EScenario::AutomaticKillTarget: {
+            first_capital->set_team(ETestTeam::Green);
+            first_capital->set_initial_spawn_delay(60.f);
+            auto* const first_enemy{ml::spawn_capital_proxy(world,
+                                                            config,
+                                                            checks,
+                                                            FName{TEXT("first_enemy_capital")},
+                                                            FVector{2000.f, 0.f, 0.f})};
+            auto* const second_enemy{ml::spawn_capital_proxy(world,
+                                                             config,
+                                                             checks,
+                                                             FName{TEXT("second_enemy_capital")},
+                                                             FVector{4000.f, 0.f, 0.f})};
+            if (IsValid(first_enemy)) {
+                first_enemy->set_team(ETestTeam::Red);
+                first_enemy->set_initial_spawn_delay(60.f);
+            }
+            if (IsValid(second_enemy)) {
+                second_enemy->set_team(ETestTeam::Red);
+                second_enemy->set_initial_spawn_delay(60.f);
+            }
+            break;
+        }
+        case EScenario::SuccessIsTerminal: {
+            break;
+        }
         default: {
             checkNoEntry();
             break;
@@ -148,6 +174,18 @@ void FTestMissionManagerScenario::configure_mission_manager(UWorld& world,
                 *find_capital(FName{TEXT("required_enemy_capital")}));
             break;
         }
+        case EScenario::AutomaticKillTarget: {
+            manager.set_mission_mode(ETestMissionMode::KillEnemies);
+            manager.set_kill_target(0);
+            manager.add_hero_entity(*first_capital);
+            break;
+        }
+        case EScenario::SuccessIsTerminal: {
+            manager.set_mission_mode(ETestMissionMode::SurviveTime);
+            manager.set_target_time(short_mission_time);
+            manager.add_entity_that_must_survive(*first_capital);
+            break;
+        }
         default: {
             checkNoEntry();
             break;
@@ -167,7 +205,13 @@ void FTestMissionManagerScenario::setup_scenario(EScenario const new_scenario) {
     });
 
     TestCommandBuilder.Do([this] { start_scenario(); })
-        .Until([this] { return mission_has_ended(); }, timeout)
+        .Until(
+            [this] {
+                return scenario == EScenario::SuccessIsTerminal
+                         ? test_driver->timeline.is_finished()
+                         : mission_has_ended();
+            },
+            timeout)
         .Then([this] { check_scenario_result(); });
 }
 
@@ -187,6 +231,12 @@ void FTestMissionManagerScenario::start_scenario() {
     } else if (scenario == EScenario::RequiredKillsObjective) {
         test_driver->timeline.then_after(0.01, [this, manager] { queue_enemy_kill(*manager); })
             .then_after(0.19, [this, manager] { queue_required_entity_kill(*manager); });
+    } else if (scenario == EScenario::AutomaticKillTarget) {
+        test_driver->timeline.then_after(0.01, [this, manager] { queue_enemy_kill(*manager); })
+            .then_after(0.19, [this, manager] { queue_enemy_kill(*manager); });
+    } else if (scenario == EScenario::SuccessIsTerminal) {
+        test_driver->timeline.at(0.15, [this, manager] { queue_defended_entity_kill(*manager); })
+            .finish_at(0.25);
     }
     test_driver->orchestrator.start_simulation();
 
@@ -239,6 +289,10 @@ void FTestMissionManagerScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample.mission_state = manager.get_mission_state();
     sample.mission_fail_reason = manager.get_mission_fail_reason();
     sample.mission_kills = manager.get_mission_kills();
+    sample.kill_target = manager.get_kill_target();
+    auto const surviving_handles{manager.get_entity_handles_that_must_survive()};
+    sample.surviving_entity_alive =
+        !surviving_handles.IsEmpty() && test_driver->registry.is_valid_alive(surviving_handles[0]);
     for (auto const& health : manager.get_entity_health_that_must_survive()) {
         sample.surviving_entity_health.Add(health.health);
     }
@@ -379,6 +433,43 @@ void FTestMissionManagerScenario::check_scenario_result() {
             TestRunner->TestTrue(TEXT("Required target remains alive at timeout"),
                                  !sample.required_kill_entity_health.IsEmpty() &&
                                      sample.required_kill_entity_health[0] > 0);
+            break;
+        }
+        case EScenario::AutomaticKillTarget: {
+            auto const& one_remaining_sample{samples.nearest_value(0.1)};
+            TestRunner->TestEqual(TEXT("Automatic target counts both initial enemies"),
+                                  one_remaining_sample.kill_target,
+                                  2);
+            TestRunner->TestEqual(TEXT("Mission remains running with one enemy left"),
+                                  one_remaining_sample.mission_state,
+                                  ETestMissionState::Running);
+            TestRunner->TestEqual(
+                TEXT("First enemy kill is credited"), one_remaining_sample.mission_kills, 1);
+            TestRunner->TestEqual(TEXT("Last enemy completes automatic kill target"),
+                                  sample.mission_state,
+                                  ETestMissionState::Succeeded);
+            TestRunner->TestEqual(TEXT("Both enemy kills are credited"), sample.mission_kills, 2);
+            break;
+        }
+        case EScenario::SuccessIsTerminal: {
+            auto succeeded_before_destruction{false};
+            auto const n_samples{samples.num()};
+            for (int32 i{0}; i < n_samples; ++i) {
+                if (samples.time_at(i) < 0.15 &&
+                    samples.value_at(i).mission_state == ETestMissionState::Succeeded) {
+                    succeeded_before_destruction = true;
+                }
+            }
+            TestRunner->TestTrue(TEXT("Mission succeeds before defended entity is destroyed"),
+                                 succeeded_before_destruction);
+            TestRunner->TestEqual(TEXT("Mission remains successful after later destruction"),
+                                  sample.mission_state,
+                                  ETestMissionState::Succeeded);
+            TestRunner->TestEqual(TEXT("Later destruction does not add a failure reason"),
+                                  sample.mission_fail_reason,
+                                  ETestMissionFailReason::None);
+            TestRunner->TestFalse(TEXT("Defended entity is destroyed after success"),
+                                  sample.surviving_entity_alive);
             break;
         }
         default: {
