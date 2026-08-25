@@ -22,6 +22,11 @@
 			"LoadingPhase": "Default"
 		},
 		{
+			"Name": "Experiments",
+			"Type": "Editor",
+			"LoadingPhase": "PostConfigInit"
+		},
+		{
 			"Name": "SandboxUITests",
 			"Type": "Editor",
 			"LoadingPhase": "Default"

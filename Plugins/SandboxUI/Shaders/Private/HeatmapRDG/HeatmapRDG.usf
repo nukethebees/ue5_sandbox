@@ -1,0 +1,37 @@
+#include "/Engine/Public/Platform.ush"
+
+StructuredBuffer<float> GridValues;
+RWTexture2D<float4> OutputTexture;
+int2 GridSize;
+
+float3 heatmap_colour(float intensity)
+{
+    float3 const cold = float3(0.015, 0.025, 0.12);
+    float3 const cool = float3(0.0, 0.55, 0.95);
+    float3 const warm = float3(1.0, 0.9, 0.05);
+    float3 const hot = float3(0.95, 0.05, 0.015);
+
+    if (intensity < 0.34)
+    {
+        return lerp(cold, cool, intensity / 0.34);
+    }
+    if (intensity < 0.72)
+    {
+        return lerp(cool, warm, (intensity - 0.34) / 0.38);
+    }
+    return lerp(warm, hot, (intensity - 0.72) / 0.28);
+}
+
+[numthreads(8, 8, 1)]
+void render_heatmap_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+{
+    uint2 const pixel = dispatch_thread_id.xy;
+    if (pixel.x >= GridSize.x || pixel.y >= GridSize.y)
+    {
+        return;
+    }
+
+    uint const value_index = pixel.y * GridSize.x + pixel.x;
+    float const intensity = saturate(GridValues[value_index]);
+    OutputTexture[pixel] = float4(heatmap_colour(intensity), 1.0);
+}
