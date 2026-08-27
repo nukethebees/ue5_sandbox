@@ -46,6 +46,7 @@ Unreal Engine 5.8 project.
 * save loop bounds as const local variables
 * log warnings/errors when null checks fail instead of returning silently
 * Group functions by category
+* Use blank lines to separate logical sections of C++ code for visual readability.
 * When UObject types live in a dedicated plugin and C++ namespace, prefer concise names; the plugin and namespace provide the necessary context and collision isolation.
 
 # UI Design
