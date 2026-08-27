@@ -199,29 +199,29 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
         });
     };
 
-    Nodes children{
-        UsingDeclaration{"View", CppType{schema.view_name.value_or(schema.name + "View")}},
-        lines(1),
-        UsingDeclaration{"ConstView",
-                         CppType{schema.const_view_name.value_or(schema.name + "ConstView")}},
-        lines(2),
-        function("get_view",
+    NodeListBuilder children;
+    children.add(UsingDeclaration{"View", CppType{schema.view_name.value_or(schema.name + "View")}},
+                 1)
+        .add(UsingDeclaration{"ConstView",
+                              CppType{schema.const_view_name.value_or(schema.name + "ConstView")}},
+             2)
+        .add(function("get_view",
                  "auto",
                  {FunctionParameter{"int32 const", "offset"},
                   FunctionParameter{"int32 const", "count"}},
                  "return View{" + join(mutable_views, ", ") + "};",
                  " -> View",
                  {tarray_view}),
-        lines(1),
-        function("get_const_view",
+             1)
+        .add(function("get_const_view",
                  "auto",
                  {FunctionParameter{"int32 const", "offset"},
                   FunctionParameter{"int32 const", "count"}},
                  "return ConstView{" + join(const_views, ", ") + "};",
                  " const -> ConstView",
                  {tarray_view}),
-        lines(2),
-        function("construct_at",
+             2)
+        .add(function("construct_at",
                  "void",
                  [&] {
                      auto parameters{function_parameters};
@@ -233,20 +233,20 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                  {},
                  {std_forward},
                  join(template_parameters, ", ")),
-        lines(2),
-        function("default_construct_at",
+             2)
+        .add(function("default_construct_at",
                  "void",
                  {FunctionParameter{"int32 const", "index"}},
                  join_lines(fixed_construct_lines(layout, "default"))),
-        lines(2),
-        function("copy_construct_at",
+             2)
+        .add(function("copy_construct_at",
                  "void",
                  {FunctionParameter{"int32 const", "index"},
                   FunctionParameter{storage_name + " const&", "other"},
                   FunctionParameter{"int32 const", "other_index"}},
                  join_lines(fixed_construct_lines(layout, "copy"))),
-        lines(2),
-        function("move_construct_at",
+             2)
+        .add(function("move_construct_at",
                  "void",
                  {FunctionParameter{"int32 const", "index"},
                   FunctionParameter{storage_name + "&", "other"},
@@ -254,8 +254,8 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                  join_lines(fixed_construct_lines(layout, "move")),
                  {},
                  {move_temp}),
-        lines(2),
-        function("construct_from_view_at",
+             2)
+        .add(function("construct_from_view_at",
                  "void",
                  {FunctionParameter{"int32 const", "index"},
                   FunctionParameter{"SourceView const&", "source"},
@@ -264,8 +264,8 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                  {},
                  {},
                  "typename SourceView"),
-        lines(2),
-        function("copy_assign_from_view_at",
+             2)
+        .add(function("copy_assign_from_view_at",
                  "void",
                  {FunctionParameter{"int32 const", "dst_index"},
                   FunctionParameter{"SourceView const&", "source"},
@@ -274,8 +274,8 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                  {},
                  {},
                  "typename SourceView"),
-        lines(2),
-        function("move_assign_at",
+             2)
+        .add(function("move_assign_at",
                  "void",
                  {FunctionParameter{"int32 const", "dst_index"},
                   FunctionParameter{storage_name + "&", "other"},
@@ -283,32 +283,31 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                  join_lines(move_assign),
                  {},
                  {move_temp}),
-        lines(2),
-        function("destroy_at",
+             2)
+        .add(function("destroy_at",
                  "void",
                  {FunctionParameter{"int32 const", "index"}},
                  join_lines(destroy),
                  " noexcept"),
-        lines(2),
-    };
+             2);
     for (std::size_t index{0}; index < layout.members.size(); ++index) {
         auto const& member{layout.members[index]};
         auto dependencies{std::vector<TypeDependency>{fixed_storage_dependency}};
         dependencies.insert(dependencies.end(),
                             member.member.element_type.dependencies.begin(),
                             member.member.element_type.dependencies.end());
-        children.push_back(Member{
+        children.add(Member{
             CppType{fixed_storage_type(member), std::move(dependencies)},
             member.member.name + "_",
         });
         if (index + 1 < layout.members.size()) {
-            children.push_back(lines(1));
+            children.new_lines();
         }
     }
 
     return Struct{
         .name = storage_name,
-        .children = std::move(children),
+        .children = children.build(),
         .template_parameters = "int32 Capacity",
         .requires_clause = "(Capacity >= 0)",
     };
@@ -385,46 +384,40 @@ auto deleted_fixed_function(std::string name,
     });
 }
 
-void add_compact_function(Nodes& nodes,
+void add_compact_function(NodeListBuilder& nodes,
                           std::string name,
                           CppType return_type,
                           std::vector<FunctionParameter> parameters,
                           std::string body,
                           std::string suffix = {},
                           std::optional<std::string> function_template = std::nullopt,
-                          std::optional<std::string> requirement = std::nullopt) {
-    nodes.push_back(fixed_function(std::move(name),
-                                   std::move(return_type),
-                                   std::move(parameters),
-                                   std::move(body),
-                                   std::move(suffix),
-                                   std::move(function_template),
-                                   std::move(requirement),
-                                   compact_function_formatting()));
-    nodes.push_back(lines(1));
+                          std::optional<std::string> requirement = std::nullopt,
+                          int trailing_new_lines = 1) {
+    nodes.add(fixed_function(std::move(name),
+                             std::move(return_type),
+                             std::move(parameters),
+                             std::move(body),
+                             std::move(suffix),
+                             std::move(function_template),
+                             std::move(requirement),
+                             compact_function_formatting()),
+              trailing_new_lines);
 }
 
 auto fixed_container_prelude_nodes(SoaSchema const& schema,
                                    std::map<std::string, CppType> const& types) -> Nodes {
-    Nodes result{
-        UsingDeclaration{"size_type", CppType{"int32"}},
-        lines(1),
-        UsingDeclaration{"View", CppType{schema.view_name.value_or(schema.name + "View")}},
-        lines(1),
-        UsingDeclaration{"ConstView",
-                         CppType{schema.const_view_name.value_or(schema.name + "ConstView")}},
-    };
+    NodeListBuilder result;
+    result.add(UsingDeclaration{"size_type", CppType{"int32"}}, 1)
+        .add(UsingDeclaration{"View", CppType{schema.view_name.value_or(schema.name + "View")}}, 1)
+        .add(UsingDeclaration{"ConstView",
+                              CppType{schema.const_view_name.value_or(schema.name + "ConstView")}});
     if (schema.equivalent_type.has_value()) {
-        result.push_back(lines(1));
-        result.push_back(
+        result.new_lines().add(
             UsingDeclaration{"equivalent_type", resolve_type(*schema.equivalent_type, types)});
     }
-    result.push_back(lines(2));
-    result.push_back(Member{CppType{"static constexpr size_type"},
-                            "capacity_value",
-                            "Capacity"});
-    result.push_back(lines(2));
-    return result;
+    result.new_lines(2)
+        .add(Member{CppType{"static constexpr size_type"}, "capacity_value", "Capacity"}, 2);
+    return result.build();
 }
 
 auto fixed_container_lifecycle_nodes(FixedLayout const& layout,
@@ -523,7 +516,7 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout,
 }
 
 auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
-    Nodes result;
+    NodeListBuilder result;
     add_compact_function(result,
                          "capacity",
                          "static constexpr auto",
@@ -532,8 +525,7 @@ auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
                          " noexcept -> size_type");
     add_compact_function(result, "num", "auto", {}, "return size_;", " const noexcept -> size_type");
     add_compact_function(result, "is_empty", "auto", {}, "return size_ == 0;", " const noexcept -> bool");
-    add_compact_function(result, "is_full", "auto", {}, "return size_ == capacity();", " const noexcept -> bool");
-    result.back() = lines(2);
+    add_compact_function(result, "is_full", "auto", {}, "return size_ == capacity();", " const noexcept -> bool", std::nullopt, std::nullopt, 2);
     add_compact_function(result, "get_view", "auto", {}, "return storage_.get_view(0, size_);", " -> View");
     add_compact_function(result, "get_view", "auto", {FunctionParameter{"size_type const", "offset"}, FunctionParameter{"size_type const", "count"}}, "check_view_range(offset, count); return storage_.get_view(offset, count);", " -> View");
     add_compact_function(result, "get_view", "auto", {}, "return get_const_view();", " const -> ConstView");
@@ -545,18 +537,15 @@ auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
     add_compact_function(result, "right", "auto", {FunctionParameter{"size_type const", "count"}}, "return slice(size_ - count, count);", " -> View");
     add_compact_function(result, "slice", "auto", {FunctionParameter{"size_type const", "offset"}, FunctionParameter{"size_type const", "count"}}, "return get_const_view(offset, count);", " const -> ConstView");
     add_compact_function(result, "left", "auto", {FunctionParameter{"size_type const", "count"}}, "return slice(0, count);", " const -> ConstView");
-    add_compact_function(result, "right", "auto", {FunctionParameter{"size_type const", "count"}}, "return slice(size_ - count, count);", " const -> ConstView");
-    result.back() = lines(2);
+    add_compact_function(result, "right", "auto", {FunctionParameter{"size_type const", "count"}}, "return slice(size_ - count, count);", " const -> ConstView", std::nullopt, std::nullopt, 2);
     add_compact_function(result, "apply_arrays", "auto", {FunctionParameter{"TFunc&&", "func"}}, "auto view{get_view()}; return view.apply_arrays(std::forward<TFunc>(func));", " -> decltype(auto)", "typename TFunc");
-    add_compact_function(result, "apply_arrays", "auto", {FunctionParameter{"TFunc&&", "func"}}, "auto view{get_const_view()}; return view.apply_arrays(std::forward<TFunc>(func));", " const -> decltype(auto)", "typename TFunc");
+    add_compact_function(result, "apply_arrays", "auto", {FunctionParameter{"TFunc&&", "func"}}, "auto view{get_const_view()}; return view.apply_arrays(std::forward<TFunc>(func));", " const -> decltype(auto)", "typename TFunc", std::nullopt, 2);
     if (schema.equivalent_type.has_value()) {
-        result.push_back(lines(2));
-        result.push_back(fixed_function("operator[]", "auto", {FunctionParameter{"size_type const", "index"}}, "return get_const_view()[index];", " const -> equivalent_type"));
-        result.push_back(lines(1));
-        result.push_back(fixed_function("at", "auto", {FunctionParameter{"size_type const", "index"}}, "check_index(index);\nreturn (*this)[index];", " const -> equivalent_type"));
+        result.add(fixed_function("operator[]", "auto", {FunctionParameter{"size_type const", "index"}}, "return get_const_view()[index];", " const -> equivalent_type"), 1);
+        result.add(fixed_function("at", "auto", {FunctionParameter{"size_type const", "index"}}, "check_index(index);\nreturn (*this)[index];", " const -> equivalent_type"));
     }
-    result.push_back(lines(2));
-    return result;
+    result.new_lines(2);
+    return result.build();
 }
 
 auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
@@ -585,8 +574,8 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
     auto const default_constructible{
         "(" + fixed_trait(layout, "is_default_constructible_v") + ")"};
     auto const trivial{"(" + join(trivial_values, " && ") + ")"};
-    Nodes result{
-        fixed_function("emplace_back",
+    NodeListBuilder result;
+    result.add(fixed_function("emplace_back",
                        "auto",
                        parameters,
                        "check_has_sufficient_capacity(1);\n"
@@ -598,8 +587,8 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
                        function_template,
                        constructible,
                        expanded_prefixed_constraint_formatting()),
-        lines(1),
-        fixed_function("add",
+               1)
+        .add(fixed_function("add",
                        "auto",
                        parameters,
                        "return emplace_back(" + forwarded_values + ");",
@@ -607,44 +596,39 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
                        function_template,
                        constructible,
                        compact_prefixed_constraint_formatting()),
-        lines(2),
-    };
+             2);
     add_compact_function(result, "add_defaulted", "void", {FunctionParameter{"size_type const", "count", "1"}}, "check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; }", {}, std::nullopt, default_constructible);
     add_compact_function(result, "set_num", "void", {FunctionParameter{"size_type const", "new_size"}}, "check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { destroy_from(new_size); return; } add_defaulted(new_size - size_);", {}, std::nullopt, default_constructible);
     add_compact_function(result, "set_num", "void", {FunctionParameter{"size_type const", "new_size"}, FunctionParameter{"EAllowShrinking const", {}}}, "set_num(new_size);", {}, std::nullopt, default_constructible);
     add_compact_function(result, "capacity_view", "auto", {}, "return storage_.get_view(0, capacity());", " -> View", std::nullopt, trivial);
     add_compact_function(result, "set_num_uninitialised", "void", {FunctionParameter{"size_type const", "new_size"}}, "check(new_size >= 0); check(new_size <= capacity()); size_ = new_size;", {}, std::nullopt, trivial);
-    add_compact_function(result, "add_uninitialised", "void", {FunctionParameter{"size_type const", "count"}}, "check_has_sufficient_capacity(count); size_ += count;", {}, std::nullopt, trivial);
-    result.back() = lines(2);
-    return result;
+    add_compact_function(result, "add_uninitialised", "void", {FunctionParameter{"size_type const", "count"}}, "check_has_sufficient_capacity(count); size_ += count;", {}, std::nullopt, trivial, 2);
+    return result.build();
 }
 
 auto fixed_container_mutation_nodes() -> Nodes {
-    Nodes result;
+    NodeListBuilder result;
     add_compact_function(result, "pop", "void", {}, "check(!is_empty()); --size_; storage_.destroy_at(size_);");
     add_compact_function(result, "reset", "void", {}, "destroy_from(0);", " noexcept");
     add_compact_function(result, "empty", "void", {}, "reset();", " noexcept");
     add_compact_function(result, "reserve", "void", {FunctionParameter{"size_type const", "requested_capacity"}}, "check(requested_capacity >= 0); check(requested_capacity <= capacity());", " const");
-    result.push_back(fixed_function("remove_at_swap", "void", {FunctionParameter{"size_type const", "index"}, FunctionParameter{"size_type const", "count"}, FunctionParameter{"EAllowShrinking const", {}}}, "check(index >= 0); check(count >= 0); check(index + count <= size_);\nif (count == 0) { return; }\nauto const available_tail{size_ - (index + count)};\nauto const move_count{count < available_tail ? count : available_tail};\nauto const source_begin{size_ - move_count};\nfor (size_type i{}; i < move_count; ++i) { storage_.move_assign_at(index + i, storage_, source_begin + i); }\ndestroy_from(size_ - count);"));
-    result.push_back(lines(1));
+    result.add(fixed_function("remove_at_swap", "void", {FunctionParameter{"size_type const", "index"}, FunctionParameter{"size_type const", "count"}, FunctionParameter{"EAllowShrinking const", {}}}, "check(index >= 0); check(count >= 0); check(index + count <= size_);\nif (count == 0) { return; }\nauto const available_tail{size_ - (index + count)};\nauto const move_count{count < available_tail ? count : available_tail};\nauto const source_begin{size_ - move_count};\nfor (size_type i{}; i < move_count; ++i) { storage_.move_assign_at(index + i, storage_, source_begin + i); }\ndestroy_from(size_ - count);"), 1);
     add_compact_function(result, "copy_element", "void", {FunctionParameter{"size_type const", "dst_index"}, FunctionParameter{"Other const&", "other"}, FunctionParameter{"size_type const", "source_index"}}, "check_index(dst_index); auto const source{other.get_const_view()}; check(source_index >= 0); check(source_index < source.num()); storage_.copy_assign_from_view_at(dst_index, source, source_index);", {}, "typename Other");
     add_compact_function(result, "copy_elements", "void", {FunctionParameter{"size_type const", "dst_index"}, FunctionParameter{"Other const&", "other"}, FunctionParameter{"size_type const", "source_index"}, FunctionParameter{"size_type const", "count"}}, "check(dst_index >= 0); check(source_index >= 0); check(count >= 0); check(dst_index + count <= size_); auto const source{other.get_const_view()}; check(source_index + count <= source.num()); for (size_type i{}; i < count; ++i) { storage_.copy_assign_from_view_at(dst_index + i, source, source_index + i); }", {}, "typename Other");
-    add_compact_function(result, "append_from", "void", {FunctionParameter{"Other const&", "other"}}, "auto const source{other.get_const_view()}; auto const count{source.num()}; check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.construct_from_view_at(size_, source, i); ++size_; }", {}, "typename Other");
-    result.back() = lines(2);
-    return result;
+    add_compact_function(result, "append_from", "void", {FunctionParameter{"Other const&", "other"}}, "auto const source{other.get_const_view()}; auto const count{source.num()}; check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.construct_from_view_at(size_, source, i); ++size_; }", {}, "typename Other", std::nullopt, 2);
+    return result.build();
 }
 
 auto fixed_container_private_nodes(SoaSchema const& schema) -> Nodes {
-    Nodes result{AccessSpecifier{"private"}, lines(1)};
+    NodeListBuilder result;
+    result.add(AccessSpecifier{"private"}, 1);
     add_compact_function(result, "check_index", "void", {FunctionParameter{"size_type const", "index"}}, "check(index >= 0); check(index < size_);", " const");
     add_compact_function(result, "check_view_range", "void", {FunctionParameter{"size_type const", "offset"}, FunctionParameter{"size_type const", "count"}}, "check(offset >= 0); check(count >= 0); check(offset + count <= size_);", " const");
     add_compact_function(result, "check_has_sufficient_capacity", "void", {FunctionParameter{"size_type const", "count"}}, "check(count >= 0); check(count <= capacity() - size_);", " const");
-    add_compact_function(result, "destroy_from", "void", {FunctionParameter{"size_type const", "first_index"}}, "for (size_type i{size_}; i > first_index; --i) { storage_.destroy_at(i - 1); } size_ = first_index;", " noexcept");
-    result.back() = lines(2);
-    result.push_back(Member{CppType{schema.fixed->storage_name + "<Capacity>"}, "storage_"});
-    result.push_back(lines(1));
-    result.push_back(Member{CppType{"size_type"}, "size_", {}});
-    return result;
+    add_compact_function(result, "destroy_from", "void", {FunctionParameter{"size_type const", "first_index"}}, "for (size_type i{size_}; i > first_index; --i) { storage_.destroy_at(i - 1); } size_ = first_index;", " noexcept", std::nullopt, std::nullopt, 2);
+    result.add(Member{CppType{schema.fixed->storage_name + "<Capacity>"}, "storage_"}, 1)
+        .add(Member{CppType{"size_type"}, "size_", {}});
+    return result.build();
 }
 
 auto fixed_container_dependencies(FixedLayout const& layout) -> std::vector<TypeDependency> {
@@ -688,12 +672,12 @@ auto fixed_container_node(FixedLayout const& layout,
 
 auto fixed_nodes(FixedLayout const& layout,
                  std::map<std::string, CppType> const& types) -> Nodes {
-    Nodes result{fixed_storage_node(layout)};
+    NodeListBuilder result;
+    result.add(fixed_storage_node(layout));
     for (auto const& container : layout.schema->fixed->containers) {
-        result.push_back(lines(2));
-        result.push_back(fixed_container_node(layout, container, types));
+        result.new_lines(2).add(fixed_container_node(layout, container, types));
     }
-    return result;
+    return result.build();
 }
 
 } // namespace
