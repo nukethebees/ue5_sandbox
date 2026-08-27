@@ -16,13 +16,36 @@ TypeDependency const soa_permutation{
 TypeDependency const fill_indices{"ml::fill_indices", "SandboxCore/array_utils.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
-auto homogeneous_view_text(HomogeneousLayoutSchema const& layout) -> std::string {
+auto compact_function_formatting() -> FunctionFormatting {
+    return FunctionFormatting{
+        .body_layout = FunctionFormatting::BodyLayout::compact,
+        .template_placement = FunctionFormatting::TemplatePlacement::same_line,
+    };
+}
+
+auto homogeneous_function(std::string name,
+                          CppType return_type,
+                          std::vector<FunctionParameter> parameters,
+                          std::string body,
+                          std::string suffix = {},
+                          std::optional<std::string> function_template = std::nullopt,
+                          FunctionFormatting formatting = {},
+                          std::vector<TypeDependency> dependencies = {}) -> Node {
+    return header_function(FunctionSpec{
+        .name = std::move(name),
+        .return_type = std::move(return_type),
+        .parameters = std::move(parameters),
+        .body = {raw(std::move(body), std::move(dependencies))},
+        .suffix = std::move(suffix),
+        .is_inline = true,
+        .template_parameters = std::move(function_template),
+        .formatting = formatting,
+    });
+}
+
+auto homogeneous_view_node(HomogeneousLayoutSchema const& layout) -> Node {
     auto const view_name{"T" + layout.name + "View"};
     auto const components{join(layout.components, ", ")};
-    std::vector<std::string> member_lines;
-    for (auto const& component : layout.components) {
-        member_lines.push_back("    TArrayView<T> " + component + ";");
-    }
     auto slice_values = [&](std::string const& operation) {
         std::vector<std::string> values;
         for (auto const& component : layout.components) {
@@ -30,139 +53,369 @@ auto homogeneous_view_text(HomogeneousLayoutSchema const& layout) -> std::string
         }
         return join(values, ", ");
     };
-    return "template <typename T>\n"
-           "struct " + view_name + " {\n"
-           "    using size_type = TArrayView<T>::SizeType;\n"
-           "    using value_type = std::remove_const_t<T>;\n"
-           "    using View = " + view_name + "<T>;\n"
-           "    using ConstView = " + view_name + "<value_type const>;\n\n" +
-           join_lines(member_lines) + "\n\n"
-           "    auto get_view() -> View { return View{" + components + "}; }\n"
-           "    auto get_view(size_type const offset, size_type const count) -> View {\n"
-           "        return get_view().slice(offset, count);\n"
-           "    }\n"
-           "    auto get_view() const -> ConstView { return ConstView{" + components + "}; }\n"
-           "    auto get_view(size_type const offset, size_type const count) const -> ConstView {\n"
-           "        return get_view().slice(offset, count);\n"
-           "    }\n"
-           "    auto get_const_view() const -> ConstView { return ConstView{" + components + "}; }\n"
-           "    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {\n"
-           "        return get_const_view().slice(offset, count);\n"
-           "    }\n"
-           "    template <typename TFunc>\n"
-           "    auto apply_arrays(TFunc&& func) -> decltype(auto) {\n"
-           "        return std::forward<TFunc>(func)(" + components + ");\n"
-           "    }\n"
-           "    template <typename TFunc>\n"
-           "    auto apply_arrays(TFunc&& func) const -> decltype(auto) {\n"
-           "        return std::forward<TFunc>(func)(" + components + ");\n"
-           "    }\n"
-           "    auto num() const -> size_type { return " + layout.components.front() + ".Num(); }\n"
-           "    auto is_empty() const -> bool { return num() == 0; }\n"
-           "    auto slice(size_type const offset, size_type const count) const -> " + view_name + " {\n"
-           "        return " + view_name + "{" + slice_values("Slice(offset, count)") + "};\n"
-           "    }\n"
-           "    auto left(size_type const count) const -> " + view_name + " {\n"
-           "        return " + view_name + "{" + slice_values("Left(count)") + "};\n"
-           "    }\n"
-           "    auto right(size_type const count) const -> " + view_name + " {\n"
-           "        return " + view_name + "{" + slice_values("Right(count)") + "};\n"
-           "    }\n"
-           "};";
+    Nodes children{
+        UsingDeclaration{"size_type", CppType{"TArrayView<T>::SizeType"}},
+        lines(1),
+        UsingDeclaration{"value_type", CppType{"std::remove_const_t<T>"}},
+        lines(1),
+        UsingDeclaration{"View", CppType{view_name + "<T>"}},
+        lines(1),
+        UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}},
+        lines(2),
+    };
+    for (std::size_t index{0}; index < layout.components.size(); ++index) {
+        children.push_back(Member{CppType{"TArrayView<T>"}, layout.components[index]});
+        children.push_back(lines(index + 1 < layout.components.size() ? 1 : 2));
+    }
+    auto add = [&](Node node, int newlines = 1) {
+        children.push_back(std::move(node));
+        children.push_back(lines(newlines));
+    };
+    add(homogeneous_function("get_view",
+                             "auto",
+                             {},
+                             "return View{" + components + "};",
+                             " -> View",
+                             std::nullopt,
+                             compact_function_formatting()));
+    add(homogeneous_function("get_view",
+                             "auto",
+                             {FunctionParameter{"size_type const", "offset"},
+                              FunctionParameter{"size_type const", "count"}},
+                             "return get_view().slice(offset, count);",
+                             " -> View"));
+    add(homogeneous_function("get_view",
+                             "auto",
+                             {},
+                             "return ConstView{" + components + "};",
+                             " const -> ConstView",
+                             std::nullopt,
+                             compact_function_formatting()));
+    add(homogeneous_function("get_view",
+                             "auto",
+                             {FunctionParameter{"size_type const", "offset"},
+                              FunctionParameter{"size_type const", "count"}},
+                             "return get_view().slice(offset, count);",
+                             " const -> ConstView"));
+    add(homogeneous_function("get_const_view",
+                             "auto",
+                             {},
+                             "return ConstView{" + components + "};",
+                             " const -> ConstView",
+                             std::nullopt,
+                             compact_function_formatting()));
+    add(homogeneous_function("get_const_view",
+                             "auto",
+                             {FunctionParameter{"size_type const", "offset"},
+                              FunctionParameter{"size_type const", "count"}},
+                             "return get_const_view().slice(offset, count);",
+                             " const -> ConstView"));
+    add(homogeneous_function("apply_arrays",
+                             "auto",
+                             {FunctionParameter{"TFunc&&", "func"}},
+                             "return std::forward<TFunc>(func)(" + components + ");",
+                             " -> decltype(auto)",
+                             "typename TFunc",
+                             {},
+                             {std_forward}));
+    add(homogeneous_function("apply_arrays",
+                             "auto",
+                             {FunctionParameter{"TFunc&&", "func"}},
+                             "return std::forward<TFunc>(func)(" + components + ");",
+                             " const -> decltype(auto)",
+                             "typename TFunc",
+                             {},
+                             {std_forward}));
+    add(homogeneous_function("num",
+                             "auto",
+                             {},
+                             "return " + layout.components.front() + ".Num();",
+                             " const -> size_type",
+                             std::nullopt,
+                             compact_function_formatting()));
+    add(homogeneous_function("is_empty",
+                             "auto",
+                             {},
+                             "return num() == 0;",
+                             " const -> bool",
+                             std::nullopt,
+                             compact_function_formatting()));
+    add(homogeneous_function("slice",
+                             "auto",
+                             {FunctionParameter{"size_type const", "offset"},
+                              FunctionParameter{"size_type const", "count"}},
+                             "return " + view_name + "{" +
+                                 slice_values("Slice(offset, count)") + "};",
+                             " const -> " + view_name));
+    add(homogeneous_function("left",
+                             "auto",
+                             {FunctionParameter{"size_type const", "count"}},
+                             "return " + view_name + "{" + slice_values("Left(count)") +
+                                 "};",
+                             " const -> " + view_name));
+    children.push_back(homogeneous_function(
+        "right",
+        "auto",
+        {FunctionParameter{"size_type const", "count"}},
+        "return " + view_name + "{" + slice_values("Right(count)") + "};",
+        " const -> " + view_name));
+    return Struct{
+        .name = view_name,
+        .children = std::move(children),
+        .template_parameters = "typename T",
+        .dependencies = {tarray_view, std_remove_const, std_forward},
+    };
 }
 
-auto homogeneous_storage_text(HomogeneousLayoutSchema const& layout,
+auto same_line_template_formatting() -> FunctionFormatting {
+    return FunctionFormatting{
+        .template_placement = FunctionFormatting::TemplatePlacement::same_line,
+    };
+}
+
+auto component_statements(HomogeneousLayoutSchema const& layout,
+                          std::string const& expression) -> std::string {
+    std::vector<std::string> result;
+    for (auto const& component : layout.components) {
+        auto line{expression};
+        auto marker{line.find("{}")};
+        while (marker != std::string::npos) {
+            line.replace(marker, 2, component);
+            marker = line.find("{}", marker + component.size());
+        }
+        result.push_back(std::move(line));
+    }
+    return join_lines(result);
+}
+
+auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
                               HomogeneousValueSchema const& value,
-                              std::map<std::string, CppType> const& types) -> std::string {
+                              std::map<std::string, CppType> const& types) -> Node {
     auto const value_type{resolve_type(value.type, types)};
     auto const view_name{"T" + layout.name + "View"};
     auto const storage_name{"F" + layout.name + value.suffix};
-    auto const export_prefix{layout.export_specifier.has_value()
-                                 ? *layout.export_specifier + " "
-                                 : std::string{}};
-    std::vector<std::string> data_members;
-    std::vector<std::string> const_data_members;
-    std::vector<std::string> arrays;
     std::vector<std::string> pointers;
-    std::vector<std::string> calls;
     for (auto const& component : layout.components) {
-        data_members.push_back("        value_type* " + component + ";");
-        const_data_members.push_back("        value_type const* " + component + ";");
-        arrays.push_back("    TArray<value_type> " + component + ";");
         pointers.push_back(component + ".GetData()");
     }
-    auto each = [&](std::string const& expression) {
-        std::vector<std::string> lines;
-        for (auto const& component : layout.components) {
-            auto line{expression};
-            auto marker{line.find("{}")};
-            while (marker != std::string::npos) {
-                line.replace(marker, 2, component);
-                marker = line.find("{}", marker + component.size());
-            }
-            lines.push_back("        " + line);
-        }
-        return join_lines(lines);
-    };
     auto const components{join(layout.components, ", ")};
     std::vector<std::string> validation;
     for (std::size_t index{1}; index < layout.components.size(); ++index) {
-        validation.push_back("        check(" + layout.components[index] + ".Num() == " +
-                             layout.components.front() + ".Num());");
+        validation.push_back("check(" + layout.components[index] +
+                             ".Num() == " + layout.components.front() + ".Num());");
     }
-    static_cast<void>(calls);
-    return "struct " + export_prefix + storage_name + " {\n"
-           "    using value_type = " + value_type.spelling + ";\n"
-           "    using size_type = TArray<value_type>::SizeType;\n"
-           "    using View = " + view_name + "<value_type>;\n"
-           "    using ConstView = " + view_name + "<value_type const>;\n\n"
-           "    struct Data {\n" + join_lines(data_members) + "\n    };\n\n"
-           "    struct ConstData {\n" + join_lines(const_data_members) + "\n    };\n\n" +
-           join_lines(arrays) + "\n\n"
-           "    auto get_data() -> Data { return Data{" + join(pointers, ", ") + "}; }\n"
-           "    auto get_data() const -> ConstData { return ConstData{" + join(pointers, ", ") + "}; }\n"
-           "    auto get_view() -> View { return View{" + components + "}; }\n"
-           "    auto get_view(size_type const offset, size_type const count) -> View { return get_view().slice(offset, count); }\n"
-           "    auto get_view() const -> ConstView { return ConstView{" + components + "}; }\n"
-           "    auto get_view(size_type const offset, size_type const count) const -> ConstView { return get_view().slice(offset, count); }\n"
-           "    auto get_const_view() const -> ConstView { return ConstView{" + components + "}; }\n"
-           "    auto get_const_view(size_type const offset, size_type const count) const -> ConstView { return get_const_view().slice(offset, count); }\n"
-           "    template <typename TFunc> auto apply_arrays(TFunc&& func) -> decltype(auto) { return std::forward<TFunc>(func)(" + components + "); }\n"
-           "    template <typename TFunc> auto apply_arrays(TFunc&& func) const -> decltype(auto) { return std::forward<TFunc>(func)(" + components + "); }\n"
-           "    auto num() const -> size_type { return " + layout.components.front() + ".Num(); }\n"
-           "    void validate_array_sizes() const {\n" + join_lines(validation) + "\n    }\n"
-           "    auto is_empty() const -> bool { return num() == 0; }\n"
-           "    template <typename Other> auto copy_element(size_type const dst_i, Other const& src, size_type const src_i) -> void {\n" +
-           each("{}[dst_i] = src.{}[src_i];") + "\n    }\n"
-           "    template <typename Other> auto copy_elements(size_type const dst_i, Other const& src, size_type const src_i, size_type const count) -> void {\n"
-           "        for (auto i{0}; i < count; ++i) {\n" +
-           each("    {}[dst_i + i] = src.{}[src_i + i];") + "\n        }\n    }\n"
-           "    template <typename Other> auto copy_to_tail(Other const& src) -> void {\n"
-           "        auto const count{src.num()};\n        check(num() >= count);\n"
-           "        copy_elements(num() - count, src, 0, count);\n    }\n"
-           "    template <typename Other> void append_from(Other const& other) {\n" +
-           each("{}.Append(other.{});") + "\n    }\n"
-           "    void apply_permutation(TArrayView<int32> indices);\n"
-           "    template <typename Compare> void sort(Compare&& compare, TArrayView<int32> scratch_indices) {\n"
-           "        validate_array_sizes();\n        auto const n{num()};\n"
-           "        check(scratch_indices.Num() == n);\n        ml::fill_indices(scratch_indices);\n"
-           "        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) { return compare(*this, lhs, rhs); });\n"
-           "        apply_permutation(scratch_indices);\n    }\n"
-           "    template <auto Compare> void sort(TArrayView<int32> scratch_indices) {\n"
-           "        validate_array_sizes();\n        auto const n{num()};\n"
-           "        check(scratch_indices.Num() == n);\n        ml::fill_indices(scratch_indices);\n"
-           "        scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });\n"
-           "        apply_permutation(scratch_indices);\n    }\n"
-           "    auto reset() -> void {\n" + each("{}.Reset();") + "\n    }\n"
-           "    auto empty() -> void {\n" + each("{}.Empty();") + "\n    }\n"
-           "    auto reserve(size_type const count) -> void {\n" + each("{}.Reserve(count);") + "\n    }\n"
-           "    auto set_num(size_type const count, EAllowShrinking const allow_shrinking) -> void {\n" + each("{}.SetNum(count, allow_shrinking);") + "\n    }\n"
-           "    auto set_num_uninitialised(size_type const count) -> void {\n" + each("{}.SetNumUninitialized(count);") + "\n    }\n"
-           "    auto add_uninitialised(size_type const count) -> void {\n" + each("{}.AddUninitialized(count);") + "\n    }\n"
-           "    auto remove_at_swap(size_type const index, size_type const count, EAllowShrinking const allow_shrinking) -> void {\n" + each("{}.RemoveAtSwap(index, count, allow_shrinking);") + "\n    }\n"
-           "    auto add_zeroed(size_type const count) -> void {\n" + each("{}.AddZeroed(count);") + "\n    }\n"
-           "    auto add_defaulted(size_type const count) -> void {\n" + each("{}.AddDefaulted(count);") + "\n    }\n"
-           "};";
+    auto pointer_struct = [&](std::string name, std::string const& pointer_type) {
+        Nodes members;
+        for (std::size_t index{0}; index < layout.components.size(); ++index) {
+            members.push_back(Member{CppType{pointer_type}, layout.components[index]});
+            if (index + 1 < layout.components.size()) {
+                members.push_back(lines(1));
+            }
+        }
+        return Struct{.name = std::move(name), .children = std::move(members)};
+    };
+    Nodes children{
+        UsingDeclaration{"value_type", value_type},
+        lines(1),
+        UsingDeclaration{"size_type", CppType{"TArray<value_type>::SizeType"}},
+        lines(1),
+        UsingDeclaration{"View", CppType{view_name + "<value_type>"}},
+        lines(1),
+        UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}},
+        lines(2),
+        pointer_struct("Data", "value_type*"),
+        lines(2),
+        pointer_struct("ConstData", "value_type const*"),
+        lines(2),
+    };
+    for (std::size_t index{0}; index < layout.components.size(); ++index) {
+        children.push_back(Member{CppType{"TArray<value_type>"}, layout.components[index]});
+        children.push_back(lines(index + 1 < layout.components.size() ? 1 : 2));
+    }
+    auto add = [&](Node node, int newlines = 1) {
+        children.push_back(std::move(node));
+        children.push_back(lines(newlines));
+    };
+    auto add_compact = [&](std::string name,
+                           CppType return_type,
+                           std::vector<FunctionParameter> parameters,
+                           std::string body,
+                           std::string suffix = {},
+                           std::optional<std::string> function_template = std::nullopt) {
+        add(homogeneous_function(std::move(name),
+                                 std::move(return_type),
+                                 std::move(parameters),
+                                 std::move(body),
+                                 std::move(suffix),
+                                 std::move(function_template),
+                                 compact_function_formatting()));
+    };
+    add_compact("get_data", "auto", {}, "return Data{" + join(pointers, ", ") + "};", " -> Data");
+    add_compact("get_data",
+                "auto",
+                {},
+                "return ConstData{" + join(pointers, ", ") + "};",
+                " const -> ConstData");
+    add_compact("get_view", "auto", {}, "return View{" + components + "};", " -> View");
+    add_compact("get_view",
+                "auto",
+                {FunctionParameter{"size_type const", "offset"},
+                 FunctionParameter{"size_type const", "count"}},
+                "return get_view().slice(offset, count);",
+                " -> View");
+    add_compact(
+        "get_view", "auto", {}, "return ConstView{" + components + "};", " const -> ConstView");
+    add_compact("get_view",
+                "auto",
+                {FunctionParameter{"size_type const", "offset"},
+                 FunctionParameter{"size_type const", "count"}},
+                "return get_view().slice(offset, count);",
+                " const -> ConstView");
+    add_compact("get_const_view",
+                "auto",
+                {},
+                "return ConstView{" + components + "};",
+                " const -> ConstView");
+    add_compact("get_const_view",
+                "auto",
+                {FunctionParameter{"size_type const", "offset"},
+                 FunctionParameter{"size_type const", "count"}},
+                "return get_const_view().slice(offset, count);",
+                " const -> ConstView");
+    add_compact("apply_arrays",
+                "auto",
+                {FunctionParameter{"TFunc&&", "func"}},
+                "return std::forward<TFunc>(func)(" + components + ");",
+                " -> decltype(auto)",
+                "typename TFunc");
+    add_compact("apply_arrays",
+                "auto",
+                {FunctionParameter{"TFunc&&", "func"}},
+                "return std::forward<TFunc>(func)(" + components + ");",
+                " const -> decltype(auto)",
+                "typename TFunc");
+    add_compact("num",
+                "auto",
+                {},
+                "return " + layout.components.front() + ".Num();",
+                " const -> size_type");
+    add(homogeneous_function("validate_array_sizes",
+                             "void",
+                             {},
+                             join_lines(validation),
+                             " const",
+                             std::nullopt,
+                             {},
+                             {check_dependency}));
+    add_compact("is_empty", "auto", {}, "return num() == 0;", " const -> bool");
+    add(homogeneous_function("copy_element",
+                             "auto",
+                             {FunctionParameter{"size_type const", "dst_i"},
+                              FunctionParameter{"Other const&", "src"},
+                              FunctionParameter{"size_type const", "src_i"}},
+                             component_statements(layout, "{}[dst_i] = src.{}[src_i];"),
+                             " -> void",
+                             "typename Other",
+                             same_line_template_formatting()));
+    add(homogeneous_function(
+        "copy_elements",
+        "auto",
+        {FunctionParameter{"size_type const", "dst_i"},
+         FunctionParameter{"Other const&", "src"},
+         FunctionParameter{"size_type const", "src_i"},
+         FunctionParameter{"size_type const", "count"}},
+        "for (auto i{0}; i < count; ++i) {\n" +
+            component_statements(layout, "    {}[dst_i + i] = src.{}[src_i + i];") + "\n}",
+        " -> void",
+        "typename Other",
+        same_line_template_formatting()));
+    add(homogeneous_function("copy_to_tail",
+                             "auto",
+                             {FunctionParameter{"Other const&", "src"}},
+                             "auto const count{src.num()};\ncheck(num() >= "
+                             "count);\ncopy_elements(num() - count, src, 0, count);",
+                             " -> void",
+                             "typename Other",
+                             same_line_template_formatting(),
+                             {check_dependency}));
+    add(homogeneous_function("append_from",
+                             "void",
+                             {FunctionParameter{"Other const&", "other"}},
+                             component_statements(layout, "{}.Append(other.{});"),
+                             {},
+                             "typename Other",
+                             same_line_template_formatting()));
+    add(declaration(
+        FunctionSpec{.name = "apply_permutation",
+                     .return_type = "void",
+                     .parameters = {FunctionParameter{"TArrayView<int32>", "indices"}}}));
+    std::string const sort_common{
+        "validate_array_sizes();\nauto const n{num()};\ncheck(scratch_indices.Num() == "
+        "n);\nml::fill_indices(scratch_indices);\n"};
+    add(homogeneous_function(
+        "sort",
+        "void",
+        {FunctionParameter{"Compare&&", "compare"},
+         FunctionParameter{"TArrayView<int32>", "scratch_indices"}},
+        sort_common + "scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) { "
+                      "return compare(*this, lhs, rhs); });\napply_permutation(scratch_indices);",
+        {},
+        "typename Compare",
+        same_line_template_formatting(),
+        {check_dependency, fill_indices}));
+    add(homogeneous_function(
+        "sort",
+        "void",
+        {FunctionParameter{"TArrayView<int32>", "scratch_indices"}},
+        sort_common + "scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return "
+                      "Compare(*this, lhs, rhs); });\napply_permutation(scratch_indices);",
+        {},
+        "auto Compare",
+        same_line_template_formatting(),
+        {check_dependency, fill_indices}));
+    auto add_each =
+        [&](std::string name, std::vector<FunctionParameter> parameters, std::string expression) {
+            add(homogeneous_function(std::move(name),
+                                     "auto",
+                                     std::move(parameters),
+                                     component_statements(layout, expression),
+                                     " -> void"));
+        };
+    add_each("reset", {}, "{}.Reset();");
+    add_each("empty", {}, "{}.Empty();");
+    add_each("reserve", {FunctionParameter{"size_type const", "count"}}, "{}.Reserve(count);");
+    add_each("set_num",
+             {FunctionParameter{"size_type const", "count"},
+              FunctionParameter{"EAllowShrinking const", "allow_shrinking"}},
+             "{}.SetNum(count, allow_shrinking);");
+    add_each("set_num_uninitialised",
+             {FunctionParameter{"size_type const", "count"}},
+             "{}.SetNumUninitialized(count);");
+    add_each("add_uninitialised",
+             {FunctionParameter{"size_type const", "count"}},
+             "{}.AddUninitialized(count);");
+    add_each("remove_at_swap",
+             {FunctionParameter{"size_type const", "index"},
+              FunctionParameter{"size_type const", "count"},
+              FunctionParameter{"EAllowShrinking const", "allow_shrinking"}},
+             "{}.RemoveAtSwap(index, count, allow_shrinking);");
+    add_each("add_zeroed", {FunctionParameter{"size_type const", "count"}}, "{}.AddZeroed(count);");
+    children.push_back(homogeneous_function("add_defaulted",
+                                            "auto",
+                                            {FunctionParameter{"size_type const", "count"}},
+                                            component_statements(layout, "{}.AddDefaulted(count);"),
+                                            " -> void"));
+
+    std::vector<TypeDependency> dependencies{
+        tarray, tarray_view, allow_shrinking, check_dependency, fill_indices, std_forward};
+    dependencies.insert(
+        dependencies.end(), value_type.dependencies.begin(), value_type.dependencies.end());
+    return Struct{
+        .name = storage_name,
+        .children = std::move(children),
+        .export_specifier = layout.export_specifier,
+        .dependencies = std::move(dependencies),
+    };
 }
 
 auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
@@ -174,19 +427,11 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
                        lines(2)};
     for (std::size_t layout_index{0}; layout_index < module.layouts.size(); ++layout_index) {
         auto const& layout{module.layouts[layout_index]};
-        header_nodes.push_back(raw(homogeneous_view_text(layout),
-                                   {tarray_view, std_remove_const, std_forward}));
+        header_nodes.push_back(homogeneous_view_node(layout));
         header_nodes.push_back(lines(2));
         for (std::size_t value_index{0}; value_index < layout.value_types.size(); ++value_index) {
             auto const& value{layout.value_types[value_index]};
-            auto value_type{resolve_type(value.type, types)};
-            std::vector<TypeDependency> dependencies{
-                tarray, tarray_view, allow_shrinking, check_dependency, fill_indices, std_forward};
-            dependencies.insert(dependencies.end(),
-                                value_type.dependencies.begin(),
-                                value_type.dependencies.end());
-            header_nodes.push_back(raw(homogeneous_storage_text(layout, value, types),
-                                       std::move(dependencies)));
+            header_nodes.push_back(homogeneous_storage_node(layout, value, types));
             if (value_index + 1 < layout.value_types.size()) {
                 header_nodes.push_back(lines(2));
             }
@@ -197,17 +442,15 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
             for (auto const& component : layout.components) {
                 body.push_back("ml::apply_permutation(" + component + ", indices);");
             }
-            source_nodes.push_back(raw(
-                "void " + storage_name + "::apply_permutation(TArrayView<int32> indices) {\n" +
-                    join_lines([&] {
-                        std::vector<std::string> indented;
-                        for (auto const& line : body) {
-                            indented.push_back("    " + line);
-                        }
-                        return indented;
-                    }()) +
-                    "\n}",
-                {tarray_view, check_dependency, soa_permutation}));
+            source_nodes.push_back(definition(
+                FunctionSpec{
+                    .name = "apply_permutation",
+                    .return_type = "void",
+                    .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
+                                                     "indices"}},
+                    .body = {raw(join_lines(body), {check_dependency, soa_permutation})},
+                },
+                storage_name));
             if (layout_index + 1 < module.layouts.size() ||
                 value_index + 1 < layout.value_types.size()) {
                 source_nodes.push_back(lines(2));
