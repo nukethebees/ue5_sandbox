@@ -1,8 +1,11 @@
 #include "Experiments/Radar3D/Radar3DShowcase.h"
 
+#include "Benchmarks/Radar3D/Radar3DBenchmark.h"
 #include "SRadar3DWidget.h"
 
 #include "Styling/AppStyle.h"
+#include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
@@ -28,9 +31,38 @@ TSharedRef<SWidget> URadar3DShowcase::RebuildWidget() {
                                             "Description",
                                             "Synthetic CPU contacts are rendered by RDG into one "
                                             "offscreen texture and displayed by Slate."))] +
+                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
+                       [SNew(SVerticalBox) +
+                        SVerticalBox::Slot().AutoHeight()
+                            [SNew(SButton)
+                                 .Text(NSLOCTEXT(
+                                     "Radar3D", "RunBenchmark", "Benchmark RDG contact scaling"))
+                                 .ToolTipText(NSLOCTEXT(
+                                     "Radar3D",
+                                     "RunBenchmarkTooltip",
+                                     "Runs a short 512x512 benchmark from 1 to 256 contacts."))
+                                 .OnClicked_UObject(this, &URadar3DShowcase::run_benchmark)] +
+                        SVerticalBox::Slot().AutoHeight().Padding(
+                            0.0f, 4.0f, 0.0f, 0.0f)[SNew(SBox).HeightOverride(
+                            150.0f)[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
+                                        .IsReadOnly(true)
+                                        .Text(NSLOCTEXT(
+                                            "Radar3D",
+                                            "BenchmarkInstructions",
+                                            "Results appear here. The CLI writes the same stages "
+                                            "to CSV."))]]] +
                    SVerticalBox::Slot()
                        .FillHeight(1.0f)
                        .HAlign(HAlign_Center)
                        .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(512.0f).HeightOverride(
                            512.0f)[SNew(SRadar3DWidget)]]];
+}
+
+auto URadar3DShowcase::run_benchmark() -> FReply {
+    FRadar3DBenchmarkOptions options;
+    options.warmup_iterations = 2;
+    options.measured_iterations = 10;
+    auto const report{run_radar_3d_benchmark(options)};
+    benchmark_output_->SetText(FText::FromString(report.to_text()));
+    return FReply::Handled();
 }

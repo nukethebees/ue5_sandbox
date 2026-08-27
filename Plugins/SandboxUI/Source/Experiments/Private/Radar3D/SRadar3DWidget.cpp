@@ -9,7 +9,7 @@
 DEFINE_LOG_CATEGORY_STATIC(LogRadar3DWidget, Log, All);
 
 namespace {
-constexpr int32 output_texture_dimension{512};
+constexpr int32 radar_3d_output_texture_dimension{512};
 }
 
 void SRadar3DWidget::Construct(FArguments const&) {
@@ -18,7 +18,8 @@ void SRadar3DWidget::Construct(FArguments const&) {
     brush_.DrawAs = ESlateBrushDrawType::Image;
     brush_.ImageType = ESlateBrushImageType::FullColor;
     brush_.Tiling = ESlateBrushTileType::NoTile;
-    brush_.ImageSize = FVector2D{output_texture_dimension, output_texture_dimension};
+    brush_.ImageSize =
+        FVector2D{radar_3d_output_texture_dimension, radar_3d_output_texture_dimension};
 
     output_ready_ = initialise_output_texture();
     SetCanTick(true);
@@ -86,7 +87,7 @@ auto SRadar3DWidget::initialise_output_texture() -> bool {
     output_texture->AddressX = TA_Clamp;
     output_texture->AddressY = TA_Clamp;
     output_texture->InitCustomFormat(
-        output_texture_dimension, output_texture_dimension, PF_R8G8B8A8, true);
+        radar_3d_output_texture_dimension, radar_3d_output_texture_dimension, PF_R8G8B8A8, true);
 
     output_texture_.Reset(output_texture);
     brush_.SetResourceObject(output_texture_.Get());

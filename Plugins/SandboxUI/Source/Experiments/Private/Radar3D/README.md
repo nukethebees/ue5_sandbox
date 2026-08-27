@@ -27,3 +27,7 @@ and leaves the texture ready for Slate sampling.
 
 To view the experiment, show plugin content in the Content Browser, open `SandboxUI/Examples`,
 right-click `EUW_Radar3DShowcase`, and select **Run Editor Utility Widget**.
+
+The showcase also has a short contact-scaling benchmark. It reports game-thread submission and GPU
+upload/compute timing for 1 through 256 contacts. See
+`Private/Benchmarks/Radar3D/README.md` for the commandlet form and exact measurement boundaries.

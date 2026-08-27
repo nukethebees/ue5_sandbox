@@ -1,5 +1,6 @@
 #include "Radar3DRenderer.h"
 
+#include "DynamicRHI.h"
 #include "GlobalShader.h"
 #include "Logging/LogMacros.h"
 #include "RenderGraphBuilder.h"
@@ -40,24 +41,9 @@ IMPLEMENT_GLOBAL_SHADER(FRadar3DCS,
                         "render_radar_cs",
                         SF_Compute);
 
-void render_radar_on_render_thread(FRHICommandListImmediate& rhi_command_list,
-                                   TArray<FRadar3DContact> const& contacts,
-                                   FTextureRenderTargetResource* const output_resource) {
-    check(IsInRenderingThread());
-
-    if (output_resource == nullptr) {
-        UE_LOG(LogRadar3DRenderer,
-               Error,
-               TEXT("Cannot render the 3D radar without an output resource."));
-        return;
-    }
-
-    auto const output_texture_rhi{output_resource->GetRenderTargetTexture()};
-    if (!output_texture_rhi.IsValid()) {
-        UE_LOG(LogRadar3DRenderer, Error, TEXT("The 3D radar output has no RHI texture."));
-        return;
-    }
-
+void execute_radar_graph(FRHICommandListImmediate& rhi_command_list,
+                         TConstArrayView<FRadar3DContact> const contacts,
+                         FTextureRHIRef const& output_texture_rhi) {
     auto const output_size{FIntPoint{static_cast<int32>(output_texture_rhi->GetSizeX()),
                                      static_cast<int32>(output_texture_rhi->GetSizeY())}};
     FRDGBuilder graph_builder{rhi_command_list};
@@ -88,6 +74,27 @@ void render_radar_on_render_thread(FRHICommandListImmediate& rhi_command_list,
     graph_builder.SetTextureAccessFinal(output_texture, ERHIAccess::SRVMask);
     graph_builder.Execute();
 }
+
+void render_radar_on_render_thread(FRHICommandListImmediate& rhi_command_list,
+                                   TArray<FRadar3DContact> const& contacts,
+                                   FTextureRenderTargetResource* const output_resource) {
+    check(IsInRenderingThread());
+
+    if (output_resource == nullptr) {
+        UE_LOG(LogRadar3DRenderer,
+               Error,
+               TEXT("Cannot render the 3D radar without an output resource."));
+        return;
+    }
+
+    auto const output_texture_rhi{output_resource->GetRenderTargetTexture()};
+    if (!output_texture_rhi.IsValid()) {
+        UE_LOG(LogRadar3DRenderer, Error, TEXT("The 3D radar output has no RHI texture."));
+        return;
+    }
+
+    execute_radar_graph(rhi_command_list, contacts, output_texture_rhi);
+}
 } // namespace
 
 void FRadar3DRenderer::render(TConstArrayView<FRadar3DContact> const contacts,
@@ -111,4 +118,37 @@ void FRadar3DRenderer::render(TConstArrayView<FRadar3DContact> const contacts,
       output_resource](FRHICommandListImmediate& rhi_command_list) {
         render_radar_on_render_thread(rhi_command_list, contacts, output_resource);
     });
+}
+
+auto measure_radar_3d_gpu(FRHICommandListImmediate& rhi_command_list,
+                          TArray<FRadar3DContact> contacts,
+                          FTextureRenderTargetResource* const output_resource)
+    -> TOptional<double> {
+    check(IsInRenderingThread());
+    check(!contacts.IsEmpty());
+
+    if (!GSupportsTimestampRenderQueries || output_resource == nullptr) {
+        return {};
+    }
+    auto const output_texture_rhi{output_resource->GetRenderTargetTexture()};
+    if (!output_texture_rhi.IsValid()) {
+        return {};
+    }
+
+    auto const query_pool{RHICreateRenderQueryPool(RQT_AbsoluteTime, 2)};
+    auto start_query{query_pool->AllocateQuery()};
+    auto end_query{query_pool->AllocateQuery()};
+    rhi_command_list.EndRenderQuery(start_query.GetQuery());
+    execute_radar_graph(rhi_command_list, contacts, output_texture_rhi);
+    rhi_command_list.EndRenderQuery(end_query.GetQuery());
+    rhi_command_list.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
+
+    uint64 start_microseconds{0};
+    uint64 end_microseconds{0};
+    if (!RHIGetRenderQueryResult(start_query.GetQuery(), start_microseconds, true) ||
+        !RHIGetRenderQueryResult(end_query.GetQuery(), end_microseconds, true) ||
+        end_microseconds < start_microseconds) {
+        return {};
+    }
+    return static_cast<double>(end_microseconds - start_microseconds);
 }

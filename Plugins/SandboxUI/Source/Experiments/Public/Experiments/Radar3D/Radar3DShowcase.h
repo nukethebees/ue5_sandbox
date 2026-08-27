@@ -1,8 +1,11 @@
 #pragma once
 
 #include "EditorUtilityWidget.h"
+#include "Input/Reply.h"
 
 #include "Radar3DShowcase.generated.h"
+
+class SMultiLineEditableTextBox;
 
 UCLASS(Blueprintable)
 class EXPERIMENTS_API URadar3DShowcase : public UEditorUtilityWidget {
@@ -11,4 +14,8 @@ class EXPERIMENTS_API URadar3DShowcase : public UEditorUtilityWidget {
     URadar3DShowcase();
   protected:
     TSharedRef<SWidget> RebuildWidget() override;
+  private:
+    auto run_benchmark() -> FReply;
+
+    TSharedPtr<SMultiLineEditableTextBox> benchmark_output_;
 };
