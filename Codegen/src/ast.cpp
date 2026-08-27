@@ -293,11 +293,11 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
             } else if constexpr (std::is_same_v<T, NewLines>) {
                 return std::string(static_cast<std::size_t>(value.count), '\n');
             } else if constexpr (std::is_same_v<T, AccessSpecifier>) {
-                auto const width{context.indent_level == 0
-                                     ? std::size_t{}
-                                     : static_cast<std::size_t>(context.indent_level) *
-                                               context.indent_text.size() -
-                                           2};
+                auto width{static_cast<std::size_t>(context.indent_level) *
+                           context.indent_text.size()};
+                if (value.indentation == AccessSpecifier::Indentation::outdented && width >= 2) {
+                    width -= 2;
+                }
                 return std::string(width, ' ') + value.access + ":";
             } else if constexpr (std::is_same_v<T, Include>) {
                 auto const left{include_is_system(value) ? '<' : '"'};
@@ -315,6 +315,8 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 return join(groups, "\n\n");
             } else if constexpr (std::is_same_v<T, ForwardDeclaration>) {
                 return context.apply_indent(value.kind + " " + value.name + ";");
+            } else if constexpr (std::is_same_v<T, FriendDeclaration>) {
+                return context.apply_indent("friend " + value.kind + " " + value.name + ";");
             } else if constexpr (std::is_same_v<T, UsingDeclaration>) {
                 return context.apply_indent("using " + value.name + " = " + value.type.spelling + ";");
             } else if constexpr (std::is_same_v<T, Member>) {

@@ -4,6 +4,7 @@
 #include <codegen/ast/cpp_file.h>
 #include <codegen/ast/cpp_type.h>
 #include <codegen/ast/forward_declaration.h>
+#include <codegen/ast/friend_declaration.h>
 #include <codegen/ast/function.h>
 #include <codegen/ast/function_formatting.h>
 #include <codegen/ast/function_parameter.h>

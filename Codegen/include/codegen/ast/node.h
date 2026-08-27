@@ -2,6 +2,7 @@
 
 #include <codegen/ast/access_specifier.h>
 #include <codegen/ast/forward_declaration.h>
+#include <codegen/ast/friend_declaration.h>
 #include <codegen/ast/function.h>
 #include <codegen/ast/include.h>
 #include <codegen/ast/include_dependencies.h>
@@ -22,6 +23,7 @@ using NodeValue = std::variant<Raw,
                                Include,
                                IncludeDependencies,
                                ForwardDeclaration,
+                               FriendDeclaration,
                                UsingDeclaration,
                                Member,
                                Function,

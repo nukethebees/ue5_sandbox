@@ -54,89 +54,74 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         });
     }
 
-    Nodes public_nodes;
-    Nodes private_nodes;
+    NodeListBuilder public_nodes;
+    NodeListBuilder private_nodes;
+    bool has_public_nodes{};
     auto add_method = [&](std::string const& access, FunctionSpec const& spec) {
         auto& destination{access == "public" ? public_nodes : private_nodes};
-        destination.push_back(spec.is_inline ? header_function(spec) : declaration(spec));
-        destination.push_back(lines(2));
+        destination.add(spec.is_inline ? header_function(spec) : declaration(spec), 2);
+        has_public_nodes = has_public_nodes || access == "public";
     };
     add_method(facade.bind_access, bind);
     for (auto const& method : methods) {
         add_method(facade.method_access, method);
     }
     for (auto const& friend_name : facade.friends) {
-        private_nodes.push_back(raw("friend class " + friend_name + ";"));
-        private_nodes.push_back(lines(1));
+        private_nodes.add(FriendDeclaration{friend_name}, 1);
     }
-    private_nodes.push_back(Member{qualify(target_type, "*"), facade.target_member_name, "nullptr"});
+    private_nodes.add(Member{qualify(target_type, "*"), facade.target_member_name, "nullptr"});
 
-    Nodes class_nodes;
-    if (!public_nodes.empty()) {
-        if (public_nodes.back().is<NewLines>()) {
-            public_nodes.pop_back();
-        }
-        class_nodes.push_back(raw("public:"));
-        class_nodes.push_back(lines(1));
-        class_nodes.insert(class_nodes.end(), public_nodes.begin(), public_nodes.end());
-        class_nodes.push_back(lines(2));
+    NodeListBuilder class_nodes;
+    if (has_public_nodes) {
+        class_nodes
+            .add(AccessSpecifier{"public", AccessSpecifier::Indentation::normal}, 1)
+            .append(public_nodes.build());
     }
-    if (private_nodes.back().is<NewLines>()) {
-        private_nodes.pop_back();
-    }
-    class_nodes.push_back(raw("private:"));
-    class_nodes.push_back(lines(1));
-    class_nodes.insert(class_nodes.end(), private_nodes.begin(), private_nodes.end());
+    class_nodes.add(AccessSpecifier{"private", AccessSpecifier::Indentation::normal}, 1)
+        .append(private_nodes.build());
 
-    Nodes header_nodes{
-        IncludeDependencies{},
-        lines(2),
-        Struct{
-            .name = facade.name,
-            .children = std::move(class_nodes),
-            .export_specifier = facade.export_specifier,
-            .record_kind = "class",
-        },
-    };
+    Node declaration_node{Struct{
+        .name = facade.name,
+        .children = class_nodes.build(),
+        .export_specifier = facade.export_specifier,
+        .record_kind = "class",
+    }};
     if (module.settings.namespace_name.has_value()) {
-        auto declaration_node{std::move(header_nodes.back())};
-        header_nodes.pop_back();
-        header_nodes.push_back(
-            Namespace{*module.settings.namespace_name, {std::move(declaration_node)}});
+        declaration_node = Namespace{*module.settings.namespace_name, {std::move(declaration_node)}};
     }
+    NodeListBuilder header_nodes;
+    header_nodes.add(IncludeDependencies{}, 2).add(std::move(declaration_node));
     Module result{
         .name = module.settings.name,
         .header = CppFile{
             .path = module.settings.header,
-            .nodes = std::move(header_nodes),
+            .nodes = header_nodes.build(),
             .clang_format_off = true,
             .include_order = module.settings.include_order,
         },
     };
     if (module.settings.source.has_value()) {
-        Nodes definitions{definition(bind, facade.name), lines(2)};
-        for (std::size_t index{0}; index < methods.size(); ++index) {
-            definitions.push_back(definition(methods[index], facade.name));
-            if (index + 1 < methods.size()) {
-                definitions.push_back(lines(2));
-            }
+        NodeListBuilder definitions;
+        definitions.add(definition(bind, facade.name));
+        for (auto const& method : methods) {
+            definitions.new_lines(2).add(definition(method, facade.name));
         }
+        auto definition_nodes{definitions.build()};
         if (module.settings.namespace_name.has_value()) {
-            definitions = {Namespace{*module.settings.namespace_name, std::move(definitions)}};
+            definition_nodes = {
+                Namespace{*module.settings.namespace_name, std::move(definition_nodes)}};
         }
+        NodeListBuilder source_nodes;
+        source_nodes.add(Include{source_include(module.settings), false}, 2)
+            .add(IncludeDependencies{}, 2)
+            .append(std::move(definition_nodes));
         result.source = CppFile{
             .path = *module.settings.source,
-            .nodes = {Include{source_include(module.settings), false},
-                      lines(2),
-                      IncludeDependencies{},
-                      lines(2)},
+            .nodes = source_nodes.build(),
             .pragma_once = false,
             .clang_format_off = true,
             .include_order = module.settings.include_order,
         };
-        result.source->nodes.insert(result.source->nodes.end(),
-                                    definitions.begin(),
-                                    definitions.end());
     }
     return result;
 }

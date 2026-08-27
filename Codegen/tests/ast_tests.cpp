@@ -46,6 +46,19 @@ TEST(Ast, NodeListBuilderComposesSectionsAndSpacing) {
     EXPECT_EQ(nodes[6].get_if<Member>()->name, "third");
 }
 
+TEST(Ast, RendersFriendDeclarations) {
+    EXPECT_EQ(render(Node{FriendDeclaration{"FOwner"}}), "friend class FOwner;");
+    EXPECT_EQ(render(Node{FriendDeclaration{"FValue", "struct"}}), "friend struct FValue;");
+}
+
+TEST(Ast, RendersAccessSpecifiersWithExplicitIndentation) {
+    auto const context{RenderContext{.indent_level = 1, .indent_text = "    "}};
+
+    EXPECT_EQ(render(Node{AccessSpecifier{"public"}}, context), "  public:");
+    EXPECT_EQ(render(Node{AccessSpecifier{"private", AccessSpecifier::Indentation::normal}}, context),
+              "    private:");
+}
+
 TEST(Ast, RendersBraceInitialisedTree) {
     CppFile const file{
         .path = std::filesystem::path{"Example.h"},
