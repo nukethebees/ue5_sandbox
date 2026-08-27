@@ -1,0 +1,71 @@
+#ifndef SANDBOX_SHADERS_VERTEX_RIPPLE
+#define SANDBOX_SHADERS_VERTEX_RIPPLE
+
+// Both material stages use the same travelling-ring definition so colour follows displaced crests.
+float sbx_vertex_ripple_height(float2 uv,
+                               float2 origin_uv,
+                               float time_seconds,
+                               float amplitude,
+                               float wave_speed,
+                               float wavelength,
+                               float wave_width,
+                               float falloff)
+{
+    float const distance_from_origin = length(uv - origin_uv);
+    float const phase = frac(time_seconds * wave_speed);
+    float const distance_from_front = abs(distance_from_origin - phase * 0.9);
+    float const front_envelope = 1.0 - smoothstep(wave_width, wave_width * 2.0, distance_from_front);
+    float const oscillation = sin((distance_from_origin - phase) * wavelength * 6.2831853);
+    float const damping = exp(-distance_from_origin * falloff);
+    float const secondary = sin(distance_from_origin * wavelength * 3.1 - time_seconds * 2.2) *
+                            0.12 * damping;
+    return (oscillation * front_envelope * damping + secondary) * amplitude;
+}
+
+float3 sbx_vertex_ripple_offset(float2 uv,
+                                float3 normal_ws,
+                                float time_seconds,
+                                float2 origin_uv,
+                                float amplitude,
+                                float wave_speed,
+                                float wavelength,
+                                float wave_width,
+                                float falloff)
+{
+    return normalize(normal_ws) * sbx_vertex_ripple_height(uv,
+                                                            origin_uv,
+                                                            time_seconds,
+                                                            amplitude,
+                                                            wave_speed,
+                                                            wavelength,
+                                                            wave_width,
+                                                            falloff);
+}
+
+float3 sbx_vertex_ripple_colour(float2 uv,
+                                float time_seconds,
+                                float2 origin_uv,
+                                float wave_speed,
+                                float wavelength,
+                                float wave_width,
+                                float falloff,
+                                float3 base_colour,
+                                float3 crest_colour,
+                                float emissive_intensity)
+{
+    float const height = abs(sbx_vertex_ripple_height(uv,
+                                                       origin_uv,
+                                                       time_seconds,
+                                                       1.0,
+                                                       wave_speed,
+                                                       wavelength,
+                                                       wave_width,
+                                                       falloff));
+    float2 const grid_coordinates = abs(frac(uv * 32.0) - 0.5);
+    float const grid = 1.0 - smoothstep(0.44, 0.49, max(grid_coordinates.x, grid_coordinates.y));
+    float const crest = saturate(height * 2.5);
+    return (lerp(base_colour, crest_colour, crest) + crest_colour * grid * 0.16) *
+           emissive_intensity;
+}
+
+#endif

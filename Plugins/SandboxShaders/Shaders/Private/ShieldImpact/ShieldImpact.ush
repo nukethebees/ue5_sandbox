@@ -1,0 +1,38 @@
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+// A geodesic ring keeps the impact circular while it travels across a curved shield.
+float4 sbx_shield_impact(float3 local_position,
+                         float3 normal_ws,
+                         float3 camera_vector_ws,
+                         float3 impact_centre,
+                         float impact_phase,
+                         float pulse_width,
+                         float fresnel_power,
+                         float noise_breakup,
+                         float impact_intensity,
+                         float shield_opacity,
+                         float3 base_colour,
+                         float3 impact_colour)
+{
+    float3 const surface_direction = normalize(local_position);
+    float3 const impact_direction = normalize(impact_centre);
+    float const arc_distance = acos(clamp(dot(surface_direction, impact_direction), -1.0, 1.0)) /
+                               3.14159265;
+    float const ring_radius = impact_phase * 0.92;
+    float const ring_distance = abs(arc_distance - ring_radius);
+    float const ring = 1.0 - smoothstep(pulse_width, pulse_width * 2.2, ring_distance);
+    float const wake = exp(-arc_distance * 7.0) * saturate(1.0 - impact_phase);
+
+    float const noise = sbx_fbm(surface_direction.xy * 7.0 + surface_direction.z * 3.1);
+    float const breakup = lerp(1.0, smoothstep(0.2, 0.8, noise), noise_breakup);
+    float const fresnel = pow(1.0 - saturate(dot(normalize(normal_ws),
+                                                  normalize(camera_vector_ws))),
+                              fresnel_power);
+    float const ripple = ring * breakup * saturate(1.15 - impact_phase * 0.35);
+    float const energy = fresnel * 0.6 + ripple + wake * 0.7;
+    float3 const colour = lerp(base_colour, impact_colour, saturate(ripple + wake));
+    float3 const emissive = colour * energy * impact_intensity;
+    float const alpha = saturate((0.05 + fresnel * 0.55 + ripple * 0.9 + wake * 0.35) *
+                                 shield_opacity);
+    return float4(emissive, alpha);
+}

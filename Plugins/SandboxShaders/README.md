@@ -2,7 +2,7 @@
 
 `SandboxShaders` is a deliberately small shader playground. The runtime `SandboxShaders` module
 only installs the `/Plugin/SandboxShaders` shader-source mapping. `SbxShadersExperiments` contains
-the two concrete experiment actors and their rendering code, while `SandboxShadersEditor` adds the
+the concrete experiment actors and their rendering code, while `SandboxShadersEditor` adds the
 showcase launcher and smoke tests.
 
 The experiments module uses the qualified name `SbxShadersExperiments` because this project already
@@ -11,9 +11,12 @@ namespace. Keeping the existing module intact avoids modifying an unrelated plug
 an unmistakable experiments module here.
 
 Open `/SandboxShaders/Showcase/SandboxShaders_Showcase`, or use **Window > Sandbox Shaders > Open
-Shader Showcase** in the editor. Select either experiment actor to edit its exposed settings.
+Shader Showcase** in the editor. Select an experiment actor to edit its exposed settings.
 
 See the experiment-specific documentation:
 
 - [Procedural Energy Shield](Experiments/EnergyShield/README.md)
 - [Procedural Space / Energy Field](Experiments/SpaceEnergyField/README.md)
+- [Shield Impact / Force Field](Experiments/ShieldImpact/README.md)
+- [Vertex Ripple / World Position Offset](Experiments/VertexRipple/README.md)
+- [Procedural Radar / Sensor Display](Experiments/RadarDisplay/README.md)

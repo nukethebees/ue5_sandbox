@@ -1,0 +1,64 @@
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+float sbx_radar_contact(float2 position, float4 contact, float time_seconds)
+{
+    float const distance_to_contact = length(position - contact.xy);
+    float const core = 1.0 - smoothstep(contact.z * 0.35, contact.z, distance_to_contact);
+    float const halo = 1.0 - smoothstep(contact.z, contact.z * 2.8, distance_to_contact);
+    float const pulse = 0.65 + 0.35 * sin(time_seconds * 5.0 + dot(contact.xy, float2(9.1, 13.7)));
+    return (core + halo * 0.35 * pulse) * contact.w;
+}
+
+// Polar coordinates provide circular range rings and an angular sweep without textures.
+float3 sbx_radar_display(float2 uv,
+                         float time_seconds,
+                         float3 background_colour,
+                         float3 grid_colour,
+                         float3 sweep_colour,
+                         float3 contact_colour,
+                         float ring_count,
+                         float sweep_speed,
+                         float sweep_width,
+                         float interference,
+                         float emissive_intensity,
+                         float4 contact_a,
+                         float4 contact_b,
+                         float4 contact_c,
+                         float4 contact_d)
+{
+    float2 const position = (uv - 0.5) * 2.0;
+    float const radius = length(position);
+    float const inside = 1.0 - smoothstep(0.985, 1.01, radius);
+    float const ring_coordinate = frac(radius * ring_count);
+    float const rings = 1.0 - smoothstep(0.025, 0.055, min(ring_coordinate,
+                                                            1.0 - ring_coordinate));
+    float const axes = max(1.0 - smoothstep(0.006, 0.018, abs(position.x)),
+                           1.0 - smoothstep(0.006, 0.018, abs(position.y)));
+    float const rim = 1.0 - smoothstep(0.015, 0.045, abs(radius - 1.0));
+
+    float const angle = atan2(position.y, position.x);
+    float const sweep_angle = frac(time_seconds * sweep_speed) * 6.2831853 - 3.14159265;
+    float const angular_delta = abs(atan2(sin(angle - sweep_angle), cos(angle - sweep_angle)));
+    float const sweep_head = 1.0 - smoothstep(0.012, 0.045, angular_delta);
+    float const sweep_trail = exp(-angular_delta / max(sweep_width, 0.005));
+    float const sweep = (sweep_head + sweep_trail * 0.7) * inside;
+
+    float contacts = sbx_radar_contact(position, contact_a, time_seconds);
+    contacts += sbx_radar_contact(position, contact_b, time_seconds);
+    contacts += sbx_radar_contact(position, contact_c, time_seconds);
+    contacts += sbx_radar_contact(position, contact_d, time_seconds);
+    contacts *= inside;
+
+    float const scanline = sin(uv.y * 900.0 + time_seconds * 17.0) * 0.5 + 0.5;
+    float const static_noise = sbx_hash21(floor(uv * float2(320.0, 180.0)) +
+                                          floor(time_seconds * 18.0));
+    float const interference_value = (scanline * 0.55 + static_noise * 0.45) * interference;
+
+    float3 colour = background_colour;
+    colour += grid_colour * (rings * 0.5 + axes * 0.35 + rim) * inside;
+    colour += sweep_colour * sweep;
+    colour += contact_colour * contacts;
+    colour += grid_colour * interference_value * inside * 0.22;
+    colour *= lerp(0.25, 1.0, inside);
+    return colour * emissive_intensity;
+}
