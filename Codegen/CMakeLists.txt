@@ -26,6 +26,8 @@ add_executable(codegen-tests
   tests/ast_tests.cpp
   tests/generator_tests.cpp
   tests/json_tests.cpp
+  tests/lowering_tests.cpp
+  tests/validation_tests.cpp
 )
 target_link_libraries(codegen-tests PRIVATE
   codegen-lib

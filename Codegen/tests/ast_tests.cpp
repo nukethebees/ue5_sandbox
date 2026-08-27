@@ -96,6 +96,103 @@ TEST(Ast, CollectsNestedTypeDependenciesOnceAndInGroups) {
     EXPECT_LT(rendered.find("Project/Element.h"), rendered.find("Containers/Array.h"));
 }
 
+TEST(Ast, SortsDependencyIncludesWithinConfiguredGroups) {
+    CppFile const file{
+        .path = "Example.h",
+        .nodes = {
+            IncludeDependencies{},
+            Member{CppType{"FZ", "Project/Z.h"}, "z"},
+            Member{CppType{"FA", "Project/A.h"}, "a"},
+            Member{CppType{"TArray<int32>", "Containers/Array.h"}, "values"},
+        },
+        .include_order = {"Project/"},
+    };
+
+    auto const rendered{render(file)};
+    EXPECT_LT(rendered.find("Project/A.h"), rendered.find("Project/Z.h"));
+    EXPECT_LT(rendered.find("Project/Z.h"), rendered.find("Containers/Array.h"));
+}
+
+TEST(Ast, RendersExplicitIncludesAtTheirNodeLocation) {
+    CppFile const file{
+        .path = "Example.cpp",
+        .nodes = {
+            Include{"Project/Explicit.h", false},
+            lines(2),
+            raw("int value;"),
+        },
+        .pragma_once = false,
+    };
+
+    auto const rendered{render(file)};
+    EXPECT_LT(rendered.find("Project/Explicit.h"), rendered.find("int value;"));
+    EXPECT_EQ(rendered.find("Project/Explicit.h"), rendered.rfind("Project/Explicit.h"));
+}
+
+TEST(Ast, InfersSystemIncludesFromExtensionlessPaths) {
+    EXPECT_TRUE(include_is_system(Include{"vector", std::nullopt}));
+    EXPECT_FALSE(include_is_system(Include{"Project/Value.h", std::nullopt}));
+    EXPECT_FALSE(include_is_system(Include{"vector", false}));
+    EXPECT_TRUE(include_is_system(Include{"Project/Value.h", true}));
+}
+
+TEST(Ast, ExposesChildrenForNestedAndDefinedNodes) {
+    Node const structure{Struct{.name = "FData", .children = {raw("int value;")}}};
+    Node const name_space{Namespace{"example", {raw("int value;")}}};
+    Node const function{Function{.spec = FunctionSpec{.name = "f", .body = {raw("return;")}}}};
+    Node const declaration_node{
+        Function{.spec = FunctionSpec{.name = "f"}, .declaration = true}};
+    Node const leaf{raw("int value;")};
+
+    ASSERT_NE(children(structure), nullptr);
+    EXPECT_EQ(children(structure)->size(), 1);
+    ASSERT_NE(children(name_space), nullptr);
+    EXPECT_EQ(children(name_space)->size(), 1);
+    ASSERT_NE(children(function), nullptr);
+    EXPECT_EQ(children(function)->size(), 1);
+    EXPECT_EQ(children(declaration_node), nullptr);
+    EXPECT_EQ(children(leaf), nullptr);
+}
+
+TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
+    auto const rendered{render(Node{Struct{
+        .name = "FDerived",
+        .children = {Member{"int", "value", "42"}},
+        .bases = {CppType{"FBase"}},
+        .export_specifier = "PROJECT_API",
+        .record_kind = "class",
+    }})};
+
+    EXPECT_EQ(rendered,
+              "class PROJECT_API FDerived : FBase {\n"
+              "    int value{42};\n"
+              "};");
+}
+
+TEST(Ast, RendersTemplatedConstrainedFunctions) {
+    FunctionSpec const spec{
+        .name = "append",
+        .return_type = "void",
+        .parameters = {FunctionParameter{"Other const&", "other"}},
+        .body = {raw("append_from(other);")},
+        .is_inline = true,
+        .template_parameters = "typename Other",
+        .requires_clause = "Appendable<Other>",
+    };
+
+    auto const rendered{render(header_function(spec))};
+    EXPECT_NE(rendered.find("template <typename Other>"), std::string::npos);
+    EXPECT_NE(rendered.find("requires Appendable<Other>"), std::string::npos);
+    EXPECT_NE(rendered.find("append_from(other);"), std::string::npos);
+}
+
+TEST(Ast, RawNodesReportExplicitDependencies) {
+    TypeDependency const dependency{"FValue", "Project/Value.h", {}};
+    Node const node{Raw{"use_value();", {dependency}}};
+
+    EXPECT_EQ(dependencies(node), std::vector<TypeDependency>{dependency});
+}
+
 TEST(Ast, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
     FunctionSpec const spec{
         .name = "set",
