@@ -26,21 +26,37 @@ auto compact_function_formatting() -> FunctionFormatting {
 auto homogeneous_function(std::string name,
                           CppType return_type,
                           std::vector<FunctionParameter> parameters,
-                          std::string body,
+                          Nodes body,
                           std::string suffix = {},
                           std::optional<std::string> function_template = std::nullopt,
-                          FunctionFormatting formatting = {},
-                          std::vector<TypeDependency> dependencies = {}) -> Node {
+                          FunctionFormatting formatting = {}) -> Node {
     return header_function(FunctionSpec{
         .name = std::move(name),
         .return_type = std::move(return_type),
         .parameters = std::move(parameters),
-        .body = {raw(std::move(body), std::move(dependencies))},
+        .body = std::move(body),
         .suffix = std::move(suffix),
         .is_inline = true,
         .template_parameters = std::move(function_template),
         .formatting = formatting,
     });
+}
+
+auto homogeneous_function(std::string name,
+                          CppType return_type,
+                          std::vector<FunctionParameter> parameters,
+                          std::string body,
+                          std::string suffix = {},
+                          std::optional<std::string> function_template = std::nullopt,
+                          FunctionFormatting formatting = {},
+                          std::vector<TypeDependency> dependencies = {}) -> Node {
+    return homogeneous_function(std::move(name),
+                                std::move(return_type),
+                                std::move(parameters),
+                                {raw(std::move(body), std::move(dependencies))},
+                                std::move(suffix),
+                                std::move(function_template),
+                                formatting);
 }
 
 auto homogeneous_view_node(HomogeneousLayoutSchema const& layout) -> Node {
@@ -176,19 +192,42 @@ auto same_line_template_formatting() -> FunctionFormatting {
     };
 }
 
-auto component_statements(HomogeneousLayoutSchema const& layout,
-                          std::string const& expression) -> std::string {
-    std::vector<std::string> result;
-    for (auto const& component : layout.components) {
-        auto line{expression};
-        auto marker{line.find("{}")};
-        while (marker != std::string::npos) {
-            line.replace(marker, 2, component);
-            marker = line.find("{}", marker + component.size());
-        }
-        result.push_back(std::move(line));
+auto substitute_component(std::string value, std::string const& component) -> std::string {
+    auto marker{value.find("{}")};
+    while (marker != std::string::npos) {
+        value.replace(marker, 2, component);
+        marker = value.find("{}", marker + component.size());
     }
-    return join_lines(result);
+    return value;
+}
+
+auto component_lines(HomogeneousLayoutSchema const& layout,
+                     std::string const& line_template) -> std::string {
+    std::vector<std::string> lines;
+    for (auto const& component : layout.components) {
+        lines.push_back(substitute_component(line_template, component));
+    }
+    return join_lines(lines);
+}
+
+auto component_statements(HomogeneousLayoutSchema const& layout,
+                          std::string const& expression_template) -> Nodes {
+    NodeListBuilder result;
+    for (auto const& component : layout.components) {
+        result.add(ExpressionStatement{substitute_component(expression_template, component)});
+    }
+    return result.build();
+}
+
+auto component_assignments(HomogeneousLayoutSchema const& layout,
+                           std::string const& target_template,
+                           std::string const& value_template) -> Nodes {
+    NodeListBuilder result;
+    for (auto const& component : layout.components) {
+        result.add(AssignmentStatement{substitute_component(target_template, component),
+                                       substitute_component(value_template, component)});
+    }
+    return result.build();
 }
 
 void add_compact_function(
@@ -336,7 +375,8 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                                   {FunctionParameter{"size_type const", "dst_i"},
                                    FunctionParameter{"Other const&", "src"},
                                    FunctionParameter{"size_type const", "src_i"}},
-                                  component_statements(layout, "{}[dst_i] = src.{}[src_i];"),
+                                  component_assignments(
+                                      layout, "{}[dst_i]", "src.{}[src_i]"),
                                   " -> void",
                                   "typename Other",
                                   same_line_template_formatting()),
@@ -349,7 +389,7 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                   FunctionParameter{"size_type const", "src_i"},
                   FunctionParameter{"size_type const", "count"}},
                  "for (auto i{0}; i < count; ++i) {\n" +
-                     component_statements(layout, "    {}[dst_i + i] = src.{}[src_i + i];") +
+                     component_lines(layout, "    {}[dst_i + i] = src.{}[src_i + i];") +
                      "\n}",
                  " -> void",
                  "typename Other",
@@ -368,7 +408,7 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
     result.add(homogeneous_function("append_from",
                                   "void",
                                   {FunctionParameter{"Other const&", "other"}},
-                                  component_statements(layout, "{}.Append(other.{});"),
+                                  component_statements(layout, "{}.Append(other.{})"),
                                   {},
                                   "typename Other",
                                   same_line_template_formatting()),
@@ -426,30 +466,30 @@ auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& la
                                       " -> void"),
                    1);
     };
-    add_each("reset", {}, "{}.Reset();");
-    add_each("empty", {}, "{}.Empty();");
-    add_each("reserve", {FunctionParameter{"size_type const", "count"}}, "{}.Reserve(count);");
+    add_each("reset", {}, "{}.Reset()");
+    add_each("empty", {}, "{}.Empty()");
+    add_each("reserve", {FunctionParameter{"size_type const", "count"}}, "{}.Reserve(count)");
     add_each("set_num",
              {FunctionParameter{"size_type const", "count"},
               FunctionParameter{"EAllowShrinking const", "allow_shrinking"}},
-             "{}.SetNum(count, allow_shrinking);");
+             "{}.SetNum(count, allow_shrinking)");
     add_each("set_num_uninitialised",
              {FunctionParameter{"size_type const", "count"}},
-             "{}.SetNumUninitialized(count);");
+             "{}.SetNumUninitialized(count)");
     add_each("add_uninitialised",
              {FunctionParameter{"size_type const", "count"}},
-             "{}.AddUninitialized(count);");
+             "{}.AddUninitialized(count)");
     add_each("remove_at_swap",
              {FunctionParameter{"size_type const", "index"},
               FunctionParameter{"size_type const", "count"},
               FunctionParameter{"EAllowShrinking const", "allow_shrinking"}},
-             "{}.RemoveAtSwap(index, count, allow_shrinking);");
+             "{}.RemoveAtSwap(index, count, allow_shrinking)");
     add_each(
-        "add_zeroed", {FunctionParameter{"size_type const", "count"}}, "{}.AddZeroed(count);");
+        "add_zeroed", {FunctionParameter{"size_type const", "count"}}, "{}.AddZeroed(count)");
     result.add(homogeneous_function("add_defaulted",
                                     "auto",
                                     {FunctionParameter{"size_type const", "count"}},
-                                    component_statements(layout, "{}.AddDefaulted(count);"),
+                                    component_statements(layout, "{}.AddDefaulted(count)"),
                                     " -> void"));
     return result.build();
 }
@@ -498,10 +538,12 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
             }
 
             auto const storage_name{"F" + layout.name + value.suffix};
-            std::vector<std::string> body{
-                "validate_array_sizes();", "check(indices.Num() == num());"};
+            NodeListBuilder body;
+            body.add(ExpressionStatement{"validate_array_sizes()"})
+                .add(ExpressionStatement{"check(indices.Num() == num())", {check_dependency}});
             for (auto const& component : layout.components) {
-                body.push_back("ml::apply_permutation(" + component + ", indices);");
+                body.add(ExpressionStatement{"ml::apply_permutation(" + component + ", indices)",
+                                             {soa_permutation}});
             }
             source_nodes.add(definition(
                 FunctionSpec{
@@ -509,7 +551,7 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
                     .return_type = "void",
                     .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                                      "indices"}},
-                    .body = {raw(join_lines(body), {check_dependency, soa_permutation})},
+                    .body = body.build(),
                 },
                 storage_name));
             if (layout_index + 1 < module.layouts.size() ||

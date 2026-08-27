@@ -308,29 +308,30 @@ auto storage_operation_specs(SoaSchema const& schema,
                              std::vector<ResolvedMember> const& members)
     -> std::vector<FunctionSpec> {
     std::vector<FunctionSpec> result;
-    auto member_calls = [&](std::string const& function, std::vector<std::string> const& arguments) {
-        std::vector<std::string> calls;
+    auto member_calls = [&](std::string const& function,
+                            std::vector<std::string> const& arguments) {
+        NodeListBuilder calls;
         for (auto const& member : members) {
             auto values{std::vector<std::string>{member.name}};
             values.insert(values.end(), arguments.begin(), arguments.end());
-            calls.push_back(function + "(" + join(values, ", ") + ");");
+            calls.add(ExpressionStatement{function + "(" + join(values, ", ") + ")",
+                                          {container_ops}});
         }
-        return join_lines(calls);
+        return calls.build();
     };
     auto contains = [&](StorageOperation operation) {
         return std::ranges::find(schema.operations, operation) != schema.operations.end();
     };
     if (contains(StorageOperation::reset)) {
-        result.push_back(FunctionSpec{.name = "reset",
-                                      .return_type = "void",
-                                      .body = {raw(member_calls("ml::reset", {}), {container_ops})}});
+        result.push_back(FunctionSpec{
+            .name = "reset", .return_type = "void", .body = member_calls("ml::reset", {})});
     }
     if (contains(StorageOperation::reserve)) {
         result.push_back(FunctionSpec{
             .name = "reserve",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = {raw(member_calls("ml::reserve", {"count"}), {container_ops})},
+            .body = member_calls("ml::reserve", {"count"}),
         });
     }
     if (contains(StorageOperation::add_uninitialised)) {
@@ -338,7 +339,7 @@ auto storage_operation_specs(SoaSchema const& schema,
             .name = "add_uninitialised",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = {raw(member_calls("ml::add_uninitialised", {"count"}), {container_ops})},
+            .body = member_calls("ml::add_uninitialised", {"count"}),
         });
     }
     if (contains(StorageOperation::add_defaulted)) {
@@ -346,18 +347,19 @@ auto storage_operation_specs(SoaSchema const& schema,
             .name = "add_defaulted",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = {raw(member_calls("ml::add_defaulted", {"count"}), {container_ops})},
+            .body = member_calls("ml::add_defaulted", {"count"}),
         });
     }
     if (contains(StorageOperation::remove_at_swap)) {
-        std::vector<std::string> calls;
+        NodeListBuilder calls;
         for (auto const& member : members) {
             auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
-            calls.push_back(operation.has_value()
-                                ? member.name + "." + *operation +
-                                      "(index, count, allow_shrinking);"
-                                : "ml::remove_at_swap(" + member.name +
-                                      ", index, count, allow_shrinking);");
+            calls.add(ExpressionStatement{
+                operation.has_value()
+                    ? member.name + "." + *operation + "(index, count, allow_shrinking)"
+                    : "ml::remove_at_swap(" + member.name +
+                          ", index, count, allow_shrinking)",
+                {container_ops}});
         }
         result.push_back(FunctionSpec{
             .name = "remove_at_swap",
@@ -366,7 +368,7 @@ auto storage_operation_specs(SoaSchema const& schema,
                            FunctionParameter{"int32 const", "count"},
                            FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
                                              "allow_shrinking"}},
-            .body = {raw(join_lines(calls), {container_ops})},
+            .body = calls.build(),
             .is_inline = true,
         });
     }
@@ -377,22 +379,27 @@ auto storage_operation_specs(SoaSchema const& schema,
             .parameters = {FunctionParameter{"int32 const", "count"},
                            FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
                                              "allow_shrinking"}},
-            .body = {raw(member_calls("ml::set_num", {"count", "allow_shrinking"}),
-                         {container_ops})},
+            .body = member_calls("ml::set_num", {"count", "allow_shrinking"}),
         });
     }
     if (contains(StorageOperation::copy_element)) {
-        std::vector<std::string> copy_one;
-        std::vector<std::string> copy_range;
+        NodeListBuilder copy_one;
+        NodeListBuilder copy_range;
         for (auto const& member : members) {
             if (schema.copy_element_memberwise) {
-                copy_one.push_back(member.name + "[dst_i] = other." + member.name + "[src_i];");
+                copy_one.add(AssignmentStatement{member.name + "[dst_i]",
+                                                 "other." + member.name + "[src_i]",
+                                                 {container_ops}});
             } else {
-                copy_one.push_back("ml::copy_element(" + member.name + ", dst_i, other." +
-                                   member.name + ", src_i);");
+                copy_one.add(ExpressionStatement{"ml::copy_element(" + member.name +
+                                                       ", dst_i, other." + member.name +
+                                                       ", src_i)",
+                                                   {container_ops}});
             }
-            copy_range.push_back("ml::copy_elements(" + member.name + ", dst_i, other." +
-                                 member.name + ", src_i, count);");
+            copy_range.add(ExpressionStatement{"ml::copy_elements(" + member.name +
+                                                    ", dst_i, other." + member.name +
+                                                    ", src_i, count)",
+                                                {container_ops}});
         }
         result.push_back(FunctionSpec{
             .name = "copy_element",
@@ -400,7 +407,7 @@ auto storage_operation_specs(SoaSchema const& schema,
             .parameters = {FunctionParameter{"int32 const", "dst_i"},
                            FunctionParameter{"Other const&", "other"},
                            FunctionParameter{"int32 const", "src_i"}},
-            .body = {raw(join_lines(copy_one), {container_ops})},
+            .body = copy_one.build(),
             .is_inline = true,
             .template_parameters = "typename Other",
         });
@@ -411,7 +418,7 @@ auto storage_operation_specs(SoaSchema const& schema,
                            FunctionParameter{"Other const&", "other"},
                            FunctionParameter{"int32 const", "src_i"},
                            FunctionParameter{"int32 const", "count"}},
-            .body = {raw(join_lines(copy_range), {container_ops})},
+            .body = copy_range.build(),
             .is_inline = true,
             .template_parameters = "typename Other",
         });
@@ -427,15 +434,17 @@ auto storage_operation_specs(SoaSchema const& schema,
         });
     }
     if (contains(StorageOperation::append_from)) {
-        std::vector<std::string> calls;
+        NodeListBuilder calls;
         for (auto const& member : members) {
-            calls.push_back("ml::append_from(" + member.name + ", other." + member.name + ");");
+            calls.add(ExpressionStatement{"ml::append_from(" + member.name + ", other." +
+                                              member.name + ")",
+                                          {container_ops, soa_concepts}});
         }
         result.push_back(FunctionSpec{
             .name = "append_from",
             .return_type = "void",
             .parameters = {FunctionParameter{"Other const&", "other"}},
-            .body = {raw(join_lines(calls), {container_ops, soa_concepts})},
+            .body = calls.build(),
             .is_inline = true,
             .template_parameters = "typename Other",
             .requires_clause = "ml::SupportsApplyArrayPairsWith<" + schema.name + ", Other>",
@@ -445,10 +454,12 @@ auto storage_operation_specs(SoaSchema const& schema,
 }
 
 auto permutation_specs(std::vector<ResolvedMember> const& members) -> std::vector<FunctionSpec> {
-    std::vector<std::string> apply{
-        "validate_array_sizes();", "check(indices.Num() == num());"};
+    NodeListBuilder apply;
+    apply.add(ExpressionStatement{"validate_array_sizes()"})
+        .add(ExpressionStatement{"check(indices.Num() == num())", {check_dependency}});
     for (auto const& member : members) {
-        apply.push_back("ml::apply_permutation(" + member.name + ", indices);");
+        apply.add(ExpressionStatement{"ml::apply_permutation(" + member.name + ", indices)",
+                                      {soa_permutation}});
     }
     std::string const common{
         "validate_array_sizes();\n"
@@ -462,7 +473,7 @@ auto permutation_specs(std::vector<ResolvedMember> const& members) -> std::vecto
             .return_type = "void",
             .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "indices"}},
-            .body = {raw(join_lines(apply), {soa_permutation, check_dependency})},
+            .body = apply.build(),
         },
         FunctionSpec{
             .name = "sort",
