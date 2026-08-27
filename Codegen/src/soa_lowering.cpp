@@ -528,10 +528,12 @@ auto storage_struct(SoaSchema const& schema,
                     std::string const& view_name,
                     std::string const& const_view_name,
                     std::map<std::string, CppType> const& types,
-                    std::vector<FunctionSpec>& custom_source) -> Struct {
+                    std::vector<FunctionSpec>& custom_source,
+                    Nodes storage_prelude) -> Struct {
     NodeListBuilder nodes;
     nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
         .add(UsingDeclaration{"ConstView", CppType{const_view_name}}, 2);
+    nodes.append(std::move(storage_prelude));
     if (schema.equivalent_type.has_value()) {
         nodes.append(equivalent_nodes(*schema.equivalent_type, members, types)).new_lines(2);
     }
@@ -573,13 +575,14 @@ auto storage_struct(SoaSchema const& schema,
 }
 
 auto lower_soa_impl(SoaSchema const& schema,
-                    std::map<std::string, CppType> const& types) -> LoweredSoa {
+                    std::map<std::string, CppType> const& types,
+                    Nodes storage_prelude) -> LoweredSoa {
     auto const members{resolve_members_impl(schema, types)};
     auto const view_name{schema.view_name.value_or(schema.name + "View")};
     auto const const_view_name{schema.const_view_name.value_or(schema.name + "ConstView")};
     std::vector<FunctionSpec> custom_source;
     auto storage{storage_struct(
-        schema, members, view_name, const_view_name, types, custom_source)};
+        schema, members, view_name, const_view_name, types, custom_source, std::move(storage_prelude))};
     NodeListBuilder header;
     header.add(ForwardDeclaration{view_name}, 1)
         .add(ForwardDeclaration{const_view_name}, 2)
@@ -643,7 +646,7 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
     std::vector<LoweredSoa> lowered_structs;
     lowered_structs.reserve(module.structs.size());
     for (auto const& schema : module.structs) {
-        auto lowered{lower_soa_impl(schema, types)};
+        auto lowered{lower_soa_impl(schema, types, {})};
         if (schema.fixed.has_value()) {
             NodeListBuilder header;
             header.append(std::move(lowered.header))
@@ -718,8 +721,9 @@ auto resolve_members(SoaSchema const& schema,
 }
 
 auto lower_soa(SoaSchema const& schema,
-               std::map<std::string, CppType> const& types) -> LoweredSoa {
-    return lower_soa_impl(schema, types);
+               std::map<std::string, CppType> const& types,
+               Nodes storage_prelude) -> LoweredSoa {
+    return lower_soa_impl(schema, types, std::move(storage_prelude));
 }
 
 auto lower_soa_module(SoaModuleSchema const& module,

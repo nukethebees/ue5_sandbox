@@ -13,15 +13,15 @@ namespace codegen {
 namespace {
 
 auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
-    Nodes nodes;
+    NodeListBuilder nodes;
     for (auto const& header : module.headers) {
-        nodes.push_back(Include{header, false});
+        nodes.add(Include{header, false});
     }
     return Module{
         .name = module.settings.name,
         .header = CppFile{
             .path = module.settings.header,
-            .nodes = std::move(nodes),
+            .nodes = nodes.build(),
             .clang_format_off = true,
             .include_order = module.settings.include_order,
         },

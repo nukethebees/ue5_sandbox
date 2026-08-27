@@ -2,14 +2,13 @@
 #include "lowering_utils.h"
 #include "soa_internal.h"
 
-#include <stdexcept>
 #include <utility>
 
 namespace codegen::detail {
 
 auto lower_vector_module(VectorModuleSchema const& module,
                          std::map<std::string, CppType> const& types) -> Module {
-    auto const equivalent{resolve_type(module.equivalent_type, types)};
+    auto const value_type{resolve_type(module.value_type, types)};
     std::vector<SoaMemberSchema> members;
     for (auto const& component : module.components) {
         members.push_back(SoaMemberSchema{component, SoaMemberKind::array, module.value_type});
@@ -30,31 +29,22 @@ auto lower_vector_module(VectorModuleSchema const& module,
     }
     add_body.emplace_back("return index;");
     std::vector<std::string> equivalent_arguments;
+    std::vector<std::string> data_pointers;
     static std::vector<std::string> const axes{"X", "Y", "Z"};
     for (std::size_t index{0}; index < module.components.size(); ++index) {
         equivalent_arguments.push_back("value." + axes[index]);
+        data_pointers.push_back(module.components[index] + ".GetData()");
     }
+    auto const joined_data_pointers{join(data_pointers, ", ")};
     std::vector<FunctionSchema> functions{
         FunctionSchema{.name = "get_data",
                        .return_type = TypeRef{"auto"},
-                       .body_lines = {"return Data{" + [&] {
-                           std::vector<std::string> values;
-                           for (auto const& component : module.components) {
-                               values.push_back(component + ".GetData()");
-                           }
-                           return join(values, ", ");
-                       }() + "};"},
+                       .body_lines = {"return Data{" + joined_data_pointers + "};"},
                        .suffix = " -> Data",
                        .is_inline = true},
         FunctionSchema{.name = "get_data",
                        .return_type = TypeRef{"auto"},
-                       .body_lines = {"return ConstData{" + [&] {
-                           std::vector<std::string> values;
-                           for (auto const& component : module.components) {
-                               values.push_back(component + ".GetData()");
-                           }
-                           return join(values, ", ");
-                       }() + "};"},
+                       .body_lines = {"return ConstData{" + joined_data_pointers + "};"},
                        .suffix = " const -> ConstData",
                        .is_inline = true},
         FunctionSchema{.name = "add",
@@ -99,65 +89,46 @@ auto lower_vector_module(VectorModuleSchema const& module,
         .operations = all_storage_operations(),
         .export_specifier = module.export_specifier,
         .functions = std::move(functions),
-        .using_declarations = {"value_type = " + resolve_type(module.value_type, types).spelling,
+        .using_declarations = {"value_type = " + value_type.spelling,
                                "size_type = TArray<value_type>::SizeType"},
         .equivalent_type = module.equivalent_type,
         .copy_element_memberwise = true,
         .fixed = module.fixed,
     };
-    auto lowered{lower_soa(schema, types)};
-    auto* storage{lowered.header.back().get_if<Struct>()};
-    if (storage == nullptr) {
-        throw std::logic_error{"Vector SOA lowering did not produce a storage struct"};
-    }
-    Nodes data_nodes{
-        Struct{.name = "Data",
-               .children = [&] {
-                   Nodes values;
-                   auto const pointer_type{resolve_type(module.value_type, types).spelling + "*"};
-                   for (auto const& component : module.components) {
-                       values.push_back(Member{CppType{pointer_type}, component});
-                   }
-                   return values;
-               }()},
-        lines(2),
-        Struct{.name = "ConstData",
-               .children = [&] {
-                   Nodes values;
-                   auto const pointer_type{resolve_type(module.value_type, types).spelling +
-                                           " const*"};
-                   for (auto const& component : module.components) {
-                       values.push_back(Member{CppType{pointer_type}, component});
-                   }
-                   return values;
-               }()},
-        lines(2),
+    auto pointer_struct = [&](std::string name, std::string const& pointer_suffix) {
+        NodeListBuilder members;
+        for (auto const& component : module.components) {
+            members.add(Member{CppType{value_type.spelling + pointer_suffix}, component});
+        }
+        return Struct{.name = std::move(name), .children = members.build()};
     };
-    storage->children.insert(storage->children.begin() + 4,
-                             data_nodes.begin(),
-                             data_nodes.end());
+    NodeListBuilder storage_prelude;
+    storage_prelude.add(pointer_struct("Data", "*"), 2)
+        .add(pointer_struct("ConstData", " const*"), 2);
+    auto lowered{lower_soa(schema, types, storage_prelude.build())};
     if (schema.fixed.has_value()) {
         std::map<std::string, SoaSchema const*> const schemas{{schema.name, &schema}};
-        lowered.header.push_back(lines(2));
-        auto fixed{lower_fixed_nodes(schema, schemas, types)};
-        lowered.header.insert(lowered.header.end(), fixed.begin(), fixed.end());
+        NodeListBuilder header;
+        header.append(std::move(lowered.header))
+            .new_lines(2)
+            .append(lower_fixed_nodes(schema, schemas, types));
+        lowered.header = header.build();
     }
-    Nodes header_nodes{IncludeDependencies{}, lines(2)};
-    header_nodes.insert(header_nodes.end(), lowered.header.begin(), lowered.header.end());
-    Nodes source_nodes{Include{source_include(module.settings), false},
-                       lines(2),
-                       IncludeDependencies{},
-                       lines(2)};
-    source_nodes.insert(source_nodes.end(), lowered.source.begin(), lowered.source.end());
+    NodeListBuilder header_nodes;
+    header_nodes.add(IncludeDependencies{}, 2).append(std::move(lowered.header));
+    NodeListBuilder source_nodes;
+    source_nodes.add(Include{source_include(module.settings), false}, 2)
+        .add(IncludeDependencies{}, 2)
+        .append(std::move(lowered.source));
     return Module{
         .name = module.settings.name,
         .header = CppFile{.path = module.settings.header,
-                          .nodes = std::move(header_nodes),
+                          .nodes = header_nodes.build(),
                           .clang_format_off = true,
                           .include_order = module.settings.include_order},
         .source = module.settings.source.has_value()
                       ? std::optional<CppFile>{CppFile{.path = *module.settings.source,
-                                                       .nodes = std::move(source_nodes),
+                                                       .nodes = source_nodes.build(),
                                                        .pragma_once = false,
                                                        .clang_format_off = true,
                                                        .include_order =

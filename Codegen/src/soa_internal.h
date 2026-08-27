@@ -9,7 +9,8 @@ auto resolve_members(SoaSchema const& schema,
                      std::map<std::string, CppType> const& types)
     -> std::vector<ResolvedMember>;
 auto lower_soa(SoaSchema const& schema,
-               std::map<std::string, CppType> const& types) -> LoweredSoa;
+               std::map<std::string, CppType> const& types,
+               Nodes storage_prelude = {}) -> LoweredSoa;
 auto lower_fixed_nodes(SoaSchema const& schema,
                        std::map<std::string, SoaSchema const*> const& schemas,
                        std::map<std::string, CppType> const& types) -> Nodes;
