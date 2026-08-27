@@ -1,0 +1,166 @@
+#include "/Engine/Public/Platform.ush"
+
+struct RadarContact {
+    float3 position;
+    float size;
+    float4 color;
+};
+
+StructuredBuffer<RadarContact> Contacts;
+RWTexture2D<float4> OutputTexture;
+int2 OutputSize;
+uint ContactCount;
+
+float2 project_point(const float3 world_position) {
+    float3 const camera_position = float3(3.4, -4.2, 3.0);
+    float3 const camera_forward = normalize(-camera_position);
+    float3 const camera_right = normalize(cross(camera_forward, float3(0.0, 0.0, 1.0)));
+    float3 const camera_up = cross(camera_right, camera_forward);
+    float3 const camera_delta = world_position - camera_position;
+    float const depth = max(dot(camera_delta, camera_forward), 0.001);
+    float const tan_half_fov = 0.58;
+    float2 const ndc = float2(dot(camera_delta, camera_right), dot(camera_delta, camera_up)) /
+                       (depth * tan_half_fov);
+    return float2(0.5 + ndc.x * 0.5, 0.5 - ndc.y * 0.5) * float2(OutputSize);
+}
+
+float distance_to_segment(const float2 sample_position, const float2 start, const float2 end) {
+    float2 const segment = end - start;
+    float const segment_length_squared = max(dot(segment, segment), 0.0001);
+    float const t = saturate(dot(sample_position - start, segment) / segment_length_squared);
+    return length(sample_position - (start + t * segment));
+}
+
+float line_coverage(const float2 pixel,
+                    const float3 world_start,
+                    const float3 world_end,
+                    const float thickness) {
+    float const distance =
+        distance_to_segment(pixel, project_point(world_start), project_point(world_end));
+    return 1.0 - smoothstep(thickness, thickness + 1.0, distance);
+}
+
+void blend_colour(inout float3 colour, const float3 overlay, const float opacity) {
+    colour = lerp(colour, overlay, saturate(opacity));
+}
+
+void draw_line(inout float3 colour,
+               const float2 pixel,
+               const float3 world_start,
+               const float3 world_end,
+               const float3 line_colour,
+               const float thickness,
+               const float opacity) {
+    blend_colour(
+        colour, line_colour, line_coverage(pixel, world_start, world_end, thickness) * opacity);
+}
+
+float triangle_sign(const float2 sample_position, const float2 a, const float2 b) {
+    return (sample_position.x - b.x) * (a.y - b.y) -
+           (a.x - b.x) * (sample_position.y - b.y);
+}
+
+bool point_in_triangle(const float2 sample_position,
+                       const float2 a,
+                       const float2 b,
+                       const float2 c) {
+    bool const has_negative = triangle_sign(sample_position, a, b) < 0.0 ||
+                              triangle_sign(sample_position, b, c) < 0.0 ||
+                              triangle_sign(sample_position, c, a) < 0.0;
+    bool const has_positive = triangle_sign(sample_position, a, b) > 0.0 ||
+                              triangle_sign(sample_position, b, c) > 0.0 ||
+                              triangle_sign(sample_position, c, a) > 0.0;
+    return !(has_negative && has_positive);
+}
+
+[numthreads(8, 8, 1)] void render_radar_cs(const uint3 dispatch_thread_id : SV_DispatchThreadID) {
+    uint2 const output_pixel = dispatch_thread_id.xy;
+    if (output_pixel.x >= OutputSize.x || output_pixel.y >= OutputSize.y) {
+        return;
+    }
+
+    float2 const pixel = float2(output_pixel) + 0.5;
+    float2 const normalized_pixel = pixel / float2(OutputSize);
+    float const vignette = saturate(1.0 - length(normalized_pixel - 0.5) * 0.75);
+    float3 colour = float3(0.003, 0.009, 0.014) * vignette;
+
+    float3 const box_colour = float3(0.10, 0.72, 0.70);
+    float3 const plane_colour = float3(0.04, 0.42, 0.40);
+    float3 const p0 = float3(-1.0, -1.0, 0.0);
+    float3 const p1 = float3(1.0, -1.0, 0.0);
+    float3 const p2 = float3(1.0, 1.0, 0.0);
+    float3 const p3 = float3(-1.0, 1.0, 0.0);
+    float2 const projected_p0 = project_point(p0);
+    float2 const projected_p1 = project_point(p1);
+    float2 const projected_p2 = project_point(p2);
+    float2 const projected_p3 = project_point(p3);
+    if (point_in_triangle(pixel, projected_p0, projected_p1, projected_p2) ||
+        point_in_triangle(pixel, projected_p0, projected_p2, projected_p3)) {
+        blend_colour(colour, plane_colour, 0.10);
+    }
+
+    draw_line(colour, pixel, p0, p1, plane_colour, 0.8, 0.72);
+    draw_line(colour, pixel, p1, p2, plane_colour, 0.8, 0.72);
+    draw_line(colour, pixel, p2, p3, plane_colour, 0.8, 0.72);
+    draw_line(colour, pixel, p3, p0, plane_colour, 0.8, 0.72);
+    draw_line(
+        colour, pixel, float3(-1.0, 0.0, 0.0), float3(1.0, 0.0, 0.0), plane_colour, 0.65, 0.55);
+    draw_line(
+        colour, pixel, float3(0.0, -1.0, 0.0), float3(0.0, 1.0, 0.0), plane_colour, 0.65, 0.55);
+
+    float const bottom = -0.8;
+    float const top = 0.8;
+    draw_line(colour,
+              pixel,
+              float3(-1.0, -1.0, bottom),
+              float3(1.0, -1.0, bottom),
+              box_colour,
+              0.9,
+              0.70);
+    draw_line(
+        colour, pixel, float3(1.0, -1.0, bottom), float3(1.0, 1.0, bottom), box_colour, 0.9, 0.70);
+    draw_line(
+        colour, pixel, float3(1.0, 1.0, bottom), float3(-1.0, 1.0, bottom), box_colour, 0.9, 0.70);
+    draw_line(colour,
+              pixel,
+              float3(-1.0, 1.0, bottom),
+              float3(-1.0, -1.0, bottom),
+              box_colour,
+              0.9,
+              0.70);
+    draw_line(
+        colour, pixel, float3(-1.0, -1.0, top), float3(1.0, -1.0, top), box_colour, 0.9, 0.88);
+    draw_line(colour, pixel, float3(1.0, -1.0, top), float3(1.0, 1.0, top), box_colour, 0.9, 0.88);
+    draw_line(colour, pixel, float3(1.0, 1.0, top), float3(-1.0, 1.0, top), box_colour, 0.9, 0.88);
+    draw_line(
+        colour, pixel, float3(-1.0, 1.0, top), float3(-1.0, -1.0, top), box_colour, 0.9, 0.88);
+    draw_line(
+        colour, pixel, float3(-1.0, -1.0, bottom), float3(-1.0, -1.0, top), box_colour, 0.9, 0.82);
+    draw_line(
+        colour, pixel, float3(1.0, -1.0, bottom), float3(1.0, -1.0, top), box_colour, 0.9, 0.82);
+    draw_line(
+        colour, pixel, float3(1.0, 1.0, bottom), float3(1.0, 1.0, top), box_colour, 0.9, 0.82);
+    draw_line(
+        colour, pixel, float3(-1.0, 1.0, bottom), float3(-1.0, 1.0, top), box_colour, 0.9, 0.82);
+
+    for (uint contact_index = 0; contact_index < ContactCount; ++contact_index) {
+        RadarContact const contact = Contacts[contact_index];
+        float3 const contact_colour = contact.color.rgb;
+        draw_line(colour,
+                  pixel,
+                  float3(contact.position.xy, 0.0),
+                  contact.position,
+                  contact_colour,
+                  0.65,
+                  0.48);
+
+        float const marker_distance = length(pixel - project_point(contact.position));
+        float const glow = 1.0 - smoothstep(contact.size, contact.size + 5.0, marker_distance);
+        float const core = 1.0 - smoothstep(contact.size - 1.25, contact.size, marker_distance);
+        blend_colour(colour, contact_colour, glow * 0.28);
+        blend_colour(colour, contact_colour, core * contact.color.a);
+        blend_colour(colour, float3(1.0, 1.0, 1.0), core * 0.32);
+    }
+
+    OutputTexture[output_pixel] = float4(colour, 1.0);
+}
