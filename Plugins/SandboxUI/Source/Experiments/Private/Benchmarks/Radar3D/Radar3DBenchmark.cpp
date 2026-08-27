@@ -31,7 +31,7 @@ auto make_contacts(int32 const contact_count) -> TArray<FRadar3DContact> {
     return contacts;
 }
 
-auto percentile(TArray<double> const& sorted_samples, double const fraction) -> double {
+auto radar_percentile(TArray<double> const& sorted_samples, double const fraction) -> double {
     check(!sorted_samples.IsEmpty());
     auto const index{FMath::Clamp(
         FMath::CeilToInt(fraction * sorted_samples.Num()) - 1, 0, sorted_samples.Num() - 1)};
@@ -46,8 +46,8 @@ auto summarize(FString stage, int32 const contact_count, TArray<double> samples)
             .contact_count = contact_count,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = percentile(samples, 0.5),
-            .percentile_95_microseconds = percentile(samples, 0.95),
+            .median_microseconds = radar_percentile(samples, 0.5),
+            .percentile_95_microseconds = radar_percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 } // namespace

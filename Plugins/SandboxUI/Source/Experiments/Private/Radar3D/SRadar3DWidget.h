@@ -18,9 +18,10 @@ class SRadar3DWidget final : public SCompoundWidget {
     void Construct(FArguments const& args);
     ~SRadar3DWidget() override;
 
+    void set_contact_count(int32 contact_count);
     void Tick(FGeometry const& allotted_geometry, double current_time, float delta_time) override;
   private:
-    void initialise_contacts();
+    void initialise_contacts(int32 contact_count);
     [[nodiscard]] auto initialise_output_texture() -> bool;
     void submit_render();
 

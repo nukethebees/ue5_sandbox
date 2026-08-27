@@ -27,6 +27,8 @@ and leaves the texture ready for Slate sampling.
 
 To view the experiment, show plugin content in the Content Browser, open `SandboxUI/Examples`,
 right-click `EUW_Radar3DShowcase`, and select **Run Editor Utility Widget**.
+Use the **Contacts** control to display between 1 and 256 deterministic contacts in the single
+radar view.
 
 The showcase also has a short contact-scaling benchmark. It reports game-thread submission and GPU
 upload/raster timing for 1 through 256 contacts. See

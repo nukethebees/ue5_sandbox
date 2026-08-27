@@ -6,6 +6,7 @@
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Widgets/Input/SSpinBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
@@ -17,6 +18,8 @@ URadar3DShowcase::URadar3DShowcase() {
 }
 
 TSharedRef<SWidget> URadar3DShowcase::RebuildWidget() {
+    auto const radar_widget{SNew(SRadar3DWidget)};
+
     return SNew(SBorder)
         .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
         .Padding(
@@ -31,6 +34,26 @@ TSharedRef<SWidget> URadar3DShowcase::RebuildWidget() {
                                             "Description",
                                             "Synthetic CPU contacts are rendered by RDG into one "
                                             "offscreen texture and displayed by Slate."))] +
+                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
+                       [SNew(SHorizontalBox) +
+                        SHorizontalBox::Slot()
+                            .AutoWidth()
+                            .VAlign(VAlign_Center)
+                            .Padding(0.0f, 0.0f, 8.0f, 0.0f)
+                                [SNew(STextBlock)
+                                     .Text(NSLOCTEXT("Radar3D", "ContactCount", "Contacts"))] +
+                        SHorizontalBox::Slot().AutoWidth()
+                            [SNew(SSpinBox<int32>)
+                                 .MinValue(1)
+                                 .MaxValue(256)
+                                 .MinSliderValue(1)
+                                 .MaxSliderValue(256)
+                                 .Delta(1)
+                                 .MinDesiredWidth(120.0f)
+                                 .Value(5)
+                                 .OnValueChanged_Lambda([radar_widget](int32 const contact_count) {
+                                     radar_widget->set_contact_count(contact_count);
+                                 })]] +
                    SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
                        [SNew(SVerticalBox) +
                         SVerticalBox::Slot().AutoHeight()
@@ -55,7 +78,7 @@ TSharedRef<SWidget> URadar3DShowcase::RebuildWidget() {
                        .FillHeight(1.0f)
                        .HAlign(HAlign_Center)
                        .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(512.0f).HeightOverride(
-                           512.0f)[SNew(SRadar3DWidget)]]];
+                           512.0f)[radar_widget]]];
 }
 
 auto URadar3DShowcase::run_benchmark() -> FReply {
