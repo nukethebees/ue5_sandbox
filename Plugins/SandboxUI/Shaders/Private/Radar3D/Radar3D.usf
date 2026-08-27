@@ -7,9 +7,7 @@ struct RadarContact {
 };
 
 StructuredBuffer<RadarContact> Contacts;
-RWTexture2D<float4> OutputTexture;
 int2 OutputSize;
-uint ContactCount;
 
 float2 project_point(const float3 world_position) {
     float3 const camera_position = float3(3.4, -4.2, 3.0);
@@ -24,6 +22,126 @@ float2 project_point(const float3 world_position) {
     return float2(0.5 + ndc.x * 0.5, 0.5 - ndc.y * 0.5) * float2(OutputSize);
 }
 
+float2 quad_corner(const uint vertex_id) {
+    float2 corner = 0.0;
+    corner.x = vertex_id == 1 || vertex_id == 2 || vertex_id == 4 ? 1.0 : 0.0;
+    corner.y = vertex_id == 2 || vertex_id == 4 || vertex_id == 5 ? 1.0 : 0.0;
+    return corner;
+}
+
+float4 pixel_to_clip(const float2 pixel_position) {
+    float2 const clip_position =
+        pixel_position / float2(OutputSize) * float2(2.0, -2.0) + float2(-1.0, 1.0);
+    return float4(clip_position, 0.5, 1.0);
+}
+
+void radar_background_vs(const uint vertex_id : SV_VertexID,
+                         out float4 position : SV_Position) {
+    position = pixel_to_clip(quad_corner(vertex_id) * float2(OutputSize));
+}
+
+float4 radar_background_ps(const float4 position : SV_Position) : SV_Target0 {
+    float2 const normalized_pixel = position.xy / float2(OutputSize);
+    float const vignette = saturate(1.0 - length(normalized_pixel - 0.5) * 0.75);
+    return float4(float3(0.003, 0.009, 0.014) * vignette, 1.0);
+}
+
+void radar_plane_vs(const uint vertex_id : SV_VertexID, out float4 position : SV_Position) {
+    float3 const vertices[6] = {
+        float3(-1.0, -1.0, 0.0), float3(1.0, -1.0, 0.0), float3(1.0, 1.0, 0.0),
+        float3(-1.0, -1.0, 0.0), float3(1.0, 1.0, 0.0), float3(-1.0, 1.0, 0.0),
+    };
+    position = pixel_to_clip(project_point(vertices[vertex_id]));
+}
+
+float4 radar_plane_ps() : SV_Target0 {
+    return float4(0.04, 0.42, 0.40, 0.10);
+}
+
+static const float3 static_line_starts[18] = {
+    float3(-1.0, -1.0, 0.0), float3(1.0, -1.0, 0.0),
+    float3(1.0, 1.0, 0.0), float3(-1.0, 1.0, 0.0),
+    float3(-1.0, 0.0, 0.0), float3(0.0, -1.0, 0.0),
+    float3(-1.0, -1.0, -0.8), float3(1.0, -1.0, -0.8),
+    float3(1.0, 1.0, -0.8), float3(-1.0, 1.0, -0.8),
+    float3(-1.0, -1.0, 0.8), float3(1.0, -1.0, 0.8),
+    float3(1.0, 1.0, 0.8), float3(-1.0, 1.0, 0.8),
+    float3(-1.0, -1.0, -0.8), float3(1.0, -1.0, -0.8),
+    float3(1.0, 1.0, -0.8), float3(-1.0, 1.0, -0.8),
+};
+
+static const float3 static_line_ends[18] = {
+    float3(1.0, -1.0, 0.0), float3(1.0, 1.0, 0.0),
+    float3(-1.0, 1.0, 0.0), float3(-1.0, -1.0, 0.0),
+    float3(1.0, 0.0, 0.0), float3(0.0, 1.0, 0.0),
+    float3(1.0, -1.0, -0.8), float3(1.0, 1.0, -0.8),
+    float3(-1.0, 1.0, -0.8), float3(-1.0, -1.0, -0.8),
+    float3(1.0, -1.0, 0.8), float3(1.0, 1.0, 0.8),
+    float3(-1.0, 1.0, 0.8), float3(-1.0, -1.0, 0.8),
+    float3(-1.0, -1.0, 0.8), float3(1.0, -1.0, 0.8),
+    float3(1.0, 1.0, 0.8), float3(-1.0, 1.0, 0.8),
+};
+
+struct RadarLineVertexOutput {
+    float4 position : SV_Position;
+    nointerpolation float2 line_start : RADAR_LINE_START;
+    nointerpolation float2 line_end : RADAR_LINE_END;
+    nointerpolation float4 color : RADAR_LINE_COLOR;
+    nointerpolation float thickness : RADAR_LINE_THICKNESS;
+    nointerpolation float opacity : RADAR_LINE_OPACITY;
+};
+
+RadarLineVertexOutput make_line_vertex(const uint vertex_id,
+                                       const float3 world_start,
+                                       const float3 world_end,
+                                       const float4 color,
+                                       const float thickness,
+                                       const float opacity) {
+    RadarLineVertexOutput output;
+    output.line_start = project_point(world_start);
+    output.line_end = project_point(world_end);
+    output.color = color;
+    output.thickness = thickness;
+    output.opacity = opacity;
+
+    float2 const segment = output.line_end - output.line_start;
+    float2 const direction = segment / max(length(segment), 0.0001);
+    float2 const normal = float2(-direction.y, direction.x);
+    float2 const corner = quad_corner(vertex_id);
+    float const extent = thickness + 1.0;
+    float2 const pixel_position = lerp(output.line_start, output.line_end, corner.x) +
+                                  direction * ((corner.x * 2.0 - 1.0) * extent) +
+                                  normal * ((corner.y * 2.0 - 1.0) * extent);
+    output.position = pixel_to_clip(pixel_position);
+    return output;
+}
+
+RadarLineVertexOutput radar_static_line_vs(const uint vertex_id : SV_VertexID,
+                                           const uint instance_id : SV_InstanceID) {
+    float const thickness = instance_id < 4 ? 0.8 : (instance_id < 6 ? 0.65 : 0.9);
+    float opacity = 0.70;
+    if (instance_id < 4) {
+        opacity = 0.72;
+    } else if (instance_id < 6) {
+        opacity = 0.55;
+    } else if (instance_id >= 10 && instance_id < 14) {
+        opacity = 0.88;
+    } else if (instance_id >= 14) {
+        opacity = 0.82;
+    }
+    float4 const color =
+        instance_id < 6 ? float4(0.04, 0.42, 0.40, 1.0) : float4(0.10, 0.72, 0.70, 1.0);
+    return make_line_vertex(vertex_id, static_line_starts[instance_id],
+                            static_line_ends[instance_id], color, thickness, opacity);
+}
+
+RadarLineVertexOutput radar_contact_line_vs(const uint vertex_id : SV_VertexID,
+                                            const uint instance_id : SV_InstanceID) {
+    RadarContact const contact = Contacts[instance_id];
+    return make_line_vertex(vertex_id, float3(contact.position.xy, 0.0), contact.position,
+                            contact.color, 0.65, 0.48);
+}
+
 float distance_to_segment(const float2 sample_position, const float2 start, const float2 end) {
     float2 const segment = end - start;
     float const segment_length_squared = max(dot(segment, segment), 0.0001);
@@ -31,136 +149,51 @@ float distance_to_segment(const float2 sample_position, const float2 start, cons
     return length(sample_position - (start + t * segment));
 }
 
-float line_coverage(const float2 pixel,
-                    const float3 world_start,
-                    const float3 world_end,
-                    const float thickness) {
-    float const distance =
-        distance_to_segment(pixel, project_point(world_start), project_point(world_end));
-    return 1.0 - smoothstep(thickness, thickness + 1.0, distance);
+float4 radar_line_ps(RadarLineVertexOutput input) : SV_Target0 {
+    float const distance = distance_to_segment(input.position.xy, input.line_start, input.line_end);
+    float const coverage =
+        (1.0 - smoothstep(input.thickness, input.thickness + 1.0, distance)) * input.opacity;
+    clip(coverage - 0.0001);
+    return float4(input.color.rgb, coverage);
 }
 
-void blend_colour(inout float3 colour, const float3 overlay, const float opacity) {
-    colour = lerp(colour, overlay, saturate(opacity));
+struct RadarMarkerVertexOutput {
+    float4 position : SV_Position;
+    float2 local_position : RADAR_MARKER_LOCAL_POSITION;
+    nointerpolation float size : RADAR_MARKER_SIZE;
+    nointerpolation float4 color : RADAR_MARKER_COLOR;
+};
+
+RadarMarkerVertexOutput radar_marker_vs(const uint vertex_id : SV_VertexID,
+                                        const uint instance_id : SV_InstanceID) {
+    RadarContact const contact = Contacts[instance_id];
+    float2 const corner = quad_corner(vertex_id);
+    float const extent = contact.size + 5.0;
+
+    RadarMarkerVertexOutput output;
+    output.local_position = (corner * 2.0 - 1.0) * extent;
+    output.position = pixel_to_clip(project_point(contact.position) + output.local_position);
+    output.size = contact.size;
+    output.color = contact.color;
+    return output;
 }
 
-void draw_line(inout float3 colour,
-               const float2 pixel,
-               const float3 world_start,
-               const float3 world_end,
-               const float3 line_colour,
-               const float thickness,
-               const float opacity) {
-    blend_colour(
-        colour, line_colour, line_coverage(pixel, world_start, world_end, thickness) * opacity);
-}
+float4 radar_marker_ps(RadarMarkerVertexOutput input) : SV_Target0 {
+    float const marker_distance = length(input.local_position);
+    float const glow = 1.0 - smoothstep(input.size, input.size + 5.0, marker_distance);
+    float const core = 1.0 - smoothstep(input.size - 1.25, input.size, marker_distance);
 
-float triangle_sign(const float2 sample_position, const float2 a, const float2 b) {
-    return (sample_position.x - b.x) * (a.y - b.y) -
-           (a.x - b.x) * (sample_position.y - b.y);
-}
-
-bool point_in_triangle(const float2 sample_position,
-                       const float2 a,
-                       const float2 b,
-                       const float2 c) {
-    bool const has_negative = triangle_sign(sample_position, a, b) < 0.0 ||
-                              triangle_sign(sample_position, b, c) < 0.0 ||
-                              triangle_sign(sample_position, c, a) < 0.0;
-    bool const has_positive = triangle_sign(sample_position, a, b) > 0.0 ||
-                              triangle_sign(sample_position, b, c) > 0.0 ||
-                              triangle_sign(sample_position, c, a) > 0.0;
-    return !(has_negative && has_positive);
-}
-
-[numthreads(8, 8, 1)] void render_radar_cs(const uint3 dispatch_thread_id : SV_DispatchThreadID) {
-    uint2 const output_pixel = dispatch_thread_id.xy;
-    if (output_pixel.x >= OutputSize.x || output_pixel.y >= OutputSize.y) {
-        return;
-    }
-
-    float2 const pixel = float2(output_pixel) + 0.5;
-    float2 const normalized_pixel = pixel / float2(OutputSize);
-    float const vignette = saturate(1.0 - length(normalized_pixel - 0.5) * 0.75);
-    float3 colour = float3(0.003, 0.009, 0.014) * vignette;
-
-    float3 const box_colour = float3(0.10, 0.72, 0.70);
-    float3 const plane_colour = float3(0.04, 0.42, 0.40);
-    float3 const p0 = float3(-1.0, -1.0, 0.0);
-    float3 const p1 = float3(1.0, -1.0, 0.0);
-    float3 const p2 = float3(1.0, 1.0, 0.0);
-    float3 const p3 = float3(-1.0, 1.0, 0.0);
-    float2 const projected_p0 = project_point(p0);
-    float2 const projected_p1 = project_point(p1);
-    float2 const projected_p2 = project_point(p2);
-    float2 const projected_p3 = project_point(p3);
-    if (point_in_triangle(pixel, projected_p0, projected_p1, projected_p2) ||
-        point_in_triangle(pixel, projected_p0, projected_p2, projected_p3)) {
-        blend_colour(colour, plane_colour, 0.10);
-    }
-
-    draw_line(colour, pixel, p0, p1, plane_colour, 0.8, 0.72);
-    draw_line(colour, pixel, p1, p2, plane_colour, 0.8, 0.72);
-    draw_line(colour, pixel, p2, p3, plane_colour, 0.8, 0.72);
-    draw_line(colour, pixel, p3, p0, plane_colour, 0.8, 0.72);
-    draw_line(
-        colour, pixel, float3(-1.0, 0.0, 0.0), float3(1.0, 0.0, 0.0), plane_colour, 0.65, 0.55);
-    draw_line(
-        colour, pixel, float3(0.0, -1.0, 0.0), float3(0.0, 1.0, 0.0), plane_colour, 0.65, 0.55);
-
-    float const bottom = -0.8;
-    float const top = 0.8;
-    draw_line(colour,
-              pixel,
-              float3(-1.0, -1.0, bottom),
-              float3(1.0, -1.0, bottom),
-              box_colour,
-              0.9,
-              0.70);
-    draw_line(
-        colour, pixel, float3(1.0, -1.0, bottom), float3(1.0, 1.0, bottom), box_colour, 0.9, 0.70);
-    draw_line(
-        colour, pixel, float3(1.0, 1.0, bottom), float3(-1.0, 1.0, bottom), box_colour, 0.9, 0.70);
-    draw_line(colour,
-              pixel,
-              float3(-1.0, 1.0, bottom),
-              float3(-1.0, -1.0, bottom),
-              box_colour,
-              0.9,
-              0.70);
-    draw_line(
-        colour, pixel, float3(-1.0, -1.0, top), float3(1.0, -1.0, top), box_colour, 0.9, 0.88);
-    draw_line(colour, pixel, float3(1.0, -1.0, top), float3(1.0, 1.0, top), box_colour, 0.9, 0.88);
-    draw_line(colour, pixel, float3(1.0, 1.0, top), float3(-1.0, 1.0, top), box_colour, 0.9, 0.88);
-    draw_line(
-        colour, pixel, float3(-1.0, 1.0, top), float3(-1.0, -1.0, top), box_colour, 0.9, 0.88);
-    draw_line(
-        colour, pixel, float3(-1.0, -1.0, bottom), float3(-1.0, -1.0, top), box_colour, 0.9, 0.82);
-    draw_line(
-        colour, pixel, float3(1.0, -1.0, bottom), float3(1.0, -1.0, top), box_colour, 0.9, 0.82);
-    draw_line(
-        colour, pixel, float3(1.0, 1.0, bottom), float3(1.0, 1.0, top), box_colour, 0.9, 0.82);
-    draw_line(
-        colour, pixel, float3(-1.0, 1.0, bottom), float3(-1.0, 1.0, top), box_colour, 0.9, 0.82);
-
-    for (uint contact_index = 0; contact_index < ContactCount; ++contact_index) {
-        RadarContact const contact = Contacts[contact_index];
-        float3 const contact_colour = contact.color.rgb;
-        draw_line(colour,
-                  pixel,
-                  float3(contact.position.xy, 0.0),
-                  contact.position,
-                  contact_colour,
-                  0.65,
-                  0.48);
-
-        float const marker_distance = length(pixel - project_point(contact.position));
-        float const glow = 1.0 - smoothstep(contact.size, contact.size + 5.0, marker_distance);
-        float const core = 1.0 - smoothstep(contact.size - 1.25, contact.size, marker_distance);
-        blend_colour(colour, contact_colour, glow * 0.28);
-        blend_colour(colour, contact_colour, core * contact.color.a);
-        blend_colour(colour, float3(1.0, 1.0, 1.0), core * 0.32);
-    }
-
-    OutputTexture[output_pixel] = float4(colour, 1.0);
+    float const glow_alpha = glow * 0.28;
+    float const core_alpha = core * input.color.a;
+    float const highlight_alpha = core * 0.32;
+    float const remaining_after_core = 1.0 - core_alpha;
+    float const remaining_after_highlight = 1.0 - highlight_alpha;
+    float const alpha =
+        1.0 - (1.0 - glow_alpha) * remaining_after_core * remaining_after_highlight;
+    float const contact_weight = glow_alpha * remaining_after_core * remaining_after_highlight +
+                                 core_alpha * remaining_after_highlight;
+    float3 const color =
+        (input.color.rgb * contact_weight + highlight_alpha) / max(alpha, 0.0001);
+    clip(alpha - 0.0001);
+    return float4(color, alpha);
 }

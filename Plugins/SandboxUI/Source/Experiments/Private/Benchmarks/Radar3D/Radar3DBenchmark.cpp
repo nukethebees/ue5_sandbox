@@ -86,7 +86,7 @@ auto run_radar_3d_benchmark(FRadar3DBenchmarkOptions const& options) -> FRadar3D
 
     FRadar3DBenchmarkReport report;
     for (auto const contact_count : options.contact_counts) {
-        if (contact_count <= 0 || contact_count > 256) {
+        if (contact_count <= 0) {
             continue;
         }
 
@@ -104,7 +104,7 @@ auto run_radar_3d_benchmark(FRadar3DBenchmarkOptions const& options) -> FRadar3D
             summarize(TEXT("api_submission"), contact_count, MoveTemp(submission_samples)));
         if (!gpu_samples.IsEmpty()) {
             report.results.Add(
-                summarize(TEXT("gpu_upload_compute"), contact_count, MoveTemp(gpu_samples)));
+                summarize(TEXT("gpu_upload_raster"), contact_count, MoveTemp(gpu_samples)));
         }
     }
     return report;

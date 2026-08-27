@@ -31,7 +31,7 @@ void parse_contact_counts(FString const& params, FRadar3DBenchmarkOptions& optio
     TArray<int32> parsed;
     for (auto const& entry : entries) {
         auto const contact_count{FCString::Atoi(*entry)};
-        if (contact_count > 0 && contact_count <= 256) {
+        if (contact_count > 0) {
             parsed.AddUnique(contact_count);
         }
     }

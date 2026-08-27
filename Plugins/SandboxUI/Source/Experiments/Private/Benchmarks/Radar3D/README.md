@@ -11,14 +11,13 @@ UnrealEditor-Cmd.exe Sandbox.uproject -run=Radar3DBenchmark -AllowCommandletRend
   -Output=Saved/Benchmarks/Radar3DBenchmark.csv
 ```
 
-`-AllowCommandletRendering` is required, and `-NullRHI` must not be used. Contact counts are capped
-at 256 because the experiment's shader evaluates every contact for every output pixel.
+`-AllowCommandletRendering` is required, and `-NullRHI` must not be used.
 
 ## Reported stages
 
 - `api_submission`: contact snapshot allocation/copy and render-command enqueue on the game thread.
-- `gpu_upload_compute`: GPU timestamp interval containing the structured-buffer upload,
-  transitions, and full compute dispatch.
+- `gpu_upload_raster`: GPU timestamp interval containing the structured-buffer upload,
+  transitions, and instanced raster passes.
 
 Synthetic data generation, render-target creation, first-use setup, synchronization, and warmup
 iterations are outside measured samples. Results include minimum, median, p95, maximum, and sample
