@@ -1,6 +1,7 @@
 #include "SpaceGame/presentation/TestBatchGameUiData.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SandboxGameShared/ui/widgets/ValueWidget.h"
+#include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/MissionEntityHealthRowWidget.h"
 #include "SpaceGame/presentation/widgets/MissionStatusWidget.h"
 #include "SpaceGame/presentation/widgets/ShipHealthWidget.h"
@@ -9,8 +10,8 @@
 #include "SpaceGame/presentation/widgets/ShipThrusterEnergyWidget.h"
 #include "SpaceGame/presentation/widgets/TeamEntityTableWidget.h"
 #include "SpaceGame/presentation/widgets/TopKillersWidget.h"
-#include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
-#include "SandboxGameShared/ui/widgets/ValueWidget.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/ui/PauseMenuWidget.h"
 
 #include <Misc/PackageName.h>
 #include <UObject/UObjectGlobals.h>
@@ -44,6 +45,7 @@ auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass
         UTopKillersWidget::StaticClass(),
         UDebugGraphWidget::StaticClass(),
         UValueWidget::StaticClass(),
+        ml::ioj::UPauseMenuWidget::StaticClass(),
     };
     return classes;
 }

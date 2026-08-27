@@ -1,8 +1,8 @@
 #pragma once
 
-#include <SpaceGame/support/logging/ActorLoggingConfig.h>
-#include <SpaceGame/ships/common/SpaceShipControllerInputs.h>
 #include <SandboxGameShared/input/EnhancedInputMixin.hpp>
+#include <SpaceGame/ships/common/SpaceShipControllerInputs.h>
+#include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/PlayerController.h>
@@ -13,6 +13,9 @@ class UShipHudWidget;
 class UTestBatchGameUiData;
 class ATestSpaceShip;
 class ATestBatchOrchestrator;
+namespace ml::ioj {
+class UPauseMenuWidget;
+}
 
 UCLASS()
 class ATestSpaceShipController
@@ -33,6 +36,10 @@ class ATestSpaceShipController
     void EndPlay(EEndPlayReason::Type const reason) override;
 
     void initialise_hud();
+    auto initialise_pause_menu() -> bool;
+    void show_pause_menu();
+    void hide_pause_menu();
+    void resume_game();
     void bind_orchestrator_reset();
     void on_orchestrator_reset(ATestBatchOrchestrator& orchestrator);
 
@@ -119,6 +126,8 @@ class ATestSpaceShipController
     TWeakObjectPtr<ATestBatchOrchestrator> hud_orchestrator;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
     UShipHudWidget* hud_widget{nullptr};
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
+    ml::ioj::UPauseMenuWidget* pause_menu_widget{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
 
