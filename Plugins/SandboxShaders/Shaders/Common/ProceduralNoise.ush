@@ -1,0 +1,44 @@
+#ifndef SANDBOX_SHADERS_PROCEDURAL_NOISE
+#define SANDBOX_SHADERS_PROCEDURAL_NOISE
+
+float sbx_hash21(float2 value)
+{
+    value = frac(value * float2(123.34, 456.21));
+    value += dot(value, value + 45.32);
+    return frac(value.x * value.y);
+}
+
+float2 sbx_hash22(float2 value)
+{
+    float const seed = sbx_hash21(value);
+    return frac(float2(seed, seed * 1.2154) * float2(43758.5453, 22578.1459));
+}
+
+float sbx_value_noise(float2 value)
+{
+    float2 const cell = floor(value);
+    float2 interpolation = frac(value);
+    interpolation = interpolation * interpolation * (3.0 - 2.0 * interpolation);
+
+    float const a = sbx_hash21(cell);
+    float const b = sbx_hash21(cell + float2(1.0, 0.0));
+    float const c = sbx_hash21(cell + float2(0.0, 1.0));
+    float const d = sbx_hash21(cell + float2(1.0, 1.0));
+    return lerp(lerp(a, b, interpolation.x), lerp(c, d, interpolation.x), interpolation.y);
+}
+
+float sbx_fbm(float2 value)
+{
+    float amplitude = 0.5;
+    float total = 0.0;
+    [unroll]
+    for (int octave = 0; octave < 5; ++octave)
+    {
+        total += amplitude * sbx_value_noise(value);
+        value = mul(float2x2(1.62, 1.18, -1.18, 1.62), value) + 13.7;
+        amplitude *= 0.5;
+    }
+    return total;
+}
+
+#endif

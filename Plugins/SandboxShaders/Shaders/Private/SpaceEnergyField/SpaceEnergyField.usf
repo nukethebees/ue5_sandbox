@@ -1,0 +1,63 @@
+#include "/Engine/Public/Platform.ush"
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+RWTexture2D<float4> OutputTexture;
+int2 OutputSize;
+float TimeSeconds;
+float WarpScale;
+float WarpStrength;
+float StarDensity;
+float StarIntensity;
+float PlasmaIntensity;
+float4 ColourA;
+float4 ColourB;
+
+float sbx_star_layer(float2 uv, float scale, float seed)
+{
+    float2 const cell_position = uv * scale;
+    float2 const cell = floor(cell_position);
+    float2 const star_offset = sbx_hash22(cell + seed) - 0.5;
+    float2 const delta = frac(cell_position) - 0.5 - star_offset * 0.7;
+    float const distance_to_star = length(delta);
+    float const brightness = sbx_hash21(cell + seed * 7.13);
+    float const enabled = step(1.0 - StarDensity, brightness);
+    float const core = pow(saturate(1.0 - distance_to_star * 18.0), 12.0);
+    float const flare = pow(saturate(1.0 - abs(delta.x) * 35.0), 8.0) *
+                        pow(saturate(1.0 - abs(delta.y) * 35.0), 8.0);
+    return enabled * (core + flare * 0.35) * lerp(0.35, 1.0, brightness);
+}
+
+[numthreads(8, 8, 1)]
+void render_space_energy_field_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+{
+    uint2 const pixel = dispatch_thread_id.xy;
+    if (pixel.x >= OutputSize.x || pixel.y >= OutputSize.y)
+    {
+        return;
+    }
+
+    float2 uv = (float2(pixel) + 0.5) / float2(OutputSize);
+    float2 const centred = (uv - 0.5) * float2(float(OutputSize.x) / float(OutputSize.y), 1.0);
+    float2 const warp_source = centred * WarpScale;
+    float2 const warp = float2(sbx_fbm(warp_source + float2(TimeSeconds, -TimeSeconds * 0.7)),
+                               sbx_fbm(warp_source + float2(17.2 - TimeSeconds * 0.6, 9.1 + TimeSeconds)));
+    float2 const warped = centred + (warp - 0.5) * WarpStrength;
+
+    float const nebula = sbx_fbm(warped * 3.1 + float2(TimeSeconds * 0.08, 0.0));
+    float const fine_nebula = sbx_fbm(warped * 8.7 - float2(0.0, TimeSeconds * 0.12));
+    float const plasma_wave = abs(sin((warped.x + warped.y * 0.65) * 12.0 +
+                                      sbx_fbm(warped * 5.0) * 8.0 - TimeSeconds * 2.0));
+    float const plasma = pow(saturate(1.0 - plasma_wave), 7.0) * PlasmaIntensity;
+
+    float3 colour = float3(0.0015, 0.003, 0.012);
+    colour += lerp(ColourA.rgb, ColourB.rgb, saturate(fine_nebula * 1.25 - 0.1)) *
+              pow(saturate(nebula), 2.1) * 1.7;
+    colour += lerp(ColourB.rgb, float3(0.1, 0.9, 1.0), fine_nebula) * plasma;
+
+    float const stars = sbx_star_layer(uv + TimeSeconds * 0.0005, 96.0, 3.1) +
+                        sbx_star_layer(uv - TimeSeconds * 0.0002, 173.0, 19.7) * 0.55;
+    colour += lerp(float3(0.45, 0.7, 1.0), float3(1.0, 0.75, 0.45), sbx_hash21(pixel)) *
+              stars * StarIntensity;
+
+    OutputTexture[pixel] = float4(colour, 1.0);
+}

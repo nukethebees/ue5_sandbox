@@ -129,6 +129,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.levels
   Sandbox.UnitTests
   Sandbox.USFPathValidation
+  SandboxShaders.UnitTests
   SandboxCoreEngine.UnitTests
   SandboxUI.UnitTests
 )
@@ -187,4 +188,22 @@ add_custom_target(resave-assets
   COMMENT "Resaving project assets and fixing redirectors"
   USES_TERMINAL
   VERBATIM
+)
+
+add_test(
+  NAME SandboxShaders.ShaderSmoke
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests StartsWith:SandboxShaders.ShaderSmoke; Quit"
+    -AllowCommandletRendering
+    -unattended
+    -DDC-ForceMemoryCache
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+)
+set_tests_properties(SandboxShaders.ShaderSmoke PROPERTIES
+  LABELS all
+  TIMEOUT 900
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )

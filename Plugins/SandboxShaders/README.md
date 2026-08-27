@@ -1,0 +1,19 @@
+# SandboxShaders
+
+`SandboxShaders` is a deliberately small shader playground. The runtime `SandboxShaders` module
+only installs the `/Plugin/SandboxShaders` shader-source mapping. `SbxShadersExperiments` contains
+the two concrete experiment actors and their rendering code, while `SandboxShadersEditor` adds the
+showcase launcher and smoke tests.
+
+The experiments module uses the qualified name `SbxShadersExperiments` because this project already
+has an Unreal module named `Experiments` in `SandboxUI`; Unreal module names share one target-wide
+namespace. Keeping the existing module intact avoids modifying an unrelated plugin while preserving
+an unmistakable experiments module here.
+
+Open `/SandboxShaders/Showcase/SandboxShaders_Showcase`, or use **Window > Sandbox Shaders > Open
+Shader Showcase** in the editor. Select either experiment actor to edit its exposed settings.
+
+See the experiment-specific documentation:
+
+- [Procedural Energy Shield](Experiments/EnergyShield/README.md)
+- [Procedural Space / Energy Field](Experiments/SpaceEnergyField/README.md)
