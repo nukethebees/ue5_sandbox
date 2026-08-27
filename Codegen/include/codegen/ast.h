@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/ast/access_specifier.h>
 #include <codegen/ast/cpp_file.h>
 #include <codegen/ast/cpp_type.h>
 #include <codegen/ast/forward_declaration.h>

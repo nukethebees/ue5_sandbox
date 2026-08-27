@@ -186,6 +186,45 @@ TEST(Ast, RendersTemplatedConstrainedFunctions) {
     EXPECT_NE(rendered.find("append_from(other);"), std::string::npos);
 }
 
+TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
+    TypeDependency const dependency{"check", "CoreMinimal.h", {}};
+    Node const structure{Struct{
+        .name = "TFixedData",
+        .children = {
+            declaration(FunctionSpec{
+                .name = "TFixedData",
+                .suffix = " noexcept = default",
+            }),
+            lines(1),
+            header_function(FunctionSpec{
+                .name = "apply",
+                .return_type = "void",
+                .parameters = {FunctionParameter{"TFunc&&", "func"}},
+                .body = {raw("func();")},
+                .is_inline = true,
+                .template_parameters = "typename TFunc",
+                .compact_body = true,
+                .template_on_same_line = true,
+            }),
+            lines(2),
+            AccessSpecifier{"private"},
+        },
+        .template_parameters = "int Capacity",
+        .requires_clause = "(Capacity >= 0)",
+        .dependencies = {dependency},
+    }};
+
+    EXPECT_EQ(render(structure),
+              "template <int Capacity>\n"
+              "    requires (Capacity >= 0)\n"
+              "struct TFixedData {\n"
+              "    TFixedData() noexcept = default;\n"
+              "    template <typename TFunc> void apply(TFunc&& func) { func(); }\n\n"
+              "  private:\n"
+              "};");
+    EXPECT_EQ(dependencies(structure), std::vector<TypeDependency>{dependency});
+}
+
 TEST(Ast, RawNodesReportExplicitDependencies) {
     TypeDependency const dependency{"FValue", "Project/Value.h", {}};
     Node const node{Raw{"use_value();", {dependency}}};

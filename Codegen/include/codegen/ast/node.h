@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/ast/access_specifier.h>
 #include <codegen/ast/forward_declaration.h>
 #include <codegen/ast/function.h>
 #include <codegen/ast/include.h>
@@ -17,6 +18,7 @@ namespace codegen {
 
 using NodeValue = std::variant<Raw,
                                NewLines,
+                               AccessSpecifier,
                                Include,
                                IncludeDependencies,
                                ForwardDeclaration,

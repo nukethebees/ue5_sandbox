@@ -35,7 +35,10 @@ auto trim_newlines(std::string value) -> std::string {
 }
 
 auto render_parameter(FunctionParameter const& parameter, bool include_default) -> std::string {
-    auto result{parameter.type.spelling + " " + parameter.name};
+    auto result{parameter.type.spelling};
+    if (!parameter.name.empty()) {
+        result += " " + parameter.name;
+    }
     if (include_default && parameter.default_value.has_value()) {
         result += " = " + *parameter.default_value;
     }
@@ -54,13 +57,21 @@ auto render_signature(Function const& function) -> std::string {
     auto const qualified_name{function.owner.has_value()
                                   ? *function.owner + "::" + spec.name
                                   : spec.name};
-    auto signature{std::string{static_prefix} + spec.return_type.spelling + " " + qualified_name +
-                   "(" + join(parameters, ", ") + ")" + spec.suffix};
-    if (spec.requires_clause.has_value()) {
-        signature += "\n    requires " + *spec.requires_clause;
+    auto signature{std::string{static_prefix}};
+    if (!spec.return_type.spelling.empty()) {
+        signature += spec.return_type.spelling + " ";
+    }
+    signature += qualified_name + "(" + join(parameters, ", ") + ")" + spec.suffix;
+    if (spec.requires_clause.has_value() && !spec.requires_before_signature) {
+        signature += std::string{spec.requires_on_new_line ? "\n    requires " : " requires "} +
+                     *spec.requires_clause;
+    }
+    if (spec.requires_clause.has_value() && spec.requires_before_signature) {
+        signature = "    requires " + *spec.requires_clause + "\n" + signature;
     }
     if (spec.template_parameters.has_value()) {
-        signature = "template <" + *spec.template_parameters + ">\n" + signature;
+        signature = "template <" + *spec.template_parameters + ">" +
+                    (spec.template_on_same_line ? " " : "\n") + signature;
     }
     return signature;
 }
@@ -230,7 +241,7 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
                 }
                 return result;
             } else if constexpr (std::is_same_v<T, Struct>) {
-                std::vector<TypeDependency> result;
+                auto result{value.dependencies};
                 for (auto const& base : value.bases) {
                     result.insert(result.end(), base.dependencies.begin(), base.dependencies.end());
                 }
@@ -271,6 +282,13 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 return context.apply_indent(value.text);
             } else if constexpr (std::is_same_v<T, NewLines>) {
                 return std::string(static_cast<std::size_t>(value.count), '\n');
+            } else if constexpr (std::is_same_v<T, AccessSpecifier>) {
+                auto const width{context.indent_level == 0
+                                     ? std::size_t{}
+                                     : static_cast<std::size_t>(context.indent_level) *
+                                               context.indent_text.size() -
+                                           2};
+                return std::string(width, ' ') + value.access + ":";
             } else if constexpr (std::is_same_v<T, Include>) {
                 auto const left{include_is_system(value) ? '<' : '"'};
                 auto const right{include_is_system(value) ? '>' : '"'};
@@ -297,8 +315,17 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 if (value.declaration) {
                     return signature + ";";
                 }
+                if (value.spec.compact_body) {
+                    auto body_context{context};
+                    body_context.indent_level = 0;
+                    auto const body{render_nodes(value.spec.body, body_context, 1)};
+                    return signature + " { " + body + " }";
+                }
                 auto const body{render_nodes(value.spec.body, context.indent(), 1)};
-                return signature + " {\n" + body + "\n" + context.apply_indent("}");
+                auto const opening{value.spec.opening_brace_on_new_line
+                                       ? "\n" + context.apply_indent("{")
+                                       : " {"};
+                return signature + opening + "\n" + body + "\n" + context.apply_indent("}");
             } else if constexpr (std::is_same_v<T, Struct>) {
                 std::vector<std::string> bases;
                 for (auto const& base : value.bases) {
@@ -313,7 +340,11 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                     header += " : " + join(bases, ", ");
                 }
                 if (value.template_parameters.has_value()) {
-                    header = "template <" + *value.template_parameters + ">\n" + header;
+                    auto template_header{"template <" + *value.template_parameters + ">\n"};
+                    if (value.requires_clause.has_value()) {
+                        template_header += "    requires " + *value.requires_clause + "\n";
+                    }
+                    header = template_header + header;
                 }
                 return context.apply_indent(header + " {") + "\n" +
                        render_nodes(value.children, context.indent(), 2) + "\n" +

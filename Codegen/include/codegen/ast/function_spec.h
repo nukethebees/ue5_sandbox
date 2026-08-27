@@ -20,6 +20,11 @@ struct FunctionSpec {
     bool is_inline{false};
     std::optional<std::string> template_parameters;
     std::optional<std::string> requires_clause;
+    bool compact_body{false};
+    bool requires_on_new_line{true};
+    bool requires_before_signature{false};
+    bool opening_brace_on_new_line{false};
+    bool template_on_same_line{false};
 };
 
 } // namespace codegen

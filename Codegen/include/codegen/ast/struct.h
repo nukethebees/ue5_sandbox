@@ -14,8 +14,10 @@ struct Struct {
     Nodes children;
     std::vector<CppType> bases;
     std::optional<std::string> template_parameters;
+    std::optional<std::string> requires_clause;
     std::optional<std::string> export_specifier;
     std::string record_kind{"struct"};
+    std::vector<TypeDependency> dependencies;
 };
 
 } // namespace codegen
