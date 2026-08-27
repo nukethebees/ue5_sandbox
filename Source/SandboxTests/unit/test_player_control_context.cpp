@@ -1,0 +1,126 @@
+#include <SandboxTests/support/SimulationTestAssets.h>
+#include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestEnhancedInputSubsystem.h>
+
+#include <SpaceGame/ships/common/LaserFiringState.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/ships/player/TestSpaceShipControlContexts.h>
+#include <SpaceGame/ships/player/TestSpaceShipController.h>
+#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/TestSimulationConfig.h>
+
+#include <CQTest.h>
+#include <EnhancedInputComponent.h>
+#include <InputAction.h>
+#include <InputMappingContext.h>
+
+TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
+{
+    TEST_METHOD(ShipBindUnbindOwnsMappingsAndHandlers)
+    {
+        auto const world_result{ml::get_editor_world()};
+        if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
+            return;
+        }
+
+        auto const* const config{ml::load_default_test_simulation_config()};
+        if (!TestRunner->TestTrue(TEXT("Test simulation config loads"), IsValid(config)) ||
+            !TestRunner->TestTrue(TEXT("Simulation config is available"),
+                                  config && IsValid(config->simulation_config)) ||
+            !TestRunner->TestTrue(TEXT("Player ship config is available"),
+                                  config && IsValid(config->simulation_config) &&
+                                      config->simulation_config->player_ship_config.Get() !=
+                                          nullptr)) {
+            return;
+        }
+
+        auto& world{*world_result.value()};
+        auto* const controller{world.SpawnActorDeferred<ATestSpaceShipController>(
+            config->player_controller_class, FTransform::Identity)};
+        auto* const ship{
+            ml::spawn_player_ship(world,
+                                  config->actor_classes.player_ship_class,
+                                  config->simulation_config->player_ship_config.Get())};
+        if (!TestRunner->TestTrue(TEXT("Controller is spawned"), IsValid(controller)) ||
+            !TestRunner->TestTrue(TEXT("Player ship is spawned"), IsValid(ship))) {
+            return;
+        }
+
+        auto* const input_component{NewObject<UEnhancedInputComponent>(controller)};
+        auto* const input_subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
+        auto* const mapping_context{NewObject<UInputMappingContext>(controller)};
+        auto* const move_action{NewObject<UInputAction>(controller)};
+        auto* const sentinel_action{NewObject<UInputAction>(controller)};
+        input_subsystem->initialise();
+
+        FSpaceShipControllerInputs input;
+        input.mapping_contexts.Add(mapping_context);
+        input.move = move_action;
+        input.turn = move_action;
+        input.fire_laser = move_action;
+        input.fire_bomb = move_action;
+        input.boost = move_action;
+        input.brake = move_action;
+        input.roll = move_action;
+        input.cycle_next_fire_rate = move_action;
+        input.cycle_prev_fire_rate = move_action;
+        input.cycle_input_mapping_context = move_action;
+        input.lateral_move = move_action;
+        input.vertical_move = move_action;
+        input.sample_and_hold = move_action;
+        input.ship_2d_control = move_action;
+        input.ship_1d_control_x = move_action;
+        input.ship_1d_control_y = move_action;
+        input.cycle_next_control_mode = move_action;
+        input.cycle_previous_control_mode = move_action;
+
+        auto& sentinel_binding{input_component->BindActionValueLambda(
+            sentinel_action, ETriggerEvent::Started, [](FInputActionValue const&) {})};
+        auto const sentinel_handle{sentinel_binding.GetHandle()};
+
+        FShipControlContext context;
+        TestRunner->TestTrue(
+            TEXT("Ship context initializes"),
+            context.initialise(*controller, *input_component, *input_subsystem, input));
+        context.set_ship(ship);
+        TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());
+        TestRunner->TestTrue(TEXT("Ship context reports bound"), context.is_bound());
+        TestRunner->TestTrue(TEXT("Ship mapping is active"),
+                             input_subsystem->HasMappingContext(mapping_context));
+
+        auto const bindings_after_bind{input_component->GetActionEventBindings().Num()};
+        TestRunner->TestTrue(TEXT("Repeated bind is idempotent"), context.bind());
+        TestRunner->TestEqual(TEXT("Repeated bind does not duplicate handlers"),
+                              input_component->GetActionEventBindings().Num(),
+                              bindings_after_bind);
+
+        ship->set_move_input(FVector2D{0.5f, -0.25f});
+        ship->turn(FVector2D{0.25f, 0.75f});
+        ship->start_fire_laser();
+
+        context.unbind();
+
+        TestRunner->TestFalse(TEXT("Ship context reports unbound"), context.is_bound());
+        TestRunner->TestFalse(TEXT("Ship mapping is removed"),
+                              input_subsystem->HasMappingContext(mapping_context));
+        TestRunner->TestEqual(TEXT("Only the unrelated handler remains"),
+                              input_component->GetActionEventBindings().Num(),
+                              1);
+        TestRunner->TestTrue(
+            TEXT("Unrelated handler is preserved"),
+            input_component->GetActionEventBindings().ContainsByPredicate(
+                [sentinel_handle](TUniquePtr<FEnhancedInputActionEventBinding> const& binding) {
+                    return binding->GetHandle() == sentinel_handle;
+                }));
+        TestRunner->TestTrue(TEXT("Movement is neutralized"),
+                             ship->get_move_input().IsNearlyZero());
+        TestRunner->TestTrue(TEXT("Turning is neutralized"), ship->get_turn_input().IsNearlyZero());
+        TestRunner->TestTrue(TEXT("Laser firing is stopped"),
+                             ship->get_laser_firing_mode() == ELaserFiringState::idle);
+
+        context.shutdown();
+        ship->Destroy();
+        controller->Destroy();
+    }
+};
