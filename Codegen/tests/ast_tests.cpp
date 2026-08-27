@@ -10,6 +10,21 @@
 namespace codegen {
 namespace {
 
+TEST(Ast, NodeProvidesVariantInterface) {
+    Node node{Raw{"initial", {}}};
+
+    EXPECT_TRUE(node.is<Raw>());
+    ASSERT_NE(node.get_if<Raw>(), nullptr);
+    EXPECT_EQ(node.get_if<Raw>()->text, "initial");
+    EXPECT_EQ(std::visit([](auto const& value) { return sizeof(value); }, node), sizeof(Raw));
+
+    node = NewLines{2};
+
+    EXPECT_TRUE(node.is<NewLines>());
+    EXPECT_EQ(node.get_if<NewLines>()->count, 2);
+    EXPECT_EQ(node.get_if<Raw>(), nullptr);
+}
+
 TEST(Ast, RendersBraceInitialisedTree) {
     CppFile const file{
         .path = std::filesystem::path{"Example.h"},

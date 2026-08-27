@@ -209,7 +209,7 @@ auto children(Node const& node) -> Nodes const* {
                 return nullptr;
             }
         },
-        node.value);
+        node);
 }
 
 auto dependencies(Node const& node) -> std::vector<TypeDependency> {
@@ -239,14 +239,14 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
                 return {};
             }
         },
-        node.value);
+        node);
 }
 
 auto render_nodes(Nodes const& nodes, RenderContext const& context, int default_newlines)
     -> std::string {
     std::string output;
     for (auto const& node : nodes) {
-        if (auto const* newlines{std::get_if<NewLines>(&node.value)}; newlines != nullptr) {
+        if (auto const* newlines{node.get_if<NewLines>()}; newlines != nullptr) {
             output = trim_newlines(std::move(output));
             output.append(static_cast<std::size_t>(newlines->count), '\n');
             continue;
@@ -324,7 +324,7 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                        context.apply_indent("} // namespace " + value.name);
             }
         },
-        node.value);
+        node);
 }
 
 auto render(CppFile const& file) -> std::string {

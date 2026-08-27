@@ -1544,7 +1544,7 @@ auto lower_vector_module(VectorModuleSchema const& module,
         .fixed = module.fixed,
     };
     auto lowered{lower_soa(schema, types)};
-    auto* storage{std::get_if<Struct>(&lowered.header.back().value)};
+    auto* storage{lowered.header.back().get_if<Struct>()};
     if (storage == nullptr) {
         throw std::logic_error{"Vector SOA lowering did not produce a storage struct"};
     }
@@ -1678,7 +1678,7 @@ auto lower_facade_module(FacadeModuleSchema const& module,
 
     Nodes class_nodes;
     if (!public_nodes.empty()) {
-        if (std::holds_alternative<NewLines>(public_nodes.back().value)) {
+        if (public_nodes.back().is<NewLines>()) {
             public_nodes.pop_back();
         }
         class_nodes.push_back(raw("public:"));
@@ -1686,7 +1686,7 @@ auto lower_facade_module(FacadeModuleSchema const& module,
         class_nodes.insert(class_nodes.end(), public_nodes.begin(), public_nodes.end());
         class_nodes.push_back(lines(2));
     }
-    if (std::holds_alternative<NewLines>(private_nodes.back().value)) {
+    if (private_nodes.back().is<NewLines>()) {
         private_nodes.pop_back();
     }
     class_nodes.push_back(raw("private:"));

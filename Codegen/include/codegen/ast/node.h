@@ -11,14 +11,11 @@
 #include <codegen/ast/struct.h>
 #include <codegen/ast/using_declaration.h>
 
-#include <concepts>
-#include <utility>
 #include <variant>
 
 namespace codegen {
 
-struct Node {
-    using Value = std::variant<Raw,
+using NodeValue = std::variant<Raw,
                                NewLines,
                                Include,
                                IncludeDependencies,
@@ -29,11 +26,24 @@ struct Node {
                                Struct,
                                Namespace>;
 
-    Value value;
+struct Node : NodeValue {
+    using NodeValue::NodeValue;
+    using NodeValue::operator=;
 
     template <typename T>
-        requires std::constructible_from<Value, T>
-    Node(T node) : value{std::move(node)} {}
+    auto get_if() noexcept -> T* {
+        return std::get_if<T>(static_cast<NodeValue*>(this));
+    }
+
+    template <typename T>
+    auto get_if() const noexcept -> T const* {
+        return std::get_if<T>(static_cast<NodeValue const*>(this));
+    }
+
+    template <typename T>
+    auto is() const noexcept -> bool {
+        return std::holds_alternative<T>(static_cast<NodeValue const&>(*this));
+    }
 };
 
 } // namespace codegen
