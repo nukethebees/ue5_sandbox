@@ -85,6 +85,55 @@ TEST(Generator, RejectsDuplicateOutputPaths) {
     EXPECT_THROW(render_modules(lower_modules(manifest)), std::invalid_argument);
 }
 
+TEST(Generator, RejectsInvalidVectorDimensions) {
+    Manifest const manifest{
+        .schema_version = 1,
+        .modules = {VectorModuleSchema{
+            .settings = ModuleSettings{.name = "vectors", .header = "Vectors.h"},
+            .storage_name = "FVectors",
+            .value_type = TypeRef{"float"},
+            .components = {},
+            .equivalent_type = TypeRef{"FVector"},
+        }},
+    };
+
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Generator, RejectsDuplicateStorageOperations) {
+    auto manifest{example_manifest()};
+    auto& module{std::get<SoaModuleSchema>(manifest.modules.front())};
+    module.structs.front().operations.push_back(StorageOperation::reset);
+
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Generator, RejectsPartiallyEquivalentHomogeneousLayouts) {
+    Manifest const manifest{
+        .schema_version = 1,
+        .modules = {HomogeneousModuleSchema{
+            .settings = ModuleSettings{.name = "vectors", .header = "Vectors.h"},
+            .layouts = {HomogeneousLayoutSchema{
+                .name = "Vectors",
+                .components = {"xs", "ys"},
+                .value_types = {
+                    HomogeneousValueSchema{
+                        .type = TypeRef{"float"},
+                        .suffix = "f",
+                        .equivalent_type = TypeRef{"FVector2f"},
+                    },
+                    HomogeneousValueSchema{
+                        .type = TypeRef{"double"},
+                        .suffix = "d",
+                    },
+                },
+            }},
+        }},
+    };
+
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
 TEST(Generator, RendersDeterministically) {
     auto const modules{lower_modules(example_manifest())};
     EXPECT_EQ(render_modules(modules).front().content,

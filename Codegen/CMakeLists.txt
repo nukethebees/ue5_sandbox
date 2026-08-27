@@ -3,9 +3,16 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(codegen-lib
   src/ast.cpp
+  src/facade_lowering.cpp
+  src/fixed_soa_lowering.cpp
   src/generator.cpp
+  src/homogeneous_lowering.cpp
   src/json.cpp
+  src/lowering_utils.cpp
   src/schema.cpp
+  src/soa_lowering.cpp
+  src/validation.cpp
+  src/vector_lowering.cpp
 )
 target_compile_features(codegen-lib PUBLIC cxx_std_23)
 target_include_directories(codegen-lib PUBLIC include)
