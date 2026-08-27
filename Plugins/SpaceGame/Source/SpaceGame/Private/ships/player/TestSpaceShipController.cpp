@@ -1,11 +1,12 @@
 #include "SpaceGame/ships/player/TestSpaceShipController.h"
 
-#include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/ui/PauseMenuWidget.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
@@ -110,6 +111,7 @@ void ATestSpaceShipController::BeginPlay() {
 
     bind_orchestrator_reset();
     initialise_hud();
+    initialise_pause_menu();
 
     if (!IsValid(GetPawn())) {
         UE_LOG(LogSandbox,
@@ -143,6 +145,12 @@ void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
     }
     hud_widget = nullptr;
     hud_orchestrator.Reset();
+
+    if (IsValid(pause_menu_widget)) {
+        pause_menu_widget->RemoveFromParent();
+        pause_menu_widget->resume_requested.RemoveAll(this);
+    }
+    pause_menu_widget = nullptr;
 
     Super::EndPlay(reason);
 }
@@ -224,6 +232,8 @@ void ATestSpaceShipController::bind_orchestrator_reset() {
     orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
 }
 void ATestSpaceShipController::on_orchestrator_reset(ATestBatchOrchestrator& orchestrator) {
+    hide_pause_menu();
+
     auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator.get_player_ship())};
     if (!IsValid(player_ship)) {
         if (IsValid(GetPawn())) {
@@ -283,6 +293,90 @@ void ATestSpaceShipController::initialise_hud() {
     created_widget->set_entity_colours(team_visual_data->build_team_colour_cache());
     created_widget->set_crosshair_distances(ui_data->crosshair_distances);
     orchestrator->get_hud_manager().register_hud(*created_widget);
+}
+auto ATestSpaceShipController::initialise_pause_menu() -> bool {
+    if (IsValid(pause_menu_widget)) {
+        return true;
+    }
+
+    if (!IsValid(ui_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::initialise_pause_menu: UI data is invalid."));
+        return false;
+    }
+
+    auto const widget_class{ui_data->get_widget_class<ml::ioj::UPauseMenuWidget>()};
+    if (!widget_class) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::initialise_pause_menu: Widget class is not "
+                    "configured."));
+        return false;
+    }
+
+    auto* const created_widget{
+        CreateWidget<ml::ioj::UPauseMenuWidget>(this, widget_class, TEXT("pause_menu"))};
+    if (!IsValid(created_widget)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::initialise_pause_menu: Failed to create widget."));
+        return false;
+    }
+
+    pause_menu_widget = created_widget;
+    created_widget->resume_requested.AddUObject(this, &ThisClass::resume_game);
+    return true;
+}
+void ATestSpaceShipController::show_pause_menu() {
+    if (!initialise_pause_menu()) {
+        return;
+    }
+
+    pause_menu_widget->AddToViewport(100);
+
+    FInputModeGameAndUI input_mode;
+    input_mode.SetWidgetToFocus(pause_menu_widget->TakeWidget());
+    input_mode.SetHideCursorDuringCapture(false);
+    SetInputMode(input_mode);
+    bShowMouseCursor = true;
+    pause_menu_widget->focus_resume_button();
+}
+void ATestSpaceShipController::hide_pause_menu() {
+    if (IsValid(pause_menu_widget)) {
+        pause_menu_widget->RemoveFromParent();
+    }
+
+    SetInputMode(FInputModeGameOnly{});
+    bShowMouseCursor = false;
+}
+void ATestSpaceShipController::resume_game() {
+    auto* const orchestrator{hud_orchestrator.Get()};
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ATestSpaceShipController::resume_game: Orchestrator is invalid."));
+        return;
+    }
+
+    switch (orchestrator->get_state()) {
+        case EOrchestratorState::Uninitialised:
+        case EOrchestratorState::Paused: {
+            orchestrator->start_simulation();
+            hide_pause_menu();
+            break;
+        }
+        case EOrchestratorState::Running: {
+            hide_pause_menu();
+            break;
+        }
+        case EOrchestratorState::Stopped: {
+            UE_LOG(LogSandboxController,
+                   Error,
+                   TEXT("ATestSpaceShipController::resume_game: Orchestrator is stopped."));
+            break;
+        }
+    }
 }
 void ATestSpaceShipController::on_player_ship_died() {
     UnPossess();
@@ -402,12 +496,16 @@ void ATestSpaceShipController::toggle_pause_game() {
 
     switch (orchestrator->get_state()) {
         case EOrchestratorState::Running: {
+            if (!initialise_pause_menu()) {
+                return;
+            }
             orchestrator->pause_simulation();
+            show_pause_menu();
             break;
         }
         case EOrchestratorState::Uninitialised:
         case EOrchestratorState::Paused: {
-            orchestrator->start_simulation();
+            resume_game();
             break;
         }
         case EOrchestratorState::Stopped: {
