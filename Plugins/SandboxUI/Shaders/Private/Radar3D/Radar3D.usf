@@ -1,0 +1,199 @@
+#include "/Engine/Public/Platform.ush"
+
+struct RadarContact {
+    float3 position;
+    float size;
+    float4 color;
+};
+
+StructuredBuffer<RadarContact> Contacts;
+int2 OutputSize;
+
+float2 project_point(const float3 world_position) {
+    float3 const camera_position = float3(3.4, -4.2, 3.0);
+    float3 const camera_forward = normalize(-camera_position);
+    float3 const camera_right = normalize(cross(camera_forward, float3(0.0, 0.0, 1.0)));
+    float3 const camera_up = cross(camera_right, camera_forward);
+    float3 const camera_delta = world_position - camera_position;
+    float const depth = max(dot(camera_delta, camera_forward), 0.001);
+    float const tan_half_fov = 0.58;
+    float2 const ndc = float2(dot(camera_delta, camera_right), dot(camera_delta, camera_up)) /
+                       (depth * tan_half_fov);
+    return float2(0.5 + ndc.x * 0.5, 0.5 - ndc.y * 0.5) * float2(OutputSize);
+}
+
+float2 quad_corner(const uint vertex_id) {
+    float2 corner = 0.0;
+    corner.x = vertex_id == 1 || vertex_id == 2 || vertex_id == 4 ? 1.0 : 0.0;
+    corner.y = vertex_id == 2 || vertex_id == 4 || vertex_id == 5 ? 1.0 : 0.0;
+    return corner;
+}
+
+float4 pixel_to_clip(const float2 pixel_position) {
+    float2 const clip_position =
+        pixel_position / float2(OutputSize) * float2(2.0, -2.0) + float2(-1.0, 1.0);
+    return float4(clip_position, 0.5, 1.0);
+}
+
+void radar_background_vs(const uint vertex_id : SV_VertexID,
+                         out float4 position : SV_Position) {
+    position = pixel_to_clip(quad_corner(vertex_id) * float2(OutputSize));
+}
+
+float4 radar_background_ps(const float4 position : SV_Position) : SV_Target0 {
+    float2 const normalized_pixel = position.xy / float2(OutputSize);
+    float const vignette = saturate(1.0 - length(normalized_pixel - 0.5) * 0.75);
+    return float4(float3(0.003, 0.009, 0.014) * vignette, 1.0);
+}
+
+void radar_plane_vs(const uint vertex_id : SV_VertexID, out float4 position : SV_Position) {
+    float3 const vertices[6] = {
+        float3(-1.0, -1.0, 0.0), float3(1.0, -1.0, 0.0), float3(1.0, 1.0, 0.0),
+        float3(-1.0, -1.0, 0.0), float3(1.0, 1.0, 0.0), float3(-1.0, 1.0, 0.0),
+    };
+    position = pixel_to_clip(project_point(vertices[vertex_id]));
+}
+
+float4 radar_plane_ps() : SV_Target0 {
+    return float4(0.04, 0.42, 0.40, 0.10);
+}
+
+static const float3 static_line_starts[18] = {
+    float3(-1.0, -1.0, 0.0), float3(1.0, -1.0, 0.0),
+    float3(1.0, 1.0, 0.0), float3(-1.0, 1.0, 0.0),
+    float3(-1.0, 0.0, 0.0), float3(0.0, -1.0, 0.0),
+    float3(-1.0, -1.0, -0.8), float3(1.0, -1.0, -0.8),
+    float3(1.0, 1.0, -0.8), float3(-1.0, 1.0, -0.8),
+    float3(-1.0, -1.0, 0.8), float3(1.0, -1.0, 0.8),
+    float3(1.0, 1.0, 0.8), float3(-1.0, 1.0, 0.8),
+    float3(-1.0, -1.0, -0.8), float3(1.0, -1.0, -0.8),
+    float3(1.0, 1.0, -0.8), float3(-1.0, 1.0, -0.8),
+};
+
+static const float3 static_line_ends[18] = {
+    float3(1.0, -1.0, 0.0), float3(1.0, 1.0, 0.0),
+    float3(-1.0, 1.0, 0.0), float3(-1.0, -1.0, 0.0),
+    float3(1.0, 0.0, 0.0), float3(0.0, 1.0, 0.0),
+    float3(1.0, -1.0, -0.8), float3(1.0, 1.0, -0.8),
+    float3(-1.0, 1.0, -0.8), float3(-1.0, -1.0, -0.8),
+    float3(1.0, -1.0, 0.8), float3(1.0, 1.0, 0.8),
+    float3(-1.0, 1.0, 0.8), float3(-1.0, -1.0, 0.8),
+    float3(-1.0, -1.0, 0.8), float3(1.0, -1.0, 0.8),
+    float3(1.0, 1.0, 0.8), float3(-1.0, 1.0, 0.8),
+};
+
+struct RadarLineVertexOutput {
+    float4 position : SV_Position;
+    nointerpolation float2 line_start : RADAR_LINE_START;
+    nointerpolation float2 line_end : RADAR_LINE_END;
+    nointerpolation float4 color : RADAR_LINE_COLOR;
+    nointerpolation float thickness : RADAR_LINE_THICKNESS;
+    nointerpolation float opacity : RADAR_LINE_OPACITY;
+};
+
+RadarLineVertexOutput make_line_vertex(const uint vertex_id,
+                                       const float3 world_start,
+                                       const float3 world_end,
+                                       const float4 color,
+                                       const float thickness,
+                                       const float opacity) {
+    RadarLineVertexOutput output;
+    output.line_start = project_point(world_start);
+    output.line_end = project_point(world_end);
+    output.color = color;
+    output.thickness = thickness;
+    output.opacity = opacity;
+
+    float2 const segment = output.line_end - output.line_start;
+    float2 const direction = segment / max(length(segment), 0.0001);
+    float2 const normal = float2(-direction.y, direction.x);
+    float2 const corner = quad_corner(vertex_id);
+    float const extent = thickness + 1.0;
+    float2 const pixel_position = lerp(output.line_start, output.line_end, corner.x) +
+                                  direction * ((corner.x * 2.0 - 1.0) * extent) +
+                                  normal * ((corner.y * 2.0 - 1.0) * extent);
+    output.position = pixel_to_clip(pixel_position);
+    return output;
+}
+
+RadarLineVertexOutput radar_static_line_vs(const uint vertex_id : SV_VertexID,
+                                           const uint instance_id : SV_InstanceID) {
+    float const thickness = instance_id < 4 ? 0.8 : (instance_id < 6 ? 0.65 : 0.9);
+    float opacity = 0.70;
+    if (instance_id < 4) {
+        opacity = 0.72;
+    } else if (instance_id < 6) {
+        opacity = 0.55;
+    } else if (instance_id >= 10 && instance_id < 14) {
+        opacity = 0.88;
+    } else if (instance_id >= 14) {
+        opacity = 0.82;
+    }
+    float4 const color =
+        instance_id < 6 ? float4(0.04, 0.42, 0.40, 1.0) : float4(0.10, 0.72, 0.70, 1.0);
+    return make_line_vertex(vertex_id, static_line_starts[instance_id],
+                            static_line_ends[instance_id], color, thickness, opacity);
+}
+
+RadarLineVertexOutput radar_contact_line_vs(const uint vertex_id : SV_VertexID,
+                                            const uint instance_id : SV_InstanceID) {
+    RadarContact const contact = Contacts[instance_id];
+    return make_line_vertex(vertex_id, float3(contact.position.xy, 0.0), contact.position,
+                            contact.color, 0.65, 0.48);
+}
+
+float distance_to_segment(const float2 sample_position, const float2 start, const float2 end) {
+    float2 const segment = end - start;
+    float const segment_length_squared = max(dot(segment, segment), 0.0001);
+    float const t = saturate(dot(sample_position - start, segment) / segment_length_squared);
+    return length(sample_position - (start + t * segment));
+}
+
+float4 radar_line_ps(RadarLineVertexOutput input) : SV_Target0 {
+    float const distance = distance_to_segment(input.position.xy, input.line_start, input.line_end);
+    float const coverage =
+        (1.0 - smoothstep(input.thickness, input.thickness + 1.0, distance)) * input.opacity;
+    clip(coverage - 0.0001);
+    return float4(input.color.rgb, coverage);
+}
+
+struct RadarMarkerVertexOutput {
+    float4 position : SV_Position;
+    float2 local_position : RADAR_MARKER_LOCAL_POSITION;
+    nointerpolation float size : RADAR_MARKER_SIZE;
+    nointerpolation float4 color : RADAR_MARKER_COLOR;
+};
+
+RadarMarkerVertexOutput radar_marker_vs(const uint vertex_id : SV_VertexID,
+                                        const uint instance_id : SV_InstanceID) {
+    RadarContact const contact = Contacts[instance_id];
+    float2 const corner = quad_corner(vertex_id);
+    float const extent = contact.size + 5.0;
+
+    RadarMarkerVertexOutput output;
+    output.local_position = (corner * 2.0 - 1.0) * extent;
+    output.position = pixel_to_clip(project_point(contact.position) + output.local_position);
+    output.size = contact.size;
+    output.color = contact.color;
+    return output;
+}
+
+float4 radar_marker_ps(RadarMarkerVertexOutput input) : SV_Target0 {
+    float const marker_distance = length(input.local_position);
+    float const glow = 1.0 - smoothstep(input.size, input.size + 5.0, marker_distance);
+    float const core = 1.0 - smoothstep(input.size - 1.25, input.size, marker_distance);
+
+    float const glow_alpha = glow * 0.28;
+    float const core_alpha = core * input.color.a;
+    float const highlight_alpha = core * 0.32;
+    float const remaining_after_core = 1.0 - core_alpha;
+    float const remaining_after_highlight = 1.0 - highlight_alpha;
+    float const alpha =
+        1.0 - (1.0 - glow_alpha) * remaining_after_core * remaining_after_highlight;
+    float const contact_weight = glow_alpha * remaining_after_core * remaining_after_highlight +
+                                 core_alpha * remaining_after_highlight;
+    float3 const color =
+        (input.color.rgb * contact_weight + highlight_alpha) / max(alpha, 0.0001);
+    clip(alpha - 0.0001);
+    return float4(color, alpha);
+}
