@@ -20,3 +20,7 @@ the asset and choose **Run Editor Utility Widget** to compare deterministic patt
 `EUW_Radar3DShowcase` demonstrates the experimental CPU-contact-to-RDG-to-Slate pipeline without a
 level, actors, components, or scene capture. Right-click it and choose **Run Editor Utility Widget**
 to see the fixed-camera radar box and its animated synthetic contact.
+
+`EUW_Scatter3DShowcase` demonstrates a dirty-driven RDG 3D scatter plot with deterministic point
+clusters, a fixed camera, depth-tested instanced markers, and scaling controls through 65,536
+points. Right-click it and choose **Run Editor Utility Widget** to launch the standalone example.
