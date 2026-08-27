@@ -481,20 +481,20 @@ auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
 
 auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
                                    std::map<std::string, CppType> const& types) -> Module {
-    Nodes header_nodes{IncludeDependencies{}, lines(2)};
-    Nodes source_nodes{Include{source_include(module.settings), false},
-                       lines(2),
-                       IncludeDependencies{},
-                       lines(2)};
+    NodeListBuilder header_nodes;
+    header_nodes.add(IncludeDependencies{}, 2);
+
+    NodeListBuilder source_nodes;
+    source_nodes.add(Include{source_include(module.settings), false}, 2)
+        .add(IncludeDependencies{}, 2);
     for (std::size_t layout_index{0}; layout_index < module.layouts.size(); ++layout_index) {
         auto const& layout{module.layouts[layout_index]};
-        header_nodes.push_back(homogeneous_view_node(layout));
-        header_nodes.push_back(lines(2));
+        header_nodes.add(homogeneous_view_node(layout), 2);
         for (std::size_t value_index{0}; value_index < layout.value_types.size(); ++value_index) {
             auto const& value{layout.value_types[value_index]};
-            header_nodes.push_back(homogeneous_storage_node(layout, value, types));
+            header_nodes.add(homogeneous_storage_node(layout, value, types));
             if (value_index + 1 < layout.value_types.size()) {
-                header_nodes.push_back(lines(2));
+                header_nodes.new_lines(2);
             }
 
             auto const storage_name{"F" + layout.name + value.suffix};
@@ -503,7 +503,7 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
             for (auto const& component : layout.components) {
                 body.push_back("ml::apply_permutation(" + component + ", indices);");
             }
-            source_nodes.push_back(definition(
+            source_nodes.add(definition(
                 FunctionSpec{
                     .name = "apply_permutation",
                     .return_type = "void",
@@ -514,7 +514,7 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
                 storage_name));
             if (layout_index + 1 < module.layouts.size() ||
                 value_index + 1 < layout.value_types.size()) {
-                source_nodes.push_back(lines(2));
+                source_nodes.new_lines(2);
             }
         }
     }
@@ -522,14 +522,14 @@ auto lower_homogeneous_module_impl(HomogeneousModuleSchema const& module,
         .name = module.settings.name,
         .header = CppFile{
             .path = module.settings.header,
-            .nodes = std::move(header_nodes),
+            .nodes = header_nodes.build(),
             .clang_format_off = true,
             .include_order = module.settings.include_order,
         },
         .source = module.settings.source.has_value()
                       ? std::optional<CppFile>{CppFile{
                             .path = *module.settings.source,
-                            .nodes = std::move(source_nodes),
+                            .nodes = source_nodes.build(),
                             .pragma_once = false,
                             .clang_format_off = true,
                             .include_order = module.settings.include_order,
