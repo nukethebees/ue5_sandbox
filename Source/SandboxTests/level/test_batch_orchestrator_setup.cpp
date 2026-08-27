@@ -4,20 +4,20 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 
+#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelTelemetryManager.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/simulation/SimulationConfig.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
-#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -154,6 +154,7 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
         return;
     }
     context_.orchestrator.set_player_ship(*player);
+    telemetry_player_team_index = std::to_underlying(player->get_team());
 
     initialise_test_driver();
     telemetry_observations.reset();
@@ -161,6 +162,8 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
 
     test_driver->orchestrator.start_simulation();
     initial_active_entity_count = test_driver->registry.get_num_alive_active_entities();
+    initial_registry_slot_count = test_driver->registry.get_num_elements();
+    initial_issued_unique_id_count = test_driver->registry.get_num_unique_ids_issued();
     test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
     test_driver->timeline.then_after(0.05, [this] { kill_telemetry_test_entity(); });
@@ -168,29 +171,55 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
 }
 
 void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
-    auto const& telemetry{
-        test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
-    telemetry_samples_before_change = telemetry.num();
+    auto const& telemetry_manager{test_driver->orchestrator.get_level_telemetry_manager()};
+    telemetry_samples_before_change = telemetry_manager.get_active_entity_count_data().num();
+    composition_samples_before_change = telemetry_manager.get_active_entity_counts_data().num();
+    kill_samples_before_change = telemetry_manager.get_cumulative_kill_count_data().num();
 
     TStaticArray<FRegistryEntityHandle, 1> const targets{
         test_driver->get_player_ship().get_entity_handle()};
-    test_driver->queue_kills(targets);
+    test_driver->queue_kills(targets, targets[0]);
 }
 
 void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
     ATestBatchOrchestrator& orchestrator) {
-    auto const& telemetry{
-        orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
-    check(!telemetry.is_empty());
+    auto const& telemetry_manager{orchestrator.get_level_telemetry_manager()};
+    auto const& entity_count_data{telemetry_manager.get_active_entity_count_data()};
+    auto const& entity_counts_data{telemetry_manager.get_active_entity_counts_data()};
+    auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
+    auto const& slot_count_data{telemetry_manager.get_registry_slot_count_data()};
+    auto const& issued_unique_id_count_data{telemetry_manager.get_issued_unique_id_count_data()};
+    check(!entity_count_data.is_empty());
+    check(!entity_counts_data.is_empty());
+    check(!kill_count_data.is_empty());
+    check(!slot_count_data.is_empty());
+    check(!issued_unique_id_count_data.is_empty());
+
+    auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
+    auto const& telemetry_entity_counts{entity_counts_data.last_value()};
+    auto const registry_entity_counts{test_driver->registry.count_alive_per_team_and_type()};
 
     telemetry_observations.add(
         test_driver->get_time(),
         FTelemetryObservation{
             .completed_ticks = orchestrator.get_completed_ticks(),
-            .telemetry_sample_count = telemetry.num(),
-            .last_telemetry_tick = telemetry.last_time(),
-            .telemetry_entity_count = telemetry.last_value(),
+            .telemetry_sample_count = entity_count_data.num(),
+            .last_telemetry_tick = entity_count_data.last_time(),
+            .telemetry_entity_count = entity_count_data.last_value(),
             .registry_entity_count = test_driver->registry.get_num_alive_active_entities(),
+            .composition_sample_count = entity_counts_data.num(),
+            .last_composition_tick = entity_counts_data.last_time(),
+            .telemetry_player_ship_count =
+                telemetry_entity_counts[telemetry_player_team_index][player_type],
+            .registry_player_ship_count =
+                registry_entity_counts[telemetry_player_team_index][player_type],
+            .kill_sample_count = kill_count_data.num(),
+            .last_kill_tick = kill_count_data.last_time(),
+            .cumulative_kill_count = kill_count_data.last_value(),
+            .slot_sample_count = slot_count_data.num(),
+            .registry_slot_count = slot_count_data.last_value(),
+            .issued_unique_id_sample_count = issued_unique_id_count_data.num(),
+            .issued_unique_id_count = issued_unique_id_count_data.last_value(),
         });
     test_driver->advance_timeline();
 }
@@ -213,6 +242,32 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(initial_active_entity_count,
                      initial_observation.telemetry_entity_count,
                      TEXT("Baseline records initial active entities"));
+    checks.are_equal(int32{1},
+                     initial_observation.composition_sample_count,
+                     TEXT("Tick-zero composition baseline recorded"));
+    checks.are_equal(uint64{0},
+                     initial_observation.last_composition_tick,
+                     TEXT("Composition baseline uses tick zero"));
+    checks.are_equal(initial_observation.registry_player_ship_count,
+                     initial_observation.telemetry_player_ship_count,
+                     TEXT("Baseline composition records the player ship"));
+    checks.are_equal(
+        int32{1}, initial_observation.kill_sample_count, TEXT("Tick-zero kill baseline recorded"));
+    checks.are_equal(
+        uint64{0}, initial_observation.last_kill_tick, TEXT("Kill baseline uses tick zero"));
+    checks.are_equal(
+        int32{0}, initial_observation.cumulative_kill_count, TEXT("Kill baseline starts at zero"));
+    checks.are_equal(
+        int32{1}, initial_observation.slot_sample_count, TEXT("Tick-zero slot baseline recorded"));
+    checks.are_equal(initial_registry_slot_count,
+                     initial_observation.registry_slot_count,
+                     TEXT("Slot baseline matches the registry"));
+    checks.are_equal(int32{1},
+                     initial_observation.issued_unique_id_sample_count,
+                     TEXT("Tick-zero issued-ID baseline recorded"));
+    checks.are_equal(initial_issued_unique_id_count,
+                     initial_observation.issued_unique_id_count,
+                     TEXT("Issued-ID baseline matches the registry"));
 
     int32 changed_observation_index{INDEX_NONE};
     auto const observation_count{telemetry_observations.num()};
@@ -240,6 +295,39 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(initial_active_entity_count - 1,
                      changed_observation.telemetry_entity_count,
                      TEXT("Killed entity changes the telemetry count"));
+    checks.are_equal(composition_samples_before_change + 1,
+                     changed_observation.composition_sample_count,
+                     TEXT("Killed entity changes composition telemetry"));
+    checks.are_equal(changed_observation.completed_ticks,
+                     changed_observation.last_composition_tick,
+                     TEXT("Composition updates before the end-tick hook"));
+    checks.are_equal(changed_observation.registry_player_ship_count,
+                     changed_observation.telemetry_player_ship_count,
+                     TEXT("Composition records the destroyed player ship"));
+    checks.are_equal(int32{0},
+                     changed_observation.telemetry_player_ship_count,
+                     TEXT("Destroyed player is removed from composition"));
+    checks.are_equal(kill_samples_before_change + 1,
+                     changed_observation.kill_sample_count,
+                     TEXT("Killed entity changes cumulative kill telemetry"));
+    checks.are_equal(changed_observation.completed_ticks,
+                     changed_observation.last_kill_tick,
+                     TEXT("Kill telemetry updates before the end-tick hook"));
+    checks.are_equal(int32{1},
+                     changed_observation.cumulative_kill_count,
+                     TEXT("Killed entity increments the cumulative kill count"));
+    checks.are_equal(int32{1},
+                     changed_observation.slot_sample_count,
+                     TEXT("Killing an entity does not change slot telemetry"));
+    checks.are_equal(initial_registry_slot_count,
+                     changed_observation.registry_slot_count,
+                     TEXT("Killing an entity preserves registry slots"));
+    checks.are_equal(int32{1},
+                     changed_observation.issued_unique_id_sample_count,
+                     TEXT("Killing an entity does not change issued-ID telemetry"));
+    checks.are_equal(initial_issued_unique_id_count,
+                     changed_observation.issued_unique_id_count,
+                     TEXT("Killing an entity preserves issued IDs"));
 
     auto const& final_observation{telemetry_observations.last_value()};
     checks.are_equal(telemetry_samples_before_change + 1,
@@ -253,7 +341,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryManagerTest,
-                                 "Sandbox.UnitTests.LevelTelemetryManager.ActiveEntityCount",
+                                 "Sandbox.UnitTests.LevelTelemetryManager",
                                  EAutomationTestFlags::EditorContext |
                                      EAutomationTestFlags::EngineFilter)
 
@@ -262,21 +350,125 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     FLevelTelemetryManager telemetry_manager;
 
     telemetry_manager.initialise(entity_registry);
-    auto const& initial_data{telemetry_manager.get_active_entity_count_data()};
-    TestEqual(TEXT("Initialisation records one sample"), initial_data.num(), int32{1});
-    TestEqual(TEXT("Initial sample uses tick zero"), initial_data.last_time(), uint64{0});
-    TestEqual(TEXT("Initial sample records the active count"), initial_data.last_value(), 0);
+    auto const& active_count_data{telemetry_manager.get_active_entity_count_data()};
+    auto const& active_counts_data{telemetry_manager.get_active_entity_counts_data()};
+    auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
+    auto const& slot_count_data{telemetry_manager.get_registry_slot_count_data()};
+    auto const& issued_unique_id_count_data{telemetry_manager.get_issued_unique_id_count_data()};
+    TestEqual(
+        TEXT("Initialisation records one active-count sample"), active_count_data.num(), int32{1});
+    TestEqual(TEXT("Initial active-count sample uses tick zero"),
+              active_count_data.last_time(),
+              uint64{0});
+    TestEqual(TEXT("Initial active-count sample records zero"), active_count_data.last_value(), 0);
+    TestEqual(
+        TEXT("Initialisation records one composition sample"), active_counts_data.num(), int32{1});
+    TestEqual(TEXT("Initial composition sample uses tick zero"),
+              active_counts_data.last_time(),
+              uint64{0});
+    TestEqual(TEXT("Initial composition has no player ships"),
+              active_counts_data.last_value()[std::to_underlying(ETestTeam::Green)]
+                                             [std::to_underlying(ETestEntityType::PlayerShip)],
+              0);
+    TestEqual(TEXT("Initialisation records one kill sample"), kill_count_data.num(), int32{1});
+    TestEqual(TEXT("Initial kill sample records zero"), kill_count_data.last_value(), 0);
+    TestEqual(TEXT("Initialisation records one slot sample"), slot_count_data.num(), int32{1});
+    TestEqual(TEXT("Initial slot sample records zero"), slot_count_data.last_value(), 0);
+    TestEqual(TEXT("Initialisation records one issued-ID sample"),
+              issued_unique_id_count_data.num(),
+              int32{1});
+    TestEqual(
+        TEXT("Initial issued-ID sample records zero"), issued_unique_id_count_data.last_value(), 0);
 
     telemetry_manager.tick(1, entity_registry);
-    TestEqual(TEXT("Unchanged count does not add a sample"), initial_data.num(), int32{1});
+    TestEqual(
+        TEXT("Unchanged active count does not add a sample"), active_count_data.num(), int32{1});
+    TestEqual(
+        TEXT("Unchanged composition does not add a sample"), active_counts_data.num(), int32{1});
+    TestEqual(TEXT("Unchanged kills do not add a sample"), kill_count_data.num(), int32{1});
+    TestEqual(TEXT("Unchanged slots do not add a sample"), slot_count_data.num(), int32{1});
+    TestEqual(TEXT("Unchanged issued IDs do not add a sample"),
+              issued_unique_id_count_data.num(),
+              int32{1});
 
     telemetry_manager.reset();
-    TestTrue(TEXT("Reset clears telemetry"), initial_data.is_empty());
+    TestTrue(TEXT("Reset clears active-count telemetry"), active_count_data.is_empty());
+    TestTrue(TEXT("Reset clears composition telemetry"), active_counts_data.is_empty());
+    TestTrue(TEXT("Reset clears kill telemetry"), kill_count_data.is_empty());
+    TestTrue(TEXT("Reset clears slot telemetry"), slot_count_data.is_empty());
+    TestTrue(TEXT("Reset clears issued-ID telemetry"), issued_unique_id_count_data.is_empty());
 
     telemetry_manager.initialise(entity_registry);
-    TestEqual(TEXT("Reinitialisation records one sample"), initial_data.num(), int32{1});
-    TestEqual(TEXT("Reinitialisation returns to tick zero"), initial_data.last_time(), uint64{0});
-    TestEqual(TEXT("Reinitialisation records the current count"), initial_data.last_value(), 0);
+    TestEqual(TEXT("Reinitialisation records one active-count sample"),
+              active_count_data.num(),
+              int32{1});
+    TestEqual(TEXT("Reinitialisation returns active-count telemetry to tick zero"),
+              active_count_data.last_time(),
+              uint64{0});
+
+    TArray<float> const locations_x{0.f, 0.f, 0.f};
+    TArray<float> const locations_y{0.f, 0.f, 0.f};
+    TArray<float> const locations_z{0.f, 0.f, 0.f};
+    TArray<float> const velocities_x{0.f, 0.f, 0.f};
+    TArray<float> const velocities_y{0.f, 0.f, 0.f};
+    TArray<float> const velocities_z{0.f, 0.f, 0.f};
+    TArray<float> const radii{0.f, 0.f, 0.f};
+    TArray<int32> const healths{100, 100, 100};
+    TArray<ETestTeam> const teams{ETestTeam::Green, ETestTeam::Red, ETestTeam::Red};
+    TArray<ETestEntityType> const entity_types{
+        ETestEntityType::PlayerShip,
+        ETestEntityType::CapitalShip,
+        ETestEntityType::CapitalShipFighter,
+    };
+    TArray<uint8> const alive{1u, 1u, 1u};
+    FTestEntityRegistry::EntityData::ConstView const fixture_entity_data{
+        .locations = FVectors3fConstView{locations_x, locations_y, locations_z},
+        .velocities = FVectors3fConstView{velocities_x, velocities_y, velocities_z},
+        .radii = radii,
+        .healths = healths,
+        .teams = teams,
+        .entity_types = entity_types,
+        .alive = alive,
+    };
+    entity_registry.add_entities(fixture_entity_data);
+
+    telemetry_manager.tick(2, entity_registry);
+    TestEqual(TEXT("Entity additions update active-count telemetry"),
+              active_count_data.last_value(),
+              int32{3});
+    TestEqual(TEXT("Entity additions update active-count telemetry at their tick"),
+              active_count_data.last_time(),
+              uint64{2});
+    TestEqual(TEXT("Composition records the green player ship"),
+              active_counts_data.last_value()[std::to_underlying(ETestTeam::Green)]
+                                             [std::to_underlying(ETestEntityType::PlayerShip)],
+              1);
+    TestEqual(TEXT("Composition records the red capital ship"),
+              active_counts_data.last_value()[std::to_underlying(ETestTeam::Red)]
+                                             [std::to_underlying(ETestEntityType::CapitalShip)],
+              1);
+    TestEqual(TEXT("Composition records the red fighter"),
+              active_counts_data.last_value()[std::to_underlying(
+                  ETestTeam::Red)][std::to_underlying(ETestEntityType::CapitalShipFighter)],
+              1);
+    TestEqual(
+        TEXT("Entity additions update slot telemetry"), slot_count_data.last_value(), int32{3});
+    TestEqual(TEXT("Entity additions update issued-ID telemetry"),
+              issued_unique_id_count_data.last_value(),
+              int32{3});
+
+    telemetry_manager.tick(3, entity_registry);
+    TestEqual(TEXT("Unchanged fixture does not add active-count telemetry"),
+              active_count_data.num(),
+              int32{2});
+    TestEqual(TEXT("Unchanged fixture does not add composition telemetry"),
+              active_counts_data.num(),
+              int32{2});
+    TestEqual(
+        TEXT("Unchanged fixture does not add slot telemetry"), slot_count_data.num(), int32{2});
+    TestEqual(TEXT("Unchanged fixture does not add issued-ID telemetry"),
+              issued_unique_id_count_data.num(),
+              int32{2});
 
     return true;
 }

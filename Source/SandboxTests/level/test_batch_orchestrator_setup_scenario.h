@@ -18,6 +18,17 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
         uint64 last_telemetry_tick{0};
         int32 telemetry_entity_count{0};
         int32 registry_entity_count{0};
+        int32 composition_sample_count{0};
+        uint64 last_composition_tick{0};
+        int32 telemetry_player_ship_count{0};
+        int32 registry_player_ship_count{0};
+        int32 kill_sample_count{0};
+        uint64 last_kill_tick{0};
+        int32 cumulative_kill_count{0};
+        int32 slot_sample_count{0};
+        int32 registry_slot_count{0};
+        int32 issued_unique_id_sample_count{0};
+        int32 issued_unique_id_count{0};
     };
   public:
     FTestBatchOrchestratorSetupScenario(FSimulationTestContext& context,
@@ -34,7 +45,12 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
 
     EOrchestratorSetupScenario scenario_;
     TimeSeriesData<FTelemetryObservation> telemetry_observations;
+    int32 telemetry_player_team_index{0};
     int32 initial_active_entity_count{0};
     int32 telemetry_samples_before_change{0};
+    int32 composition_samples_before_change{0};
+    int32 kill_samples_before_change{0};
+    int32 initial_registry_slot_count{0};
+    int32 initial_issued_unique_id_count{0};
 };
 }
