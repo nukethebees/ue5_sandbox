@@ -186,6 +186,49 @@ TEST(Ast, RendersTemplatedConstrainedFunctions) {
     EXPECT_NE(rendered.find("append_from(other);"), std::string::npos);
 }
 
+TEST(Ast, RendersTypedFunctionFormattingPolicies) {
+    auto compact{FunctionSpec{
+        .name = "apply",
+        .return_type = "void",
+        .body = {raw("func();")},
+        .is_inline = true,
+        .template_parameters = "typename TFunc",
+        .requires_clause = "Invocable<TFunc>",
+        .formatting = FunctionFormatting{
+            .body_layout = FunctionFormatting::BodyLayout::compact,
+            .requires_placement =
+                FunctionFormatting::RequiresPlacement::trailing_same_line,
+            .template_placement = FunctionFormatting::TemplatePlacement::same_line,
+        },
+    }};
+    EXPECT_EQ(render(header_function(compact)),
+              "template <typename TFunc> void apply() requires Invocable<TFunc> { func(); }");
+
+    auto prefixed{compact};
+    prefixed.formatting = FunctionFormatting{
+        .requires_placement = FunctionFormatting::RequiresPlacement::before_signature,
+    };
+    EXPECT_EQ(render(header_function(prefixed)),
+              "template <typename TFunc>\n"
+              "    requires Invocable<TFunc>\n"
+              "void apply() {\n"
+              "    func();\n"
+              "}");
+
+    auto separate_brace{compact};
+    separate_brace.template_parameters.reset();
+    separate_brace.formatting = FunctionFormatting{
+        .opening_brace_placement =
+            FunctionFormatting::OpeningBracePlacement::separate_line,
+    };
+    EXPECT_EQ(render(header_function(separate_brace)),
+              "void apply()\n"
+              "    requires Invocable<TFunc>\n"
+              "{\n"
+              "    func();\n"
+              "}");
+}
+
 TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
     TypeDependency const dependency{"check", "CoreMinimal.h", {}};
     Node const structure{Struct{
@@ -203,8 +246,10 @@ TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
                 .body = {raw("func();")},
                 .is_inline = true,
                 .template_parameters = "typename TFunc",
-                .compact_body = true,
-                .template_on_same_line = true,
+                .formatting = FunctionFormatting{
+                    .body_layout = FunctionFormatting::BodyLayout::compact,
+                    .template_placement = FunctionFormatting::TemplatePlacement::same_line,
+                },
             }),
             lines(2),
             AccessSpecifier{"private"},

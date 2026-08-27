@@ -62,16 +62,26 @@ auto render_signature(Function const& function) -> std::string {
         signature += spec.return_type.spelling + " ";
     }
     signature += qualified_name + "(" + join(parameters, ", ") + ")" + spec.suffix;
-    if (spec.requires_clause.has_value() && !spec.requires_before_signature) {
-        signature += std::string{spec.requires_on_new_line ? "\n    requires " : " requires "} +
-                     *spec.requires_clause;
-    }
-    if (spec.requires_clause.has_value() && spec.requires_before_signature) {
-        signature = "    requires " + *spec.requires_clause + "\n" + signature;
+    if (spec.requires_clause.has_value()) {
+        switch (spec.formatting.requires_placement) {
+        case FunctionFormatting::RequiresPlacement::trailing_next_line:
+            signature += "\n    requires " + *spec.requires_clause;
+            break;
+        case FunctionFormatting::RequiresPlacement::trailing_same_line:
+            signature += " requires " + *spec.requires_clause;
+            break;
+        case FunctionFormatting::RequiresPlacement::before_signature:
+            signature = "    requires " + *spec.requires_clause + "\n" + signature;
+            break;
+        }
     }
     if (spec.template_parameters.has_value()) {
         signature = "template <" + *spec.template_parameters + ">" +
-                    (spec.template_on_same_line ? " " : "\n") + signature;
+                    (spec.formatting.template_placement ==
+                             FunctionFormatting::TemplatePlacement::same_line
+                         ? " "
+                         : "\n") +
+                    signature;
     }
     return signature;
 }
@@ -315,14 +325,16 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 if (value.declaration) {
                     return signature + ";";
                 }
-                if (value.spec.compact_body) {
+                if (value.spec.formatting.body_layout ==
+                    FunctionFormatting::BodyLayout::compact) {
                     auto body_context{context};
                     body_context.indent_level = 0;
                     auto const body{render_nodes(value.spec.body, body_context, 1)};
                     return signature + " { " + body + " }";
                 }
                 auto const body{render_nodes(value.spec.body, context.indent(), 1)};
-                auto const opening{value.spec.opening_brace_on_new_line
+                auto const opening{value.spec.formatting.opening_brace_placement ==
+                                           FunctionFormatting::OpeningBracePlacement::separate_line
                                        ? "\n" + context.apply_indent("{")
                                        : " {"};
                 return signature + opening + "\n" + body + "\n" + context.apply_indent("}");

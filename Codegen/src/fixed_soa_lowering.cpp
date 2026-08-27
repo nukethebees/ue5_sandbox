@@ -322,6 +322,34 @@ auto fixed_trait(FixedLayout const& layout, std::string const& trait) -> std::st
     return join(values, " && ");
 }
 
+auto compact_function_formatting() -> FunctionFormatting {
+    return FunctionFormatting{
+        .body_layout = FunctionFormatting::BodyLayout::compact,
+        .requires_placement = FunctionFormatting::RequiresPlacement::trailing_same_line,
+        .template_placement = FunctionFormatting::TemplatePlacement::same_line,
+    };
+}
+
+auto expanded_constrained_function_formatting() -> FunctionFormatting {
+    return FunctionFormatting{
+        .opening_brace_placement =
+            FunctionFormatting::OpeningBracePlacement::separate_line,
+    };
+}
+
+auto expanded_prefixed_constraint_formatting() -> FunctionFormatting {
+    return FunctionFormatting{
+        .requires_placement = FunctionFormatting::RequiresPlacement::before_signature,
+    };
+}
+
+auto compact_prefixed_constraint_formatting() -> FunctionFormatting {
+    return FunctionFormatting{
+        .body_layout = FunctionFormatting::BodyLayout::compact,
+        .requires_placement = FunctionFormatting::RequiresPlacement::before_signature,
+    };
+}
+
 auto fixed_function(std::string name,
                     CppType return_type,
                     std::vector<FunctionParameter> parameters,
@@ -329,12 +357,7 @@ auto fixed_function(std::string name,
                     std::string suffix = {},
                     std::optional<std::string> function_template = std::nullopt,
                     std::optional<std::string> requires_clause = std::nullopt,
-                    bool compact = false,
-                    bool requires_before_signature = false) -> Node {
-    auto const opening_brace_on_new_line{
-        !compact && requires_clause.has_value() && !requires_before_signature};
-    auto const template_on_same_line{
-        compact && function_template.has_value() && !requires_clause.has_value()};
+                    FunctionFormatting formatting = {}) -> Node {
     return header_function(FunctionSpec{
         .name = std::move(name),
         .return_type = std::move(return_type),
@@ -344,11 +367,7 @@ auto fixed_function(std::string name,
         .is_inline = true,
         .template_parameters = std::move(function_template),
         .requires_clause = std::move(requires_clause),
-        .compact_body = compact,
-        .requires_on_new_line = !compact,
-        .requires_before_signature = requires_before_signature,
-        .opening_brace_on_new_line = opening_brace_on_new_line,
-        .template_on_same_line = template_on_same_line,
+        .formatting = formatting,
     });
 }
 
@@ -381,7 +400,7 @@ void add_compact_function(Nodes& nodes,
                                    std::move(suffix),
                                    std::move(function_template),
                                    std::move(requirement),
-                                   true));
+                                   compact_function_formatting()));
     nodes.push_back(lines(1));
 }
 
@@ -431,7 +450,8 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout,
                        "}",
                        {},
                        std::nullopt,
-                       "(" + copy_constructible + ")"),
+                       "(" + copy_constructible + ")",
+                       expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function(name,
                                {FunctionParameter{name + " const&", {}}},
@@ -447,13 +467,21 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout,
                        "other.reset();",
                        " noexcept(" + nothrow_move + ")",
                        std::nullopt,
-                       "(" + move_constructible + ")"),
+                       "(" + move_constructible + ")",
+                       expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function(name,
                                {FunctionParameter{name + "&&", {}}},
                                "(!(" + move_constructible + "))"),
         lines(1),
-        fixed_function("~" + name, {}, {}, "reset();", {}, std::nullopt, std::nullopt, true),
+        fixed_function("~" + name,
+                       {},
+                       {},
+                       "reset();",
+                       {},
+                       std::nullopt,
+                       std::nullopt,
+                       compact_function_formatting()),
         lines(2),
         fixed_function("operator=",
                        "auto",
@@ -465,7 +493,8 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout,
                        "return *this;",
                        " -> " + name + "&",
                        std::nullopt,
-                       "(" + copy_constructible + ")"),
+                       "(" + copy_constructible + ")",
+                       expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function("operator=",
                                {FunctionParameter{name + " const&", {}}},
@@ -487,7 +516,8 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout,
                        "return *this;",
                        " noexcept(" + nothrow_move + ") -> " + name + "&",
                        std::nullopt,
-                       "(" + move_constructible + ")"),
+                       "(" + move_constructible + ")",
+                       expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function("operator=",
                                {FunctionParameter{name + "&&", {}}},
@@ -562,9 +592,27 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
         "(" + fixed_trait(layout, "is_default_constructible_v") + ")"};
     auto const trivial{"(" + join(trivial_values, " && ") + ")"};
     Nodes result{
-        fixed_function("emplace_back", "auto", parameters, "check_has_sufficient_capacity(1);\nauto const index{size_};\nstorage_.construct_at(index, " + forwarded_values + ");\n++size_;\nreturn index;", " -> size_type", function_template, constructible, false, true),
+        fixed_function("emplace_back",
+                       "auto",
+                       parameters,
+                       "check_has_sufficient_capacity(1);\n"
+                       "auto const index{size_};\n"
+                       "storage_.construct_at(index, " + forwarded_values + ");\n"
+                       "++size_;\n"
+                       "return index;",
+                       " -> size_type",
+                       function_template,
+                       constructible,
+                       expanded_prefixed_constraint_formatting()),
         lines(1),
-        fixed_function("add", "auto", parameters, "return emplace_back(" + forwarded_values + ");", " -> size_type", function_template, constructible, true, true),
+        fixed_function("add",
+                       "auto",
+                       parameters,
+                       "return emplace_back(" + forwarded_values + ");",
+                       " -> size_type",
+                       function_template,
+                       constructible,
+                       compact_prefixed_constraint_formatting()),
         lines(2),
     };
     add_compact_function(result, "add_defaulted", "void", {FunctionParameter{"size_type const", "count", "1"}}, "check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; }", {}, std::nullopt, default_constructible);
