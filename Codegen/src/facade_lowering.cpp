@@ -16,7 +16,7 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         .name = "bind",
         .return_type = "void",
         .parameters = {FunctionParameter{qualify(target_type, "&"), "new_target"}},
-        .body = {raw(facade.target_member_name + " = &new_target;")},
+        .body = {AssignmentStatement{facade.target_member_name, "&new_target"}},
         .is_inline = !definitions_in_source,
     }};
     std::vector<FunctionSpec> methods;
@@ -36,19 +36,23 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         for (auto const& key : facade.validation_dependencies) {
             validation_dependencies.push_back(dependency_for_key(key, types));
         }
-        std::vector<std::string> body{facade.validation_lines};
-        auto call{facade.target_member_name + "->" + method.target_name.value_or(method.name) +
-                  "(" + join(arguments, ", ") + ");"};
-        auto const return_type{resolve_type(method.return_type, types)};
-        if (return_type.spelling != "void") {
-            call = "return " + call;
+        NodeListBuilder body;
+        if (!facade.validation_lines.empty()) {
+            body.add(raw(join_lines(facade.validation_lines)));
         }
-        body.push_back(std::move(call));
+        auto call{facade.target_member_name + "->" + method.target_name.value_or(method.name) +
+                  "(" + join(arguments, ", ") + ")"};
+        auto const return_type{resolve_type(method.return_type, types)};
+        if (return_type.spelling == "void") {
+            body.add(ExpressionStatement{std::move(call), std::move(validation_dependencies)});
+        } else {
+            body.add(ReturnStatement{std::move(call), std::move(validation_dependencies)});
+        }
         methods.push_back(FunctionSpec{
             .name = method.name,
             .return_type = return_type,
             .parameters = std::move(parameters),
-            .body = {raw(join_lines(body), std::move(validation_dependencies))},
+            .body = body.build(),
             .suffix = method.suffix,
             .is_inline = !definitions_in_source,
         });

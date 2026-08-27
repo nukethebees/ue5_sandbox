@@ -1,6 +1,8 @@
 #pragma once
 
 #include <codegen/ast/access_specifier.h>
+#include <codegen/ast/assignment_statement.h>
+#include <codegen/ast/expression_statement.h>
 #include <codegen/ast/forward_declaration.h>
 #include <codegen/ast/friend_declaration.h>
 #include <codegen/ast/function.h>
@@ -10,6 +12,7 @@
 #include <codegen/ast/namespace.h>
 #include <codegen/ast/new_lines.h>
 #include <codegen/ast/raw.h>
+#include <codegen/ast/return_statement.h>
 #include <codegen/ast/struct.h>
 #include <codegen/ast/using_declaration.h>
 
@@ -18,6 +21,9 @@
 namespace codegen {
 
 using NodeValue = std::variant<Raw,
+                               ExpressionStatement,
+                               ReturnStatement,
+                               AssignmentStatement,
                                NewLines,
                                AccessSpecifier,
                                Include,

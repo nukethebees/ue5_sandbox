@@ -1,8 +1,10 @@
 #pragma once
 
 #include <codegen/ast/access_specifier.h>
+#include <codegen/ast/assignment_statement.h>
 #include <codegen/ast/cpp_file.h>
 #include <codegen/ast/cpp_type.h>
+#include <codegen/ast/expression_statement.h>
 #include <codegen/ast/forward_declaration.h>
 #include <codegen/ast/friend_declaration.h>
 #include <codegen/ast/function.h>
@@ -19,6 +21,7 @@
 #include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/raw.h>
 #include <codegen/ast/render_context.h>
+#include <codegen/ast/return_statement.h>
 #include <codegen/ast/struct.h>
 #include <codegen/ast/type_dependency.h>
 #include <codegen/ast/type_operation.h>

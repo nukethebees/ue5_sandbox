@@ -137,7 +137,7 @@ auto equivalent_nodes(TypeRef const& equivalent_reference,
             .name = "operator[]",
             .return_type = "auto",
             .parameters = {FunctionParameter{"int32 const", "index"}},
-            .body = {raw("return {" + join(values, ", ") + "};")},
+            .body = {ReturnStatement{"{" + join(values, ", ") + "}"}},
             .suffix = " const -> " + equivalent.spelling,
             .is_inline = true,
         }), 1)
@@ -145,11 +145,12 @@ auto equivalent_nodes(TypeRef const& equivalent_reference,
             .name = "at",
             .return_type = "auto",
             .parameters = {FunctionParameter{"int32 const", "index"}},
-            .body = {raw("validate_array_sizes();\n"
-                         "check(index >= 0);\n"
-                         "check(index < num());\n"
-                         "return (*this)[index];",
-                         {check_dependency})},
+            .body = {
+                ExpressionStatement{"validate_array_sizes()"},
+                ExpressionStatement{"check(index >= 0)", {check_dependency}},
+                ExpressionStatement{"check(index < num())"},
+                ReturnStatement{"(*this)[index]"},
+            },
             .suffix = " const -> " + equivalent.spelling,
             .is_inline = true,
         }));

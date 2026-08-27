@@ -237,7 +237,10 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
     return std::visit(
         [](auto const& value) -> std::vector<TypeDependency> {
             using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, Raw>) {
+            if constexpr (std::is_same_v<T, Raw> ||
+                          std::is_same_v<T, ExpressionStatement> ||
+                          std::is_same_v<T, ReturnStatement> ||
+                          std::is_same_v<T, AssignmentStatement>) {
                 return value.dependencies;
             } else if constexpr (std::is_same_v<T, UsingDeclaration> ||
                                  std::is_same_v<T, Member>) {
@@ -290,6 +293,14 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
             using T = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<T, Raw>) {
                 return context.apply_indent(value.text);
+            } else if constexpr (std::is_same_v<T, ExpressionStatement>) {
+                return context.apply_indent(value.expression + ";");
+            } else if constexpr (std::is_same_v<T, ReturnStatement>) {
+                return context.apply_indent(value.expression.has_value()
+                                                ? "return " + *value.expression + ";"
+                                                : "return;");
+            } else if constexpr (std::is_same_v<T, AssignmentStatement>) {
+                return context.apply_indent(value.target + " = " + value.value + ";");
             } else if constexpr (std::is_same_v<T, NewLines>) {
                 return std::string(static_cast<std::size_t>(value.count), '\n');
             } else if constexpr (std::is_same_v<T, AccessSpecifier>) {

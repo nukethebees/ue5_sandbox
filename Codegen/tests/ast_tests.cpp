@@ -51,6 +51,24 @@ TEST(Ast, RendersFriendDeclarations) {
     EXPECT_EQ(render(Node{FriendDeclaration{"FValue", "struct"}}), "friend struct FValue;");
 }
 
+TEST(Ast, RendersTypedStatements) {
+    EXPECT_EQ(render(Node{ExpressionStatement{"apply(value)"}}), "apply(value);");
+    EXPECT_EQ(render(Node{ReturnStatement{"value"}}), "return value;");
+    EXPECT_EQ(render(Node{ReturnStatement{}}), "return;");
+    EXPECT_EQ(render(Node{AssignmentStatement{"target", "value"}}), "target = value;");
+}
+
+TEST(Ast, TypedStatementsReportDependencies) {
+    TypeDependency const dependency{"FValue", "Project/Value.h", {}};
+
+    EXPECT_EQ(dependencies(Node{ExpressionStatement{"use_value()", {dependency}}}),
+              std::vector<TypeDependency>{dependency});
+    EXPECT_EQ(dependencies(Node{ReturnStatement{"FValue{}", {dependency}}}),
+              std::vector<TypeDependency>{dependency});
+    EXPECT_EQ(dependencies(Node{AssignmentStatement{"target", "FValue{}", {dependency}}}),
+              std::vector<TypeDependency>{dependency});
+}
+
 TEST(Ast, RendersAccessSpecifiersWithExplicitIndentation) {
     auto const context{RenderContext{.indent_level = 1, .indent_text = "    "}};
 
