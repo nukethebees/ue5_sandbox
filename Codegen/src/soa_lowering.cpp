@@ -131,19 +131,17 @@ auto equivalent_nodes(TypeRef const& equivalent_reference,
     for (auto const& member : members) {
         values.push_back(equivalent_expression(member, "index"));
     }
-    return {
-        UsingDeclaration{"equivalent_type", equivalent},
-        lines(2),
-        header_function(FunctionSpec{
+    NodeListBuilder result;
+    result.add(UsingDeclaration{"equivalent_type", equivalent}, 2)
+        .add(header_function(FunctionSpec{
             .name = "operator[]",
             .return_type = "auto",
             .parameters = {FunctionParameter{"int32 const", "index"}},
             .body = {raw("return {" + join(values, ", ") + "};")},
             .suffix = " const -> " + equivalent.spelling,
             .is_inline = true,
-        }),
-        lines(1),
-        header_function(FunctionSpec{
+        }), 1)
+        .add(header_function(FunctionSpec{
             .name = "at",
             .return_type = "auto",
             .parameters = {FunctionParameter{"int32 const", "index"}},
@@ -154,13 +152,11 @@ auto equivalent_nodes(TypeRef const& equivalent_reference,
                          {check_dependency})},
             .suffix = " const -> " + equivalent.spelling,
             .is_inline = true,
-        }),
-    };
+        }));
+    return result.build();
 }
 
-auto view_specs(std::string const& view_name,
-                std::string const& const_view_name,
-                std::vector<ResolvedMember> const& members,
+auto view_specs(std::vector<ResolvedMember> const& members,
                 bool const_only) -> std::vector<FunctionSpec> {
     std::vector<FunctionSpec> result;
     auto add = [&](std::string name,
@@ -261,22 +257,19 @@ auto view_specs(std::string const& view_name,
         {FunctionParameter{"int32 const", "count"}},
         "return slice(num() - count, count);",
         " const -> ConstView");
-    static_cast<void>(view_name);
-    static_cast<void>(const_view_name);
     return result;
 }
 
-auto function_nodes(std::vector<FunctionSpec> const& specs, bool definitions,
-                    std::string const& owner = {}) -> Nodes {
-    Nodes result;
+auto declaration_nodes(std::vector<FunctionSpec> const& specs) -> Nodes {
+    NodeListBuilder result;
     auto const count{specs.size()};
     for (std::size_t index{0}; index < count; ++index) {
-        result.push_back(definitions ? definition(specs[index], owner) : declaration(specs[index]));
+        result.add(declaration(specs[index]));
         if (index + 1 < count) {
-            result.push_back(lines(1));
+            result.new_lines();
         }
     }
-    return result;
+    return result.build();
 }
 
 auto view_struct(std::string name,
@@ -287,32 +280,25 @@ auto view_struct(std::string name,
                  std::map<std::string, CppType> const& types,
                  std::optional<std::string> const& export_specifier,
                  bool const_only) -> Struct {
-    Nodes nodes{
-        UsingDeclaration{"View", CppType{view_name}},
-        lines(1),
-        UsingDeclaration{"ConstView", CppType{const_view_name}},
-        lines(2),
-    };
+    NodeListBuilder nodes;
+    nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
+        .add(UsingDeclaration{"ConstView", CppType{const_view_name}}, 2);
     if (equivalent.has_value()) {
-        auto extra = equivalent_nodes(*equivalent, members, types);
-        nodes.insert(nodes.end(), extra.begin(), extra.end());
-        nodes.push_back(lines(2));
+        nodes.append(equivalent_nodes(*equivalent, members, types)).new_lines(2);
     }
-    nodes.push_back(apply_arrays_function(members));
-    nodes.push_back(lines(2));
-    auto common{function_nodes(view_specs(view_name, const_view_name, members, const_only), false)};
-    nodes.insert(nodes.end(), common.begin(), common.end());
-    nodes.push_back(lines(2));
+    nodes.add(apply_arrays_function(members), 2)
+        .append(declaration_nodes(view_specs(members, const_only)))
+        .new_lines(2);
     for (std::size_t index{0}; index < members.size(); ++index) {
-        nodes.push_back(Member{const_only ? members[index].const_view_type : members[index].view_type,
-                               members[index].name});
+        nodes.add(Member{const_only ? members[index].const_view_type : members[index].view_type,
+                         members[index].name});
         if (index + 1 < members.size()) {
-            nodes.push_back(lines(1));
+            nodes.new_lines();
         }
     }
     return Struct{
         .name = std::move(name),
-        .children = std::move(nodes),
+        .children = nodes.build(),
         .export_specifier = export_specifier,
     };
 }
@@ -543,57 +529,45 @@ auto storage_struct(SoaSchema const& schema,
                     std::string const& const_view_name,
                     std::map<std::string, CppType> const& types,
                     std::vector<FunctionSpec>& custom_source) -> Struct {
-    Nodes nodes{
-        UsingDeclaration{"View", CppType{view_name}},
-        lines(1),
-        UsingDeclaration{"ConstView", CppType{const_view_name}},
-        lines(2),
-    };
+    NodeListBuilder nodes;
+    nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
+        .add(UsingDeclaration{"ConstView", CppType{const_view_name}}, 2);
     if (schema.equivalent_type.has_value()) {
-        auto extra = equivalent_nodes(*schema.equivalent_type, members, types);
-        nodes.insert(nodes.end(), extra.begin(), extra.end());
-        nodes.push_back(lines(2));
+        nodes.append(equivalent_nodes(*schema.equivalent_type, members, types)).new_lines(2);
     }
     for (auto const& declaration_text : schema.using_declarations) {
-        nodes.push_back(raw("using " + declaration_text + ";"));
-        nodes.push_back(lines(2));
+        nodes.add(raw("using " + declaration_text + ";"), 2);
     }
     for (auto const& function : schema.functions) {
         auto spec{custom_function_spec(function, types)};
         if (function.definition_in_source) {
             custom_source.push_back(spec);
-            nodes.push_back(declaration(spec));
+            nodes.add(declaration(spec), 2);
         } else {
-            nodes.push_back(header_function(spec));
+            nodes.add(header_function(spec), 2);
         }
-        nodes.push_back(lines(2));
     }
     auto operations{storage_operation_specs(schema, members)};
     for (auto const& spec : operations) {
-        nodes.push_back(spec.is_inline ? header_function(spec) : declaration(spec));
-        nodes.push_back(lines(2));
+        nodes.add(spec.is_inline ? header_function(spec) : declaration(spec), 2);
     }
     auto permutations{permutation_specs(members)};
     for (auto const& spec : permutations) {
-        nodes.push_back(spec.is_inline ? header_function(spec) : declaration(spec));
-        nodes.push_back(lines(2));
+        nodes.add(spec.is_inline ? header_function(spec) : declaration(spec), 2);
     }
-    nodes.push_back(apply_arrays_function(members));
-    nodes.push_back(lines(2));
-    nodes.push_back(apply_array_pairs_function(members));
-    nodes.push_back(lines(2));
-    auto common{function_nodes(view_specs(view_name, const_view_name, members, false), false)};
-    nodes.insert(nodes.end(), common.begin(), common.end());
-    nodes.push_back(lines(2));
+    nodes.add(apply_arrays_function(members), 2)
+        .add(apply_array_pairs_function(members), 2)
+        .append(declaration_nodes(view_specs(members, false)))
+        .new_lines(2);
     for (std::size_t index{0}; index < members.size(); ++index) {
-        nodes.push_back(Member{members[index].container_type, members[index].name});
+        nodes.add(Member{members[index].container_type, members[index].name});
         if (index + 1 < members.size()) {
-            nodes.push_back(lines(1));
+            nodes.new_lines();
         }
     }
     return Struct{
         .name = schema.name,
-        .children = std::move(nodes),
+        .children = nodes.build(),
         .export_specifier = schema.export_specifier,
     };
 }
@@ -606,59 +580,57 @@ auto lower_soa_impl(SoaSchema const& schema,
     std::vector<FunctionSpec> custom_source;
     auto storage{storage_struct(
         schema, members, view_name, const_view_name, types, custom_source)};
-    Nodes header{
-        ForwardDeclaration{view_name},
-        lines(1),
-        ForwardDeclaration{const_view_name},
-        lines(2),
-        view_struct(const_view_name,
-                    view_name,
-                    const_view_name,
-                    members,
-                    schema.equivalent_type,
-                    types,
-                    schema.export_specifier,
-                    true),
-        lines(2),
-        view_struct(view_name,
-                    view_name,
-                    const_view_name,
-                    members,
-                    schema.equivalent_type,
-                    types,
-                    schema.export_specifier,
-                    false),
-        lines(2),
-        std::move(storage),
-    };
+    NodeListBuilder header;
+    header.add(ForwardDeclaration{view_name}, 1)
+        .add(ForwardDeclaration{const_view_name}, 2)
+        .add(view_struct(const_view_name,
+                         view_name,
+                         const_view_name,
+                         members,
+                         schema.equivalent_type,
+                         types,
+                         schema.export_specifier,
+                         true),
+             2)
+        .add(view_struct(view_name,
+                         view_name,
+                         const_view_name,
+                         members,
+                         schema.equivalent_type,
+                         types,
+                         schema.export_specifier,
+                         false),
+             2)
+        .add(std::move(storage));
 
-    Nodes source;
+    NodeListBuilder source;
+    bool has_source_definition{};
+    auto add_definition = [&](FunctionSpec const& spec, std::string const& owner) {
+        if (has_source_definition) {
+            source.new_lines(2);
+        }
+        source.add(definition(spec, owner));
+        has_source_definition = true;
+    };
     for (auto const& spec : custom_source) {
-        source.push_back(definition(spec, schema.name));
-        source.push_back(lines(2));
+        add_definition(spec, schema.name);
     }
     auto append_definitions = [&](std::vector<FunctionSpec> const& specs, std::string const& owner) {
         for (auto const& spec : specs) {
-            source.push_back(definition(spec, owner));
-            source.push_back(lines(2));
+            add_definition(spec, owner);
         }
     };
-    append_definitions(view_specs(view_name, const_view_name, members, true), const_view_name);
-    append_definitions(view_specs(view_name, const_view_name, members, false), view_name);
+    append_definitions(view_specs(members, true), const_view_name);
+    append_definitions(view_specs(members, false), view_name);
     for (auto const& spec : storage_operation_specs(schema, members)) {
         if (!spec.is_inline) {
-            source.push_back(definition(spec, schema.name));
-            source.push_back(lines(2));
+            add_definition(spec, schema.name);
         }
     }
     auto const permutations{permutation_specs(members)};
-    source.push_back(definition(permutations.front(), schema.name));
-    source.push_back(lines(2));
-    append_definitions(view_specs(view_name, const_view_name, members, false), schema.name);
-    if (!source.empty()) {
-        source.pop_back();
-    }
-    return LoweredSoa{std::move(header), std::move(source)};
+    add_definition(permutations.front(), schema.name);
+    append_definitions(view_specs(members, false), schema.name);
+    return LoweredSoa{header.build(), source.build()};
 }
 
 auto lower_soa_module_impl(SoaModuleSchema const& module,
@@ -667,69 +639,72 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
     for (auto const& schema : module.structs) {
         schemas.emplace(schema.name, &schema);
     }
-    Nodes header_nodes{IncludeDependencies{}, lines(2)};
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.push_back(raw(join_lines(module.settings.prelude_lines)));
-        header_nodes.push_back(lines(2));
-    }
-    Nodes definitions;
+
+    std::vector<LoweredSoa> lowered_structs;
+    lowered_structs.reserve(module.structs.size());
     for (auto const& schema : module.structs) {
         auto lowered{lower_soa_impl(schema, types)};
         if (schema.fixed.has_value()) {
-            lowered.header.push_back(lines(2));
-            auto fixed{lower_fixed_nodes(schema, schemas, types)};
-            lowered.header.insert(lowered.header.end(), fixed.begin(), fixed.end());
+            NodeListBuilder header;
+            header.append(std::move(lowered.header))
+                .new_lines(2)
+                .append(lower_fixed_nodes(schema, schemas, types));
+            lowered.header = header.build();
         }
-        if (!definitions.empty()) {
-            definitions.push_back(lines(2));
-        }
-        definitions.insert(definitions.end(), lowered.header.begin(), lowered.header.end());
+        lowered_structs.push_back(std::move(lowered));
     }
+
+    NodeListBuilder header_nodes;
+    header_nodes.add(IncludeDependencies{}, 2);
+    if (!module.settings.prelude_lines.empty()) {
+        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
+    }
+    NodeListBuilder definitions;
+    for (std::size_t index{0}; index < lowered_structs.size(); ++index) {
+        if (index > 0) {
+            definitions.new_lines(2);
+        }
+        definitions.append(std::move(lowered_structs[index].header));
+    }
+    auto definition_nodes{definitions.build()};
     if (module.settings.namespace_name.has_value()) {
-        header_nodes.push_back(Namespace{*module.settings.namespace_name, std::move(definitions)});
+        header_nodes.add(Namespace{*module.settings.namespace_name, std::move(definition_nodes)});
     } else {
-        header_nodes.insert(header_nodes.end(), definitions.begin(), definitions.end());
+        header_nodes.append(std::move(definition_nodes));
     }
     Module result{
         .name = module.settings.name,
         .header = CppFile{
             .path = module.settings.header,
-            .nodes = std::move(header_nodes),
+            .nodes = header_nodes.build(),
             .clang_format_off = true,
             .include_order = module.settings.include_order,
         },
     };
     if (module.settings.source.has_value()) {
-        Nodes source_definitions;
-        for (auto const& schema : module.structs) {
-            auto lowered{lower_soa_impl(schema, types)};
-            if (!source_definitions.empty()) {
-                source_definitions.push_back(lines(2));
+        NodeListBuilder source_definitions;
+        for (std::size_t index{0}; index < lowered_structs.size(); ++index) {
+            if (index > 0) {
+                source_definitions.new_lines(2);
             }
-            source_definitions.insert(source_definitions.end(),
-                                      lowered.source.begin(),
-                                      lowered.source.end());
+            source_definitions.append(std::move(lowered_structs[index].source));
         }
+        auto source_definition_nodes{source_definitions.build()};
         if (module.settings.namespace_name.has_value()) {
-            source_definitions = {
-                Namespace{*module.settings.namespace_name, std::move(source_definitions)}};
+            source_definition_nodes = {
+                Namespace{*module.settings.namespace_name, std::move(source_definition_nodes)}};
         }
+        NodeListBuilder source_nodes;
+        source_nodes.add(Include{source_include(module.settings), false}, 2)
+            .add(IncludeDependencies{}, 2)
+            .append(std::move(source_definition_nodes));
         result.source = CppFile{
             .path = *module.settings.source,
-            .nodes = {
-                Include{source_include(module.settings), false},
-                lines(2),
-                IncludeDependencies{},
-                lines(2),
-                raw(""),
-            },
+            .nodes = source_nodes.build(),
             .pragma_once = false,
             .clang_format_off = true,
             .include_order = module.settings.include_order,
         };
-        auto& nodes{result.source->nodes};
-        nodes.pop_back();
-        nodes.insert(nodes.end(), source_definitions.begin(), source_definitions.end());
     }
     return result;
 }
