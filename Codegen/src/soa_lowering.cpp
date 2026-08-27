@@ -426,9 +426,11 @@ auto storage_operation_specs(SoaSchema const& schema,
             .name = "copy_to_tail",
             .return_type = "void",
             .parameters = {FunctionParameter{"Other const&", "other"}},
-            .body = {raw("auto const count{other.num()};\ncheck(num() >= count);\n"
-                         "copy_elements(num() - count, other, 0, count);",
-                         {check_dependency})},
+            .body = {
+                VariableDeclarationStatement{"auto const", "count", "other.num()"},
+                ExpressionStatement{"check(num() >= count)", {check_dependency}},
+                ExpressionStatement{"copy_elements(num() - count, other, 0, count)"},
+            },
             .is_inline = true,
             .template_parameters = "typename Other",
         });
@@ -461,12 +463,17 @@ auto permutation_specs(std::vector<ResolvedMember> const& members) -> std::vecto
         apply.add(ExpressionStatement{"ml::apply_permutation(" + member.name + ", indices)",
                                       {soa_permutation}});
     }
-    std::string const common{
-        "validate_array_sizes();\n"
-        "auto const n{num()};\n"
-        "check(scratch_indices.Num() == n);\n"
-        "ml::fill_indices(scratch_indices);\n"
-        "// indices[new_index] is the old row index that belongs at new_index.\n"};
+    auto sort_body = [](std::string sort_expression) {
+        NodeListBuilder result;
+        return result.add(ExpressionStatement{"validate_array_sizes()"})
+            .add(VariableDeclarationStatement{"auto const", "n", "num()"})
+            .add(ExpressionStatement{"check(scratch_indices.Num() == n)", {check_dependency}})
+            .add(ExpressionStatement{"ml::fill_indices(scratch_indices)", {fill_indices}})
+            .add(raw("// indices[new_index] is the old row index that belongs at new_index.\n" +
+                     std::move(sort_expression)))
+            .add(ExpressionStatement{"apply_permutation(scratch_indices)"})
+            .build();
+    };
     return {
         FunctionSpec{
             .name = "apply_permutation",
@@ -481,12 +488,10 @@ auto permutation_specs(std::vector<ResolvedMember> const& members) -> std::vecto
             .parameters = {FunctionParameter{"Compare&&", "compare"},
                            FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "scratch_indices"}},
-            .body = {raw(common +
-                             "scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {\n"
-                             "    return compare(*this, lhs, rhs);\n"
-                             "});\n"
-                             "apply_permutation(scratch_indices);",
-                         {fill_indices, check_dependency})},
+            .body = sort_body(
+                "scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {\n"
+                "    return compare(*this, lhs, rhs);\n"
+                "});"),
             .is_inline = true,
             .template_parameters = "typename Compare",
         },
@@ -495,12 +500,10 @@ auto permutation_specs(std::vector<ResolvedMember> const& members) -> std::vecto
             .return_type = "void",
             .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "scratch_indices"}},
-            .body = {raw(common +
-                             "scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {\n"
-                             "    return Compare(*this, lhs, rhs);\n"
-                             "});\n"
-                             "apply_permutation(scratch_indices);",
-                         {fill_indices, check_dependency})},
+            .body = sort_body(
+                "scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {\n"
+                "    return Compare(*this, lhs, rhs);\n"
+                "});"),
             .is_inline = true,
             .template_parameters = "auto Compare",
         },

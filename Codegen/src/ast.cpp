@@ -243,7 +243,8 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
                           std::is_same_v<T, AssignmentStatement>) {
                 return value.dependencies;
             } else if constexpr (std::is_same_v<T, UsingDeclaration> ||
-                                 std::is_same_v<T, Member>) {
+                                 std::is_same_v<T, Member> ||
+                                 std::is_same_v<T, VariableDeclarationStatement>) {
                 return value.type.dependencies;
             } else if constexpr (std::is_same_v<T, Function>) {
                 auto result{value.spec.return_type.dependencies};
@@ -301,6 +302,9 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                                                 : "return;");
             } else if constexpr (std::is_same_v<T, AssignmentStatement>) {
                 return context.apply_indent(value.target + " = " + value.value + ";");
+            } else if constexpr (std::is_same_v<T, VariableDeclarationStatement>) {
+                return context.apply_indent(value.type.spelling + " " + value.name + "{" +
+                                            value.initializer + "};");
             } else if constexpr (std::is_same_v<T, NewLines>) {
                 return std::string(static_cast<std::size_t>(value.count), '\n');
             } else if constexpr (std::is_same_v<T, AccessSpecifier>) {

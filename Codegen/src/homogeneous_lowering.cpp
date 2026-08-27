@@ -398,12 +398,17 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
     result.add(homogeneous_function("copy_to_tail",
                                   "auto",
                                   {FunctionParameter{"Other const&", "src"}},
-                                  "auto const count{src.num()};\ncheck(num() >= "
-                                  "count);\ncopy_elements(num() - count, src, 0, count);",
+                                  Nodes{
+                                      VariableDeclarationStatement{
+                                          "auto const", "count", "src.num()"},
+                                      ExpressionStatement{
+                                          "check(num() >= count)", {check_dependency}},
+                                      ExpressionStatement{
+                                          "copy_elements(num() - count, src, 0, count)"},
+                                  },
                                   " -> void",
                                   "typename Other",
-                                  same_line_template_formatting(),
-                                  {check_dependency}),
+                                  same_line_template_formatting()),
                1);
     result.add(homogeneous_function("append_from",
                                   "void",
@@ -423,33 +428,37 @@ auto homogeneous_storage_sort_nodes() -> Nodes {
                               .return_type = "void",
                               .parameters = {FunctionParameter{"TArrayView<int32>", "indices"}}}),
                1);
-    std::string const sort_common{
-        "validate_array_sizes();\nauto const n{num()};\ncheck(scratch_indices.Num() == "
-        "n);\nml::fill_indices(scratch_indices);\n"};
+    auto sort_body = [](std::string sort_expression) {
+        NodeListBuilder body;
+        return body.add(ExpressionStatement{"validate_array_sizes()"})
+            .add(VariableDeclarationStatement{"auto const", "n", "num()"})
+            .add(ExpressionStatement{"check(scratch_indices.Num() == n)", {check_dependency}})
+            .add(ExpressionStatement{"ml::fill_indices(scratch_indices)", {fill_indices}})
+            .add(raw(std::move(sort_expression)))
+            .add(ExpressionStatement{"apply_permutation(scratch_indices)"})
+            .build();
+    };
     result.add(homogeneous_function(
                  "sort",
                  "void",
                  {FunctionParameter{"Compare&&", "compare"},
                   FunctionParameter{"TArrayView<int32>", "scratch_indices"}},
-                 sort_common +
+                 sort_body(
                      "scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) { "
-                     "return compare(*this, lhs, rhs); });\napply_permutation(scratch_indices);",
+                     "return compare(*this, lhs, rhs); });"),
                  {},
                  "typename Compare",
-                 same_line_template_formatting(),
-                 {check_dependency, fill_indices}),
+                 same_line_template_formatting()),
                1);
     result.add(homogeneous_function(
                  "sort",
                  "void",
                  {FunctionParameter{"TArrayView<int32>", "scratch_indices"}},
-                 sort_common +
-                     "scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return "
-                     "Compare(*this, lhs, rhs); });\napply_permutation(scratch_indices);",
+                 sort_body("scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return "
+                           "Compare(*this, lhs, rhs); });"),
                  {},
                  "auto Compare",
-                 same_line_template_formatting(),
-                 {check_dependency, fill_indices}),
+                 same_line_template_formatting()),
                1);
     return result.build();
 }

@@ -56,6 +56,8 @@ TEST(Ast, RendersTypedStatements) {
     EXPECT_EQ(render(Node{ReturnStatement{"value"}}), "return value;");
     EXPECT_EQ(render(Node{ReturnStatement{}}), "return;");
     EXPECT_EQ(render(Node{AssignmentStatement{"target", "value"}}), "target = value;");
+    EXPECT_EQ(render(Node{VariableDeclarationStatement{"auto const", "count", "values.Num()"}}),
+              "auto const count{values.Num()};");
 }
 
 TEST(Ast, TypedStatementsReportDependencies) {
@@ -66,6 +68,9 @@ TEST(Ast, TypedStatementsReportDependencies) {
     EXPECT_EQ(dependencies(Node{ReturnStatement{"FValue{}", {dependency}}}),
               std::vector<TypeDependency>{dependency});
     EXPECT_EQ(dependencies(Node{AssignmentStatement{"target", "FValue{}", {dependency}}}),
+              std::vector<TypeDependency>{dependency});
+    EXPECT_EQ(dependencies(Node{VariableDeclarationStatement{
+                  CppType{"FValue", {dependency}}, "value", "make_value()"}}),
               std::vector<TypeDependency>{dependency});
 }
 

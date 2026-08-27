@@ -15,6 +15,7 @@
 #include <codegen/ast/return_statement.h>
 #include <codegen/ast/struct.h>
 #include <codegen/ast/using_declaration.h>
+#include <codegen/ast/variable_declaration_statement.h>
 
 #include <variant>
 
@@ -24,6 +25,7 @@ using NodeValue = std::variant<Raw,
                                ExpressionStatement,
                                ReturnStatement,
                                AssignmentStatement,
+                               VariableDeclarationStatement,
                                NewLines,
                                AccessSpecifier,
                                Include,

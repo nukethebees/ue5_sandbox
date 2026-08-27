@@ -26,6 +26,7 @@
 #include <codegen/ast/type_dependency.h>
 #include <codegen/ast/type_operation.h>
 #include <codegen/ast/using_declaration.h>
+#include <codegen/ast/variable_declaration_statement.h>
 
 #include <string>
 
