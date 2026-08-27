@@ -15,6 +15,7 @@
 #include <codegen/ast/namespace.h>
 #include <codegen/ast/new_lines.h>
 #include <codegen/ast/node.h>
+#include <codegen/ast/node_list_builder.h>
 #include <codegen/ast/raw.h>
 #include <codegen/ast/render_context.h>
 #include <codegen/ast/struct.h>

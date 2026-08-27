@@ -404,12 +404,6 @@ void add_compact_function(Nodes& nodes,
     nodes.push_back(lines(1));
 }
 
-void append_nodes(Nodes& destination, Nodes source) {
-    for (auto& node : source) {
-        destination.push_back(std::move(node));
-    }
-}
-
 auto fixed_container_prelude_nodes(SoaSchema const& schema,
                                    std::map<std::string, CppType> const& types) -> Nodes {
     Nodes result{
@@ -674,17 +668,17 @@ auto fixed_container_node(FixedLayout const& layout,
                           std::string const& name,
                           std::map<std::string, CppType> const& types) -> Node {
     auto const& schema{*layout.schema};
-    Nodes children;
-    append_nodes(children, fixed_container_prelude_nodes(schema, types));
-    append_nodes(children, fixed_container_lifecycle_nodes(layout, name));
-    append_nodes(children, fixed_container_access_nodes(schema));
-    append_nodes(children, fixed_container_construction_nodes(layout));
-    append_nodes(children, fixed_container_mutation_nodes());
-    append_nodes(children, fixed_container_private_nodes(schema));
+    NodeListBuilder children;
+    children.append(fixed_container_prelude_nodes(schema, types))
+        .append(fixed_container_lifecycle_nodes(layout, name))
+        .append(fixed_container_access_nodes(schema))
+        .append(fixed_container_construction_nodes(layout))
+        .append(fixed_container_mutation_nodes())
+        .append(fixed_container_private_nodes(schema));
 
     return Struct{
         .name = name,
-        .children = std::move(children),
+        .children = children.build(),
         .template_parameters = "int32 Capacity",
         .requires_clause = "(Capacity >= 0)",
         .dependencies = fixed_container_dependencies(layout),

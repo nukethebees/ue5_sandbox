@@ -53,107 +53,110 @@ auto homogeneous_view_node(HomogeneousLayoutSchema const& layout) -> Node {
         }
         return join(values, ", ");
     };
-    Nodes children{
-        UsingDeclaration{"size_type", CppType{"TArrayView<T>::SizeType"}},
-        lines(1),
-        UsingDeclaration{"value_type", CppType{"std::remove_const_t<T>"}},
-        lines(1),
-        UsingDeclaration{"View", CppType{view_name + "<T>"}},
-        lines(1),
-        UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}},
-        lines(2),
-    };
+    NodeListBuilder children;
+    children.add(UsingDeclaration{"size_type", CppType{"TArrayView<T>::SizeType"}}, 1)
+        .add(UsingDeclaration{"value_type", CppType{"std::remove_const_t<T>"}}, 1)
+        .add(UsingDeclaration{"View", CppType{view_name + "<T>"}}, 1)
+        .add(UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}}, 2);
     for (std::size_t index{0}; index < layout.components.size(); ++index) {
-        children.push_back(Member{CppType{"TArrayView<T>"}, layout.components[index]});
-        children.push_back(lines(index + 1 < layout.components.size() ? 1 : 2));
+        children.add(Member{CppType{"TArrayView<T>"}, layout.components[index]},
+                     index + 1 < layout.components.size() ? 1 : 2);
     }
-    auto add = [&](Node node, int newlines = 1) {
-        children.push_back(std::move(node));
-        children.push_back(lines(newlines));
-    };
-    add(homogeneous_function("get_view",
-                             "auto",
-                             {},
-                             "return View{" + components + "};",
-                             " -> View",
-                             std::nullopt,
-                             compact_function_formatting()));
-    add(homogeneous_function("get_view",
-                             "auto",
-                             {FunctionParameter{"size_type const", "offset"},
-                              FunctionParameter{"size_type const", "count"}},
-                             "return get_view().slice(offset, count);",
-                             " -> View"));
-    add(homogeneous_function("get_view",
-                             "auto",
-                             {},
-                             "return ConstView{" + components + "};",
-                             " const -> ConstView",
-                             std::nullopt,
-                             compact_function_formatting()));
-    add(homogeneous_function("get_view",
-                             "auto",
-                             {FunctionParameter{"size_type const", "offset"},
-                              FunctionParameter{"size_type const", "count"}},
-                             "return get_view().slice(offset, count);",
-                             " const -> ConstView"));
-    add(homogeneous_function("get_const_view",
-                             "auto",
-                             {},
-                             "return ConstView{" + components + "};",
-                             " const -> ConstView",
-                             std::nullopt,
-                             compact_function_formatting()));
-    add(homogeneous_function("get_const_view",
-                             "auto",
-                             {FunctionParameter{"size_type const", "offset"},
-                              FunctionParameter{"size_type const", "count"}},
-                             "return get_const_view().slice(offset, count);",
-                             " const -> ConstView"));
-    add(homogeneous_function("apply_arrays",
-                             "auto",
-                             {FunctionParameter{"TFunc&&", "func"}},
-                             "return std::forward<TFunc>(func)(" + components + ");",
-                             " -> decltype(auto)",
-                             "typename TFunc",
-                             {},
-                             {std_forward}));
-    add(homogeneous_function("apply_arrays",
-                             "auto",
-                             {FunctionParameter{"TFunc&&", "func"}},
-                             "return std::forward<TFunc>(func)(" + components + ");",
-                             " const -> decltype(auto)",
-                             "typename TFunc",
-                             {},
-                             {std_forward}));
-    add(homogeneous_function("num",
-                             "auto",
-                             {},
-                             "return " + layout.components.front() + ".Num();",
-                             " const -> size_type",
-                             std::nullopt,
-                             compact_function_formatting()));
-    add(homogeneous_function("is_empty",
-                             "auto",
-                             {},
-                             "return num() == 0;",
-                             " const -> bool",
-                             std::nullopt,
-                             compact_function_formatting()));
-    add(homogeneous_function("slice",
-                             "auto",
-                             {FunctionParameter{"size_type const", "offset"},
-                              FunctionParameter{"size_type const", "count"}},
-                             "return " + view_name + "{" +
-                                 slice_values("Slice(offset, count)") + "};",
-                             " const -> " + view_name));
-    add(homogeneous_function("left",
-                             "auto",
-                             {FunctionParameter{"size_type const", "count"}},
-                             "return " + view_name + "{" + slice_values("Left(count)") +
-                                 "};",
-                             " const -> " + view_name));
-    children.push_back(homogeneous_function(
+    children.add(homogeneous_function("get_view",
+                                      "auto",
+                                      {},
+                                      "return View{" + components + "};",
+                                      " -> View",
+                                      std::nullopt,
+                                      compact_function_formatting()),
+                 1)
+        .add(homogeneous_function("get_view",
+                                  "auto",
+                                  {FunctionParameter{"size_type const", "offset"},
+                                   FunctionParameter{"size_type const", "count"}},
+                                  "return get_view().slice(offset, count);",
+                                  " -> View"),
+             1)
+        .add(homogeneous_function("get_view",
+                                  "auto",
+                                  {},
+                                  "return ConstView{" + components + "};",
+                                  " const -> ConstView",
+                                  std::nullopt,
+                                  compact_function_formatting()),
+             1)
+        .add(homogeneous_function("get_view",
+                                  "auto",
+                                  {FunctionParameter{"size_type const", "offset"},
+                                   FunctionParameter{"size_type const", "count"}},
+                                  "return get_view().slice(offset, count);",
+                                  " const -> ConstView"),
+             1)
+        .add(homogeneous_function("get_const_view",
+                                  "auto",
+                                  {},
+                                  "return ConstView{" + components + "};",
+                                  " const -> ConstView",
+                                  std::nullopt,
+                                  compact_function_formatting()),
+             1)
+        .add(homogeneous_function("get_const_view",
+                                  "auto",
+                                  {FunctionParameter{"size_type const", "offset"},
+                                   FunctionParameter{"size_type const", "count"}},
+                                  "return get_const_view().slice(offset, count);",
+                                  " const -> ConstView"),
+             1)
+        .add(homogeneous_function("apply_arrays",
+                                  "auto",
+                                  {FunctionParameter{"TFunc&&", "func"}},
+                                  "return std::forward<TFunc>(func)(" + components + ");",
+                                  " -> decltype(auto)",
+                                  "typename TFunc",
+                                  {},
+                                  {std_forward}),
+             1)
+        .add(homogeneous_function("apply_arrays",
+                                  "auto",
+                                  {FunctionParameter{"TFunc&&", "func"}},
+                                  "return std::forward<TFunc>(func)(" + components + ");",
+                                  " const -> decltype(auto)",
+                                  "typename TFunc",
+                                  {},
+                                  {std_forward}),
+             1)
+        .add(homogeneous_function("num",
+                                  "auto",
+                                  {},
+                                  "return " + layout.components.front() + ".Num();",
+                                  " const -> size_type",
+                                  std::nullopt,
+                                  compact_function_formatting()),
+             1)
+        .add(homogeneous_function("is_empty",
+                                  "auto",
+                                  {},
+                                  "return num() == 0;",
+                                  " const -> bool",
+                                  std::nullopt,
+                                  compact_function_formatting()),
+             1)
+        .add(homogeneous_function("slice",
+                                  "auto",
+                                  {FunctionParameter{"size_type const", "offset"},
+                                   FunctionParameter{"size_type const", "count"}},
+                                  "return " + view_name + "{" +
+                                      slice_values("Slice(offset, count)") + "};",
+                                  " const -> " + view_name),
+             1)
+        .add(homogeneous_function("left",
+                                  "auto",
+                                  {FunctionParameter{"size_type const", "count"}},
+                                  "return " + view_name + "{" + slice_values("Left(count)") +
+                                      "};",
+                                  " const -> " + view_name),
+             1)
+        .add(homogeneous_function(
         "right",
         "auto",
         {FunctionParameter{"size_type const", "count"}},
@@ -161,7 +164,7 @@ auto homogeneous_view_node(HomogeneousLayoutSchema const& layout) -> Node {
         " const -> " + view_name));
     return Struct{
         .name = view_name,
-        .children = std::move(children),
+        .children = children.build(),
         .template_parameters = "typename T",
         .dependencies = {tarray_view, std_remove_const, std_forward},
     };
@@ -188,70 +191,52 @@ auto component_statements(HomogeneousLayoutSchema const& layout,
     return join_lines(result);
 }
 
-void append_nodes(Nodes& destination, Nodes source) {
-    for (auto& node : source) {
-        destination.push_back(std::move(node));
-    }
-}
-
-void add_node(Nodes& nodes, Node node, int newlines = 1) {
-    nodes.push_back(std::move(node));
-    nodes.push_back(lines(newlines));
-}
-
 void add_compact_function(
-    Nodes& nodes,
+    NodeListBuilder& nodes,
     std::string name,
     CppType return_type,
     std::vector<FunctionParameter> parameters,
     std::string body,
     std::string suffix = {},
     std::optional<std::string> function_template = std::nullopt) {
-    add_node(nodes,
-             homogeneous_function(std::move(name),
-                                  std::move(return_type),
-                                  std::move(parameters),
-                                  std::move(body),
-                                  std::move(suffix),
-                                  std::move(function_template),
-                                  compact_function_formatting()));
+    nodes.add(homogeneous_function(std::move(name),
+                                   std::move(return_type),
+                                   std::move(parameters),
+                                   std::move(body),
+                                   std::move(suffix),
+                                   std::move(function_template),
+                                   compact_function_formatting()),
+              1);
 }
 
 auto homogeneous_pointer_struct(HomogeneousLayoutSchema const& layout,
                                 std::string name,
                                 std::string const& pointer_type) -> Node {
-    Nodes members;
+    NodeListBuilder members;
     for (std::size_t index{0}; index < layout.components.size(); ++index) {
-        members.push_back(Member{CppType{pointer_type}, layout.components[index]});
+        members.add(Member{CppType{pointer_type}, layout.components[index]});
         if (index + 1 < layout.components.size()) {
-            members.push_back(lines(1));
+            members.new_lines();
         }
     }
-    return Struct{.name = std::move(name), .children = std::move(members)};
+    return Struct{.name = std::move(name), .children = members.build()};
 }
 
 auto homogeneous_storage_prelude_nodes(HomogeneousLayoutSchema const& layout,
                                        CppType const& value_type,
                                        std::string const& view_name) -> Nodes {
-    Nodes result{
-        UsingDeclaration{"value_type", value_type},
-        lines(1),
-        UsingDeclaration{"size_type", CppType{"TArray<value_type>::SizeType"}},
-        lines(1),
-        UsingDeclaration{"View", CppType{view_name + "<value_type>"}},
-        lines(1),
-        UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}},
-        lines(2),
-        homogeneous_pointer_struct(layout, "Data", "value_type*"),
-        lines(2),
-        homogeneous_pointer_struct(layout, "ConstData", "value_type const*"),
-        lines(2),
-    };
+    NodeListBuilder result;
+    result.add(UsingDeclaration{"value_type", value_type}, 1)
+        .add(UsingDeclaration{"size_type", CppType{"TArray<value_type>::SizeType"}}, 1)
+        .add(UsingDeclaration{"View", CppType{view_name + "<value_type>"}}, 1)
+        .add(UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}}, 2)
+        .add(homogeneous_pointer_struct(layout, "Data", "value_type*"), 2)
+        .add(homogeneous_pointer_struct(layout, "ConstData", "value_type const*"), 2);
     for (std::size_t index{0}; index < layout.components.size(); ++index) {
-        result.push_back(Member{CppType{"TArray<value_type>"}, layout.components[index]});
-        result.push_back(lines(index + 1 < layout.components.size() ? 1 : 2));
+        result.add(Member{CppType{"TArray<value_type>"}, layout.components[index]},
+                   index + 1 < layout.components.size() ? 1 : 2);
     }
-    return result;
+    return result.build();
 }
 
 auto homogeneous_storage_access_nodes(HomogeneousLayoutSchema const& layout) -> Nodes {
@@ -266,7 +251,7 @@ auto homogeneous_storage_access_nodes(HomogeneousLayoutSchema const& layout) -> 
                              ".Num() == " + layout.components.front() + ".Num());");
     }
 
-    Nodes result;
+    NodeListBuilder result;
     add_compact_function(
         result, "get_data", "auto", {}, "return Data{" + join(pointers, ", ") + "};", " -> Data");
     add_compact_function(result,
@@ -330,24 +315,23 @@ auto homogeneous_storage_access_nodes(HomogeneousLayoutSchema const& layout) -> 
                          {},
                          "return " + layout.components.front() + ".Num();",
                          " const -> size_type");
-    add_node(result,
-             homogeneous_function("validate_array_sizes",
-                                  "void",
-                                  {},
-                                  join_lines(validation),
-                                  " const",
-                                  std::nullopt,
-                                  {},
-                                  {check_dependency}));
+    result.add(homogeneous_function("validate_array_sizes",
+                                    "void",
+                                    {},
+                                    join_lines(validation),
+                                    " const",
+                                    std::nullopt,
+                                    {},
+                                    {check_dependency}),
+               1);
     add_compact_function(
         result, "is_empty", "auto", {}, "return num() == 0;", " const -> bool");
-    return result;
+    return result.build();
 }
 
 auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> Nodes {
-    Nodes result;
-    add_node(result,
-             homogeneous_function("copy_element",
+    NodeListBuilder result;
+    result.add(homogeneous_function("copy_element",
                                   "auto",
                                   {FunctionParameter{"size_type const", "dst_i"},
                                    FunctionParameter{"Other const&", "src"},
@@ -355,9 +339,9 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                                   component_statements(layout, "{}[dst_i] = src.{}[src_i];"),
                                   " -> void",
                                   "typename Other",
-                                  same_line_template_formatting()));
-    add_node(result,
-             homogeneous_function(
+                                  same_line_template_formatting()),
+               1);
+    result.add(homogeneous_function(
                  "copy_elements",
                  "auto",
                  {FunctionParameter{"size_type const", "dst_i"},
@@ -369,9 +353,9 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                      "\n}",
                  " -> void",
                  "typename Other",
-                 same_line_template_formatting()));
-    add_node(result,
-             homogeneous_function("copy_to_tail",
+                 same_line_template_formatting()),
+               1);
+    result.add(homogeneous_function("copy_to_tail",
                                   "auto",
                                   {FunctionParameter{"Other const&", "src"}},
                                   "auto const count{src.num()};\ncheck(num() >= "
@@ -379,30 +363,30 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                                   " -> void",
                                   "typename Other",
                                   same_line_template_formatting(),
-                                  {check_dependency}));
-    add_node(result,
-             homogeneous_function("append_from",
+                                  {check_dependency}),
+               1);
+    result.add(homogeneous_function("append_from",
                                   "void",
                                   {FunctionParameter{"Other const&", "other"}},
                                   component_statements(layout, "{}.Append(other.{});"),
                                   {},
                                   "typename Other",
-                                  same_line_template_formatting()));
-    return result;
+                                  same_line_template_formatting()),
+               1);
+    return result.build();
 }
 
 auto homogeneous_storage_sort_nodes() -> Nodes {
-    Nodes result;
-    add_node(result,
-             declaration(
+    NodeListBuilder result;
+    result.add(declaration(
                  FunctionSpec{.name = "apply_permutation",
                               .return_type = "void",
-                              .parameters = {FunctionParameter{"TArrayView<int32>", "indices"}}}));
+                              .parameters = {FunctionParameter{"TArrayView<int32>", "indices"}}}),
+               1);
     std::string const sort_common{
         "validate_array_sizes();\nauto const n{num()};\ncheck(scratch_indices.Num() == "
         "n);\nml::fill_indices(scratch_indices);\n"};
-    add_node(result,
-             homogeneous_function(
+    result.add(homogeneous_function(
                  "sort",
                  "void",
                  {FunctionParameter{"Compare&&", "compare"},
@@ -413,9 +397,9 @@ auto homogeneous_storage_sort_nodes() -> Nodes {
                  {},
                  "typename Compare",
                  same_line_template_formatting(),
-                 {check_dependency, fill_indices}));
-    add_node(result,
-             homogeneous_function(
+                 {check_dependency, fill_indices}),
+               1);
+    result.add(homogeneous_function(
                  "sort",
                  "void",
                  {FunctionParameter{"TArrayView<int32>", "scratch_indices"}},
@@ -425,21 +409,22 @@ auto homogeneous_storage_sort_nodes() -> Nodes {
                  {},
                  "auto Compare",
                  same_line_template_formatting(),
-                 {check_dependency, fill_indices}));
-    return result;
+                 {check_dependency, fill_indices}),
+               1);
+    return result.build();
 }
 
 auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& layout) -> Nodes {
-    Nodes result;
+    NodeListBuilder result;
     auto add_each = [&](std::string name,
                         std::vector<FunctionParameter> parameters,
                         std::string expression) {
-        add_node(result,
-                 homogeneous_function(std::move(name),
+        result.add(homogeneous_function(std::move(name),
                                       "auto",
                                       std::move(parameters),
                                       component_statements(layout, expression),
-                                      " -> void"));
+                                      " -> void"),
+                   1);
     };
     add_each("reset", {}, "{}.Reset();");
     add_each("empty", {}, "{}.Empty();");
@@ -461,12 +446,12 @@ auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& la
              "{}.RemoveAtSwap(index, count, allow_shrinking);");
     add_each(
         "add_zeroed", {FunctionParameter{"size_type const", "count"}}, "{}.AddZeroed(count);");
-    result.push_back(homogeneous_function("add_defaulted",
-                                          "auto",
-                                          {FunctionParameter{"size_type const", "count"}},
-                                          component_statements(layout, "{}.AddDefaulted(count);"),
-                                          " -> void"));
-    return result;
+    result.add(homogeneous_function("add_defaulted",
+                                    "auto",
+                                    {FunctionParameter{"size_type const", "count"}},
+                                    component_statements(layout, "{}.AddDefaulted(count);"),
+                                    " -> void"));
+    return result.build();
 }
 
 auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
@@ -475,12 +460,12 @@ auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
     auto const value_type{resolve_type(value.type, types)};
     auto const view_name{"T" + layout.name + "View"};
     auto const storage_name{"F" + layout.name + value.suffix};
-    Nodes children;
-    append_nodes(children, homogeneous_storage_prelude_nodes(layout, value_type, view_name));
-    append_nodes(children, homogeneous_storage_access_nodes(layout));
-    append_nodes(children, homogeneous_storage_copy_nodes(layout));
-    append_nodes(children, homogeneous_storage_sort_nodes());
-    append_nodes(children, homogeneous_storage_array_operation_nodes(layout));
+    NodeListBuilder children;
+    children.append(homogeneous_storage_prelude_nodes(layout, value_type, view_name))
+        .append(homogeneous_storage_access_nodes(layout))
+        .append(homogeneous_storage_copy_nodes(layout))
+        .append(homogeneous_storage_sort_nodes())
+        .append(homogeneous_storage_array_operation_nodes(layout));
 
     std::vector<TypeDependency> dependencies{
         tarray, tarray_view, allow_shrinking, check_dependency, fill_indices, std_forward};
@@ -488,7 +473,7 @@ auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
         dependencies.end(), value_type.dependencies.begin(), value_type.dependencies.end());
     return Struct{
         .name = storage_name,
-        .children = std::move(children),
+        .children = children.build(),
         .export_specifier = layout.export_specifier,
         .dependencies = std::move(dependencies),
     };

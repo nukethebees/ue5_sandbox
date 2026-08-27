@@ -25,6 +25,27 @@ TEST(Ast, NodeProvidesVariantInterface) {
     EXPECT_EQ(node.get_if<Raw>(), nullptr);
 }
 
+TEST(Ast, NodeListBuilderComposesSectionsAndSpacing) {
+    NodeListBuilder section;
+    section.add(Member{"int32", "first"}, 1).add(Member{"int32", "second"});
+
+    NodeListBuilder builder;
+    auto nodes{builder.add(AccessSpecifier{"public"}, 1)
+                   .append(section.build())
+                   .new_lines(2)
+                   .add(Member{"int32", "third"})
+                   .build()};
+
+    ASSERT_EQ(nodes.size(), 7);
+    EXPECT_TRUE(nodes[0].is<AccessSpecifier>());
+    EXPECT_EQ(nodes[1].get_if<NewLines>()->count, 1);
+    EXPECT_EQ(nodes[2].get_if<Member>()->name, "first");
+    EXPECT_EQ(nodes[3].get_if<NewLines>()->count, 1);
+    EXPECT_EQ(nodes[4].get_if<Member>()->name, "second");
+    EXPECT_EQ(nodes[5].get_if<NewLines>()->count, 2);
+    EXPECT_EQ(nodes[6].get_if<Member>()->name, "third");
+}
+
 TEST(Ast, RendersBraceInitialisedTree) {
     CppFile const file{
         .path = std::filesystem::path{"Example.h"},

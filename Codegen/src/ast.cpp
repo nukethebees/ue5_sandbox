@@ -405,6 +405,31 @@ auto lines(int count) -> Node {
     return NewLines{count};
 }
 
+auto NodeListBuilder::add(Node node) -> NodeListBuilder& {
+    nodes_.push_back(std::move(node));
+    return *this;
+}
+
+auto NodeListBuilder::add(Node node, int trailing_new_lines) -> NodeListBuilder& {
+    return add(std::move(node)).new_lines(trailing_new_lines);
+}
+
+auto NodeListBuilder::append(Nodes nodes) -> NodeListBuilder& {
+    for (auto& node : nodes) {
+        nodes_.push_back(std::move(node));
+    }
+    return *this;
+}
+
+auto NodeListBuilder::new_lines(int count) -> NodeListBuilder& {
+    nodes_.push_back(lines(count));
+    return *this;
+}
+
+auto NodeListBuilder::build() -> Nodes {
+    return std::move(nodes_);
+}
+
 auto declaration(FunctionSpec spec) -> Node {
     return Function{std::move(spec), std::nullopt, true, false};
 }
