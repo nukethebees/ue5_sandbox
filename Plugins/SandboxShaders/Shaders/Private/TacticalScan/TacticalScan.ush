@@ -1,0 +1,40 @@
+#ifndef SANDBOX_SHADERS_TACTICAL_SCAN
+#define SANDBOX_SHADERS_TACTICAL_SCAN
+
+// World position is reconstructed by Unreal from SceneDepth before it reaches this function.
+float3 sbx_tactical_scan(float3 scene_colour,
+                         float3 world_position,
+                         float scene_depth,
+                         float3 scan_origin,
+                         float3 scan_direction,
+                         float3 grid_axis_u,
+                         float3 grid_axis_v,
+                         float animation_time,
+                         float scan_range,
+                         float scan_speed,
+                         float scan_width,
+                         float scan_intensity,
+                         float scan_falloff,
+                         float grid_scale,
+                         float3 scan_colour)
+{
+    float const phase = frac(animation_time * scan_speed);
+    float const sweep_position = lerp(-scan_range, scan_range, phase);
+    float3 const relative_position = world_position - scan_origin;
+    float const axial_position = dot(relative_position, normalize(scan_direction));
+    float const distance_to_sweep = axial_position - sweep_position;
+
+    float const leading_band = 1.0 - smoothstep(scan_width, scan_width * 2.0, abs(distance_to_sweep));
+    float const trail = exp(-max(distance_to_sweep, 0.0) / scan_falloff) * step(0.0, distance_to_sweep);
+
+    float2 const grid_coordinates = float2(dot(relative_position, normalize(grid_axis_u)),
+                                           dot(relative_position, normalize(grid_axis_v))) /
+                                    grid_scale;
+    float2 const grid_cell = abs(frac(grid_coordinates) - 0.5);
+    float const grid = 1.0 - smoothstep(0.43, 0.49, max(grid_cell.x, grid_cell.y));
+    float const geometry_mask = step(scene_depth, 1000000.0);
+    float const reveal = geometry_mask * saturate(leading_band + trail * grid * 0.8);
+    return scene_colour + scan_colour * reveal * scan_intensity;
+}
+
+#endif

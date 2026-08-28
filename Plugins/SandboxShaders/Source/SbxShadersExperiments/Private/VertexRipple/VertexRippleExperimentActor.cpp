@@ -9,9 +9,9 @@
 DEFINE_LOG_CATEGORY_STATIC(LogVertexRippleExperiment, Log, All);
 
 namespace {
-constexpr TCHAR mesh_path[]{
+constexpr TCHAR vertex_ripple_mesh_path[]{
     TEXT("/SandboxShaders/Experiments/VertexRipple/SM_VertexRippleGrid.SM_VertexRippleGrid")};
-constexpr TCHAR material_path[]{
+constexpr TCHAR vertex_ripple_material_path[]{
     TEXT("/SandboxShaders/Experiments/VertexRipple/M_VertexRipple.M_VertexRipple")};
 }
 
@@ -23,13 +23,14 @@ AVertexRippleExperimentActor::AVertexRippleExperimentActor() {
     surface_mesh_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     surface_mesh_->SetCastShadow(false);
 
-    static ConstructorHelpers::FObjectFinder<UStaticMesh> const surface_mesh{mesh_path};
+    static ConstructorHelpers::FObjectFinder<UStaticMesh> const surface_mesh{
+        vertex_ripple_mesh_path};
     if (surface_mesh.Succeeded()) {
         surface_mesh_->SetStaticMesh(surface_mesh.Object);
     }
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const surface_material{
-        material_path};
+        vertex_ripple_material_path};
     if (surface_material.Succeeded()) {
         surface_material_ = surface_material.Object;
         surface_mesh_->SetMaterial(0, surface_material_);
@@ -44,10 +45,10 @@ void AVertexRippleExperimentActor::OnConstruction(FTransform const& transform) {
 
 void AVertexRippleExperimentActor::ensure_material() {
     if (!IsValid(surface_mesh_->GetStaticMesh())) {
-        surface_mesh_->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, mesh_path));
+        surface_mesh_->SetStaticMesh(LoadObject<UStaticMesh>(nullptr, vertex_ripple_mesh_path));
     }
     if (!IsValid(surface_material_)) {
-        surface_material_ = LoadObject<UMaterialInterface>(nullptr, material_path);
+        surface_material_ = LoadObject<UMaterialInterface>(nullptr, vertex_ripple_material_path);
     }
     if (IsValid(surface_material_) && !IsValid(material_instance_)) {
         material_instance_ = surface_mesh_->CreateDynamicMaterialInstance(0, surface_material_);

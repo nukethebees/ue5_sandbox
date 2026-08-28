@@ -1,0 +1,105 @@
+#ifndef SANDBOX_SHADERS_RAYMARCHED_ANOMALY
+#define SANDBOX_SHADERS_RAYMARCHED_ANOMALY
+
+float sbx_anomaly_hash(float3 value)
+{
+    value = frac(value * 0.1031);
+    value += dot(value, value.yzx + 33.33);
+    return frac((value.x + value.y) * value.z);
+}
+
+float sbx_anomaly_noise(float3 value)
+{
+    float3 const cell = floor(value);
+    float3 interpolation = frac(value);
+    interpolation = interpolation * interpolation * (3.0 - 2.0 * interpolation);
+    float const n000 = sbx_anomaly_hash(cell);
+    float const n100 = sbx_anomaly_hash(cell + float3(1, 0, 0));
+    float const n010 = sbx_anomaly_hash(cell + float3(0, 1, 0));
+    float const n110 = sbx_anomaly_hash(cell + float3(1, 1, 0));
+    float const n001 = sbx_anomaly_hash(cell + float3(0, 0, 1));
+    float const n101 = sbx_anomaly_hash(cell + float3(1, 0, 1));
+    float const n011 = sbx_anomaly_hash(cell + float3(0, 1, 1));
+    float const n111 = sbx_anomaly_hash(cell + float3(1, 1, 1));
+    float const low = lerp(lerp(n000, n100, interpolation.x), lerp(n010, n110, interpolation.x), interpolation.y);
+    float const high = lerp(lerp(n001, n101, interpolation.x), lerp(n011, n111, interpolation.x), interpolation.y);
+    return lerp(low, high, interpolation.z);
+}
+
+// A deformed sphere and a rotating torus are smoothly combined into one animated SDF.
+float sbx_anomaly_sdf(float3 position, float time, float deformation, float frequency, float scale)
+{
+    position /= scale;
+    float const angle = time * 0.35 + position.y * 0.7;
+    float const sine = sin(angle);
+    float const cosine = cos(angle);
+    position.xz = mul(float2x2(cosine, -sine, sine, cosine), position.xz);
+    float const warp = (sbx_anomaly_noise(position * frequency + time * 0.2) - 0.5) * deformation;
+    float const sphere = length(position) - (0.72 + warp);
+    float2 const torus_q = float2(length(position.xz) - 0.72, position.y);
+    float const torus = length(torus_q) - 0.11;
+    return min(sphere, torus + 0.08);
+}
+
+float3 sbx_anomaly_normal(float3 position, float time, float deformation, float frequency, float scale)
+{
+    float const epsilon = 0.0025;
+    float const centre = sbx_anomaly_sdf(position, time, deformation, frequency, scale);
+    return normalize(float3(sbx_anomaly_sdf(position + float3(epsilon, 0, 0), time, deformation, frequency, scale) - centre,
+                            sbx_anomaly_sdf(position + float3(0, epsilon, 0), time, deformation, frequency, scale) - centre,
+                            sbx_anomaly_sdf(position + float3(0, 0, epsilon), time, deformation, frequency, scale) - centre));
+}
+
+float3 sbx_raymarched_anomaly(float2 uv,
+                              float animation_time,
+                              float step_count,
+                              float anomaly_scale,
+                              float deformation,
+                              float animation_speed,
+                              float noise_frequency,
+                              float emissive_strength,
+                              float max_distance,
+                              float3 colour_a,
+                              float3 colour_b)
+{
+    float2 const screen = (uv - 0.5) * 2.0;
+    float3 const ray_origin = float3(0.0, 0.0, -3.2);
+    float3 const ray_direction = normalize(float3(screen, 1.65));
+    float const time = animation_time * animation_speed;
+    float travelled = 0.0;
+    float glow = 0.0;
+    bool hit = false;
+    float3 sample_position = ray_origin;
+    int const requested_steps = clamp((int)round(step_count), 8, 96);
+
+    // The compile-time cap makes the worst-case cost explicit; StepCount only exits earlier.
+    [loop]
+    for (int step = 0; step < 96; ++step)
+    {
+        if (step >= requested_steps || travelled >= max_distance)
+        {
+            break;
+        }
+        sample_position = ray_origin + ray_direction * travelled;
+        float const distance_to_surface = sbx_anomaly_sdf(sample_position, time, deformation, noise_frequency, anomaly_scale);
+        glow += 0.012 / (0.025 + abs(distance_to_surface));
+        if (distance_to_surface < 0.003)
+        {
+            hit = true;
+            break;
+        }
+        travelled += max(distance_to_surface * 0.72, 0.006);
+    }
+
+    float3 colour = float3(0.001, 0.002, 0.012) + lerp(colour_a, colour_b, saturate(glow * 0.06)) * glow * 0.035;
+    if (hit)
+    {
+        float3 const normal = sbx_anomaly_normal(sample_position, time, deformation, noise_frequency, anomaly_scale);
+        float const rim = pow(1.0 - saturate(dot(normal, -ray_direction)), 2.5);
+        float const bands = 0.5 + 0.5 * sin((sample_position.y + sbx_anomaly_noise(sample_position * 4.0)) * 18.0 - time * 5.0);
+        colour += lerp(colour_a, colour_b, bands) * (0.35 + rim * emissive_strength);
+    }
+    return colour;
+}
+
+#endif

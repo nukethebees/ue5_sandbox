@@ -1,0 +1,43 @@
+#ifndef SANDBOX_SHADERS_PLANET_ATMOSPHERE
+#define SANDBOX_SHADERS_PLANET_ATMOSPHERE
+
+float3 sbx_planet_surface(float3 normal_ws,
+                          float3 sun_direction,
+                          float3 day_colour,
+                          float3 night_colour,
+                          float night_floor)
+{
+    float const sun_facing = dot(normalize(normal_ws), normalize(sun_direction));
+    float const terminator = smoothstep(-0.12, 0.22, sun_facing);
+    float const illumination = lerp(saturate(night_floor), 1.0, terminator);
+    return lerp(night_colour, day_colour, terminator) * illumination;
+}
+
+float4 sbx_planet_atmosphere(float3 normal_ws,
+                             float3 camera_vector_ws,
+                             float3 sun_direction,
+                             float3 atmosphere_colour,
+                             float density,
+                             float limb_power,
+                             float scale_height,
+                             float emissive_intensity)
+{
+    float3 const normal = normalize(normal_ws);
+    float3 const view_direction = normalize(camera_vector_ws);
+    float const view_cosine = saturate(dot(normal, view_direction));
+    float const limb = pow(1.0 - view_cosine, max(limb_power, 0.5));
+
+    // This is a deliberately cheap optical-depth approximation: grazing rays travel through
+    // more atmosphere, while ScaleHeight bounds the denominator and therefore the cost.
+    float const optical_depth = 1.0 - exp(-max(density, 0.01) * max(scale_height, 0.01) /
+                                          max(view_cosine, max(scale_height, 0.01)));
+    float const sun_facing = dot(normal, normalize(sun_direction));
+    float const daylight = smoothstep(-0.35, 0.12, sun_facing);
+    float const forward_scatter =
+        pow(saturate(dot(view_direction, normalize(sun_direction))), 6.0);
+    float const energy = saturate(optical_depth * (0.3 + limb * 1.4) * (0.12 + daylight * 0.88) +
+                                  forward_scatter * daylight * 0.25);
+    return float4(atmosphere_colour * energy * emissive_intensity, saturate(energy * 0.78));
+}
+
+#endif

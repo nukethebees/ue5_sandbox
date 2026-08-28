@@ -25,6 +25,18 @@ struct SBXSHADERSEXPERIMENTS_API FShieldImpactSettings {
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "Shield Impact",
+              meta = (ClampMin = "0.005", ClampMax = "0.5"))
+    float preview_radius{0.035f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Shield Impact",
+              meta = (ClampMin = "0.0"))
+    float preview_strength{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Shield Impact",
               meta = (ClampMin = "0.1"))
     float pulse_duration{1.8f};
 
@@ -39,6 +51,12 @@ struct SBXSHADERSEXPERIMENTS_API FShieldImpactSettings {
               Category = "Shield Impact",
               meta = (ClampMin = "0.005", ClampMax = "0.5"))
     float pulse_width{0.075f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Shield Impact",
+              meta = (ClampMin = "0.0"))
+    float expansion_speed{0.48f};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
@@ -84,12 +102,27 @@ class SBXSHADERSEXPERIMENTS_API AShieldImpactExperimentActor final : public AAct
     UFUNCTION(BlueprintCallable, Category = "Shield Impact")
     void trigger_impact_at_local_position(FVector local_impact_centre);
 
+    UFUNCTION(BlueprintCallable, Category = "Shield Impact")
+    bool add_impact(FVector local_impact_centre, float radius, float strength);
+
+    UFUNCTION(CallInEditor, BlueprintCallable, Category = "Shield Impact")
+    void clear_impacts();
+
+    [[nodiscard]] int32 active_impact_count() const;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Shield Impact")
     FShieldImpactSettings settings;
   private:
     void ensure_material();
     void apply_settings();
-    void apply_impact_phase(float phase);
+    void apply_impacts();
+
+    struct FActiveImpact {
+        FVector centre{FVector::ForwardVector};
+        float radius{0.035f};
+        float age{0.0f};
+        float strength{1.0f};
+    };
 
     UPROPERTY(VisibleAnywhere, Category = "Shield Impact")
     TObjectPtr<UStaticMeshComponent> shield_mesh_;
@@ -100,6 +133,7 @@ class SBXSHADERSEXPERIMENTS_API AShieldImpactExperimentActor final : public AAct
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> material_instance_;
 
-    float elapsed_since_impact_{0.0f};
-    bool impact_active_{true};
+    TArray<FActiveImpact> active_impacts_;
+    float auto_repeat_elapsed_{0.0f};
+    int32 auto_repeat_sequence_{0};
 };

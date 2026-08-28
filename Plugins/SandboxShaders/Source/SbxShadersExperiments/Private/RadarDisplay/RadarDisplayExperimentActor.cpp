@@ -9,7 +9,7 @@
 DEFINE_LOG_CATEGORY_STATIC(LogRadarDisplayExperiment, Log, All);
 
 namespace {
-constexpr TCHAR material_path[]{
+constexpr TCHAR radar_material_path[]{
     TEXT("/SandboxShaders/Experiments/RadarDisplay/M_RadarDisplay.M_RadarDisplay")};
 
 auto contact_as_colour(FRadarContact const& contact) -> FLinearColor {
@@ -38,7 +38,7 @@ ARadarDisplayExperimentActor::ARadarDisplayExperimentActor() {
     }
 
     static ConstructorHelpers::FObjectFinder<UMaterialInterface> const display_material{
-        material_path};
+        radar_material_path};
     if (display_material.Succeeded()) {
         display_material_ = display_material.Object;
         display_mesh_->SetMaterial(0, display_material_);
@@ -53,7 +53,7 @@ void ARadarDisplayExperimentActor::OnConstruction(FTransform const& transform) {
 
 void ARadarDisplayExperimentActor::ensure_material() {
     if (!IsValid(display_material_)) {
-        display_material_ = LoadObject<UMaterialInterface>(nullptr, material_path);
+        display_material_ = LoadObject<UMaterialInterface>(nullptr, radar_material_path);
     }
     if (IsValid(display_material_) && !IsValid(material_instance_)) {
         material_instance_ = display_mesh_->CreateDynamicMaterialInstance(0, display_material_);
