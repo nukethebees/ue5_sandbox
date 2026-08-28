@@ -15,6 +15,16 @@ enum class EGenLabGenerator : uint8 {
     HexGrid UMETA(DisplayName = "Hex Grid Mask"),
 };
 
+UENUM()
+enum class EGenLabPreviewChannel : uint8 {
+    Color UMETA(DisplayName = "Color + Alpha"),
+    RGB UMETA(DisplayName = "RGB (Opaque)"),
+    Red UMETA(DisplayName = "Red"),
+    Green UMETA(DisplayName = "Green"),
+    Blue UMETA(DisplayName = "Blue"),
+    Alpha UMETA(DisplayName = "Alpha"),
+};
+
 UCLASS(Transient)
 class UGenLabSettings final : public UObject {
     GENERATED_BODY()
@@ -30,6 +40,20 @@ class UGenLabSettings final : public UObject {
 
     UPROPERTY(EditAnywhere, Category = "Output", meta = (ClampMin = "1", ClampMax = "2048"))
     int32 height{256};
+
+    UPROPERTY(EditAnywhere, Category = "Output Shaping")
+    bool invert{false};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (ClampMin = "0.0", ClampMax = "8.0"))
+    float contrast{1.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Preview")
+    EGenLabPreviewChannel preview_channel{EGenLabPreviewChannel::Color};
+
+    UPROPERTY(EditAnywhere, Category = "Preview")
+    bool tiled_preview{false};
 
     UPROPERTY(EditAnywhere,
               Category = "Radial Gradient",
@@ -140,6 +164,11 @@ class UGenLabSettings final : public UObject {
                       ClampMin = "0.0",
                       ClampMax = "1.0"))
     float noise_persistence{0.5f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::Noise", EditConditionHides))
+    bool tileable_noise{false};
 
     UPROPERTY(EditAnywhere,
               Category = "Hex Grid",

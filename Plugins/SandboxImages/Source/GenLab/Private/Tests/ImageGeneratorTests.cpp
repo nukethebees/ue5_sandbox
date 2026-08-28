@@ -103,7 +103,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
             TestRunner->TestTrue(TEXT("Default request generates a valid image"),
                                  generate_image(request).is_valid());
             TestRunner->TestTrue(TEXT("Request description contains its format version"),
-                                 describe_request(request).StartsWith(TEXT("version=1;")));
+                                 describe_request(request).StartsWith(TEXT("version=2;")));
         }
         TestRunner->TestEqual(
             TEXT("Default output names are unique"), output_names.Num(), requests.Num());
@@ -119,6 +119,33 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
                              generate_image(first).pixels == generate_image(first).pixels);
         TestRunner->TestTrue(TEXT("A changed request seed changes output"),
                              generate_image(first).pixels != generate_image(second).pixels);
+    }
+
+    TEST_METHOD(PostProcessingShapesIntensityAndMaskAlpha)
+    {
+        auto request{make_default_request(EGeneratorType::RadialGradient)};
+        request.radial_gradient = {.width = 65, .height = 65};
+        request.post_process.invert = true;
+        auto const inverted{generate_image(request)};
+
+        TestRunner->TestEqual(TEXT("Invert darkens the original bright centre"),
+                              pixel_at(inverted, 32, 32),
+                              FColor::Transparent);
+        TestRunner->TestEqual(TEXT("Invert brightens the original transparent corner"),
+                              pixel_at(inverted, 0, 0),
+                              FColor::White);
+
+        request.post_process = {.contrast = 0.0f};
+        auto const flat{generate_image(request)};
+        TestRunner->TestEqual(TEXT("Zero contrast produces middle gray mask intensity"),
+                              pixel_at(flat, 32, 32),
+                              FColor{128, 128, 128, 128});
+
+        request.post_process.contrast = -1.0f;
+        auto const invalid{generate_image(request)};
+        TestRunner->TestFalse(TEXT("Negative contrast is rejected"), invalid.is_valid());
+        TestRunner->TestFalse(TEXT("Invalid contrast explains the failure"),
+                              invalid.error.IsEmpty());
     }
 };
 
@@ -245,6 +272,33 @@ TEST_CLASS(SeededGenerators, "SandboxImages.UnitTests")
         TestRunner->TestEqual(TEXT("Default noise checksum"),
                               pixel_checksum(generate_noise(FNoiseParameters{})),
                               uint32{1451590235});
+    }
+
+    TEST_METHOD(TileableNoiseHasMatchingOppositeEdges)
+    {
+        auto const image{generate_noise({.width = 97,
+                                         .height = 65,
+                                         .seed = 13579u,
+                                         .base_scale = 24.0f,
+                                         .octave_count = 5,
+                                         .persistence = 0.55f,
+                                         .tileable = true})};
+        TestRunner->TestTrue(TEXT("Tileable noise is valid"), image.is_valid());
+
+        for (int32 y{0}; y < image.height; ++y) {
+            TestRunner->TestEqual(TEXT("Left and right edges match"),
+                                  pixel_at(image, 0, y),
+                                  pixel_at(image, image.width - 1, y));
+        }
+        for (int32 x{0}; x < image.width; ++x) {
+            TestRunner->TestEqual(TEXT("Top and bottom edges match"),
+                                  pixel_at(image, x, 0),
+                                  pixel_at(image, x, image.height - 1));
+        }
+
+        TestRunner->TestTrue(TEXT("Tileable noise remains nonconstant"),
+                             pixel_at(image, 0, 0) !=
+                                 pixel_at(image, image.width / 2, image.height / 2));
     }
 };
 

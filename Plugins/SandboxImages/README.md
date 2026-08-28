@@ -28,8 +28,9 @@ project-local derived-data cache under the ignored build directory.
 In Unreal Editor, click **Image Lab** in the level-editor toolbar or choose
 **Tools > Sandbox Image Lab**. The editor tab provides a transient preview, generator-specific
 parameters, **Generate Selected**, **Generate All Defaults**, and **Open Output Folder**. Changing a
-parameter refreshes the preview without writing anything. The editor console command remains
-available:
+parameter refreshes the bounded preview without writing anything. Preview controls can display a
+checkerboard-composited image, opaque RGB, or individual channels, and the 2x2 mode makes tiling
+seams easy to spot. The editor console command remains available:
 
 ```text
 SandboxImages.GenerateLabImages
@@ -52,7 +53,9 @@ The reproducible parameters and default output table live in
 `GenLab/Private/Generation/ImageGenerators.h` and `ImageGenerators.cpp`. The editor UI creates the
 same generation requests used by batch regeneration; it does not define a separate preset format.
 Change the output name and seed to create a deterministic variant without changing the canonical
-default set.
+default set. Shared invert and contrast controls shape the final intensity after generation. Noise
+can optionally use periodic sampling so opposite edges match exactly; imported tileable noise uses
+wrap addressing.
 
 | Output | Channel meaning |
 | --- | --- |

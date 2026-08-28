@@ -45,12 +45,14 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
                      .seed = seed,
                      .base_scale = noise_base_scale,
                      .octave_count = noise_octave_count,
-                     .persistence = noise_persistence};
+                     .persistence = noise_persistence,
+                     .tileable = tileable_noise};
     request.hex_grid = {.width = width,
                         .height = height,
                         .cell_radius = hex_cell_radius,
                         .line_thickness = hex_line_thickness,
                         .falloff = hex_falloff};
+    request.post_process = {.invert = invert, .contrast = contrast};
     return request;
 }
 
@@ -89,6 +91,7 @@ void UGenLabSettings::load_generator_defaults() {
             noise_base_scale = request.noise.base_scale;
             noise_octave_count = request.noise.octave_count;
             noise_persistence = request.noise.persistence;
+            tileable_noise = request.noise.tileable;
             break;
         case EGenLabGenerator::HexGrid:
             width = request.hex_grid.width;

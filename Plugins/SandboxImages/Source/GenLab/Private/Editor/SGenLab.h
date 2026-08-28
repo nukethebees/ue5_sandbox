@@ -2,13 +2,12 @@
 
 #include "CoreMinimal.h"
 #include "Editor/GenLabSettings.h"
+#include "Engine/Texture2D.h"
 #include "Styling/SlateBrush.h"
 #include "UObject/StrongObjectPtr.h"
 #include "Widgets/SCompoundWidget.h"
 
 class IDetailsView;
-class UTexture2D;
-
 class SGenLab final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SGenLab) {}

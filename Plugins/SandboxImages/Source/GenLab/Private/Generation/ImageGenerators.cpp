@@ -91,6 +91,63 @@ auto value_noise(float const x, float const y, uint32 const seed) -> float {
     return FMath::Lerp(top, bottom, ty);
 }
 
+auto periodic_lattice_value(int32 const x,
+                            int32 const y,
+                            int32 const period_x,
+                            int32 const period_y,
+                            uint32 const seed) -> float {
+    auto const wrapped_x{x % period_x};
+    auto const wrapped_y{y % period_y};
+    return lattice_value(wrapped_x, wrapped_y, seed);
+}
+
+auto periodic_value_noise(float const x,
+                          float const y,
+                          int32 const period_x,
+                          int32 const period_y,
+                          uint32 const seed) -> float {
+    auto const x0{FMath::FloorToInt(x)};
+    auto const y0{FMath::FloorToInt(y)};
+    auto const tx{smooth_step(0.0f, 1.0f, x - static_cast<float>(x0))};
+    auto const ty{smooth_step(0.0f, 1.0f, y - static_cast<float>(y0))};
+    auto const top{FMath::Lerp(periodic_lattice_value(x0, y0, period_x, period_y, seed),
+                               periodic_lattice_value(x0 + 1, y0, period_x, period_y, seed),
+                               tx)};
+    auto const bottom{FMath::Lerp(periodic_lattice_value(x0, y0 + 1, period_x, period_y, seed),
+                                  periodic_lattice_value(x0 + 1, y0 + 1, period_x, period_y, seed),
+                                  tx)};
+    return FMath::Lerp(top, bottom, ty);
+}
+
+auto apply_post_process(FGeneratedImage image,
+                        FImagePostProcessParameters const& parameters,
+                        bool const alpha_is_intensity) -> FGeneratedImage {
+    if (!image.is_valid()) {
+        return image;
+    }
+    if (!FMath::IsFinite(parameters.contrast) || parameters.contrast < 0.0f) {
+        return invalid_image(TEXT("Post-process contrast must be finite and non-negative."));
+    }
+
+    auto const transform{[&parameters](uint8 const channel) {
+        auto value{static_cast<float>(channel) / 255.0f};
+        value = (value - 0.5f) * parameters.contrast + 0.5f;
+        if (parameters.invert) {
+            value = 1.0f - value;
+        }
+        return to_byte(value);
+    }};
+    for (auto& pixel : image.pixels) {
+        pixel.R = transform(pixel.R);
+        pixel.G = transform(pixel.G);
+        pixel.B = transform(pixel.B);
+        if (alpha_is_intensity) {
+            pixel.A = transform(pixel.A);
+        }
+    }
+    return image;
+}
+
 auto hex_signed_distance(float const x, float const y, float const radius) -> float {
     auto const absolute_x{FMath::Abs(x)};
     auto const absolute_y{FMath::Abs(y)};
@@ -210,6 +267,10 @@ auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage {
         return image;
     }
 
+    auto const base_period_x{FMath::Max(
+        1, FMath::RoundToInt(static_cast<float>(parameters.width) / parameters.base_scale))};
+    auto const base_period_y{FMath::Max(
+        1, FMath::RoundToInt(static_cast<float>(parameters.height) / parameters.base_scale))};
     for (int32 y{0}; y < parameters.height; ++y) {
         for (int32 x{0}; x < parameters.width; ++x) {
             float value{0.0f};
@@ -218,10 +279,29 @@ auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage {
             float scale{parameters.base_scale};
             for (int32 octave{0}; octave < parameters.octave_count; ++octave) {
                 auto const octave_seed{parameters.seed + static_cast<uint32>(octave) * 0x9E3779B9u};
-                value += value_noise(static_cast<float>(x) / scale,
-                                     static_cast<float>(y) / scale,
-                                     octave_seed) *
-                         amplitude;
+                if (parameters.tileable) {
+                    auto const octave_multiplier{1 << octave};
+                    auto const period_x{base_period_x * octave_multiplier};
+                    auto const period_y{base_period_y * octave_multiplier};
+                    auto const sample_x{parameters.width > 1
+                                            ? static_cast<float>(x) /
+                                                  static_cast<float>(parameters.width - 1) *
+                                                  period_x
+                                            : 0.0f};
+                    auto const sample_y{parameters.height > 1
+                                            ? static_cast<float>(y) /
+                                                  static_cast<float>(parameters.height - 1) *
+                                                  period_y
+                                            : 0.0f};
+                    value +=
+                        periodic_value_noise(sample_x, sample_y, period_x, period_y, octave_seed) *
+                        amplitude;
+                } else {
+                    value += value_noise(static_cast<float>(x) / scale,
+                                         static_cast<float>(y) / scale,
+                                         octave_seed) *
+                             amplitude;
+                }
                 total_amplitude += amplitude;
                 amplitude *= parameters.persistence;
                 scale *= 0.5f;
@@ -313,42 +393,57 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
 }
 
 auto generate_image(FGenerationRequest const& request) -> FGeneratedImage {
+    FGeneratedImage image;
+    bool alpha_is_intensity{false};
     switch (request.generator) {
         case EGeneratorType::RadialGradient:
-            return generate_radial_gradient(request.radial_gradient);
+            image = generate_radial_gradient(request.radial_gradient);
+            alpha_is_intensity = true;
+            break;
         case EGeneratorType::RingMask:
-            return generate_ring_mask(request.ring_mask);
+            image = generate_ring_mask(request.ring_mask);
+            alpha_is_intensity = true;
+            break;
         case EGeneratorType::Starfield:
-            return generate_starfield(request.starfield);
+            image = generate_starfield(request.starfield);
+            alpha_is_intensity = request.starfield.transparent_background;
+            break;
         case EGeneratorType::Noise:
-            return generate_noise(request.noise);
+            image = generate_noise(request.noise);
+            break;
         case EGeneratorType::HexGrid:
-            return generate_hex_grid(request.hex_grid);
+            image = generate_hex_grid(request.hex_grid);
+            alpha_is_intensity = true;
+            break;
     }
-    return invalid_image(TEXT("Unknown image generator."));
+    return apply_post_process(MoveTemp(image), request.post_process, alpha_is_intensity);
 }
 
 auto describe_request(FGenerationRequest const& request) -> FString {
+    FString description;
     switch (request.generator) {
         case EGeneratorType::RadialGradient:
-            return FString::Printf(TEXT("version=1; generator=radial_gradient; dimensions=%dx%d; "
-                                        "inner_radius=%g; outer_radius=%g"),
-                                   request.radial_gradient.width,
-                                   request.radial_gradient.height,
-                                   request.radial_gradient.inner_radius,
-                                   request.radial_gradient.outer_radius);
+            description = FString::Printf(TEXT("version=2; generator=radial_gradient; "
+                                               "dimensions=%dx%d; inner_radius=%g; "
+                                               "outer_radius=%g"),
+                                          request.radial_gradient.width,
+                                          request.radial_gradient.height,
+                                          request.radial_gradient.inner_radius,
+                                          request.radial_gradient.outer_radius);
+            break;
         case EGeneratorType::RingMask:
-            return FString::Printf(
-                TEXT("version=1; generator=ring_mask; dimensions=%dx%d; radius=%g; "
-                     "thickness=%g; falloff=%g"),
-                request.ring_mask.width,
-                request.ring_mask.height,
-                request.ring_mask.radius,
-                request.ring_mask.thickness,
-                request.ring_mask.falloff);
+            description =
+                FString::Printf(TEXT("version=2; generator=ring_mask; dimensions=%dx%d; radius=%g; "
+                                     "thickness=%g; falloff=%g"),
+                                request.ring_mask.width,
+                                request.ring_mask.height,
+                                request.ring_mask.radius,
+                                request.ring_mask.thickness,
+                                request.ring_mask.falloff);
+            break;
         case EGeneratorType::Starfield:
-            return FString::Printf(
-                TEXT("version=1; generator=starfield; dimensions=%dx%d; seed=%u; "
+            description = FString::Printf(
+                TEXT("version=2; generator=starfield; dimensions=%dx%d; seed=%u; "
                      "star_count=%d; minimum_brightness=%g; minimum_radius=%g; "
                      "maximum_radius=%g; transparent_background=%s"),
                 request.starfield.width,
@@ -359,25 +454,32 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                 request.starfield.minimum_radius,
                 request.starfield.maximum_radius,
                 request.starfield.transparent_background ? TEXT("true") : TEXT("false"));
+            break;
         case EGeneratorType::Noise:
-            return FString::Printf(TEXT("version=1; generator=noise; dimensions=%dx%d; seed=%u; "
-                                        "base_scale=%g; octave_count=%d; persistence=%g"),
-                                   request.noise.width,
-                                   request.noise.height,
-                                   request.noise.seed,
-                                   request.noise.base_scale,
-                                   request.noise.octave_count,
-                                   request.noise.persistence);
+            description = FString::Printf(
+                TEXT("version=2; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
+                     "octave_count=%d; persistence=%g; tileable=%s"),
+                request.noise.width,
+                request.noise.height,
+                request.noise.seed,
+                request.noise.base_scale,
+                request.noise.octave_count,
+                request.noise.persistence,
+                request.noise.tileable ? TEXT("true") : TEXT("false"));
+            break;
         case EGeneratorType::HexGrid:
-            return FString::Printf(TEXT("version=1; generator=hex_grid; dimensions=%dx%d; "
-                                        "cell_radius=%g; line_thickness=%g; falloff=%g"),
-                                   request.hex_grid.width,
-                                   request.hex_grid.height,
-                                   request.hex_grid.cell_radius,
-                                   request.hex_grid.line_thickness,
-                                   request.hex_grid.falloff);
+            description = FString::Printf(TEXT("version=2; generator=hex_grid; dimensions=%dx%d; "
+                                               "cell_radius=%g; line_thickness=%g; falloff=%g"),
+                                          request.hex_grid.width,
+                                          request.hex_grid.height,
+                                          request.hex_grid.cell_radius,
+                                          request.hex_grid.line_thickness,
+                                          request.hex_grid.falloff);
+            break;
     }
-    return TEXT("version=1; generator=unknown");
+    return description + FString::Printf(TEXT("; invert=%s; contrast=%g"),
+                                         request.post_process.invert ? TEXT("true") : TEXT("false"),
+                                         request.post_process.contrast);
 }
 
 }

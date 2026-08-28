@@ -26,10 +26,14 @@ struct FTextureImportSettings {
     TextureAddress address_y{TA_Clamp};
 };
 
-auto import_settings_for(EGeneratorType const generator) -> FTextureImportSettings {
+auto import_settings_for(FGenerationRequest const& request) -> FTextureImportSettings {
     auto settings{FTextureImportSettings{}};
-    if (generator == EGeneratorType::Noise) {
+    if (request.generator == EGeneratorType::Noise) {
         settings.compression = TC_Grayscale;
+        if (request.noise.tileable) {
+            settings.address_x = TA_Wrap;
+            settings.address_y = TA_Wrap;
+        }
     }
     return settings;
 }
@@ -179,7 +183,7 @@ auto generate_and_import(FGenerationRequest const& request) -> bool {
     if (!write_png(output_path, image)) {
         return false;
     }
-    return import_texture(output_path, request, import_settings_for(request.generator));
+    return import_texture(output_path, request, import_settings_for(request));
 }
 
 auto regenerate_all() -> bool {

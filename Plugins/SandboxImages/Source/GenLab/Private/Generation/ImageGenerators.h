@@ -46,6 +46,7 @@ struct FNoiseParameters {
     float base_scale{48.0f};
     int32 octave_count{4};
     float persistence{0.5f};
+    bool tileable{false};
 };
 
 struct FHexGridParameters {
@@ -64,6 +65,11 @@ enum class EGeneratorType : uint8 {
     HexGrid,
 };
 
+struct FImagePostProcessParameters {
+    bool invert{false};
+    float contrast{1.0f};
+};
+
 struct FGenerationRequest {
     EGeneratorType generator{EGeneratorType::RadialGradient};
     FString output_name{TEXT("soft_radial_gradient")};
@@ -72,6 +78,7 @@ struct FGenerationRequest {
     FStarfieldParameters starfield;
     FNoiseParameters noise;
     FHexGridParameters hex_grid;
+    FImagePostProcessParameters post_process;
 };
 
 [[nodiscard]] auto generate_radial_gradient(FRadialGradientParameters const& parameters)
