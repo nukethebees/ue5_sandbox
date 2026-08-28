@@ -24,3 +24,7 @@ to see the fixed-camera radar box and its animated synthetic contact.
 `EUW_Scatter3DShowcase` demonstrates a dirty-driven RDG 3D scatter plot with deterministic point
 clusters, a fixed camera, depth-tested instanced markers, and scaling controls through 65,536
 points. Right-click it and choose **Run Editor Utility Widget** to launch the standalone example.
+
+`EUW_VolumeHeatmap3DShowcase` demonstrates a dense 3D scalar field rendered as view-aligned,
+translucent RDG slices. It includes deterministic cloud and shell patterns, grid and slice scaling,
+camera controls, and a benchmark that separates API submission from GPU upload/raster time.
