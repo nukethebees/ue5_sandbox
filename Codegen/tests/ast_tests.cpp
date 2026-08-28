@@ -224,7 +224,11 @@ TEST(Ast, ExposesChildrenForNestedAndDefinedNodes) {
 TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
     auto const rendered{render(Node{Struct{
         .name = "FDerived",
-        .children = {Member{"int", "value", "42"}},
+        .children =
+            {
+                Member{"int", "value", "42"},
+                Member{"int", "answer", "42", {.is_static = true, .is_constexpr = true}},
+            },
         .bases = {CppType{"FBase"}},
         .export_specifier = "PROJECT_API",
         .record_kind = "class",
@@ -233,7 +237,17 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
     EXPECT_EQ(rendered,
               "class PROJECT_API FDerived : FBase {\n"
               "    int value{42};\n"
+              "\n"
+              "    static constexpr int answer{42};\n"
               "};");
+}
+
+TEST(Ast, RejectsInvalidMemberQualifierCombinations) {
+    EXPECT_THROW(render(Node{Member{"int", "value", "42", {.is_constexpr = true}}}),
+                 std::invalid_argument);
+    EXPECT_THROW(render(Node{Member{
+                     "int", "value", std::nullopt, {.is_static = true, .is_constexpr = true}}}),
+                 std::invalid_argument);
 }
 
 TEST(Ast, RendersTemplatedConstrainedFunctions) {
@@ -402,13 +416,16 @@ TEST(Ast, RejectsInvalidFunctionQualifierCombinations) {
                      .return_type = "int32",
                      .qualifiers = {.trailing_return_type = CppType{"int32"}},
                  }),
-                 "trailing return type requires an 'auto' type specifier");
+                 "trailing return type requires an 'auto' return type");
 
-    EXPECT_NO_THROW(render(declaration(FunctionSpec{
-        .name = "qualified_placeholder_return",
-        .return_type = "static constexpr auto",
-        .qualifiers = {.trailing_return_type = CppType{"int32"}},
-    })));
+    EXPECT_EQ(render(declaration(FunctionSpec{
+                  .name = "qualified_placeholder_return",
+                  .return_type = "auto",
+                  .qualifiers = {.trailing_return_type = CppType{"int32"}},
+                  .is_static = true,
+                  .is_constexpr = true,
+              })),
+              "static constexpr auto qualified_placeholder_return() -> int32;");
 
     expect_error(declaration(FunctionSpec{
                      .name = "static_const",

@@ -122,8 +122,11 @@ auto fixed_container_prelude_nodes(SoaSchema const& schema,
         result.new_lines().add(
             UsingDeclaration{"equivalent_type", resolve_type(*schema.equivalent_type, types)});
     }
-    result.new_lines(2).add(
-        Member{CppType{"static constexpr size_type"}, "capacity_value", "Capacity"}, 2);
+    result.new_lines(2).add(Member{CppType{"size_type"},
+                                   "capacity_value",
+                                   "Capacity",
+                                   {.is_static = true, .is_constexpr = true}},
+                            2);
     return result.build();
 }
 
@@ -225,12 +228,18 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout, std::string cons
 
 auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
     NodeListBuilder result;
-    add_compact_function(result,
-                         "capacity",
-                         "static constexpr auto",
-                         {},
-                         "return capacity_value;",
-                         {.trailing_return_type = CppType{"size_type"}, .is_noexcept = true});
+    result.add(
+        header_function(FunctionSpec{
+            .name = "capacity",
+            .return_type = "auto",
+            .body = {raw("return capacity_value;")},
+            .qualifiers = {.trailing_return_type = CppType{"size_type"}, .is_noexcept = true},
+            .is_static = true,
+            .is_constexpr = true,
+            .is_inline = true,
+            .formatting = compact_function_formatting(),
+        }),
+        1);
     add_compact_function(
         result,
         "num",

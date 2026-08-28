@@ -19,6 +19,7 @@ struct FunctionSpec {
     Nodes body;
     FunctionQualifiers qualifiers;
     bool is_static{false};
+    bool is_constexpr{false};
     bool is_inline{false};
     std::optional<std::string> template_parameters;
     std::optional<std::string> requires_clause;

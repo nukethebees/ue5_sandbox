@@ -33,17 +33,6 @@ auto trim_newlines(std::string value) -> std::string {
     return value;
 }
 
-auto has_auto_type_specifier(std::string const& spelling) -> bool {
-    std::istringstream input{spelling};
-    std::string specifier;
-    while (input >> specifier) {
-        if (specifier == "auto") {
-            return true;
-        }
-    }
-    return false;
-}
-
 auto render_parameter(FunctionParameter const& parameter, bool include_default) -> std::string {
     auto result{parameter.type.spelling};
     if (!parameter.name.empty()) {
@@ -51,6 +40,17 @@ auto render_parameter(FunctionParameter const& parameter, bool include_default) 
     }
     if (include_default && parameter.default_value.has_value()) {
         result += " = " + *parameter.default_value;
+    }
+    return result;
+}
+
+auto declaration_specifier_prefix(bool const is_static, bool const is_constexpr) -> std::string {
+    std::string result;
+    if (is_static) {
+        result += "static ";
+    }
+    if (is_constexpr) {
+        result += "constexpr ";
     }
     return result;
 }
@@ -64,10 +64,9 @@ void validate_function(Function const& function) {
         throw std::invalid_argument{context +
                                     " cannot combine unconditional and conditional noexcept"};
     }
-    if (qualifiers.trailing_return_type.has_value() &&
-        !has_auto_type_specifier(spec.return_type.spelling)) {
+    if (qualifiers.trailing_return_type.has_value() && spec.return_type.spelling != "auto") {
         throw std::invalid_argument{context +
-                                    " trailing return type requires an 'auto' type specifier"};
+                                    " trailing return type requires an 'auto' return type"};
     }
     if (spec.is_static && qualifiers.is_const) {
         throw std::invalid_argument{context + " static function cannot be const"};
@@ -84,6 +83,16 @@ void validate_function(Function const& function) {
     }
 }
 
+void validate_member(Member const& member) {
+    auto const context{"Member '" + member.name + "'"};
+    if (member.qualifiers.is_constexpr && !member.qualifiers.is_static) {
+        throw std::invalid_argument{context + " constexpr data member must be static"};
+    }
+    if (member.qualifiers.is_constexpr && !member.initializer.has_value()) {
+        throw std::invalid_argument{context + " constexpr data member requires an initializer"};
+    }
+}
+
 auto render_signature(Function const& function) -> std::string {
     validate_function(function);
     auto const& spec{function.spec};
@@ -94,10 +103,10 @@ auto render_signature(Function const& function) -> std::string {
             render_parameter(parameter, function.declaration || function.is_header));
     }
 
-    auto const static_prefix{spec.is_static && !function.owner.has_value() ? "static " : ""};
     auto const qualified_name{function.owner.has_value() ? *function.owner + "::" + spec.name
                                                          : spec.name};
-    auto signature{std::string{static_prefix}};
+    auto signature{declaration_specifier_prefix(spec.is_static && !function.owner.has_value(),
+                                                spec.is_constexpr)};
     if (!spec.return_type.spelling.empty()) {
         signature += spec.return_type.spelling + " ";
     }
@@ -244,6 +253,14 @@ Member::Member(CppType value_type, std::string value_name, std::string value_ini
     : type{std::move(value_type)}
     , name{std::move(value_name)}
     , initializer{std::move(value_initializer)} {}
+Member::Member(CppType value_type,
+               std::string value_name,
+               std::optional<std::string> value_initializer,
+               MemberQualifiers value_qualifiers)
+    : type{std::move(value_type)}
+    , name{std::move(value_name)}
+    , initializer{std::move(value_initializer)}
+    , qualifiers{value_qualifiers} {}
 
 FunctionParameter::FunctionParameter(CppType value_type, std::string value_name)
     : type{std::move(value_type)}
@@ -415,10 +432,13 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 return context.apply_indent("using " + value.name + " = " + value.type.spelling +
                                             ";");
             } else if constexpr (std::is_same_v<T, Member>) {
+                validate_member(value);
                 auto initializer{value.initializer.has_value() ? "{" + *value.initializer + "}"
                                                                : ""};
-                return context.apply_indent(value.type.spelling + " " + value.name + initializer +
-                                            ";");
+                return context.apply_indent(
+                    declaration_specifier_prefix(value.qualifiers.is_static,
+                                                 value.qualifiers.is_constexpr) +
+                    value.type.spelling + " " + value.name + initializer + ";");
             } else if constexpr (std::is_same_v<T, Function>) {
                 auto const signature{context.apply_indent(render_signature(value))};
                 if (value.declaration ||
