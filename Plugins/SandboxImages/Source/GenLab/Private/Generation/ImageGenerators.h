@@ -49,6 +49,20 @@ struct FNoiseParameters {
     bool tileable{false};
 };
 
+struct FDomainWarpedNoiseParameters {
+    int32 width{256};
+    int32 height{256};
+    uint32 base_seed{0x4E454255u};
+    uint32 warp_seed{0x57415250u};
+    float base_scale{64.0f};
+    float warp_scale{96.0f};
+    float warp_strength{36.0f};
+    int32 base_octave_count{5};
+    int32 warp_octave_count{3};
+    float persistence{0.5f};
+    bool tileable{true};
+};
+
 struct FHexGridParameters {
     int32 width{256};
     int32 height{256};
@@ -62,12 +76,16 @@ enum class EGeneratorType : uint8 {
     RingMask,
     Starfield,
     Noise,
+    DomainWarpedNoise,
     HexGrid,
 };
 
 struct FImagePostProcessParameters {
     bool invert{false};
     float contrast{1.0f};
+    bool threshold_enabled{false};
+    float threshold{0.5f};
+    float threshold_softness{0.1f};
 };
 
 struct FGenerationRequest {
@@ -77,6 +95,7 @@ struct FGenerationRequest {
     FRingMaskParameters ring_mask;
     FStarfieldParameters starfield;
     FNoiseParameters noise;
+    FDomainWarpedNoiseParameters domain_warped_noise;
     FHexGridParameters hex_grid;
     FImagePostProcessParameters post_process;
 };
@@ -86,6 +105,8 @@ struct FGenerationRequest {
 [[nodiscard]] auto generate_ring_mask(FRingMaskParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_starfield(FStarfieldParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters)
+    -> FGeneratedImage;
 [[nodiscard]] auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto make_default_request(EGeneratorType generator) -> FGenerationRequest;
 [[nodiscard]] auto default_generation_requests() -> TArray<FGenerationRequest>;

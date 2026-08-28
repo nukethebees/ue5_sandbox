@@ -96,8 +96,8 @@ auto periodic_lattice_value(int32 const x,
                             int32 const period_x,
                             int32 const period_y,
                             uint32 const seed) -> float {
-    auto const wrapped_x{x % period_x};
-    auto const wrapped_y{y % period_y};
+    auto const wrapped_x{((x % period_x) + period_x) % period_x};
+    auto const wrapped_y{((y % period_y) + period_y) % period_y};
     return lattice_value(wrapped_x, wrapped_y, seed);
 }
 
@@ -119,6 +119,43 @@ auto periodic_value_noise(float const x,
     return FMath::Lerp(top, bottom, ty);
 }
 
+auto fractal_noise_sample(float const x,
+                          float const y,
+                          int32 const width,
+                          int32 const height,
+                          uint32 const seed,
+                          float const base_scale,
+                          int32 const octave_count,
+                          float const persistence,
+                          bool const tileable) -> float {
+    auto const base_period_x{
+        FMath::Max(1, FMath::RoundToInt(static_cast<float>(width) / base_scale))};
+    auto const base_period_y{
+        FMath::Max(1, FMath::RoundToInt(static_cast<float>(height) / base_scale))};
+    float value{0.0f};
+    float amplitude{1.0f};
+    float total_amplitude{0.0f};
+    float scale{base_scale};
+    for (int32 octave{0}; octave < octave_count; ++octave) {
+        auto const octave_seed{seed + static_cast<uint32>(octave) * 0x9E3779B9u};
+        if (tileable) {
+            auto const octave_multiplier{1 << octave};
+            auto const period_x{base_period_x * octave_multiplier};
+            auto const period_y{base_period_y * octave_multiplier};
+            auto const sample_x{width > 1 ? x / static_cast<float>(width - 1) * period_x : 0.0f};
+            auto const sample_y{height > 1 ? y / static_cast<float>(height - 1) * period_y : 0.0f};
+            value += periodic_value_noise(sample_x, sample_y, period_x, period_y, octave_seed) *
+                     amplitude;
+        } else {
+            value += value_noise(x / scale, y / scale, octave_seed) * amplitude;
+        }
+        total_amplitude += amplitude;
+        amplitude *= persistence;
+        scale *= 0.5f;
+    }
+    return total_amplitude > 0.0f ? value / total_amplitude : 0.0f;
+}
+
 auto apply_post_process(FGeneratedImage image,
                         FImagePostProcessParameters const& parameters,
                         bool const alpha_is_intensity) -> FGeneratedImage {
@@ -128,10 +165,26 @@ auto apply_post_process(FGeneratedImage image,
     if (!FMath::IsFinite(parameters.contrast) || parameters.contrast < 0.0f) {
         return invalid_image(TEXT("Post-process contrast must be finite and non-negative."));
     }
+    if (parameters.threshold_enabled &&
+        (!FMath::IsFinite(parameters.threshold) || parameters.threshold < 0.0f ||
+         parameters.threshold > 1.0f || !FMath::IsFinite(parameters.threshold_softness) ||
+         parameters.threshold_softness < 0.0f || parameters.threshold_softness > 1.0f)) {
+        return invalid_image(
+            TEXT("Post-process threshold and threshold softness must be finite and in [0, 1]."));
+    }
 
     auto const transform{[&parameters](uint8 const channel) {
         auto value{static_cast<float>(channel) / 255.0f};
         value = (value - 0.5f) * parameters.contrast + 0.5f;
+        if (parameters.threshold_enabled) {
+            auto const half_softness{parameters.threshold_softness * 0.5f};
+            value = parameters.threshold_softness > 0.0f
+                      ? smooth_step(parameters.threshold - half_softness,
+                                    parameters.threshold + half_softness,
+                                    value)
+                  : value >= parameters.threshold ? 1.0f
+                                                  : 0.0f;
+        }
         if (parameters.invert) {
             value = 1.0f - value;
         }
@@ -267,48 +320,76 @@ auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage {
         return image;
     }
 
-    auto const base_period_x{FMath::Max(
-        1, FMath::RoundToInt(static_cast<float>(parameters.width) / parameters.base_scale))};
-    auto const base_period_y{FMath::Max(
-        1, FMath::RoundToInt(static_cast<float>(parameters.height) / parameters.base_scale))};
     for (int32 y{0}; y < parameters.height; ++y) {
         for (int32 x{0}; x < parameters.width; ++x) {
-            float value{0.0f};
-            float amplitude{1.0f};
-            float total_amplitude{0.0f};
-            float scale{parameters.base_scale};
-            for (int32 octave{0}; octave < parameters.octave_count; ++octave) {
-                auto const octave_seed{parameters.seed + static_cast<uint32>(octave) * 0x9E3779B9u};
-                if (parameters.tileable) {
-                    auto const octave_multiplier{1 << octave};
-                    auto const period_x{base_period_x * octave_multiplier};
-                    auto const period_y{base_period_y * octave_multiplier};
-                    auto const sample_x{parameters.width > 1
-                                            ? static_cast<float>(x) /
-                                                  static_cast<float>(parameters.width - 1) *
-                                                  period_x
-                                            : 0.0f};
-                    auto const sample_y{parameters.height > 1
-                                            ? static_cast<float>(y) /
-                                                  static_cast<float>(parameters.height - 1) *
-                                                  period_y
-                                            : 0.0f};
-                    value +=
-                        periodic_value_noise(sample_x, sample_y, period_x, period_y, octave_seed) *
-                        amplitude;
-                } else {
-                    value += value_noise(static_cast<float>(x) / scale,
-                                         static_cast<float>(y) / scale,
-                                         octave_seed) *
-                             amplitude;
-                }
-                total_amplitude += amplitude;
-                amplitude *= parameters.persistence;
-                scale *= 0.5f;
-            }
+            auto const value{fractal_noise_sample(static_cast<float>(x),
+                                                  static_cast<float>(y),
+                                                  parameters.width,
+                                                  parameters.height,
+                                                  parameters.seed,
+                                                  parameters.base_scale,
+                                                  parameters.octave_count,
+                                                  parameters.persistence,
+                                                  parameters.tileable)};
+            image.pixels[y * parameters.width + x] = grayscale(value, 255);
+        }
+    }
+    return image;
+}
 
-            auto const normalized_value{total_amplitude > 0.0f ? value / total_amplitude : 0.0f};
-            image.pixels[y * parameters.width + x] = grayscale(normalized_value, 255);
+auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters)
+    -> FGeneratedImage {
+    if (parameters.base_scale <= 0.0f || parameters.warp_scale <= 0.0f ||
+        parameters.warp_strength < 0.0f || parameters.base_octave_count <= 0 ||
+        parameters.base_octave_count > 16 || parameters.warp_octave_count <= 0 ||
+        parameters.warp_octave_count > 16 || parameters.persistence < 0.0f ||
+        parameters.persistence > 1.0f) {
+        return invalid_image(TEXT("Domain-warped noise requires positive base and warp scales, a "
+                                  "non-negative warp strength, octave counts in [1, 16], and "
+                                  "persistence in [0, 1]."));
+    }
+
+    auto image{make_image(parameters.width, parameters.height, FColor::Black)};
+    if (!image.is_valid()) {
+        return image;
+    }
+
+    for (int32 y{0}; y < parameters.height; ++y) {
+        for (int32 x{0}; x < parameters.width; ++x) {
+            auto const warp_x{fractal_noise_sample(static_cast<float>(x),
+                                                   static_cast<float>(y),
+                                                   parameters.width,
+                                                   parameters.height,
+                                                   parameters.warp_seed,
+                                                   parameters.warp_scale,
+                                                   parameters.warp_octave_count,
+                                                   parameters.persistence,
+                                                   parameters.tileable) *
+                                  2.0f -
+                              1.0f};
+            auto const warp_y{fractal_noise_sample(static_cast<float>(x),
+                                                   static_cast<float>(y),
+                                                   parameters.width,
+                                                   parameters.height,
+                                                   parameters.warp_seed ^ 0xA511E9B3u,
+                                                   parameters.warp_scale,
+                                                   parameters.warp_octave_count,
+                                                   parameters.persistence,
+                                                   parameters.tileable) *
+                                  2.0f -
+                              1.0f};
+            auto const sample_x{static_cast<float>(x) + warp_x * parameters.warp_strength};
+            auto const sample_y{static_cast<float>(y) + warp_y * parameters.warp_strength};
+            auto const value{fractal_noise_sample(sample_x,
+                                                  sample_y,
+                                                  parameters.width,
+                                                  parameters.height,
+                                                  parameters.base_seed,
+                                                  parameters.base_scale,
+                                                  parameters.base_octave_count,
+                                                  parameters.persistence,
+                                                  parameters.tileable)};
+            image.pixels[y * parameters.width + x] = grayscale(value, 255);
         }
     }
     return image;
@@ -375,6 +456,9 @@ auto make_default_request(EGeneratorType const generator) -> FGenerationRequest 
         case EGeneratorType::Noise:
             request.output_name = TEXT("coherent_noise");
             break;
+        case EGeneratorType::DomainWarpedNoise:
+            request.output_name = TEXT("nebula_soft");
+            break;
         case EGeneratorType::HexGrid:
             request.output_name = TEXT("hex_grid_mask");
             break;
@@ -383,11 +467,48 @@ auto make_default_request(EGeneratorType const generator) -> FGenerationRequest 
 }
 
 auto default_generation_requests() -> TArray<FGenerationRequest> {
+    auto nebula_soft{make_default_request(EGeneratorType::DomainWarpedNoise)};
+
+    auto energy_filaments{make_default_request(EGeneratorType::DomainWarpedNoise)};
+    energy_filaments.output_name = TEXT("energy_filaments");
+    energy_filaments.domain_warped_noise = {.base_seed = 0x454E4552u,
+                                            .warp_seed = 0x46494C41u,
+                                            .base_scale = 38.0f,
+                                            .warp_scale = 72.0f,
+                                            .warp_strength = 52.0f,
+                                            .base_octave_count = 6,
+                                            .warp_octave_count = 3,
+                                            .persistence = 0.55f,
+                                            .tileable = true};
+    energy_filaments.post_process = {.contrast = 1.8f,
+                                     .threshold_enabled = true,
+                                     .threshold = 0.53f,
+                                     .threshold_softness = 0.22f};
+
+    auto shield_turbulence{make_default_request(EGeneratorType::DomainWarpedNoise)};
+    shield_turbulence.output_name = TEXT("shield_turbulence");
+    shield_turbulence.domain_warped_noise = {.base_seed = 0x53484945u,
+                                             .warp_seed = 0x54555242u,
+                                             .base_scale = 52.0f,
+                                             .warp_scale = 108.0f,
+                                             .warp_strength = 68.0f,
+                                             .base_octave_count = 5,
+                                             .warp_octave_count = 4,
+                                             .persistence = 0.6f,
+                                             .tileable = true};
+    shield_turbulence.post_process = {.contrast = 1.35f,
+                                      .threshold_enabled = true,
+                                      .threshold = 0.48f,
+                                      .threshold_softness = 0.38f};
+
     return {
         make_default_request(EGeneratorType::RadialGradient),
         make_default_request(EGeneratorType::RingMask),
         make_default_request(EGeneratorType::Starfield),
         make_default_request(EGeneratorType::Noise),
+        MoveTemp(nebula_soft),
+        MoveTemp(energy_filaments),
+        MoveTemp(shield_turbulence),
         make_default_request(EGeneratorType::HexGrid),
     };
 }
@@ -411,6 +532,9 @@ auto generate_image(FGenerationRequest const& request) -> FGeneratedImage {
         case EGeneratorType::Noise:
             image = generate_noise(request.noise);
             break;
+        case EGeneratorType::DomainWarpedNoise:
+            image = generate_domain_warped_noise(request.domain_warped_noise);
+            break;
         case EGeneratorType::HexGrid:
             image = generate_hex_grid(request.hex_grid);
             alpha_is_intensity = true;
@@ -423,7 +547,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
     FString description;
     switch (request.generator) {
         case EGeneratorType::RadialGradient:
-            description = FString::Printf(TEXT("version=2; generator=radial_gradient; "
+            description = FString::Printf(TEXT("version=3; generator=radial_gradient; "
                                                "dimensions=%dx%d; inner_radius=%g; "
                                                "outer_radius=%g"),
                                           request.radial_gradient.width,
@@ -433,7 +557,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::RingMask:
             description =
-                FString::Printf(TEXT("version=2; generator=ring_mask; dimensions=%dx%d; radius=%g; "
+                FString::Printf(TEXT("version=3; generator=ring_mask; dimensions=%dx%d; radius=%g; "
                                      "thickness=%g; falloff=%g"),
                                 request.ring_mask.width,
                                 request.ring_mask.height,
@@ -443,7 +567,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::Starfield:
             description = FString::Printf(
-                TEXT("version=2; generator=starfield; dimensions=%dx%d; seed=%u; "
+                TEXT("version=3; generator=starfield; dimensions=%dx%d; seed=%u; "
                      "star_count=%d; minimum_brightness=%g; minimum_radius=%g; "
                      "maximum_radius=%g; transparent_background=%s"),
                 request.starfield.width,
@@ -457,7 +581,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::Noise:
             description = FString::Printf(
-                TEXT("version=2; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
+                TEXT("version=3; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
                      "octave_count=%d; persistence=%g; tileable=%s"),
                 request.noise.width,
                 request.noise.height,
@@ -467,8 +591,25 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                 request.noise.persistence,
                 request.noise.tileable ? TEXT("true") : TEXT("false"));
             break;
+        case EGeneratorType::DomainWarpedNoise:
+            description = FString::Printf(
+                TEXT("version=3; generator=domain_warped_noise; dimensions=%dx%d; base_seed=%u; "
+                     "warp_seed=%u; base_scale=%g; warp_scale=%g; warp_strength=%g; "
+                     "base_octave_count=%d; warp_octave_count=%d; persistence=%g; tileable=%s"),
+                request.domain_warped_noise.width,
+                request.domain_warped_noise.height,
+                request.domain_warped_noise.base_seed,
+                request.domain_warped_noise.warp_seed,
+                request.domain_warped_noise.base_scale,
+                request.domain_warped_noise.warp_scale,
+                request.domain_warped_noise.warp_strength,
+                request.domain_warped_noise.base_octave_count,
+                request.domain_warped_noise.warp_octave_count,
+                request.domain_warped_noise.persistence,
+                request.domain_warped_noise.tileable ? TEXT("true") : TEXT("false"));
+            break;
         case EGeneratorType::HexGrid:
-            description = FString::Printf(TEXT("version=2; generator=hex_grid; dimensions=%dx%d; "
+            description = FString::Printf(TEXT("version=3; generator=hex_grid; dimensions=%dx%d; "
                                                "cell_radius=%g; line_thickness=%g; falloff=%g"),
                                           request.hex_grid.width,
                                           request.hex_grid.height,
@@ -477,9 +618,14 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                                           request.hex_grid.falloff);
             break;
     }
-    return description + FString::Printf(TEXT("; invert=%s; contrast=%g"),
-                                         request.post_process.invert ? TEXT("true") : TEXT("false"),
-                                         request.post_process.contrast);
+    return description +
+           FString::Printf(TEXT("; invert=%s; contrast=%g; threshold_enabled=%s; threshold=%g; "
+                                "threshold_softness=%g"),
+                           request.post_process.invert ? TEXT("true") : TEXT("false"),
+                           request.post_process.contrast,
+                           request.post_process.threshold_enabled ? TEXT("true") : TEXT("false"),
+                           request.post_process.threshold,
+                           request.post_process.threshold_softness);
 }
 
 }

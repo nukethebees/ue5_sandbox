@@ -60,6 +60,11 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                          width,
                          height);
         test_valid_image(*TestRunner,
+                         TEXT("domain-warped noise"),
+                         generate_domain_warped_noise({.width = width, .height = height}),
+                         width,
+                         height);
+        test_valid_image(*TestRunner,
                          TEXT("hex grid"),
                          generate_hex_grid({.width = width, .height = height}),
                          width,
@@ -72,12 +77,14 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
         auto const invalid_ring{generate_ring_mask({.thickness = 0.0f})};
         auto const invalid_starfield{generate_starfield({.minimum_radius = -1.0f})};
         auto const invalid_noise{generate_noise({.base_scale = 0.0f})};
+        auto const invalid_domain_noise{generate_domain_warped_noise({.warp_octave_count = 0})};
         auto const invalid_hex{generate_hex_grid({.cell_radius = 0.0f})};
 
         for (auto const* image : {&invalid_dimensions,
                                   &invalid_ring,
                                   &invalid_starfield,
                                   &invalid_noise,
+                                  &invalid_domain_noise,
                                   &invalid_hex}) {
             TestRunner->TestFalse(TEXT("Invalid parameters produce no valid image"),
                                   image->is_valid());
@@ -92,8 +99,9 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
     TEST_METHOD(DefaultRequestsAreNamedUniqueAndGenerateValidImages)
     {
         auto const requests{default_generation_requests()};
-        TestRunner->TestEqual(
-            TEXT("There is one request per proof-of-concept generator"), requests.Num(), 5);
+        TestRunner->TestEqual(TEXT("There are five base examples and three warped-noise examples"),
+                              requests.Num(),
+                              8);
 
         TSet<FString> output_names;
         for (auto const& request : requests) {
@@ -103,7 +111,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
             TestRunner->TestTrue(TEXT("Default request generates a valid image"),
                                  generate_image(request).is_valid());
             TestRunner->TestTrue(TEXT("Request description contains its format version"),
-                                 describe_request(request).StartsWith(TEXT("version=2;")));
+                                 describe_request(request).StartsWith(TEXT("version=3;")));
         }
         TestRunner->TestEqual(
             TEXT("Default output names are unique"), output_names.Num(), requests.Num());
@@ -146,6 +154,31 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
         TestRunner->TestFalse(TEXT("Negative contrast is rejected"), invalid.is_valid());
         TestRunner->TestFalse(TEXT("Invalid contrast explains the failure"),
                               invalid.error.IsEmpty());
+    }
+
+    TEST_METHOD(ThresholdSupportsHardAndSoftShaping)
+    {
+        auto request{make_default_request(EGeneratorType::RadialGradient)};
+        request.radial_gradient = {.width = 65, .height = 65};
+        request.post_process = {
+            .threshold_enabled = true, .threshold = 0.5f, .threshold_softness = 0.0f};
+        auto const hard{generate_image(request)};
+
+        int32 hard_intermediate_count{0};
+        for (auto const pixel : hard.pixels) {
+            hard_intermediate_count += pixel.R != 0 && pixel.R != 255 ? 1 : 0;
+        }
+        TestRunner->TestEqual(
+            TEXT("Hard threshold produces binary intensity"), hard_intermediate_count, 0);
+
+        request.post_process.threshold_softness = 0.4f;
+        auto const soft{generate_image(request)};
+        int32 soft_intermediate_count{0};
+        for (auto const pixel : soft.pixels) {
+            soft_intermediate_count += pixel.R != 0 && pixel.R != 255 ? 1 : 0;
+        }
+        TestRunner->TestTrue(TEXT("Soft threshold preserves a transition band"),
+                             soft_intermediate_count > 0);
     }
 };
 
@@ -299,6 +332,74 @@ TEST_CLASS(SeededGenerators, "SandboxImages.UnitTests")
         TestRunner->TestTrue(TEXT("Tileable noise remains nonconstant"),
                              pixel_at(image, 0, 0) !=
                                  pixel_at(image, image.width / 2, image.height / 2));
+    }
+};
+
+TEST_CLASS(DomainWarpedNoiseGenerator, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(IsDeterministicSeededNonconstantAndTileable)
+    {
+        FDomainWarpedNoiseParameters parameters{.width = 97,
+                                                .height = 65,
+                                                .base_seed = 2468u,
+                                                .warp_seed = 1357u,
+                                                .base_scale = 28.0f,
+                                                .warp_scale = 44.0f,
+                                                .warp_strength = 24.0f,
+                                                .base_octave_count = 4,
+                                                .warp_octave_count = 3,
+                                                .persistence = 0.55f,
+                                                .tileable = true};
+        auto const first{generate_domain_warped_noise(parameters)};
+        auto const second{generate_domain_warped_noise(parameters)};
+        parameters.warp_seed += 1;
+        auto const changed_warp_seed{generate_domain_warped_noise(parameters)};
+
+        TestRunner->TestTrue(TEXT("Same parameters produce identical warped noise"),
+                             first.pixels == second.pixels);
+        TestRunner->TestTrue(TEXT("Warp seed affects the output"),
+                             first.pixels != changed_warp_seed.pixels);
+        for (int32 y{0}; y < first.height; ++y) {
+            TestRunner->TestEqual(TEXT("Warped noise left and right edges match"),
+                                  pixel_at(first, 0, y),
+                                  pixel_at(first, first.width - 1, y));
+        }
+        for (int32 x{0}; x < first.width; ++x) {
+            TestRunner->TestEqual(TEXT("Warped noise top and bottom edges match"),
+                                  pixel_at(first, x, 0),
+                                  pixel_at(first, x, first.height - 1));
+        }
+
+        uint8 minimum_value{255};
+        uint8 maximum_value{0};
+        for (auto const pixel : first.pixels) {
+            minimum_value = FMath::Min(minimum_value, pixel.R);
+            maximum_value = FMath::Max(maximum_value, pixel.R);
+        }
+        TestRunner->TestTrue(TEXT("Warped noise spans a useful value range"),
+                             maximum_value - minimum_value >= 64);
+    }
+
+    TEST_METHOD(DefaultExamplesHaveStableChecksums)
+    {
+        auto const requests{default_generation_requests()};
+        for (auto const& request : requests) {
+            if (request.generator != EGeneratorType::DomainWarpedNoise) {
+                continue;
+            }
+
+            uint32 expected_checksum{};
+            if (request.output_name == TEXT("nebula_soft")) {
+                expected_checksum = 1376257265u;
+            } else if (request.output_name == TEXT("energy_filaments")) {
+                expected_checksum = 2606448723u;
+            } else if (request.output_name == TEXT("shield_turbulence")) {
+                expected_checksum = 3121887609u;
+            }
+            TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
+                                  pixel_checksum(generate_image(request)),
+                                  expected_checksum);
+        }
     }
 };
 

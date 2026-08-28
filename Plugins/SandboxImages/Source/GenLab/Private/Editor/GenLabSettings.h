@@ -12,6 +12,7 @@ enum class EGenLabGenerator : uint8 {
     RingMask UMETA(DisplayName = "Ring Mask"),
     Starfield UMETA(DisplayName = "Starfield"),
     Noise UMETA(DisplayName = "Coherent Noise"),
+    DomainWarpedNoise UMETA(DisplayName = "Domain-Warped Noise"),
     HexGrid UMETA(DisplayName = "Hex Grid Mask"),
 };
 
@@ -48,6 +49,19 @@ class UGenLabSettings final : public UObject {
               Category = "Output Shaping",
               meta = (ClampMin = "0.0", ClampMax = "8.0"))
     float contrast{1.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Output Shaping")
+    bool threshold_enabled{false};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "threshold_enabled", ClampMin = "0.0", ClampMax = "1.0"))
+    float threshold{0.5f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "threshold_enabled", ClampMin = "0.0", ClampMax = "1.0"))
+    float threshold_softness{0.1f};
 
     UPROPERTY(EditAnywhere, Category = "Preview")
     EGenLabPreviewChannel preview_channel{EGenLabPreviewChannel::Color};
@@ -169,6 +183,69 @@ class UGenLabSettings final : public UObject {
               Category = "Noise",
               meta = (EditCondition = "generator == EGenLabGenerator::Noise", EditConditionHides))
     bool tileable_noise{false};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides))
+    uint32 domain_base_seed{0x4E454255u};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides))
+    uint32 domain_warp_seed{0x57415250u};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float domain_base_scale{64.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float domain_warp_scale{96.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides,
+                      ClampMin = "0.0"))
+    float domain_warp_strength{36.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides,
+                      ClampMin = "1",
+                      ClampMax = "16"))
+    int32 domain_base_octave_count{5};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides,
+                      ClampMin = "1",
+                      ClampMax = "16"))
+    int32 domain_warp_octave_count{3};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float domain_persistence{0.5f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Domain-Warped Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
+                      EditConditionHides))
+    bool tileable_domain_noise{true};
 
     UPROPERTY(EditAnywhere,
               Category = "Hex Grid",

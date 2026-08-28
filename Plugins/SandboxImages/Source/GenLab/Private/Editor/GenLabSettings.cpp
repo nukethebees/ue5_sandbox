@@ -12,6 +12,8 @@ auto to_generator_type(EGenLabGenerator const generator) -> SandboxImages::GenLa
             return Starfield;
         case EGenLabGenerator::Noise:
             return Noise;
+        case EGenLabGenerator::DomainWarpedNoise:
+            return DomainWarpedNoise;
         case EGenLabGenerator::HexGrid:
             return HexGrid;
     }
@@ -47,12 +49,27 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
                      .octave_count = noise_octave_count,
                      .persistence = noise_persistence,
                      .tileable = tileable_noise};
+    request.domain_warped_noise = {.width = width,
+                                   .height = height,
+                                   .base_seed = domain_base_seed,
+                                   .warp_seed = domain_warp_seed,
+                                   .base_scale = domain_base_scale,
+                                   .warp_scale = domain_warp_scale,
+                                   .warp_strength = domain_warp_strength,
+                                   .base_octave_count = domain_base_octave_count,
+                                   .warp_octave_count = domain_warp_octave_count,
+                                   .persistence = domain_persistence,
+                                   .tileable = tileable_domain_noise};
     request.hex_grid = {.width = width,
                         .height = height,
                         .cell_radius = hex_cell_radius,
                         .line_thickness = hex_line_thickness,
                         .falloff = hex_falloff};
-    request.post_process = {.invert = invert, .contrast = contrast};
+    request.post_process = {.invert = invert,
+                            .contrast = contrast,
+                            .threshold_enabled = threshold_enabled,
+                            .threshold = threshold,
+                            .threshold_softness = threshold_softness};
     return request;
 }
 
@@ -92,6 +109,19 @@ void UGenLabSettings::load_generator_defaults() {
             noise_octave_count = request.noise.octave_count;
             noise_persistence = request.noise.persistence;
             tileable_noise = request.noise.tileable;
+            break;
+        case EGenLabGenerator::DomainWarpedNoise:
+            width = request.domain_warped_noise.width;
+            height = request.domain_warped_noise.height;
+            domain_base_seed = request.domain_warped_noise.base_seed;
+            domain_warp_seed = request.domain_warped_noise.warp_seed;
+            domain_base_scale = request.domain_warped_noise.base_scale;
+            domain_warp_scale = request.domain_warped_noise.warp_scale;
+            domain_warp_strength = request.domain_warped_noise.warp_strength;
+            domain_base_octave_count = request.domain_warped_noise.base_octave_count;
+            domain_warp_octave_count = request.domain_warped_noise.warp_octave_count;
+            domain_persistence = request.domain_warped_noise.persistence;
+            tileable_domain_noise = request.domain_warped_noise.tileable;
             break;
         case EGenLabGenerator::HexGrid:
             width = request.hex_grid.width;

@@ -55,7 +55,7 @@ same generation requests used by batch regeneration; it does not define a separa
 Change the output name and seed to create a deterministic variant without changing the canonical
 default set. Shared invert and contrast controls shape the final intensity after generation. Noise
 can optionally use periodic sampling so opposite edges match exactly; imported tileable noise uses
-wrap addressing.
+wrap addressing. Threshold shaping supports hard binary masks or a configurable smooth transition.
 
 | Output | Channel meaning |
 | --- | --- |
@@ -63,6 +63,9 @@ wrap addressing.
 | `ring_mask.png` | White intensity duplicated into RGB and alpha |
 | `starfield.png` | Star intensity duplicated into RGB and alpha over transparency |
 | `coherent_noise.png` | Grayscale data in RGB with opaque alpha |
+| `nebula_soft.png` | Soft tileable domain-warped grayscale noise |
+| `energy_filaments.png` | Contrasted, smoothly thresholded tileable energy structure |
+| `shield_turbulence.png` | Broad tileable turbulent shield modulation |
 | `hex_grid_mask.png` | White intensity duplicated into RGB and alpha |
 
 The generators reject invalid dimensions and generator-specific parameter ranges instead of
