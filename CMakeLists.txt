@@ -130,6 +130,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.UnitTests
   Sandbox.USFPathValidation
   SandboxCoreEngine.UnitTests
+  SandboxGpuTutorials.UnitTests
   SandboxUI.UnitTests
 )
 set(SANDBOX_LEVEL_AUTOMATION_FILTERS
@@ -186,5 +187,19 @@ add_custom_target(resave-assets
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
   COMMENT "Resaving project assets and fixing redirectors"
   USES_TERMINAL
+  VERBATIM
+)
+
+add_custom_target(gpu-tutorial-shader-tests
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests StartsWith:SandboxGpuTutorials.UnitTests; Quit"
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -DDC-ForceMemoryCache
+    -stdout
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Compiling and validating SandboxGpuTutorials materials with the graphics RHI"
   VERBATIM
 )

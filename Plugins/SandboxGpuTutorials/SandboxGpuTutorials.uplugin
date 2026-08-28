@@ -1,0 +1,20 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Sandbox GPU Tutorials",
+	"Description": "Progressive GPU-driven Unreal UI rendering tutorials.",
+	"Category": "Sandbox",
+	"CreatedBy": "Matthew Love",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SandboxGpuTutorials",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

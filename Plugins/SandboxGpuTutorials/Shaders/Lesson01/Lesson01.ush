@@ -1,0 +1,12 @@
+#ifndef SANDBOX_GPU_TUTORIALS_LESSON01_USH
+#define SANDBOX_GPU_TUTORIALS_LESSON01_USH
+
+float3 sandbox_gpu_lesson01_gradient(float2 uv) {
+    const float3 dark_blue = float3(0.02, 0.08, 0.15);
+    const float3 bright_cyan = float3(0.05, 0.90, 0.70);
+    float3 color = lerp(dark_blue, bright_cyan, uv.x);
+    color *= lerp(0.72, 1.0, uv.y);
+    return color;
+}
+
+#endif

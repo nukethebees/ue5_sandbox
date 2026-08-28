@@ -1,0 +1,45 @@
+#ifndef SANDBOX_GPU_TUTORIALS_LESSON03_USH
+#define SANDBOX_GPU_TUTORIALS_LESSON03_USH
+
+float3 sandbox_gpu_lesson03_animated_rings(float2 uv,
+                                           float time_seconds,
+                                           float ring_thickness,
+                                           float animation_speed,
+                                           float pulse_amount,
+                                           float3 primary_color) {
+    const float2 sample_position = uv * 2.0 - 1.0;
+    const float radial_distance = length(sample_position);
+    const float animated_time = time_seconds * animation_speed;
+
+    const float repeated_distance = frac(radial_distance * 4.0 - animated_time * 0.55);
+    const float distance_to_ring = abs(repeated_distance - 0.5);
+    const float ring_feather = fwidth(distance_to_ring);
+    const float rings = 1.0 - smoothstep(ring_thickness,
+                                         ring_thickness + ring_feather,
+                                         distance_to_ring);
+
+    const float pulse_radius = 0.13 + sin(animated_time * 6.2831853) * pulse_amount;
+    const float pulse_feather = fwidth(radial_distance);
+    const float pulse = 1.0 - smoothstep(pulse_radius,
+                                         pulse_radius + pulse_feather * 2.0,
+                                         radial_distance);
+
+    const float scan_position = lerp(-0.9, 0.9, frac(animated_time * 0.22));
+    const float scan_distance = abs(sample_position.y - scan_position);
+    const float scan_line = 1.0 - smoothstep(0.008, 0.008 + fwidth(scan_distance), scan_distance);
+    const float scan_fade = saturate(1.0 - abs(sample_position.x));
+
+    const float2 grid_uv = uv * 10.0;
+    const float2 grid_cell = frac(grid_uv);
+    const float2 distance_to_grid = min(grid_cell, 1.0 - grid_cell);
+    const float grid = 1.0 - smoothstep(0.0, 0.035, min(distance_to_grid.x, distance_to_grid.y));
+
+    float3 color = float3(0.004, 0.012, 0.020);
+    color += primary_color * grid * 0.08;
+    color += primary_color * rings * 0.72;
+    color += primary_color * pulse;
+    color += primary_color * scan_line * scan_fade * 0.85;
+    return color;
+}
+
+#endif

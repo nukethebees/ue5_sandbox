@@ -453,6 +453,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxGpuTutorials",
+			"Enabled": true
+		},
+		{
 			"Name": "SandboxGameShared",
 			"Enabled": true
 		},
