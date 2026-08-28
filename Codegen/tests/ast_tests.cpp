@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace codegen {
@@ -377,6 +378,69 @@ TEST(Ast, CollectsTrailingReturnTypeDependencies) {
 
     EXPECT_EQ(render(function), "auto make() -> FResult;");
     EXPECT_EQ(dependencies(function), std::vector<TypeDependency>{dependency});
+}
+
+TEST(Ast, RejectsInvalidFunctionQualifierCombinations) {
+    auto expect_error = [](Node const& function, std::string_view expected) {
+        try {
+            static_cast<void>(render(function));
+            FAIL() << "Expected function rendering to fail";
+        } catch (std::invalid_argument const& error) {
+            EXPECT_NE(std::string_view{error.what()}.find(expected), std::string_view::npos);
+        }
+    };
+
+    expect_error(declaration(FunctionSpec{
+                     .name = "conflicting_noexcept",
+                     .return_type = "void",
+                     .qualifiers = {.noexcept_condition = "condition", .is_noexcept = true},
+                 }),
+                 "cannot combine unconditional and conditional noexcept");
+
+    expect_error(declaration(FunctionSpec{
+                     .name = "non_placeholder_return",
+                     .return_type = "int32",
+                     .qualifiers = {.trailing_return_type = CppType{"int32"}},
+                 }),
+                 "trailing return type requires an 'auto' type specifier");
+
+    EXPECT_NO_THROW(render(declaration(FunctionSpec{
+        .name = "qualified_placeholder_return",
+        .return_type = "static constexpr auto",
+        .qualifiers = {.trailing_return_type = CppType{"int32"}},
+    })));
+
+    expect_error(declaration(FunctionSpec{
+                     .name = "static_const",
+                     .return_type = "void",
+                     .qualifiers = {.is_const = true},
+                     .is_static = true,
+                 }),
+                 "static function cannot be const");
+
+    expect_error(declaration(FunctionSpec{
+                     .name = "deleted_with_body",
+                     .body = {raw("return;")},
+                     .qualifiers = {.disposition = FunctionDisposition::deleted},
+                 }),
+                 "defaulted or deleted function cannot have a body");
+
+    expect_error(definition(
+                     FunctionSpec{
+                         .name = "removed",
+                         .return_type = "void",
+                         .qualifiers = {.disposition = FunctionDisposition::deleted},
+                     },
+                     "FValue"),
+                 "deleted function cannot be an out-of-line definition");
+
+    EXPECT_EQ(render(definition(
+                  FunctionSpec{
+                      .name = "FValue",
+                      .qualifiers = {.disposition = FunctionDisposition::defaulted},
+                  },
+                  "FValue")),
+              "FValue::FValue() = default;");
 }
 
 TEST(Ast, RejectsInvalidNewLineCounts) {

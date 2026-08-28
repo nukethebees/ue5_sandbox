@@ -33,6 +33,17 @@ auto trim_newlines(std::string value) -> std::string {
     return value;
 }
 
+auto has_auto_type_specifier(std::string const& spelling) -> bool {
+    std::istringstream input{spelling};
+    std::string specifier;
+    while (input >> specifier) {
+        if (specifier == "auto") {
+            return true;
+        }
+    }
+    return false;
+}
+
 auto render_parameter(FunctionParameter const& parameter, bool include_default) -> std::string {
     auto result{parameter.type.spelling};
     if (!parameter.name.empty()) {
@@ -44,7 +55,37 @@ auto render_parameter(FunctionParameter const& parameter, bool include_default) 
     return result;
 }
 
+void validate_function(Function const& function) {
+    auto const& spec{function.spec};
+    auto const& qualifiers{spec.qualifiers};
+    auto const context{"Function '" + spec.name + "'"};
+
+    if (qualifiers.is_noexcept && qualifiers.noexcept_condition.has_value()) {
+        throw std::invalid_argument{context +
+                                    " cannot combine unconditional and conditional noexcept"};
+    }
+    if (qualifiers.trailing_return_type.has_value() &&
+        !has_auto_type_specifier(spec.return_type.spelling)) {
+        throw std::invalid_argument{context +
+                                    " trailing return type requires an 'auto' type specifier"};
+    }
+    if (spec.is_static && qualifiers.is_const) {
+        throw std::invalid_argument{context + " static function cannot be const"};
+    }
+    if (qualifiers.disposition != FunctionDisposition::normal) {
+        if (!spec.body.empty()) {
+            throw std::invalid_argument{context +
+                                        " defaulted or deleted function cannot have a body"};
+        }
+        if (qualifiers.disposition == FunctionDisposition::deleted && function.owner.has_value()) {
+            throw std::invalid_argument{context +
+                                        " deleted function cannot be an out-of-line definition"};
+        }
+    }
+}
+
 auto render_signature(Function const& function) -> std::string {
+    validate_function(function);
     auto const& spec{function.spec};
     std::vector<std::string> parameters;
     parameters.reserve(spec.parameters.size());
@@ -380,7 +421,8 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                                             ";");
             } else if constexpr (std::is_same_v<T, Function>) {
                 auto const signature{context.apply_indent(render_signature(value))};
-                if (value.declaration) {
+                if (value.declaration ||
+                    value.spec.qualifiers.disposition != FunctionDisposition::normal) {
                     return signature + ";";
                 }
                 if (value.spec.formatting.body_layout == FunctionFormatting::BodyLayout::compact) {
