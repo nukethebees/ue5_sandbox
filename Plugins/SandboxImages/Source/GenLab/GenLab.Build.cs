@@ -15,6 +15,7 @@ public class GenLab : ModuleRules
             "CQTest",
             "Engine",
             "ImageCore",
+            "InputCore",
             "LevelEditor",
             "Projects",
             "PropertyEditor",

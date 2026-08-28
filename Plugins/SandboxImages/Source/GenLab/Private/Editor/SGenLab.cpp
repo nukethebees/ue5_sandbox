@@ -11,6 +11,7 @@
 #include "UObject/Package.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SComboBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScaleBox.h"
@@ -186,6 +187,16 @@ auto make_display_image(SandboxImages::GenLab::FGeneratedImage const& source,
 void SGenLab::Construct(FArguments const&) {
     settings_.Reset(NewObject<UGenLabSettings>());
     last_generator_ = settings_->generator;
+    auto requests{SandboxImages::GenLab::default_generation_requests()};
+    presets_.Reserve(requests.Num());
+    for (auto& request : requests) {
+        presets_.Add(MakeShared<SandboxImages::GenLab::FGenerationRequest>(MoveTemp(request)));
+    }
+    if (!presets_.IsEmpty()) {
+        selected_preset_ = presets_[0];
+        settings_->load_request(*selected_preset_);
+        last_generator_ = settings_->generator;
+    }
 
     FDetailsViewArgs details_arguments{};
     details_arguments.bAllowSearch = false;
@@ -204,27 +215,43 @@ void SGenLab::Construct(FArguments const&) {
 
     ChildSlot[SNew(SBorder).Padding(
         8.0f)[SNew(SSplitter) +
-              SSplitter::Slot().Value(
-                  0.45f)[SNew(SVerticalBox) +
-                         SVerticalBox::Slot().FillHeight(1.0f)[details_view_.ToSharedRef()] +
-                         SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)
-                             [SNew(SHorizontalBox) +
-                              SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 6.0f, 0.0f)
-                                  [SNew(SButton)
-                                       .Text(LOCTEXT("GenerateSelected", "Generate Selected"))
-                                       .OnClicked(this, &SGenLab::generate_selected)] +
-                              SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 6.0f, 0.0f)
-                                  [SNew(SButton)
-                                       .Text(LOCTEXT("GenerateAll", "Generate All Defaults"))
-                                       .OnClicked(this, &SGenLab::generate_all)] +
-                              SHorizontalBox::Slot().AutoWidth()
-                                  [SNew(SButton)
-                                       .Text(LOCTEXT("OpenFolder", "Open Output Folder"))
-                                       .OnClicked(this, &SGenLab::open_output_directory)]] +
-                         SVerticalBox::Slot().AutoHeight().Padding(
-                             0.0f, 8.0f, 0.0f, 0.0f)[SNew(STextBlock)
-                                                         .Text_Lambda([this]() { return status_; })
-                                                         .AutoWrapText(true)]] +
+              SSplitter::Slot().Value(0.45f)
+                  [SNew(SVerticalBox) +
+                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                       [SNew(SHorizontalBox) +
+                        SHorizontalBox::Slot()
+                            .AutoWidth()
+                            .VAlign(VAlign_Center)
+                            .Padding(0.0f, 0.0f, 8.0f, 0.0f)
+                                [SNew(STextBlock).Text(LOCTEXT("PresetLabel", "Preset"))] +
+                        SHorizontalBox::Slot().FillWidth(1.0f)
+                            [SAssignNew(
+                                 preset_combo_,
+                                 SComboBox<TSharedPtr<SandboxImages::GenLab::FGenerationRequest>>)
+                                 .OptionsSource(&presets_)
+                                 .InitiallySelectedItem(selected_preset_)
+                                 .OnGenerateWidget(this, &SGenLab::make_preset_widget)
+                                 .OnSelectionChanged(this, &SGenLab::on_preset_selected)
+                                     [SNew(STextBlock).Text(this, &SGenLab::preset_text)]]] +
+                   SVerticalBox::Slot().FillHeight(1.0f)[details_view_.ToSharedRef()] +
+                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)
+                       [SNew(SHorizontalBox) +
+                        SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 6.0f, 0.0f)
+                            [SNew(SButton)
+                                 .Text(LOCTEXT("GenerateSelected", "Generate Selected"))
+                                 .OnClicked(this, &SGenLab::generate_selected)] +
+                        SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 6.0f, 0.0f)
+                            [SNew(SButton)
+                                 .Text(LOCTEXT("GenerateAll", "Generate All Defaults"))
+                                 .OnClicked(this, &SGenLab::generate_all)] +
+                        SHorizontalBox::Slot()
+                            .AutoWidth()[SNew(SButton)
+                                             .Text(LOCTEXT("OpenFolder", "Open Output Folder"))
+                                             .OnClicked(this, &SGenLab::open_output_directory)]] +
+                   SVerticalBox::Slot().AutoHeight().Padding(
+                       0.0f, 8.0f, 0.0f, 0.0f)[SNew(STextBlock)
+                                                   .Text_Lambda([this]() { return status_; })
+                                                   .AutoWrapText(true)]] +
               SSplitter::Slot().Value(0.55f)[SNew(SBorder).Padding(
                   8.0f)[SNew(SBox)
                             .WidthOverride(512.0f)
@@ -243,12 +270,40 @@ SGenLab::~SGenLab() {
 }
 
 void SGenLab::on_property_changed(FPropertyChangedEvent const&) {
+    selected_preset_.Reset();
+    if (preset_combo_.IsValid()) {
+        preset_combo_->ClearSelection();
+    }
     if (last_generator_ != settings_->generator) {
         last_generator_ = settings_->generator;
         settings_->load_generator_defaults();
         details_view_->ForceRefresh();
     }
     update_preview();
+}
+
+void SGenLab::on_preset_selected(TSharedPtr<SandboxImages::GenLab::FGenerationRequest> const preset,
+                                 ESelectInfo::Type const) {
+    if (!preset.IsValid()) {
+        return;
+    }
+
+    selected_preset_ = preset;
+    settings_->load_request(*preset);
+    last_generator_ = settings_->generator;
+    details_view_->ForceRefresh();
+    update_preview();
+}
+
+auto SGenLab::make_preset_widget(TSharedPtr<SandboxImages::GenLab::FGenerationRequest> const preset)
+    const -> TSharedRef<SWidget> {
+    return SNew(STextBlock)
+        .Text(preset.IsValid() ? FText::FromString(preset->output_name) : FText::GetEmpty());
+}
+
+auto SGenLab::preset_text() const -> FText {
+    return selected_preset_.IsValid() ? FText::FromString(selected_preset_->output_name)
+                                      : LOCTEXT("CustomPreset", "Custom");
 }
 
 void SGenLab::update_preview() {

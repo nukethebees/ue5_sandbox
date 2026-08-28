@@ -24,6 +24,30 @@ auto to_generator_type(EGenLabGenerator const generator) -> SandboxImages::GenLa
     return RadialGradient;
 }
 
+auto to_editor_generator(SandboxImages::GenLab::EGeneratorType const generator)
+    -> EGenLabGenerator {
+    using enum SandboxImages::GenLab::EGeneratorType;
+    switch (generator) {
+        case RadialGradient:
+            return EGenLabGenerator::RadialGradient;
+        case RingMask:
+            return EGenLabGenerator::RingMask;
+        case Starfield:
+            return EGenLabGenerator::Starfield;
+        case Noise:
+            return EGenLabGenerator::Noise;
+        case DomainWarpedNoise:
+            return EGenLabGenerator::DomainWarpedNoise;
+        case CurlNoiseFlow:
+            return EGenLabGenerator::CurlNoiseFlow;
+        case CellularNoise:
+            return EGenLabGenerator::CellularNoise;
+        case HexGrid:
+            return EGenLabGenerator::HexGrid;
+    }
+    return EGenLabGenerator::RadialGradient;
+}
+
 auto to_cellular_mode(EGenLabCellularMode const mode) -> SandboxImages::GenLab::ECellularMode {
     return mode == EGenLabCellularMode::Distance ? SandboxImages::GenLab::ECellularMode::Distance
                                                  : SandboxImages::GenLab::ECellularMode::Borders;
@@ -100,10 +124,15 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
     return request;
 }
 
-void UGenLabSettings::load_generator_defaults() {
+void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest const& request) {
     using namespace SandboxImages::GenLab;
-    auto const request{make_default_request(to_generator_type(generator))};
+    generator = to_editor_generator(request.generator);
     output_name = request.output_name;
+    invert = request.post_process.invert;
+    contrast = request.post_process.contrast;
+    threshold_enabled = request.post_process.threshold_enabled;
+    threshold = request.post_process.threshold;
+    threshold_softness = request.post_process.threshold_softness;
     switch (generator) {
         case EGenLabGenerator::RadialGradient:
             width = request.radial_gradient.width;
@@ -182,4 +211,14 @@ void UGenLabSettings::load_generator_defaults() {
             hex_falloff = request.hex_grid.falloff;
             break;
     }
+}
+
+void UGenLabSettings::load_generator_defaults() {
+    auto request{SandboxImages::GenLab::make_default_request(to_generator_type(generator))};
+    request.post_process = {.invert = invert,
+                            .contrast = contrast,
+                            .threshold_enabled = threshold_enabled,
+                            .threshold = threshold,
+                            .threshold_softness = threshold_softness};
+    load_request(request);
 }

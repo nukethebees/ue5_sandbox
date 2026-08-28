@@ -1,3 +1,4 @@
+#include "Editor/GenLabSettings.h"
 #include "Generation/ImageGenerators.h"
 
 #include <CQTest.h>
@@ -191,6 +192,55 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
         }
         TestRunner->TestTrue(TEXT("Soft threshold preserves a transition band"),
                              soft_intermediate_count > 0);
+    }
+};
+
+TEST_CLASS(GenLabPresetSettings, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(CanonicalRequestsRoundTripThroughEditorSettings)
+    {
+        auto* const settings{NewObject<UGenLabSettings>()};
+        TestRunner->TestNotNull(TEXT("Transient GenLab settings are created"), settings);
+        if (settings == nullptr) {
+            return;
+        }
+
+        for (auto const& expected : default_generation_requests()) {
+            settings->load_request(expected);
+            auto const actual{settings->to_request()};
+            TestRunner->TestEqual(*FString::Printf(TEXT("%s output name"), *expected.output_name),
+                                  actual.output_name,
+                                  expected.output_name);
+            TestRunner->TestEqual(*FString::Printf(TEXT("%s parameters"), *expected.output_name),
+                                  describe_request(actual),
+                                  describe_request(expected));
+        }
+    }
+
+    TEST_METHOD(ChangingGeneratorPreservesSharedOutputShaping)
+    {
+        auto* const settings{NewObject<UGenLabSettings>()};
+        settings->generator = EGenLabGenerator::CellularNoise;
+        settings->invert = true;
+        settings->contrast = 1.75f;
+        settings->threshold_enabled = true;
+        settings->threshold = 0.3f;
+        settings->threshold_softness = 0.2f;
+
+        settings->load_generator_defaults();
+
+        auto const request{settings->to_request()};
+        TestRunner->TestEqual(TEXT("Generator defaults select cellular noise"),
+                              request.generator,
+                              EGeneratorType::CellularNoise);
+        TestRunner->TestTrue(TEXT("Invert is preserved"), request.post_process.invert);
+        TestRunner->TestEqual(TEXT("Contrast is preserved"), request.post_process.contrast, 1.75f);
+        TestRunner->TestTrue(TEXT("Threshold is preserved"),
+                             request.post_process.threshold_enabled);
+        TestRunner->TestEqual(
+            TEXT("Threshold value is preserved"), request.post_process.threshold, 0.3f);
+        TestRunner->TestEqual(
+            TEXT("Threshold softness is preserved"), request.post_process.threshold_softness, 0.2f);
     }
 };
 

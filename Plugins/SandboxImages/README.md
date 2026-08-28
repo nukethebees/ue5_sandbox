@@ -27,10 +27,11 @@ project-local derived-data cache under the ignored build directory.
 
 In Unreal Editor, click **Image Lab** in the level-editor toolbar or choose
 **Tools > Sandbox Image Lab**. The editor tab provides a transient preview, generator-specific
-parameters, **Generate Selected**, **Generate All Defaults**, and **Open Output Folder**. Changing a
-parameter refreshes the bounded preview without writing anything. Preview controls can display a
-checkerboard-composited image, opaque RGB, or individual channels, and the 2x2 mode makes tiling
-seams easy to spot. The editor console command remains available:
+parameters, a selector for loading any canonical preset, **Generate Selected**, **Generate All
+Defaults**, and **Open Output Folder**. Editing a loaded preset marks it as custom and refreshes the
+bounded preview without writing anything. Preview controls can display a checkerboard-composited
+image, opaque RGB, or individual channels, and the 2x2 mode makes tiling seams easy to spot. The
+editor console command remains available:
 
 ```text
 SandboxImages.GenerateLabImages

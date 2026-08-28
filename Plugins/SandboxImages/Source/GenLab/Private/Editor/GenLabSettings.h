@@ -391,5 +391,6 @@ class UGenLabSettings final : public UObject {
     float hex_falloff{1.0f};
 
     [[nodiscard]] auto to_request() const -> SandboxImages::GenLab::FGenerationRequest;
+    void load_request(SandboxImages::GenLab::FGenerationRequest const& request);
     void load_generator_defaults();
 };
