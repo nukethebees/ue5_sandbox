@@ -11,6 +11,9 @@ add_library(codegen-lib
   src/lowering_utils.cpp
   src/schema.cpp
   src/soa_lowering.cpp
+  src/soa_member_resolution.cpp
+  src/soa_storage_lowering.cpp
+  src/soa_view_lowering.cpp
   src/validation.cpp
   src/vector_lowering.cpp
 )
