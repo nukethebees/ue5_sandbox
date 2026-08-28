@@ -24,9 +24,9 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
     explicit FTestPlayerShipDeathScenario(FSimulationTestContext& context);
     void run() override;
   private:
-    void player_ship_pre_begin_play(UWorld& world, UTestSimulationConfig const& config);
+    void player_ship_pre_begin_play(UWorld& world, USpaceGameLevelConfig const& config);
     void player_ship_post_orchestrator_spawn(UWorld& world,
-                                             UTestSimulationConfig const& config,
+                                             USpaceGameLevelConfig const& config,
                                              ATestBatchOrchestrator& orchestrator);
     void queue_player_ship_death();
     void on_end_tick(ATestBatchOrchestrator& orchestrator);

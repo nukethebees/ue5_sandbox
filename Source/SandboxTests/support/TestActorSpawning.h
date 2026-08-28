@@ -6,8 +6,8 @@
 #include <CoreMinimal.h>
 
 class ATestCapitalShipProxy;
-class UTestSpaceShipData;
-class UTestSimulationConfig;
+class USpaceGameLevelConfig;
+struct FPlayerShipConfig;
 class UWorld;
 
 namespace ml {
@@ -25,15 +25,15 @@ void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
 
 auto spawn_player_ship(UWorld& world,
                        TSubclassOf<ATestSpaceShip> const player_class,
-                       UTestSpaceShipData* const player_config) -> ATestSpaceShip*;
+                       FPlayerShipConfig const* player_config) -> ATestSpaceShip*;
 
 auto spawn_capital_proxy(UWorld& world,
-                         UTestSimulationConfig const& config,
+                         USpaceGameLevelConfig const& config,
                          FSoftTestAssertions& checks,
                          FName const test_name,
                          FVector const& location) -> ATestCapitalShipProxy*;
 auto spawn_capital_proxy(UWorld& world,
-                         UTestSimulationConfig const& config,
+                         USpaceGameLevelConfig const& config,
                          FSoftTestAssertions& checks,
                          FName const test_name,
                          FTransform const& transform) -> ATestCapitalShipProxy*;

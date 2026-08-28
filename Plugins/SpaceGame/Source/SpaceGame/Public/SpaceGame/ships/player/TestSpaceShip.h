@@ -1,20 +1,21 @@
 #pragma once
 
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
 #include <SpaceGame/entities/TestEntityUniqueId.h>
-#include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/ships/player/TestShipFireRate.h>
-#include <SpaceGame/ships/player/TestSpaceShipControlMode.h>
-#include <SpaceGame/ships/player/TestSpaceShipFlightMode.h>
-#include <SpaceGame/ships/common/ShipHealthComponent.h>
-#include <SpaceGame/support/logging/ActorLoggingConfig.h>
 #include <SpaceGame/ships/common/LaserFiringState.h>
+#include <SpaceGame/ships/common/ShipHealthComponent.h>
 #include <SpaceGame/ships/common/ShipLaserMode.h>
 #include <SpaceGame/ships/common/SpaceShipCommon.h>
 #include <SpaceGame/ships/common/SpaceShipFlightModel.h>
-#include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/ships/player/TestShipFireRate.h>
+#include <SpaceGame/ships/player/TestSpaceShipControlMode.h>
+#include <SpaceGame/ships/player/TestSpaceShipFlightMode.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
@@ -33,9 +34,9 @@ class UShipLaserConfig;
 class AShipHomingLaser;
 class AShipBomb;
 class UShipHealthComponent;
+class UTestSpaceShipData;
 struct FTestEntityRegistry;
 class ATestLasers;
-class UTestSpaceShipData;
 struct EntityDeathInfo;
 struct FTestSpaceShipSpatialQueryAccess;
 
@@ -89,7 +90,7 @@ class SPACEGAME_API ATestSpaceShip
     void set_laser_actor(ATestLasers* actor) { laser_actor = actor; }
 
     auto get_actor_config() const { return actor_config; }
-    void set_actor_config(UTestSpaceShipData* const new_config) noexcept {
+    void set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
 
@@ -268,8 +269,7 @@ class SPACEGAME_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Config
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<UTestSpaceShipData> actor_config{nullptr};
+    FPlayerShipConfig const* actor_config{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Entity data

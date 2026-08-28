@@ -1,10 +1,11 @@
 #pragma once
 
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
-#include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/combat/lasers/TestLaserCollisionDataSoA.h>
 #include <SpaceGame/combat/lasers/TestLasersSoA.h>
+#include <SpaceGame/entities/DirectDamageEvents.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 
 #include <CoreMinimal.h>
@@ -17,7 +18,6 @@ class UInstancedStaticMeshComponent;
 class UActorComponent;
 class UWorld;
 
-class UTestLasersConfig;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 namespace ml {
@@ -55,8 +55,8 @@ class SPACEGAME_API ATestLasers : public AActor {
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
     // Accessors
     auto get_num_instances() const noexcept -> int32;
-    auto get_config() const -> UTestLasersConfig const* { return actor_config; }
-    void set_actor_config(UTestLasersConfig* const new_config) noexcept {
+    auto get_config() const -> FLaserProjectileConfig const* { return actor_config; }
+    void set_actor_config(FLaserProjectileConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
 
@@ -106,8 +106,7 @@ class SPACEGAME_API ATestLasers : public AActor {
     FTestEntityRegistry* entity_registry{nullptr};
     ml::FSpatialQueryManager* query_manager{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<UTestLasersConfig> actor_config{nullptr};
+    FLaserProjectileConfig const* actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     int32 n_preallocated_instances{5000};

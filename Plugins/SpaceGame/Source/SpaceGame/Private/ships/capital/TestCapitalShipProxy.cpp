@@ -1,10 +1,9 @@
 #include "SpaceGame/ships/capital/TestCapitalShipProxy.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ships/capital/TestCapitalShips.h"
-#include "SpaceGame/ships/capital/TestCapitalShipsConfig.h"
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
 #include "SpaceGame/entities/TestTeamVisualData.h"
+#include "SpaceGame/ships/capital/TestCapitalShips.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_components.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -32,8 +31,11 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
     Super::OnConstruction(transform);
     ml::set_proxy_actor_name(*this, TEXT("CapitalShip"), team);
 
+    if (!actor_config) {
+        return;
+    }
+
     if (auto const msg{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(mesh),
         })}) {
         UE_LOG(LogSandbox,
@@ -69,38 +71,6 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
 }
 
 #if WITH_EDITOR
-void ATestCapitalShipProxy::save_configuration_to_asset() {
-    if (!actor_config) {
-        UE_LOG(
-            LogSandboxLearning,
-            Warning,
-            TEXT("ATestCapitalShipProxy::save_configuration_to_asset: actor_config is nullptr."));
-        return;
-    }
-
-    actor_config->Modify();
-
-    if (actor_config->fighter_spawn_slots < 1) {
-        UE_LOG(LogSandboxLearning,
-               Warning,
-               TEXT("ATestCapitalShipProxy::save_configuration_to_asset: fighter_spawn_slots < 1 "
-                    "(%d)."),
-               actor_config->fighter_spawn_slots);
-        return;
-    }
-
-    auto& transforms{actor_config->fighter_spawn_slots_relative_transforms};
-
-    transforms.Reset();
-    transforms.Reserve(actor_config->fighter_spawn_slots);
-    for (auto const slot : fighter_spawn_slots) {
-        transforms.Add(slot->GetRelativeTransform());
-        actor_config->proxy_arrow_size = slot->ArrowSize;
-    }
-
-    actor_config->MarkPackageDirty();
-}
-
 void ATestCapitalShipProxy::apply_asset_configuration() {
     if (!actor_config) {
         UE_LOG(LogSandboxLearning,

@@ -3,8 +3,8 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 #include <SpaceGame/entities/TestEntityType.h>
-#include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGame/presentation/HUDManager.h>
 
 #include <SandboxCore/time_series_data.h>
@@ -53,21 +53,21 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
   private:
     void on_tear_down() override;
     void initial_caches_process_samples();
-    void defence_pre_begin_play(UWorld& world, UTestSimulationConfig const& config);
+    void defence_pre_begin_play(UWorld& world, USpaceGameLevelConfig const& config);
     void configure_defence_mission(UWorld& world, ATestBatchOrchestrator& orchestrator);
     void defence_begin();
     void defence_on_tick(ATestBatchOrchestrator& orchestrator);
     void defence_process_samples();
-    void mission_time_pre_begin_play(UWorld& world, UTestSimulationConfig const& config);
+    void mission_time_pre_begin_play(UWorld& world, USpaceGameLevelConfig const& config);
     void mission_time_begin();
     void mission_time_on_tick(ATestBatchOrchestrator& orchestrator);
     void mission_time_process_samples();
-    void player_kill_pre_begin_play(UWorld& world, UTestSimulationConfig const& config);
+    void player_kill_pre_begin_play(UWorld& world, USpaceGameLevelConfig const& config);
     void player_kill_begin();
     void player_kill_on_tick(ATestBatchOrchestrator& orchestrator);
     void player_kill_process_samples();
     void registration_process_samples();
-    void entity_count_pre_begin_play(UWorld& world, UTestSimulationConfig const& config);
+    void entity_count_pre_begin_play(UWorld& world, USpaceGameLevelConfig const& config);
     void entity_count_begin();
     void entity_count_on_tick(ATestBatchOrchestrator& orchestrator);
     void entity_count_process_samples();

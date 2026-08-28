@@ -3,12 +3,11 @@
 #include "test_capital_ship_proxy_scenario.h"
 
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/simulation/SimulationConfig.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 
@@ -30,9 +29,8 @@ void FTestCapitalShipProxyScenario::run() {
 // Proxy health
 /* ------------------------------------------------------------------------------------------ */
 void FTestCapitalShipProxyScenario::spawn_proxies(UWorld& world,
-                                                  UTestSimulationConfig const& config) {
-    auto* const capital_config{config.simulation_config->capital_ships_config.Get()};
-    check(capital_config);
+                                                  USpaceGameLevelConfig const& config) {
+    auto const* const capital_config{&config.capital_ships};
 
     default_health = capital_config->max_health;
     overridden_health = default_health + 1234;

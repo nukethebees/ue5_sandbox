@@ -1,13 +1,12 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinners.h"
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestBatchActorCore.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnersConfig.h>
+#include <SpaceGame/entities/TestBatchActorCore.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
@@ -46,8 +45,11 @@ void ATestTubeSpinners::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_play);
     check(entity_registry);
 
+    if (!actor_config) {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestTubeSpinners actor_config is nullptr."));
+    }
+
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(instances),
     });
@@ -55,7 +57,7 @@ void ATestTubeSpinners::begin_play() {
     configure_ismc();
 
     auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(actor_config->attack_cooldown)};
+        simulation_clock.duration_to_tick_period(actor_config->laser.fire_cooldown)};
     entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
 
     register_all_proxies_in_level();
@@ -245,9 +247,9 @@ void ATestTubeSpinners::fire_lasers() {
     auto const n{get_num_instances()};
     auto const& firing_point_offsets{actor_config->fire_point_offsets};
     auto const n_firing_points{firing_point_offsets.Num()};
-    auto const laser_damage{actor_config->laser_damage};
-    auto const laser_speed{actor_config->laser_speed};
-    auto const laser_max_distance{actor_config->laser_max_distance};
+    auto const laser_damage{actor_config->laser.damage};
+    auto const laser_speed{actor_config->laser.projectile_speed};
+    auto const laser_max_distance{actor_config->laser.max_distance};
 
     if (n_firing_points < 1) {
         return;

@@ -1,18 +1,19 @@
 #pragma once
 
-#include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
+#include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
+#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSoA.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersCommandInterface.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSoA.h>
-#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 #include <SpaceGame/support/IndexSpan.h>
-#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/countdown_timers.h>
 #include <SandboxCore/generation_index.h>
@@ -32,7 +33,6 @@ class UInstancedStaticMeshComponent;
 class UBoxComponent;
 class UPrimitiveComponent;
 
-class UTestCapitalShipsConfig;
 class ATestCapitalShipProxy;
 struct FTestEntityRegistry;
 class ADelayedNiagaraSpawner;
@@ -72,7 +72,7 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
     auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const*;
     void set_niagara_spawner(ADelayedNiagaraSpawner& spawner);
 
-    void set_actor_config(UTestCapitalShipsConfig* const new_config) noexcept {
+    void set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
 
@@ -181,8 +181,7 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
     void visual_log_state() const;
 
     // Config / context
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};
+    FCapitalShipConfig const* actor_config{nullptr};
     FTestEntityRegistry* entity_registry{nullptr};
     ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
 

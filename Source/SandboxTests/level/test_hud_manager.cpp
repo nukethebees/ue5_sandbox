@@ -9,18 +9,17 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SandboxGameShared/utilities/enums.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGame/presentation/HUDManager.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/missions/TestMissionManager.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/presentation/HUDManager.h>
-#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
-#include <SandboxGameShared/utilities/enums.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
@@ -107,7 +106,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
 // Defence mission
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::defence_pre_begin_play(UWorld& world,
-                                                     UTestSimulationConfig const& config) {
+                                                     USpaceGameLevelConfig const& config) {
     auto* const defended{ml::spawn_capital_proxy(
         world, config, checks, FName{TEXT("defended_capital")}, FVector::ZeroVector)};
     if (!IsValid(defended)) {
@@ -223,7 +222,7 @@ void FTestHUDManagerScenario::defence_process_samples() {
 // Timed mission
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::mission_time_pre_begin_play(UWorld& world,
-                                                          UTestSimulationConfig const& config) {
+                                                          USpaceGameLevelConfig const& config) {
     defence_pre_begin_play(world, config);
 }
 
@@ -276,11 +275,9 @@ void FTestHUDManagerScenario::mission_time_process_samples() {
 // Player kill
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::player_kill_pre_begin_play(UWorld& world,
-                                                         UTestSimulationConfig const& config) {
+                                                         USpaceGameLevelConfig const& config) {
     auto* const player_ship{
-        ml::spawn_player_ship(world,
-                              config.actor_classes.player_ship_class,
-                              config.simulation_config->player_ship_config.Get())};
+        ml::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
     if (!checks.is_valid(player_ship, TEXT("Player ship is spawned"))) {
         return;
     }
@@ -428,7 +425,7 @@ void FTestHUDManagerScenario::registration_process_samples() {
 // Polling scenario
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::entity_count_pre_begin_play(UWorld& world,
-                                                          UTestSimulationConfig const& config) {
+                                                          USpaceGameLevelConfig const& config) {
     ml::spawn_capital_proxy(
         world, config, checks, FName{TEXT("entity_count_capital")}, FVector::ZeroVector);
 }

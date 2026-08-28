@@ -1,20 +1,19 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 
+#include <SandboxGameShared/constants/collision_channels.h>
+#include <SandboxGameShared/utilities/enums.h>
+#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/combat/weapons/ShipBomb.h>
+#include <SpaceGame/combat/weapons/ShipLaserConfig.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/ships/player/TestSpaceShipData.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/combat/weapons/ShipBomb.h>
-#include <SpaceGame/combat/weapons/ShipLaserConfig.h>
 #include <SpaceGame/ships/common/ShipHealthComponent.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
-#include <SandboxGameShared/constants/collision_channels.h>
-#include <SandboxGameShared/utilities/enums.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -61,9 +60,12 @@ void ATestSpaceShip::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_play);
     check(entity_registry);
 
+    if (!actor_config) {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestSpaceShip actor_config is nullptr."));
+    }
+
     ml::fatal_if_uobject_ptrs_invalid({
         {
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
             SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
             SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
@@ -511,7 +513,7 @@ void ATestSpaceShip::update_laser_firing() {
         case ELaserFiringState::burst: {
             if (cooldown_finished) {
                 fire_laser();
-                laser_shot_cooldown = actor_config->laser_firing_period;
+                laser_shot_cooldown = actor_config->laser.fire_cooldown;
 
                 if (lasers_fired_this_burst >= lasers_per_burst) {
                     laser_shot_cooldown = actor_config->laser_lock_on_transition_delay;
@@ -611,7 +613,7 @@ void ATestSpaceShip::fire_laser() {
     }
 
     lasers_fired_this_burst++;
-    laser_shot_cooldown = actor_config->laser_firing_period;
+    laser_shot_cooldown = actor_config->laser.fire_cooldown;
 }
 void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_points) {
     ml::test_lasers::SpawnRequests new_lasers;
@@ -628,9 +630,9 @@ void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_poi
         ml::assign(new_lasers.base_velocities, i, FVector3f{get_velocity()});
     }
 
-    new_lasers.set_damages(actor_config->laser_damage);
-    new_lasers.set_speeds(actor_config->laser_speed);
-    new_lasers.set_max_distances(actor_config->laser_max_distance);
+    new_lasers.set_damages(actor_config->laser.damage);
+    new_lasers.set_speeds(actor_config->laser.projectile_speed);
+    new_lasers.set_max_distances(actor_config->laser.max_distance);
     new_lasers.set_colours(colour_cache[team]);
     ml::fill(new_lasers.instigator_handles, registry_handle);
 
@@ -819,7 +821,7 @@ bool ATestSpaceShip::energy_is_full() const {
     return thrust_energy == actor_config->thrust_energy_max;
 }
 auto ATestSpaceShip::get_energy() const -> float {
-    check(IsValid(actor_config));
+    check(actor_config);
     check(actor_config->thrust_energy_max > 0.f);
     return thrust_energy / actor_config->thrust_energy_max;
 }

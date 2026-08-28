@@ -1,15 +1,17 @@
 #pragma once
 
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
-#include <SpaceGame/entities/EntityDeathInfo.h>
-#include <SpaceGame/entities/TestEntityRegistryData.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
+#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsSoA.h>
+#include <SpaceGame/entities/EntityDeathInfo.h>
+#include <SpaceGame/entities/TestEntityRegistryData.h>
 #include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/support/logging/ActorLoggingConfig.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
-#include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
 #include <SandboxCore/fixed_array.h>
 #include <SandboxCore/soa_array_mixin.h>
@@ -28,7 +30,6 @@ class UInstancedStaticMeshComponent;
 class UPrimitiveComponent;
 
 class ATestStaticTurretsProxy;
-class UTestStaticTurretsConfig;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
@@ -60,7 +61,7 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
-    void set_actor_config(UTestStaticTurretsConfig* const new_config) noexcept {
+    void set_actor_config(FTurretConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
 
@@ -126,8 +127,7 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
+    FTurretConfig const* actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     // Entity Data

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
 #include "SpaceGame/entities/TestEntity.h"
 #include "SpaceGame/entities/TestTeam.h"
 
@@ -14,7 +16,6 @@ class USphereComponent;
 class USceneComponent;
 class UArrowComponent;
 
-class UTestTubeSpinnersConfig;
 class ATestStaticTurrets;
 
 UCLASS()
@@ -27,7 +28,7 @@ class ATestTubeSpinnerProxy
     ATestTubeSpinnerProxy();
 
     auto get_initial_active_fire_point() const { return initial_active_fire_point; }
-    void set_actor_config(UTestTubeSpinnersConfig* const new_config) noexcept {
+    void set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
 
@@ -49,8 +50,6 @@ class ATestTubeSpinnerProxy
     UFUNCTION(CallInEditor, Category = "Proxy|Remove Points")
     void remove_fire_point();
 
-    UFUNCTION(CallInEditor, Category = "Proxy|Save Asset")
-    void save_configuration_to_asset();
     UFUNCTION(CallInEditor, Category = "Proxy|Load Asset")
     void apply_asset_configuration();
     UFUNCTION(CallInEditor, Category = "Proxy|Load Asset")
@@ -67,8 +66,7 @@ class ATestTubeSpinnerProxy
     void remove_fire_points(int32 const n);
     void face_fire_points_away_from_mesh();
 
-    UPROPERTY(EditAnywhere, Category = "Proxy")
-    TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
+    FTubeSpinnerConfig const* actor_config{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};

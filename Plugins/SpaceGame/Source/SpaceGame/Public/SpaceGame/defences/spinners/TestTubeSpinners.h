@@ -1,11 +1,13 @@
 #pragma once
 
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
+#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersSoA.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
-#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/soa_array_mixin.h>
 #include <SandboxCore/soa_rotators.h>
@@ -23,7 +25,6 @@ class UInstancedStaticMeshComponent;
 class UPrimitiveComponent;
 
 class ATestTubeSpinnerProxy;
-class UTestTubeSpinnersConfig;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
@@ -49,7 +50,7 @@ class ATestTubeSpinners : public AActor {
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
-    void set_actor_config(UTestTubeSpinnersConfig* const new_config) noexcept {
+    void set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
 
@@ -95,8 +96,7 @@ class ATestTubeSpinners : public AActor {
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
     // Config
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<UTestTubeSpinnersConfig> actor_config{nullptr};
+    FTubeSpinnerConfig const* actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     // Entity data

@@ -1,11 +1,10 @@
-#include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/simulation/SimulationConfig.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
+#include <SpaceGame/entities/ProxyEntityMap.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
@@ -48,16 +47,11 @@ void FTurretCombatScenario::spawn_fixture() {
         FVector{190.f, 2280.f, 40.f},
     };
 
-    auto* const simulation_config{context_.config.simulation_config.Get()};
-    if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available"))) {
-        return;
-    }
     spawn_actors<ATestStaticTurretsProxy, 7>(
         context_.world,
-        [this, simulation_config](
-            ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
+        [this](ATestStaticTurretsProxy& actor, int32 const i, ESpawnPhase const phase) {
             if (phase == ESpawnPhase::PreSpawn) {
-                actor.set_actor_config(simulation_config->static_turrets_config);
+                actor.set_actor_config(&context_.config.turrets);
                 actor.set_team(i == locations.Num() - 1 ? enemy_team : hero_team);
                 if (scenario_ == ETurretCombatScenario::KillEnemy && i < locations.Num() - 1) {
                     actor.set_health(hero_health);

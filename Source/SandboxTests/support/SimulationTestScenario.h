@@ -11,7 +11,7 @@
 class ATestBatchOrchestrator;
 class FAutomationTestBase;
 class FTestCommandBuilder;
-class UTestSimulationConfig;
+class USpaceGameLevelConfig;
 class UWorld;
 
 namespace ml {
@@ -20,7 +20,7 @@ struct FSimulationTestContext {
     FAutomationTestBase& automation_test;
     FTestCommandBuilder& command_builder;
     FSoftTestAssertions& checks;
-    UTestSimulationConfig const& config;
+    USpaceGameLevelConfig const& config;
     UWorld& world;
     int32 level_construction_count;
 };

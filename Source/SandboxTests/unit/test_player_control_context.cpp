@@ -7,8 +7,7 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/ships/player/TestSpaceShipController.h>
-#include <SpaceGame/simulation/SimulationConfig.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <CQTest.h>
 #include <EnhancedInputComponent.h>
@@ -20,14 +19,15 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 {
     TEST_METHOD(ConfiguredShipMappingsAreCompleteAndPluginOwned)
     {
-        auto const* const config{ml::load_default_test_simulation_config()};
-        if (!TestRunner->TestTrue(TEXT("Test simulation config loads"), IsValid(config)) ||
+        auto const* const config{ml::load_default_level_config()};
+        if (!TestRunner->TestTrue(TEXT("Level config loads"), IsValid(config)) ||
             !TestRunner->TestTrue(TEXT("Player controller class is configured"),
-                                  config && IsValid(config->player_controller_class))) {
+                                  config && IsValid(config->classes.player_controller_class))) {
             return;
         }
 
-        auto const* const controller_default{config->player_controller_class.GetDefaultObject()};
+        auto const* const controller_default{
+            config->classes.player_controller_class.GetDefaultObject()};
         auto const* const input_property{
             FindFProperty<FStructProperty>(controller_default->GetClass(), TEXT("input"))};
         if (!TestRunner->TestTrue(TEXT("Controller input property is available"),
@@ -105,24 +105,16 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             return;
         }
 
-        auto const* const config{ml::load_default_test_simulation_config()};
-        if (!TestRunner->TestTrue(TEXT("Test simulation config loads"), IsValid(config)) ||
-            !TestRunner->TestTrue(TEXT("Simulation config is available"),
-                                  config && IsValid(config->simulation_config)) ||
-            !TestRunner->TestTrue(TEXT("Player ship config is available"),
-                                  config && IsValid(config->simulation_config) &&
-                                      config->simulation_config->player_ship_config.Get() !=
-                                          nullptr)) {
+        auto const* const config{ml::load_default_level_config()};
+        if (!TestRunner->TestTrue(TEXT("Level config loads"), IsValid(config))) {
             return;
         }
 
         auto& world{*world_result.value()};
         auto* const controller{world.SpawnActorDeferred<ATestSpaceShipController>(
-            config->player_controller_class, FTransform::Identity)};
+            config->classes.player_controller_class, FTransform::Identity)};
         auto* const ship{
-            ml::spawn_player_ship(world,
-                                  config->actor_classes.player_ship_class,
-                                  config->simulation_config->player_ship_config.Get())};
+            ml::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship)};
         if (!TestRunner->TestTrue(TEXT("Controller is spawned"), IsValid(controller)) ||
             !TestRunner->TestTrue(TEXT("Player ship is spawned"), IsValid(ship))) {
             return;

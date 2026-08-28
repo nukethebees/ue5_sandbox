@@ -25,7 +25,7 @@ class FFightersStandbyTransitionScenario final : public FSimulationTestScenario 
     explicit FFightersStandbyTransitionScenario(FSimulationTestContext& context);
     void run() override;
   private:
-    void spawn_capitals(UWorld& world, UTestSimulationConfig const& config);
+    void spawn_capitals(UWorld& world, USpaceGameLevelConfig const& config);
     void initial_setup();
     void on_end_tick(ATestBatchOrchestrator& orchestrator);
     void sample_values();

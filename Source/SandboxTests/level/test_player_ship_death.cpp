@@ -9,10 +9,10 @@
 #include <SandboxCore/time_series_data.h>
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/ships/player/TestSpaceShipController.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/LocalPlayer.h>
@@ -39,11 +39,9 @@ void FTestPlayerShipDeathScenario::run() {
 }
 
 void FTestPlayerShipDeathScenario::player_ship_pre_begin_play(UWorld& world,
-                                                              UTestSimulationConfig const& config) {
+                                                              USpaceGameLevelConfig const& config) {
     auto* const spawned_player_ship{
-        ml::spawn_player_ship(world,
-                              config.actor_classes.player_ship_class,
-                              config.simulation_config->player_ship_config.Get())};
+        ml::spawn_player_ship(world, config.classes.player_ship_class, &config.player_ship)};
     if (!checks.is_valid(spawned_player_ship, TEXT("Player ship is spawned"))) {
         return;
     }
@@ -52,7 +50,7 @@ void FTestPlayerShipDeathScenario::player_ship_pre_begin_play(UWorld& world,
 }
 
 void FTestPlayerShipDeathScenario::player_ship_post_orchestrator_spawn(
-    UWorld& world, UTestSimulationConfig const& config, ATestBatchOrchestrator& orchestrator) {
+    UWorld& world, USpaceGameLevelConfig const& config, ATestBatchOrchestrator& orchestrator) {
     if (!checks.is_true(player_ship.IsValid(), TEXT("Player ship is available"))) {
         return;
     }

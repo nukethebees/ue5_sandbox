@@ -15,9 +15,8 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelTelemetryManager.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -143,13 +142,8 @@ void FTestBatchOrchestratorSetupScenario::level_telemetry() {
 }
 
 void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
-    auto const* const simulation_config{context_.config.simulation_config.Get()};
-    if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available"))) {
-        return;
-    }
-    auto* const player{spawn_player_ship(context_.world,
-                                         context_.config.actor_classes.player_ship_class,
-                                         simulation_config->player_ship_config)};
+    auto* const player{spawn_player_ship(
+        context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
     if (!checks.is_valid(player, TEXT("Telemetry player ship is spawned"))) {
         return;
     }

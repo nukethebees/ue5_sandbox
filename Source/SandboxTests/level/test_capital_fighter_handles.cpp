@@ -1,13 +1,13 @@
 #include "test_capital_fighter_handles_scenario.h"
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
-#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -54,7 +54,7 @@ void FCapitalFighterHandlesScenario::spawn_fixture() {
     capital_config->max_health = 10000;
     capital_config->visual_logger_style = nullptr;
     fighter_config->speed = 2000.f;
-    fighter_config->laser_max_distance = 15000.f;
+    fighter_config->laser.max_distance = 15000.f;
     fighter_config->visual_logger_style = nullptr;
     capital_actor->set_actor_config(capital_config);
     fighter_actor->set_actor_config(fighter_config);

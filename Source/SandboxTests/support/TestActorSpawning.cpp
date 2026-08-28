@@ -4,12 +4,10 @@
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 
-#include <SpaceGame/simulation/SimulationConfig.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/ships/player/TestSpaceShipData.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <Engine/World.h>
 #include <Kismet/GameplayStatics.h>
@@ -17,14 +15,14 @@
 namespace ml {
 auto spawn_player_ship(UWorld& world,
                        TSubclassOf<ATestSpaceShip> const player_class,
-                       UTestSpaceShipData* const player_config) -> ATestSpaceShip* {
+                       FPlayerShipConfig const* const player_config) -> ATestSpaceShip* {
     if (!IsValid(player_class)) {
         UE_LOG(LogSandboxTest,
                Warning,
                TEXT("Cannot spawn player ship: Player ship class is invalid"));
         return nullptr;
     }
-    if (!IsValid(player_config)) {
+    if (!player_config) {
         UE_LOG(LogSandboxTest,
                Warning,
                TEXT("Cannot spawn player ship: Player ship config is invalid"));
@@ -92,7 +90,7 @@ void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
 }
 
 auto spawn_capital_proxy(UWorld& world,
-                         UTestSimulationConfig const& config,
+                         USpaceGameLevelConfig const& config,
                          FSoftTestAssertions& checks,
                          FName const test_name,
                          FVector const& location) -> ATestCapitalShipProxy* {
@@ -101,11 +99,11 @@ auto spawn_capital_proxy(UWorld& world,
 }
 
 auto spawn_capital_proxy(UWorld& world,
-                         UTestSimulationConfig const& config,
+                         USpaceGameLevelConfig const& config,
                          FSoftTestAssertions& checks,
                          FName const test_name,
                          FTransform const& transform) -> ATestCapitalShipProxy* {
-    auto const proxy_class{config.actor_classes.capital_ship_proxy_class};
+    auto const proxy_class{config.classes.capital_ship_proxy_class};
     if (!checks.is_true(IsValid(proxy_class), TEXT("Capital proxy actor class is available"))) {
         return nullptr;
     }
@@ -115,15 +113,7 @@ auto spawn_capital_proxy(UWorld& world,
         return nullptr;
     }
 
-    if (!checks.not_nullptr(config.simulation_config.Get(),
-                            TEXT("Simulation config is available"))) {
-        return nullptr;
-    }
-    auto* const capital_config{config.simulation_config->capital_ships_config.Get()};
-    if (!checks.not_nullptr(capital_config, TEXT("Capital ships config is available"))) {
-        return nullptr;
-    }
-    proxy->set_actor_config(capital_config);
+    proxy->set_actor_config(&config.capital_ships);
     proxy->set_test_name(test_name);
 
     auto* finished_actor{UGameplayStatics::FinishSpawningActor(proxy, transform)};

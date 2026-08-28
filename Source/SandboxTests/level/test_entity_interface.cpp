@@ -1,16 +1,15 @@
 #include "test_entity_interface_scenario.h"
 
-#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -28,11 +27,9 @@ FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& conte
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FEntityInterfaceScenario::spawn_fixture() {
-    auto const* const simulation_config{context_.config.simulation_config.Get()};
     auto* const capital_actor{
         const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
-    if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available")) ||
-        !checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
+    if (!checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
         return;
     }
 
@@ -45,9 +42,8 @@ void FEntityInterfaceScenario::spawn_fixture() {
     capital_config->visual_logger_style = nullptr;
     capital_actor->set_actor_config(capital_config);
 
-    auto* const player{spawn_player_ship(context_.world,
-                                         context_.config.actor_classes.player_ship_class,
-                                         simulation_config->player_ship_config)};
+    auto* const player{spawn_player_ship(
+        context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
     if (!checks.is_valid(player, TEXT("Player ship is spawned"))) {
         return;
     }
@@ -59,7 +55,7 @@ void FEntityInterfaceScenario::spawn_fixture() {
     spawn_actors<ATestStaticTurretsProxy, 1>(
         context_.world, [&](ATestStaticTurretsProxy& actor, int32, ESpawnPhase const phase) {
             if (phase == ESpawnPhase::PreSpawn) {
-                actor.set_actor_config(simulation_config->static_turrets_config);
+                actor.set_actor_config(&context_.config.turrets);
                 actor.set_team(ETestTeam::White);
                 return;
             }

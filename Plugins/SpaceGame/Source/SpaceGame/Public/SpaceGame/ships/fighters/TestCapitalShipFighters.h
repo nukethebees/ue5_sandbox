@@ -1,20 +1,22 @@
 #pragma once
 
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
+#include <SandboxGameShared/utilities/enums.h>
+#include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
+#include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSoA.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersTask.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 #include <SpaceGame/support/IndexSpan.h>
-#include <SandboxGameShared/utilities/enums.h>
-#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -30,7 +32,6 @@
 class UInstancedStaticMeshComponent;
 class UPrimitiveComponent;
 
-class UTestCapitalShipFightersConfig;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
@@ -74,7 +75,7 @@ class SPACEGAME_API ATestCapitalShipFighters : public AActor {
     // Accessors
     auto get_num_instances() const noexcept -> int32;
 
-    void set_actor_config(UTestCapitalShipFightersConfig* const new_config) noexcept {
+    void set_actor_config(FFighterConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
 
@@ -230,8 +231,7 @@ class SPACEGAME_API ATestCapitalShipFighters : public AActor {
     TArray<FTransform> ismc_transforms;
 
     // Config data
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<UTestCapitalShipFightersConfig> actor_config{nullptr};
+    FFighterConfig const* actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
 

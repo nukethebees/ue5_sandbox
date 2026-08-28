@@ -10,9 +10,8 @@
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -26,7 +25,7 @@ FTestMissionManagerScenario::FTestMissionManagerScenario(FSimulationTestContext&
     , scenario{new_scenario} {}
 
 void FTestMissionManagerScenario::configure_level(UWorld& world,
-                                                  UTestSimulationConfig const& config,
+                                                  USpaceGameLevelConfig const& config,
                                                   FSoftTestAssertions& checks,
                                                   EScenario const scenario) {
     auto* const first_capital{ml::spawn_capital_proxy(

@@ -42,7 +42,7 @@ class FTestMissionManagerScenario final : public FSimulationTestScenario {
     void run() override;
   private:
     static void configure_level(UWorld& world,
-                                UTestSimulationConfig const& config,
+                                USpaceGameLevelConfig const& config,
                                 FSoftTestAssertions& checks,
                                 EScenario scenario);
     static void configure_mission_manager(UWorld& world,

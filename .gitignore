@@ -87,6 +87,7 @@ Content/Fab
 /.claude
 /ai_checkpoints
 /notes/
+/.local/
 /.audit/
 /.local/
 *.pyc

@@ -1,9 +1,8 @@
 #include "SpaceGame/defences/turrets/TestStaticTurretsProxy.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/entities/TestProxyActorFunctions.h"
 #include "SpaceGame/defences/turrets/TestStaticTurrets.h"
-#include "SpaceGame/defences/turrets/TestStaticTurretsConfig.h"
+#include "SpaceGame/entities/TestProxyActorFunctions.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -48,19 +47,6 @@ void ATestStaticTurretsProxy::configure_component(UPrimitiveComponent& component
 }
 
 #if WITH_EDITOR
-void ATestStaticTurretsProxy::save_configuration_to_asset() {
-    if (!actor_config) {
-        return;
-    }
-
-    actor_config->Modify();
-
-    actor_config->detection_radius = detection->GetUnscaledSphereRadius();
-    actor_config->fire_point_offset = fire_point->GetRelativeTransform();
-
-    actor_config->MarkPackageDirty();
-}
-
 void ATestStaticTurretsProxy::apply_asset_configuration() {
     if (!actor_config) {
         UE_LOG(

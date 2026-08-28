@@ -1,17 +1,16 @@
 #include "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
 
-#include <SpaceGame/simulation/SpatialQueryManager.h>
-#include <SpaceGame/entities/DirectDamageEvents.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestBatchActorCore.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/entities/DirectDamageEvents.h>
+#include <SpaceGame/entities/TestBatchActorCore.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/logging/SandboxVisualLoggerStyle.h>
 #include <SpaceGame/support/mesh.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
@@ -153,9 +152,11 @@ void ATestCapitalShipFighters::begin_play() {
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
     check(entity_registry);
     check(spatial_query_manager);
+    if (!actor_config) {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestCapitalShipFighters actor_config is nullptr."));
+    }
 
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
         SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
     });
@@ -175,7 +176,7 @@ void ATestCapitalShipFighters::begin_play() {
     });
 
     auto const fire_cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(actor_config->fire_cooldown)};
+        simulation_clock.duration_to_tick_period(actor_config->laser.fire_cooldown)};
     entity_buffers.for_each(
         [=](auto& data) { data.attack_cooldowns.set_tick_value(fire_cooldown_tick_period); });
 
@@ -273,7 +274,7 @@ void ATestCapitalShipFighters::move(float const dt) {
     auto const n_attack{attack_view.num()};
     auto const do_attack{n_attack > 0};
 
-    auto const laser_max_distance{actor_config->laser_max_distance};
+    auto const laser_max_distance{actor_config->laser.max_distance};
     auto const& attack_distance_band{actor_config->attack_distance_band};
     auto const desired_attack_distance{laser_max_distance * attack_distance_band.desired_ratio};
     auto const inner_attack_distance{laser_max_distance * attack_distance_band.minimum_ratio};
@@ -284,7 +285,7 @@ void ATestCapitalShipFighters::move(float const dt) {
                                   attack_view.locations.get_const_view(),
                                   attack_view.target_locations.get_const_view(),
                                   attack_view.target_velocities.get_const_view(),
-                                  actor_config->laser_speed);
+                                  actor_config->laser.projectile_speed);
 
         for (int32 i{0}; i < n_attack; ++i) {
             auto const intercept_location{ml::get_vector3f(attack_view.target_locations, i) +
@@ -440,13 +441,10 @@ void ATestCapitalShipFighters::visual_log_state() const {
         return;
     }
 
-    if (auto const msg{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-        })}) {
+    if (!actor_config) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShipFighters::visual_log_state UObject ptrs are invalid:\n%s"),
-               *msg);
+               TEXT("ATestCapitalShipFighters::visual_log_state actor_config is nullptr"));
         return;
     }
 
@@ -919,9 +917,9 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
         instances->GetSocketTransform(socket_name, RTS_Component).GetLocation().Size())};
     auto const aim_threshold{fire_dot_product_threshold};
 
-    auto const laser_damage{actor_config->laser_damage};
-    auto const laser_speed{actor_config->laser_speed};
-    auto const laser_max_distance{actor_config->laser_max_distance};
+    auto const laser_damage{actor_config->laser.damage};
+    auto const laser_speed{actor_config->laser.projectile_speed};
+    auto const laser_max_distance{actor_config->laser.max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
     auto const desired_attack_distance{laser_max_distance *
                                        actor_config->attack_distance_band.desired_ratio};
