@@ -18,7 +18,7 @@
 
 TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 {
-    TEST_METHOD(DefaultControllerStartsWithCompleteShipMapping)
+    TEST_METHOD(ConfiguredShipMappingsAreCompleteAndPluginOwned)
     {
         auto const* const config{ml::load_default_test_simulation_config()};
         if (!TestRunner->TestTrue(TEXT("Test simulation config loads"), IsValid(config)) ||
@@ -37,6 +37,49 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
         auto const* const input{
             input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller_default)};
+        if (!TestRunner->TestTrue(TEXT("Turn action is configured"), IsValid(input->turn)) ||
+            !TestRunner->TestTrue(TEXT("Mapping cycle action is configured"),
+                                  IsValid(input->cycle_input_mapping_context))) {
+            return;
+        }
+
+        auto const mapping_context_count{input->mapping_contexts.Num()};
+        for (int32 mapping_context_index{0}; mapping_context_index < mapping_context_count;
+             ++mapping_context_index) {
+            auto const* const mapping_context{input->mapping_contexts[mapping_context_index]};
+            auto const context_label{
+                FString::Printf(TEXT("Mapping context %d is configured"), mapping_context_index)};
+            if (!TestRunner->TestTrue(*context_label, IsValid(mapping_context))) {
+                continue;
+            }
+
+            TestRunner->TestTrue(
+                *FString::Printf(TEXT("Mapping context %d belongs to SpaceGame"),
+                                 mapping_context_index),
+                mapping_context->GetOutermost()->GetName().StartsWith(TEXT("/SpaceGame/")));
+            TestRunner->TestTrue(*FString::Printf(TEXT("Mapping context %d contains turning"),
+                                                  mapping_context_index),
+                                 mapping_context->HasMappingForInputAction(input->turn));
+            TestRunner->TestTrue(
+                *FString::Printf(TEXT("Mapping context %d contains context cycling"),
+                                 mapping_context_index),
+                mapping_context->HasMappingForInputAction(input->cycle_input_mapping_context));
+
+            auto const& mappings{mapping_context->GetMappings()};
+            for (auto const& mapping : mappings) {
+                TestRunner->TestTrue(
+                    *FString::Printf(TEXT("Mapping context %d contains a valid action"),
+                                     mapping_context_index),
+                    IsValid(mapping.Action));
+                if (IsValid(mapping.Action)) {
+                    TestRunner->TestTrue(
+                        *FString::Printf(TEXT("Mapping context %d action belongs to SpaceGame"),
+                                         mapping_context_index),
+                        mapping.Action->GetOutermost()->GetName().StartsWith(TEXT("/SpaceGame/")));
+                }
+            }
+        }
+
         if (!TestRunner->TestTrue(
                 TEXT("Initial mapping index is valid"),
                 input->mapping_contexts.IsValidIndex(input->initial_mapping_context_index)) ||
