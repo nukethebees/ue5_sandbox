@@ -301,12 +301,12 @@ auto parameter_type_names(std::vector<ParameterSchema> const& parameters,
 
 auto signature(std::string const& name,
                std::vector<std::string> const& parameter_types,
-               std::string const& suffix) -> std::string {
+               bool const is_const) -> std::string {
     std::string result{name + "("};
     for (auto const& type : parameter_types) {
         result += type + ";";
     }
-    return result + ")" + suffix;
+    return result + ")" + (is_const ? " const" : "");
 }
 
 void validate_settings(ModuleSettings const& settings) {
@@ -406,9 +406,12 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                 require_value(*function.requires_clause, context + " requires clause");
             }
             validate_type(function.return_type, types, context + " return");
+            if (function.trailing_return_type.has_value()) {
+                validate_type(*function.trailing_return_type, types, context + " trailing return");
+            }
             auto const parameter_types{parameter_type_names(function.parameters, types, context)};
             auto const function_signature{
-                signature(function.name, parameter_types, function.suffix)};
+                signature(function.name, parameter_types, function.is_const)};
             if (!function_signatures.insert(function_signature).second) {
                 throw std::invalid_argument{"Duplicate " + context + " signature"};
             }
@@ -593,7 +596,7 @@ void validate_facade(FacadeModuleSchema const& module,
         validate_dependency(dependency, types, "Facade '" + facade.name + "'");
     }
     std::set<std::string> method_signatures{
-        signature("bind", {resolve_type(facade.target_type, types).spelling + "&"}, {})};
+        signature("bind", {resolve_type(facade.target_type, types).spelling + "&"}, false)};
     for (auto const& method : facade.methods) {
         require_identifier(method.name, "Facade '" + facade.name + "' method name");
         if (method.name == facade.target_member_name || method.name == facade.name) {
@@ -609,7 +612,7 @@ void validate_facade(FacadeModuleSchema const& module,
                       "Facade '" + facade.name + "' method '" + method.name + "' return");
         auto const context{"Facade '" + facade.name + "' method '" + method.name + "'"};
         auto const parameter_types{parameter_type_names(method.parameters, types, context)};
-        auto const method_signature{signature(method.name, parameter_types, method.suffix)};
+        auto const method_signature{signature(method.name, parameter_types, method.is_const)};
         if (!method_signatures.insert(method_signature).second) {
             throw std::invalid_argument{"Duplicate " + context + " signature"};
         }

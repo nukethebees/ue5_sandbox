@@ -20,9 +20,8 @@ auto lower_vector_module(VectorModuleSchema const& module,
             std::string(1, component.front()),
         });
     }
-    std::vector<std::string> add_body{
-        "auto const index{" + module.components.front() + ".Add(" +
-            std::string(1, module.components.front().front()) + ")};"};
+    std::vector<std::string> add_body{"auto const index{" + module.components.front() + ".Add(" +
+                                      std::string(1, module.components.front().front()) + ")};"};
     for (std::size_t index{1}; index < module.components.size(); ++index) {
         add_body.push_back(module.components[index] + ".Add(" +
                            std::string(1, module.components[index].front()) + ");");
@@ -40,28 +39,28 @@ auto lower_vector_module(VectorModuleSchema const& module,
         FunctionSchema{.name = "get_data",
                        .return_type = TypeRef{"auto"},
                        .body_lines = {"return Data{" + joined_data_pointers + "};"},
-                       .suffix = " -> Data",
+                       .trailing_return_type = TypeRef{"Data"},
                        .is_inline = true},
         FunctionSchema{.name = "get_data",
                        .return_type = TypeRef{"auto"},
                        .body_lines = {"return ConstData{" + joined_data_pointers + "};"},
-                       .suffix = " const -> ConstData",
+                       .trailing_return_type = TypeRef{"ConstData"},
+                       .is_const = true,
                        .is_inline = true},
         FunctionSchema{.name = "add",
                        .return_type = TypeRef{"auto"},
                        .parameters = std::move(add_parameters),
                        .body_lines = std::move(add_body),
-                       .suffix = " -> size_type",
+                       .trailing_return_type = TypeRef{"size_type"},
                        .is_inline = true},
-        FunctionSchema{.name = "add",
-                       .return_type = TypeRef{"auto"},
-                       .parameters = {ParameterSchema{
-                           TypeRef{.name = module.equivalent_type.name,
-                                   .suffix = " const&"},
-                           "value"}},
-                       .body_lines = {"return add(" + join(equivalent_arguments, ", ") + ");"},
-                       .suffix = " -> size_type",
-                       .is_inline = true},
+        FunctionSchema{
+            .name = "add",
+            .return_type = TypeRef{"auto"},
+            .parameters = {ParameterSchema{
+                TypeRef{.name = module.equivalent_type.name, .suffix = " const&"}, "value"}},
+            .body_lines = {"return add(" + join(equivalent_arguments, ", ") + ");"},
+            .trailing_return_type = TypeRef{"size_type"},
+            .is_inline = true},
     };
     for (auto const& [name, method] : std::vector<std::pair<std::string, std::string>>{
              {"empty", "Empty()"},
@@ -75,10 +74,9 @@ auto lower_vector_module(VectorModuleSchema const& module,
             .name = name,
             .return_type = TypeRef{"void"},
             .parameters = name == "empty"
-                              ? std::vector<ParameterSchema>{}
-                              : std::vector<ParameterSchema>{ParameterSchema{
-                                    TypeRef{.name = "size_type", .suffix = " const"},
-                                    "count"}},
+                            ? std::vector<ParameterSchema>{}
+                            : std::vector<ParameterSchema>{ParameterSchema{
+                                  TypeRef{.name = "size_type", .suffix = " const"}, "count"}},
             .body_lines = std::move(body),
             .is_inline = true,
         });
@@ -138,14 +136,14 @@ auto lower_vector_module(VectorModuleSchema const& module,
                           .nodes = header_nodes.build(),
                           .clang_format_off = true,
                           .include_order = module.settings.include_order},
-        .source = module.settings.source.has_value()
-                      ? std::optional<CppFile>{CppFile{.path = *module.settings.source,
-                                                       .nodes = source_nodes.build(),
-                                                       .pragma_once = false,
-                                                       .clang_format_off = true,
-                                                       .include_order =
-                                                           module.settings.include_order}}
-                      : std::nullopt,
+        .source =
+            module.settings.source.has_value()
+                ? std::optional<CppFile>{CppFile{.path = *module.settings.source,
+                                                 .nodes = source_nodes.build(),
+                                                 .pragma_once = false,
+                                                 .clang_format_off = true,
+                                                 .include_order = module.settings.include_order}}
+                : std::nullopt,
     };
 }
 

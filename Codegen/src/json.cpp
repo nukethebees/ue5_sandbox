@@ -149,7 +149,9 @@ auto parse_function(Json const& value, std::string const& path) -> FunctionSchem
                     "parameters",
                     "body",
                     "dependencies",
-                    "suffix",
+                    "trailing_return_type",
+                    "const",
+                    "noexcept",
                     "static",
                     "inline",
                     "definition_in_source",
@@ -169,7 +171,13 @@ auto parse_function(Json const& value, std::string const& path) -> FunctionSchem
         .parameters = std::move(parameters),
         .body_lines = value_or<std::vector<std::string>>(value, "body", {}, path),
         .dependencies = value_or<std::vector<std::string>>(value, "dependencies", {}, path),
-        .suffix = value_or<std::string>(value, "suffix", {}, path),
+        .trailing_return_type =
+            value.contains("trailing_return_type")
+                ? std::optional<TypeRef>{parse_type_ref(value.at("trailing_return_type"),
+                                                        path + "/trailing_return_type")}
+                : std::nullopt,
+        .is_const = value_or<bool>(value, "const", false, path),
+        .is_noexcept = value_or<bool>(value, "noexcept", false, path),
         .is_static = value_or<bool>(value, "static", false, path),
         .is_inline = value_or<bool>(value, "inline", false, path),
         .definition_in_source = value_or<bool>(value, "definition_in_source", false, path),
@@ -303,7 +311,8 @@ auto parse_settings(Json const& value, std::string const& path) -> ModuleSetting
 }
 
 auto parse_facade_method(Json const& value, std::string const& path) -> FacadeMethodSchema {
-    reject_unknown(value, path, {"name", "return_type", "parameters", "suffix", "target_name"});
+    reject_unknown(
+        value, path, {"name", "return_type", "parameters", "const", "noexcept", "target_name"});
     std::vector<ParameterSchema> parameters;
     auto const* parameter_values{optional_array(value, "parameters", path)};
     auto const parameter_count{parameter_values == nullptr ? 0 : parameter_values->size()};
@@ -316,7 +325,8 @@ auto parse_facade_method(Json const& value, std::string const& path) -> FacadeMe
         .return_type =
             parse_type_ref(required_value(value, "return_type", path), path + "/return_type"),
         .parameters = std::move(parameters),
-        .suffix = value_or<std::string>(value, "suffix", {}, path),
+        .is_const = value_or<bool>(value, "const", false, path),
+        .is_noexcept = value_or<bool>(value, "noexcept", false, path),
         .target_name = optional<std::string>(value, "target_name", path),
     };
 }

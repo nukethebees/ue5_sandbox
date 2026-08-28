@@ -13,7 +13,8 @@ struct FacadeMethodSchema {
     std::string name;
     TypeRef return_type;
     std::vector<ParameterSchema> parameters;
-    std::string suffix;
+    bool is_const{false};
+    bool is_noexcept{false};
     std::optional<std::string> target_name;
 };
 

@@ -7,22 +7,20 @@ namespace codegen::detail {
 namespace {
 
 TypeDependency const std_forward{"std::forward", "utility", {}};
-TypeDependency const array_checks{
-    "ml::fatal_if_nums_not_equal", "SandboxCore/array_checks.h", {}};
+TypeDependency const array_checks{"ml::fatal_if_nums_not_equal", "SandboxCore/array_checks.h", {}};
 TypeDependency const container_ops{"ml::num", "SandboxCore/container_ops.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
 auto view_expression(ResolvedMember const& member, bool const_view) -> std::string {
     if (member.kind == SoaMemberKind::nested) {
-        return member.name + (const_view ? ".get_const_view(offset, count)"
-                                         : ".get_view(offset, count)");
+        return member.name +
+               (const_view ? ".get_const_view(offset, count)" : ".get_view(offset, count)");
     }
     auto const& type{const_view ? member.const_view_type : member.view_type};
     return type.spelling + "{" + member.name + "}.Slice(offset, count)";
 }
 
-auto equivalent_expression(ResolvedMember const& member, std::string const& index)
-    -> std::string {
+auto equivalent_expression(ResolvedMember const& member, std::string const& index) -> std::string {
     if (member.kind == SoaMemberKind::array) {
         return member.name + ".GetData()[" + index + "]";
     }
@@ -42,7 +40,7 @@ auto apply_arrays_function(std::vector<ResolvedMember> const& members) -> Node {
         .parameters = {FunctionParameter{"this auto&&", "self"},
                        FunctionParameter{"TFunc&&", "func"}},
         .body = {raw(join_lines(body), {std_forward})},
-        .suffix = " -> decltype(auto)",
+        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
         .is_inline = true,
         .template_parameters = "typename TFunc",
     });
@@ -53,8 +51,7 @@ auto apply_array_pairs_function(std::vector<ResolvedMember> const& members) -> N
     auto const count{members.size()};
     for (std::size_t index{0}; index < count; ++index) {
         auto const& name{members[index].name};
-        body.push_back("    self." + name + ", other." + name +
-                       (index + 1 < count ? "," : ""));
+        body.push_back("    self." + name + ", other." + name + (index + 1 < count ? "," : ""));
     }
     body.emplace_back(");");
     return header_function(FunctionSpec{
@@ -64,9 +61,13 @@ auto apply_array_pairs_function(std::vector<ResolvedMember> const& members) -> N
                        FunctionParameter{"Other&&", "other"},
                        FunctionParameter{"TFunc&&", "func"}},
         .body = {raw(join_lines(body), {std_forward})},
-        .suffix = "\n    -> decltype(auto)",
+        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
         .is_inline = true,
         .template_parameters = "typename Self, typename Other, typename TFunc",
+        .formatting =
+            {
+                .trailing_return_placement = FunctionFormatting::TrailingReturnPlacement::next_line,
+            },
     });
 }
 
@@ -126,86 +127,99 @@ auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
     NodeListBuilder result;
     result.add(UsingDeclaration{"equivalent_type", equivalent}, 2)
         .add(header_function(FunctionSpec{
-            .name = "operator[]",
-            .return_type = "auto",
-            .parameters = {FunctionParameter{"int32 const", "index"}},
-            .body = {ReturnStatement{"{" + join(values, ", ") + "}"}},
-            .suffix = " const -> " + equivalent.spelling,
-            .is_inline = true,
-        }), 1)
+                 .name = "operator[]",
+                 .return_type = "auto",
+                 .parameters = {FunctionParameter{"int32 const", "index"}},
+                 .body = {ReturnStatement{"{" + join(values, ", ") + "}"}},
+                 .qualifiers = {.trailing_return_type = equivalent, .is_const = true},
+                 .is_inline = true,
+             }),
+             1)
         .add(header_function(FunctionSpec{
             .name = "at",
             .return_type = "auto",
             .parameters = {FunctionParameter{"int32 const", "index"}},
-            .body = {
-                ExpressionStatement{"validate_array_sizes()"},
-                ExpressionStatement{"check(index >= 0)", {check_dependency}},
-                ExpressionStatement{"check(index < num())"},
-                ReturnStatement{"(*this)[index]"},
-            },
-            .suffix = " const -> " + equivalent.spelling,
+            .body =
+                {
+                    ExpressionStatement{"validate_array_sizes()"},
+                    ExpressionStatement{"check(index >= 0)", {check_dependency}},
+                    ExpressionStatement{"check(index < num())"},
+                    ReturnStatement{"(*this)[index]"},
+                },
+            .qualifiers = {.trailing_return_type = equivalent, .is_const = true},
             .is_inline = true,
         }));
     return result.build();
 }
 
-auto soa_view_specs(std::vector<ResolvedMember> const& members,
-                    bool const_only) -> std::vector<FunctionSpec> {
+auto soa_view_specs(std::vector<ResolvedMember> const& members, bool const_only)
+    -> std::vector<FunctionSpec> {
     std::vector<FunctionSpec> result;
     auto add = [&](std::string name,
                    CppType return_type,
                    std::vector<FunctionParameter> parameters,
                    std::string body,
-                   std::string suffix,
+                   CppType trailing_return_type,
+                   bool const is_const = false,
+                   bool const is_noexcept = false,
                    std::vector<TypeDependency> dependencies = {}) {
         result.push_back(FunctionSpec{
             .name = std::move(name),
             .return_type = std::move(return_type),
             .parameters = std::move(parameters),
             .body = {raw(std::move(body), std::move(dependencies))},
-            .suffix = std::move(suffix),
+            .qualifiers =
+                {
+                    .trailing_return_type =
+                        trailing_return_type.spelling.empty()
+                            ? std::nullopt
+                            : std::optional<CppType>{std::move(trailing_return_type)},
+                    .is_const = is_const,
+                    .is_noexcept = is_noexcept,
+                },
         });
     };
 
     if (!const_only) {
-        add("get_view", "auto", {}, "return get_view(0, num());", " -> View");
+        add("get_view", "auto", {}, "return get_view(0, num());", "View");
         std::vector<std::string> values;
         for (auto const& member : members) {
             values.push_back("    " + view_expression(member, false) + ",");
         }
         add("get_view",
             "auto",
-            {FunctionParameter{"int32 const", "offset"},
-             FunctionParameter{"int32 const", "count"}},
+            {FunctionParameter{"int32 const", "offset"}, FunctionParameter{"int32 const", "count"}},
             "return View{\n" + join_lines(values) + "\n};",
-            " -> View");
+            "View");
     }
 
-    add("get_view", "auto", {}, "return get_view(0, num());", " const -> ConstView");
+    add("get_view", "auto", {}, "return get_view(0, num());", "ConstView", true);
     std::vector<std::string> const_values;
     for (auto const& member : members) {
         const_values.push_back("    " + view_expression(member, true) + ",");
     }
     add("get_view",
         "auto",
-        {FunctionParameter{"int32 const", "offset"},
-         FunctionParameter{"int32 const", "count"}},
+        {FunctionParameter{"int32 const", "offset"}, FunctionParameter{"int32 const", "count"}},
         "return ConstView{\n" + join_lines(const_values) + "\n};",
-        " const -> ConstView");
-    add("get_const_view", "auto", {}, "return get_const_view(0, num());", " const -> ConstView");
+        "ConstView",
+        true);
+    add("get_const_view", "auto", {}, "return get_const_view(0, num());", "ConstView", true);
     add("get_const_view",
         "auto",
-        {FunctionParameter{"int32 const", "offset"},
-         FunctionParameter{"int32 const", "count"}},
+        {FunctionParameter{"int32 const", "offset"}, FunctionParameter{"int32 const", "count"}},
         "return ConstView{\n" + join_lines(const_values) + "\n};",
-        " const -> ConstView");
+        "ConstView",
+        true);
     add("num",
         "auto",
         {},
         "return ml::num(" + members.front().name + ");",
-        " const noexcept -> int32",
+        "int32",
+        true,
+        true,
         {container_ops});
-    add("is_empty", "auto", {}, "return num() == 0;", " const noexcept -> bool");
+    add("is_empty", "auto", {}, "return num() == 0;", "bool", true, true);
     std::vector<std::string> nums;
     for (auto const& member : members) {
         nums.push_back("    ml::num(" + member.name + "),");
@@ -214,42 +228,45 @@ auto soa_view_specs(std::vector<ResolvedMember> const& members,
         "void",
         {},
         "ml::fatal_if_nums_not_equal({\n" + join_lines(nums) + "\n});",
-        " const",
+        {},
+        true,
+        false,
         {array_checks, container_ops});
     if (!const_only) {
         add("slice",
             "auto",
-            {FunctionParameter{"int32 const", "offset"},
-             FunctionParameter{"int32 const", "count"}},
+            {FunctionParameter{"int32 const", "offset"}, FunctionParameter{"int32 const", "count"}},
             "return get_view(offset, count);",
-            " -> View");
+            "View");
         add("left",
             "auto",
             {FunctionParameter{"int32 const", "count"}},
             "return slice(0, count);",
-            " -> View");
+            "View");
         add("right",
             "auto",
             {FunctionParameter{"int32 const", "count"}},
             "return slice(num() - count, count);",
-            " -> View");
+            "View");
     }
     add("slice",
         "auto",
-        {FunctionParameter{"int32 const", "offset"},
-         FunctionParameter{"int32 const", "count"}},
+        {FunctionParameter{"int32 const", "offset"}, FunctionParameter{"int32 const", "count"}},
         "return get_view(offset, count);",
-        " const -> ConstView");
+        "ConstView",
+        true);
     add("left",
         "auto",
         {FunctionParameter{"int32 const", "count"}},
         "return slice(0, count);",
-        " const -> ConstView");
+        "ConstView",
+        true);
     add("right",
         "auto",
         {FunctionParameter{"int32 const", "count"}},
         "return slice(num() - count, count);",
-        " const -> ConstView");
+        "ConstView",
+        true);
     return result;
 }
 

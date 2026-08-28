@@ -15,7 +15,9 @@ struct FunctionSchema {
     std::vector<ParameterSchema> parameters;
     std::vector<std::string> body_lines;
     std::vector<std::string> dependencies;
-    std::string suffix;
+    std::optional<TypeRef> trailing_return_type;
+    bool is_const{false};
+    bool is_noexcept{false};
     bool is_static{false};
     bool is_inline{false};
     bool definition_in_source{false};

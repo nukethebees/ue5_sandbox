@@ -12,13 +12,12 @@ TypeDependency const allow_shrinking{"EAllowShrinking", "Containers/AllowShrinki
 TypeDependency const container_ops{"ml::num", "SandboxCore/container_ops.h", {}};
 TypeDependency const soa_concepts{
     "ml::SupportsApplyArrayPairsWith", "SandboxCore/soa_concepts.h", {}};
-TypeDependency const soa_permutation{
-    "ml::apply_permutation", "SandboxCore/soa_permutation.h", {}};
+TypeDependency const soa_permutation{"ml::apply_permutation", "SandboxCore/soa_permutation.h", {}};
 TypeDependency const fill_indices{"ml::fill_indices", "SandboxCore/array_utils.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
-auto custom_function_spec(FunctionSchema const& schema,
-                          std::map<std::string, CppType> const& types) -> FunctionSpec {
+auto custom_function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
+    -> FunctionSpec {
     std::vector<FunctionParameter> parameters;
     for (auto const& parameter : schema.parameters) {
         auto resolved{resolve_type(parameter.type, types)};
@@ -37,7 +36,15 @@ auto custom_function_spec(FunctionSchema const& schema,
         .return_type = resolve_type(schema.return_type, types),
         .parameters = std::move(parameters),
         .body = {raw(join_lines(schema.body_lines), std::move(dependencies))},
-        .suffix = schema.suffix,
+        .qualifiers =
+            {
+                .trailing_return_type =
+                    schema.trailing_return_type.has_value()
+                        ? std::optional<CppType>{resolve_type(*schema.trailing_return_type, types)}
+                        : std::nullopt,
+                .is_const = schema.is_const,
+                .is_noexcept = schema.is_noexcept,
+            },
         .is_static = schema.is_static,
         .is_inline = schema.is_inline,
         .template_parameters = schema.template_parameters,
@@ -57,8 +64,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         for (auto const& member : members) {
             auto values{std::vector<std::string>{member.name}};
             values.insert(values.end(), arguments.begin(), arguments.end());
-            calls.add(ExpressionStatement{function + "(" + join(values, ", ") + ")",
-                                          {container_ops}});
+            calls.add(
+                ExpressionStatement{function + "(" + join(values, ", ") + ")", {container_ops}});
         }
         return calls.build();
     };
@@ -100,8 +107,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             calls.add(ExpressionStatement{
                 operation.has_value()
                     ? member.name + "." + *operation + "(index, count, allow_shrinking)"
-                    : "ml::remove_at_swap(" + member.name +
-                          ", index, count, allow_shrinking)",
+                    : "ml::remove_at_swap(" + member.name + ", index, count, allow_shrinking)",
                 {container_ops}});
         }
         result.push_back(FunctionSpec{
@@ -130,19 +136,17 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         NodeListBuilder copy_range;
         for (auto const& member : members) {
             if (schema.copy_element_memberwise) {
-                copy_one.add(AssignmentStatement{member.name + "[dst_i]",
-                                                 "other." + member.name + "[src_i]",
-                                                 {container_ops}});
+                copy_one.add(AssignmentStatement{
+                    member.name + "[dst_i]", "other." + member.name + "[src_i]", {container_ops}});
             } else {
                 copy_one.add(ExpressionStatement{"ml::copy_element(" + member.name +
-                                                       ", dst_i, other." + member.name +
-                                                       ", src_i)",
-                                                   {container_ops}});
+                                                     ", dst_i, other." + member.name + ", src_i)",
+                                                 {container_ops}});
             }
             copy_range.add(ExpressionStatement{"ml::copy_elements(" + member.name +
-                                                    ", dst_i, other." + member.name +
-                                                    ", src_i, count)",
-                                                {container_ops}});
+                                                   ", dst_i, other." + member.name +
+                                                   ", src_i, count)",
+                                               {container_ops}});
         }
         result.push_back(FunctionSpec{
             .name = "copy_element",
@@ -169,11 +173,12 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .name = "copy_to_tail",
             .return_type = "void",
             .parameters = {FunctionParameter{"Other const&", "other"}},
-            .body = {
-                VariableDeclarationStatement{"auto const", "count", "other.num()"},
-                ExpressionStatement{"check(num() >= count)", {check_dependency}},
-                ExpressionStatement{"copy_elements(num() - count, other, 0, count)"},
-            },
+            .body =
+                {
+                    VariableDeclarationStatement{"auto const", "count", "other.num()"},
+                    ExpressionStatement{"check(num() >= count)", {check_dependency}},
+                    ExpressionStatement{"copy_elements(num() - count, other, 0, count)"},
+                },
             .is_inline = true,
             .template_parameters = "typename Other",
         });
@@ -244,10 +249,9 @@ auto soa_permutation_specs(std::vector<ResolvedMember> const& members)
             .return_type = "void",
             .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "scratch_indices"}},
-            .body = sort_body(
-                "scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {\n"
-                "    return Compare(*this, lhs, rhs);\n"
-                "});"),
+            .body = sort_body("scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {\n"
+                              "    return Compare(*this, lhs, rhs);\n"
+                              "});"),
             .is_inline = true,
             .template_parameters = "auto Compare",
         },

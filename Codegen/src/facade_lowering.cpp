@@ -53,7 +53,7 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
             .return_type = return_type,
             .parameters = std::move(parameters),
             .body = body.build(),
-            .suffix = method.suffix,
+            .qualifiers = {.is_const = method.is_const, .is_noexcept = method.is_noexcept},
             .is_inline = !definitions_in_source,
         });
     }
@@ -77,8 +77,7 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
 
     NodeListBuilder class_nodes;
     if (has_public_nodes) {
-        class_nodes
-            .add(AccessSpecifier{"public", AccessSpecifier::Indentation::normal}, 1)
+        class_nodes.add(AccessSpecifier{"public", AccessSpecifier::Indentation::normal}, 1)
             .append(public_nodes.build());
     }
     class_nodes.add(AccessSpecifier{"private", AccessSpecifier::Indentation::normal}, 1)
@@ -91,7 +90,8 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         .record_kind = "class",
     }};
     if (module.settings.namespace_name.has_value()) {
-        declaration_node = Namespace{*module.settings.namespace_name, {std::move(declaration_node)}};
+        declaration_node =
+            Namespace{*module.settings.namespace_name, {std::move(declaration_node)}};
     }
     NodeListBuilder header_nodes;
     header_nodes.add(IncludeDependencies{}, 2);
@@ -101,12 +101,13 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
     header_nodes.add(std::move(declaration_node));
     Module result{
         .name = module.settings.name,
-        .header = CppFile{
-            .path = module.settings.header,
-            .nodes = header_nodes.build(),
-            .clang_format_off = true,
-            .include_order = module.settings.include_order,
-        },
+        .header =
+            CppFile{
+                .path = module.settings.header,
+                .nodes = header_nodes.build(),
+                .clang_format_off = true,
+                .include_order = module.settings.include_order,
+            },
     };
     if (module.settings.source.has_value()) {
         NodeListBuilder definitions;

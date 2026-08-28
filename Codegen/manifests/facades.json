@@ -11,10 +11,10 @@
           {"name":"queue_spawns","return_type":"void","parameters":[{"type":{"name":"@fighter_spawn_queue","suffix":" const&"},"name":"queue"}]},
           {"name":"queue_orders","return_type":"void","parameters":[{"type":{"name":"@fighter_order_queue","suffix":" const&"},"name":"queue"}]},
           {"name":"self_destruct_fighter","return_type":"void","parameters":[{"type":{"name":"@registry_handle","suffix":" const"},"name":"handle"}]},
-          {"name":"get_new_spawn_entity_data","return_type":{"name":"@test_fighters","nested":"RegistryEntityData","suffix":" const&"},"suffix":" const"},
-          {"name":"get_new_spawn_entity_handles","return_type":{"name":"@spawned_entity_handles","suffix":" const&"},"suffix":" const"},
-          {"name":"get_num_instances","return_type":"int32","suffix":" const noexcept"},
-          {"name":"get_target_handle","return_type":"@registry_handle","suffix":" const noexcept","parameters":[{"type":{"name":"@registry_handle","suffix":" const"},"name":"fighter_handle"}]}
+          {"name":"get_new_spawn_entity_data","return_type":{"name":"@test_fighters","nested":"RegistryEntityData","suffix":" const&"},"const":true},
+          {"name":"get_new_spawn_entity_handles","return_type":{"name":"@spawned_entity_handles","suffix":" const&"},"const":true},
+          {"name":"get_num_instances","return_type":"int32","const":true,"noexcept":true},
+          {"name":"get_target_handle","return_type":"@registry_handle","const":true,"noexcept":true,"parameters":[{"type":{"name":"@registry_handle","suffix":" const"},"name":"fighter_handle"}]}
         ]
       }
     },

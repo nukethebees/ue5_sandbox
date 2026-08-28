@@ -25,8 +25,8 @@ auto fixed_member_view(FixedMemberLayout const& member, bool is_const) -> std::s
                member.member.element_type.spelling + ">{" + member.member.name +
                "_.data() + offset, count}";
     }
-    return member.member.name + (is_const ? "_.get_const_view(offset, count)"
-                                          : "_.get_view(offset, count)");
+    return member.member.name +
+           (is_const ? "_.get_const_view(offset, count)" : "_.get_view(offset, count)");
 }
 
 auto fixed_construct_lines(FixedLayout const& layout,
@@ -39,28 +39,26 @@ auto fixed_construct_lines(FixedLayout const& layout,
         auto const name{member.member.name + "_"};
         auto const leaf_count{member.leaves.size()};
         std::vector<std::string> member_arguments;
-        for (std::size_t index{0}; index < leaf_count && argument_index < arguments.size(); ++index) {
+        for (std::size_t index{0}; index < leaf_count && argument_index < arguments.size();
+             ++index) {
             member_arguments.push_back(arguments[argument_index++]);
         }
         if (operation == "arguments") {
-            result.push_back(name + ".construct_at(index, " +
-                             join(member_arguments, ", ") + ");");
+            result.push_back(name + ".construct_at(index, " + join(member_arguments, ", ") + ");");
         } else if (operation == "default") {
             result.push_back(member.member.kind == SoaMemberKind::array
                                  ? name + ".construct_at(index);"
                                  : name + ".default_construct_at(index);");
         } else if (operation == "copy") {
             result.push_back(member.member.kind == SoaMemberKind::array
-                                 ? name + ".construct_at(index, other." + name +
-                                       "[other_index]);"
+                                 ? name + ".construct_at(index, other." + name + "[other_index]);"
                                  : name + ".copy_construct_at(index, other." + name +
                                        ", other_index);");
         } else if (operation == "move") {
-            result.push_back(member.member.kind == SoaMemberKind::array
-                                 ? name + ".construct_at(index, MoveTemp(other." + name +
-                                       "[other_index]));"
-                                 : name + ".move_construct_at(index, other." + name +
-                                       ", other_index);");
+            result.push_back(
+                member.member.kind == SoaMemberKind::array
+                    ? name + ".construct_at(index, MoveTemp(other." + name + "[other_index]));"
+                    : name + ".move_construct_at(index, other." + name + ", other_index);");
         } else if (operation == "view") {
             result.push_back(member.member.kind == SoaMemberKind::array
                                  ? name + ".construct_at(index, source." + member.member.name +
@@ -83,10 +81,9 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
     for (std::size_t index{0}; index < layout.leaves.size(); ++index) {
         auto const argument{fixed_leaf_argument(layout.leaves[index])};
         template_parameters.push_back("typename TArg" + std::to_string(index));
-        function_parameters.emplace_back("TArg" + std::to_string(index) + "&&",
-                                         "new_" + argument);
-        forwarded.push_back("std::forward<TArg" + std::to_string(index) + ">(new_" +
-                            argument + ")");
+        function_parameters.emplace_back("TArg" + std::to_string(index) + "&&", "new_" + argument);
+        forwarded.push_back("std::forward<TArg" + std::to_string(index) + ">(new_" + argument +
+                            ")");
     }
     std::vector<std::string> mutable_views;
     std::vector<std::string> const_views;
@@ -101,11 +98,10 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                                         "[source_index];"
                                   : name + ".copy_assign_from_view_at(dst_index, source." +
                                         member.member.name + ", source_index);");
-        move_assign.push_back(member.member.kind == SoaMemberKind::array
-                                  ? name + "[dst_index] = MoveTemp(other." + name +
-                                        "[source_index]);"
-                                  : name + ".move_assign_at(dst_index, other." + name +
-                                        ", source_index);");
+        move_assign.push_back(
+            member.member.kind == SoaMemberKind::array
+                ? name + "[dst_index] = MoveTemp(other." + name + "[source_index]);"
+                : name + ".move_assign_at(dst_index, other." + name + ", source_index);");
     }
     std::vector<std::string> destroy;
     for (auto iterator{layout.members.rbegin()}; iterator != layout.members.rend(); ++iterator) {
@@ -115,7 +111,7 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                        CppType return_type,
                        std::vector<FunctionParameter> parameters,
                        std::string body,
-                       std::string suffix = {},
+                       FunctionQualifiers qualifiers = {},
                        std::vector<TypeDependency> dependencies = {},
                        std::optional<std::string> function_template = std::nullopt) {
         return header_function(FunctionSpec{
@@ -123,15 +119,15 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
             .return_type = std::move(return_type),
             .parameters = std::move(parameters),
             .body = {raw(std::move(body), std::move(dependencies))},
-            .suffix = std::move(suffix),
+            .qualifiers = std::move(qualifiers),
             .is_inline = true,
             .template_parameters = std::move(function_template),
         });
     };
 
     NodeListBuilder children;
-    children.add(UsingDeclaration{"View", CppType{schema.view_name.value_or(schema.name + "View")}},
-                 1)
+    children
+        .add(UsingDeclaration{"View", CppType{schema.view_name.value_or(schema.name + "View")}}, 1)
         .add(UsingDeclaration{"ConstView",
                               CppType{schema.const_view_name.value_or(schema.name + "ConstView")}},
              2)
@@ -140,7 +136,7 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                       {FunctionParameter{"int32 const", "offset"},
                        FunctionParameter{"int32 const", "count"}},
                       "return View{" + join(mutable_views, ", ") + "};",
-                      " -> View",
+                      {.trailing_return_type = CppType{"View"}},
                       {tarray_view}),
              1)
         .add(function("get_const_view",
@@ -148,21 +144,22 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                       {FunctionParameter{"int32 const", "offset"},
                        FunctionParameter{"int32 const", "count"}},
                       "return ConstView{" + join(const_views, ", ") + "};",
-                      " const -> ConstView",
+                      {.trailing_return_type = CppType{"ConstView"}, .is_const = true},
                       {tarray_view}),
              2)
-        .add(function("construct_at",
-                      "void",
-                      [&] {
-                          auto parameters{function_parameters};
-                          parameters.insert(parameters.begin(),
-                                            FunctionParameter{"int32 const", "index"});
-                          return parameters;
-                      }(),
-                      join_lines(fixed_construct_lines(layout, "arguments", forwarded)),
-                      {},
-                      {std_forward},
-                      join(template_parameters, ", ")),
+        .add(function(
+                 "construct_at",
+                 "void",
+                 [&] {
+                     auto parameters{function_parameters};
+                     parameters.insert(parameters.begin(),
+                                       FunctionParameter{"int32 const", "index"});
+                     return parameters;
+                 }(),
+                 join_lines(fixed_construct_lines(layout, "arguments", forwarded)),
+                 {},
+                 {std_forward},
+                 join(template_parameters, ", ")),
              2)
         .add(function("default_construct_at",
                       "void",
@@ -218,7 +215,7 @@ auto fixed_storage_node(FixedLayout const& layout) -> Node {
                       "void",
                       {FunctionParameter{"int32 const", "index"}},
                       join_lines(destroy),
-                      " noexcept"),
+                      {.is_noexcept = true}),
              2);
     for (std::size_t index{0}; index < layout.members.size(); ++index) {
         auto const& member{layout.members[index]};

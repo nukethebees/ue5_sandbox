@@ -112,6 +112,18 @@ auto read_file(std::filesystem::path const& path) -> std::optional<std::string> 
     return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
 }
 
+auto normalize_line_endings(std::string_view const content) -> std::string {
+    std::string result;
+    result.reserve(content.size());
+    for (std::size_t index{}; index < content.size(); ++index) {
+        if (content[index] == '\r' && index + 1 < content.size() && content[index + 1] == '\n') {
+            continue;
+        }
+        result.push_back(content[index]);
+    }
+    return result;
+}
+
 void replace_file(std::filesystem::path const& source, std::filesystem::path const& destination) {
 #if defined(_WIN32)
     if (!MoveFileExW(source.c_str(),
@@ -172,11 +184,17 @@ auto read_inventory(std::filesystem::path const& path) -> std::optional<std::set
     std::istringstream input{*content};
     std::string line;
     std::getline(input, line);
+    if (!line.empty() && line.back() == '\r') {
+        line.pop_back();
+    }
     if (line != output_inventory_header) {
         throw std::runtime_error{"Invalid generated output inventory: " + path.string()};
     }
     std::set<std::string> result;
     while (std::getline(input, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
         if (line.empty()) {
             continue;
         }
@@ -298,7 +316,8 @@ auto generate_files(std::vector<GeneratedFile> const& files,
         auto const destination{output_root / relative};
         validate_destination(destination, output_root);
         auto const current{read_file(destination)};
-        if (current == file.content) {
+        if (current.has_value() &&
+            normalize_line_endings(*current) == normalize_line_endings(file.content)) {
             std::cout << "Unchanged " << relative.generic_string() << '\n';
             continue;
         }
@@ -310,13 +329,12 @@ auto generate_files(std::vector<GeneratedFile> const& files,
         write_file_atomically(destination, file.content, output_root);
         std::cout << "Wrote " << relative.generic_string() << '\n';
     }
-    auto const expected_inventory{inventory_content(expected_paths)};
-    if (read_file(inventory_path) != expected_inventory) {
+    if (previous_paths != std::optional<std::set<std::string>>{expected_paths}) {
         if (check_only) {
             stale = true;
             std::cout << "Stale generated output inventory\n";
         } else {
-            write_file_atomically(inventory_path, expected_inventory, output_root);
+            write_file_atomically(inventory_path, inventory_content(expected_paths), output_root);
             std::cout << "Wrote " << output_inventory_name << '\n';
         }
     }

@@ -547,16 +547,23 @@ TEST(Generator, CommittedProductionFilesAreCurrent) {
     auto const manifest{load_manifest(codegen_root / "manifests/manifest.json")};
     auto const files{render_modules(lower_modules(manifest))};
 
-    for (auto const& file : files) {
-        auto const path{project_root / file.path};
-        ASSERT_TRUE(std::filesystem::exists(path)) << path.string();
-        std::ifstream input{path, std::ios::binary};
-        ASSERT_TRUE(input) << path.string();
-        auto const content{
-            std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}}};
-        EXPECT_EQ(content, file.content) << path.string();
-    }
     EXPECT_EQ(generate_files(files, project_root, project_root, true), 0);
+}
+
+TEST(Generator, AcceptsCrLfOutputInventory) {
+    auto const directory{std::filesystem::temp_directory_path() /
+                         "sandbox-codegen-crlf-inventory-test"};
+    std::error_code ignored;
+    std::filesystem::remove_all(directory, ignored);
+    auto const files{std::vector<GeneratedFile>{{"Generated/Value.h", "value\n"}}};
+
+    ASSERT_EQ(generate_files(files, directory, directory, false), 0);
+    {
+        std::ofstream inventory{directory / ".sandbox-codegen-outputs", std::ios::binary};
+        inventory << "sandbox-codegen-outputs-v1\r\nGenerated/Value.h\r\n";
+    }
+    EXPECT_EQ(generate_files(files, directory, directory, true), 0);
+    std::filesystem::remove_all(directory, ignored);
 }
 
 } // namespace

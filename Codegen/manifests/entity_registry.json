@@ -146,8 +146,8 @@
         ],
         "functions": [
           {"name": "add", "return_type": "void", "definition_in_source": true, "parameters": [{"type": "int32 const", "name": "index"}, {"type": "int32 const", "name": "generation"}], "body": ["registry_indices.Add(index);", "generations.Add(generation);"]},
-          {"name": "append_to", "return_type": "void", "definition_in_source": true, "suffix": " const", "parameters": [{"type": {"name": "@registry_handle_array", "suffix": "&"}, "name": "out"}], "body": ["auto const count{num()};", "out.Reserve(out.Num() + count);", "for (int32 i{0}; i < count; ++i) {", "    out.Emplace(registry_indices[i], generations[i]);", "}"]},
-          {"name": "to_array", "return_type": "@registry_handle_array", "definition_in_source": true, "suffix": " const", "body": ["TArray<FRegistryEntityHandle> out;", "append_to(out);", "return out;"]}
+          {"name": "append_to", "return_type": "void", "definition_in_source": true, "const": true, "parameters": [{"type": {"name": "@registry_handle_array", "suffix": "&"}, "name": "out"}], "body": ["auto const count{num()};", "out.Reserve(out.Num() + count);", "for (int32 i{0}; i < count; ++i) {", "    out.Emplace(registry_indices[i], generations[i]);", "}"]},
+          {"name": "to_array", "return_type": "@registry_handle_array", "definition_in_source": true, "const": true, "body": ["TArray<FRegistryEntityHandle> out;", "append_to(out);", "return out;"]}
         ]
       }]
     }

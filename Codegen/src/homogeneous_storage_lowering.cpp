@@ -24,7 +24,7 @@ auto homogeneous_function(std::string name,
                           CppType return_type,
                           std::vector<FunctionParameter> parameters,
                           Nodes body,
-                          std::string suffix = {},
+                          FunctionQualifiers qualifiers = {},
                           std::optional<std::string> function_template = std::nullopt,
                           FunctionFormatting formatting = {}) -> Node {
     return header_function(FunctionSpec{
@@ -32,7 +32,7 @@ auto homogeneous_function(std::string name,
         .return_type = std::move(return_type),
         .parameters = std::move(parameters),
         .body = std::move(body),
-        .suffix = std::move(suffix),
+        .qualifiers = std::move(qualifiers),
         .is_inline = true,
         .template_parameters = std::move(function_template),
         .formatting = formatting,
@@ -43,7 +43,7 @@ auto homogeneous_function(std::string name,
                           CppType return_type,
                           std::vector<FunctionParameter> parameters,
                           std::string body,
-                          std::string suffix = {},
+                          FunctionQualifiers qualifiers = {},
                           std::optional<std::string> function_template = std::nullopt,
                           FunctionFormatting formatting = {},
                           std::vector<TypeDependency> dependencies = {}) -> Node {
@@ -51,7 +51,7 @@ auto homogeneous_function(std::string name,
                                 std::move(return_type),
                                 std::move(parameters),
                                 {raw(std::move(body), std::move(dependencies))},
-                                std::move(suffix),
+                                std::move(qualifiers),
                                 std::move(function_template),
                                 formatting);
 }
@@ -105,13 +105,13 @@ void add_compact_function(NodeListBuilder& nodes,
                           CppType return_type,
                           std::vector<FunctionParameter> parameters,
                           std::string body,
-                          std::string suffix = {},
+                          FunctionQualifiers qualifiers = {},
                           std::optional<std::string> function_template = std::nullopt) {
     nodes.add(homogeneous_function(std::move(name),
                                    std::move(return_type),
                                    std::move(parameters),
                                    std::move(body),
-                                   std::move(suffix),
+                                   std::move(qualifiers),
                                    std::move(function_template),
                                    compact_function_formatting()),
               1);
@@ -164,79 +164,92 @@ auto homogeneous_storage_access_nodes(HomogeneousLayoutSchema const& layout) -> 
     }
 
     NodeListBuilder result;
-    add_compact_function(
-        result, "get_data", "auto", {}, "return Data{" + join(pointers, ", ") + "};", " -> Data");
+    add_compact_function(result,
+                         "get_data",
+                         "auto",
+                         {},
+                         "return Data{" + join(pointers, ", ") + "};",
+                         {.trailing_return_type = CppType{"Data"}});
     add_compact_function(result,
                          "get_data",
                          "auto",
                          {},
                          "return ConstData{" + join(pointers, ", ") + "};",
-                         " const -> ConstData");
-    add_compact_function(
-        result, "get_view", "auto", {}, "return View{" + components + "};", " -> View");
+                         {.trailing_return_type = CppType{"ConstData"}, .is_const = true});
+    add_compact_function(result,
+                         "get_view",
+                         "auto",
+                         {},
+                         "return View{" + components + "};",
+                         {.trailing_return_type = CppType{"View"}});
     add_compact_function(result,
                          "get_view",
                          "auto",
                          {FunctionParameter{"size_type const", "offset"},
                           FunctionParameter{"size_type const", "count"}},
                          "return get_view().slice(offset, count);",
-                         " -> View");
+                         {.trailing_return_type = CppType{"View"}});
     add_compact_function(result,
                          "get_view",
                          "auto",
                          {},
                          "return ConstView{" + components + "};",
-                         " const -> ConstView");
+                         {.trailing_return_type = CppType{"ConstView"}, .is_const = true});
     add_compact_function(result,
                          "get_view",
                          "auto",
                          {FunctionParameter{"size_type const", "offset"},
                           FunctionParameter{"size_type const", "count"}},
                          "return get_view().slice(offset, count);",
-                         " const -> ConstView");
+                         {.trailing_return_type = CppType{"ConstView"}, .is_const = true});
     add_compact_function(result,
                          "get_const_view",
                          "auto",
                          {},
                          "return ConstView{" + components + "};",
-                         " const -> ConstView");
+                         {.trailing_return_type = CppType{"ConstView"}, .is_const = true});
     add_compact_function(result,
                          "get_const_view",
                          "auto",
                          {FunctionParameter{"size_type const", "offset"},
                           FunctionParameter{"size_type const", "count"}},
                          "return get_const_view().slice(offset, count);",
-                         " const -> ConstView");
+                         {.trailing_return_type = CppType{"ConstView"}, .is_const = true});
     add_compact_function(result,
                          "apply_arrays",
                          "auto",
                          {FunctionParameter{"TFunc&&", "func"}},
                          "return std::forward<TFunc>(func)(" + components + ");",
-                         " -> decltype(auto)",
+                         {.trailing_return_type = CppType{"decltype(auto)"}},
                          "typename TFunc");
     add_compact_function(result,
                          "apply_arrays",
                          "auto",
                          {FunctionParameter{"TFunc&&", "func"}},
                          "return std::forward<TFunc>(func)(" + components + ");",
-                         " const -> decltype(auto)",
+                         {.trailing_return_type = CppType{"decltype(auto)"}, .is_const = true},
                          "typename TFunc");
     add_compact_function(result,
                          "num",
                          "auto",
                          {},
                          "return " + layout.components.front() + ".Num();",
-                         " const -> size_type");
+                         {.trailing_return_type = CppType{"size_type"}, .is_const = true});
     result.add(homogeneous_function("validate_array_sizes",
                                     "void",
                                     {},
                                     join_lines(validation),
-                                    " const",
+                                    {.is_const = true},
                                     std::nullopt,
                                     {},
                                     {check_dependency}),
                1);
-    add_compact_function(result, "is_empty", "auto", {}, "return num() == 0;", " const -> bool");
+    add_compact_function(result,
+                         "is_empty",
+                         "auto",
+                         {},
+                         "return num() == 0;",
+                         {.trailing_return_type = CppType{"bool"}, .is_const = true});
     return result.build();
 }
 
@@ -248,7 +261,7 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                                      FunctionParameter{"Other const&", "src"},
                                      FunctionParameter{"size_type const", "src_i"}},
                                     component_assignments(layout, "{}[dst_i]", "src.{}[src_i]"),
-                                    " -> void",
+                                    {.trailing_return_type = CppType{"void"}},
                                     "typename Other",
                                     same_line_template_formatting()),
                1);
@@ -261,7 +274,7 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                     FunctionParameter{"size_type const", "count"}},
                    "for (auto i{0}; i < count; ++i) {\n" +
                        component_lines(layout, "    {}[dst_i + i] = src.{}[src_i + i];") + "\n}",
-                   " -> void",
+                   {.trailing_return_type = CppType{"void"}},
                    "typename Other",
                    same_line_template_formatting()),
                1);
@@ -274,7 +287,7 @@ auto homogeneous_storage_copy_nodes(HomogeneousLayoutSchema const& layout) -> No
                                  ExpressionStatement{"check(num() >= count)", {check_dependency}},
                                  ExpressionStatement{"copy_elements(num() - count, src, 0, count)"},
                              },
-                             " -> void",
+                             {.trailing_return_type = CppType{"void"}},
                              "typename Other",
                              same_line_template_formatting()),
         1);
@@ -340,7 +353,7 @@ auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& la
                                             "auto",
                                             std::move(parameters),
                                             component_statements(layout, expression),
-                                            " -> void"),
+                                            {.trailing_return_type = CppType{"void"}}),
                        1);
         };
     add_each("reset", {}, "{}.Reset()");
@@ -366,7 +379,7 @@ auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& la
                                     "auto",
                                     {FunctionParameter{"size_type const", "count"}},
                                     component_statements(layout, "{}.AddDefaulted(count)"),
-                                    " -> void"));
+                                    {.trailing_return_type = CppType{"void"}}));
     return result.build();
 }
 
@@ -380,11 +393,12 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
             values.push_back(component + ".GetData()[index]");
         }
         result
-            .add(homogeneous_function("operator[]",
-                                      "auto",
-                                      {FunctionParameter{"size_type const", "index"}},
-                                      "return {" + join(values, ", ") + "};",
-                                      " const -> equivalent_type"),
+            .add(homogeneous_function(
+                     "operator[]",
+                     "auto",
+                     {FunctionParameter{"size_type const", "index"}},
+                     "return {" + join(values, ", ") + "};",
+                     {.trailing_return_type = CppType{"equivalent_type"}, .is_const = true}),
                  1)
             .add(homogeneous_function(
                      "at",
@@ -396,7 +410,7 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
                          ExpressionStatement{"check(index < num())", {check_dependency}},
                          ReturnStatement{"(*this)[index]"},
                      },
-                     " const -> equivalent_type"),
+                     {.trailing_return_type = CppType{"equivalent_type"}, .is_const = true}),
                  1);
     }
     std::vector<FunctionParameter> component_parameters;
@@ -416,7 +430,7 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
                                     "auto",
                                     std::move(component_parameters),
                                     component_body.build(),
-                                    " -> size_type"),
+                                    {.trailing_return_type = CppType{"size_type"}}),
                1);
 
     if (value.input_types.empty()) {
@@ -435,7 +449,7 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
                                  "auto",
                                  {FunctionParameter{std::move(input_type), "value"}},
                                  Nodes{ReturnStatement{"add(" + join(arguments, ", ") + ")"}},
-                                 " -> size_type"),
+                                 {.trailing_return_type = CppType{"size_type"}}),
             1);
     }
     return result.build();

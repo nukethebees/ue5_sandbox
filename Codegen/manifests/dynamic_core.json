@@ -24,7 +24,7 @@
               ],
               "body": ["ml::subtract_in_place(remaining_times, dt);"],
               "dependencies": ["array_math"],
-              "suffix": " noexcept",
+              "noexcept": true,
               "definition_in_source": true
             }
           ]

@@ -102,7 +102,11 @@ TEST(Ast, RendersBraceInitialisedTree) {
                                         .name = "get",
                                         .return_type = "auto",
                                         .body = {raw("return value;")},
-                                        .suffix = " const -> int32",
+                                        .qualifiers =
+                                            {
+                                                .trailing_return_type = CppType{"int32"},
+                                                .is_const = true,
+                                            },
                                         .is_inline = true,
                                     }),
                                 },
@@ -298,7 +302,11 @@ TEST(Ast, RendersConstrainedStructuresAndSpecialMembers) {
             {
                 declaration(FunctionSpec{
                     .name = "TFixedData",
-                    .suffix = " noexcept = default",
+                    .qualifiers =
+                        {
+                            .is_noexcept = true,
+                            .disposition = FunctionDisposition::defaulted,
+                        },
                 }),
                 lines(1),
                 header_function(FunctionSpec{
@@ -346,7 +354,7 @@ TEST(Ast, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
         .return_type = "void",
         .parameters = {FunctionParameter{"int32 const", "value", "0"}},
         .body = {raw("stored = value;")},
-        .suffix = " noexcept",
+        .qualifiers = {.is_noexcept = true},
     };
 
     EXPECT_EQ(render(declaration(spec)), "void set(int32 const value = 0) noexcept;");
@@ -354,6 +362,21 @@ TEST(Ast, RendersDeclarationsAndOutOfLineDefinitionsFromOneSpec) {
               "void FValue::set(int32 const value) noexcept {\n"
               "    stored = value;\n"
               "}");
+}
+
+TEST(Ast, CollectsTrailingReturnTypeDependencies) {
+    TypeDependency const dependency{"FResult", "Project/Result.h", {}};
+    Node const function{declaration(FunctionSpec{
+        .name = "make",
+        .return_type = "auto",
+        .qualifiers =
+            {
+                .trailing_return_type = CppType{"FResult", {dependency}},
+            },
+    })};
+
+    EXPECT_EQ(render(function), "auto make() -> FResult;");
+    EXPECT_EQ(dependencies(function), std::vector<TypeDependency>{dependency});
 }
 
 TEST(Ast, RejectsInvalidNewLineCounts) {

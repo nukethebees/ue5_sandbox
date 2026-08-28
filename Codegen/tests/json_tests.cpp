@@ -202,7 +202,7 @@ TEST(Json, LoadsEveryModuleKindAndStructuredTypeReference) {
         R"({"types":{"vector":{"spelling":"FVector2f","header":"Vector.h"},"target":{"spelling":"FTarget","header":"Target.h"}}})");
     files.write(
         "modules.json",
-        R"({"modules":[{"kind":"facade","name":"facade","header":"Facade.h","source":"Facade.cpp","namespace":"project","facade":{"name":"FFacade","target_type":"@target","target_member_name":"target","methods":[{"name":"get","return_type":{"name":"@vector","suffix":" const&"},"parameters":[{"type":"int32","name":"index","default":"0"}],"suffix":" const","target_name":"get_value"}],"validation":["check(target);"],"validation_dependencies":["check"],"friends":["FOwner"],"definitions_in_source":true}},{"kind":"vector_soa","name":"vectors","header":"Vectors.h","source":"Vectors.cpp","storage_name":"FVectors","value_type":"float","components":["xs","ys"],"equivalent_type":"@vector","fixed":{"storage_name":"TFixedVectors","containers":["TFixedVectorArray"]}},{"kind":"homogeneous_soa","name":"homogeneous","header":"Values.h","source":"Values.cpp","layouts":[{"name":"Values","components":["xs","ys"],"value_types":[{"type":"float","suffix":"f","equivalent_type":"@vector","input_types":["@vector"]}],"export_specifier":"PROJECT_API"}]},{"kind":"umbrella","name":"all","header":"All.h","headers":["Vectors.h","Values.h"]}]})");
+        R"({"modules":[{"kind":"facade","name":"facade","header":"Facade.h","source":"Facade.cpp","namespace":"project","facade":{"name":"FFacade","target_type":"@target","target_member_name":"target","methods":[{"name":"get","return_type":{"name":"@vector","suffix":" const&"},"parameters":[{"type":"int32","name":"index","default":"0"}],"const":true,"target_name":"get_value"}],"validation":["check(target);"],"validation_dependencies":["check"],"friends":["FOwner"],"definitions_in_source":true}},{"kind":"vector_soa","name":"vectors","header":"Vectors.h","source":"Vectors.cpp","storage_name":"FVectors","value_type":"float","components":["xs","ys"],"equivalent_type":"@vector","fixed":{"storage_name":"TFixedVectors","containers":["TFixedVectorArray"]}},{"kind":"homogeneous_soa","name":"homogeneous","header":"Values.h","source":"Values.cpp","layouts":[{"name":"Values","components":["xs","ys"],"value_types":[{"type":"float","suffix":"f","equivalent_type":"@vector","input_types":["@vector"]}],"export_specifier":"PROJECT_API"}]},{"kind":"umbrella","name":"all","header":"All.h","headers":["Vectors.h","Values.h"]}]})");
     files.write("manifest.json",
                 R"({"schema_version":1,"types":"types.json","modules":["modules.json"]})");
 
@@ -215,6 +215,7 @@ TEST(Json, LoadsEveryModuleKindAndStructuredTypeReference) {
     ASSERT_EQ(facade.facade.methods.front().parameters.size(), 1);
     EXPECT_EQ(facade.facade.methods.front().parameters.front().default_value, "0");
     EXPECT_EQ(facade.facade.methods.front().return_type.suffix, " const&");
+    EXPECT_TRUE(facade.facade.methods.front().is_const);
 
     auto const& vector{std::get<VectorModuleSchema>(manifest.modules[1])};
     ASSERT_TRUE(vector.fixed.has_value());

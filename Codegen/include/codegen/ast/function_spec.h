@@ -3,6 +3,7 @@
 #include <codegen/ast/cpp_type.h>
 #include <codegen/ast/function_formatting.h>
 #include <codegen/ast/function_parameter.h>
+#include <codegen/ast/function_qualifiers.h>
 #include <codegen/ast/node_fwd.h>
 
 #include <optional>
@@ -16,7 +17,7 @@ struct FunctionSpec {
     CppType return_type;
     std::vector<FunctionParameter> parameters;
     Nodes body;
-    std::string suffix;
+    FunctionQualifiers qualifiers;
     bool is_static{false};
     bool is_inline{false};
     std::optional<std::string> template_parameters;

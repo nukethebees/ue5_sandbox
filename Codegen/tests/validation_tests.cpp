@@ -605,6 +605,15 @@ TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
+    auto module{valid_facade_module()};
+    auto second{module.facade.methods.front()};
+    second.is_noexcept = true;
+    module.facade.methods.push_back(std::move(second));
+
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
     auto module{valid_facade_module()};
     module.facade.methods = {FacadeMethodSchema{
