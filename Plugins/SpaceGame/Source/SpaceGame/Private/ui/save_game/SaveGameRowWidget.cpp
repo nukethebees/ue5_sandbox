@@ -7,7 +7,7 @@
 #include <Components/TextBlock.h>
 
 namespace ml::ioj {
-namespace {
+namespace save_game_row_widget {
 FLinearColor const selected_colour{0.16f, 0.38f, 0.55f, 1.f};
 FLinearColor const inactive_colour{0.12f, 0.14f, 0.16f, 1.f};
 }
@@ -46,7 +46,8 @@ void USaveGameRowWidget::set_selected(bool const is_selected) {
         return;
     }
 
-    row_button->SetBackgroundColor(is_selected ? selected_colour : inactive_colour);
+    row_button->SetBackgroundColor(is_selected ? save_game_row_widget::selected_colour
+                                               : save_game_row_widget::inactive_colour);
 }
 
 void USaveGameRowWidget::focus_row() {

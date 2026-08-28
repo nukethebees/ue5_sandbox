@@ -11,7 +11,7 @@
 #include <Components/VerticalBox.h>
 #include <CQTest.h>
 
-namespace {
+namespace save_game_viewer_widget_test {
 auto make_outcome(FString id, FString name) -> ml::ioj::FLevelOutcomeSummary {
     return {.outcome_id = MoveTemp(id),
             .display_name = MoveTemp(name),
@@ -70,14 +70,16 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
                 if (profile_id == TEXT("battle_at_vega")) {
                     return ml::ioj::FSaveProfileReport{
                         .profile_id = profile_id,
-                        .outcomes = {make_outcome(TEXT("patrol"), TEXT("Vega Patrol")),
-                                     make_outcome(TEXT("defence"), TEXT("Vega Defence"))}};
+                        .outcomes = {save_game_viewer_widget_test::make_outcome(
+                                         TEXT("patrol"), TEXT("Vega Patrol")),
+                                     save_game_viewer_widget_test::make_outcome(
+                                         TEXT("defence"), TEXT("Vega Defence"))}};
                 }
                 if (profile_id == TEXT("test_run_12")) {
                     return ml::ioj::FSaveProfileReport{
                         .profile_id = profile_id,
-                        .outcomes = {
-                            make_outcome(TEXT("interception"), TEXT("Fleet Interception"))}};
+                        .outcomes = {save_game_viewer_widget_test::make_outcome(
+                            TEXT("interception"), TEXT("Fleet Interception"))}};
                 }
                 if (profile_id == TEXT("empty_profile")) {
                     return ml::ioj::FSaveProfileReport{.profile_id = profile_id};

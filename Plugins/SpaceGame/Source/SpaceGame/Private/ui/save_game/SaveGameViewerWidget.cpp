@@ -17,7 +17,7 @@
 #include <UObject/ConstructorHelpers.h>
 
 namespace ml::ioj {
-namespace {
+namespace save_game_viewer_widget {
 auto format_duration(float const duration_seconds) -> FText {
     auto const total_seconds{FMath::Max(0, FMath::RoundToInt(duration_seconds))};
     auto const hours{total_seconds / 3600};
@@ -326,14 +326,15 @@ void USaveGameViewerWidget::show_profile(FSaveProfileSummary const& profile) {
     profile_name_text->SetText(FText::FromString(profile.display_name));
     profile_id_text->SetText(FText::Format(NSLOCTEXT("SaveGameViewer", "ProfileId", "ID: {0}"),
                                            FText::FromString(profile.profile_id)));
-    profile_created_text->SetText(FText::Format(
-        NSLOCTEXT("SaveGameViewer", "Created", "Created: {0}"), format_date(profile.created_at)));
+    profile_created_text->SetText(
+        FText::Format(NSLOCTEXT("SaveGameViewer", "Created", "Created: {0}"),
+                      save_game_viewer_widget::format_date(profile.created_at)));
     profile_last_played_text->SetText(
         FText::Format(NSLOCTEXT("SaveGameViewer", "LastPlayed", "Last played: {0}"),
-                      format_date(profile.last_played_at)));
-    profile_duration_text->SetText(
-        FText::Format(NSLOCTEXT("SaveGameViewer", "TotalDuration", "Total duration: {0}"),
-                      format_duration(profile.total_simulation_duration_seconds)));
+                      save_game_viewer_widget::format_date(profile.last_played_at)));
+    profile_duration_text->SetText(FText::Format(
+        NSLOCTEXT("SaveGameViewer", "TotalDuration", "Total duration: {0}"),
+        save_game_viewer_widget::format_duration(profile.total_simulation_duration_seconds)));
     profile_score_text->SetText(
         FText::Format(NSLOCTEXT("SaveGameViewer", "ProfileTotals", "Outcomes: {0}    Kills: {1}"),
                       FText::AsNumber(profile.outcome_count),
@@ -381,8 +382,9 @@ void USaveGameViewerWidget::add_result_section(FLevelOutcomeSummary const& outco
         FText::Format(NSLOCTEXT("SaveGameViewer", "LevelCompleted", "Completed: {0}"),
                       FText::FromString(outcome.completed_at.ToString(TEXT("%Y-%m-%d %H:%M")))));
     add_text(TEXT("result_duration"),
-             FText::Format(NSLOCTEXT("SaveGameViewer", "LevelDuration", "Duration: {0}"),
-                           format_duration(outcome.simulation_duration_seconds)));
+             FText::Format(
+                 NSLOCTEXT("SaveGameViewer", "LevelDuration", "Duration: {0}"),
+                 save_game_viewer_widget::format_duration(outcome.simulation_duration_seconds)));
     add_text(TEXT("result_kills"),
              FText::Format(NSLOCTEXT("SaveGameViewer", "LevelKills", "Kills: {0}"),
                            FText::AsNumber(outcome.kills)));

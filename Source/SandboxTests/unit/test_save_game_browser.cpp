@@ -2,7 +2,7 @@
 
 #include <CQTest.h>
 
-namespace {
+namespace save_game_browser_test {
 auto make_summary(FString profile_id, FDateTime last_played_at, int32 const total_kills)
     -> ml::ioj::FSaveProfileSummary {
     return {
@@ -30,12 +30,14 @@ TEST_CLASS(SaveGameBrowser, "Sandbox.UnitTests")
             [&refresh_count] {
                 ++refresh_count;
                 if (refresh_count == 1) {
-                    return TArray{make_summary(TEXT("first"), FDateTime{2026, 1, 1}, 10)};
+                    return TArray{save_game_browser_test::make_summary(
+                        TEXT("first"), FDateTime{2026, 1, 1}, 10)};
                 }
 
-                return TArray{make_summary(TEXT("second"), FDateTime{2026, 1, 2}, 20)};
+                return TArray{save_game_browser_test::make_summary(
+                    TEXT("second"), FDateTime{2026, 1, 2}, 20)};
             },
-            no_report};
+            save_game_browser_test::no_report};
 
         browser.refresh();
         TestRunner->TestEqual(
@@ -55,7 +57,7 @@ TEST_CLASS(SaveGameBrowser, "Sandbox.UnitTests")
     TEST_METHOD(EmptySourceProducesEmptyBrowser)
     {
         ml::ioj::FSaveGameBrowser browser{[] { return TArray<ml::ioj::FSaveProfileSummary>{}; },
-                                          no_report};
+                                          save_game_browser_test::no_report};
 
         browser.refresh();
 
@@ -73,9 +75,10 @@ TEST_CLASS(SaveGameBrowser, "Sandbox.UnitTests")
             .total_kills = 91,
             .outcome_count = 12,
         }};
-        auto const oldest{make_summary(TEXT("oldest"), FDateTime{2026, 5, 1}, 10)};
+        auto const oldest{
+            save_game_browser_test::make_summary(TEXT("oldest"), FDateTime{2026, 5, 1}, 10)};
         ml::ioj::FSaveGameBrowser browser{[newest, oldest] { return TArray{oldest, newest}; },
-                                          no_report};
+                                          save_game_browser_test::no_report};
 
         browser.refresh();
 
@@ -98,12 +101,12 @@ TEST_CLASS(SaveGameBrowser, "Sandbox.UnitTests")
         ml::ioj::FSaveGameBrowser browser{
             [shared_timestamp] {
                 return TArray{
-                    make_summary(TEXT("zulu"), shared_timestamp, 1),
-                    make_summary(TEXT("older"), FDateTime{2026, 6, 1}, 2),
-                    make_summary(TEXT("alpha"), shared_timestamp, 3),
+                    save_game_browser_test::make_summary(TEXT("zulu"), shared_timestamp, 1),
+                    save_game_browser_test::make_summary(TEXT("older"), FDateTime{2026, 6, 1}, 2),
+                    save_game_browser_test::make_summary(TEXT("alpha"), shared_timestamp, 3),
                 };
             },
-            no_report};
+            save_game_browser_test::no_report};
 
         browser.refresh();
 
@@ -120,19 +123,21 @@ TEST_CLASS(SaveGameBrowser, "Sandbox.UnitTests")
     TEST_METHOD(ReportsAreLoadedLazilyAndRefreshInvalidatesTheCache)
     {
         int32 report_load_count{};
-        ml::ioj::FSaveGameBrowser browser{
-            [] { return TArray{make_summary(TEXT("profile"), FDateTime{2026, 1, 1}, 5)}; },
-            [&report_load_count](
-                FString const& profile_id) -> TOptional<ml::ioj::FSaveProfileReport> {
-                ++report_load_count;
-                if (profile_id != TEXT("profile")) {
-                    return {};
-                }
-                return ml::ioj::FSaveProfileReport{
-                    .profile_id = profile_id,
-                    .outcomes = {{.outcome_id = TEXT("outcome")}},
-                };
-            }};
+        ml::ioj::FSaveGameBrowser browser{[] {
+                                              return TArray{save_game_browser_test::make_summary(
+                                                  TEXT("profile"), FDateTime{2026, 1, 1}, 5)};
+                                          },
+                                          [&report_load_count](FString const& profile_id)
+                                              -> TOptional<ml::ioj::FSaveProfileReport> {
+                                              ++report_load_count;
+                                              if (profile_id != TEXT("profile")) {
+                                                  return {};
+                                              }
+                                              return ml::ioj::FSaveProfileReport{
+                                                  .profile_id = profile_id,
+                                                  .outcomes = {{.outcome_id = TEXT("outcome")}},
+                                              };
+                                          }};
 
         browser.refresh();
         TestRunner->TestTrue(TEXT("Refresh does not load a report"), report_load_count == 0);

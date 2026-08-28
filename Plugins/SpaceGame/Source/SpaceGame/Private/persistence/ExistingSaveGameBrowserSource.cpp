@@ -5,7 +5,7 @@
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 
 namespace ml::ioj::detail {
-namespace {
+namespace existing_save_game_browser_source {
 FString const profile_display_name{TEXT("Sandbox Profile")};
 }
 
@@ -16,8 +16,9 @@ auto discover_existing_save_profiles(USpaceSaveSubsystem const& save_subsystem)
         return {};
     }
 
-    return {save_profile::make_summary(
-        USpaceSaveSubsystem::slot_name(), profile_display_name, save->score_records)};
+    return {save_profile::make_summary(USpaceSaveSubsystem::slot_name(),
+                                       existing_save_game_browser_source::profile_display_name,
+                                       save->score_records)};
 }
 
 auto load_existing_save_profile(USpaceSaveSubsystem const& save_subsystem,
