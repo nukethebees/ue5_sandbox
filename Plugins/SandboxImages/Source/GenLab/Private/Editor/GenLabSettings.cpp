@@ -16,10 +16,17 @@ auto to_generator_type(EGenLabGenerator const generator) -> SandboxImages::GenLa
             return DomainWarpedNoise;
         case EGenLabGenerator::CurlNoiseFlow:
             return CurlNoiseFlow;
+        case EGenLabGenerator::CellularNoise:
+            return CellularNoise;
         case EGenLabGenerator::HexGrid:
             return HexGrid;
     }
     return RadialGradient;
+}
+
+auto to_cellular_mode(EGenLabCellularMode const mode) -> SandboxImages::GenLab::ECellularMode {
+    return mode == EGenLabCellularMode::Distance ? SandboxImages::GenLab::ECellularMode::Distance
+                                                 : SandboxImages::GenLab::ECellularMode::Borders;
 }
 }
 
@@ -71,6 +78,15 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
                                .derivative_step = flow_derivative_step,
                                .strength = flow_strength,
                                .tileable = tileable_flow};
+    request.cellular_noise = {.width = width,
+                              .height = height,
+                              .seed = cellular_seed,
+                              .cell_size = cellular_cell_size,
+                              .jitter = cellular_jitter,
+                              .mode = to_cellular_mode(cellular_mode),
+                              .edge_width = cellular_edge_width,
+                              .falloff = cellular_falloff,
+                              .tileable = tileable_cellular};
     request.hex_grid = {.width = width,
                         .height = height,
                         .cell_radius = hex_cell_radius,
@@ -144,6 +160,19 @@ void UGenLabSettings::load_generator_defaults() {
             flow_derivative_step = request.curl_noise_flow.derivative_step;
             flow_strength = request.curl_noise_flow.strength;
             tileable_flow = request.curl_noise_flow.tileable;
+            break;
+        case EGenLabGenerator::CellularNoise:
+            width = request.cellular_noise.width;
+            height = request.cellular_noise.height;
+            cellular_seed = request.cellular_noise.seed;
+            cellular_cell_size = request.cellular_noise.cell_size;
+            cellular_jitter = request.cellular_noise.jitter;
+            cellular_mode = request.cellular_noise.mode == ECellularMode::Distance
+                              ? EGenLabCellularMode::Distance
+                              : EGenLabCellularMode::Borders;
+            cellular_edge_width = request.cellular_noise.edge_width;
+            cellular_falloff = request.cellular_noise.falloff;
+            tileable_cellular = request.cellular_noise.tileable;
             break;
         case EGenLabGenerator::HexGrid:
             width = request.hex_grid.width;

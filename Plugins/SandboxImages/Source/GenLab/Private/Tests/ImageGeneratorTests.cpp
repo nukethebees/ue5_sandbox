@@ -70,6 +70,11 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                          width,
                          height);
         test_valid_image(*TestRunner,
+                         TEXT("cellular noise"),
+                         generate_cellular_noise({.width = width, .height = height}),
+                         width,
+                         height);
+        test_valid_image(*TestRunner,
                          TEXT("hex grid"),
                          generate_hex_grid({.width = width, .height = height}),
                          width,
@@ -84,6 +89,7 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
         auto const invalid_noise{generate_noise({.base_scale = 0.0f})};
         auto const invalid_domain_noise{generate_domain_warped_noise({.warp_octave_count = 0})};
         auto const invalid_flow{generate_curl_noise_flow({.derivative_step = 0.0f})};
+        auto const invalid_cellular{generate_cellular_noise({.jitter = 2.0f})};
         auto const invalid_hex{generate_hex_grid({.cell_radius = 0.0f})};
 
         for (auto const* image : {&invalid_dimensions,
@@ -92,6 +98,7 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                                   &invalid_noise,
                                   &invalid_domain_noise,
                                   &invalid_flow,
+                                  &invalid_cellular,
                                   &invalid_hex}) {
             TestRunner->TestFalse(TEXT("Invalid parameters produce no valid image"),
                                   image->is_valid());
@@ -106,9 +113,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
     TEST_METHOD(DefaultRequestsAreNamedUniqueAndGenerateValidImages)
     {
         auto const requests{default_generation_requests()};
-        TestRunner->TestEqual(TEXT("There are five base examples and five noise-derived examples"),
-                              requests.Num(),
-                              10);
+        TestRunner->TestEqual(TEXT("There are thirteen canonical examples"), requests.Num(), 13);
 
         TSet<FString> output_names;
         for (auto const& request : requests) {
@@ -489,6 +494,116 @@ TEST_CLASS(CurlNoiseFlowGenerator, "SandboxImages.UnitTests")
             auto const expected_checksum{request.output_name == TEXT("nebula_flow")
                                              ? uint32{3933359053}
                                              : uint32{4132526790}};
+            TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
+                                  pixel_checksum(generate_image(request)),
+                                  expected_checksum);
+        }
+    }
+};
+
+TEST_CLASS(CellularNoiseGenerator, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(IsDeterministicSeededAndTileable)
+    {
+        FCellularNoiseParameters parameters{.width = 97,
+                                            .height = 65,
+                                            .seed = 97531u,
+                                            .cell_size = 18.0f,
+                                            .jitter = 0.8f,
+                                            .mode = ECellularMode::Distance,
+                                            .tileable = true};
+        auto const first{generate_cellular_noise(parameters)};
+        auto const second{generate_cellular_noise(parameters)};
+        parameters.seed += 1;
+        auto const changed_seed{generate_cellular_noise(parameters)};
+
+        TestRunner->TestTrue(TEXT("Same cellular parameters produce identical output"),
+                             first.pixels == second.pixels);
+        TestRunner->TestTrue(TEXT("Cellular seed affects the output"),
+                             first.pixels != changed_seed.pixels);
+        for (int32 y{0}; y < first.height; ++y) {
+            TestRunner->TestEqual(TEXT("Cellular left and right edges match"),
+                                  pixel_at(first, 0, y),
+                                  pixel_at(first, first.width - 1, y));
+        }
+        for (int32 x{0}; x < first.width; ++x) {
+            TestRunner->TestEqual(TEXT("Cellular top and bottom edges match"),
+                                  pixel_at(first, x, 0),
+                                  pixel_at(first, x, first.height - 1));
+        }
+
+        uint8 minimum_value{255};
+        uint8 maximum_value{0};
+        int32 invalid_channel_count{0};
+        for (auto const pixel : first.pixels) {
+            minimum_value = FMath::Min(minimum_value, pixel.R);
+            maximum_value = FMath::Max(maximum_value, pixel.R);
+            invalid_channel_count +=
+                pixel.R != pixel.G || pixel.R != pixel.B || pixel.A != 255 ? 1 : 0;
+        }
+        TestRunner->TestTrue(TEXT("Cellular distance spans a useful value range"),
+                             maximum_value - minimum_value >= 64);
+        TestRunner->TestEqual(
+            TEXT("Cellular output is opaque grayscale"), invalid_channel_count, 0);
+    }
+
+    TEST_METHOD(ZeroJitterProducesRegularCells)
+    {
+        auto const image{generate_cellular_noise({.width = 65,
+                                                  .height = 65,
+                                                  .seed = 123u,
+                                                  .cell_size = 16.0f,
+                                                  .jitter = 0.0f,
+                                                  .mode = ECellularMode::Distance,
+                                                  .tileable = true})};
+
+        TestRunner->TestEqual(TEXT("Regular cell centres repeat horizontally"),
+                              pixel_at(image, 8, 8),
+                              pixel_at(image, 24, 8));
+        TestRunner->TestEqual(TEXT("Regular cell centres repeat vertically"),
+                              pixel_at(image, 8, 8),
+                              pixel_at(image, 8, 24));
+        TestRunner->TestTrue(TEXT("Regular cell boundary is farther from a site than its centre"),
+                             pixel_at(image, 16, 8).R > pixel_at(image, 8, 8).R);
+    }
+
+    TEST_METHOD(BorderModeProducesLinesAndCellInteriors)
+    {
+        auto const image{generate_cellular_noise({.width = 97,
+                                                  .height = 65,
+                                                  .seed = 24680u,
+                                                  .cell_size = 20.0f,
+                                                  .jitter = 1.0f,
+                                                  .mode = ECellularMode::Borders,
+                                                  .edge_width = 0.75f,
+                                                  .falloff = 1.25f,
+                                                  .tileable = true})};
+
+        int32 bright_pixel_count{0};
+        int32 dark_pixel_count{0};
+        for (auto const pixel : image.pixels) {
+            bright_pixel_count += pixel.R >= 220 ? 1 : 0;
+            dark_pixel_count += pixel.R <= 20 ? 1 : 0;
+        }
+        TestRunner->TestTrue(TEXT("Cellular borders contain bright lines"), bright_pixel_count > 0);
+        TestRunner->TestTrue(TEXT("Cellular borders contain dark interiors"), dark_pixel_count > 0);
+    }
+
+    TEST_METHOD(DefaultExamplesHaveStableChecksums)
+    {
+        for (auto const& request : default_generation_requests()) {
+            if (request.generator != EGeneratorType::CellularNoise) {
+                continue;
+            }
+
+            uint32 expected_checksum{};
+            if (request.output_name == TEXT("cellular_regions")) {
+                expected_checksum = 675632435u;
+            } else if (request.output_name == TEXT("shield_cells")) {
+                expected_checksum = 1256329815u;
+            } else if (request.output_name == TEXT("fracture_edges")) {
+                expected_checksum = 3619324494u;
+            }
             TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
                                   pixel_checksum(generate_image(request)),
                                   expected_checksum);

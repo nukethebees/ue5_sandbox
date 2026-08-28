@@ -448,6 +448,92 @@ auto generate_curl_noise_flow(FCurlNoiseFlowParameters const& parameters) -> FGe
     return image;
 }
 
+auto generate_cellular_noise(FCellularNoiseParameters const& parameters) -> FGeneratedImage {
+    if (!FMath::IsFinite(parameters.cell_size) || parameters.cell_size <= 0.0f ||
+        !FMath::IsFinite(parameters.jitter) || parameters.jitter < 0.0f ||
+        parameters.jitter > 1.0f || !FMath::IsFinite(parameters.edge_width) ||
+        parameters.edge_width < 0.0f || !FMath::IsFinite(parameters.falloff) ||
+        parameters.falloff < 0.0f) {
+        return invalid_image(TEXT("Cellular noise requires a positive finite cell size, jitter in "
+                                  "[0, 1], and non-negative finite edge width and falloff."));
+    }
+
+    auto image{make_image(parameters.width, parameters.height, FColor::Black)};
+    if (!image.is_valid()) {
+        return image;
+    }
+
+    auto const cell_count_x{FMath::Max(
+        1, FMath::RoundToInt(static_cast<float>(parameters.width) / parameters.cell_size))};
+    auto const cell_count_y{FMath::Max(
+        1, FMath::RoundToInt(static_cast<float>(parameters.height) / parameters.cell_size))};
+    auto const effective_cell_size{
+        parameters.tileable
+            ? FMath::Min(
+                  parameters.width > 1 ? static_cast<float>(parameters.width - 1) / cell_count_x
+                                       : parameters.cell_size,
+                  parameters.height > 1 ? static_cast<float>(parameters.height - 1) / cell_count_y
+                                        : parameters.cell_size)
+            : parameters.cell_size};
+    for (int32 y{0}; y < parameters.height; ++y) {
+        auto const sample_y{parameters.tileable && parameters.height > 1
+                                ? static_cast<float>(y) / (parameters.height - 1) * cell_count_y
+                                : static_cast<float>(y) / parameters.cell_size};
+        auto const base_cell_y{FMath::FloorToInt(sample_y)};
+        for (int32 x{0}; x < parameters.width; ++x) {
+            auto const sample_x{parameters.tileable && parameters.width > 1
+                                    ? static_cast<float>(x) / (parameters.width - 1) * cell_count_x
+                                    : static_cast<float>(x) / parameters.cell_size};
+            auto const base_cell_x{FMath::FloorToInt(sample_x)};
+            float nearest_distance_squared{MAX_flt};
+            float second_distance_squared{MAX_flt};
+            for (int32 candidate_y{base_cell_y - 2}; candidate_y <= base_cell_y + 2;
+                 ++candidate_y) {
+                for (int32 candidate_x{base_cell_x - 2}; candidate_x <= base_cell_x + 2;
+                     ++candidate_x) {
+                    auto const hash_x{parameters.tileable
+                                          ? ((candidate_x % cell_count_x) + cell_count_x) %
+                                                cell_count_x
+                                          : candidate_x};
+                    auto const hash_y{parameters.tileable
+                                          ? ((candidate_y % cell_count_y) + cell_count_y) %
+                                                cell_count_y
+                                          : candidate_y};
+                    auto const offset_x{(lattice_value(hash_x, hash_y, parameters.seed) - 0.5f) *
+                                        parameters.jitter};
+                    auto const offset_y{
+                        (lattice_value(hash_x, hash_y, parameters.seed ^ 0xA511E9B3u) - 0.5f) *
+                        parameters.jitter};
+                    auto const dx{static_cast<float>(candidate_x) + 0.5f + offset_x - sample_x};
+                    auto const dy{static_cast<float>(candidate_y) + 0.5f + offset_y - sample_y};
+                    auto const distance_squared{dx * dx + dy * dy};
+                    if (distance_squared < nearest_distance_squared) {
+                        second_distance_squared = nearest_distance_squared;
+                        nearest_distance_squared = distance_squared;
+                    } else if (distance_squared < second_distance_squared) {
+                        second_distance_squared = distance_squared;
+                    }
+                }
+            }
+
+            float value{};
+            if (parameters.mode == ECellularMode::Distance) {
+                value =
+                    FMath::Clamp(FMath::Sqrt(nearest_distance_squared) * 0.7071067812f, 0.0f, 1.0f);
+            } else {
+                auto const edge_distance{
+                    (FMath::Sqrt(second_distance_squared) - FMath::Sqrt(nearest_distance_squared)) *
+                    effective_cell_size};
+                value = 1.0f - smooth_step(parameters.edge_width,
+                                           parameters.edge_width + parameters.falloff,
+                                           edge_distance);
+            }
+            image.pixels[y * parameters.width + x] = grayscale(value, 255);
+        }
+    }
+    return image;
+}
+
 auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage {
     if (parameters.cell_radius <= 0.0f || parameters.line_thickness <= 0.0f ||
         parameters.falloff < 0.0f) {
@@ -515,6 +601,9 @@ auto make_default_request(EGeneratorType const generator) -> FGenerationRequest 
         case EGeneratorType::CurlNoiseFlow:
             request.output_name = TEXT("nebula_flow");
             break;
+        case EGeneratorType::CellularNoise:
+            request.output_name = TEXT("cellular_regions");
+            break;
         case EGeneratorType::HexGrid:
             request.output_name = TEXT("hex_grid_mask");
             break;
@@ -569,6 +658,28 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
                                               .strength = 0.85f,
                                               .tileable = true};
 
+    auto cellular_regions{make_default_request(EGeneratorType::CellularNoise)};
+
+    auto shield_cells{make_default_request(EGeneratorType::CellularNoise)};
+    shield_cells.output_name = TEXT("shield_cells");
+    shield_cells.cellular_noise = {.seed = 0x53484945u,
+                                   .cell_size = 28.0f,
+                                   .jitter = 0.35f,
+                                   .mode = ECellularMode::Borders,
+                                   .edge_width = 1.5f,
+                                   .falloff = 1.5f,
+                                   .tileable = true};
+
+    auto fracture_edges{make_default_request(EGeneratorType::CellularNoise)};
+    fracture_edges.output_name = TEXT("fracture_edges");
+    fracture_edges.cellular_noise = {.seed = 0x46524143u,
+                                     .cell_size = 36.0f,
+                                     .jitter = 1.0f,
+                                     .mode = ECellularMode::Borders,
+                                     .edge_width = 0.75f,
+                                     .falloff = 1.25f,
+                                     .tileable = true};
+
     return {
         make_default_request(EGeneratorType::RadialGradient),
         make_default_request(EGeneratorType::RingMask),
@@ -579,6 +690,9 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
         MoveTemp(shield_turbulence),
         MoveTemp(nebula_flow),
         MoveTemp(shield_distortion_flow),
+        MoveTemp(cellular_regions),
+        MoveTemp(shield_cells),
+        MoveTemp(fracture_edges),
         make_default_request(EGeneratorType::HexGrid),
     };
 }
@@ -607,6 +721,9 @@ auto generate_image(FGenerationRequest const& request) -> FGeneratedImage {
             break;
         case EGeneratorType::CurlNoiseFlow:
             image = generate_curl_noise_flow(request.curl_noise_flow);
+            break;
+        case EGeneratorType::CellularNoise:
+            image = generate_cellular_noise(request.cellular_noise);
             break;
         case EGeneratorType::HexGrid:
             image = generate_hex_grid(request.hex_grid);
@@ -698,6 +815,21 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                 request.curl_noise_flow.derivative_step,
                 request.curl_noise_flow.strength,
                 request.curl_noise_flow.tileable ? TEXT("true") : TEXT("false"));
+            break;
+        case EGeneratorType::CellularNoise:
+            description = FString::Printf(
+                TEXT("version=3; generator=cellular_noise; dimensions=%dx%d; seed=%u; "
+                     "cell_size=%g; jitter=%g; mode=%s; edge_width=%g; falloff=%g; tileable=%s"),
+                request.cellular_noise.width,
+                request.cellular_noise.height,
+                request.cellular_noise.seed,
+                request.cellular_noise.cell_size,
+                request.cellular_noise.jitter,
+                request.cellular_noise.mode == ECellularMode::Distance ? TEXT("distance")
+                                                                       : TEXT("borders"),
+                request.cellular_noise.edge_width,
+                request.cellular_noise.falloff,
+                request.cellular_noise.tileable ? TEXT("true") : TEXT("false"));
             break;
         case EGeneratorType::HexGrid:
             description = FString::Printf(TEXT("version=3; generator=hex_grid; dimensions=%dx%d; "

@@ -14,7 +14,14 @@ enum class EGenLabGenerator : uint8 {
     Noise UMETA(DisplayName = "Coherent Noise"),
     DomainWarpedNoise UMETA(DisplayName = "Domain-Warped Noise"),
     CurlNoiseFlow UMETA(DisplayName = "Curl-Noise Flow Map"),
+    CellularNoise UMETA(DisplayName = "Cellular Noise"),
     HexGrid UMETA(DisplayName = "Hex Grid Mask"),
+};
+
+UENUM()
+enum class EGenLabCellularMode : uint8 {
+    Distance UMETA(DisplayName = "Distance"),
+    Borders UMETA(DisplayName = "Borders"),
 };
 
 UENUM()
@@ -314,6 +321,53 @@ class UGenLabSettings final : public UObject {
               meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
                       EditConditionHides))
     bool tileable_flow{true};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Cellular Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::CellularNoise",
+                      EditConditionHides))
+    uint32 cellular_seed{0xCE11A123u};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Cellular Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::CellularNoise",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float cellular_cell_size{40.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Cellular Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::CellularNoise",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float cellular_jitter{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Cellular Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::CellularNoise",
+                      EditConditionHides))
+    EGenLabCellularMode cellular_mode{EGenLabCellularMode::Distance};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Cellular Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::CellularNoise",
+                      EditConditionHides,
+                      ClampMin = "0.0"))
+    float cellular_edge_width{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Cellular Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::CellularNoise",
+                      EditConditionHides,
+                      ClampMin = "0.0"))
+    float cellular_falloff{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Cellular Noise",
+              meta = (EditCondition = "generator == EGenLabGenerator::CellularNoise",
+                      EditConditionHides))
+    bool tileable_cellular{true};
 
     UPROPERTY(EditAnywhere,
               Category = "Hex Grid",

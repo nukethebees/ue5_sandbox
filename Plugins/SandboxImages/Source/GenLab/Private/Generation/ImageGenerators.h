@@ -75,6 +75,23 @@ struct FCurlNoiseFlowParameters {
     bool tileable{true};
 };
 
+enum class ECellularMode : uint8 {
+    Distance,
+    Borders,
+};
+
+struct FCellularNoiseParameters {
+    int32 width{256};
+    int32 height{256};
+    uint32 seed{0xCE11A123u};
+    float cell_size{40.0f};
+    float jitter{1.0f};
+    ECellularMode mode{ECellularMode::Distance};
+    float edge_width{1.0f};
+    float falloff{1.0f};
+    bool tileable{true};
+};
+
 struct FHexGridParameters {
     int32 width{256};
     int32 height{256};
@@ -90,6 +107,7 @@ enum class EGeneratorType : uint8 {
     Noise,
     DomainWarpedNoise,
     CurlNoiseFlow,
+    CellularNoise,
     HexGrid,
 };
 
@@ -110,6 +128,7 @@ struct FGenerationRequest {
     FNoiseParameters noise;
     FDomainWarpedNoiseParameters domain_warped_noise;
     FCurlNoiseFlowParameters curl_noise_flow;
+    FCellularNoiseParameters cellular_noise;
     FHexGridParameters hex_grid;
     FImagePostProcessParameters post_process;
 };
@@ -122,6 +141,8 @@ struct FGenerationRequest {
 [[nodiscard]] auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters)
     -> FGeneratedImage;
 [[nodiscard]] auto generate_curl_noise_flow(FCurlNoiseFlowParameters const& parameters)
+    -> FGeneratedImage;
+[[nodiscard]] auto generate_cellular_noise(FCellularNoiseParameters const& parameters)
     -> FGeneratedImage;
 [[nodiscard]] auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto make_default_request(EGeneratorType generator) -> FGenerationRequest;

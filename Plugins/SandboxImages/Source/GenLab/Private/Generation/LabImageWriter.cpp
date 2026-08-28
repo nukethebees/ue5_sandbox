@@ -44,6 +44,12 @@ auto import_settings_for(FGenerationRequest const& request) -> FTextureImportSet
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }
+    } else if (request.generator == EGeneratorType::CellularNoise) {
+        settings.compression = TC_Grayscale;
+        if (request.cellular_noise.tileable) {
+            settings.address_x = TA_Wrap;
+            settings.address_y = TA_Wrap;
+        }
     }
     return settings;
 }

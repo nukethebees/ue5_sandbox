@@ -58,6 +58,8 @@ can optionally use periodic sampling so opposite edges match exactly; imported t
 wrap addressing. Threshold shaping supports hard binary masks or a configurable smooth transition.
 Curl-noise flow maps encode a normalized two-dimensional direction in RG, with neutral blue and
 opaque alpha. Scalar output-shaping controls are intentionally not applied to flow-map data.
+Cellular noise provides either nearest-site distance or bright Voronoi borders. Jitter ranges from
+regular cells to irregular fracture-like regions, and both modes support seamless tiling.
 
 | Output | Channel meaning |
 | --- | --- |
@@ -70,6 +72,9 @@ opaque alpha. Scalar output-shaping controls are intentionally not applied to fl
 | `shield_turbulence.png` | Broad tileable turbulent shield modulation |
 | `nebula_flow.png` | Tileable normalized curl-noise direction encoded in RG |
 | `shield_distortion_flow.png` | Denser tileable shield-distortion direction encoded in RG |
+| `cellular_regions.png` | Tileable nearest-cell distance field |
+| `shield_cells.png` | Regularized tileable cellular shield borders |
+| `fracture_edges.png` | Irregular tileable fracture-like cellular borders |
 | `hex_grid_mask.png` | White intensity duplicated into RGB and alpha |
 
 The generators reject invalid dimensions and generator-specific parameter ranges instead of
