@@ -10,7 +10,7 @@ class UHeatmapRDGWidget;
 class SMultiLineEditableTextBox;
 
 UCLASS(Blueprintable)
-class EXPERIMENTS_API UHeatmapRDGShowcase : public UEditorUtilityWidget {
+class SBXUIEXPERIMENTS_API UHeatmapRDGShowcase : public UEditorUtilityWidget {
     GENERATED_BODY()
   private:
     enum class EPattern : uint8 { Hotspots, GradientChecker };

@@ -1,4 +1,4 @@
-#include "Experiments/HeatmapRDG/HeatmapRDGWidget.h"
+#include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
 
 #include "HeatmapRDGRenderer.h"
 

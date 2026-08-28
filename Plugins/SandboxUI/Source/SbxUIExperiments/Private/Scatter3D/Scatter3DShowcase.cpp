@@ -1,4 +1,4 @@
-#include "Experiments/Scatter3D/Scatter3DShowcase.h"
+#include "SbxUIExperiments/Scatter3D/Scatter3DShowcase.h"
 
 #include "Benchmarks/Scatter3D/Scatter3DBenchmark.h"
 #include "SScatter3DWidget.h"

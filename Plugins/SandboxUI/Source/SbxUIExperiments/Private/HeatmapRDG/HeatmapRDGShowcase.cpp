@@ -1,7 +1,7 @@
-#include "Experiments/HeatmapRDG/HeatmapRDGShowcase.h"
+#include "SbxUIExperiments/HeatmapRDG/HeatmapRDGShowcase.h"
 
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
-#include "Experiments/HeatmapRDG/HeatmapRDGWidget.h"
+#include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"

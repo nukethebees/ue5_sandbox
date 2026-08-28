@@ -3,15 +3,15 @@
 #include "EditorUtilityWidget.h"
 #include "Input/Reply.h"
 
-#include "VolumeHeatmap3DShowcase.generated.h"
+#include "Scatter3DShowcase.generated.h"
 
 class SMultiLineEditableTextBox;
 
 UCLASS(Blueprintable)
-class EXPERIMENTS_API UVolumeHeatmap3DShowcase : public UEditorUtilityWidget {
+class SBXUIEXPERIMENTS_API UScatter3DShowcase : public UEditorUtilityWidget {
     GENERATED_BODY()
   public:
-    UVolumeHeatmap3DShowcase();
+    UScatter3DShowcase();
   protected:
     TSharedRef<SWidget> RebuildWidget() override;
   private:

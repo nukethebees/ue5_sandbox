@@ -13,7 +13,7 @@ class SImage;
 class UTextureRenderTarget2D;
 
 USTRUCT(BlueprintType)
-struct EXPERIMENTS_API FHeatmapRDGGrid {
+struct SBXUIEXPERIMENTS_API FHeatmapRDGGrid {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Heatmap")
@@ -29,7 +29,7 @@ struct EXPERIMENTS_API FHeatmapRDGGrid {
 };
 
 UCLASS(meta = (DisplayName = "RDG Heatmap (Experiment)"))
-class EXPERIMENTS_API UHeatmapRDGWidget : public UWidget {
+class SBXUIEXPERIMENTS_API UHeatmapRDGWidget : public UWidget {
     GENERATED_BODY()
   public:
     UHeatmapRDGWidget();

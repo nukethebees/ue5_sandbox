@@ -3,7 +3,7 @@
 #include "Modules/ModuleManager.h"
 #include "ShaderCore.h"
 
-class FExperimentsModule : public IModuleInterface {
+class FSbxUIExperimentsModule : public IModuleInterface {
   public:
     void StartupModule() override {
         auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxUI"))};
@@ -14,4 +14,4 @@ class FExperimentsModule : public IModuleInterface {
     }
 };
 
-IMPLEMENT_MODULE(FExperimentsModule, Experiments)
+IMPLEMENT_MODULE(FSbxUIExperimentsModule, SbxUIExperiments)

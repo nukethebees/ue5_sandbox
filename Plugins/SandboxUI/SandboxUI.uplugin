@@ -22,7 +22,7 @@
 			"LoadingPhase": "Default"
 		},
 		{
-			"Name": "Experiments",
+			"Name": "SbxUIExperiments",
 			"Type": "Editor",
 			"LoadingPhase": "PostConfigInit"
 		},
