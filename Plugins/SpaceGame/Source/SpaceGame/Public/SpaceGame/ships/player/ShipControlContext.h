@@ -4,25 +4,12 @@
 
 #include <CoreMinimal.h>
 
-#include "TestSpaceShipControlContexts.generated.h"
-
 class ATestSpaceShip;
 class ATestSpaceShipController;
 class UEnhancedInputComponent;
 class UInputAction;
-class UTestBatchGameUiData;
 class IEnhancedInputSubsystemInterface;
 struct FInputActionValue;
-
-namespace ml::ioj {
-class UPauseMenuWidget;
-}
-
-enum class EPlayerControlContext : uint8 {
-    None,
-    Ship,
-    Menu,
-};
 
 struct SPACEGAME_API FShipControlContext {
   public:
@@ -96,31 +83,6 @@ struct SPACEGAME_API FShipControlContext {
     FSpaceShipControllerInputs const* input_{nullptr};
     TArray<uint32> binding_handles_;
     int32 mapping_context_index_{0};
-    bool initialised_{false};
-    bool bound_{false};
-};
-
-USTRUCT()
-struct SPACEGAME_API FMenuControlContext {
-    GENERATED_BODY()
-  public:
-    auto initialise(ATestSpaceShipController& owner, UTestBatchGameUiData& ui_data) -> bool;
-    auto bind() -> bool;
-    void unbind();
-    void shutdown();
-
-    [[nodiscard]] auto can_bind() const -> bool;
-    [[nodiscard]] auto is_initialised() const noexcept -> bool { return initialised_; }
-    [[nodiscard]] auto is_bound() const noexcept -> bool { return bound_; }
-    [[nodiscard]] auto get_widget() const -> ml::ioj::UPauseMenuWidget* {
-        return pause_menu_widget;
-    }
-  private:
-    TWeakObjectPtr<ATestSpaceShipController> owner_;
-
-    UPROPERTY(Transient)
-    TObjectPtr<ml::ioj::UPauseMenuWidget> pause_menu_widget{nullptr};
-
     bool initialised_{false};
     bool bound_{false};
 };

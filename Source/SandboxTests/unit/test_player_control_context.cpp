@@ -4,8 +4,8 @@
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
 #include <SpaceGame/ships/common/LaserFiringState.h>
+#include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/ships/player/TestSpaceShipControlContexts.h>
 #include <SpaceGame/ships/player/TestSpaceShipController.h>
 #include <SpaceGame/simulation/SimulationConfig.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
@@ -14,9 +14,47 @@
 #include <EnhancedInputComponent.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
+#include <UObject/UnrealType.h>
 
 TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 {
+    TEST_METHOD(DefaultControllerStartsWithCompleteShipMapping)
+    {
+        auto const* const config{ml::load_default_test_simulation_config()};
+        if (!TestRunner->TestTrue(TEXT("Test simulation config loads"), IsValid(config)) ||
+            !TestRunner->TestTrue(TEXT("Player controller class is configured"),
+                                  config && IsValid(config->player_controller_class))) {
+            return;
+        }
+
+        auto const* const controller_default{config->player_controller_class.GetDefaultObject()};
+        auto const* const input_property{
+            FindFProperty<FStructProperty>(controller_default->GetClass(), TEXT("input"))};
+        if (!TestRunner->TestTrue(TEXT("Controller input property is available"),
+                                  input_property != nullptr)) {
+            return;
+        }
+
+        auto const* const input{
+            input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller_default)};
+        if (!TestRunner->TestTrue(
+                TEXT("Initial mapping index is valid"),
+                input->mapping_contexts.IsValidIndex(input->initial_mapping_context_index)) ||
+            !TestRunner->TestTrue(
+                TEXT("Initial mapping context is configured"),
+                input->mapping_contexts.IsValidIndex(input->initial_mapping_context_index) &&
+                    IsValid(input->mapping_contexts[input->initial_mapping_context_index]))) {
+            return;
+        }
+
+        auto const* const mapping_context{
+            input->mapping_contexts[input->initial_mapping_context_index]};
+        TestRunner->TestTrue(TEXT("Initial mapping contains movement"),
+                             mapping_context->HasMappingForInputAction(input->move));
+        TestRunner->TestTrue(TEXT("Initial mapping contains turning"),
+                             mapping_context->HasMappingForInputAction(input->turn));
+    }
+
     TEST_METHOD(ShipBindUnbindOwnsMappingsAndHandlers)
     {
         auto const world_result{ml::get_editor_world()};

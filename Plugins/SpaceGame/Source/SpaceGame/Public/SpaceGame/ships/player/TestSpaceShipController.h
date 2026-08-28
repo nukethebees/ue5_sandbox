@@ -1,6 +1,8 @@
 #pragma once
 
-#include <SpaceGame/ships/player/TestSpaceShipControlContexts.h>
+#include <SpaceGame/ships/player/MenuControlContext.h>
+#include <SpaceGame/ships/player/PlayerControlContext.h>
+#include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
 #include <CoreMinimal.h>

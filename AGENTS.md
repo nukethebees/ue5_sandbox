@@ -49,6 +49,11 @@ Unreal Engine 5.8 project.
 * Use blank lines to separate logical sections of C++ code for visual readability.
 * When UObject types live in a dedicated plugin and C++ namespace, prefer concise names; the plugin and namespace provide the necessary context and collision isolation.
 
+# Formatting
+
+* Format changed C++ files through `cmake --workflow --preset format-code`; it invokes the repository formatter with the changed-file selection. Do not invoke `clang-format` directly for normal repository work.
+* Use `cmake --workflow --preset format-all-code` only when an explicitly requested repository-wide formatting pass is intended.
+
 # UI Design
 
 * Always use `BindWidget` for UPROPERTY widgets. Do not use `BindWidgetOptional` unless the widget is explicitly generated in C++ every time.
