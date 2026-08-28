@@ -622,9 +622,10 @@ void validate_facade(FacadeModuleSchema const& module,
 } // namespace
 
 void validate_manifest(Manifest const& manifest) {
-    if (manifest.schema_version != 1) {
-        throw std::invalid_argument{"Unsupported manifest schema version: " +
-                                    std::to_string(manifest.schema_version)};
+    if (manifest.schema_version != manifest_schema_version) {
+        throw std::invalid_argument{
+            "Unsupported manifest schema version: " + std::to_string(manifest.schema_version) +
+            "; expected " + std::to_string(manifest_schema_version)};
     }
     std::set<std::string> module_names;
     std::set<std::string> output_paths;

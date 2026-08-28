@@ -17,7 +17,7 @@ struct RenderedModule {
 
 auto render_soa(SoaSchema schema, std::map<std::string, CppType> types = {}) -> RenderedModule {
     auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = std::move(types),
         .modules = {SoaModuleSchema{
             .settings =

@@ -555,9 +555,17 @@ auto load_manifest(std::filesystem::path const& path) -> Manifest {
     auto const root_path{path.string()};
     reject_unknown(document, root_path, {"schema_version", "types", "modules"});
     auto const version{required<int>(document, "schema_version", root_path)};
-    if (version != 1) {
+    if (version != manifest_schema_version) {
+        if (version == 1) {
+            throw ManifestError{root_path +
+                                "/schema_version: schema version 1 is obsolete; version " +
+                                std::to_string(manifest_schema_version) +
+                                " replaces function "
+                                "'suffix' with 'const' and 'noexcept' fields"};
+        }
         throw ManifestError{root_path + "/schema_version: unsupported schema version " +
-                            std::to_string(version)};
+                            std::to_string(version) + "; expected " +
+                            std::to_string(manifest_schema_version)};
     }
     auto const directory{path.parent_path()};
     auto types{load_types(directory / required<std::string>(document, "types", root_path))};

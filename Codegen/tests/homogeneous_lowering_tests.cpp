@@ -17,7 +17,7 @@ struct RenderedHomogeneousModule {
 auto render_homogeneous(HomogeneousModuleSchema module, std::map<std::string, CppType> types = {})
     -> RenderedHomogeneousModule {
     auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = std::move(types),
         .modules = {std::move(module)},
     }))};

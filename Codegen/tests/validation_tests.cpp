@@ -12,7 +12,7 @@ namespace {
 template <typename T>
 auto manifest_with(T module, std::map<std::string, CppType> types = {}) -> Manifest {
     return Manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = std::move(types),
         .modules = {ModuleSchema{std::move(module)}},
     };
@@ -122,7 +122,7 @@ TEST(Validation, RejectsDuplicateModuleNames) {
     second.settings.header = "Other.h";
     second.settings.source = "Other.cpp";
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .modules = {std::move(first), std::move(second)},
     };
 
@@ -131,13 +131,13 @@ TEST(Validation, RejectsDuplicateModuleNames) {
 
 TEST(Validation, RejectsUnsupportedProgrammaticSchemaVersions) {
     auto manifest{manifest_with(valid_soa_module())};
-    manifest.schema_version = 2;
+    manifest.schema_version = manifest_schema_version + 1;
 
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
 TEST(Validation, RejectsManifestsWithoutModules) {
-    Manifest const manifest{.schema_version = 1};
+    Manifest const manifest{.schema_version = manifest_schema_version};
 
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }

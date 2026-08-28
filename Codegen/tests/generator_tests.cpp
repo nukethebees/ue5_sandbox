@@ -16,7 +16,7 @@ auto example_manifest() -> Manifest {
     CppType handle{"FHandle", "Project/Handle.h"};
     handle.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
     return Manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = {{"handle", std::move(handle)}},
         .modules =
             {
@@ -103,7 +103,7 @@ TEST(Generator, RejectsCaseInsensitiveDuplicateOutputPaths) {
 
 TEST(Generator, RejectsInvalidVectorDimensions) {
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .modules = {VectorModuleSchema{
             .settings = ModuleSettings{.name = "vectors", .header = "Vectors.h"},
             .storage_name = "FVectors",
@@ -126,7 +126,7 @@ TEST(Generator, RejectsDuplicateStorageOperations) {
 
 TEST(Generator, RejectsPartiallyEquivalentHomogeneousLayouts) {
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .modules = {HomogeneousModuleSchema{
             .settings =
                 ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
@@ -320,7 +320,7 @@ TEST(Generator, MapsAbsoluteProjectPathsIntoASeparateOutputRoot) {
 
 TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
     auto manifest{Manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = {{"target", CppType{"FTarget", "Project/Target.h"}}},
         .modules = {FacadeModuleSchema{
             .settings =
@@ -360,7 +360,7 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
 
 TEST(Generator, LowersHomogeneousLayouts) {
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .modules = {HomogeneousModuleSchema{
             .settings = ModuleSettings{.name = "rotators",
                                        .header = "Rotators.h",
@@ -384,7 +384,7 @@ TEST(Generator, LowersHomogeneousLayouts) {
 
 TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = {{"vector", CppType{"FVector3f", "CoreMinimal.h"}}},
         .modules = {VectorModuleSchema{
             .settings =
@@ -412,7 +412,7 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
 
 TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .modules = {VectorModuleSchema{
             .settings =
                 ModuleSettings{
@@ -438,7 +438,7 @@ TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
 
 TEST(Generator, AppliesFacadePreludeSettings) {
     auto manifest{Manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .modules = {FacadeModuleSchema{
             .settings =
                 ModuleSettings{
@@ -466,7 +466,7 @@ TEST(Generator, AppliesFacadePreludeSettings) {
 
 TEST(Generator, AppliesUmbrellaPreludeSettings) {
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .modules = {UmbrellaModuleSchema{
             .settings =
                 ModuleSettings{
@@ -488,7 +488,7 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
     CppType child_type{"FChild"};
     child_type.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
     Manifest const manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = {{"child", std::move(child_type)}},
         .modules = {SoaModuleSchema{
             .settings = ModuleSettings{.name = "fixed", .header = "Fixed.h", .source = "Fixed.cpp"},

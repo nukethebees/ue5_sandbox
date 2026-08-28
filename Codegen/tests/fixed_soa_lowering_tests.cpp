@@ -12,7 +12,7 @@ namespace {
 auto render_fixed(std::vector<SoaSchema> schemas,
                   std::map<std::string, CppType> types = {}) -> std::string {
     auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = 1,
+        .schema_version = manifest_schema_version,
         .types = std::move(types),
         .modules = {SoaModuleSchema{
             .settings = ModuleSettings{

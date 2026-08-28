@@ -12,6 +12,7 @@
 #include <codegen/schema/module_schema.h>
 #include <codegen/schema/module_settings.h>
 #include <codegen/schema/parameter_schema.h>
+#include <codegen/schema/schema_version.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schema.h>
 #include <codegen/schema/soa_module_schema.h>
