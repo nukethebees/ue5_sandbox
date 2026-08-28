@@ -1,0 +1,53 @@
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+float sbx_hex_line(float2 coordinates)
+{
+    float2 const repeated = frac(coordinates) - 0.5;
+    float2 const repeated_offset = frac(coordinates + 0.5) - 0.5;
+    float2 const hex_distance_a = abs(float2(repeated.x * 1.1547, repeated.y) );
+    float2 const hex_distance_b = abs(float2(repeated_offset.x * 1.1547, repeated_offset.y));
+    float const cell_a = max(hex_distance_a.x * 0.866025 + hex_distance_a.y * 0.5,
+                             hex_distance_a.y);
+    float const cell_b = max(hex_distance_b.x * 0.866025 + hex_distance_b.y * 0.5,
+                             hex_distance_b.y);
+    return min(abs(cell_a - 0.5), abs(cell_b - 0.5));
+}
+
+float4 sbx_energy_shield(float3 local_position,
+                         float3 normal_ws,
+                         float3 camera_vector_ws,
+                         float time_seconds,
+                         float3 base_colour,
+                         float3 edge_colour,
+                         float hex_scale,
+                         float grid_width,
+                         float fresnel_power,
+                         float scan_speed,
+                         float scan_width,
+                         float distortion,
+                         float emissive_intensity,
+                         float shield_opacity)
+{
+    float3 const normal = normalize(normal_ws);
+    float3 const view_direction = normalize(camera_vector_ws);
+    float3 const blend = pow(abs(normal), 4.0);
+    float3 const weights = blend / max(blend.x + blend.y + blend.z, 0.0001);
+
+    float const moving_noise = sbx_fbm(local_position.xy * 2.5 + time_seconds * float2(0.23, -0.17));
+    float2 const offset = distortion * (moving_noise - 0.5) * float2(0.7, 1.0);
+    float const grid_xy = sbx_hex_line(local_position.xy * hex_scale + offset);
+    float const grid_xz = sbx_hex_line(local_position.xz * hex_scale + offset);
+    float const grid_yz = sbx_hex_line(local_position.yz * hex_scale + offset);
+    float const grid_distance = grid_yz * weights.x + grid_xz * weights.y + grid_xy * weights.z;
+    float const grid = 1.0 - smoothstep(grid_width, grid_width * 2.2, grid_distance);
+
+    float const scan_phase = frac(local_position.z * 0.55 - time_seconds * scan_speed);
+    float const scan_distance = abs(scan_phase - 0.5) * 2.0;
+    float const scan = 1.0 - smoothstep(scan_width, scan_width * 2.5, scan_distance);
+    float const fresnel = pow(1.0 - saturate(dot(normal, view_direction)), fresnel_power);
+    float const energy = saturate(grid * 0.7 + scan * 0.9 + fresnel * 1.35 + moving_noise * 0.15);
+    float3 const colour = lerp(base_colour, edge_colour, saturate(fresnel + scan * 0.45));
+    float3 const emissive = colour * energy * emissive_intensity;
+    float const alpha = saturate((0.08 + grid * 0.32 + scan * 0.25 + fresnel * 0.8) * shield_opacity);
+    return float4(emissive, alpha);
+}
