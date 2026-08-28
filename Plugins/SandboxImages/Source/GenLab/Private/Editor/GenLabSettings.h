@@ -34,6 +34,12 @@ enum class EGenLabPreviewChannel : uint8 {
     Alpha UMETA(DisplayName = "Alpha"),
 };
 
+UENUM()
+enum class EGenLabOutput : uint8 {
+    Scalar UMETA(DisplayName = "Scalar / Color"),
+    NormalMap UMETA(DisplayName = "Tangent-Space Normal Map"),
+};
+
 UCLASS(Transient)
 class UGenLabSettings final : public UObject {
     GENERATED_BODY()
@@ -87,6 +93,24 @@ class UGenLabSettings final : public UObject {
                 ClampMin = "0.0",
                 ClampMax = "1.0"))
     float threshold_softness{0.1f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "generator != EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides))
+    EGenLabOutput output{EGenLabOutput::Scalar};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "output == EGenLabOutput::NormalMap",
+                      EditConditionHides,
+                      ClampMin = "0.0"))
+    float normal_strength{8.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "output == EGenLabOutput::NormalMap", EditConditionHides))
+    bool normal_wrap{false};
 
     UPROPERTY(EditAnywhere, Category = "Preview")
     EGenLabPreviewChannel preview_channel{EGenLabPreviewChannel::Color};

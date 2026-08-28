@@ -28,19 +28,25 @@ struct FTextureImportSettings {
 
 auto import_settings_for(FGenerationRequest const& request) -> FTextureImportSettings {
     auto settings{FTextureImportSettings{}};
-    if (request.generator == EGeneratorType::Noise ||
-        request.generator == EGeneratorType::DomainWarpedNoise) {
+    if (request.generator == EGeneratorType::CurlNoiseFlow) {
+        settings.compression = TC_VectorDisplacementmap;
+        if (request.curl_noise_flow.tileable) {
+            settings.address_x = TA_Wrap;
+            settings.address_y = TA_Wrap;
+        }
+    } else if (request.post_process.output == FImagePostProcessParameters::EOutput::NormalMap) {
+        settings.compression = TC_Normalmap;
+        if (request.post_process.normal_wrap) {
+            settings.address_x = TA_Wrap;
+            settings.address_y = TA_Wrap;
+        }
+    } else if (request.generator == EGeneratorType::Noise ||
+               request.generator == EGeneratorType::DomainWarpedNoise) {
         settings.compression = TC_Grayscale;
         auto const tileable{request.generator == EGeneratorType::Noise
                                 ? request.noise.tileable
                                 : request.domain_warped_noise.tileable};
         if (tileable) {
-            settings.address_x = TA_Wrap;
-            settings.address_y = TA_Wrap;
-        }
-    } else if (request.generator == EGeneratorType::CurlNoiseFlow) {
-        settings.compression = TC_VectorDisplacementmap;
-        if (request.curl_noise_flow.tileable) {
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }

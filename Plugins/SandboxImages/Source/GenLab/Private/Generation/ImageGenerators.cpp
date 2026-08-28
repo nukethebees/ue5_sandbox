@@ -172,6 +172,10 @@ auto apply_post_process(FGeneratedImage image,
         return invalid_image(
             TEXT("Post-process threshold and threshold softness must be finite and in [0, 1]."));
     }
+    if (parameters.output == FImagePostProcessParameters::EOutput::NormalMap &&
+        (!FMath::IsFinite(parameters.normal_strength) || parameters.normal_strength < 0.0f)) {
+        return invalid_image(TEXT("Normal-map strength must be finite and non-negative."));
+    }
 
     auto const transform{[&parameters](uint8 const channel) {
         auto value{static_cast<float>(channel) / 255.0f};
@@ -198,6 +202,9 @@ auto apply_post_process(FGeneratedImage image,
             pixel.A = transform(pixel.A);
         }
     }
+    if (parameters.output == FImagePostProcessParameters::EOutput::NormalMap) {
+        return generate_normal_map(image, parameters.normal_strength, parameters.normal_wrap);
+    }
     return image;
 }
 
@@ -210,6 +217,56 @@ auto hex_signed_distance(float const x, float const y, float const radius) -> fl
 
 auto FGeneratedImage::is_valid() const -> bool {
     return width > 0 && height > 0 && width <= MAX_int32 / height && pixels.Num() == width * height;
+}
+
+auto generate_normal_map(FGeneratedImage const& height_image, float const strength, bool const wrap)
+    -> FGeneratedImage {
+    if (!height_image.is_valid()) {
+        return invalid_image(TEXT("Normal-map input must be a valid image."));
+    }
+    if (!FMath::IsFinite(strength) || strength < 0.0f) {
+        return invalid_image(TEXT("Normal-map strength must be finite and non-negative."));
+    }
+
+    auto normal_map{make_image(height_image.width, height_image.height, FColor::Black)};
+    auto const period_x{wrap && height_image.width > 1 ? height_image.width - 1
+                                                       : height_image.width};
+    auto const period_y{wrap && height_image.height > 1 ? height_image.height - 1
+                                                        : height_image.height};
+    auto const sample_height{[&](int32 x, int32 y) {
+        if (wrap) {
+            x = ((x % period_x) + period_x) % period_x;
+            y = ((y % period_y) + period_y) % period_y;
+        } else {
+            x = FMath::Clamp(x, 0, height_image.width - 1);
+            y = FMath::Clamp(y, 0, height_image.height - 1);
+        }
+        return static_cast<float>(height_image.pixels[y * height_image.width + x].R) / 255.0f;
+    }};
+
+    for (int32 y{0}; y < height_image.height; ++y) {
+        auto const sample_y{wrap ? y % period_y : y};
+        for (int32 x{0}; x < height_image.width; ++x) {
+            auto const sample_x{wrap ? x % period_x : x};
+            auto const height_left{sample_height(sample_x - 1, sample_y)};
+            auto const height_right{sample_height(sample_x + 1, sample_y)};
+            auto const height_up{sample_height(sample_x, sample_y - 1)};
+            auto const height_down{sample_height(sample_x, sample_y + 1)};
+            auto normal_x{-(height_right - height_left) * strength};
+            auto normal_y{-(height_down - height_up) * strength};
+            auto normal_z{1.0f};
+            auto const inverse_length{
+                FMath::InvSqrt(normal_x * normal_x + normal_y * normal_y + normal_z * normal_z)};
+            normal_x *= inverse_length;
+            normal_y *= inverse_length;
+            normal_z *= inverse_length;
+            normal_map.pixels[y * height_image.width + x] = {to_byte(normal_x * 0.5f + 0.5f),
+                                                             to_byte(normal_y * 0.5f + 0.5f),
+                                                             to_byte(normal_z * 0.5f + 0.5f),
+                                                             255};
+        }
+    }
+    return normal_map;
 }
 
 auto generate_radial_gradient(FRadialGradientParameters const& parameters) -> FGeneratedImage {
@@ -614,6 +671,12 @@ auto make_default_request(EGeneratorType const generator) -> FGenerationRequest 
 auto default_generation_requests() -> TArray<FGenerationRequest> {
     auto nebula_soft{make_default_request(EGeneratorType::DomainWarpedNoise)};
 
+    auto nebula_normal{nebula_soft};
+    nebula_normal.output_name = TEXT("nebula_normal");
+    nebula_normal.post_process = {.output = FImagePostProcessParameters::EOutput::NormalMap,
+                                  .normal_strength = 10.0f,
+                                  .normal_wrap = true};
+
     auto energy_filaments{make_default_request(EGeneratorType::DomainWarpedNoise)};
     energy_filaments.output_name = TEXT("energy_filaments");
     energy_filaments.domain_warped_noise = {.base_seed = 0x454E4552u,
@@ -670,6 +733,12 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
                                    .falloff = 1.5f,
                                    .tileable = true};
 
+    auto shield_cells_normal{shield_cells};
+    shield_cells_normal.output_name = TEXT("shield_cells_normal");
+    shield_cells_normal.post_process = {.output = FImagePostProcessParameters::EOutput::NormalMap,
+                                        .normal_strength = 6.0f,
+                                        .normal_wrap = true};
+
     auto fracture_edges{make_default_request(EGeneratorType::CellularNoise)};
     fracture_edges.output_name = TEXT("fracture_edges");
     fracture_edges.cellular_noise = {.seed = 0x46524143u,
@@ -686,12 +755,14 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
         make_default_request(EGeneratorType::Starfield),
         make_default_request(EGeneratorType::Noise),
         MoveTemp(nebula_soft),
+        MoveTemp(nebula_normal),
         MoveTemp(energy_filaments),
         MoveTemp(shield_turbulence),
         MoveTemp(nebula_flow),
         MoveTemp(shield_distortion_flow),
         MoveTemp(cellular_regions),
         MoveTemp(shield_cells),
+        MoveTemp(shield_cells_normal),
         MoveTemp(fracture_edges),
         make_default_request(EGeneratorType::HexGrid),
     };
@@ -740,7 +811,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
     FString description;
     switch (request.generator) {
         case EGeneratorType::RadialGradient:
-            description = FString::Printf(TEXT("version=3; generator=radial_gradient; "
+            description = FString::Printf(TEXT("version=4; generator=radial_gradient; "
                                                "dimensions=%dx%d; inner_radius=%g; "
                                                "outer_radius=%g"),
                                           request.radial_gradient.width,
@@ -750,7 +821,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::RingMask:
             description =
-                FString::Printf(TEXT("version=3; generator=ring_mask; dimensions=%dx%d; radius=%g; "
+                FString::Printf(TEXT("version=4; generator=ring_mask; dimensions=%dx%d; radius=%g; "
                                      "thickness=%g; falloff=%g"),
                                 request.ring_mask.width,
                                 request.ring_mask.height,
@@ -760,7 +831,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::Starfield:
             description = FString::Printf(
-                TEXT("version=3; generator=starfield; dimensions=%dx%d; seed=%u; "
+                TEXT("version=4; generator=starfield; dimensions=%dx%d; seed=%u; "
                      "star_count=%d; minimum_brightness=%g; minimum_radius=%g; "
                      "maximum_radius=%g; transparent_background=%s"),
                 request.starfield.width,
@@ -774,7 +845,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::Noise:
             description = FString::Printf(
-                TEXT("version=3; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
+                TEXT("version=4; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
                      "octave_count=%d; persistence=%g; tileable=%s"),
                 request.noise.width,
                 request.noise.height,
@@ -786,7 +857,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::DomainWarpedNoise:
             description = FString::Printf(
-                TEXT("version=3; generator=domain_warped_noise; dimensions=%dx%d; base_seed=%u; "
+                TEXT("version=4; generator=domain_warped_noise; dimensions=%dx%d; base_seed=%u; "
                      "warp_seed=%u; base_scale=%g; warp_scale=%g; warp_strength=%g; "
                      "base_octave_count=%d; warp_octave_count=%d; persistence=%g; tileable=%s"),
                 request.domain_warped_noise.width,
@@ -803,7 +874,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::CurlNoiseFlow:
             description = FString::Printf(
-                TEXT("version=3; generator=curl_noise_flow; dimensions=%dx%d; seed=%u; "
+                TEXT("version=4; generator=curl_noise_flow; dimensions=%dx%d; seed=%u; "
                      "base_scale=%g; octave_count=%d; persistence=%g; derivative_step=%g; "
                      "strength=%g; tileable=%s"),
                 request.curl_noise_flow.width,
@@ -818,7 +889,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::CellularNoise:
             description = FString::Printf(
-                TEXT("version=3; generator=cellular_noise; dimensions=%dx%d; seed=%u; "
+                TEXT("version=4; generator=cellular_noise; dimensions=%dx%d; seed=%u; "
                      "cell_size=%g; jitter=%g; mode=%s; edge_width=%g; falloff=%g; tileable=%s"),
                 request.cellular_noise.width,
                 request.cellular_noise.height,
@@ -832,7 +903,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                 request.cellular_noise.tileable ? TEXT("true") : TEXT("false"));
             break;
         case EGeneratorType::HexGrid:
-            description = FString::Printf(TEXT("version=3; generator=hex_grid; dimensions=%dx%d; "
+            description = FString::Printf(TEXT("version=4; generator=hex_grid; dimensions=%dx%d; "
                                                "cell_radius=%g; line_thickness=%g; falloff=%g"),
                                           request.hex_grid.width,
                                           request.hex_grid.height,
@@ -846,12 +917,19 @@ auto describe_request(FGenerationRequest const& request) -> FString {
     }
     return description +
            FString::Printf(TEXT("; invert=%s; contrast=%g; threshold_enabled=%s; threshold=%g; "
-                                "threshold_softness=%g"),
+                                "threshold_softness=%g; output=%s; normal_strength=%g; "
+                                "normal_wrap=%s"),
                            request.post_process.invert ? TEXT("true") : TEXT("false"),
                            request.post_process.contrast,
                            request.post_process.threshold_enabled ? TEXT("true") : TEXT("false"),
                            request.post_process.threshold,
-                           request.post_process.threshold_softness);
+                           request.post_process.threshold_softness,
+                           request.post_process.output ==
+                                   FImagePostProcessParameters::EOutput::Scalar
+                               ? TEXT("scalar")
+                               : TEXT("normal_map"),
+                           request.post_process.normal_strength,
+                           request.post_process.normal_wrap ? TEXT("true") : TEXT("false"));
 }
 
 }

@@ -92,6 +92,10 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
         auto const invalid_flow{generate_curl_noise_flow({.derivative_step = 0.0f})};
         auto const invalid_cellular{generate_cellular_noise({.jitter = 2.0f})};
         auto const invalid_hex{generate_hex_grid({.cell_radius = 0.0f})};
+        auto invalid_normal_request{make_default_request(EGeneratorType::Noise)};
+        invalid_normal_request.post_process = {
+            .output = FImagePostProcessParameters::EOutput::NormalMap, .normal_strength = -1.0f};
+        auto const invalid_normal{generate_image(invalid_normal_request)};
 
         for (auto const* image : {&invalid_dimensions,
                                   &invalid_ring,
@@ -100,7 +104,8 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                                   &invalid_domain_noise,
                                   &invalid_flow,
                                   &invalid_cellular,
-                                  &invalid_hex}) {
+                                  &invalid_hex,
+                                  &invalid_normal}) {
             TestRunner->TestFalse(TEXT("Invalid parameters produce no valid image"),
                                   image->is_valid());
             TestRunner->TestFalse(TEXT("Invalid parameters explain the failure"),
@@ -114,7 +119,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
     TEST_METHOD(DefaultRequestsAreNamedUniqueAndGenerateValidImages)
     {
         auto const requests{default_generation_requests()};
-        TestRunner->TestEqual(TEXT("There are thirteen canonical examples"), requests.Num(), 13);
+        TestRunner->TestEqual(TEXT("There are fifteen canonical examples"), requests.Num(), 15);
 
         TSet<FString> output_names;
         for (auto const& request : requests) {
@@ -124,7 +129,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
             TestRunner->TestTrue(TEXT("Default request generates a valid image"),
                                  generate_image(request).is_valid());
             TestRunner->TestTrue(TEXT("Request description contains its format version"),
-                                 describe_request(request).StartsWith(TEXT("version=3;")));
+                                 describe_request(request).StartsWith(TEXT("version=4;")));
         }
         TestRunner->TestEqual(
             TEXT("Default output names are unique"), output_names.Num(), requests.Num());
@@ -226,6 +231,9 @@ TEST_CLASS(GenLabPresetSettings, "SandboxImages.UnitTests")
         settings->threshold_enabled = true;
         settings->threshold = 0.3f;
         settings->threshold_softness = 0.2f;
+        settings->output = EGenLabOutput::NormalMap;
+        settings->normal_strength = 5.0f;
+        settings->normal_wrap = true;
 
         settings->load_generator_defaults();
 
@@ -241,6 +249,13 @@ TEST_CLASS(GenLabPresetSettings, "SandboxImages.UnitTests")
             TEXT("Threshold value is preserved"), request.post_process.threshold, 0.3f);
         TestRunner->TestEqual(
             TEXT("Threshold softness is preserved"), request.post_process.threshold_softness, 0.2f);
+        TestRunner->TestEqual(TEXT("Output encoding is preserved"),
+                              request.post_process.output,
+                              FImagePostProcessParameters::EOutput::NormalMap);
+        TestRunner->TestEqual(
+            TEXT("Normal strength is preserved"), request.post_process.normal_strength, 5.0f);
+        TestRunner->TestTrue(TEXT("Normal wrapping is preserved"),
+                             request.post_process.normal_wrap);
     }
 };
 
@@ -446,7 +461,8 @@ TEST_CLASS(DomainWarpedNoiseGenerator, "SandboxImages.UnitTests")
     {
         auto const requests{default_generation_requests()};
         for (auto const& request : requests) {
-            if (request.generator != EGeneratorType::DomainWarpedNoise) {
+            if (request.generator != EGeneratorType::DomainWarpedNoise ||
+                request.post_process.output != FImagePostProcessParameters::EOutput::Scalar) {
                 continue;
             }
 
@@ -642,7 +658,8 @@ TEST_CLASS(CellularNoiseGenerator, "SandboxImages.UnitTests")
     TEST_METHOD(DefaultExamplesHaveStableChecksums)
     {
         for (auto const& request : default_generation_requests()) {
-            if (request.generator != EGeneratorType::CellularNoise) {
+            if (request.generator != EGeneratorType::CellularNoise ||
+                request.post_process.output != FImagePostProcessParameters::EOutput::Scalar) {
                 continue;
             }
 
@@ -653,6 +670,84 @@ TEST_CLASS(CellularNoiseGenerator, "SandboxImages.UnitTests")
                 expected_checksum = 1256329815u;
             } else if (request.output_name == TEXT("fracture_edges")) {
                 expected_checksum = 3619324494u;
+            }
+            TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
+                                  pixel_checksum(generate_image(request)),
+                                  expected_checksum);
+        }
+    }
+};
+
+TEST_CLASS(NormalMapGeneration, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(FlatHeightProducesNeutralNormal)
+    {
+        FGeneratedImage height{.width = 8, .height = 6};
+        height.pixels.Init(FColor{96, 96, 96, 255}, height.width * height.height);
+
+        auto const normal{generate_normal_map(height, 12.0f, false)};
+
+        test_valid_image(*TestRunner, TEXT("flat normal map"), normal, height.width, height.height);
+        for (auto const pixel : normal.pixels) {
+            TestRunner->TestEqual(TEXT("Flat height has a neutral tangent normal"),
+                                  pixel,
+                                  FColor{128, 128, 255, 255});
+        }
+    }
+
+    TEST_METHOD(SeededTileableHeightProducesDeterministicSeamlessNormals)
+    {
+        auto request{make_default_request(EGeneratorType::Noise)};
+        request.noise = {.width = 65,
+                         .height = 49,
+                         .seed = 87654u,
+                         .base_scale = 18.0f,
+                         .octave_count = 4,
+                         .persistence = 0.5f,
+                         .tileable = true};
+        request.post_process = {.output = FImagePostProcessParameters::EOutput::NormalMap,
+                                .normal_strength = 8.0f,
+                                .normal_wrap = true};
+
+        auto const first{generate_image(request)};
+        auto const second{generate_image(request)};
+
+        TestRunner->TestTrue(TEXT("Normal-map generation is deterministic"),
+                             first.pixels == second.pixels);
+        for (int32 y{0}; y < first.height; ++y) {
+            TestRunner->TestEqual(TEXT("Normal-map left and right edges match"),
+                                  pixel_at(first, 0, y),
+                                  pixel_at(first, first.width - 1, y));
+        }
+        for (int32 x{0}; x < first.width; ++x) {
+            TestRunner->TestEqual(TEXT("Normal-map top and bottom edges match"),
+                                  pixel_at(first, x, 0),
+                                  pixel_at(first, x, first.height - 1));
+        }
+
+        int32 directional_pixel_count{};
+        int32 invalid_alpha_count{};
+        for (auto const pixel : first.pixels) {
+            directional_pixel_count += pixel.R != 128 || pixel.G != 128 ? 1 : 0;
+            invalid_alpha_count += pixel.A != 255 ? 1 : 0;
+        }
+        TestRunner->TestTrue(TEXT("Noise produces directional normal variation"),
+                             directional_pixel_count > first.pixels.Num() / 2);
+        TestRunner->TestEqual(TEXT("Normal maps are opaque"), invalid_alpha_count, 0);
+    }
+
+    TEST_METHOD(DefaultExamplesHaveStableChecksums)
+    {
+        for (auto const& request : default_generation_requests()) {
+            if (request.post_process.output != FImagePostProcessParameters::EOutput::NormalMap) {
+                continue;
+            }
+
+            uint32 expected_checksum{};
+            if (request.output_name == TEXT("nebula_normal")) {
+                expected_checksum = 3623759407u;
+            } else if (request.output_name == TEXT("shield_cells_normal")) {
+                expected_checksum = 293241626u;
             }
             TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
                                   pixel_checksum(generate_image(request)),

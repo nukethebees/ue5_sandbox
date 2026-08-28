@@ -112,11 +112,19 @@ enum class EGeneratorType : uint8 {
 };
 
 struct FImagePostProcessParameters {
+    enum class EOutput : uint8 {
+        Scalar,
+        NormalMap,
+    };
+
     bool invert{false};
     float contrast{1.0f};
     bool threshold_enabled{false};
     float threshold{0.5f};
     float threshold_softness{0.1f};
+    EOutput output{EOutput::Scalar};
+    float normal_strength{8.0f};
+    bool normal_wrap{false};
 };
 
 struct FGenerationRequest {
@@ -145,6 +153,9 @@ struct FGenerationRequest {
 [[nodiscard]] auto generate_cellular_noise(FCellularNoiseParameters const& parameters)
     -> FGeneratedImage;
 [[nodiscard]] auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] auto generate_normal_map(FGeneratedImage const& height_image,
+                                       float strength,
+                                       bool wrap) -> FGeneratedImage;
 [[nodiscard]] auto make_default_request(EGeneratorType generator) -> FGenerationRequest;
 [[nodiscard]] auto default_generation_requests() -> TArray<FGenerationRequest>;
 [[nodiscard]] auto generate_image(FGenerationRequest const& request) -> FGeneratedImage;

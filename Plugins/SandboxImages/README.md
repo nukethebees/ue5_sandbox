@@ -61,6 +61,8 @@ Curl-noise flow maps encode a normalized two-dimensional direction in RG, with n
 opaque alpha. Scalar output-shaping controls are intentionally not applied to flow-map data.
 Cellular noise provides either nearest-site distance or bright Voronoi borders. Jitter ranges from
 regular cells to irregular fracture-like regions, and both modes support seamless tiling.
+Scalar generators can also encode their shaped intensity as a tangent-space normal map. Strength
+controls the apparent surface slope; wrapping preserves seams for periodic source textures.
 
 | Output | Channel meaning |
 | --- | --- |
@@ -69,12 +71,14 @@ regular cells to irregular fracture-like regions, and both modes support seamles
 | `starfield.png` | Star intensity duplicated into RGB and alpha over transparency |
 | `coherent_noise.png` | Grayscale data in RGB with opaque alpha |
 | `nebula_soft.png` | Soft tileable domain-warped grayscale noise |
+| `nebula_normal.png` | Tileable tangent-space normals derived from soft nebula noise |
 | `energy_filaments.png` | Contrasted, smoothly thresholded tileable energy structure |
 | `shield_turbulence.png` | Broad tileable turbulent shield modulation |
 | `nebula_flow.png` | Tileable normalized curl-noise direction encoded in RG |
 | `shield_distortion_flow.png` | Denser tileable shield-distortion direction encoded in RG |
 | `cellular_regions.png` | Tileable nearest-cell distance field |
 | `shield_cells.png` | Regularized tileable cellular shield borders |
+| `shield_cells_normal.png` | Tileable tangent-space normals derived from shield cells |
 | `fracture_edges.png` | Irregular tileable fracture-like cellular borders |
 | `hex_grid_mask.png` | White intensity duplicated into RGB and alpha |
 

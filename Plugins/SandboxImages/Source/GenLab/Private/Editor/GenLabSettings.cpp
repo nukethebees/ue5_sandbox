@@ -120,7 +120,12 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
                             .contrast = contrast,
                             .threshold_enabled = threshold_enabled,
                             .threshold = threshold,
-                            .threshold_softness = threshold_softness};
+                            .threshold_softness = threshold_softness,
+                            .output = output == EGenLabOutput::Scalar
+                                        ? FImagePostProcessParameters::EOutput::Scalar
+                                        : FImagePostProcessParameters::EOutput::NormalMap,
+                            .normal_strength = normal_strength,
+                            .normal_wrap = normal_wrap};
     return request;
 }
 
@@ -133,6 +138,11 @@ void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest con
     threshold_enabled = request.post_process.threshold_enabled;
     threshold = request.post_process.threshold;
     threshold_softness = request.post_process.threshold_softness;
+    output = request.post_process.output == FImagePostProcessParameters::EOutput::Scalar
+               ? EGenLabOutput::Scalar
+               : EGenLabOutput::NormalMap;
+    normal_strength = request.post_process.normal_strength;
+    normal_wrap = request.post_process.normal_wrap;
     switch (generator) {
         case EGenLabGenerator::RadialGradient:
             width = request.radial_gradient.width;
@@ -214,11 +224,21 @@ void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest con
 }
 
 void UGenLabSettings::load_generator_defaults() {
+    using namespace SandboxImages::GenLab;
     auto request{SandboxImages::GenLab::make_default_request(to_generator_type(generator))};
     request.post_process = {.invert = invert,
                             .contrast = contrast,
                             .threshold_enabled = threshold_enabled,
                             .threshold = threshold,
-                            .threshold_softness = threshold_softness};
+                            .threshold_softness = threshold_softness,
+                            .output = output == EGenLabOutput::Scalar
+                                        ? FImagePostProcessParameters::EOutput::Scalar
+                                        : FImagePostProcessParameters::EOutput::NormalMap,
+                            .normal_strength = normal_strength,
+                            .normal_wrap = normal_wrap};
+    if (generator == EGenLabGenerator::CurlNoiseFlow) {
+        request.post_process.output =
+            SandboxImages::GenLab::FImagePostProcessParameters::EOutput::Scalar;
+    }
     load_request(request);
 }
