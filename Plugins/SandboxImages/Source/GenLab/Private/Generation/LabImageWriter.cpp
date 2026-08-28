@@ -40,6 +40,13 @@ auto import_settings_for(FGenerationRequest const& request) -> FTextureImportSet
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }
+    } else if (request.post_process.output ==
+               FImagePostProcessParameters::EOutput::SignedDistance) {
+        settings.compression = TC_Grayscale;
+        if (request.post_process.distance_wrap) {
+            settings.address_x = TA_Wrap;
+            settings.address_y = TA_Wrap;
+        }
     } else if (request.generator == EGeneratorType::Noise ||
                request.generator == EGeneratorType::DomainWarpedNoise) {
         settings.compression = TC_Grayscale;

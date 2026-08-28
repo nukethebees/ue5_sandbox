@@ -115,6 +115,7 @@ struct FImagePostProcessParameters {
     enum class EOutput : uint8 {
         Scalar,
         NormalMap,
+        SignedDistance,
     };
 
     bool invert{false};
@@ -125,6 +126,9 @@ struct FImagePostProcessParameters {
     EOutput output{EOutput::Scalar};
     float normal_strength{8.0f};
     bool normal_wrap{false};
+    float distance_threshold{0.5f};
+    float distance_range{16.0f};
+    bool distance_wrap{false};
 };
 
 struct FGenerationRequest {
@@ -156,6 +160,10 @@ struct FGenerationRequest {
 [[nodiscard]] auto generate_normal_map(FGeneratedImage const& height_image,
                                        float strength,
                                        bool wrap) -> FGeneratedImage;
+[[nodiscard]] auto generate_signed_distance_field(FGeneratedImage const& mask_image,
+                                                  float threshold,
+                                                  float distance_range,
+                                                  bool wrap) -> FGeneratedImage;
 [[nodiscard]] auto make_default_request(EGeneratorType generator) -> FGenerationRequest;
 [[nodiscard]] auto default_generation_requests() -> TArray<FGenerationRequest>;
 [[nodiscard]] auto generate_image(FGenerationRequest const& request) -> FGeneratedImage;

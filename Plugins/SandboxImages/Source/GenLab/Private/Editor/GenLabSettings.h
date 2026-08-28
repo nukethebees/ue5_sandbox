@@ -38,6 +38,7 @@ UENUM()
 enum class EGenLabOutput : uint8 {
     Scalar UMETA(DisplayName = "Scalar / Color"),
     NormalMap UMETA(DisplayName = "Tangent-Space Normal Map"),
+    SignedDistance UMETA(DisplayName = "Signed Distance Field"),
 };
 
 UCLASS(Transient)
@@ -111,6 +112,28 @@ class UGenLabSettings final : public UObject {
               Category = "Output Shaping",
               meta = (EditCondition = "output == EGenLabOutput::NormalMap", EditConditionHides))
     bool normal_wrap{false};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "output == EGenLabOutput::SignedDistance",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float distance_threshold{0.5f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "output == EGenLabOutput::SignedDistance",
+                      EditConditionHides,
+                      ClampMin = "1.0",
+                      ClampMax = "4096.0"))
+    float distance_range{16.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "output == EGenLabOutput::SignedDistance",
+                      EditConditionHides))
+    bool distance_wrap{false};
 
     UPROPERTY(EditAnywhere, Category = "Preview")
     EGenLabPreviewChannel preview_channel{EGenLabPreviewChannel::Color};

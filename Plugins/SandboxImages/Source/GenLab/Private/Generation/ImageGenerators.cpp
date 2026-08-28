@@ -156,6 +156,38 @@ auto fractal_noise_sample(float const x,
     return total_amplitude > 0.0f ? value / total_amplitude : 0.0f;
 }
 
+void chamfer_distance_transform(TArray<float>& distances, int32 const width, int32 const height) {
+    constexpr float diagonal_cost{1.4142135624f};
+    auto update_distance{[&](int32 const x,
+                             int32 const y,
+                             int32 const neighbor_x,
+                             int32 const neighbor_y,
+                             float const cost) {
+        if (neighbor_x < 0 || neighbor_x >= width || neighbor_y < 0 || neighbor_y >= height) {
+            return;
+        }
+        auto& distance{distances[y * width + x]};
+        distance = FMath::Min(distance, distances[neighbor_y * width + neighbor_x] + cost);
+    }};
+
+    for (int32 y{0}; y < height; ++y) {
+        for (int32 x{0}; x < width; ++x) {
+            update_distance(x, y, x - 1, y, 1.0f);
+            update_distance(x, y, x, y - 1, 1.0f);
+            update_distance(x, y, x - 1, y - 1, diagonal_cost);
+            update_distance(x, y, x + 1, y - 1, diagonal_cost);
+        }
+    }
+    for (int32 y{height - 1}; y >= 0; --y) {
+        for (int32 x{width - 1}; x >= 0; --x) {
+            update_distance(x, y, x + 1, y, 1.0f);
+            update_distance(x, y, x, y + 1, 1.0f);
+            update_distance(x, y, x + 1, y + 1, diagonal_cost);
+            update_distance(x, y, x - 1, y + 1, diagonal_cost);
+        }
+    }
+}
+
 auto apply_post_process(FGeneratedImage image,
                         FImagePostProcessParameters const& parameters,
                         bool const alpha_is_intensity) -> FGeneratedImage {
@@ -175,6 +207,14 @@ auto apply_post_process(FGeneratedImage image,
     if (parameters.output == FImagePostProcessParameters::EOutput::NormalMap &&
         (!FMath::IsFinite(parameters.normal_strength) || parameters.normal_strength < 0.0f)) {
         return invalid_image(TEXT("Normal-map strength must be finite and non-negative."));
+    }
+    if (parameters.output == FImagePostProcessParameters::EOutput::SignedDistance &&
+        (!FMath::IsFinite(parameters.distance_threshold) || parameters.distance_threshold < 0.0f ||
+         parameters.distance_threshold > 1.0f || !FMath::IsFinite(parameters.distance_range) ||
+         parameters.distance_range < 1.0f || parameters.distance_range > 4096.0f)) {
+        return invalid_image(
+            TEXT("Signed-distance threshold must be in [0, 1] and its finite pixel "
+                 "range must be in [1, 4096]."));
     }
 
     auto const transform{[&parameters](uint8 const channel) {
@@ -204,6 +244,12 @@ auto apply_post_process(FGeneratedImage image,
     }
     if (parameters.output == FImagePostProcessParameters::EOutput::NormalMap) {
         return generate_normal_map(image, parameters.normal_strength, parameters.normal_wrap);
+    }
+    if (parameters.output == FImagePostProcessParameters::EOutput::SignedDistance) {
+        return generate_signed_distance_field(image,
+                                              parameters.distance_threshold,
+                                              parameters.distance_range,
+                                              parameters.distance_wrap);
     }
     return image;
 }
@@ -267,6 +313,75 @@ auto generate_normal_map(FGeneratedImage const& height_image, float const streng
         }
     }
     return normal_map;
+}
+
+auto generate_signed_distance_field(FGeneratedImage const& mask_image,
+                                    float const threshold,
+                                    float const distance_range,
+                                    bool const wrap) -> FGeneratedImage {
+    if (!mask_image.is_valid()) {
+        return invalid_image(TEXT("Signed-distance input must be a valid image."));
+    }
+    if (!FMath::IsFinite(threshold) || threshold < 0.0f || threshold > 1.0f ||
+        !FMath::IsFinite(distance_range) || distance_range < 1.0f || distance_range > 4096.0f) {
+        return invalid_image(
+            TEXT("Signed-distance threshold must be in [0, 1] and its finite pixel "
+                 "range must be in [1, 4096]."));
+    }
+
+    auto const padding{wrap ? FMath::CeilToInt(distance_range) + 1 : 0};
+    auto const padded_width64{static_cast<int64>(mask_image.width) + 2ll * padding};
+    auto const padded_height64{static_cast<int64>(mask_image.height) + 2ll * padding};
+    if (padded_width64 > MAX_int32 || padded_height64 > MAX_int32 ||
+        padded_width64 * padded_height64 > MAX_int32) {
+        return invalid_image(TEXT("Signed-distance padded dimensions exceed the supported size."));
+    }
+    auto const padded_width{static_cast<int32>(padded_width64)};
+    auto const padded_height{static_cast<int32>(padded_height64)};
+    auto const period_x{wrap && mask_image.width > 1 ? mask_image.width - 1 : mask_image.width};
+    auto const period_y{wrap && mask_image.height > 1 ? mask_image.height - 1 : mask_image.height};
+    auto const is_inside{[&](int32 x, int32 y) {
+        if (wrap) {
+            x = ((x % period_x) + period_x) % period_x;
+            y = ((y % period_y) + period_y) % period_y;
+        }
+        return static_cast<float>(mask_image.pixels[y * mask_image.width + x].R) / 255.0f >=
+               threshold;
+    }};
+    auto const build_distances{[&](bool const target_inside) {
+        TArray<float> distances;
+        distances.SetNumUninitialized(padded_width * padded_height);
+        for (int32 y{0}; y < padded_height; ++y) {
+            auto const source_y{y - padding};
+            for (int32 x{0}; x < padded_width; ++x) {
+                auto const source_x{x - padding};
+                distances[y * padded_width + x] =
+                    is_inside(source_x, source_y) == target_inside ? 0.0f : MAX_flt;
+            }
+        }
+        chamfer_distance_transform(distances, padded_width, padded_height);
+        return distances;
+    }};
+
+    auto const distance_to_inside{build_distances(true)};
+    auto const distance_to_outside{build_distances(false)};
+    auto distance_field{make_image(mask_image.width, mask_image.height, FColor::Black)};
+    for (int32 y{0}; y < mask_image.height; ++y) {
+        auto const sample_y{padding + (wrap ? y % period_y : y)};
+        for (int32 x{0}; x < mask_image.width; ++x) {
+            auto const sample_x{padding + (wrap ? x % period_x : x)};
+            auto const padded_index{sample_y * padded_width + sample_x};
+            auto const inside{is_inside(x, y)};
+            auto const nearest_opposite_distance{FMath::Min(
+                inside ? distance_to_outside[padded_index] : distance_to_inside[padded_index],
+                distance_range)};
+            auto const signed_distance{inside ? nearest_opposite_distance - 0.5f
+                                              : 0.5f - nearest_opposite_distance};
+            auto const value{0.5f + signed_distance / (2.0f * distance_range)};
+            distance_field.pixels[y * mask_image.width + x] = grayscale(value, 255);
+        }
+    }
+    return distance_field;
 }
 
 auto generate_radial_gradient(FRadialGradientParameters const& parameters) -> FGeneratedImage {
@@ -669,6 +784,13 @@ auto make_default_request(EGeneratorType const generator) -> FGenerationRequest 
 }
 
 auto default_generation_requests() -> TArray<FGenerationRequest> {
+    auto ring_distance{make_default_request(EGeneratorType::RingMask)};
+    ring_distance.output_name = TEXT("ring_distance");
+    ring_distance.post_process = {.output = FImagePostProcessParameters::EOutput::SignedDistance,
+                                  .distance_threshold = 0.5f,
+                                  .distance_range = 24.0f,
+                                  .distance_wrap = false};
+
     auto nebula_soft{make_default_request(EGeneratorType::DomainWarpedNoise)};
 
     auto nebula_normal{nebula_soft};
@@ -739,6 +861,14 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
                                         .normal_strength = 6.0f,
                                         .normal_wrap = true};
 
+    auto shield_cells_distance{shield_cells};
+    shield_cells_distance.output_name = TEXT("shield_cells_distance");
+    shield_cells_distance.post_process = {.output =
+                                              FImagePostProcessParameters::EOutput::SignedDistance,
+                                          .distance_threshold = 0.5f,
+                                          .distance_range = 12.0f,
+                                          .distance_wrap = true};
+
     auto fracture_edges{make_default_request(EGeneratorType::CellularNoise)};
     fracture_edges.output_name = TEXT("fracture_edges");
     fracture_edges.cellular_noise = {.seed = 0x46524143u,
@@ -752,6 +882,7 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
     return {
         make_default_request(EGeneratorType::RadialGradient),
         make_default_request(EGeneratorType::RingMask),
+        MoveTemp(ring_distance),
         make_default_request(EGeneratorType::Starfield),
         make_default_request(EGeneratorType::Noise),
         MoveTemp(nebula_soft),
@@ -763,6 +894,7 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
         MoveTemp(cellular_regions),
         MoveTemp(shield_cells),
         MoveTemp(shield_cells_normal),
+        MoveTemp(shield_cells_distance),
         MoveTemp(fracture_edges),
         make_default_request(EGeneratorType::HexGrid),
     };
@@ -811,7 +943,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
     FString description;
     switch (request.generator) {
         case EGeneratorType::RadialGradient:
-            description = FString::Printf(TEXT("version=4; generator=radial_gradient; "
+            description = FString::Printf(TEXT("version=5; generator=radial_gradient; "
                                                "dimensions=%dx%d; inner_radius=%g; "
                                                "outer_radius=%g"),
                                           request.radial_gradient.width,
@@ -821,7 +953,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::RingMask:
             description =
-                FString::Printf(TEXT("version=4; generator=ring_mask; dimensions=%dx%d; radius=%g; "
+                FString::Printf(TEXT("version=5; generator=ring_mask; dimensions=%dx%d; radius=%g; "
                                      "thickness=%g; falloff=%g"),
                                 request.ring_mask.width,
                                 request.ring_mask.height,
@@ -831,7 +963,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::Starfield:
             description = FString::Printf(
-                TEXT("version=4; generator=starfield; dimensions=%dx%d; seed=%u; "
+                TEXT("version=5; generator=starfield; dimensions=%dx%d; seed=%u; "
                      "star_count=%d; minimum_brightness=%g; minimum_radius=%g; "
                      "maximum_radius=%g; transparent_background=%s"),
                 request.starfield.width,
@@ -845,7 +977,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::Noise:
             description = FString::Printf(
-                TEXT("version=4; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
+                TEXT("version=5; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
                      "octave_count=%d; persistence=%g; tileable=%s"),
                 request.noise.width,
                 request.noise.height,
@@ -857,7 +989,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::DomainWarpedNoise:
             description = FString::Printf(
-                TEXT("version=4; generator=domain_warped_noise; dimensions=%dx%d; base_seed=%u; "
+                TEXT("version=5; generator=domain_warped_noise; dimensions=%dx%d; base_seed=%u; "
                      "warp_seed=%u; base_scale=%g; warp_scale=%g; warp_strength=%g; "
                      "base_octave_count=%d; warp_octave_count=%d; persistence=%g; tileable=%s"),
                 request.domain_warped_noise.width,
@@ -874,7 +1006,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::CurlNoiseFlow:
             description = FString::Printf(
-                TEXT("version=4; generator=curl_noise_flow; dimensions=%dx%d; seed=%u; "
+                TEXT("version=5; generator=curl_noise_flow; dimensions=%dx%d; seed=%u; "
                      "base_scale=%g; octave_count=%d; persistence=%g; derivative_step=%g; "
                      "strength=%g; tileable=%s"),
                 request.curl_noise_flow.width,
@@ -889,7 +1021,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::CellularNoise:
             description = FString::Printf(
-                TEXT("version=4; generator=cellular_noise; dimensions=%dx%d; seed=%u; "
+                TEXT("version=5; generator=cellular_noise; dimensions=%dx%d; seed=%u; "
                      "cell_size=%g; jitter=%g; mode=%s; edge_width=%g; falloff=%g; tileable=%s"),
                 request.cellular_noise.width,
                 request.cellular_noise.height,
@@ -903,7 +1035,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                 request.cellular_noise.tileable ? TEXT("true") : TEXT("false"));
             break;
         case EGeneratorType::HexGrid:
-            description = FString::Printf(TEXT("version=4; generator=hex_grid; dimensions=%dx%d; "
+            description = FString::Printf(TEXT("version=5; generator=hex_grid; dimensions=%dx%d; "
                                                "cell_radius=%g; line_thickness=%g; falloff=%g"),
                                           request.hex_grid.width,
                                           request.hex_grid.height,
@@ -915,21 +1047,34 @@ auto describe_request(FGenerationRequest const& request) -> FString {
     if (request.generator == EGeneratorType::CurlNoiseFlow) {
         return description;
     }
+    TCHAR const* output_name{};
+    switch (request.post_process.output) {
+        case FImagePostProcessParameters::EOutput::Scalar:
+            output_name = TEXT("scalar");
+            break;
+        case FImagePostProcessParameters::EOutput::NormalMap:
+            output_name = TEXT("normal_map");
+            break;
+        case FImagePostProcessParameters::EOutput::SignedDistance:
+            output_name = TEXT("signed_distance");
+            break;
+    }
     return description +
            FString::Printf(TEXT("; invert=%s; contrast=%g; threshold_enabled=%s; threshold=%g; "
                                 "threshold_softness=%g; output=%s; normal_strength=%g; "
-                                "normal_wrap=%s"),
+                                "normal_wrap=%s; distance_threshold=%g; distance_range=%g; "
+                                "distance_wrap=%s"),
                            request.post_process.invert ? TEXT("true") : TEXT("false"),
                            request.post_process.contrast,
                            request.post_process.threshold_enabled ? TEXT("true") : TEXT("false"),
                            request.post_process.threshold,
                            request.post_process.threshold_softness,
-                           request.post_process.output ==
-                                   FImagePostProcessParameters::EOutput::Scalar
-                               ? TEXT("scalar")
-                               : TEXT("normal_map"),
+                           output_name,
                            request.post_process.normal_strength,
-                           request.post_process.normal_wrap ? TEXT("true") : TEXT("false"));
+                           request.post_process.normal_wrap ? TEXT("true") : TEXT("false"),
+                           request.post_process.distance_threshold,
+                           request.post_process.distance_range,
+                           request.post_process.distance_wrap ? TEXT("true") : TEXT("false"));
 }
 
 }

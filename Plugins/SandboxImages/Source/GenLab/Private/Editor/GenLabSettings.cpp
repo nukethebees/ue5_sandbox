@@ -52,6 +52,34 @@ auto to_cellular_mode(EGenLabCellularMode const mode) -> SandboxImages::GenLab::
     return mode == EGenLabCellularMode::Distance ? SandboxImages::GenLab::ECellularMode::Distance
                                                  : SandboxImages::GenLab::ECellularMode::Borders;
 }
+
+auto to_output(EGenLabOutput const output)
+    -> SandboxImages::GenLab::FImagePostProcessParameters::EOutput {
+    using EOutput = SandboxImages::GenLab::FImagePostProcessParameters::EOutput;
+    switch (output) {
+        case EGenLabOutput::Scalar:
+            return EOutput::Scalar;
+        case EGenLabOutput::NormalMap:
+            return EOutput::NormalMap;
+        case EGenLabOutput::SignedDistance:
+            return EOutput::SignedDistance;
+    }
+    return EOutput::Scalar;
+}
+
+auto to_editor_output(SandboxImages::GenLab::FImagePostProcessParameters::EOutput const output)
+    -> EGenLabOutput {
+    using EOutput = SandboxImages::GenLab::FImagePostProcessParameters::EOutput;
+    switch (output) {
+        case EOutput::Scalar:
+            return EGenLabOutput::Scalar;
+        case EOutput::NormalMap:
+            return EGenLabOutput::NormalMap;
+        case EOutput::SignedDistance:
+            return EGenLabOutput::SignedDistance;
+    }
+    return EGenLabOutput::Scalar;
+}
 }
 
 auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRequest {
@@ -121,11 +149,12 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
                             .threshold_enabled = threshold_enabled,
                             .threshold = threshold,
                             .threshold_softness = threshold_softness,
-                            .output = output == EGenLabOutput::Scalar
-                                        ? FImagePostProcessParameters::EOutput::Scalar
-                                        : FImagePostProcessParameters::EOutput::NormalMap,
+                            .output = to_output(output),
                             .normal_strength = normal_strength,
-                            .normal_wrap = normal_wrap};
+                            .normal_wrap = normal_wrap,
+                            .distance_threshold = distance_threshold,
+                            .distance_range = distance_range,
+                            .distance_wrap = distance_wrap};
     return request;
 }
 
@@ -138,11 +167,12 @@ void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest con
     threshold_enabled = request.post_process.threshold_enabled;
     threshold = request.post_process.threshold;
     threshold_softness = request.post_process.threshold_softness;
-    output = request.post_process.output == FImagePostProcessParameters::EOutput::Scalar
-               ? EGenLabOutput::Scalar
-               : EGenLabOutput::NormalMap;
+    output = to_editor_output(request.post_process.output);
     normal_strength = request.post_process.normal_strength;
     normal_wrap = request.post_process.normal_wrap;
+    distance_threshold = request.post_process.distance_threshold;
+    distance_range = request.post_process.distance_range;
+    distance_wrap = request.post_process.distance_wrap;
     switch (generator) {
         case EGenLabGenerator::RadialGradient:
             width = request.radial_gradient.width;
@@ -231,11 +261,12 @@ void UGenLabSettings::load_generator_defaults() {
                             .threshold_enabled = threshold_enabled,
                             .threshold = threshold,
                             .threshold_softness = threshold_softness,
-                            .output = output == EGenLabOutput::Scalar
-                                        ? FImagePostProcessParameters::EOutput::Scalar
-                                        : FImagePostProcessParameters::EOutput::NormalMap,
+                            .output = to_output(output),
                             .normal_strength = normal_strength,
-                            .normal_wrap = normal_wrap};
+                            .normal_wrap = normal_wrap,
+                            .distance_threshold = distance_threshold,
+                            .distance_range = distance_range,
+                            .distance_wrap = distance_wrap};
     if (generator == EGenLabGenerator::CurlNoiseFlow) {
         request.post_process.output =
             SandboxImages::GenLab::FImagePostProcessParameters::EOutput::Scalar;

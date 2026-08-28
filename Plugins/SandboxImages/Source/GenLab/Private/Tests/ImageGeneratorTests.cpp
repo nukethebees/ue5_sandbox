@@ -80,6 +80,12 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                          generate_hex_grid({.width = width, .height = height}),
                          width,
                          height);
+        auto const mask{generate_ring_mask({.width = width, .height = height})};
+        test_valid_image(*TestRunner,
+                         TEXT("signed distance"),
+                         generate_signed_distance_field(mask, 0.5f, 8.0f, false),
+                         width,
+                         height);
     }
 
     TEST_METHOD(RejectsInvalidParametersWithUsefulErrors)
@@ -96,6 +102,10 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
         invalid_normal_request.post_process = {
             .output = FImagePostProcessParameters::EOutput::NormalMap, .normal_strength = -1.0f};
         auto const invalid_normal{generate_image(invalid_normal_request)};
+        auto invalid_distance_request{make_default_request(EGeneratorType::RingMask)};
+        invalid_distance_request.post_process = {
+            .output = FImagePostProcessParameters::EOutput::SignedDistance, .distance_range = 0.0f};
+        auto const invalid_distance{generate_image(invalid_distance_request)};
 
         for (auto const* image : {&invalid_dimensions,
                                   &invalid_ring,
@@ -105,7 +115,8 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                                   &invalid_flow,
                                   &invalid_cellular,
                                   &invalid_hex,
-                                  &invalid_normal}) {
+                                  &invalid_normal,
+                                  &invalid_distance}) {
             TestRunner->TestFalse(TEXT("Invalid parameters produce no valid image"),
                                   image->is_valid());
             TestRunner->TestFalse(TEXT("Invalid parameters explain the failure"),
@@ -119,7 +130,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
     TEST_METHOD(DefaultRequestsAreNamedUniqueAndGenerateValidImages)
     {
         auto const requests{default_generation_requests()};
-        TestRunner->TestEqual(TEXT("There are fifteen canonical examples"), requests.Num(), 15);
+        TestRunner->TestEqual(TEXT("There are seventeen canonical examples"), requests.Num(), 17);
 
         TSet<FString> output_names;
         for (auto const& request : requests) {
@@ -129,7 +140,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
             TestRunner->TestTrue(TEXT("Default request generates a valid image"),
                                  generate_image(request).is_valid());
             TestRunner->TestTrue(TEXT("Request description contains its format version"),
-                                 describe_request(request).StartsWith(TEXT("version=4;")));
+                                 describe_request(request).StartsWith(TEXT("version=5;")));
         }
         TestRunner->TestEqual(
             TEXT("Default output names are unique"), output_names.Num(), requests.Num());
@@ -748,6 +759,107 @@ TEST_CLASS(NormalMapGeneration, "SandboxImages.UnitTests")
                 expected_checksum = 3623759407u;
             } else if (request.output_name == TEXT("shield_cells_normal")) {
                 expected_checksum = 293241626u;
+            }
+            TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
+                                  pixel_checksum(generate_image(request)),
+                                  expected_checksum);
+        }
+    }
+};
+
+TEST_CLASS(SignedDistanceGeneration, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(EncodesInsideBoundaryAndOutsideInOrder)
+    {
+        FGeneratedImage mask{.width = 17, .height = 17};
+        mask.pixels.Init(FColor::Black, mask.width * mask.height);
+        for (int32 y{6}; y <= 10; ++y) {
+            for (int32 x{6}; x <= 10; ++x) {
+                mask.pixels[y * mask.width + x] = FColor::White;
+            }
+        }
+
+        auto const distance{generate_signed_distance_field(mask, 0.5f, 6.0f, false)};
+
+        auto const center{pixel_at(distance, 8, 8).R};
+        auto const inside_edge{pixel_at(distance, 6, 8).R};
+        auto const outside_edge{pixel_at(distance, 5, 8).R};
+        auto const far_outside{pixel_at(distance, 0, 8).R};
+        TestRunner->TestTrue(TEXT("Shape centre is farther inside than its inner edge"),
+                             center > inside_edge);
+        TestRunner->TestTrue(TEXT("Inner edge is encoded above the midpoint"), inside_edge > 128);
+        TestRunner->TestTrue(TEXT("Outer edge is encoded below the midpoint"), outside_edge < 128);
+        TestRunner->TestTrue(TEXT("Far outside is darker than the outer edge"),
+                             far_outside < outside_edge);
+        TestRunner->TestEqual(TEXT("Horizontal distance is symmetric"),
+                              pixel_at(distance, 4, 8),
+                              pixel_at(distance, 12, 8));
+        TestRunner->TestEqual(TEXT("Vertical distance is symmetric"),
+                              pixel_at(distance, 8, 4),
+                              pixel_at(distance, 8, 12));
+    }
+
+    TEST_METHOD(TileableMasksProduceDeterministicSeamlessDistanceFields)
+    {
+        auto request{make_default_request(EGeneratorType::CellularNoise)};
+        request.cellular_noise = {.width = 65,
+                                  .height = 49,
+                                  .seed = 13579u,
+                                  .cell_size = 14.0f,
+                                  .jitter = 0.5f,
+                                  .mode = ECellularMode::Borders,
+                                  .edge_width = 1.0f,
+                                  .falloff = 1.0f,
+                                  .tileable = true};
+        request.post_process = {.output = FImagePostProcessParameters::EOutput::SignedDistance,
+                                .distance_threshold = 0.5f,
+                                .distance_range = 8.0f,
+                                .distance_wrap = true};
+
+        auto const first{generate_image(request)};
+        auto const second{generate_image(request)};
+
+        TestRunner->TestTrue(TEXT("Signed-distance generation is deterministic"),
+                             first.pixels == second.pixels);
+        for (int32 y{0}; y < first.height; ++y) {
+            TestRunner->TestEqual(TEXT("Distance-field left and right edges match"),
+                                  pixel_at(first, 0, y),
+                                  pixel_at(first, first.width - 1, y));
+        }
+        for (int32 x{0}; x < first.width; ++x) {
+            TestRunner->TestEqual(TEXT("Distance-field top and bottom edges match"),
+                                  pixel_at(first, x, 0),
+                                  pixel_at(first, x, first.height - 1));
+        }
+
+        int32 inside_pixel_count{};
+        int32 outside_pixel_count{};
+        int32 invalid_channel_count{};
+        for (auto const pixel : first.pixels) {
+            inside_pixel_count += pixel.R > 128 ? 1 : 0;
+            outside_pixel_count += pixel.R < 128 ? 1 : 0;
+            invalid_channel_count +=
+                pixel.R != pixel.G || pixel.R != pixel.B || pixel.A != 255 ? 1 : 0;
+        }
+        TestRunner->TestTrue(TEXT("Distance field contains inside values"), inside_pixel_count > 0);
+        TestRunner->TestTrue(TEXT("Distance field contains outside values"),
+                             outside_pixel_count > 0);
+        TestRunner->TestEqual(TEXT("Distance field is opaque grayscale"), invalid_channel_count, 0);
+    }
+
+    TEST_METHOD(DefaultExamplesHaveStableChecksums)
+    {
+        for (auto const& request : default_generation_requests()) {
+            if (request.post_process.output !=
+                FImagePostProcessParameters::EOutput::SignedDistance) {
+                continue;
+            }
+
+            uint32 expected_checksum{};
+            if (request.output_name == TEXT("ring_distance")) {
+                expected_checksum = 1468568709u;
+            } else if (request.output_name == TEXT("shield_cells_distance")) {
+                expected_checksum = 2175695932u;
             }
             TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
                                   pixel_checksum(generate_image(request)),

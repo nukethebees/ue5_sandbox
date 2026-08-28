@@ -63,11 +63,15 @@ Cellular noise provides either nearest-site distance or bright Voronoi borders. 
 regular cells to irregular fracture-like regions, and both modes support seamless tiling.
 Scalar generators can also encode their shaped intensity as a tangent-space normal map. Strength
 controls the apparent surface slope; wrapping preserves seams for periodic source textures.
+Signed-distance output thresholds a shaped scalar mask and stores outside values below 0.5 and
+inside values above 0.5 over a configurable pixel range. This supports shader-side outlines,
+expansion, erosion and dissolve effects; periodic padding keeps tileable masks seamless.
 
 | Output | Channel meaning |
 | --- | --- |
 | `soft_radial_gradient.png` | White intensity duplicated into RGB and alpha |
 | `ring_mask.png` | White intensity duplicated into RGB and alpha |
+| `ring_distance.png` | Signed distance around the ring mask, with 0.5 at its boundary |
 | `starfield.png` | Star intensity duplicated into RGB and alpha over transparency |
 | `coherent_noise.png` | Grayscale data in RGB with opaque alpha |
 | `nebula_soft.png` | Soft tileable domain-warped grayscale noise |
@@ -79,6 +83,7 @@ controls the apparent surface slope; wrapping preserves seams for periodic sourc
 | `cellular_regions.png` | Tileable nearest-cell distance field |
 | `shield_cells.png` | Regularized tileable cellular shield borders |
 | `shield_cells_normal.png` | Tileable tangent-space normals derived from shield cells |
+| `shield_cells_distance.png` | Tileable signed distance around shield-cell borders |
 | `fracture_edges.png` | Irregular tileable fracture-like cellular borders |
 | `hex_grid_mask.png` | White intensity duplicated into RGB and alpha |
 
