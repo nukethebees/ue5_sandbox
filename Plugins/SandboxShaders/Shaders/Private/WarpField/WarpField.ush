@@ -1,0 +1,47 @@
+#ifndef SANDBOX_SHADERS_WARP_FIELD
+#define SANDBOX_SHADERS_WARP_FIELD
+
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+float4 sbx_warp_field(float3 local_position,
+                      float3 normal_ws,
+                      float3 camera_vector_ws,
+                      float animation_time,
+                      float distortion_strength,
+                      float noise_scale,
+                      float noise_speed,
+                      float pulse_frequency,
+                      float edge_intensity,
+                      float field_opacity,
+                      float3 core_colour,
+                      float3 edge_colour)
+{
+    float3 const direction = normalize(local_position);
+    float const time = animation_time * noise_speed;
+    float const noise_a = sbx_fbm(direction.xy * noise_scale + float2(time, -time * 0.7));
+    float const noise_b = sbx_fbm(direction.yz * noise_scale * 1.37 + float2(-time * 0.5, time));
+    float const turbulence = saturate(noise_a * 0.65 + noise_b * 0.35);
+    float const fresnel = pow(1.0 - saturate(dot(normalize(normal_ws), normalize(camera_vector_ws))), 2.4);
+    float const pulse = 0.72 + 0.28 * sin(animation_time * pulse_frequency * 6.2831853);
+    float const boundary = saturate(fresnel * pulse + turbulence * 0.18);
+    float3 const emissive = lerp(core_colour, edge_colour, fresnel) * boundary * edge_intensity;
+    float const opacity = saturate(field_opacity * (0.2 + fresnel * 0.8 + turbulence * 0.25));
+    float const refraction = 1.0 + distortion_strength * (turbulence - 0.35) * pulse;
+    return float4(emissive, opacity + refraction * 0.000001);
+}
+
+float sbx_warp_refraction(float3 local_position,
+                          float animation_time,
+                          float distortion_strength,
+                          float noise_scale,
+                          float noise_speed,
+                          float pulse_frequency)
+{
+    float3 const direction = normalize(local_position);
+    float const time = animation_time * noise_speed;
+    float const noise = sbx_fbm(direction.xy * noise_scale + float2(time, -time));
+    float const pulse = 0.75 + 0.25 * sin(animation_time * pulse_frequency * 6.2831853);
+    return 1.0 + (noise - 0.35) * distortion_strength * pulse;
+}
+
+#endif

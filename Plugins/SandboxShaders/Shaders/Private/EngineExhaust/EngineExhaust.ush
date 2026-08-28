@@ -1,0 +1,33 @@
+#ifndef SANDBOX_SHADERS_ENGINE_EXHAUST
+#define SANDBOX_SHADERS_ENGINE_EXHAUST
+
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+float4 sbx_engine_exhaust(float2 uv,
+                          float3 local_position,
+                          float animation_time,
+                          float throttle,
+                          float thrust_intensity,
+                          float flow_speed,
+                          float turbulence,
+                          float emissive_intensity,
+                          float3 core_colour,
+                          float3 tail_colour)
+{
+    float const axial = saturate(uv.y);
+    float const time = animation_time * flow_speed;
+    float2 const flow_uv = float2(uv.x * 5.0 + sin(axial * 12.0 - time) * 0.15 * turbulence,
+                                  axial * 8.0 - time * 2.2);
+    float const coarse_noise = sbx_fbm(flow_uv);
+    float const fine_noise = sbx_fbm(flow_uv * 2.7 + 19.3);
+    float const plasma = saturate(lerp(coarse_noise, fine_noise, 0.35) + 0.35 - axial * 0.48);
+    float const tail_falloff = pow(saturate(1.0 - axial), 0.55);
+    float const flicker = 0.82 + 0.18 * sin(time * 11.0 + coarse_noise * 8.0);
+    float const energy = throttle * thrust_intensity * tail_falloff * plasma * flicker;
+    float3 const colour = lerp(core_colour, tail_colour, saturate(axial + turbulence * coarse_noise * 0.25));
+    float3 const emissive = colour * energy * emissive_intensity;
+    float const alpha = saturate(energy * (0.35 + 0.65 * plasma));
+    return float4(emissive, alpha);
+}
+
+#endif

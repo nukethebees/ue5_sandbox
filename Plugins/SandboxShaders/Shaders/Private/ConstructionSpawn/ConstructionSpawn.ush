@@ -1,0 +1,39 @@
+#ifndef SANDBOX_SHADERS_CONSTRUCTION_SPAWN
+#define SANDBOX_SHADERS_CONSTRUCTION_SPAWN
+
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+float4 sbx_construction_spawn(float3 local_position,
+                              float progress,
+                              float animation_time,
+                              float edge_width,
+                              float grid_scale,
+                              float noise_scale,
+                              float3 base_colour,
+                              float3 edge_colour,
+                              float emissive_intensity)
+{
+    // The supporting engine cube spans -50..50 in object space. Object-local coordinates keep the
+    // reveal attached to the mesh if the showcase actor is translated or rotated.
+    float3 const position = local_position / 50.0;
+    float const height = position.z * 0.5 + 0.5;
+    float const assembly_noise = sbx_fbm(position * noise_scale + animation_time * 0.08);
+    float const noisy_threshold = progress + (assembly_noise - 0.5) * 0.16;
+    float const signed_reveal = noisy_threshold - height;
+    float const visible = step(0.0, signed_reveal);
+    float const edge = 1.0 - smoothstep(0.0, max(edge_width, 0.005), abs(signed_reveal));
+
+    float3 const grid_coordinates = abs(frac(position * grid_scale) - 0.5);
+    float const grid_distance = min(grid_coordinates.x,
+                                    min(grid_coordinates.y, grid_coordinates.z));
+    float const grid = 1.0 - smoothstep(0.025, 0.075, grid_distance);
+    float const packet = pow(saturate(0.5 + 0.5 * sin(position.z * 28.0 -
+                                                      animation_time * 4.0)),
+                             6.0);
+    float3 const base = base_colour * (0.35 + grid * 0.5);
+    float3 const construction_energy = edge_colour * (edge * 1.7 + grid * 0.32 + packet * edge);
+    float3 const emissive = (base + construction_energy) * emissive_intensity;
+    return float4(emissive, visible);
+}
+
+#endif

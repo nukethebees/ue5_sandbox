@@ -88,6 +88,7 @@ Content/Fab
 /ai_checkpoints
 /notes/
 /.audit/
+/.local/
 *.pyc
 
 # Functional test result exports
