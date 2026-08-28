@@ -1,0 +1,24 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Sandbox Images",
+	"Description": "Focused image and texture experiments and tooling.",
+	"Category": "Sandbox",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": true,
+	"Installed": false,
+	"Modules": [
+		{
+			"Name": "SandboxImages",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "GenLab",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

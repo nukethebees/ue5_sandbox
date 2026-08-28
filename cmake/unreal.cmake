@@ -40,6 +40,8 @@ function(add_unreal_automation_test test_name)
       -nullrhi
       -nosound
       -stdout
+      -ddc=NoZenLocalFallback
+      "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
   )
 
   # Unreal's queued Quit waits for automation completion and exits non-zero on test errors.
