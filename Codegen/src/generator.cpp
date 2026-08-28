@@ -1,6 +1,7 @@
 #include <codegen/generator.h>
 
 #include "lowering.h"
+#include "lowering_utils.h"
 #include "validation.h"
 
 #include <fstream>
@@ -17,6 +18,9 @@ auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
     for (auto const& header : module.headers) {
         nodes.add(Include{header, false});
     }
+    if (!module.settings.prelude_lines.empty()) {
+        nodes.new_lines(2).add(raw(detail::join_lines(module.settings.prelude_lines)));
+    }
     return Module{
         .name = module.settings.name,
         .header = CppFile{
@@ -26,6 +30,25 @@ auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
             .include_order = module.settings.include_order,
         },
     };
+}
+
+auto safe_relative_output_path(std::filesystem::path const& path,
+                               std::filesystem::path const& project_root)
+    -> std::filesystem::path {
+    auto relative{path.is_absolute() ? path.lexically_relative(project_root) : path};
+    relative = relative.lexically_normal();
+    if (relative.empty() || relative == "." || relative.is_absolute() ||
+        relative.has_root_path()) {
+        throw std::invalid_argument{"Generated output path is outside the output root: " +
+                                    path.string()};
+    }
+    for (auto const& component : relative) {
+        if (component == "..") {
+            throw std::invalid_argument{"Generated output path is outside the output root: " +
+                                        path.string()};
+        }
+    }
+    return relative;
 }
 
 } // namespace
@@ -56,7 +79,7 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
 
 auto render_modules(std::vector<Module> const& modules) -> std::vector<GeneratedFile> {
     std::vector<GeneratedFile> result;
-    std::set<std::filesystem::path> paths;
+    std::set<std::string> paths;
     for (auto const& module : modules) {
         for (auto const* file : {module.header ? &*module.header : nullptr,
                                 module.source ? &*module.source : nullptr}) {
@@ -64,7 +87,7 @@ auto render_modules(std::vector<Module> const& modules) -> std::vector<Generated
                 continue;
             }
             auto const normalized{file->path.lexically_normal()};
-            if (!paths.insert(normalized).second) {
+            if (!paths.insert(detail::output_path_key(normalized)).second) {
                 throw std::invalid_argument{"Duplicate generated output path: " +
                                             normalized.string()};
             }
@@ -80,10 +103,7 @@ auto generate_files(std::vector<GeneratedFile> const& files,
                     bool check_only) -> int {
     bool stale{false};
     for (auto const& file : files) {
-        auto relative{file.path};
-        if (relative.is_absolute()) {
-            relative = std::filesystem::relative(relative, project_root);
-        }
+        auto const relative{safe_relative_output_path(file.path, project_root)};
         auto const destination{output_root / relative};
         std::string current;
         if (std::ifstream input{destination, std::ios::binary}; input) {

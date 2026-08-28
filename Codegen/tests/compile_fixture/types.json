@@ -1,0 +1,6 @@
+{
+  "types": {
+    "vector": {"spelling": "FVector2f", "header": "Project/Vector2f.h"},
+    "point": {"spelling": "FPoint2f", "header": "Project/Point2f.h"}
+  }
+}

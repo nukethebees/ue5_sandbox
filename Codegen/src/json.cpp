@@ -30,6 +30,35 @@ void require_object(Json const& value, std::string const& path) {
     }
 }
 
+void require_array(Json const& value, std::string const& path) {
+    if (!value.is_array()) {
+        throw ManifestError{path + " must be an array; got " + value.dump()};
+    }
+}
+
+auto required_value(Json const& value, char const* key, std::string const& path)
+    -> Json const& {
+    auto const iterator{value.find(key)};
+    if (iterator == value.end()) {
+        throw ManifestError{path + ": missing required field '" + key + "'"};
+    }
+    return *iterator;
+}
+
+auto required_array(Json const& value, char const* key, std::string const& path)
+    -> Json const& {
+    auto const& result{required_value(value, key, path)};
+    require_array(result, path + "/" + key);
+    return result;
+}
+
+auto required_object(Json const& value, char const* key, std::string const& path)
+    -> Json const& {
+    auto const& result{required_value(value, key, path)};
+    require_object(result, path + "/" + key);
+    return result;
+}
+
 void reject_unknown(Json const& value,
                     std::string const& path,
                     std::initializer_list<std::string_view> allowed) {
@@ -45,12 +74,8 @@ void reject_unknown(Json const& value,
 
 template <typename T>
 auto required(Json const& value, char const* key, std::string const& path) -> T {
-    auto const iterator{value.find(key)};
-    if (iterator == value.end()) {
-        throw ManifestError{path + ": missing required field '" + key + "'"};
-    }
     try {
-        return iterator->get<T>();
+        return required_value(value, key, path).get<T>();
     } catch (Json::exception const& error) {
         throw ManifestError{path + "/" + key + ": " + error.what()};
     }
@@ -91,7 +116,7 @@ auto parse_type_ref(Json const& value, std::string const& path) -> TypeRef {
 auto parse_parameter(Json const& value, std::string const& path) -> ParameterSchema {
     reject_unknown(value, path, {"type", "name", "default"});
     return ParameterSchema{
-        .type = parse_type_ref(value.at("type"), path + "/type"),
+        .type = parse_type_ref(required_value(value, "type", path), path + "/type"),
         .name = required<std::string>(value, "name", path),
         .default_value = optional<std::string>(value, "default", path),
     };
@@ -120,7 +145,8 @@ auto parse_function(Json const& value, std::string const& path) -> FunctionSchem
     }
     return FunctionSchema{
         .name = required<std::string>(value, "name", path),
-        .return_type = parse_type_ref(value.at("return_type"), path + "/return_type"),
+        .return_type =
+            parse_type_ref(required_value(value, "return_type", path), path + "/return_type"),
         .parameters = std::move(parameters),
         .body_lines = value_or<std::vector<std::string>>(value, "body", {}, path),
         .dependencies =
@@ -175,7 +201,7 @@ auto parse_soa_member(Json const& value, std::string const& path) -> SoaMemberSc
     return SoaMemberSchema{
         .name = required<std::string>(value, "name", path),
         .kind = kind,
-        .type = parse_type_ref(value.at("type"), path + "/type"),
+        .type = parse_type_ref(required_value(value, "type", path), path + "/type"),
         .fixed_schema = optional<std::string>(value, "fixed_schema", path),
     };
 }
@@ -195,7 +221,7 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
                     "copy_element_memberwise",
                     "fixed"});
     std::vector<SoaMemberSchema> members;
-    auto const& member_values{value.at("members")};
+    auto const& member_values{required_array(value, "members", path)};
     for (std::size_t index{0}; index < member_values.size(); ++index) {
         members.push_back(
             parse_soa_member(member_values[index], path + "/members/" + std::to_string(index)));
@@ -273,7 +299,8 @@ auto parse_facade_method(Json const& value, std::string const& path) -> FacadeMe
     }
     return FacadeMethodSchema{
         .name = required<std::string>(value, "name", path),
-        .return_type = parse_type_ref(value.at("return_type"), path + "/return_type"),
+        .return_type =
+            parse_type_ref(required_value(value, "return_type", path), path + "/return_type"),
         .parameters = std::move(parameters),
         .suffix = value_or<std::string>(value, "suffix", {}, path),
         .target_name = optional<std::string>(value, "target_name", path),
@@ -289,7 +316,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                        {"kind", "name", "header", "source", "header_include", "namespace",
                         "include_order", "prelude", "structs"});
         std::vector<SoaSchema> structs;
-        auto const& values{value.at("structs")};
+        auto const& values{required_array(value, "structs", path)};
         for (std::size_t index{0}; index < values.size(); ++index) {
             structs.push_back(parse_soa(values[index], path + "/structs/" + std::to_string(index)));
         }
@@ -300,7 +327,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                        path,
                        {"kind", "name", "header", "source", "header_include", "namespace",
                         "include_order", "prelude", "facade"});
-        auto const& facade_value{value.at("facade")};
+        auto const& facade_value{required_object(value, "facade", path)};
         auto const facade_path{path + "/facade"};
         reject_unknown(facade_value,
                        facade_path,
@@ -308,7 +335,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                         "validation_dependencies", "export_specifier", "bind_access", "method_access",
                         "friends", "definitions_in_source"});
         std::vector<FacadeMethodSchema> methods;
-        auto const& method_values{facade_value.at("methods")};
+        auto const& method_values{required_array(facade_value, "methods", facade_path)};
         for (std::size_t index{0}; index < method_values.size(); ++index) {
             methods.push_back(parse_facade_method(method_values[index],
                                                   facade_path + "/methods/" +
@@ -318,7 +345,9 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
             std::move(settings),
             FacadeSchema{
                 .name = required<std::string>(facade_value, "name", facade_path),
-                .target_type = parse_type_ref(facade_value.at("target_type"),
+                .target_type = parse_type_ref(required_value(facade_value,
+                                                             "target_type",
+                                                             facade_path),
                                               facade_path + "/target_type"),
                 .target_member_name =
                     required<std::string>(facade_value, "target_member_name", facade_path),
@@ -363,10 +392,12 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
         return VectorModuleSchema{
             .settings = std::move(settings),
             .storage_name = required<std::string>(value, "storage_name", path),
-            .value_type = parse_type_ref(value.at("value_type"), path + "/value_type"),
+            .value_type =
+                parse_type_ref(required_value(value, "value_type", path), path + "/value_type"),
             .components = required<std::vector<std::string>>(value, "components", path),
             .equivalent_type =
-                parse_type_ref(value.at("equivalent_type"), path + "/equivalent_type"),
+                parse_type_ref(required_value(value, "equivalent_type", path),
+                               path + "/equivalent_type"),
             .export_specifier = optional<std::string>(value, "export_specifier", path),
             .fixed = std::move(fixed),
         };
@@ -377,7 +408,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                        {"kind", "name", "header", "source", "header_include", "namespace",
                         "include_order", "prelude", "layouts"});
         std::vector<HomogeneousLayoutSchema> layouts;
-        auto const& layout_values{value.at("layouts")};
+        auto const& layout_values{required_array(value, "layouts", path)};
         for (std::size_t layout_index{0}; layout_index < layout_values.size(); ++layout_index) {
             auto const& layout{layout_values[layout_index]};
             auto const layout_path{path + "/layouts/" + std::to_string(layout_index)};
@@ -385,7 +416,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                            layout_path,
                            {"name", "components", "value_types", "export_specifier"});
             std::vector<HomogeneousValueSchema> value_types;
-            auto const& type_values{layout.at("value_types")};
+            auto const& type_values{required_array(layout, "value_types", layout_path)};
             for (std::size_t type_index{0}; type_index < type_values.size(); ++type_index) {
                 auto const& type{type_values[type_index]};
                 auto const type_path{layout_path + "/value_types/" +
@@ -405,7 +436,8 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                                                         std::to_string(input_index)));
                 }
                 value_types.push_back(HomogeneousValueSchema{
-                    .type = parse_type_ref(type.at("type"), type_path + "/type"),
+                    .type = parse_type_ref(required_value(type, "type", type_path),
+                                           type_path + "/type"),
                     .suffix = required<std::string>(type, "suffix", type_path),
                     .equivalent_type = std::move(equivalent),
                     .input_types = std::move(inputs),
@@ -427,7 +459,7 @@ auto load_types(std::filesystem::path const& path) -> std::map<std::string, CppT
     auto const document = read_json(path);
     reject_unknown(document, path.string(), {"types"});
     std::map<std::string, CppType> result;
-    for (auto const& [key, value] : document.at("types").items()) {
+    for (auto const& [key, value] : required_object(document, "types", path.string()).items()) {
         auto const item_path{path.string() + "/types/" + key};
         reject_unknown(value, item_path, {"spelling", "header", "operations"});
         auto type{CppType{required<std::string>(value, "spelling", item_path)}};
@@ -469,7 +501,8 @@ auto load_manifest(std::filesystem::path const& path) -> Manifest {
         auto const module_path{directory / module_file};
         auto const module_document = read_json(module_path);
         reject_unknown(module_document, module_path.string(), {"modules"});
-        auto const& values{module_document.at("modules")};
+        auto const& values{
+            required_array(module_document, "modules", module_path.string())};
         for (std::size_t index{0}; index < values.size(); ++index) {
             modules.push_back(parse_module(values[index],
                                            module_path.string() + "/modules/" +

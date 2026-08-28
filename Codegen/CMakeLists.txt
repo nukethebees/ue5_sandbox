@@ -30,13 +30,47 @@ add_executable(sandbox-codegen src/main.cpp)
 set_target_properties(sandbox-codegen PROPERTIES OUTPUT_NAME codegen)
 target_link_libraries(sandbox-codegen PRIVATE codegen-lib)
 
+set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fixture")
+set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated_compile_fixture")
+set(CODEGEN_COMPILE_FIXTURE_HEADER "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Generated.h")
+set(CODEGEN_COMPILE_FIXTURE_CPP "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Generated.cpp")
+add_custom_command(
+  OUTPUT
+    "${CODEGEN_COMPILE_FIXTURE_HEADER}"
+    "${CODEGEN_COMPILE_FIXTURE_CPP}"
+  COMMAND sandbox-codegen
+    --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
+    --project-root "${CODEGEN_COMPILE_FIXTURE_SOURCE}"
+    --output-root "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
+  DEPENDS
+    sandbox-codegen
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/types.json"
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/modules.json"
+  COMMENT "Generating compile-tested codegen fixture"
+  VERBATIM
+)
+add_executable(codegen-generated-compile-tests
+  tests/generated_compile_smoke.cpp
+  "${CODEGEN_COMPILE_FIXTURE_HEADER}"
+  "${CODEGEN_COMPILE_FIXTURE_CPP}"
+)
+target_compile_features(codegen-generated-compile-tests PRIVATE cxx_std_23)
+target_include_directories(codegen-generated-compile-tests PRIVATE
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
+  "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+)
+
 add_executable(codegen-tests
   tests/ast_tests.cpp
+  tests/fixed_soa_lowering_tests.cpp
   tests/generator_tests.cpp
+  tests/homogeneous_lowering_tests.cpp
   tests/json_tests.cpp
   tests/lowering_tests.cpp
   tests/validation_tests.cpp
 )
+add_dependencies(codegen-tests codegen-generated-compile-tests)
 target_link_libraries(codegen-tests PRIVATE
   codegen-lib
   GTest::gtest_main
@@ -49,6 +83,7 @@ if(MSVC)
   target_compile_options(codegen-lib PRIVATE /W4 /WX)
   target_compile_options(sandbox-codegen PRIVATE /W4 /WX)
   target_compile_options(codegen-tests PRIVATE /W4 /WX)
+  target_compile_options(codegen-generated-compile-tests PRIVATE /W4 /WX)
 else()
   set(SANDBOX_CODEGEN_WARNINGS
     -Wall
@@ -61,10 +96,31 @@ else()
   target_compile_options(codegen-lib PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
   target_compile_options(sandbox-codegen PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
   target_compile_options(codegen-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
+  target_compile_options(codegen-generated-compile-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
 endif()
 
 include(GoogleTest)
 gtest_discover_tests(codegen-tests PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME CodegenGeneratedCompileSmoke COMMAND codegen-generated-compile-tests)
+set_tests_properties(CodegenGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME CodegenCliChecksGeneratedFixture
+  COMMAND sandbox-codegen
+    --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
+    --project-root "${CODEGEN_COMPILE_FIXTURE_SOURCE}"
+    --output-root "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
+    --check
+)
+set_tests_properties(CodegenCliChecksGeneratedFixture PROPERTIES LABELS "unit;all;codegen")
+add_test(NAME CodegenCliRejectsUnknownArgument COMMAND sandbox-codegen --unknown)
+set_tests_properties(CodegenCliRejectsUnknownArgument PROPERTIES
+  LABELS "unit;all;codegen"
+  WILL_FAIL TRUE
+)
+add_test(NAME CodegenCliRejectsMissingArgumentValue COMMAND sandbox-codegen --manifest)
+set_tests_properties(CodegenCliRejectsMissingArgumentValue PROPERTIES
+  LABELS "unit;all;codegen"
+  WILL_FAIL TRUE
+)
 
 set(SANDBOX_CODEGEN_MANIFEST "${CMAKE_CURRENT_SOURCE_DIR}/manifests/manifest.json")
 

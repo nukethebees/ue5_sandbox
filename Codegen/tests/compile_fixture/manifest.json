@@ -1,0 +1,5 @@
+{
+  "schema_version": 1,
+  "types": "types.json",
+  "modules": ["modules.json"]
+}

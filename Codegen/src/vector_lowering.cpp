@@ -114,12 +114,24 @@ auto lower_vector_module(VectorModuleSchema const& module,
             .append(lower_fixed_nodes(schema, schemas, types));
         lowered.header = header.build();
     }
+    auto header_definitions{std::move(lowered.header)};
+    auto source_definitions{std::move(lowered.source)};
+    if (module.settings.namespace_name.has_value()) {
+        header_definitions = {
+            Namespace{*module.settings.namespace_name, std::move(header_definitions)}};
+        source_definitions = {
+            Namespace{*module.settings.namespace_name, std::move(source_definitions)}};
+    }
     NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2).append(std::move(lowered.header));
+    header_nodes.add(IncludeDependencies{}, 2);
+    if (!module.settings.prelude_lines.empty()) {
+        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
+    }
+    header_nodes.append(std::move(header_definitions));
     NodeListBuilder source_nodes;
     source_nodes.add(Include{source_include(module.settings), false}, 2)
         .add(IncludeDependencies{}, 2)
-        .append(std::move(lowered.source));
+        .append(std::move(source_definitions));
     return Module{
         .name = module.settings.name,
         .header = CppFile{.path = module.settings.header,

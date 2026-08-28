@@ -12,5 +12,6 @@ auto source_include(ModuleSettings const& settings) -> std::string;
 auto dependency_for_key(std::string const& key,
                         std::map<std::string, CppType> const& types) -> TypeDependency;
 auto qualify(CppType type, std::string const& suffix) -> CppType;
+auto output_path_key(std::filesystem::path const& path) -> std::string;
 
 } // namespace codegen::detail

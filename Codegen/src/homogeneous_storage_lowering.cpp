@@ -133,10 +133,14 @@ auto homogeneous_pointer_struct(HomogeneousLayoutSchema const& layout,
 
 auto homogeneous_storage_prelude_nodes(HomogeneousLayoutSchema const& layout,
                                        CppType const& value_type,
+                                       std::optional<CppType> const& equivalent_type,
                                        std::string const& view_name) -> Nodes {
     NodeListBuilder result;
-    result.add(UsingDeclaration{"value_type", value_type}, 1)
-        .add(UsingDeclaration{"size_type", CppType{"TArray<value_type>::SizeType"}}, 1)
+    result.add(UsingDeclaration{"value_type", value_type}, 1);
+    if (equivalent_type.has_value()) {
+        result.add(UsingDeclaration{"equivalent_type", *equivalent_type}, 1);
+    }
+    result.add(UsingDeclaration{"size_type", CppType{"TArray<value_type>::SizeType"}}, 1)
         .add(UsingDeclaration{"View", CppType{view_name + "<value_type>"}}, 1)
         .add(UsingDeclaration{"ConstView", CppType{view_name + "<value_type const>"}}, 2)
         .add(homogeneous_pointer_struct(layout, "Data", "value_type*"), 2)
@@ -373,19 +377,96 @@ auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& la
     return result.build();
 }
 
+auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
+                                     HomogeneousValueSchema const& value,
+                                     std::map<std::string, CppType> const& types) -> Nodes {
+    NodeListBuilder result;
+    if (value.equivalent_type.has_value()) {
+        std::vector<std::string> values;
+        for (auto const& component : layout.components) {
+            values.push_back(component + ".GetData()[index]");
+        }
+        result.add(homogeneous_function("operator[]",
+                                        "auto",
+                                        {FunctionParameter{"size_type const", "index"}},
+                                        "return {" + join(values, ", ") + "};",
+                                        " const -> equivalent_type"),
+                   1)
+            .add(homogeneous_function(
+                     "at",
+                     "auto",
+                     {FunctionParameter{"size_type const", "index"}},
+                     Nodes{
+                         ExpressionStatement{"validate_array_sizes()"},
+                         ExpressionStatement{"check(index >= 0)", {check_dependency}},
+                         ExpressionStatement{"check(index < num())", {check_dependency}},
+                         ReturnStatement{"(*this)[index]"},
+                     },
+                     " const -> equivalent_type"),
+                 1);
+    }
+    if (value.input_types.empty()) {
+        return result.build();
+    }
+
+    std::vector<FunctionParameter> component_parameters;
+    for (auto const& component : layout.components) {
+        component_parameters.emplace_back("value_type const", std::string{component.front()});
+    }
+    NodeListBuilder component_body;
+    auto const& first_component{layout.components.front()};
+    component_body.add(VariableDeclarationStatement{
+        "auto const", "index", first_component + ".Add(" + first_component.front() + ")"});
+    for (std::size_t index{1}; index < layout.components.size(); ++index) {
+        auto const& component{layout.components[index]};
+        component_body.add(
+            ExpressionStatement{component + ".Add(" + component.front() + ")"});
+    }
+    component_body.add(ReturnStatement{"index"});
+    result.add(homogeneous_function("add",
+                                    "auto",
+                                    std::move(component_parameters),
+                                    component_body.build(),
+                                    " -> size_type"),
+               1);
+
+    static std::vector<std::string> const axes{"X", "Y", "Z"};
+    std::vector<std::string> arguments;
+    for (std::size_t index{0}; index < layout.components.size(); ++index) {
+        arguments.push_back("value." + axes[index]);
+    }
+    for (auto const& input_reference : value.input_types) {
+        auto input_type{qualify(resolve_type(input_reference, types), " const&")};
+        result.add(homogeneous_function("add",
+                                        "auto",
+                                        {FunctionParameter{std::move(input_type), "value"}},
+                                        Nodes{ReturnStatement{"add(" +
+                                                              join(arguments, ", ") + ")"}},
+                                        " -> size_type"),
+                   1);
+    }
+    return result.build();
+}
+
 } // namespace
 
 auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
                               HomogeneousValueSchema const& value,
                               std::map<std::string, CppType> const& types) -> Node {
     auto const value_type{resolve_type(value.type, types)};
+    auto const equivalent_type{
+        value.equivalent_type.has_value()
+            ? std::optional<CppType>{resolve_type(*value.equivalent_type, types)}
+            : std::nullopt};
     auto const view_name{"T" + layout.name + "View"};
     auto const storage_name{"F" + layout.name + value.suffix};
     NodeListBuilder children;
-    children.append(homogeneous_storage_prelude_nodes(layout, value_type, view_name))
+    children.append(
+                homogeneous_storage_prelude_nodes(layout, value_type, equivalent_type, view_name))
         .append(homogeneous_storage_access_nodes(layout))
         .append(homogeneous_storage_copy_nodes(layout))
         .append(homogeneous_storage_sort_nodes())
+        .append(homogeneous_storage_value_nodes(layout, value, types))
         .append(homogeneous_storage_array_operation_nodes(layout));
 
     std::vector<TypeDependency> dependencies{

@@ -85,6 +85,16 @@ TEST(Generator, RejectsDuplicateOutputPaths) {
     EXPECT_THROW(render_modules(lower_modules(manifest)), std::invalid_argument);
 }
 
+TEST(Generator, RejectsCaseInsensitiveDuplicateOutputPaths) {
+    auto manifest{example_manifest()};
+    manifest.modules.push_back(UmbrellaModuleSchema{
+        .settings = ModuleSettings{.name = "duplicate", .header = "generated.h"},
+        .headers = {},
+    });
+
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
 TEST(Generator, RejectsInvalidVectorDimensions) {
     Manifest const manifest{
         .schema_version = 1,
@@ -112,7 +122,8 @@ TEST(Generator, RejectsPartiallyEquivalentHomogeneousLayouts) {
     Manifest const manifest{
         .schema_version = 1,
         .modules = {HomogeneousModuleSchema{
-            .settings = ModuleSettings{.name = "vectors", .header = "Vectors.h"},
+            .settings = ModuleSettings{
+                .name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
             .layouts = {HomogeneousLayoutSchema{
                 .name = "Vectors",
                 .components = {"xs", "ys"},
@@ -155,6 +166,36 @@ TEST(Generator, WritesAndChecksOutputRoots) {
     }
     EXPECT_EQ(generate_files(files, directory, directory, true), 1);
     std::filesystem::remove_all(directory, ignored);
+}
+
+TEST(Generator, ReportsMissingGeneratedFilesAsStale) {
+    auto const directory{std::filesystem::temp_directory_path() /
+                         "sandbox-codegen-missing-generation-test"};
+    std::error_code ignored;
+    std::filesystem::remove_all(directory, ignored);
+
+    EXPECT_EQ(generate_files({GeneratedFile{"Generated/Missing.h", "content\n"}},
+                             directory,
+                             directory,
+                             true),
+              1);
+}
+
+TEST(Generator, RejectsOutputPathsOutsideOutputRoot) {
+    auto const directory{std::filesystem::temp_directory_path() /
+                         "sandbox-codegen-output-containment-test"};
+
+    EXPECT_THROW(generate_files({GeneratedFile{"../escape.h", "content\n"}},
+                                directory,
+                                directory,
+                                true),
+                 std::invalid_argument);
+    EXPECT_THROW(generate_files(
+                     {GeneratedFile{directory.parent_path() / "escape.h", "content\n"}},
+                     directory,
+                     directory,
+                     true),
+                 std::invalid_argument);
 }
 
 TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
@@ -251,6 +292,76 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
               std::string::npos);
 }
 
+TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
+    Manifest const manifest{
+        .schema_version = 1,
+        .modules = {VectorModuleSchema{
+            .settings = ModuleSettings{
+                .name = "vectors",
+                .header = "Vectors.h",
+                .source = "Vectors.cpp",
+                .namespace_name = "project::vectors",
+                .prelude_lines = {"class FVectorForward;"},
+            },
+            .storage_name = "FVectors",
+            .value_type = TypeRef{"float"},
+            .components = {"xs", "ys"},
+            .equivalent_type = TypeRef{"FVector2f"},
+        }},
+    };
+
+    auto const files{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(files.size(), 2);
+    EXPECT_NE(files[0].content.find("class FVectorForward;"), std::string::npos);
+    EXPECT_NE(files[0].content.find("namespace project::vectors {"), std::string::npos);
+    EXPECT_NE(files[1].content.find("namespace project::vectors {"), std::string::npos);
+}
+
+TEST(Generator, AppliesFacadePreludeSettings) {
+    auto manifest{Manifest{
+        .schema_version = 1,
+        .modules = {FacadeModuleSchema{
+            .settings = ModuleSettings{
+                .name = "facade",
+                .header = "Facade.h",
+                .prelude_lines = {"class FFacadeForward;"},
+            },
+            .facade = FacadeSchema{
+                .name = "FFacade",
+                .target_type = TypeRef{"FTarget"},
+                .target_member_name = "target",
+                .methods = {FacadeMethodSchema{
+                    .name = "reset",
+                    .return_type = TypeRef{"void"},
+                }},
+            },
+        }},
+    }};
+
+    auto const files{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(files.size(), 1);
+    EXPECT_NE(files[0].content.find("class FFacadeForward;"), std::string::npos);
+}
+
+TEST(Generator, AppliesUmbrellaPreludeSettings) {
+    Manifest const manifest{
+        .schema_version = 1,
+        .modules = {UmbrellaModuleSchema{
+            .settings = ModuleSettings{
+                .name = "all",
+                .header = "All.h",
+                .prelude_lines = {"#define PROJECT_INCLUDED 1"},
+            },
+            .headers = {"Project/First.h", "Project/Second.h"},
+        }},
+    };
+
+    auto const files{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(files.size(), 1);
+    EXPECT_NE(files[0].content.find("#define PROJECT_INCLUDED 1"), std::string::npos);
+    EXPECT_NE(files[0].content.find("#include \"Project/First.h\""), std::string::npos);
+}
+
 TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
     CppType child_type{"FChild"};
     child_type.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
@@ -258,7 +369,8 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
         .schema_version = 1,
         .types = {{"child", std::move(child_type)}},
         .modules = {SoaModuleSchema{
-            .settings = ModuleSettings{.name = "fixed", .header = "Fixed.h"},
+            .settings = ModuleSettings{
+                .name = "fixed", .header = "Fixed.h", .source = "Fixed.cpp"},
             .structs = {
                 SoaSchema{
                     .name = "FChild",
@@ -285,7 +397,7 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
     };
 
     auto const files{render_modules(lower_modules(manifest))};
-    ASSERT_EQ(files.size(), 1);
+    ASSERT_EQ(files.size(), 2);
     auto const& header{files.front().content};
     EXPECT_NE(header.find("struct TChildStorage"), std::string::npos);
     EXPECT_NE(header.find("TChildStorage<Capacity> children_;"), std::string::npos);
@@ -307,6 +419,23 @@ TEST(Generator, RendersCompleteProductionManifest) {
               "Plugins/SpaceGame/Source/SpaceGame/Private/defences/spinners/"
               "TestTubeSpinnersPhaseInterface.cpp");
     EXPECT_EQ(files, render_modules(lower_modules(manifest)));
+}
+
+TEST(Generator, CommittedProductionFilesAreCurrent) {
+    auto const codegen_root{std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR}};
+    auto const project_root{codegen_root.parent_path()};
+    auto const manifest{load_manifest(codegen_root / "manifests/manifest.json")};
+    auto const files{render_modules(lower_modules(manifest))};
+
+    for (auto const& file : files) {
+        auto const path{project_root / file.path};
+        ASSERT_TRUE(std::filesystem::exists(path)) << path.string();
+        std::ifstream input{path, std::ios::binary};
+        ASSERT_TRUE(input) << path.string();
+        auto const content{std::string{std::istreambuf_iterator<char>{input},
+                                      std::istreambuf_iterator<char>{}}};
+        EXPECT_EQ(content, file.content) << path.string();
+    }
 }
 
 } // namespace

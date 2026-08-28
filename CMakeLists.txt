@@ -168,7 +168,9 @@ add_unreal_automation_test(
 )
 
 add_custom_target(dev-core
-  DEPENDS editor
+  DEPENDS
+    editor
+    codegen-tests
 )
 
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")

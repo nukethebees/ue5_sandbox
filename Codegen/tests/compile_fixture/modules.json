@@ -1,0 +1,26 @@
+{
+  "modules": [
+    {
+      "kind": "homogeneous_soa",
+      "name": "generated_compile_fixture",
+      "header": "Generated.h",
+      "source": "Generated.cpp",
+      "header_include": "Generated.h",
+      "namespace": "codegen_compile_fixture",
+      "layouts": [
+        {
+          "name": "Values",
+          "components": ["xs", "ys"],
+          "value_types": [
+            {
+              "type": "float",
+              "suffix": "f",
+              "equivalent_type": "@vector",
+              "input_types": ["@vector", "@point"]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

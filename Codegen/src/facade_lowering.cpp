@@ -94,7 +94,11 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         declaration_node = Namespace{*module.settings.namespace_name, {std::move(declaration_node)}};
     }
     NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2).add(std::move(declaration_node));
+    header_nodes.add(IncludeDependencies{}, 2);
+    if (!module.settings.prelude_lines.empty()) {
+        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
+    }
+    header_nodes.add(std::move(declaration_node));
     Module result{
         .name = module.settings.name,
         .header = CppFile{
