@@ -14,8 +14,7 @@ struct RenderedHomogeneousModule {
     std::string source;
 };
 
-auto render_homogeneous(HomogeneousModuleSchema module,
-                        std::map<std::string, CppType> types = {})
+auto render_homogeneous(HomogeneousModuleSchema module, std::map<std::string, CppType> types = {})
     -> RenderedHomogeneousModule {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = 1,
@@ -26,16 +25,16 @@ auto render_homogeneous(HomogeneousModuleSchema module,
     return RenderedHomogeneousModule{files[0].content, files[1].content};
 }
 
-auto homogeneous_module(std::vector<HomogeneousValueSchema> value_types = {
-                            HomogeneousValueSchema{TypeRef{"float"}, "f"}})
-    -> HomogeneousModuleSchema {
+auto homogeneous_module(std::vector<HomogeneousValueSchema> value_types = {HomogeneousValueSchema{
+                            TypeRef{"float"}, "f"}}) -> HomogeneousModuleSchema {
     return HomogeneousModuleSchema{
-        .settings = ModuleSettings{
-            .name = "values",
-            .header = "Values.h",
-            .source = "Values.cpp",
-            .header_include = "Project/Values.h",
-        },
+        .settings =
+            ModuleSettings{
+                .name = "values",
+                .header = "Values.h",
+                .source = "Values.cpp",
+                .header_include = "Project/Values.h",
+            },
         .layouts = {HomogeneousLayoutSchema{
             .name = "Values",
             .components = {"xs", "ys"},
@@ -58,8 +57,7 @@ auto occurrences(std::string const& text, std::string const& value) -> std::size
 TEST(HomogeneousLowering, EmitsCompleteViewAndStorageApisForEveryComponent) {
     auto const output{render_homogeneous(homogeneous_module())};
 
-    EXPECT_NE(output.header.find("template <typename T>\nstruct TValuesView"),
-              std::string::npos);
+    EXPECT_NE(output.header.find("template <typename T>\nstruct TValuesView"), std::string::npos);
     EXPECT_NE(output.header.find("TArrayView<T> xs;"), std::string::npos);
     EXPECT_NE(output.header.find("TArrayView<T> ys;"), std::string::npos);
     EXPECT_NE(output.header.find("return TValuesView{xs.Slice(offset, count), "
@@ -75,15 +73,16 @@ TEST(HomogeneousLowering, EmitsCompleteViewAndStorageApisForEveryComponent) {
               std::string::npos);
     EXPECT_NE(output.header.find("validate_array_sizes();\n        auto const n{num()};"),
               std::string::npos);
+    EXPECT_NE(output.header.find("auto add(value_type const x, value_type const y) -> "
+                                 "size_type"),
+              std::string::npos);
 
     EXPECT_NE(output.source.find("#include \"Project/Values.h\""), std::string::npos);
     EXPECT_NE(output.source.find("void FValuesf::apply_permutation"), std::string::npos);
     EXPECT_NE(output.source.find("validate_array_sizes();\n    check(indices.Num() == num());"),
               std::string::npos);
-    EXPECT_NE(output.source.find("ml::apply_permutation(xs, indices);"),
-              std::string::npos);
-    EXPECT_NE(output.source.find("ml::apply_permutation(ys, indices);"),
-              std::string::npos);
+    EXPECT_NE(output.source.find("ml::apply_permutation(xs, indices);"), std::string::npos);
+    EXPECT_NE(output.source.find("ml::apply_permutation(ys, indices);"), std::string::npos);
 }
 
 TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
@@ -93,15 +92,13 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
         .equivalent_type = TypeRef{"@vector"},
         .input_types = {TypeRef{"@vector"}, TypeRef{"@point"}},
     }})};
-    auto const output{render_homogeneous(
-        std::move(module),
-        {{"vector", CppType{"FVector2f", "Project/Vector.h"}},
-         {"point", CppType{"FPoint2f", "Project/Point.h"}}})};
+    auto const output{render_homogeneous(std::move(module),
+                                         {{"vector", CppType{"FVector2f", "Project/Vector.h"}},
+                                          {"point", CppType{"FPoint2f", "Project/Point.h"}}})};
 
     EXPECT_NE(output.header.find("template <typename T>\nstruct TValuesEquivalentType;"),
               std::string::npos);
-    EXPECT_NE(output.header.find("struct TValuesEquivalentType<float>"),
-              std::string::npos);
+    EXPECT_NE(output.header.find("struct TValuesEquivalentType<float>"), std::string::npos);
     EXPECT_NE(output.header.find("using type = FVector2f;"), std::string::npos);
     EXPECT_NE(output.header.find(
                   "using equivalent_type = typename TValuesEquivalentType<value_type>::type;"),
@@ -109,8 +106,7 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
     EXPECT_NE(output.header.find("auto operator[](size_type const index) const -> "
                                  "equivalent_type"),
               std::string::npos);
-    EXPECT_NE(output.header.find("using equivalent_type = FVector2f;"),
-              std::string::npos);
+    EXPECT_NE(output.header.find("using equivalent_type = FVector2f;"), std::string::npos);
     EXPECT_NE(output.header.find("auto add(value_type const x, value_type const y) -> "
                                  "size_type"),
               std::string::npos);

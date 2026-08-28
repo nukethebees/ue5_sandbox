@@ -5,12 +5,13 @@
 #include <filesystem>
 #include <fstream>
 #include <string>
+#include <vector>
 
 namespace codegen {
 namespace {
 
 class TemporaryManifest {
-public:
+  public:
     TemporaryManifest() {
         static int sequence{0};
         directory_ = std::filesystem::temp_directory_path() /
@@ -28,20 +29,19 @@ public:
         output << content;
     }
 
-    auto path(std::string const& name) const -> std::filesystem::path {
-        return directory_ / name;
-    }
-
-private:
+    auto path(std::string const& name) const -> std::filesystem::path { return directory_ / name; }
+  private:
     std::filesystem::path directory_;
 };
 
 TEST(Json, LoadsTypedSoaManifest) {
     TemporaryManifest files;
-    files.write("types.json",
-                R"({"types":{"handle":{"spelling":"FHandle","header":"Handle.h","operations":{"remove_at_swap":"remove_at_swap"}}}})");
-    files.write("modules.json",
-                R"({"modules":[{"kind":"soa","name":"example","header":"Generated.h","structs":[{"name":"FData","members":[{"name":"handles","kind":"array","type":"@handle"}],"operations":["all"]}]}]})");
+    files.write(
+        "types.json",
+        R"({"types":{"handle":{"spelling":"FHandle","header":"Handle.h","operations":{"remove_at_swap":"remove_at_swap"}}}})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"soa","name":"example","header":"Generated.h","structs":[{"name":"FData","members":[{"name":"handles","kind":"array","type":"@handle"}],"operations":["all"]}]}]})");
     files.write("manifest.json",
                 R"({"schema_version":1,"types":"types.json","modules":["modules.json"]})");
 
@@ -62,8 +62,9 @@ TEST(Json, LoadsTypedSoaManifest) {
 TEST(Json, ReportsUnknownFieldsWithTheirPath) {
     TemporaryManifest files;
     files.write("types.json", R"({"types":{}})");
-    files.write("modules.json",
-                R"({"modules":[{"kind":"umbrella","name":"all","header":"All.h","headers":[],"typo":true}]})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"umbrella","name":"all","header":"All.h","headers":[],"typo":true}]})");
     files.write("manifest.json",
                 R"({"schema_version":1,"types":"types.json","modules":["modules.json"]})");
 
@@ -82,8 +83,7 @@ TEST(Json, ReportsUnknownFieldsWithTheirPath) {
 
 TEST(Json, RejectsUnknownTypeReferencesAfterDecoding) {
     std::map<std::string, CppType> const types;
-    EXPECT_THROW(resolve_type(TypeRef{"@missing", {}, std::nullopt}, types),
-                 std::invalid_argument);
+    EXPECT_THROW(resolve_type(TypeRef{"@missing", {}, std::nullopt}, types), std::invalid_argument);
 }
 
 TEST(Json, RejectsMalformedDocumentsWithTheirFileName) {
@@ -100,6 +100,29 @@ TEST(Json, RejectsMalformedDocumentsWithTheirFileName) {
             }
         },
         ManifestError);
+}
+
+TEST(Json, RejectsDuplicateFieldsInsteadOfSilentlyOverwritingThem) {
+    TemporaryManifest files;
+    files.write("manifest.json",
+                R"({"schema_version":1,"schema_version":2,"types":"types.json","modules":[]})");
+
+    EXPECT_THROW(
+        {
+            try {
+                static_cast<void>(load_manifest(files.path("manifest.json")));
+            } catch (ManifestError const& error) {
+                auto const message{std::string{error.what()}};
+                EXPECT_NE(message.find("manifest.json"), std::string::npos);
+                EXPECT_NE(message.find("duplicate field 'schema_version'"), std::string::npos);
+                throw;
+            }
+        },
+        ManifestError);
+
+    files.write("manifest.json", R"({"schema_version":1,"types":"types.json","modules":[]})");
+    files.write("types.json", R"({"types":{"value":{"spelling":"int32","spelling":"float"}}})");
+    EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
 }
 
 TEST(Json, ReportsMissingRequiredFields) {
@@ -122,7 +145,8 @@ TEST(Json, ReportsMissingRequiredFields) {
 TEST(Json, RejectsUnknownModuleKinds) {
     TemporaryManifest files;
     files.write("types.json", R"({"types":{}})");
-    files.write("modules.json", R"({"modules":[{"kind":"mystery","name":"bad","header":"Bad.h"}]})");
+    files.write("modules.json",
+                R"({"modules":[{"kind":"mystery","name":"bad","header":"Bad.h"}]})");
     files.write("manifest.json",
                 R"({"schema_version":1,"types":"types.json","modules":["modules.json"]})");
 
@@ -252,11 +276,84 @@ TEST(Json, RejectsWrongCollectionTypesWithTheirPath) {
         ManifestError);
 }
 
+TEST(Json, RejectsEveryCustomParsedCollectionWhenItIsNotAnArray) {
+    struct Case {
+        std::string modules;
+        std::string expected_path;
+    };
+    std::vector<Case> const cases{
+        {R"({"modules":[{"kind":"soa","name":"soa","header":"Soa.h","structs":[{"name":"FData","members":[{"name":"values","kind":"array","type":"int32"}],"functions":{}}]}]})",
+         "/functions must be an array"},
+        {R"({"modules":[{"kind":"soa","name":"soa","header":"Soa.h","structs":[{"name":"FData","members":[{"name":"values","kind":"array","type":"int32"}],"functions":[{"name":"update","return_type":"void","parameters":{}}]}]}]})",
+         "/parameters must be an array"},
+        {R"({"modules":[{"kind":"facade","name":"facade","header":"Facade.h","facade":{"name":"FFacade","target_type":"FTarget","target_member_name":"target","methods":[{"name":"get","return_type":"int32","parameters":{}}]}}]})",
+         "/parameters must be an array"},
+        {R"({"modules":[{"kind":"homogeneous_soa","name":"values","header":"Values.h","source":"Values.cpp","layouts":[{"name":"Values","components":["xs"],"value_types":[{"type":"float","suffix":"f","input_types":{}}]}]}]})",
+         "/input_types must be an array"},
+    };
+
+    for (std::size_t index{0}; index < cases.size(); ++index) {
+        SCOPED_TRACE(index);
+        TemporaryManifest files;
+        files.write("types.json", R"({"types":{}})");
+        files.write("modules.json", cases[index].modules);
+        files.write("manifest.json",
+                    R"({"schema_version":1,"types":"types.json","modules":["modules.json"]})");
+        EXPECT_THROW(
+            {
+                try {
+                    static_cast<void>(load_manifest(files.path("manifest.json")));
+                } catch (ManifestError const& error) {
+                    EXPECT_NE(std::string{error.what()}.find(cases[index].expected_path),
+                              std::string::npos);
+                    throw;
+                }
+            },
+            ManifestError);
+    }
+}
+
+TEST(Json, RejectsNullForPresentOptionalSchemaValues) {
+    struct Case {
+        std::string modules;
+        std::string expected_path;
+    };
+    std::vector<Case> const cases{
+        {R"({"modules":[{"kind":"umbrella","name":"all","header":"All.h","source":null,"headers":["Value.h"]}]})",
+         "/source"},
+        {R"({"modules":[{"kind":"soa","name":"soa","header":"Soa.h","structs":[{"name":"FData","members":[{"name":"values","kind":"array","type":"int32"}],"equivalent_type":null}]}]})",
+         "/equivalent_type"},
+        {R"({"modules":[{"kind":"vector_soa","name":"vectors","header":"Vectors.h","source":"Vectors.cpp","storage_name":"FVectors","value_type":"float","components":["xs"],"equivalent_type":"FValue","fixed":null}]})",
+         "/fixed"},
+        {R"({"modules":[{"kind":"homogeneous_soa","name":"values","header":"Values.h","source":"Values.cpp","layouts":[{"name":"Values","components":["xs"],"value_types":[{"type":"float","suffix":"f","input_types":null}]}]}]})",
+         "/input_types"},
+    };
+
+    for (std::size_t index{0}; index < cases.size(); ++index) {
+        SCOPED_TRACE(index);
+        TemporaryManifest files;
+        files.write("types.json", R"({"types":{}})");
+        files.write("modules.json", cases[index].modules);
+        files.write("manifest.json",
+                    R"({"schema_version":1,"types":"types.json","modules":["modules.json"]})");
+        EXPECT_THROW(
+            {
+                try {
+                    static_cast<void>(load_manifest(files.path("manifest.json")));
+                } catch (ManifestError const& error) {
+                    EXPECT_NE(std::string{error.what()}.find(cases[index].expected_path),
+                              std::string::npos);
+                    throw;
+                }
+            },
+            ManifestError);
+    }
+}
+
 TEST(Json, RejectsNonObjectTypeRegistriesWithTheirPath) {
     TemporaryManifest files;
     files.write("types.json", R"({"types":[]})");
-    files.write("manifest.json",
-                R"({"schema_version":1,"types":"types.json","modules":[]})");
+    files.write("manifest.json", R"({"schema_version":1,"types":"types.json","modules":[]})");
 
     EXPECT_THROW(
         {
@@ -273,16 +370,14 @@ TEST(Json, RejectsNonObjectTypeRegistriesWithTheirPath) {
 
 TEST(Json, RejectsUnsupportedSchemaVersionsWithTheirPath) {
     TemporaryManifest files;
-    files.write("manifest.json",
-                R"({"schema_version":2,"types":"types.json","modules":[]})");
+    files.write("manifest.json", R"({"schema_version":2,"types":"types.json","modules":[]})");
 
     EXPECT_THROW(
         {
             try {
                 static_cast<void>(load_manifest(files.path("manifest.json")));
             } catch (ManifestError const& error) {
-                EXPECT_NE(std::string{error.what()}.find("/schema_version"),
-                          std::string::npos);
+                EXPECT_NE(std::string{error.what()}.find("/schema_version"), std::string::npos);
                 throw;
             }
         },

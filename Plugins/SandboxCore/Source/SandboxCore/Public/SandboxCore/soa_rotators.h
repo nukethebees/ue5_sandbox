@@ -135,6 +135,12 @@ struct SANDBOXCORE_API FRotatorsf {
         scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
         apply_permutation(scratch_indices);
     }
+    auto add(value_type const p, value_type const y, value_type const r) -> size_type {
+        auto const index{pitches.Add(p)};
+        yaws.Add(y);
+        rolls.Add(r);
+        return index;
+    }
     auto reset() -> void {
         pitches.Reset();
         yaws.Reset();
@@ -258,6 +264,12 @@ struct SANDBOXCORE_API FRotatorsd {
         ml::fill_indices(scratch_indices);
         scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
         apply_permutation(scratch_indices);
+    }
+    auto add(value_type const p, value_type const y, value_type const r) -> size_type {
+        auto const index{pitches.Add(p)};
+        yaws.Add(y);
+        rolls.Add(r);
+        return index;
     }
     auto reset() -> void {
         pitches.Reset();

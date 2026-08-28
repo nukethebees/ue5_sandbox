@@ -10,8 +10,7 @@ namespace codegen {
 namespace {
 
 template <typename T>
-auto manifest_with(T module,
-                   std::map<std::string, CppType> types = {}) -> Manifest {
+auto manifest_with(T module, std::map<std::string, CppType> types = {}) -> Manifest {
     return Manifest{
         .schema_version = 1,
         .types = std::move(types),
@@ -24,17 +23,18 @@ auto valid_soa_module() -> SoaModuleSchema {
         .settings = ModuleSettings{.name = "soa", .header = "Soa.h", .source = "Soa.cpp"},
         .structs = {SoaSchema{
             .name = "FData",
-            .members = {
-                SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"int32"}},
-            },
+            .members =
+                {
+                    SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"int32"}},
+                },
         }},
     };
 }
 
 auto valid_vector_module() -> VectorModuleSchema {
     return VectorModuleSchema{
-        .settings = ModuleSettings{
-            .name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
+        .settings =
+            ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
         .storage_name = "FVectors",
         .value_type = TypeRef{"float"},
         .components = {"xs", "ys"},
@@ -45,25 +45,27 @@ auto valid_vector_module() -> VectorModuleSchema {
 auto valid_facade_module() -> FacadeModuleSchema {
     return FacadeModuleSchema{
         .settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
-        .facade = FacadeSchema{
-            .name = "FFacade",
-            .target_type = TypeRef{"FTarget"},
-            .target_member_name = "target",
-            .methods = {FacadeMethodSchema{
-                .name = "reset",
-                .return_type = TypeRef{"void"},
-            }},
-        },
+        .facade =
+            FacadeSchema{
+                .name = "FFacade",
+                .target_type = TypeRef{"FTarget"},
+                .target_member_name = "target",
+                .methods = {FacadeMethodSchema{
+                    .name = "reset",
+                    .return_type = TypeRef{"void"},
+                }},
+            },
     };
 }
 
 auto valid_homogeneous_module() -> HomogeneousModuleSchema {
     return HomogeneousModuleSchema{
-        .settings = ModuleSettings{
-            .name = "homogeneous",
-            .header = "Values.h",
-            .source = "Values.cpp",
-        },
+        .settings =
+            ModuleSettings{
+                .name = "homogeneous",
+                .header = "Values.h",
+                .source = "Values.cpp",
+            },
         .layouts = {HomogeneousLayoutSchema{
             .name = "Values",
             .components = {"xs", "ys"},
@@ -134,10 +136,42 @@ TEST(Validation, RejectsUnsupportedProgrammaticSchemaVersions) {
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
+TEST(Validation, RejectsManifestsWithoutModules) {
+    Manifest const manifest{.schema_version = 1};
+
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
+    for (auto const& invalid : {"class", "__generated", "_Reserved"}) {
+        SCOPED_TRACE(invalid);
+        auto module{valid_soa_module()};
+        module.structs.front().members.front().name = invalid;
+        EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    }
+
+    auto module{valid_soa_module()};
+    module.settings.namespace_name = "project::namespace";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsEmptyTypeSpellings) {
     auto module{valid_soa_module()};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module), {{"empty", CppType{}}})),
                  std::invalid_argument);
+}
+
+TEST(Validation, RejectsInvalidTypeDependencyAndOperationSpellings) {
+    auto empty_header{CppType{"FValue", ""}};
+    EXPECT_THROW(
+        lower_modules(manifest_with(valid_soa_module(), {{"value", std::move(empty_header)}})),
+        std::invalid_argument);
+
+    CppType invalid_operation{"FValue"};
+    invalid_operation.member_operations.emplace(TypeOperation::remove_at_swap, "bad-name");
+    EXPECT_THROW(
+        lower_modules(manifest_with(valid_soa_module(), {{"value", std::move(invalid_operation)}})),
+        std::invalid_argument);
 }
 
 TEST(Validation, RejectsSoaModulesWithoutSchemas) {
@@ -168,6 +202,23 @@ TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
     module.structs.front().members.front().name = "bad-name";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
+    for (auto const& name : {"num", "reset", "copy_element"}) {
+        SCOPED_TRACE(name);
+        auto module{valid_soa_module()};
+        module.structs.front().members.front().name = name;
+        EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    }
+
+    auto homogeneous{valid_homogeneous_module()};
+    homogeneous.layouts.front().components.front() = "add";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(homogeneous))), std::invalid_argument);
+
+    auto vector{valid_vector_module()};
+    vector.components.front() = "get_view";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(vector))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsUnknownSoaTypeReferences) {
@@ -261,10 +312,11 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
     module.structs.front().functions = {FunctionSchema{
         .name = "set",
         .return_type = TypeRef{"void"},
-        .parameters = {
-            ParameterSchema{TypeRef{"int32"}, "value"},
-            ParameterSchema{TypeRef{"float"}, "value"},
-        },
+        .parameters =
+            {
+                ParameterSchema{TypeRef{"int32"}, "value"},
+                ParameterSchema{TypeRef{"float"}, "value"},
+            },
     }};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
@@ -275,10 +327,11 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     module.structs.front().functions = {FunctionSchema{
         .name = "set",
         .return_type = TypeRef{"void"},
-        .parameters = {
-            ParameterSchema{TypeRef{"int32"}, "first", "0"},
-            ParameterSchema{TypeRef{"int32"}, "second"},
-        },
+        .parameters =
+            {
+                ParameterSchema{TypeRef{"int32"}, "first", "0"},
+                ParameterSchema{TypeRef{"int32"}, "second"},
+            },
     }};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
@@ -295,10 +348,56 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
+    auto module{valid_soa_module()};
+    module.structs.front().functions = {FunctionSchema{
+        .name = "class",
+        .return_type = TypeRef{"void"},
+        .is_inline = true,
+    }};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().functions = {FunctionSchema{
+        .name = "update",
+        .return_type = TypeRef{"void"},
+        .is_inline = true,
+        .definition_in_source = true,
+    }};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames) {
+    for (auto const& name : {"sort", "get_view", "FData"}) {
+        SCOPED_TRACE(name);
+        auto module{valid_soa_module()};
+        module.structs.front().functions = {FunctionSchema{
+            .name = name,
+            .return_type = TypeRef{"void"},
+            .is_inline = true,
+        }};
+        EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    }
+}
+
+TEST(Validation, RejectsMalformedExportSpecifiers) {
+    auto soa{valid_soa_module()};
+    soa.structs.front().export_specifier = "bad-specifier";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(soa))), std::invalid_argument);
+
+    auto homogeneous{valid_homogeneous_module()};
+    homogeneous.layouts.front().export_specifier = "class";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(homogeneous))), std::invalid_argument);
+
+    auto facade{valid_facade_module()};
+    facade.facade.export_specifier = "two words";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(facade))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsHomogeneousModulesWithoutLayouts) {
     HomogeneousModuleSchema module{
-        .settings = ModuleSettings{
-            .name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
+        .settings =
+            ModuleSettings{.name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
     };
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
@@ -306,8 +405,8 @@ TEST(Validation, RejectsHomogeneousModulesWithoutLayouts) {
 
 TEST(Validation, RejectsDuplicateHomogeneousComponents) {
     HomogeneousModuleSchema module{
-        .settings = ModuleSettings{
-            .name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
+        .settings =
+            ModuleSettings{.name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
         .layouts = {HomogeneousLayoutSchema{
             .name = "Values",
             .components = {"xs", "xs"},
@@ -320,8 +419,8 @@ TEST(Validation, RejectsDuplicateHomogeneousComponents) {
 
 TEST(Validation, RejectsHomogeneousLayoutsWithoutValueTypes) {
     HomogeneousModuleSchema module{
-        .settings = ModuleSettings{
-            .name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
+        .settings =
+            ModuleSettings{.name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
         .layouts = {HomogeneousLayoutSchema{
             .name = "Values",
             .components = {"xs"},
@@ -347,8 +446,7 @@ TEST(Validation, RejectsDuplicateHomogeneousLayoutNames) {
 
 TEST(Validation, RejectsDuplicateHomogeneousValueSuffixes) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().value_types.push_back(
-        HomogeneousValueSchema{TypeRef{"double"}, "f"});
+    module.layouts.front().value_types.push_back(HomogeneousValueSchema{TypeRef{"double"}, "f"});
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
@@ -390,8 +488,8 @@ TEST(Validation, RejectsDuplicateHomogeneousEquivalentSpecialisations) {
 
 TEST(Validation, RejectsDuplicateHomogeneousInputTypes) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().value_types.front().input_types = {
-        TypeRef{"FVector2f"}, TypeRef{"FVector2f"}};
+    module.layouts.front().value_types.front().input_types = {TypeRef{"FVector2f"},
+                                                              TypeRef{"FVector2f"}};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
@@ -408,6 +506,13 @@ TEST(Validation, RejectsHomogeneousInputComponentsWithDuplicateInitials) {
     auto module{valid_homogeneous_module()};
     module.layouts.front().components = {"x_values", "x_weights"};
     module.layouts.front().value_types.front().input_types = {TypeRef{"FInput"}};
+
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsHomogeneousComponentParameterCollisionsWithoutInputTypes) {
+    auto module{valid_homogeneous_module()};
+    module.layouts.front().components = {"x_values", "x_weights"};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
@@ -528,6 +633,20 @@ TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
+    auto module{valid_facade_module()};
+    module.facade.friends = {"class"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_facade_module();
+    module.facade.target_member_name = "bind";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_facade_module();
+    module.facade.methods.front().name = module.facade.target_member_name;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsDuplicateUmbrellaHeaders) {
     UmbrellaModuleSchema module{
         .settings = ModuleSettings{.name = "all", .header = "All.h"},
@@ -537,10 +656,17 @@ TEST(Validation, RejectsDuplicateUmbrellaHeaders) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsUmbrellaModulesWithoutHeaders) {
+    UmbrellaModuleSchema module{
+        .settings = ModuleSettings{.name = "all", .header = "All.h"},
+    };
+
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
     UmbrellaModuleSchema module{
-        .settings = ModuleSettings{
-            .name = "all", .header = "All.h", .source = "All.cpp"},
+        .settings = ModuleSettings{.name = "all", .header = "All.h", .source = "All.cpp"},
         .headers = {"Value.h"},
     };
     EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);

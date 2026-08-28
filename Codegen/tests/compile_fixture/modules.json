@@ -2,10 +2,10 @@
   "modules": [
     {
       "kind": "homogeneous_soa",
-      "name": "generated_compile_fixture",
-      "header": "Generated.h",
-      "source": "Generated.cpp",
-      "header_include": "Generated.h",
+      "name": "homogeneous_fixture",
+      "header": "Homogeneous.h",
+      "source": "Homogeneous.cpp",
+      "header_include": "Homogeneous.h",
       "namespace": "codegen_compile_fixture",
       "layouts": [
         {
@@ -17,9 +17,192 @@
               "suffix": "f",
               "equivalent_type": "@vector",
               "input_types": ["@vector", "@point"]
+            },
+            {
+              "type": "double",
+              "suffix": "d",
+              "equivalent_type": "@vector2d"
             }
           ]
+        },
+        {
+          "name": "Scalar",
+          "components": ["values"],
+          "value_types": [{"type": "int32", "suffix": "i"}]
         }
+      ]
+    },
+    {
+      "kind": "soa",
+      "name": "soa_fixture",
+      "header": "Soa.h",
+      "source": "Soa.cpp",
+      "header_include": "Soa.h",
+      "namespace": "codegen_compile_fixture",
+      "structs": [
+        {
+          "name": "FRows",
+          "members": [
+            {"name": "ids", "kind": "array", "type": "int32"},
+            {"name": "weights", "kind": "array", "type": "float"}
+          ],
+          "operations": ["all"],
+          "equivalent_type": "@row",
+          "functions": [
+            {
+              "name": "first_id",
+              "return_type": "int32",
+              "body": ["return ids[0];"],
+              "inline": true
+            },
+            {
+              "name": "weight_sum",
+              "return_type": "float",
+              "body": ["return weights[0] + weights[1];"],
+              "definition_in_source": true
+            },
+            {
+              "name": "manual_value",
+              "return_type": "int32",
+              "suffix": " const"
+            }
+          ]
+        },
+        {
+          "name": "FChild",
+          "members": [{"name": "values", "kind": "array", "type": "int32"}],
+          "operations": ["all"]
+        },
+        {
+          "name": "FParents",
+          "members": [
+            {"name": "keys", "kind": "array", "type": "int32"},
+            {"name": "children", "kind": "nested", "type": "@child"}
+          ],
+          "operations": ["all"]
+        },
+        {
+          "name": "FFixedChild",
+          "members": [{"name": "tracked", "kind": "array", "type": "@tracked"}],
+          "fixed": {"storage_name": "TFixedChildStorage"}
+        },
+        {
+          "name": "FFixedRows",
+          "members": [
+            {"name": "ids", "kind": "array", "type": "int32"},
+            {
+              "name": "children",
+              "kind": "nested",
+              "type": "@fixed_child",
+              "fixed_schema": "FFixedChild"
+            }
+          ],
+          "fixed": {
+            "storage_name": "TFixedRowsStorage",
+            "containers": ["TFixedRows", "TFixedRowsAlt"]
+          }
+        }
+      ]
+    },
+    {
+      "kind": "vector_soa",
+      "name": "vector2_fixture",
+      "header": "Vector2.h",
+      "source": "Vector2.cpp",
+      "header_include": "Vector2.h",
+      "namespace": "codegen_compile_fixture",
+      "storage_name": "FVectors2f",
+      "value_type": "float",
+      "components": ["xs", "ys"],
+      "equivalent_type": "@vector"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "vector1_fixture",
+      "header": "Vector1.h",
+      "source": "Vector1.cpp",
+      "header_include": "Vector1.h",
+      "namespace": "codegen_compile_fixture",
+      "storage_name": "FVectors1f",
+      "value_type": "float",
+      "components": ["xs"],
+      "equivalent_type": "@scalar"
+    },
+    {
+      "kind": "vector_soa",
+      "name": "vector3_fixture",
+      "header": "Vector3.h",
+      "source": "Vector3.cpp",
+      "header_include": "Vector3.h",
+      "namespace": "codegen_compile_fixture",
+      "storage_name": "FVectors3f",
+      "value_type": "float",
+      "components": ["xs", "ys", "zs"],
+      "equivalent_type": "@vector3",
+      "fixed": {
+        "storage_name": "TVectors3Storage",
+        "containers": ["TFixedVectors3"]
+      }
+    },
+    {
+      "kind": "facade",
+      "name": "inline_facade_fixture",
+      "header": "InlineFacade.h",
+      "namespace": "codegen_compile_fixture",
+      "facade": {
+        "name": "FInlineFacade",
+        "target_type": "@target",
+        "target_member_name": "target",
+        "methods": [
+          {
+            "name": "get",
+            "return_type": "int32",
+            "parameters": [{"type": "int32 const", "name": "offset", "default": "0"}],
+            "suffix": " const"
+          },
+          {"name": "reset", "return_type": "void", "target_name": "clear"}
+        ],
+        "validation": ["check(target != nullptr);"],
+        "validation_dependencies": ["check"]
+      }
+    },
+    {
+      "kind": "facade",
+      "name": "source_facade_fixture",
+      "header": "SourceFacade.h",
+      "source": "SourceFacade.cpp",
+      "header_include": "SourceFacade.h",
+      "namespace": "codegen_compile_fixture",
+      "facade": {
+        "name": "FSourceFacade",
+        "target_type": "@target",
+        "target_member_name": "target",
+        "methods": [
+          {
+            "name": "set_value",
+            "return_type": "void",
+            "parameters": [{"type": "int32 const", "name": "value"}],
+            "target_name": "set"
+          },
+          {"name": "get", "return_type": "int32", "suffix": " const"}
+        ],
+        "validation": ["check(target != nullptr);"],
+        "validation_dependencies": ["check"],
+        "definitions_in_source": true
+      }
+    },
+    {
+      "kind": "umbrella",
+      "name": "all_fixture",
+      "header": "Generated.h",
+      "headers": [
+        "Homogeneous.h",
+        "Soa.h",
+        "Vector1.h",
+        "Vector2.h",
+        "Vector3.h",
+        "InlineFacade.h",
+        "SourceFacade.h"
       ]
     }
   ]

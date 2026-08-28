@@ -8,18 +8,22 @@
 
 template <typename T>
 class TArrayView {
-public:
+  public:
     using SizeType = int32;
 
     TArrayView() = default;
-    TArrayView(T* data, SizeType const count) : data_{data}, count_{count} {}
+    TArrayView(T* data, SizeType const count)
+        : data_{data}
+        , count_{count} {}
 
     template <typename Container>
         requires requires(Container& container) {
             { container.GetData() } -> std::convertible_to<T*>;
             { container.Num() } -> std::convertible_to<SizeType>;
         }
-    TArrayView(Container& container) : data_{container.GetData()}, count_{container.Num()} {}
+    TArrayView(Container& container)
+        : data_{container.GetData()}
+        , count_{container.Num()} {}
 
     auto GetData() const -> T* { return data_; }
     auto Num() const -> SizeType { return count_; }
@@ -35,8 +39,12 @@ public:
     }
 
     auto operator[](SizeType const index) const -> T& { return data_[index]; }
-
-private:
+    auto begin() const -> T* { return data_; }
+    auto end() const -> T* { return data_ + count_; }
+  private:
     T* data_{};
     SizeType count_{};
 };
+
+template <typename T>
+using TConstArrayView = TArrayView<T const>;

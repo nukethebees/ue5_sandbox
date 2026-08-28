@@ -32,12 +32,28 @@ target_link_libraries(sandbox-codegen PRIVATE codegen-lib)
 
 set(CODEGEN_COMPILE_FIXTURE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile_fixture")
 set(CODEGEN_COMPILE_FIXTURE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/generated_compile_fixture")
-set(CODEGEN_COMPILE_FIXTURE_HEADER "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Generated.h")
-set(CODEGEN_COMPILE_FIXTURE_CPP "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Generated.cpp")
+set(CODEGEN_COMPILE_FIXTURE_HEADERS
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Generated.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Soa.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector1.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector2.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/InlineFacade.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
+)
+set(CODEGEN_COMPILE_FIXTURE_SOURCES
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Soa.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector1.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector2.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.cpp"
+)
 add_custom_command(
   OUTPUT
-    "${CODEGEN_COMPILE_FIXTURE_HEADER}"
-    "${CODEGEN_COMPILE_FIXTURE_CPP}"
+    ${CODEGEN_COMPILE_FIXTURE_HEADERS}
+    ${CODEGEN_COMPILE_FIXTURE_SOURCES}
   COMMAND sandbox-codegen
     --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
     --project-root "${CODEGEN_COMPILE_FIXTURE_SOURCE}"
@@ -52,8 +68,8 @@ add_custom_command(
 )
 add_executable(codegen-generated-compile-tests
   tests/generated_compile_smoke.cpp
-  "${CODEGEN_COMPILE_FIXTURE_HEADER}"
-  "${CODEGEN_COMPILE_FIXTURE_CPP}"
+  ${CODEGEN_COMPILE_FIXTURE_HEADERS}
+  ${CODEGEN_COMPILE_FIXTURE_SOURCES}
 )
 target_compile_features(codegen-generated-compile-tests PRIVATE cxx_std_23)
 target_include_directories(codegen-generated-compile-tests PRIVATE
@@ -118,6 +134,27 @@ set_tests_properties(CodegenCliRejectsUnknownArgument PROPERTIES
 )
 add_test(NAME CodegenCliRejectsMissingArgumentValue COMMAND sandbox-codegen --manifest)
 set_tests_properties(CodegenCliRejectsMissingArgumentValue PROPERTIES
+  LABELS "unit;all;codegen"
+  WILL_FAIL TRUE
+)
+add_test(NAME CodegenCliRejectsOptionAsArgumentValue
+  COMMAND sandbox-codegen --manifest --check
+)
+set_tests_properties(CodegenCliRejectsOptionAsArgumentValue PROPERTIES
+  LABELS "unit;all;codegen"
+  WILL_FAIL TRUE
+)
+add_test(NAME CodegenCliRejectsDuplicateArguments
+  COMMAND sandbox-codegen --check --check
+)
+set_tests_properties(CodegenCliRejectsDuplicateArguments PROPERTIES
+  LABELS "unit;all;codegen"
+  WILL_FAIL TRUE
+)
+add_test(NAME CodegenCliReportsMissingManifest
+  COMMAND sandbox-codegen --manifest missing-codegen-manifest.json
+)
+set_tests_properties(CodegenCliReportsMissingManifest PROPERTIES
   LABELS "unit;all;codegen"
   WILL_FAIL TRUE
 )
