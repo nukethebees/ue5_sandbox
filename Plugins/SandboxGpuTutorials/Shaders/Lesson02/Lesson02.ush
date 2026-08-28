@@ -1,0 +1,93 @@
+#ifndef SANDBOX_GPU_TUTORIALS_LESSON02_USH
+#define SANDBOX_GPU_TUTORIALS_LESSON02_USH
+
+float sandbox_gpu_grid_line(float coordinate, float cell_count, float width) {
+    const float cell = frac(coordinate * cell_count);
+    const float distance_to_edge = min(cell, 1.0 - cell);
+    return 1.0 - smoothstep(0.0, width, distance_to_edge);
+}
+
+float sandbox_gpu_axis_line(float coordinate, float width) {
+    return 1.0 - smoothstep(width, width + fwidth(coordinate), abs(coordinate));
+}
+
+float3 sandbox_gpu_lesson02_coordinates(float2 uv) {
+    const float2 centered = uv * 2.0 - 1.0;
+    const float grid = max(sandbox_gpu_grid_line(uv.x, 10.0, 0.045),
+                           sandbox_gpu_grid_line(uv.y, 10.0, 0.045));
+    const float axes = max(sandbox_gpu_axis_line(centered.x, 0.012),
+                           sandbox_gpu_axis_line(centered.y, 0.012));
+
+    float3 color = float3(uv.x, uv.y, 0.16);
+    color = lerp(color, float3(0.08, 0.26, 0.30), grid * 0.55);
+    return lerp(color, float3(1.0, 0.72, 0.12), axes);
+}
+
+float sandbox_gpu_circle_mask(float2 sample_position, float radius, float feather) {
+    return 1.0 - smoothstep(radius - feather, radius + feather, length(sample_position));
+}
+
+float3 sandbox_gpu_lesson02_aspect_ratio(float2 uv, float aspect_ratio) {
+    const float2 centered = uv * 2.0 - 1.0;
+    float2 left_position = centered - float2(-0.50, 0.0);
+    float2 right_position = centered - float2(0.50, 0.0);
+    right_position.x *= aspect_ratio;
+
+    const float uncorrected = sandbox_gpu_circle_mask(left_position, 0.31, 0.008);
+    const float corrected = sandbox_gpu_circle_mask(right_position, 0.31, 0.008);
+    const float divider = sandbox_gpu_axis_line(centered.x, 0.004);
+
+    float3 color = float3(0.012, 0.025, 0.040);
+    color += uncorrected * float3(0.95, 0.32, 0.12);
+    color += corrected * float3(0.10, 0.88, 1.0);
+    color = lerp(color, float3(0.28, 0.34, 0.38), divider);
+    return color;
+}
+
+float3 sandbox_gpu_lesson02_circles(float2 uv) {
+    const float2 centered = uv * 2.0 - 1.0;
+    float2 left_position = centered - float2(-0.52, 0.0);
+    float2 right_position = centered - float2(0.52, 0.0);
+
+    const float hard_circle = step(length(left_position), 0.34);
+    const float ring_distance = abs(length(right_position) - 0.31);
+    const float ring_feather = fwidth(ring_distance);
+    const float smooth_ring = 1.0 - smoothstep(0.035, 0.035 + ring_feather, ring_distance);
+
+    float3 color = float3(0.012, 0.025, 0.040);
+    color += hard_circle * float3(0.95, 0.40, 0.10);
+    color += smooth_ring * float3(0.10, 0.88, 1.0);
+    return color;
+}
+
+float sandbox_gpu_box_distance(float2 sample_position, float2 half_extent) {
+    const float2 outside = abs(sample_position) - half_extent;
+    return length(max(outside, 0.0)) + min(max(outside.x, outside.y), 0.0);
+}
+
+float3 sandbox_gpu_lesson02_boxes(float2 uv) {
+    const float2 centered = uv * 2.0 - 1.0;
+    const float distance_to_box = sandbox_gpu_box_distance(centered, float2(0.58, 0.34));
+    const float feather = fwidth(distance_to_box);
+    const float fill = 1.0 - smoothstep(-feather, feather, distance_to_box);
+    const float outline = 1.0 - smoothstep(0.025, 0.025 + feather, abs(distance_to_box));
+
+    float3 color = lerp(float3(0.012, 0.025, 0.040), float3(0.04, 0.20, 0.25), fill);
+    return lerp(color, float3(0.18, 1.0, 0.66), outline);
+}
+
+float3 sandbox_gpu_lesson02_grid(float2 uv) {
+    const float2 centered = uv * 2.0 - 1.0;
+    const float minor_grid = max(sandbox_gpu_grid_line(uv.x, 12.0, 0.035),
+                                 sandbox_gpu_grid_line(uv.y, 12.0, 0.035));
+    const float crosshair = max(sandbox_gpu_axis_line(centered.x, 0.015),
+                                sandbox_gpu_axis_line(centered.y, 0.015));
+    const float diagonal = 1.0 - smoothstep(0.018, 0.018 + fwidth(centered.x - centered.y),
+                                            abs(centered.x - centered.y));
+
+    float3 color = lerp(float3(0.012, 0.025, 0.040), float3(0.04, 0.22, 0.22), minor_grid);
+    color = lerp(color, float3(0.10, 0.90, 1.0), crosshair);
+    return lerp(color, float3(1.0, 0.62, 0.10), diagonal);
+}
+
+#endif
