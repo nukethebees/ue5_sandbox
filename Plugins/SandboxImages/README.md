@@ -56,6 +56,8 @@ Change the output name and seed to create a deterministic variant without changi
 default set. Shared invert and contrast controls shape the final intensity after generation. Noise
 can optionally use periodic sampling so opposite edges match exactly; imported tileable noise uses
 wrap addressing. Threshold shaping supports hard binary masks or a configurable smooth transition.
+Curl-noise flow maps encode a normalized two-dimensional direction in RG, with neutral blue and
+opaque alpha. Scalar output-shaping controls are intentionally not applied to flow-map data.
 
 | Output | Channel meaning |
 | --- | --- |
@@ -66,6 +68,8 @@ wrap addressing. Threshold shaping supports hard binary masks or a configurable 
 | `nebula_soft.png` | Soft tileable domain-warped grayscale noise |
 | `energy_filaments.png` | Contrasted, smoothly thresholded tileable energy structure |
 | `shield_turbulence.png` | Broad tileable turbulent shield modulation |
+| `nebula_flow.png` | Tileable normalized curl-noise direction encoded in RG |
+| `shield_distortion_flow.png` | Denser tileable shield-distortion direction encoded in RG |
 | `hex_grid_mask.png` | White intensity duplicated into RGB and alpha |
 
 The generators reject invalid dimensions and generator-specific parameter ranges instead of
@@ -75,8 +79,9 @@ changes are deliberate.
 Each PNG is automatically imported as a `UTexture2D` in `/SandboxImages/Lab/Images`. Regeneration
 updates the existing generated texture assets in place. The importer disables sRGB and uses mask
 compression for masks or grayscale compression for coherent noise. It also applies explicit texture
-group, mip, filtering, and addressing settings, and records the generator version and parameters in
-the generated asset's package metadata.
+group, mip, filtering, and addressing settings. Flow maps use vector-displacement compression to
+preserve their RG vector data. Every generated asset records the generator version and parameters
+in its package metadata.
 
 ## Unreal import guidance
 

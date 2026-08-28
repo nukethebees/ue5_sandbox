@@ -13,6 +13,7 @@ enum class EGenLabGenerator : uint8 {
     Starfield UMETA(DisplayName = "Starfield"),
     Noise UMETA(DisplayName = "Coherent Noise"),
     DomainWarpedNoise UMETA(DisplayName = "Domain-Warped Noise"),
+    CurlNoiseFlow UMETA(DisplayName = "Curl-Noise Flow Map"),
     HexGrid UMETA(DisplayName = "Hex Grid Mask"),
 };
 
@@ -42,25 +43,42 @@ class UGenLabSettings final : public UObject {
     UPROPERTY(EditAnywhere, Category = "Output", meta = (ClampMin = "1", ClampMax = "2048"))
     int32 height{256};
 
-    UPROPERTY(EditAnywhere, Category = "Output Shaping")
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "generator != EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides))
     bool invert{false};
 
     UPROPERTY(EditAnywhere,
               Category = "Output Shaping",
-              meta = (ClampMin = "0.0", ClampMax = "8.0"))
+              meta = (EditCondition = "generator != EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "8.0"))
     float contrast{1.0f};
 
-    UPROPERTY(EditAnywhere, Category = "Output Shaping")
+    UPROPERTY(EditAnywhere,
+              Category = "Output Shaping",
+              meta = (EditCondition = "generator != EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides))
     bool threshold_enabled{false};
 
-    UPROPERTY(EditAnywhere,
-              Category = "Output Shaping",
-              meta = (EditCondition = "threshold_enabled", ClampMin = "0.0", ClampMax = "1.0"))
+    UPROPERTY(
+        EditAnywhere,
+        Category = "Output Shaping",
+        meta = (EditCondition = "generator != EGenLabGenerator::CurlNoiseFlow && threshold_enabled",
+                EditConditionHides,
+                ClampMin = "0.0",
+                ClampMax = "1.0"))
     float threshold{0.5f};
 
-    UPROPERTY(EditAnywhere,
-              Category = "Output Shaping",
-              meta = (EditCondition = "threshold_enabled", ClampMin = "0.0", ClampMax = "1.0"))
+    UPROPERTY(
+        EditAnywhere,
+        Category = "Output Shaping",
+        meta = (EditCondition = "generator != EGenLabGenerator::CurlNoiseFlow && threshold_enabled",
+                EditConditionHides,
+                ClampMin = "0.0",
+                ClampMax = "1.0"))
     float threshold_softness{0.1f};
 
     UPROPERTY(EditAnywhere, Category = "Preview")
@@ -246,6 +264,56 @@ class UGenLabSettings final : public UObject {
               meta = (EditCondition = "generator == EGenLabGenerator::DomainWarpedNoise",
                       EditConditionHides))
     bool tileable_domain_noise{true};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Curl-Noise Flow Map",
+              meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides))
+    uint32 flow_seed{0x464C4F57u};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Curl-Noise Flow Map",
+              meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float flow_base_scale{96.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Curl-Noise Flow Map",
+              meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides,
+                      ClampMin = "1",
+                      ClampMax = "16"))
+    int32 flow_octave_count{3};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Curl-Noise Flow Map",
+              meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float flow_persistence{0.35f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Curl-Noise Flow Map",
+              meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float flow_derivative_step{2.5f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Curl-Noise Flow Map",
+              meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float flow_strength{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Curl-Noise Flow Map",
+              meta = (EditCondition = "generator == EGenLabGenerator::CurlNoiseFlow",
+                      EditConditionHides))
+    bool tileable_flow{true};
 
     UPROPERTY(EditAnywhere,
               Category = "Hex Grid",

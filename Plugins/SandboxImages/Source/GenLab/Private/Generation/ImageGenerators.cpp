@@ -395,6 +395,59 @@ auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters
     return image;
 }
 
+auto generate_curl_noise_flow(FCurlNoiseFlowParameters const& parameters) -> FGeneratedImage {
+    if (!FMath::IsFinite(parameters.base_scale) || parameters.base_scale <= 0.0f ||
+        parameters.octave_count <= 0 || parameters.octave_count > 16 ||
+        !FMath::IsFinite(parameters.persistence) || parameters.persistence < 0.0f ||
+        parameters.persistence > 1.0f || !FMath::IsFinite(parameters.derivative_step) ||
+        parameters.derivative_step <= 0.0f || !FMath::IsFinite(parameters.strength) ||
+        parameters.strength < 0.0f || parameters.strength > 1.0f) {
+        return invalid_image(TEXT("Curl-noise flow parameters require a positive finite scale and "
+                                  "derivative step, octave_count in [1, 16], and persistence and "
+                                  "strength in [0, 1]."));
+    }
+
+    auto image{make_image(parameters.width, parameters.height, FColor{128, 128, 128, 255})};
+    if (!image.is_valid()) {
+        return image;
+    }
+
+    auto const sample{[&parameters](float const x, float const y) {
+        return fractal_noise_sample(x,
+                                    y,
+                                    parameters.width,
+                                    parameters.height,
+                                    parameters.seed,
+                                    parameters.base_scale,
+                                    parameters.octave_count,
+                                    parameters.persistence,
+                                    parameters.tileable);
+    }};
+    for (int32 y{0}; y < parameters.height; ++y) {
+        for (int32 x{0}; x < parameters.width; ++x) {
+            auto const sample_x{static_cast<float>(x)};
+            auto const sample_y{static_cast<float>(y)};
+            auto flow_x{sample(sample_x, sample_y + parameters.derivative_step) -
+                        sample(sample_x, sample_y - parameters.derivative_step)};
+            auto flow_y{sample(sample_x - parameters.derivative_step, sample_y) -
+                        sample(sample_x + parameters.derivative_step, sample_y)};
+            auto const magnitude{FMath::Sqrt(flow_x * flow_x + flow_y * flow_y)};
+            if (magnitude > UE_SMALL_NUMBER) {
+                auto const scale{parameters.strength / magnitude};
+                flow_x *= scale;
+                flow_y *= scale;
+            } else {
+                flow_x = 0.0f;
+                flow_y = 0.0f;
+            }
+
+            image.pixels[y * parameters.width + x] = {
+                to_byte(flow_x * 0.5f + 0.5f), to_byte(flow_y * 0.5f + 0.5f), 128, 255};
+        }
+    }
+    return image;
+}
+
 auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage {
     if (parameters.cell_radius <= 0.0f || parameters.line_thickness <= 0.0f ||
         parameters.falloff < 0.0f) {
@@ -459,6 +512,9 @@ auto make_default_request(EGeneratorType const generator) -> FGenerationRequest 
         case EGeneratorType::DomainWarpedNoise:
             request.output_name = TEXT("nebula_soft");
             break;
+        case EGeneratorType::CurlNoiseFlow:
+            request.output_name = TEXT("nebula_flow");
+            break;
         case EGeneratorType::HexGrid:
             request.output_name = TEXT("hex_grid_mask");
             break;
@@ -501,6 +557,18 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
                                       .threshold = 0.48f,
                                       .threshold_softness = 0.38f};
 
+    auto nebula_flow{make_default_request(EGeneratorType::CurlNoiseFlow)};
+
+    auto shield_distortion_flow{make_default_request(EGeneratorType::CurlNoiseFlow)};
+    shield_distortion_flow.output_name = TEXT("shield_distortion_flow");
+    shield_distortion_flow.curl_noise_flow = {.seed = 0x53484945u,
+                                              .base_scale = 64.0f,
+                                              .octave_count = 4,
+                                              .persistence = 0.35f,
+                                              .derivative_step = 2.0f,
+                                              .strength = 0.85f,
+                                              .tileable = true};
+
     return {
         make_default_request(EGeneratorType::RadialGradient),
         make_default_request(EGeneratorType::RingMask),
@@ -509,6 +577,8 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
         MoveTemp(nebula_soft),
         MoveTemp(energy_filaments),
         MoveTemp(shield_turbulence),
+        MoveTemp(nebula_flow),
+        MoveTemp(shield_distortion_flow),
         make_default_request(EGeneratorType::HexGrid),
     };
 }
@@ -535,10 +605,16 @@ auto generate_image(FGenerationRequest const& request) -> FGeneratedImage {
         case EGeneratorType::DomainWarpedNoise:
             image = generate_domain_warped_noise(request.domain_warped_noise);
             break;
+        case EGeneratorType::CurlNoiseFlow:
+            image = generate_curl_noise_flow(request.curl_noise_flow);
+            break;
         case EGeneratorType::HexGrid:
             image = generate_hex_grid(request.hex_grid);
             alpha_is_intensity = true;
             break;
+    }
+    if (request.generator == EGeneratorType::CurlNoiseFlow) {
+        return image;
     }
     return apply_post_process(MoveTemp(image), request.post_process, alpha_is_intensity);
 }
@@ -608,6 +684,21 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                 request.domain_warped_noise.persistence,
                 request.domain_warped_noise.tileable ? TEXT("true") : TEXT("false"));
             break;
+        case EGeneratorType::CurlNoiseFlow:
+            description = FString::Printf(
+                TEXT("version=3; generator=curl_noise_flow; dimensions=%dx%d; seed=%u; "
+                     "base_scale=%g; octave_count=%d; persistence=%g; derivative_step=%g; "
+                     "strength=%g; tileable=%s"),
+                request.curl_noise_flow.width,
+                request.curl_noise_flow.height,
+                request.curl_noise_flow.seed,
+                request.curl_noise_flow.base_scale,
+                request.curl_noise_flow.octave_count,
+                request.curl_noise_flow.persistence,
+                request.curl_noise_flow.derivative_step,
+                request.curl_noise_flow.strength,
+                request.curl_noise_flow.tileable ? TEXT("true") : TEXT("false"));
+            break;
         case EGeneratorType::HexGrid:
             description = FString::Printf(TEXT("version=3; generator=hex_grid; dimensions=%dx%d; "
                                                "cell_radius=%g; line_thickness=%g; falloff=%g"),
@@ -617,6 +708,9 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                                           request.hex_grid.line_thickness,
                                           request.hex_grid.falloff);
             break;
+    }
+    if (request.generator == EGeneratorType::CurlNoiseFlow) {
+        return description;
     }
     return description +
            FString::Printf(TEXT("; invert=%s; contrast=%g; threshold_enabled=%s; threshold=%g; "

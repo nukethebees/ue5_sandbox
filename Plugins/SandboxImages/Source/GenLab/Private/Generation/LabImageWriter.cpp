@@ -38,6 +38,12 @@ auto import_settings_for(FGenerationRequest const& request) -> FTextureImportSet
             settings.address_x = TA_Wrap;
             settings.address_y = TA_Wrap;
         }
+    } else if (request.generator == EGeneratorType::CurlNoiseFlow) {
+        settings.compression = TC_VectorDisplacementmap;
+        if (request.curl_noise_flow.tileable) {
+            settings.address_x = TA_Wrap;
+            settings.address_y = TA_Wrap;
+        }
     }
     return settings;
 }

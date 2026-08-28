@@ -50,6 +50,10 @@ auto scale_request_for_preview(SandboxImages::GenLab::FGenerationRequest request
             width = request.domain_warped_noise.width;
             height = request.domain_warped_noise.height;
             break;
+        case SandboxImages::GenLab::EGeneratorType::CurlNoiseFlow:
+            width = request.curl_noise_flow.width;
+            height = request.curl_noise_flow.height;
+            break;
         case SandboxImages::GenLab::EGeneratorType::HexGrid:
             width = request.hex_grid.width;
             height = request.hex_grid.height;
@@ -93,6 +97,12 @@ auto scale_request_for_preview(SandboxImages::GenLab::FGenerationRequest request
             request.domain_warped_noise.base_scale *= scale;
             request.domain_warped_noise.warp_scale *= scale;
             request.domain_warped_noise.warp_strength *= scale;
+            break;
+        case SandboxImages::GenLab::EGeneratorType::CurlNoiseFlow:
+            request.curl_noise_flow.width = preview_width;
+            request.curl_noise_flow.height = preview_height;
+            request.curl_noise_flow.base_scale *= scale;
+            request.curl_noise_flow.derivative_step *= scale;
             break;
         case SandboxImages::GenLab::EGeneratorType::HexGrid:
             request.hex_grid.width = preview_width;

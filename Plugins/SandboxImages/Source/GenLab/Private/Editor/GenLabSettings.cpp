@@ -14,6 +14,8 @@ auto to_generator_type(EGenLabGenerator const generator) -> SandboxImages::GenLa
             return Noise;
         case EGenLabGenerator::DomainWarpedNoise:
             return DomainWarpedNoise;
+        case EGenLabGenerator::CurlNoiseFlow:
+            return CurlNoiseFlow;
         case EGenLabGenerator::HexGrid:
             return HexGrid;
     }
@@ -60,6 +62,15 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
                                    .warp_octave_count = domain_warp_octave_count,
                                    .persistence = domain_persistence,
                                    .tileable = tileable_domain_noise};
+    request.curl_noise_flow = {.width = width,
+                               .height = height,
+                               .seed = flow_seed,
+                               .base_scale = flow_base_scale,
+                               .octave_count = flow_octave_count,
+                               .persistence = flow_persistence,
+                               .derivative_step = flow_derivative_step,
+                               .strength = flow_strength,
+                               .tileable = tileable_flow};
     request.hex_grid = {.width = width,
                         .height = height,
                         .cell_radius = hex_cell_radius,
@@ -122,6 +133,17 @@ void UGenLabSettings::load_generator_defaults() {
             domain_warp_octave_count = request.domain_warped_noise.warp_octave_count;
             domain_persistence = request.domain_warped_noise.persistence;
             tileable_domain_noise = request.domain_warped_noise.tileable;
+            break;
+        case EGenLabGenerator::CurlNoiseFlow:
+            width = request.curl_noise_flow.width;
+            height = request.curl_noise_flow.height;
+            flow_seed = request.curl_noise_flow.seed;
+            flow_base_scale = request.curl_noise_flow.base_scale;
+            flow_octave_count = request.curl_noise_flow.octave_count;
+            flow_persistence = request.curl_noise_flow.persistence;
+            flow_derivative_step = request.curl_noise_flow.derivative_step;
+            flow_strength = request.curl_noise_flow.strength;
+            tileable_flow = request.curl_noise_flow.tileable;
             break;
         case EGenLabGenerator::HexGrid:
             width = request.hex_grid.width;

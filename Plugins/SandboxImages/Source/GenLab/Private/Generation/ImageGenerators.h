@@ -63,6 +63,18 @@ struct FDomainWarpedNoiseParameters {
     bool tileable{true};
 };
 
+struct FCurlNoiseFlowParameters {
+    int32 width{256};
+    int32 height{256};
+    uint32 seed{0x464C4F57u};
+    float base_scale{96.0f};
+    int32 octave_count{3};
+    float persistence{0.35f};
+    float derivative_step{2.5f};
+    float strength{1.0f};
+    bool tileable{true};
+};
+
 struct FHexGridParameters {
     int32 width{256};
     int32 height{256};
@@ -77,6 +89,7 @@ enum class EGeneratorType : uint8 {
     Starfield,
     Noise,
     DomainWarpedNoise,
+    CurlNoiseFlow,
     HexGrid,
 };
 
@@ -96,6 +109,7 @@ struct FGenerationRequest {
     FStarfieldParameters starfield;
     FNoiseParameters noise;
     FDomainWarpedNoiseParameters domain_warped_noise;
+    FCurlNoiseFlowParameters curl_noise_flow;
     FHexGridParameters hex_grid;
     FImagePostProcessParameters post_process;
 };
@@ -106,6 +120,8 @@ struct FGenerationRequest {
 [[nodiscard]] auto generate_starfield(FStarfieldParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters)
+    -> FGeneratedImage;
+[[nodiscard]] auto generate_curl_noise_flow(FCurlNoiseFlowParameters const& parameters)
     -> FGeneratedImage;
 [[nodiscard]] auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto make_default_request(EGeneratorType generator) -> FGenerationRequest;

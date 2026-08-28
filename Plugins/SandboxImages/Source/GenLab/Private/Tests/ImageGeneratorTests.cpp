@@ -65,6 +65,11 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                          width,
                          height);
         test_valid_image(*TestRunner,
+                         TEXT("curl-noise flow"),
+                         generate_curl_noise_flow({.width = width, .height = height}),
+                         width,
+                         height);
+        test_valid_image(*TestRunner,
                          TEXT("hex grid"),
                          generate_hex_grid({.width = width, .height = height}),
                          width,
@@ -78,6 +83,7 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
         auto const invalid_starfield{generate_starfield({.minimum_radius = -1.0f})};
         auto const invalid_noise{generate_noise({.base_scale = 0.0f})};
         auto const invalid_domain_noise{generate_domain_warped_noise({.warp_octave_count = 0})};
+        auto const invalid_flow{generate_curl_noise_flow({.derivative_step = 0.0f})};
         auto const invalid_hex{generate_hex_grid({.cell_radius = 0.0f})};
 
         for (auto const* image : {&invalid_dimensions,
@@ -85,6 +91,7 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                                   &invalid_starfield,
                                   &invalid_noise,
                                   &invalid_domain_noise,
+                                  &invalid_flow,
                                   &invalid_hex}) {
             TestRunner->TestFalse(TEXT("Invalid parameters produce no valid image"),
                                   image->is_valid());
@@ -99,9 +106,9 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
     TEST_METHOD(DefaultRequestsAreNamedUniqueAndGenerateValidImages)
     {
         auto const requests{default_generation_requests()};
-        TestRunner->TestEqual(TEXT("There are five base examples and three warped-noise examples"),
+        TestRunner->TestEqual(TEXT("There are five base examples and five noise-derived examples"),
                               requests.Num(),
-                              8);
+                              10);
 
         TSet<FString> output_names;
         for (auto const& request : requests) {
@@ -396,6 +403,92 @@ TEST_CLASS(DomainWarpedNoiseGenerator, "SandboxImages.UnitTests")
             } else if (request.output_name == TEXT("shield_turbulence")) {
                 expected_checksum = 3121887609u;
             }
+            TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
+                                  pixel_checksum(generate_image(request)),
+                                  expected_checksum);
+        }
+    }
+};
+
+TEST_CLASS(CurlNoiseFlowGenerator, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(IsDeterministicNormalizedAndTileable)
+    {
+        FCurlNoiseFlowParameters parameters{.width = 97,
+                                            .height = 65,
+                                            .seed = 8642u,
+                                            .base_scale = 36.0f,
+                                            .octave_count = 4,
+                                            .persistence = 0.55f,
+                                            .derivative_step = 1.5f,
+                                            .strength = 0.8f,
+                                            .tileable = true};
+        auto const first{generate_curl_noise_flow(parameters)};
+        auto const second{generate_curl_noise_flow(parameters)};
+        parameters.seed += 1;
+        auto const changed_seed{generate_curl_noise_flow(parameters)};
+
+        TestRunner->TestTrue(TEXT("Same flow parameters produce identical output"),
+                             first.pixels == second.pixels);
+        TestRunner->TestTrue(TEXT("Flow seed affects the output"),
+                             first.pixels != changed_seed.pixels);
+        for (int32 y{0}; y < first.height; ++y) {
+            TestRunner->TestEqual(TEXT("Flow left and right edges match"),
+                                  pixel_at(first, 0, y),
+                                  pixel_at(first, first.width - 1, y));
+        }
+        for (int32 x{0}; x < first.width; ++x) {
+            TestRunner->TestEqual(TEXT("Flow top and bottom edges match"),
+                                  pixel_at(first, x, 0),
+                                  pixel_at(first, x, first.height - 1));
+        }
+
+        int32 normalized_pixel_count{0};
+        int32 neutral_blue_count{0};
+        int32 opaque_alpha_count{0};
+        for (auto const pixel : first.pixels) {
+            auto const flow_x{static_cast<float>(pixel.R) / 127.5f - 1.0f};
+            auto const flow_y{static_cast<float>(pixel.G) / 127.5f - 1.0f};
+            auto const magnitude{FMath::Sqrt(flow_x * flow_x + flow_y * flow_y)};
+            normalized_pixel_count += FMath::IsNearlyEqual(magnitude, 0.8f, 0.02f) ? 1 : 0;
+            neutral_blue_count += pixel.B == 128 ? 1 : 0;
+            opaque_alpha_count += pixel.A == 255 ? 1 : 0;
+        }
+        TestRunner->TestEqual(TEXT("Every flow vector has the configured magnitude"),
+                              normalized_pixel_count,
+                              first.pixels.Num());
+        TestRunner->TestEqual(TEXT("Every flow pixel has a neutral blue channel"),
+                              neutral_blue_count,
+                              first.pixels.Num());
+        TestRunner->TestEqual(
+            TEXT("Every flow pixel has opaque alpha"), opaque_alpha_count, first.pixels.Num());
+    }
+
+    TEST_METHOD(ScalarPostProcessingDoesNotAlterEncodedVectors)
+    {
+        auto request{make_default_request(EGeneratorType::CurlNoiseFlow)};
+        request.curl_noise_flow = {.width = 48, .height = 32};
+        request.post_process = {.invert = true,
+                                .contrast = 0.0f,
+                                .threshold_enabled = true,
+                                .threshold = 0.9f,
+                                .threshold_softness = 0.0f};
+
+        TestRunner->TestTrue(TEXT("Scalar shaping is bypassed for flow-map data"),
+                             generate_image(request).pixels ==
+                                 generate_curl_noise_flow(request.curl_noise_flow).pixels);
+    }
+
+    TEST_METHOD(DefaultExamplesHaveStableChecksums)
+    {
+        for (auto const& request : default_generation_requests()) {
+            if (request.generator != EGeneratorType::CurlNoiseFlow) {
+                continue;
+            }
+
+            auto const expected_checksum{request.output_name == TEXT("nebula_flow")
+                                             ? uint32{3933359053}
+                                             : uint32{4132526790}};
             TestRunner->TestEqual(*FString::Printf(TEXT("%s checksum"), *request.output_name),
                                   pixel_checksum(generate_image(request)),
                                   expected_checksum);
