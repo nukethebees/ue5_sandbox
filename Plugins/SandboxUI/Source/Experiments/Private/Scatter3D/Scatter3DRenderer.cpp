@@ -181,9 +181,9 @@ void set_scatter_viewport(FRHICommandList& rhi_command_list, FIntPoint const out
     rhi_command_list.SetStreamSource(0, nullptr, 0);
 }
 
-void add_background_pass(FRDGBuilder& graph_builder,
-                         FRDGTextureRef const output_texture,
-                         FIntPoint const output_size) {
+void add_scatter_background_pass(FRDGBuilder& graph_builder,
+                                 FRDGTextureRef const output_texture,
+                                 FIntPoint const output_size) {
     auto* const parameters{graph_builder.AllocParameters<FScatterBackgroundPassParameters>()};
     parameters->VS.OutputSize = output_size;
     parameters->PS.OutputSize = output_size;
@@ -310,7 +310,7 @@ void execute_scatter_graph(FRHICommandListImmediate& rhi_command_list,
                                                               TexCreate_DepthStencilTargetable),
                                     TEXT("Scatter3D.Depth"))};
 
-    add_background_pass(graph_builder, output_texture, output_size);
+    add_scatter_background_pass(graph_builder, output_texture, output_size);
     add_frame_pass(graph_builder, output_texture, depth_texture, output_size);
     add_sample_pass(
         graph_builder, output_texture, depth_texture, sample_srv, points.Num(), output_size);
