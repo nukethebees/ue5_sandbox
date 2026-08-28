@@ -5,6 +5,9 @@ add_library(codegen-lib
   src/ast.cpp
   src/facade_lowering.cpp
   src/fixed_soa_lowering.cpp
+  src/fixed_soa_layout.cpp
+  src/fixed_soa_container_lowering.cpp
+  src/fixed_soa_storage_lowering.cpp
   src/generator.cpp
   src/homogeneous_lowering.cpp
   src/json.cpp
