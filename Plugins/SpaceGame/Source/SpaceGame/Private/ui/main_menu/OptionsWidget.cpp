@@ -7,8 +7,8 @@
 
 namespace ml::ioj {
 namespace {
-FLinearColor const selected_tab_colour{0.16f, 0.38f, 0.55f, 1.f};
-FLinearColor const inactive_tab_colour{0.12f, 0.14f, 0.16f, 1.f};
+FLinearColor const options_selected_tab_colour{0.16f, 0.38f, 0.55f, 1.f};
+FLinearColor const options_inactive_tab_colour{0.12f, 0.14f, 0.16f, 1.f};
 }
 
 void UOptionsWidget::NativeOnInitialized() {
@@ -122,6 +122,6 @@ void UOptionsWidget::set_active_tab(EOptionsTab const tab) {
 }
 
 void UOptionsWidget::set_tab_button_state(UButton& button, bool const selected) {
-    button.SetBackgroundColor(selected ? selected_tab_colour : inactive_tab_colour);
+    button.SetBackgroundColor(selected ? options_selected_tab_colour : options_inactive_tab_colour);
 }
 }
