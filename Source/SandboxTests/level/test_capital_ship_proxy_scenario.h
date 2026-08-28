@@ -16,7 +16,7 @@ class FTestCapitalShipProxyScenario final : public FSimulationTestScenario {
     void run() override;
   private:
     void on_tear_down() override;
-    void spawn_proxies(UWorld& world, UTestSimulationConfig const& config);
+    void spawn_proxies(UWorld& world, USpaceGameLevelConfig const& config);
     void resolve_proxy_handles(FProxyEntityMap const& proxy_entities);
     void check_proxy_healths();
 

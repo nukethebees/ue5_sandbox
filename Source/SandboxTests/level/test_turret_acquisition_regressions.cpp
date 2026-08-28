@@ -8,9 +8,8 @@
 #include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -45,9 +44,7 @@ void FTurretAcquisitionRegressionScenario::spawn_fixture() {
 
             auto location{FVector::ZeroVector};
             if (i == 1) {
-                auto const* const simulation_config{context_.config.simulation_config.Get()};
-                auto const* const turret_config{
-                    simulation_config ? simulation_config->static_turrets_config.Get() : nullptr};
+                auto const* const turret_config{&context_.config.turrets};
                 auto const distance{
                     scenario_ == ETurretAcquisitionRegressionScenario::EnemyOutsideRadius &&
                             turret_config

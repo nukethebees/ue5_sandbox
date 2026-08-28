@@ -1,17 +1,15 @@
 #include "SpaceGame/defences/turrets/TestStaticTurrets.h"
 
-#include <SpaceGame/simulation/SpatialQueryManager.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
+#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
+#include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
-#include <SpaceGame/entities/TestBatchActorCore.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/combat/lasers/TestLasersConfig.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
@@ -62,9 +60,12 @@ void ATestStaticTurrets::begin_play() {
     check(entity_registry);
     check(spatial_query_manager);
 
+    if (!actor_config) {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestStaticTurrets actor_config is nullptr."));
+    }
+
     ml::fatal_if_uobject_ptrs_invalid({
         {
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         },
         {
@@ -78,7 +79,7 @@ void ATestStaticTurrets::begin_play() {
     debug_drawer.world = GetWorld();
 
     auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(actor_config->attack_cooldown)};
+        simulation_clock.duration_to_tick_period(actor_config->laser.fire_cooldown)};
     entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
 
     target_refresh_next_offset = 0;
@@ -308,8 +309,8 @@ void ATestStaticTurrets::fire_at_enemies() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::fire_at_enemies);
 
     auto const n{get_num_instances()};
-    auto const laser_speed{actor_config->laser_speed};
-    auto const laser_max_distance{actor_config->laser_max_distance};
+    auto const laser_speed{actor_config->laser.projectile_speed};
+    auto const laser_max_distance{actor_config->laser.max_distance};
 
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
@@ -452,7 +453,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
         auto const team{proxies[i]->get_team()};
         entities.teams[i] = team;
         entities.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
-        entities.laser_damages[i] = proxies[i]->get_laser_damage().Get(actor_config->laser_damage);
+        entities.laser_damages[i] = proxies[i]->get_laser_damage().Get(actor_config->laser.damage);
 
         entities.target_refresh_countdowns.remaining_ticks[i] =
             static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_next_offset);
@@ -491,7 +492,7 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
 void ATestStaticTurrets::trigger_death_effects() {
     auto const n{ml::num(local_indices_to_remove)};
     auto* world{GetWorld()};
-    auto* explosion_system{actor_config->death_effect};
+    auto* explosion_system{actor_config->death_effect.Get()};
 
     if (!IsValid(explosion_system)) {
         UE_LOG(LogSandbox,

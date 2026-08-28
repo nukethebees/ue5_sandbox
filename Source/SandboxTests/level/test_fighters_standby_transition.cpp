@@ -1,10 +1,10 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
-#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
@@ -29,7 +29,7 @@ FFightersStandbyTransitionScenario::FFightersStandbyTransitionScenario(
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FFightersStandbyTransitionScenario::spawn_capitals(UWorld& world,
-                                                        UTestSimulationConfig const& config) {
+                                                        USpaceGameLevelConfig const& config) {
     auto* const hero{ml::spawn_capital_proxy(
         world, config, checks, TEXT("hero_capital"), FVector{-4000.f, 0.f, 0.f})};
     if (!checks.is_valid(hero, TEXT("Hero capital is spawned"))) {

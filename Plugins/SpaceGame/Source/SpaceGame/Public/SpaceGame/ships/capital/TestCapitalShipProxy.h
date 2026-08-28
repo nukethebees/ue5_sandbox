@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
 #include "SpaceGame/entities/TestEntity.h"
 #include "SpaceGame/entities/TestTeam.h"
 
@@ -13,8 +15,6 @@
 class UStaticMeshComponent;
 class UArrowComponent;
 
-class UTestCapitalShipsConfig;
-
 UCLASS()
 class ATestCapitalShipProxy
     : public AActor
@@ -23,7 +23,7 @@ class ATestCapitalShipProxy
   public:
     ATestCapitalShipProxy();
 
-    void set_actor_config(UTestCapitalShipsConfig* const new_config) noexcept {
+    void set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
   protected:
@@ -34,9 +34,6 @@ class ATestCapitalShipProxy
     void apply_asset_configuration();
     UFUNCTION(CallInEditor, Category = "Ship")
     void apply_asset_configuration_to_all_instances();
-    UFUNCTION(CallInEditor, Category = "Ship")
-    void save_configuration_to_asset();
-
     auto get_team() const noexcept { return team; }
     auto get_target_ship() const noexcept { return target_ship; }
     auto get_health() const noexcept { return health; }
@@ -63,8 +60,7 @@ class ATestCapitalShipProxy
     void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
 #endif
   protected:
-    UPROPERTY(EditAnywhere, Category = "Ship")
-    TObjectPtr<UTestCapitalShipsConfig> actor_config{nullptr};
+    FCapitalShipConfig const* actor_config{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};

@@ -1,19 +1,18 @@
 #pragma once
 
-#include <SpaceGame/simulation/LevelTelemetryManager.h>
-#include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/simulation/SimulationActorClasses.h>
-#include <SpaceGame/simulation/SimulationConfig.h>
-#include <SpaceGame/simulation/SpatialQueryManager.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h>
 #include <SpaceGame/combat/lasers/TestLasersPhaseInterface.h>
-#include <SpaceGame/missions/TestMissionManager.h>
-#include <SpaceGame/ships/player/TestSpaceShipPhaseInterface.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h>
+#include <SpaceGame/entities/ProxyEntityMap.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/HUDManager.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h>
+#include <SpaceGame/ships/player/TestSpaceShipPhaseInterface.h>
+#include <SpaceGame/simulation/LevelTelemetryManager.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/FixedTickLoop.h>
 
 #include <CoreMinimal.h>
@@ -29,7 +28,6 @@ class ATestStaticTurrets;
 class ATestTubeSpinners;
 
 class ADelayedNiagaraSpawner;
-class UTestSimulationConfig;
 
 class ATestBatchOrchestrator;
 
@@ -67,11 +65,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void pause_simulation();
     void reset_for_new_level();
 
-    void set_test_config(UTestSimulationConfig const& config);
+    void set_level_config(USpaceGameLevelConfig& config);
+    auto get_level_config() const noexcept -> USpaceGameLevelConfig const* {
+        return level_config.Get();
+    }
     void set_start_mode(EOrchestratorStartMode mode);
-    void set_assets(USimulationConfig* const assets,
-                    ESimulationAssetActorScope const actor_scope,
-                    ESimulationAssetProxyMode const proxy_mode);
     void set_time_scale(time_type scale) noexcept;
 
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
@@ -132,7 +130,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Sandbox|Assets")
-    void apply_simulation_config();
+    void apply_level_config();
 
     UFUNCTION(CallInEditor, Category = "Sandbox")
     void spawn_missing_actors_button();
@@ -158,7 +156,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     bool enable_visual_logging{false};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
-    TObjectPtr<USimulationConfig> simulation_config{nullptr};
+    TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
     FFixedTickLoop hud_tick_loop{};
 
@@ -197,16 +195,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
-    FSimulationActorClasses actor_classes;
-
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
-    ESimulationAssetActorScope simulation_asset_actor_scope{
-        ESimulationAssetActorScope::OrchestratorActors};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
-    ESimulationAssetProxyMode simulation_asset_proxy_mode{ESimulationAssetProxyMode::Include};
-
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool log_ticks{false};
 #endif

@@ -1,22 +1,21 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/entities/TestEntity.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/missions/TestMissionManager.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinners.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/entities/TestEntity.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/HUDManager.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/invoke.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -25,7 +24,6 @@
 #include <CoreGlobals.h>
 #include <Engine/LevelScriptActor.h>
 #include <EngineUtils.h>
-#include <HAL/PlatformMisc.h>
 #include <GameFramework/GameModeBase.h>
 #include <GameFramework/GameStateBase.h>
 #include <GameFramework/HUD.h>
@@ -33,6 +31,7 @@
 #include <GameFramework/PlayerController.h>
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
+#include <HAL/PlatformMisc.h>
 #include <Kismet/GameplayStatics.h>
 #include <VisualLogger/VisualLogger.h>
 
@@ -248,19 +247,19 @@ void ATestBatchOrchestrator::reset_for_new_level() {
         }
     }
 
-    constexpr auto apply_config{[](auto const actor_ptr, auto const actor_config) {
+    constexpr auto apply_config{[](auto const actor_ptr, auto const* const actor_config) {
         if (IsValid(actor_ptr)) {
-            apply_actor_config(*actor_ptr, actor_config.Get());
+            apply_actor_config(*actor_ptr, actor_config);
         }
     }};
 
-    if (IsValid(simulation_config)) {
-        apply_config(player_ship, simulation_config->player_ship_config);
-        apply_config(lasers, simulation_config->lasers_config);
-        apply_config(capital_ships, simulation_config->capital_ships_config);
-        apply_config(capital_ship_fighters, simulation_config->capital_ship_fighters_config);
-        apply_config(turrets, simulation_config->static_turrets_config);
-        apply_config(spinners, simulation_config->tube_spinners_config);
+    if (IsValid(level_config)) {
+        apply_config(player_ship, &level_config->player_ship);
+        apply_config(lasers, &level_config->laser_projectiles);
+        apply_config(capital_ships, &level_config->capital_ships);
+        apply_config(capital_ship_fighters, &level_config->fighters);
+        apply_config(turrets, &level_config->turrets);
+        apply_config(spinners, &level_config->tube_spinners);
     }
 
     for (int32 i{0}; i < recreated_actor_count; ++i) {
@@ -277,15 +276,43 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     on_reset.Broadcast(*this);
 }
 
-void ATestBatchOrchestrator::set_test_config(UTestSimulationConfig const& config) {
-    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Test simulation config is invalid"))) {
+void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
+    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Level config is invalid"))) {
         return;
     }
 
-    actor_classes = config.actor_classes;
-    set_assets(config.simulation_config.Get(),
-               ESimulationAssetActorScope::OrchestratorActors,
-               ESimulationAssetProxyMode::Include);
+#if WITH_EDITOR
+    if (auto const* const world{GetWorld()}; IsValid(world) && !world->IsGameWorld()) {
+        Modify();
+    }
+#endif
+
+    level_config = &config;
+    if (IsValid(player_ship)) {
+        apply_actor_config(*player_ship, &config.player_ship);
+    }
+    if (IsValid(lasers)) {
+        apply_actor_config(*lasers, &config.laser_projectiles);
+    }
+    if (IsValid(capital_ships)) {
+        apply_actor_config(*capital_ships, &config.capital_ships);
+    }
+    if (IsValid(capital_ship_fighters)) {
+        apply_actor_config(*capital_ship_fighters, &config.fighters);
+    }
+    if (IsValid(turrets)) {
+        apply_actor_config(*turrets, &config.turrets);
+    }
+    if (IsValid(spinners)) {
+        apply_actor_config(*spinners, &config.tube_spinners);
+    }
+
+    auto* const world{GetWorld()};
+    if (IsValid(world)) {
+        set_actor_config_on_all<ATestCapitalShipProxy>(*world, &config.capital_ships);
+        set_actor_config_on_all<ATestStaticTurretsProxy>(*world, &config.turrets);
+        set_actor_config_on_all<ATestTubeSpinnerProxy>(*world, &config.tube_spinners);
+    }
 }
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     if (state != EOrchestratorState::Uninitialised) {
@@ -297,77 +324,6 @@ void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
 
     start_mode = mode;
 }
-void ATestBatchOrchestrator::set_assets(USimulationConfig* const assets,
-                                        ESimulationAssetActorScope const actor_scope,
-                                        ESimulationAssetProxyMode const proxy_mode) {
-    if (!ensureAlwaysMsgf(IsValid(assets), TEXT("Simulation config is invalid"))) {
-        return;
-    }
-    if (!ensureAlwaysMsgf(assets->is_valid(),
-                          TEXT("Simulation config contains invalid actor configs"))) {
-        return;
-    }
-
-    auto* const world{GetWorld()};
-    auto const requires_world{actor_scope == ESimulationAssetActorScope::AllActorsInLevel ||
-                              proxy_mode == ESimulationAssetProxyMode::Include};
-    if (requires_world &&
-        !ensureAlwaysMsgf(IsValid(world), TEXT("Cannot apply simulation config without a world"))) {
-        return;
-    }
-
-#if WITH_EDITOR
-    if (IsValid(world) && !world->IsGameWorld()) {
-        Modify();
-    }
-#endif
-    simulation_config = assets;
-#if WITH_EDITORONLY_DATA
-    simulation_asset_actor_scope = actor_scope;
-    simulation_asset_proxy_mode = proxy_mode;
-#endif
-
-    if (actor_scope == ESimulationAssetActorScope::OrchestratorActors) {
-        if (IsValid(player_ship)) {
-            apply_actor_config(*player_ship, assets->player_ship_config.Get());
-        }
-        if (IsValid(lasers)) {
-            apply_actor_config(*lasers, assets->lasers_config.Get());
-        }
-        if (IsValid(capital_ships)) {
-            apply_actor_config(*capital_ships, assets->capital_ships_config.Get());
-        }
-        if (IsValid(capital_ship_fighters)) {
-            apply_actor_config(*capital_ship_fighters, assets->capital_ship_fighters_config.Get());
-        }
-        if (IsValid(turrets)) {
-            apply_actor_config(*turrets, assets->static_turrets_config.Get());
-        }
-        if (IsValid(spinners)) {
-            apply_actor_config(*spinners, assets->tube_spinners_config.Get());
-        }
-    } else {
-        check(world);
-        set_actor_config_on_all<ATestSpaceShip>(*world, assets->player_ship_config.Get());
-        set_actor_config_on_all<ATestLasers>(*world, assets->lasers_config.Get());
-        set_actor_config_on_all<ATestCapitalShips>(*world, assets->capital_ships_config.Get());
-        set_actor_config_on_all<ATestCapitalShipFighters>(
-            *world, assets->capital_ship_fighters_config.Get());
-        set_actor_config_on_all<ATestStaticTurrets>(*world, assets->static_turrets_config.Get());
-        set_actor_config_on_all<ATestTubeSpinners>(*world, assets->tube_spinners_config.Get());
-    }
-
-    if (proxy_mode == ESimulationAssetProxyMode::Include) {
-        check(world);
-        set_actor_config_on_all<ATestCapitalShips::Proxy>(*world,
-                                                          assets->capital_ships_config.Get());
-        set_actor_config_on_all<ATestStaticTurrets::Proxy>(*world,
-                                                           assets->static_turrets_config.Get());
-        set_actor_config_on_all<ATestTubeSpinners::Proxy>(*world,
-                                                          assets->tube_spinners_config.Get());
-    }
-}
-
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
 }
@@ -387,6 +343,12 @@ void ATestBatchOrchestrator::begin_play() {
     mission_manager.reset_runtime_state();
 
     auto* world{GetWorld()};
+
+    if (IsValid(level_config)) {
+        set_level_config(*level_config);
+    } else {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestBatchOrchestrator level_config is nullptr."));
+    }
 
 #if WITH_EDITOR
     if (log_ticks) {
@@ -885,19 +847,20 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
         player_ship = ml::get_first_actor<ATestSpaceShip>(*world);
     }
 
-    lasers = spawn(actor_classes.lasers_class);
-    capital_ships = spawn(actor_classes.capital_ships_class);
-    capital_ship_fighters = spawn(actor_classes.capital_ship_fighters_class);
-    turrets = spawn(actor_classes.turrets_class);
-    spinners = spawn(actor_classes.spinners_class);
-
-    niagara_spawner = spawn(actor_classes.niagara_spawner_class);
-
-    if (IsValid(simulation_config)) {
-        set_assets(simulation_config.Get(),
-                   ESimulationAssetActorScope::OrchestratorActors,
-                   ESimulationAssetProxyMode::Include);
+    if (!ensureAlwaysMsgf(IsValid(level_config), TEXT("Cannot spawn without a level config"))) {
+        return;
     }
+
+    auto const& classes{level_config->classes};
+    lasers = spawn(classes.lasers_class);
+    capital_ships = spawn(classes.capital_ships_class);
+    capital_ship_fighters = spawn(classes.capital_ship_fighters_class);
+    turrets = spawn(classes.turrets_class);
+    spinners = spawn(classes.spinners_class);
+
+    niagara_spawner = spawn(classes.niagara_spawner_class);
+
+    set_level_config(*level_config);
 
     for (auto* const actor : spawned_actors) {
         actor->FinishSpawning(FTransform::Identity);
@@ -906,8 +869,12 @@ void ATestBatchOrchestrator::spawn_missing_actors() {
 }
 
 #if WITH_EDITOR
-void ATestBatchOrchestrator::apply_simulation_config() {
-    set_assets(simulation_config.Get(), simulation_asset_actor_scope, simulation_asset_proxy_mode);
+void ATestBatchOrchestrator::apply_level_config() {
+    if (!IsValid(level_config)) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot apply a null level config."));
+        return;
+    }
+    set_level_config(*level_config);
 }
 
 void ATestBatchOrchestrator::spawn_missing_actors_button() {

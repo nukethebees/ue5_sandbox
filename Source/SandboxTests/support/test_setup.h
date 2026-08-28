@@ -11,7 +11,7 @@
 
 class FAutomationTestBase;
 class FTestCommandBuilder;
-class UTestSimulationConfig;
+class USpaceGameLevelConfig;
 class UWorld;
 class AActor;
 class ATestBatchOrchestrator;
@@ -36,7 +36,7 @@ class FTestBatchOrchestratorLevelSetup {
     void teardown();
 
     auto get_orchestrator() const -> ATestBatchOrchestrator* { return orchestrator.Get(); }
-    auto get_config() const -> UTestSimulationConfig const&;
+    auto get_config() const -> USpaceGameLevelConfig const&;
     auto get_world() const -> UWorld&;
     auto get_state() const noexcept -> ETestLevelState { return state; }
     auto get_construction_count() const noexcept -> int32 { return construction_count; }
@@ -47,7 +47,7 @@ class FTestBatchOrchestratorLevelSetup {
 
     TUniquePtr<FMapTestSpawner> spawner{nullptr};
     TWeakObjectPtr<ATestBatchOrchestrator> orchestrator{nullptr};
-    TObjectPtr<UTestSimulationConfig const> config{nullptr};
+    TObjectPtr<USpaceGameLevelConfig> config{nullptr};
     FString map_directory{};
     FString map_name{};
     ETestLevelState state{ETestLevelState::Unconstructed};

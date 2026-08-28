@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
 #include "SpaceGame/entities/TestEntity.h"
 #include "SpaceGame/entities/TestTeam.h"
 
@@ -14,7 +16,6 @@ class USphereComponent;
 class USceneComponent;
 class UArrowComponent;
 
-class UTestStaticTurretsConfig;
 class ATestStaticTurrets;
 
 UCLASS()
@@ -29,7 +30,7 @@ class ATestStaticTurretsProxy
     auto get_team() const { return team; }
     auto get_health() const noexcept { return health; }
     auto get_laser_damage() const noexcept { return laser_damage; }
-    void set_actor_config(UTestStaticTurretsConfig* const new_config) noexcept {
+    void set_actor_config(FTurretConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
     void set_team(ETestTeam const new_team) noexcept { team = new_team; }
@@ -51,15 +52,12 @@ class ATestStaticTurretsProxy
 
 #if WITH_EDITOR
     UFUNCTION(CallInEditor, Category = "Proxy")
-    void save_configuration_to_asset();
-    UFUNCTION(CallInEditor, Category = "Proxy")
     void apply_asset_configuration();
     UFUNCTION(CallInEditor, Category = "Proxy")
     void apply_asset_configuration_to_all_instances();
 #endif
 
-    UPROPERTY(EditAnywhere, Category = "Proxy")
-    TObjectPtr<UTestStaticTurretsConfig> actor_config{nullptr};
+    FTurretConfig const* actor_config{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Proxy")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};

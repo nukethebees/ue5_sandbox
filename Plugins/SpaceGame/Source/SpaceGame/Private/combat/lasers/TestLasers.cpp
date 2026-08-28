@@ -1,10 +1,9 @@
 #include "SpaceGame/combat/lasers/TestLasers.h"
 
-#include <SpaceGame/simulation/SpatialQueryManager.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/combat/lasers/TestLasersConfig.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
@@ -69,10 +68,10 @@ void ATestLasers::begin_play() {
 
     number_spawned = 0;
 
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-    });
-    if (!actor_config->is_ready()) {
+    if (!actor_config) {
+        UE_LOG(LogSandboxLearning, Fatal, TEXT("actor_config is nullptr."));
+    }
+    if (!actor_config->mesh || !actor_config->material) {
         UE_LOG(LogSandboxLearning, Fatal, TEXT("actor_config is not ready."));
     }
 

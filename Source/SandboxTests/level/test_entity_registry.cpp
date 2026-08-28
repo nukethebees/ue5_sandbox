@@ -1,15 +1,14 @@
 #include "test_entity_registry_scenario.h"
 
-#include <SpaceGame/simulation/SimulationConfig.h>
+#include <SandboxGameShared/utilities/enums.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/entities/TestTeam.h>
-#include <SandboxGameShared/utilities/enums.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
@@ -86,13 +85,8 @@ void FEntityRegistryScenario::spawn_fixture() {
 }
 
 void FEntityRegistryScenario::spawn_player() {
-    auto const* const simulation_config{context_.config.simulation_config.Get()};
-    if (!checks.not_nullptr(simulation_config, TEXT("Simulation config is available"))) {
-        return;
-    }
-    auto* const player{spawn_player_ship(context_.world,
-                                         context_.config.actor_classes.player_ship_class,
-                                         simulation_config->player_ship_config)};
+    auto* const player{spawn_player_ship(
+        context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
     if (!checks.is_valid(player, TEXT("Player ship is spawned"))) {
         return;
     }

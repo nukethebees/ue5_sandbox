@@ -2,11 +2,11 @@
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -38,8 +38,8 @@ void FFighterAttackScenario::spawn_fixture() {
     if (!checks.not_nullptr(fighter_config, TEXT("Fighter attack config is created"))) {
         return;
     }
-    fighter_config->laser_speed = 20000.f;
-    fighter_config->laser_max_distance = 25000.f;
+    fighter_config->laser.projectile_speed = 20000.f;
+    fighter_config->laser.max_distance = 25000.f;
     fighter_config->visual_logger_style = nullptr;
     fighter_actor->set_actor_config(fighter_config);
 

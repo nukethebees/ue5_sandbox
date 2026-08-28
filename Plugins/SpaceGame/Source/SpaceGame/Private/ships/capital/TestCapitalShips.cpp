@@ -1,18 +1,17 @@
 #include "SpaceGame/ships/capital/TestCapitalShips.h"
 
-#include <SpaceGame/simulation/SpatialQueryManager.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestBatchActorCore.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
-#include <SpaceGame/entities/TestTeamVisualData.h>
+#include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/entities/TestBatchActorCore.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/entities/TestTeamVisualData.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/support/IndexSpan.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/logging/SandboxVisualLoggerStyle.h>
-#include <SpaceGame/support/IndexSpan.h>
 #include <SpaceGame/support/mesh.h>
-#include <SandboxGameShared/utilities/actor_utils.h>
 
 #include <NiagaraFunctionLibrary.h>
 #include <SandboxCore/array_checks.h>
@@ -59,9 +58,12 @@ void ATestCapitalShips::begin_play() {
     auto* world{GetWorld()};
     check(entity_registry);
     check(spatial_query_manager);
+    if (!actor_config) {
+        UE_LOG(LogSandbox, Fatal, TEXT("ATestCapitalShips actor_config is nullptr."));
+    }
+
     ml::fatal_if_uobject_ptrs_invalid({
         {
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
             SANDBOX_NAMED_UOBJECT_PTR(world),
         },
         {
@@ -213,13 +215,10 @@ void ATestCapitalShips::visual_log_state() const {
         return;
     }
 
-    if (auto const msg{ml::report_invalid_uobject_ptrs({
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config),
-        })}) {
+    if (!actor_config) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShips::visual_log_state UObject ptrs are invalid:\n%s"),
-               *msg);
+               TEXT("ATestCapitalShips::visual_log_state actor_config is nullptr"));
         return;
     }
 
@@ -670,8 +669,8 @@ void ATestCapitalShips::configure_ismc() {
 void ATestCapitalShips::trigger_death_effects() {
     auto const n{ml::num(local_indices_to_remove)};
     auto* world{GetWorld()};
-    auto* small_death_explosion{actor_config->small_death_explosion};
-    auto* main_death_explosion{actor_config->main_death_explosion};
+    auto* small_death_explosion{actor_config->small_death_explosion.Get()};
+    auto* main_death_explosion{actor_config->main_death_explosion.Get()};
 
     if (!IsValid(small_death_explosion)) {
         UE_LOG(LogSandbox,
@@ -711,8 +710,7 @@ void ATestCapitalShips::trigger_death_effects() {
     auto const max_range{actor_config->max_small_explosion_range};
 
     auto main_explosion_delay{large_explosion_delay};
-    if (main_explosion_delay_mode ==
-        ETestCapitalShipsMainExplosionDelayMode::AfterSmallExplosions) {
+    if (main_explosion_delay_mode == ECapitalShipMainExplosionDelayMode::AfterSmallExplosions) {
         // If there is only 1 explosion then there will be no small delays
         // the small delay is between explosions
         if (n_small_burst_explosions > 1) {

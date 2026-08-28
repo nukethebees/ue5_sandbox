@@ -1,7 +1,6 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinnerProxy.h"
 
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/defences/spinners/TestTubeSpinnersConfig.h"
 
 #include <SandboxCoreEngine/actor_components.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -79,21 +78,6 @@ void ATestTubeSpinnerProxy::set_random_active_fire_point() {
 }
 void ATestTubeSpinnerProxy::set_random_active_fire_point_to_all_instances() {
     ml::for_each_instance(*this, [](ThisClass& x) { x.set_random_active_fire_point(); });
-}
-
-void ATestTubeSpinnerProxy::save_configuration_to_asset() {
-    if (!actor_config) {
-        return;
-    }
-
-    actor_config->Modify();
-
-    actor_config->fire_point_offsets.Reset();
-    for (auto fire_point : fire_points) {
-        actor_config->fire_point_offsets.Add(fire_point->GetRelativeTransform());
-    }
-
-    actor_config->MarkPackageDirty();
 }
 
 void ATestTubeSpinnerProxy::apply_asset_configuration() {

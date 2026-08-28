@@ -2,9 +2,9 @@
 
 #include "SimulationTestAssets.h"
 
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -134,7 +134,7 @@ void FTestBatchOrchestratorLevelSetup::teardown() {
     construction_count = 0;
 }
 
-auto FTestBatchOrchestratorLevelSetup::get_config() const -> UTestSimulationConfig const& {
+auto FTestBatchOrchestratorLevelSetup::get_config() const -> USpaceGameLevelConfig const& {
     check(IsValid(config));
     return *config;
 }
@@ -169,7 +169,7 @@ auto FTestBatchOrchestratorLevelSetup::construct_level() -> bool {
 }
 
 auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool {
-    config = load_default_test_simulation_config();
+    config = load_default_level_config();
     if (!IsValid(config) || !config->is_valid()) {
         return false;
     }
@@ -181,7 +181,7 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
     }
 
     new_orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
-    new_orchestrator->set_test_config(*config);
+    new_orchestrator->set_level_config(*config);
     new_orchestrator->spawn_missing_actors();
     auto* const finished_orchestrator{
         UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity)};
