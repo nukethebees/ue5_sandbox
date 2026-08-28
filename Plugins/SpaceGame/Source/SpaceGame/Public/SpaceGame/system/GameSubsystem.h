@@ -15,8 +15,6 @@ UCLASS()
 class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     GENERATED_BODY()
   public:
-    UGameSubsystem();
-
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
 
     auto get_platform_capabilities() const -> FGameCapabilities const&;

@@ -8,7 +8,7 @@ class UButton;
 class UTextBlock;
 
 namespace ml::ioj {
-struct FSaveGameSummary;
+struct FSaveProfileSummary;
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FSaveGameRowSelected, FString const&);
 
@@ -16,7 +16,7 @@ UCLASS()
 class SPACEGAME_API USaveGameRowWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_summary(FSaveGameSummary const& summary);
+    void set_summary(FSaveProfileSummary const& summary);
     void set_selected(bool selected);
     void focus_row();
 
@@ -33,6 +33,6 @@ class SPACEGAME_API USaveGameRowWidget : public UUserWidget {
     UFUNCTION()
     void handle_clicked();
 
-    FString save_id_{};
+    FString profile_id_{};
 };
 }

@@ -26,7 +26,7 @@ void USaveGameRowWidget::NativeOnInitialized() {
     row_button->OnClicked.AddDynamic(this, &ThisClass::handle_clicked);
 }
 
-void USaveGameRowWidget::set_summary(FSaveGameSummary const& summary) {
+void USaveGameRowWidget::set_summary(FSaveProfileSummary const& summary) {
     if (!IsValid(display_name_text)) {
         UE_LOG(LogSandboxUI,
                Warning,
@@ -34,7 +34,7 @@ void USaveGameRowWidget::set_summary(FSaveGameSummary const& summary) {
         return;
     }
 
-    save_id_ = summary.save_id;
+    profile_id_ = summary.profile_id;
     display_name_text->SetText(FText::FromString(summary.display_name));
 }
 
@@ -60,6 +60,6 @@ void USaveGameRowWidget::focus_row() {
 }
 
 void USaveGameRowWidget::handle_clicked() {
-    selected.Broadcast(save_id_);
+    selected.Broadcast(profile_id_);
 }
 }

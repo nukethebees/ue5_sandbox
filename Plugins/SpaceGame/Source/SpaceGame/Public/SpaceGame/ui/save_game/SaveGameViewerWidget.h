@@ -14,7 +14,8 @@ class UWidgetSwitcher;
 namespace ml::ioj {
 struct FLevelOutcomeSummary;
 struct FSaveGameBrowser;
-struct FSaveGameSummary;
+struct FSaveProfileReport;
+struct FSaveProfileSummary;
 class ULevelOutcomeRowWidget;
 class USaveGameRowWidget;
 
@@ -73,10 +74,10 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
 
     auto resolve_browser() -> FSaveGameBrowser*;
     void rebuild_profiles();
-    void select_profile(FString const& save_id);
-    void rebuild_outcomes(FSaveGameSummary const& profile);
+    void select_profile(FString const& profile_id);
+    void rebuild_outcomes(FSaveProfileReport const& report);
     void select_outcome(FString const& outcome_id);
-    void show_profile(FSaveGameSummary const& profile);
+    void show_profile(FSaveProfileSummary const& profile);
     void add_result_section(FLevelOutcomeSummary const& outcome, int32 index);
     void show_empty_profiles();
 

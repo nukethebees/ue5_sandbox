@@ -17,9 +17,9 @@ auto make_outcome(FString id, FString name) -> ml::ioj::FLevelOutcomeSummary {
             .display_name = MoveTemp(name),
             .completed_at = FDateTime{2026, 8, 27},
             .simulation_duration_seconds = 300.f,
-            .score = 100,
+            .kills = 5,
             .result = TEXT("Victory"),
-            .statistics = {{TEXT("Ships destroyed"), TEXT("5")}}};
+            .statistics = {{TEXT("Accuracy"), TEXT("75%")}}};
 }
 }
 
@@ -44,27 +44,46 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
             return;
         }
 
-        ml::ioj::FSaveGameBrowser browser{[] {
-            return TArray<ml::ioj::FSaveGameSummary>{
-                {.save_id = TEXT("battle_at_vega"),
-                 .display_name = TEXT("Battle at Vega"),
-                 .created_at = FDateTime{2026, 8, 20},
-                 .last_played_at = FDateTime{2026, 8, 27},
-                 .total_simulation_duration_seconds = 600.f,
-                 .aggregate_score = 200,
-                 .outcomes = {make_outcome(TEXT("patrol"), TEXT("Vega Patrol")),
-                              make_outcome(TEXT("defence"), TEXT("Vega Defence"))}},
-                {.save_id = TEXT("test_run_12"),
-                 .display_name = TEXT("Test Run 12"),
-                 .created_at = FDateTime{2026, 8, 26},
-                 .last_played_at = FDateTime{2026, 8, 26},
-                 .outcomes = {make_outcome(TEXT("interception"), TEXT("Fleet Interception"))}},
-                {.save_id = TEXT("empty_profile"),
-                 .display_name = TEXT("Empty Profile"),
-                 .created_at = FDateTime{2026, 8, 25},
-                 .last_played_at = FDateTime{2026, 8, 25}},
-            };
-        }};
+        ml::ioj::FSaveGameBrowser browser{
+            [] {
+                return TArray<ml::ioj::FSaveProfileSummary>{
+                    {.profile_id = TEXT("battle_at_vega"),
+                     .display_name = TEXT("Battle at Vega"),
+                     .created_at = FDateTime{2026, 8, 20},
+                     .last_played_at = FDateTime{2026, 8, 27},
+                     .total_simulation_duration_seconds = 600.f,
+                     .total_kills = 10,
+                     .outcome_count = 2},
+                    {.profile_id = TEXT("test_run_12"),
+                     .display_name = TEXT("Test Run 12"),
+                     .created_at = FDateTime{2026, 8, 26},
+                     .last_played_at = FDateTime{2026, 8, 26},
+                     .total_kills = 5,
+                     .outcome_count = 1},
+                    {.profile_id = TEXT("empty_profile"),
+                     .display_name = TEXT("Empty Profile"),
+                     .created_at = FDateTime{2026, 8, 25},
+                     .last_played_at = FDateTime{2026, 8, 25}},
+                };
+            },
+            [](FString const& profile_id) -> TOptional<ml::ioj::FSaveProfileReport> {
+                if (profile_id == TEXT("battle_at_vega")) {
+                    return ml::ioj::FSaveProfileReport{
+                        .profile_id = profile_id,
+                        .outcomes = {make_outcome(TEXT("patrol"), TEXT("Vega Patrol")),
+                                     make_outcome(TEXT("defence"), TEXT("Vega Defence"))}};
+                }
+                if (profile_id == TEXT("test_run_12")) {
+                    return ml::ioj::FSaveProfileReport{
+                        .profile_id = profile_id,
+                        .outcomes = {
+                            make_outcome(TEXT("interception"), TEXT("Fleet Interception"))}};
+                }
+                if (profile_id == TEXT("empty_profile")) {
+                    return ml::ioj::FSaveProfileReport{.profile_id = profile_id};
+                }
+                return {};
+            }};
         browser.refresh();
         widget->set_browser(browser);
 

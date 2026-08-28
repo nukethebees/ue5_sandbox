@@ -30,8 +30,9 @@ class USpaceSaveSubsystem : public UGameInstanceSubsystem {
 
     // Displaying
     void log_save_data() const;
-  private:
+
     static auto slot_name() -> FString;
+  private:
     static constexpr int32 user_index{0};
 
     void migrate_if_needed();
