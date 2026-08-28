@@ -169,6 +169,7 @@ def main() -> None:
         project_root / "Plugins" / "SandboxCore",
         project_root / "Plugins" / "SandboxEditorTools",
         project_root / "Plugins" / "SandboxMaterialExprs",
+        project_root / "Plugins" / "SpaceGame",
     ]
     directories = [directory.resolve() for directory in directories]
     extensions = get_file_extensions(args.format_hlsl)

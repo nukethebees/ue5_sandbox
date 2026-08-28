@@ -14,6 +14,9 @@ struct FSpaceShipControllerInputs {
     UPROPERTY(EditDefaultsOnly, Category = "Input")
     TArray<UInputMappingContext*> mapping_contexts;
 
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    int32 initial_mapping_context_index{0};
+
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* move{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
@@ -54,6 +57,15 @@ struct FSpaceShipControllerInputs {
     UInputAction* cycle_next_control_mode{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* cycle_previous_control_mode{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* pause_game{nullptr};
+};
+
+USTRUCT(BlueprintType)
+struct FGlobalControlInputs {
+    GENERATED_BODY()
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    UInputMappingContext* mapping_context{nullptr};
+
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    UInputAction* toggle_menu{nullptr};
 };
