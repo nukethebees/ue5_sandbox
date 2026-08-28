@@ -62,7 +62,7 @@ The widget submits a deterministic 128x128 multi-hotspot pattern on first constr
 pattern controls exercise same-size content updates, while the resolution controls change upload
 and dispatch sizes without replacing the output texture. C++ callers can call `set_grid` with their
 own `FHeatmapRDGGrid` up to 512x512, or call
-`generate_demo_grid` with another size. `Experiments` is an editor-only module and is not loaded
+`generate_demo_grid` with another size. `SbxUIExperiments` is an editor-only module and is not loaded
 by normal game or shipping targets.
 
 ## Threading and lifetime

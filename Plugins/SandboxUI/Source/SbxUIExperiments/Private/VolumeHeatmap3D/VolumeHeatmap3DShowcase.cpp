@@ -1,4 +1,4 @@
-#include "Experiments/VolumeHeatmap3D/VolumeHeatmap3DShowcase.h"
+#include "SbxUIExperiments/VolumeHeatmap3D/VolumeHeatmap3DShowcase.h"
 
 #include "Benchmarks/VolumeHeatmap3D/VolumeHeatmap3DBenchmark.h"
 #include "SVolumeHeatmap3DWidget.h"

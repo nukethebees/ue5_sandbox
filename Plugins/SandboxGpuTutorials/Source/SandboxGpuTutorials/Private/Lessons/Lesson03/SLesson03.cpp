@@ -19,11 +19,11 @@ auto make_control(TCHAR const* const label, TSharedRef<SWidget> control) -> TSha
 }
 
 void SLesson03::Construct(FArguments const&) {
-    FVector2D const preview_size{520.0f, 520.0f};
+    FVector2D const lesson_preview_size{520.0f, 520.0f};
     auto const material_loaded{
         material_.load(TEXT("/SandboxGpuTutorials/Showcases/Materials/Lesson03/"
                             "M_Lesson03_AnimatedRings.M_Lesson03_AnimatedRings"),
-                       preview_size,
+                       lesson_preview_size,
                        true)};
     update_material_parameters();
     SetCanTick(material_loaded);
@@ -65,8 +65,8 @@ void SLesson03::Construct(FArguments const&) {
              [SNew(SHorizontalBox) +
               SHorizontalBox::Slot().AutoWidth().Padding(
                   4.0f)[SNew(SBox)
-                            .WidthOverride(preview_size.X)
-                            .HeightOverride(preview_size.Y)[preview]] +
+                            .WidthOverride(lesson_preview_size.X)
+                            .HeightOverride(lesson_preview_size.Y)[preview]] +
               SHorizontalBox::Slot().FillWidth(1.0f).Padding(20.0f, 4.0f)
                   [SNew(SVerticalBox) +
                    SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f)[make_control(

@@ -1,7 +1,7 @@
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
 
 #include "Engine/TextureRenderTarget2D.h"
-#include "Experiments/HeatmapRDG/HeatmapRDGWidget.h"
+#include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
 #include "HAL/PlatformTime.h"
 #include "HeatmapRDG/HeatmapRDGRenderer.h"
 #include "RenderingThread.h"

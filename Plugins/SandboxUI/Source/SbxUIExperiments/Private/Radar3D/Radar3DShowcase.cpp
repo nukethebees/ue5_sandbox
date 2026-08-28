@@ -1,4 +1,4 @@
-#include "Experiments/Radar3D/Radar3DShowcase.h"
+#include "SbxUIExperiments/Radar3D/Radar3DShowcase.h"
 
 #include "Benchmarks/Radar3D/Radar3DBenchmark.h"
 #include "SRadar3DWidget.h"

@@ -1,8 +1,8 @@
 using UnrealBuildTool;
 
-public class Experiments : ModuleRules
+public class SbxUIExperiments : ModuleRules
 {
-    public Experiments(ReadOnlyTargetRules Target) : base(Target)
+    public SbxUIExperiments(ReadOnlyTargetRules Target) : base(Target)
     {
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;

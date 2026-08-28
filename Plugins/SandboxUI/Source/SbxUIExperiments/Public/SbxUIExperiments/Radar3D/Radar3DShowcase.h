@@ -3,15 +3,15 @@
 #include "EditorUtilityWidget.h"
 #include "Input/Reply.h"
 
-#include "Scatter3DShowcase.generated.h"
+#include "Radar3DShowcase.generated.h"
 
 class SMultiLineEditableTextBox;
 
 UCLASS(Blueprintable)
-class EXPERIMENTS_API UScatter3DShowcase : public UEditorUtilityWidget {
+class SBXUIEXPERIMENTS_API URadar3DShowcase : public UEditorUtilityWidget {
     GENERATED_BODY()
   public:
-    UScatter3DShowcase();
+    URadar3DShowcase();
   protected:
     TSharedRef<SWidget> RebuildWidget() override;
   private:

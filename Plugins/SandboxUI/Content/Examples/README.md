@@ -14,7 +14,7 @@ to this gallery as well. Keep example-only data and presentation in `SandboxUIEx
 widgets must not depend on the showcase.
 
 `EUW_HeatmapRDGShowcase` is a separate editor utility for the experimental RDG/GPU heatmap path.
-Its UI is implemented by `UHeatmapRDGShowcase` in the editor-only `Experiments` module. Right-click
+Its UI is implemented by `UHeatmapRDGShowcase` in the editor-only `SbxUIExperiments` module. Right-click
 the asset and choose **Run Editor Utility Widget** to compare deterministic patterns and grid sizes.
 
 `EUW_Radar3DShowcase` demonstrates the experimental CPU-contact-to-RDG-to-Slate pipeline without a
