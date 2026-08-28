@@ -1,9 +1,11 @@
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
 
+#include "Benchmarks/BenchmarkStatistics.h"
+
 #include "Math/UnrealMathUtility.h"
 #include "RenderingThread.h"
 
-namespace {
+namespace ml::ui::heatmap_benchmark {
 auto make_grid_values(int32 const resolution) -> TArray<float> {
     TArray<float> values;
     values.SetNumUninitialized(resolution * resolution);
@@ -34,13 +36,6 @@ auto make_grid_values(int32 const resolution) -> TArray<float> {
     return values;
 }
 
-auto percentile(TArray<double> const& sorted_samples, double const fraction) -> double {
-    check(!sorted_samples.IsEmpty());
-    auto const index{FMath::Clamp(
-        FMath::CeilToInt(fraction * sorted_samples.Num()) - 1, 0, sorted_samples.Num() - 1)};
-    return sorted_samples[index];
-}
-
 auto summarize(FString backend, FString stage, int32 const resolution, TArray<double> samples)
     -> FHeatmapBenchmarkResult {
     check(!samples.IsEmpty());
@@ -50,8 +45,8 @@ auto summarize(FString backend, FString stage, int32 const resolution, TArray<do
             .resolution = resolution,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = percentile(samples, 0.5),
-            .percentile_95_microseconds = percentile(samples, 0.95),
+            .median_microseconds = ml::ui::benchmark::percentile(samples, 0.5),
+            .percentile_95_microseconds = ml::ui::benchmark::percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 }
@@ -97,7 +92,7 @@ auto run_heatmap_benchmark(FHeatmapBenchmarkOptions const& options) -> FHeatmapB
             continue;
         }
 
-        auto const values{make_grid_values(resolution)};
+        auto const values{ml::ui::heatmap_benchmark::make_grid_values(resolution)};
         TArray<double> rdg_submission_samples;
         TArray<double> rdg_gpu_samples;
         rdg_submission_samples.Reserve(options.measured_iterations);
@@ -108,10 +103,10 @@ auto run_heatmap_benchmark(FHeatmapBenchmarkOptions const& options) -> FHeatmapB
                               options.measured_iterations,
                               rdg_submission_samples,
                               rdg_gpu_samples);
-        report.results.Add(summarize(
+        report.results.Add(ml::ui::heatmap_benchmark::summarize(
             TEXT("RDG"), TEXT("api_submission"), resolution, MoveTemp(rdg_submission_samples)));
         if (!rdg_gpu_samples.IsEmpty()) {
-            report.results.Add(summarize(
+            report.results.Add(ml::ui::heatmap_benchmark::summarize(
                 TEXT("RDG"), TEXT("gpu_upload_compute"), resolution, MoveTemp(rdg_gpu_samples)));
         }
 
@@ -125,12 +120,13 @@ auto run_heatmap_benchmark(FHeatmapBenchmarkOptions const& options) -> FHeatmapB
                                 options.measured_iterations,
                                 slate_submission_samples,
                                 slate_preparation_samples);
-        report.results.Add(summarize(
+        report.results.Add(ml::ui::heatmap_benchmark::summarize(
             TEXT("Slate"), TEXT("api_submission"), resolution, MoveTemp(slate_submission_samples)));
-        report.results.Add(summarize(TEXT("Slate"),
-                                     TEXT("geometry_batches"),
-                                     resolution,
-                                     MoveTemp(slate_preparation_samples)));
+        report.results.Add(
+            ml::ui::heatmap_benchmark::summarize(TEXT("Slate"),
+                                                 TEXT("geometry_batches"),
+                                                 resolution,
+                                                 MoveTemp(slate_preparation_samples)));
     }
     return report;
 }

@@ -15,7 +15,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogScatter3DRenderer, Log, All);
 
-namespace {
+namespace ml::ui::scatter_3d {
 constexpr uint32 frame_line_count{33};
 
 static_assert(sizeof(FScatter3DPoint) == sizeof(float) * 8,
@@ -360,7 +360,8 @@ void FScatter3DRenderer::render(TConstArrayView<FScatter3DPoint> const points,
     ENQUEUE_RENDER_COMMAND(RenderScatter3D)
     ([points = MoveTemp(points_snapshot),
       output_resource](FRHICommandListImmediate& rhi_command_list) {
-        render_scatter_on_render_thread(rhi_command_list, points, output_resource);
+        ml::ui::scatter_3d::render_scatter_on_render_thread(
+            rhi_command_list, points, output_resource);
     });
 }
 
@@ -383,7 +384,7 @@ auto measure_scatter_3d_gpu(FRHICommandListImmediate& rhi_command_list,
     auto start_query{query_pool->AllocateQuery()};
     auto end_query{query_pool->AllocateQuery()};
     rhi_command_list.EndRenderQuery(start_query.GetQuery());
-    execute_scatter_graph(rhi_command_list, points, output_texture_rhi);
+    ml::ui::scatter_3d::execute_scatter_graph(rhi_command_list, points, output_texture_rhi);
     rhi_command_list.EndRenderQuery(end_query.GetQuery());
     rhi_command_list.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 
