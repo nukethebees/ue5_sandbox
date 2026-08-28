@@ -10,6 +10,8 @@ add_library(codegen-lib
   src/fixed_soa_storage_lowering.cpp
   src/generator.cpp
   src/homogeneous_lowering.cpp
+  src/homogeneous_storage_lowering.cpp
+  src/homogeneous_view_lowering.cpp
   src/json.cpp
   src/lowering_utils.cpp
   src/schema.cpp
