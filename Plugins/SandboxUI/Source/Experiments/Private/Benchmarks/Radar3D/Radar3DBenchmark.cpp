@@ -1,5 +1,7 @@
 #include "Benchmarks/Radar3D/Radar3DBenchmark.h"
 
+#include "Benchmarks/BenchmarkStatistics.h"
+
 #include "Math/UnrealMathUtility.h"
 #include "Radar3D/Radar3DRenderer.h"
 #include "RenderingThread.h"
@@ -31,13 +33,6 @@ auto make_contacts(int32 const contact_count) -> TArray<FRadar3DContact> {
     return contacts;
 }
 
-auto radar_percentile(TArray<double> const& sorted_samples, double const fraction) -> double {
-    check(!sorted_samples.IsEmpty());
-    auto const index{FMath::Clamp(
-        FMath::CeilToInt(fraction * sorted_samples.Num()) - 1, 0, sorted_samples.Num() - 1)};
-    return sorted_samples[index];
-}
-
 auto summarize(FString stage, int32 const contact_count, TArray<double> samples)
     -> FRadar3DBenchmarkResult {
     check(!samples.IsEmpty());
@@ -46,8 +41,8 @@ auto summarize(FString stage, int32 const contact_count, TArray<double> samples)
             .contact_count = contact_count,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = radar_percentile(samples, 0.5),
-            .percentile_95_microseconds = radar_percentile(samples, 0.95),
+            .median_microseconds = ml::ui::benchmark::percentile(samples, 0.5),
+            .percentile_95_microseconds = ml::ui::benchmark::percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 } // namespace

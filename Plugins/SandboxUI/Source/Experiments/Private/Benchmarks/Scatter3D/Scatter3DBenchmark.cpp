@@ -1,5 +1,7 @@
 #include "Benchmarks/Scatter3D/Scatter3DBenchmark.h"
 
+#include "Benchmarks/BenchmarkStatistics.h"
+
 #include "Math/UnrealMathUtility.h"
 #include "RenderingThread.h"
 #include "Scatter3D/Scatter3DRenderer.h"
@@ -26,13 +28,6 @@ auto make_scatter_3d_points(int32 const point_count) -> TArray<FScatter3DPoint> 
     return points;
 }
 
-auto scatter_3d_percentile(TArray<double> const& sorted_samples, double const fraction) -> double {
-    check(!sorted_samples.IsEmpty());
-    auto const index{FMath::Clamp(
-        FMath::CeilToInt(fraction * sorted_samples.Num()) - 1, 0, sorted_samples.Num() - 1)};
-    return sorted_samples[index];
-}
-
 auto summarize_scatter_3d(FString stage, int32 const point_count, TArray<double> samples)
     -> FScatter3DBenchmarkResult {
     check(!samples.IsEmpty());
@@ -41,8 +36,8 @@ auto summarize_scatter_3d(FString stage, int32 const point_count, TArray<double>
             .point_count = point_count,
             .sample_count = samples.Num(),
             .minimum_microseconds = samples[0],
-            .median_microseconds = scatter_3d_percentile(samples, 0.5),
-            .percentile_95_microseconds = scatter_3d_percentile(samples, 0.95),
+            .median_microseconds = ml::ui::benchmark::percentile(samples, 0.5),
+            .percentile_95_microseconds = ml::ui::benchmark::percentile(samples, 0.95),
             .maximum_microseconds = samples.Last()};
 }
 } // namespace

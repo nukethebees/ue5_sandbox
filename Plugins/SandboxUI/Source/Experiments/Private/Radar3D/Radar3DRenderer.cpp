@@ -15,7 +15,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogRadar3DRenderer, Log, All);
 
-namespace {
+namespace ml::ui::radar_3d {
 constexpr uint32 static_line_count{18};
 
 static_assert(sizeof(FRadar3DContact) == sizeof(float) * 8,
@@ -466,7 +466,8 @@ void FRadar3DRenderer::render(TConstArrayView<FRadar3DContact> const contacts,
     ENQUEUE_RENDER_COMMAND(RenderRadar3D)
     ([contacts = MoveTemp(contacts_snapshot),
       output_resource](FRHICommandListImmediate& rhi_command_list) {
-        render_radar_on_render_thread(rhi_command_list, contacts, output_resource);
+        ml::ui::radar_3d::render_radar_on_render_thread(
+            rhi_command_list, contacts, output_resource);
     });
 }
 
@@ -489,7 +490,7 @@ auto measure_radar_3d_gpu(FRHICommandListImmediate& rhi_command_list,
     auto start_query{query_pool->AllocateQuery()};
     auto end_query{query_pool->AllocateQuery()};
     rhi_command_list.EndRenderQuery(start_query.GetQuery());
-    execute_radar_graph(rhi_command_list, contacts, output_texture_rhi);
+    ml::ui::radar_3d::execute_radar_graph(rhi_command_list, contacts, output_texture_rhi);
     rhi_command_list.EndRenderQuery(end_query.GetQuery());
     rhi_command_list.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
 

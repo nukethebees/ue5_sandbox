@@ -15,7 +15,7 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogVolumeHeatmap3DRenderer, Log, All);
 
-namespace {
+namespace ml::ui::volume_heatmap_3d {
 constexpr int32 maximum_grid_dimension{128};
 constexpr uint32 frame_line_count{15};
 
@@ -310,8 +310,9 @@ void render_on_render_thread(FRHICommandListImmediate& rhi_command_list,
 
 auto FVolumeHeatmap3DGrid::is_valid() const -> bool {
     if (dimensions.X <= 0 || dimensions.Y <= 0 || dimensions.Z <= 0 ||
-        dimensions.X > maximum_grid_dimension || dimensions.Y > maximum_grid_dimension ||
-        dimensions.Z > maximum_grid_dimension) {
+        dimensions.X > ml::ui::volume_heatmap_3d::maximum_grid_dimension ||
+        dimensions.Y > ml::ui::volume_heatmap_3d::maximum_grid_dimension ||
+        dimensions.Z > ml::ui::volume_heatmap_3d::maximum_grid_dimension) {
         return false;
     }
     int64 const voxel_count{static_cast<int64>(dimensions.X) * dimensions.Y * dimensions.Z};
@@ -338,7 +339,8 @@ void FVolumeHeatmap3DRenderer::render(FVolumeHeatmap3DGrid const& grid,
     ENQUEUE_RENDER_COMMAND(RenderVolumeHeatmap3D)
     ([grid = MoveTemp(grid_snapshot), view, output_resource](
          FRHICommandListImmediate& rhi_command_list) {
-        render_on_render_thread(rhi_command_list, grid, view, output_resource);
+        ml::ui::volume_heatmap_3d::render_on_render_thread(
+            rhi_command_list, grid, view, output_resource);
     });
 }
 
@@ -360,7 +362,7 @@ auto measure_volume_heatmap_3d_gpu(FRHICommandListImmediate& rhi_command_list,
     auto start_query{query_pool->AllocateQuery()};
     auto end_query{query_pool->AllocateQuery()};
     rhi_command_list.EndRenderQuery(start_query.GetQuery());
-    execute_graph(rhi_command_list, grid, view, output_texture_rhi);
+    ml::ui::volume_heatmap_3d::execute_graph(rhi_command_list, grid, view, output_texture_rhi);
     rhi_command_list.EndRenderQuery(end_query.GetQuery());
     rhi_command_list.ImmediateFlush(EImmediateFlushType::FlushRHIThread);
     uint64 start_microseconds{0};

@@ -9,7 +9,7 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
-namespace {
+namespace ml::gpu_tutorials::lesson_03 {
 auto make_control(TCHAR const* const label, TSharedRef<SWidget> control) -> TSharedRef<SWidget> {
     return SNew(SHorizontalBox) +
            SHorizontalBox::Slot().FillWidth(0.35f).VAlign(
@@ -69,7 +69,8 @@ void SLesson03::Construct(FArguments const&) {
                             .HeightOverride(preview_size.Y)[preview]] +
               SHorizontalBox::Slot().FillWidth(1.0f).Padding(20.0f, 4.0f)
                   [SNew(SVerticalBox) +
-                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f)[make_control(
+                   SVerticalBox::Slot().AutoHeight().Padding(
+                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
                        TEXT("Animate"),
                        SNew(SCheckBox)
                            .IsChecked_Lambda([this]() {
@@ -77,7 +78,8 @@ void SLesson03::Construct(FArguments const&) {
                                                                : ECheckBoxState::Unchecked;
                            })
                            .OnCheckStateChanged(this, &ThisClass::on_animation_enabled_changed))] +
-                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f)[make_control(
+                   SVerticalBox::Slot().AutoHeight().Padding(
+                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
                        TEXT("Ring thickness"),
                        SNew(SHorizontalBox) +
                            SHorizontalBox::Slot().FillWidth(1.0f)
@@ -90,7 +92,8 @@ void SLesson03::Construct(FArguments const&) {
                                return FText::FromString(
                                    FString::Printf(TEXT("%.3f"), state_.ring_thickness));
                            })])] +
-                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f)[make_control(
+                   SVerticalBox::Slot().AutoHeight().Padding(
+                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
                        TEXT("Animation speed"),
                        SNew(SHorizontalBox) +
                            SHorizontalBox::Slot().FillWidth(1.0f)
@@ -103,7 +106,8 @@ void SLesson03::Construct(FArguments const&) {
                                return FText::FromString(
                                    FString::Printf(TEXT("%.2f"), state_.animation_speed));
                            })])] +
-                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 5.0f)[make_control(
+                   SVerticalBox::Slot().AutoHeight().Padding(
+                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
                        TEXT("Pulse amount"),
                        SNew(SHorizontalBox) +
                            SHorizontalBox::Slot().FillWidth(1.0f)
