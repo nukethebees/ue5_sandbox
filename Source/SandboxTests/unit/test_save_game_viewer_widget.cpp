@@ -1,17 +1,31 @@
 #include <SandboxTests/support/test_setup.h>
 
 #include <SpaceGame/persistence/SaveGameBrowser.h>
+#include <SpaceGame/ui/save_game/LevelOutcomeRowWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameRowWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 
 #include <Components/Button.h>
 #include <Components/ScrollBox.h>
 #include <Components/TextBlock.h>
+#include <Components/VerticalBox.h>
 #include <CQTest.h>
+
+namespace {
+auto make_outcome(FString id, FString name) -> ml::ioj::FLevelOutcomeSummary {
+    return {.outcome_id = MoveTemp(id),
+            .display_name = MoveTemp(name),
+            .completed_at = FDateTime{2026, 8, 27},
+            .simulation_duration_seconds = 300.f,
+            .score = 100,
+            .result = TEXT("Victory"),
+            .statistics = {{TEXT("Ships destroyed"), TEXT("5")}}};
+}
+}
 
 TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
 {
-    TEST_METHOD(DisplaysSelectsAndRefreshesMockSummaries)
+    TEST_METHOD(DisplaysProfilesOutcomesAndScrollableResults)
     {
         auto const world_result{ml::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
@@ -34,16 +48,21 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
             return TArray<ml::ioj::FSaveGameSummary>{
                 {.save_id = TEXT("battle_at_vega"),
                  .display_name = TEXT("Battle at Vega"),
-                 .timestamp = FDateTime{2026, 8, 27},
-                 .scenario_name = TEXT("Vega Defence")},
+                 .created_at = FDateTime{2026, 8, 20},
+                 .last_played_at = FDateTime{2026, 8, 27},
+                 .total_simulation_duration_seconds = 600.f,
+                 .aggregate_score = 200,
+                 .outcomes = {make_outcome(TEXT("patrol"), TEXT("Vega Patrol")),
+                              make_outcome(TEXT("defence"), TEXT("Vega Defence"))}},
                 {.save_id = TEXT("test_run_12"),
                  .display_name = TEXT("Test Run 12"),
-                 .timestamp = FDateTime{2026, 8, 26},
-                 .scenario_name = TEXT("Fleet Interception")},
-                {.save_id = TEXT("fleet_benchmark"),
-                 .display_name = TEXT("Fleet Benchmark"),
-                 .timestamp = FDateTime{2026, 8, 25},
-                 .scenario_name = TEXT("Capital Fleet Benchmark")},
+                 .created_at = FDateTime{2026, 8, 26},
+                 .last_played_at = FDateTime{2026, 8, 26},
+                 .outcomes = {make_outcome(TEXT("interception"), TEXT("Fleet Interception"))}},
+                {.save_id = TEXT("empty_profile"),
+                 .display_name = TEXT("Empty Profile"),
+                 .created_at = FDateTime{2026, 8, 25},
+                 .last_played_at = FDateTime{2026, 8, 25}},
             };
         }};
         browser.refresh();
@@ -52,47 +71,94 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
         auto const slate_widget{widget->TakeWidget()};
         (void)slate_widget;
 
-        auto* const save_list{Cast<UScrollBox>(widget->GetWidgetFromName(TEXT("save_list")))};
-        auto* const empty_state{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("empty_state_text")))};
-        auto* const detail_name{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("detail_name_text")))};
+        auto* const profile_list{Cast<UScrollBox>(widget->GetWidgetFromName(TEXT("profile_list")))};
+        auto* const outcome_list{Cast<UScrollBox>(widget->GetWidgetFromName(TEXT("outcome_list")))};
+        auto* const profile_name{
+            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("profile_name_text")))};
+        auto* const outcome_empty_state{
+            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("outcome_empty_state_text")))};
+        auto* const result_sections{
+            Cast<UVerticalBox>(widget->GetWidgetFromName(TEXT("result_sections_box")))};
         auto* const refresh_button{
             Cast<UButton>(widget->GetWidgetFromName(TEXT("refresh_button")))};
-        auto const bindings_valid{IsValid(save_list) && IsValid(empty_state) &&
-                                  IsValid(detail_name) && IsValid(refresh_button)};
+        auto const bindings_valid{IsValid(profile_list) && IsValid(outcome_list) &&
+                                  IsValid(profile_name) && IsValid(outcome_empty_state) &&
+                                  IsValid(result_sections) && IsValid(refresh_button)};
         if (!TestRunner->TestTrue(TEXT("Viewer bindings are valid"), bindings_valid)) {
             return;
         }
 
-        TestRunner->TestEqual(TEXT("All mock saves are listed"), save_list->GetChildrenCount(), 3);
-        TestRunner->TestTrue(TEXT("Non-empty viewer hides empty state"),
-                             empty_state->GetVisibility() == ESlateVisibility::Collapsed);
-        TestRunner->TestEqual(TEXT("Newest save is selected initially"),
-                              detail_name->GetText().ToString(),
+        TestRunner->TestEqual(TEXT("All profiles are listed"), profile_list->GetChildrenCount(), 3);
+        TestRunner->TestEqual(
+            TEXT("Selected profile outcomes are indexed"), outcome_list->GetChildrenCount(), 2);
+        TestRunner->TestEqual(TEXT("Every outcome has a full result section"),
+                              result_sections->GetChildrenCount(),
+                              2);
+        TestRunner->TestEqual(TEXT("Newest profile is selected initially"),
+                              profile_name->GetText().ToString(),
                               FString{TEXT("Battle at Vega")});
 
-        auto* const second_row{Cast<ml::ioj::USaveGameRowWidget>(save_list->GetChildAt(1))};
-        if (!TestRunner->TestTrue(TEXT("Second save row exists"), IsValid(second_row))) {
+        auto* const second_outcome{
+            Cast<ml::ioj::ULevelOutcomeRowWidget>(outcome_list->GetChildAt(1))};
+        auto* const second_outcome_button{
+            second_outcome ? Cast<UButton>(second_outcome->GetWidgetFromName(TEXT("row_button")))
+                           : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Second outcome row is navigable"),
+                                  IsValid(second_outcome_button))) {
             return;
         }
-
-        auto* const second_row_button{
-            Cast<UButton>(second_row->GetWidgetFromName(TEXT("row_button")))};
-        if (!TestRunner->TestTrue(TEXT("Second row button exists"), IsValid(second_row_button))) {
+        second_outcome_button->OnClicked.Broadcast();
+        auto* const first_outcome{
+            Cast<ml::ioj::ULevelOutcomeRowWidget>(outcome_list->GetChildAt(0))};
+        auto* const first_outcome_button{
+            first_outcome ? Cast<UButton>(first_outcome->GetWidgetFromName(TEXT("row_button")))
+                          : nullptr};
+        if (!TestRunner->TestTrue(TEXT("First outcome row is navigable"),
+                                  IsValid(first_outcome_button))) {
             return;
         }
+        TestRunner->TestTrue(TEXT("Jump target is shown as the selected outcome"),
+                             first_outcome_button->GetBackgroundColor() !=
+                                 second_outcome_button->GetBackgroundColor());
 
-        second_row_button->OnClicked.Broadcast();
-        TestRunner->TestEqual(TEXT("Selecting a row updates details"),
-                              detail_name->GetText().ToString(),
+        auto* const second_profile{Cast<ml::ioj::USaveGameRowWidget>(profile_list->GetChildAt(1))};
+        auto* const second_profile_button{
+            second_profile ? Cast<UButton>(second_profile->GetWidgetFromName(TEXT("row_button")))
+                           : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Second profile row is navigable"),
+                                  IsValid(second_profile_button))) {
+            return;
+        }
+        second_profile_button->OnClicked.Broadcast();
+        TestRunner->TestEqual(TEXT("Selecting a profile updates its report"),
+                              profile_name->GetText().ToString(),
                               FString{TEXT("Test Run 12")});
+        TestRunner->TestEqual(
+            TEXT("Outcome index is rebuilt for profile"), outcome_list->GetChildrenCount(), 1);
+        TestRunner->TestEqual(
+            TEXT("Full results are rebuilt for profile"), result_sections->GetChildrenCount(), 1);
+
+        auto* const empty_profile{Cast<ml::ioj::USaveGameRowWidget>(profile_list->GetChildAt(2))};
+        auto* const empty_profile_button{
+            empty_profile ? Cast<UButton>(empty_profile->GetWidgetFromName(TEXT("row_button")))
+                          : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Empty profile row is navigable"),
+                                  IsValid(empty_profile_button))) {
+            return;
+        }
+        empty_profile_button->OnClicked.Broadcast();
+        TestRunner->TestEqual(
+            TEXT("Empty profile has no outcome rows"), outcome_list->GetChildrenCount(), 0);
+        TestRunner->TestEqual(
+            TEXT("Empty profile has no result sections"), result_sections->GetChildrenCount(), 0);
+        TestRunner->TestTrue(TEXT("Empty profile explains the missing outcomes"),
+                             outcome_empty_state->GetVisibility() == ESlateVisibility::Visible);
 
         refresh_button->OnClicked.Broadcast();
         TestRunner->TestEqual(
-            TEXT("Refresh rebuilds without duplication"), save_list->GetChildrenCount(), 3);
-        TestRunner->TestEqual(TEXT("Refresh preserves the selected save"),
-                              detail_name->GetText().ToString(),
-                              FString{TEXT("Test Run 12")});
+            TEXT("Refresh rebuilds without duplication"), profile_list->GetChildrenCount(), 3);
+        TestRunner->TestEqual(TEXT("Refresh preserves the selected profile"),
+                              profile_name->GetText().ToString(),
+                              FString{TEXT("Empty Profile")});
     }
 };

@@ -3,16 +3,18 @@
 #include <CQTest.h>
 
 namespace {
-auto make_summary(FString save_id, FDateTime timestamp, int32 const score)
+auto make_summary(FString save_id, FDateTime last_played_at, int32 const score)
     -> ml::ioj::FSaveGameSummary {
     return {
         .save_id = MoveTemp(save_id),
         .display_name = TEXT("Display name"),
-        .timestamp = timestamp,
-        .scenario_name = TEXT("Scenario"),
-        .simulation_duration_seconds = 42.f,
-        .score = score,
-        .result = TEXT("Victory"),
+        .created_at = FDateTime{2026, 1, 1},
+        .last_played_at = last_played_at,
+        .total_simulation_duration_seconds = 42.f,
+        .aggregate_score = score,
+        .outcomes = {{.outcome_id = TEXT("scenario"),
+                      .display_name = TEXT("Scenario"),
+                      .result = TEXT("Victory")}},
     };
 }
 }
@@ -59,12 +61,16 @@ TEST_CLASS(SaveGameBrowser, "Sandbox.UnitTests")
     {
         auto const newest{ml::ioj::FSaveGameSummary{
             .save_id = TEXT("newest"),
-            .display_name = TEXT("Newest save"),
-            .timestamp = FDateTime{2026, 5, 3, 12, 30},
-            .scenario_name = TEXT("Vega Defence"),
-            .simulation_duration_seconds = 123.5f,
-            .score = 9001,
-            .result = TEXT("Victory"),
+            .display_name = TEXT("Newest profile"),
+            .created_at = FDateTime{2026, 5, 1, 10, 0},
+            .last_played_at = FDateTime{2026, 5, 3, 12, 30},
+            .total_simulation_duration_seconds = 123.5f,
+            .aggregate_score = 9001,
+            .outcomes = {{.outcome_id = TEXT("vega_defence"),
+                          .display_name = TEXT("Vega Defence"),
+                          .score = 9001,
+                          .result = TEXT("Victory"),
+                          .statistics = {{TEXT("Ships destroyed"), TEXT("12")}}}},
         }};
         auto const oldest{make_summary(TEXT("oldest"), FDateTime{2026, 5, 1}, 100)};
         ml::ioj::FSaveGameBrowser browser{[newest, oldest] { return TArray{oldest, newest}; }};
@@ -75,16 +81,17 @@ TEST_CLASS(SaveGameBrowser, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Both summaries remain"), summaries.Num(), 2);
         TestRunner->TestEqual(TEXT("Display name remains intact"),
                               summaries[0].display_name,
-                              FString{TEXT("Newest save")});
-        TestRunner->TestTrue(TEXT("Timestamp remains intact"),
-                             summaries[0].timestamp == FDateTime{2026, 5, 3, 12, 30});
-        TestRunner->TestTrue(TEXT("Scenario remains intact"),
-                             summaries[0].scenario_name == FName{TEXT("Vega Defence")});
+                              FString{TEXT("Newest profile")});
+        TestRunner->TestTrue(TEXT("Last-played time remains intact"),
+                             summaries[0].last_played_at == FDateTime{2026, 5, 3, 12, 30});
         TestRunner->TestTrue(TEXT("Duration remains intact"),
-                             summaries[0].simulation_duration_seconds == 123.5f);
-        TestRunner->TestEqual(TEXT("Score remains intact"), summaries[0].score, 9001);
+                             summaries[0].total_simulation_duration_seconds == 123.5f);
         TestRunner->TestEqual(
-            TEXT("Result remains intact"), summaries[0].result, FString{TEXT("Victory")});
+            TEXT("Aggregate score remains intact"), summaries[0].aggregate_score, 9001);
+        TestRunner->TestEqual(TEXT("Outcome remains intact"), summaries[0].outcomes.Num(), 1);
+        TestRunner->TestEqual(TEXT("Outcome statistics remain intact"),
+                              summaries[0].outcomes[0].statistics[0].value,
+                              FString{TEXT("12")});
     }
 
     TEST_METHOD(OrderIsNewestFirstAndDeterministic)

@@ -5,14 +5,17 @@
 #include "SaveGameViewerWidget.generated.h"
 
 class UButton;
+class UHorizontalBox;
 class UScrollBox;
 class UTextBlock;
 class UVerticalBox;
 class UWidgetSwitcher;
 
 namespace ml::ioj {
+struct FLevelOutcomeSummary;
 struct FSaveGameBrowser;
 struct FSaveGameSummary;
+class ULevelOutcomeRowWidget;
 class USaveGameRowWidget;
 
 UCLASS()
@@ -28,53 +31,69 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void NativeConstruct() override;
 
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
-    UVerticalBox* root_widget{nullptr};
+    UHorizontalBox* root_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UScrollBox* save_list{nullptr};
+    UScrollBox* profile_list{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UTextBlock* empty_state_text{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UWidgetSwitcher* detail_switcher{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UVerticalBox* empty_detail_panel{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UVerticalBox* selected_detail_panel{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* detail_name_text{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* detail_id_text{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* detail_scenario_text{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* detail_date_text{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* detail_duration_text{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* detail_score_text{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* detail_result_text{nullptr};
-
+    UTextBlock* profile_empty_state_text{nullptr};
     UPROPERTY(meta = (BindWidget))
     UButton* refresh_button{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UScrollBox* outcome_list{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* outcome_empty_state_text{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UWidgetSwitcher* report_switcher{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVerticalBox* empty_report_panel{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVerticalBox* selected_report_panel{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* profile_name_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* profile_id_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* profile_created_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* profile_last_played_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* profile_duration_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* profile_score_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UScrollBox* results_scroll_box{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVerticalBox* result_sections_box{nullptr};
   private:
     UFUNCTION()
     void handle_refresh();
 
     auto resolve_browser() -> FSaveGameBrowser*;
-    void rebuild_list();
-    void select_save(FString const& save_id);
-    void show_summary(FSaveGameSummary const& summary);
-    void show_empty_state();
+    void rebuild_profiles();
+    void select_profile(FString const& save_id);
+    void rebuild_outcomes(FSaveGameSummary const& profile);
+    void select_outcome(FString const& outcome_id);
+    void show_profile(FSaveGameSummary const& profile);
+    void add_result_section(FLevelOutcomeSummary const& outcome, int32 index);
+    void show_empty_profiles();
 
     UPROPERTY(Transient)
-    TArray<TObjectPtr<USaveGameRowWidget>> rows_{};
+    TArray<TObjectPtr<USaveGameRowWidget>> profile_rows_{};
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<ULevelOutcomeRowWidget>> outcome_rows_{};
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UWidget>> result_sections_{};
 
     UPROPERTY()
-    TSubclassOf<USaveGameRowWidget> row_widget_class_{nullptr};
+    TSubclassOf<USaveGameRowWidget> profile_row_widget_class_{nullptr};
+    UPROPERTY()
+    TSubclassOf<ULevelOutcomeRowWidget> outcome_row_widget_class_{nullptr};
 
-    FString selected_save_id_{};
+    FString selected_profile_id_{};
+    FString selected_outcome_id_{};
     FSaveGameBrowser* browser_override_{nullptr};
 };
 }
