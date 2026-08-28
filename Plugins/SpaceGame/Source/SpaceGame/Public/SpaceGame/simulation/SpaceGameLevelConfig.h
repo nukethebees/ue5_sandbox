@@ -397,24 +397,24 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     EDataValidationResult IsDataValid(FDataValidationContext& context) const override;
 #endif
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Level")
     FScenarioClassConfig classes;
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Level")
     FPlayerShipConfig player_ship;
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Level")
     FLaserProjectileConfig laser_projectiles;
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Level")
     FCapitalShipConfig capital_ships;
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Level")
     FFighterConfig fighters;
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Level")
     FTurretConfig turrets;
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (ShowOnlyInnerProperties))
+    UPROPERTY(EditAnywhere, Category = "Level")
     FTubeSpinnerConfig tube_spinners;
 };
