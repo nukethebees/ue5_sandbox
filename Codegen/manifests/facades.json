@@ -1,0 +1,97 @@
+{
+  "modules": [
+    {
+      "kind":"facade", "name":"test_capital_ship_fighters_command_interface",
+      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFightersCommandInterface.h",
+      "namespace":"ml::test_capital_ship_fighters", "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "facade": {
+        "name":"CommandInterface", "target_type":"@test_fighters", "target_member_name":"fighters",
+        "export_specifier":"SPACEGAME_API", "validation":["check(IsValid(fighters));"], "validation_dependencies":["check"],
+        "methods":[
+          {"name":"queue_spawns","return_type":"void","parameters":[{"type":{"name":"@fighter_spawn_queue","suffix":" const&"},"name":"queue"}]},
+          {"name":"queue_orders","return_type":"void","parameters":[{"type":{"name":"@fighter_order_queue","suffix":" const&"},"name":"queue"}]},
+          {"name":"self_destruct_fighter","return_type":"void","parameters":[{"type":{"name":"@registry_handle","suffix":" const"},"name":"handle"}]},
+          {"name":"get_new_spawn_entity_data","return_type":{"name":"@test_fighters","nested":"RegistryEntityData","suffix":" const&"},"const":true},
+          {"name":"get_new_spawn_entity_handles","return_type":{"name":"@spawned_entity_handles","suffix":" const&"},"const":true},
+          {"name":"get_num_instances","return_type":"int32","const":true,"noexcept":true},
+          {"name":"get_target_handle","return_type":"@registry_handle","const":true,"noexcept":true,"parameters":[{"type":{"name":"@registry_handle","suffix":" const"},"name":"fighter_handle"}]}
+        ]
+      }
+    },
+    {
+      "kind":"facade", "name":"test_space_ship_phase_interface",
+      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipPhaseInterface.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/ships/player/TestSpaceShipPhaseInterface.cpp",
+      "header_include":"SpaceGame/ships/player/TestSpaceShipPhaseInterface.h", "namespace":"ml::test_space_ship",
+      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "facade":{"name":"PhaseInterface","target_type":"@test_space_ship","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestSpaceShip","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+        {"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},{"name":"update_timers","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},
+        {"name":"move","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},{"name":"queue_commands","return_type":"void"},{"name":"resolve_damage_events","return_type":"void"},
+        {"name":"update_entity_registry","return_type":"void"},{"name":"sync_from_registry","return_type":"void"},{"name":"update_visual_data","return_type":"void"},
+        {"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+      ]}
+    },
+    {
+      "kind":"facade", "name":"test_lasers_phase_interface",
+      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersPhaseInterface.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLasersPhaseInterface.cpp",
+      "header_include":"SpaceGame/combat/lasers/TestLasersPhaseInterface.h", "namespace":"ml::test_lasers",
+      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "facade":{"name":"PhaseInterface","target_type":"@test_lasers","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestLasers","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+        {"name":"clear_runtime_state","return_type":"void"},{"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},
+        {"name":"simulate","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},{"name":"commit_spawns","return_type":"void"},
+        {"name":"update_visual_data","return_type":"void"},{"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+      ]}
+    },
+    {
+      "kind":"facade", "name":"test_capital_ships_phase_interface",
+      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp",
+      "header_include":"SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h", "namespace":"ml::test_capital_ships",
+      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "facade":{"name":"PhaseInterface","target_type":"@test_capital_ships","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestCapitalShips","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+        {"name":"clear_runtime_state","return_type":"void"},{"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},{"name":"update_timers","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},
+        {"name":"make_decisions","return_type":"void"},{"name":"resolve_damage_events","return_type":"void"},{"name":"update_entity_registry","return_type":"void"},{"name":"sync_from_registry","return_type":"void"},
+        {"name":"update_visual_data","return_type":"void"},{"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+      ]}
+    },
+    {
+      "kind":"facade", "name":"test_capital_ship_fighters_phase_interface",
+      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp",
+      "header_include":"SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h", "namespace":"ml::test_capital_ship_fighters",
+      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "facade":{"name":"PhaseInterface","target_type":"@test_fighters","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestCapitalShipFighters","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+        {"name":"clear_runtime_state","return_type":"void"},{"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},{"name":"update_timers","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},
+        {"name":"make_decisions","return_type":"void"},{"name":"move","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},{"name":"queue_commands","return_type":"void"},
+        {"name":"resolve_damage_events","return_type":"void"},{"name":"update_entity_registry","return_type":"void"},{"name":"sync_from_registry","return_type":"void"},
+        {"name":"update_visual_data","return_type":"void"},{"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+      ]}
+    },
+    {
+      "kind":"facade", "name":"test_static_turrets_phase_interface",
+      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/defences/turrets/TestStaticTurretsPhaseInterface.cpp",
+      "header_include":"SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h", "namespace":"ml::test_static_turrets",
+      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "facade":{"name":"PhaseInterface","target_type":"@test_static_turrets","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestStaticTurrets","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+        {"name":"clear_runtime_state","return_type":"void"},{"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},{"name":"update_timers","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},
+        {"name":"make_decisions","return_type":"void"},{"name":"queue_commands","return_type":"void"},{"name":"resolve_damage_events","return_type":"void"},
+        {"name":"update_entity_registry","return_type":"void"},{"name":"sync_from_registry","return_type":"void"},{"name":"update_visual_data","return_type":"void"},
+        {"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+      ]}
+    },
+    {
+      "kind":"facade", "name":"test_tube_spinners_phase_interface",
+      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/defences/spinners/TestTubeSpinnersPhaseInterface.cpp",
+      "header_include":"SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h", "namespace":"ml::test_tube_spinners",
+      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "facade":{"name":"PhaseInterface","target_type":"@test_tube_spinners","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestTubeSpinners","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+        {"name":"clear_runtime_state","return_type":"void"},{"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},{"name":"update_timers","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},
+        {"name":"move","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},{"name":"queue_commands","return_type":"void"},{"name":"update_entity_registry","return_type":"void"},
+        {"name":"update_visual_data","return_type":"void"},{"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+      ]}
+    }
+  ]
+}

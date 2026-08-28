@@ -1,0 +1,18 @@
+{
+  "types": {
+    "vector": {"spelling": "FVector2f", "header": "Project/Vector2f.h"},
+    "vector2d": {"spelling": "FVector2d", "header": "Project/Vector2d.h"},
+    "point": {"spelling": "FPoint2f", "header": "Project/Point2f.h"},
+    "row": {"spelling": "FRow", "header": "Project/Row.h"},
+    "scalar": {"spelling": "FScalar1f", "header": "Project/Scalar1f.h"},
+    "vector3": {"spelling": "FVector3f", "header": "Project/Vector3f.h"},
+    "tracked": {"spelling": "FTracked", "header": "Project/Tracked.h"},
+    "target": {"spelling": "FTarget", "header": "Project/Target.h"},
+    "check": {"spelling": "check", "header": "CoreMinimal.h"},
+    "child": {
+      "spelling": "FChild",
+      "operations": {"remove_at_swap": "remove_at_swap"}
+    },
+    "fixed_child": {"spelling": "FFixedChild"}
+  }
+}

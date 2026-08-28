@@ -1,0 +1,192 @@
+{
+  "types": {
+    "array_fill": {
+      "spelling": "ml::fill",
+      "header": "SandboxCore/array_utils.h"
+    },
+    "array_math": {
+      "spelling": "ml::subtract_in_place",
+      "header": "SandboxCore/array_math.h"
+    },
+    "check": {
+      "spelling": "check",
+      "header": "CoreMinimal.h"
+    },
+    "countdown_timers": {
+      "spelling": "FCountdownTimers",
+      "header": "SandboxCore/countdown_timers.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "death_reason": {
+      "spelling": "ETestDeathReason",
+      "header": "SpaceGame/entities/TestDeathReason.h"
+    },
+    "entity_type": {
+      "spelling": "ETestEntityType",
+      "header": "SpaceGame/entities/TestEntityType.h"
+    },
+    "fighter_order": {
+      "spelling": "TestCapitalShipFighterOrder",
+      "header": "SpaceGame/ships/fighters/TestCapitalShipFighterOrder.h"
+    },
+    "fighter_order_queue": {
+      "spelling": "TestCapitalShipFighterOrderQueue",
+      "header": "SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "fighter_spawn_queue": {
+      "spelling": "TestCapitalShipFighterSpawnQueue",
+      "header": "SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "fighter_task": {
+      "spelling": "ETestCapitalShipFightersTask",
+      "header": "SpaceGame/ships/fighters/TestCapitalShipFightersTask.h"
+    },
+    "fstring": {
+      "spelling": "FString",
+      "header": "CoreMinimal.h"
+    },
+    "index_span": {
+      "spelling": "FIndexSpan",
+      "header": "SpaceGame/support/IndexSpan.h"
+    },
+    "instance_data": {
+      "spelling": "FInstancedStaticMeshInstanceData",
+      "header": "Components/InstancedStaticMeshComponent.h"
+    },
+    "linear_color": {
+      "spelling": "FLinearColor",
+      "header": "Math/Color.h"
+    },
+    "periodic_tick_countdown_16": {
+      "spelling": "FPeriodicTickCountdown16",
+      "header": "SandboxCore/periodic_tick_countdown.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "primitive_component_const_ptr": {
+      "spelling": "UPrimitiveComponent const*",
+      "header": "Components/PrimitiveComponent.h"
+    },
+    "registry_handle": {
+      "spelling": "FRegistryEntityHandle",
+      "header": "SandboxNative/RegistryEntityHandle.h"
+    },
+    "registry_handle_array": {
+      "spelling": "TArray<FRegistryEntityHandle>",
+      "header": "Containers/Array.h"
+    },
+    "rotators_f": {
+      "spelling": "FRotatorsf",
+      "header": "SandboxCore/soa_rotators.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "soa_vector_fill": {
+      "spelling": "ml::fill",
+      "header": "SandboxCore/soa_vector_utils.h"
+    },
+    "shared_ptr_int32": {
+      "spelling": "TSharedPtr<int32>",
+      "header": "Templates/SharedPointer.h"
+    },
+    "team": {
+      "spelling": "ETestTeam",
+      "header": "SpaceGame/entities/TestTeam.h"
+    },
+    "tick_countdown_8": {
+      "spelling": "FTickCountdown8",
+      "header": "SandboxCore/tick_countdown.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "tick_countdown_16": {
+      "spelling": "FTickCountdown16",
+      "header": "SandboxCore/tick_countdown.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "unique_id": {
+      "spelling": "TestEntityUniqueId",
+      "header": "SpaceGame/entities/TestEntityUniqueId.h"
+    },
+    "vector_2f": {
+      "spelling": "FVector2f",
+      "header": "CoreMinimal.h"
+    },
+    "vector_2d": {
+      "spelling": "FVector2d",
+      "header": "CoreMinimal.h"
+    },
+    "int_point": {
+      "spelling": "FIntPoint",
+      "header": "CoreMinimal.h"
+    },
+    "uint_point": {
+      "spelling": "FUintPoint",
+      "header": "CoreMinimal.h"
+    },
+    "vector_3f_value": {
+      "spelling": "FVector3f",
+      "header": "CoreMinimal.h"
+    },
+    "vector_3d": {
+      "spelling": "FVector3d",
+      "header": "CoreMinimal.h"
+    },
+    "int_vector": {
+      "spelling": "FIntVector",
+      "header": "CoreMinimal.h"
+    },
+    "uint_vector_3": {
+      "spelling": "FUintVector3",
+      "header": "CoreMinimal.h"
+    },
+    "vectors_3f": {
+      "spelling": "FVectors3f",
+      "header": "SandboxCore/soa_vectors_3f.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "test_fighters": {
+      "spelling": "ATestCapitalShipFighters",
+      "header": "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
+    },
+    "spawned_entity_handles": {
+      "spelling": "SpawnedEntityHandles",
+      "header": "SpaceGame/entities/TestEntityRegistry.h"
+    },
+    "test_space_ship": {
+      "spelling": "ATestSpaceShip",
+      "header": "SpaceGame/ships/player/TestSpaceShip.h"
+    },
+    "test_lasers": {
+      "spelling": "ATestLasers",
+      "header": "SpaceGame/combat/lasers/TestLasers.h"
+    },
+    "test_capital_ships": {
+      "spelling": "ATestCapitalShips",
+      "header": "SpaceGame/ships/capital/TestCapitalShips.h"
+    },
+    "test_static_turrets": {
+      "spelling": "ATestStaticTurrets",
+      "header": "SpaceGame/defences/turrets/TestStaticTurrets.h"
+    },
+    "test_tube_spinners": {
+      "spelling": "ATestTubeSpinners",
+      "header": "SpaceGame/defences/spinners/TestTubeSpinners.h"
+    }
+  }
+}

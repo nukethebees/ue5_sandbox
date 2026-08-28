@@ -20,13 +20,5 @@ public class SandboxCoreTestsTarget : TestTargetRules
         bMockEngineDefaults = true;
         bUsePlatformFileStub = true;
 
-        if (BuildHostPlatform.Current.Platform == UnrealTargetPlatform.Win64)
-        {
-            PreBuildSteps.Add("cd /d \"$(ProjectDir)\" && py -3 -m Codegen.generate");
-        }
-        else
-        {
-            PreBuildSteps.Add("cd \"$(ProjectDir)\" && python3 -m Codegen.generate");
-        }
     }
 }

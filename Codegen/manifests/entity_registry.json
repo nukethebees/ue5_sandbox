@@ -1,0 +1,155 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "collision_damage_events_soa",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/CollisionDamageEventsSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/CollisionDamageEventsSoA.cpp",
+      "header_include": "SpaceGame/entities/CollisionDamageEventsSoA.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "prelude": ["class AActor;", "class UActorComponent;"],
+      "structs": [
+        {
+          "name": "UnresolvedCollisionDamageEvents",
+          "export_specifier": "SPACEGAME_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "damaged_actors", "kind": "array", "type": "AActor*"},
+            {"name": "damage_amounts", "kind": "array", "type": "int32"},
+            {"name": "actor_components", "kind": "array", "type": "UActorComponent*"},
+            {"name": "hit_items", "kind": "array", "type": "int32"},
+            {"name": "instigators", "kind": "array", "type": "@registry_handle"}
+          ]
+        },
+        {
+          "name": "CollisionDamageEvents",
+          "export_specifier": "SPACEGAME_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "damage_amounts", "kind": "array", "type": "int32"},
+            {"name": "actor_components", "kind": "array", "type": "UActorComponent*"},
+            {"name": "hit_items", "kind": "array", "type": "int32"},
+            {"name": "instigators", "kind": "array", "type": "@registry_handle"}
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "soa",
+      "name": "entity_death_info",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/EntityDeathInfo.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/EntityDeathInfo.cpp",
+      "header_include": "SpaceGame/entities/EntityDeathInfo.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "structs": [{
+        "name": "EntityDeathInfo",
+        "export_specifier": "SPACEGAME_API",
+        "operations": ["all"],
+        "members": [
+          {"name": "reasons", "kind": "array", "type": "@death_reason"},
+          {"name": "victims", "kind": "array", "type": "@registry_handle"},
+          {"name": "killers", "kind": "array", "type": "@registry_handle"}
+        ],
+        "functions": [
+          {
+            "name": "add", "return_type": "void", "definition_in_source": true,
+            "parameters": [
+              {"type": {"name": "@death_reason", "suffix": " const"}, "name": "reason"},
+              {"type": {"name": "@registry_handle", "suffix": " const"}, "name": "victim"},
+              {"type": {"name": "@registry_handle", "suffix": " const"}, "name": "killer"}
+            ],
+            "body": ["reasons.Add(reason);", "victims.Add(victim);", "killers.Add(killer);"]
+          },
+          {
+            "name": "add", "return_type": "void", "inline": true,
+            "parameters": [
+              {"type": {"name": "@death_reason", "suffix": " const"}, "name": "reason"},
+              {"type": {"name": "@registry_handle", "suffix": " const"}, "name": "victim"}
+            ],
+            "body": ["add(reason, victim, FRegistryEntityHandle{});"]
+          }
+        ]
+      }]
+    },
+    {
+      "kind": "soa",
+      "name": "test_entity_unique_entity_data_soa",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityUniqueEntityDataSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityUniqueEntityDataSoA.cpp",
+      "header_include": "SpaceGame/entities/TestEntityUniqueEntityDataSoA.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "structs": [{
+        "name": "TestEntityUniqueEntityData",
+        "export_specifier": "SPACEGAME_API",
+        "operations": ["all"],
+        "using_declarations": ["kills_type = uint32"],
+        "members": [
+          {"name": "registry_indices", "kind": "array", "type": {"name": "@registry_handle", "nested": "index_type"}},
+          {"name": "registry_generations", "kind": "array", "type": {"name": "@registry_handle", "nested": "generation_type"}},
+          {"name": "entity_types", "kind": "array", "type": "@entity_type"},
+          {"name": "teams", "kind": "array", "type": "@team"},
+          {"name": "kills", "kind": "array", "type": "uint32"},
+          {"name": "alive", "kind": "array", "type": "uint8"},
+          {"name": "killed_by", "kind": "array", "type": "@unique_id"},
+          {"name": "death_reason", "kind": "array", "type": "@death_reason"}
+        ]
+      }]
+    },
+    {
+      "kind": "soa",
+      "name": "test_entity_registry_data_soa",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityRegistryData.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityRegistryData.cpp",
+      "header_include": "SpaceGame/entities/TestEntityRegistryData.h",
+      "namespace": "ml::entity_registry",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "structs": [{
+        "name": "EntityData",
+        "operations": ["all"],
+        "members": [
+          {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
+          {"name": "velocities", "kind": "nested", "type": "@vectors_3f"},
+          {"name": "radii", "kind": "array", "type": "float"},
+          {"name": "healths", "kind": "array", "type": "int32"},
+          {"name": "teams", "kind": "array", "type": "@team"},
+          {"name": "entity_types", "kind": "array", "type": "@entity_type"},
+          {"name": "alive", "kind": "array", "type": "uint8"}
+        ],
+        "functions": [
+          {
+            "name": "add_disabled", "return_type": "void", "definition_in_source": true,
+            "parameters": [{"type": "int32 const", "name": "count"}],
+            "dependencies": ["array_fill", "soa_vector_fill"],
+            "body": ["add_uninitialised(count);", "auto view{get_view()};", "auto slice{view.right(count)};", "", "ml::fill(slice.locations, 0.f);", "ml::fill(slice.velocities, 0.f);", "ml::fill(slice.radii, 0.f);", "ml::fill(slice.healths, 0);", "ml::fill(slice.teams, ETestTeam::White);", "ml::fill(slice.entity_types, ETestEntityType::COUNT);", "ml::fill(slice.alive, uint8{0u});"]
+          },
+          {"name": "set_all_alive", "return_type": "void", "definition_in_source": true, "dependencies": ["array_fill"], "body": ["ml::fill(alive, uint8{1});"]},
+          {"name": "set_all_velocities", "return_type": "void", "definition_in_source": true, "parameters": [{"type": "float const", "name": "value"}], "dependencies": ["soa_vector_fill"], "body": ["ml::fill(velocities, value);"]},
+          {"name": "set_all_entity_types", "return_type": "void", "definition_in_source": true, "parameters": [{"type": {"name": "@entity_type", "suffix": " const"}, "name": "value"}], "dependencies": ["array_fill"], "body": ["ml::fill(entity_types, value);"]}
+        ]
+      }]
+    },
+    {
+      "kind": "soa",
+      "name": "registry_entity_handles_soa",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/RegistryEntityHandles.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/RegistryEntityHandles.cpp",
+      "header_include": "SpaceGame/entities/RegistryEntityHandles.h",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "structs": [{
+        "name": "FRegistryEntityHandles",
+        "export_specifier": "SPACEGAME_API",
+        "operations": ["all"],
+        "equivalent_type": "@registry_handle",
+        "members": [
+          {"name": "registry_indices", "kind": "array", "type": "int32"},
+          {"name": "generations", "kind": "array", "type": "int32"}
+        ],
+        "functions": [
+          {"name": "add", "return_type": "void", "definition_in_source": true, "parameters": [{"type": "int32 const", "name": "index"}, {"type": "int32 const", "name": "generation"}], "body": ["registry_indices.Add(index);", "generations.Add(generation);"]},
+          {"name": "append_to", "return_type": "void", "definition_in_source": true, "const": true, "parameters": [{"type": {"name": "@registry_handle_array", "suffix": "&"}, "name": "out"}], "body": ["auto const count{num()};", "out.Reserve(out.Num() + count);", "for (int32 i{0}; i < count; ++i) {", "    out.Emplace(registry_indices[i], generations[i]);", "}"]},
+          {"name": "to_array", "return_type": "@registry_handle_array", "definition_in_source": true, "const": true, "body": ["TArray<FRegistryEntityHandle> out;", "append_to(out);", "return out;"]}
+        ]
+      }]
+    }
+  ]
+}
