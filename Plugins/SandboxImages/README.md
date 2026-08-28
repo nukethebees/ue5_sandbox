@@ -25,9 +25,11 @@ cmake --build --preset debug-game --target generate-lab-images
 This builds the editor if needed, selects the correct configuration-specific executable, and uses a
 project-local derived-data cache under the ignored build directory.
 
-In Unreal Editor, click **Generate Lab Images** in the level-editor toolbar. The same action is also
-available under **Tools > Generate Sandbox Lab Images**. A notification reports success or directs
-you to the Output Log when a write fails. The editor console command remains available:
+In Unreal Editor, click **Image Lab** in the level-editor toolbar or choose
+**Tools > Sandbox Image Lab**. The editor tab provides a transient preview, generator-specific
+parameters, **Generate Selected**, **Generate All Defaults**, and **Open Output Folder**. Changing a
+parameter refreshes the preview without writing anything. The editor console command remains
+available:
 
 ```text
 SandboxImages.GenerateLabImages
@@ -46,8 +48,11 @@ logs every written file and reports failures in the Output Log or process exit c
 
 ## Current outputs
 
-The reproducible parameters live in `GenLab/Private/Generation/ImageGenerators.h`, with the current
-output set kept as explicit calls in `LabImageWriter.cpp`.
+The reproducible parameters and default output table live in
+`GenLab/Private/Generation/ImageGenerators.h` and `ImageGenerators.cpp`. The editor UI creates the
+same generation requests used by batch regeneration; it does not define a separate preset format.
+Change the output name and seed to create a deterministic variant without changing the canonical
+default set.
 
 | Output | Channel meaning |
 | --- | --- |
@@ -63,7 +68,9 @@ changes are deliberate.
 
 Each PNG is automatically imported as a `UTexture2D` in `/SandboxImages/Lab/Images`. Regeneration
 updates the existing generated texture assets in place. The importer disables sRGB and uses mask
-compression for masks or grayscale compression for coherent noise.
+compression for masks or grayscale compression for coherent noise. It also applies explicit texture
+group, mip, filtering, and addressing settings, and records the generator version and parameters in
+the generated asset's package metadata.
 
 ## Unreal import guidance
 

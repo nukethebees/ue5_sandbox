@@ -56,11 +56,33 @@ struct FHexGridParameters {
     float falloff{1.0f};
 };
 
+enum class EGeneratorType : uint8 {
+    RadialGradient,
+    RingMask,
+    Starfield,
+    Noise,
+    HexGrid,
+};
+
+struct FGenerationRequest {
+    EGeneratorType generator{EGeneratorType::RadialGradient};
+    FString output_name{TEXT("soft_radial_gradient")};
+    FRadialGradientParameters radial_gradient;
+    FRingMaskParameters ring_mask;
+    FStarfieldParameters starfield;
+    FNoiseParameters noise;
+    FHexGridParameters hex_grid;
+};
+
 [[nodiscard]] auto generate_radial_gradient(FRadialGradientParameters const& parameters)
     -> FGeneratedImage;
 [[nodiscard]] auto generate_ring_mask(FRingMaskParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_starfield(FStarfieldParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] auto make_default_request(EGeneratorType generator) -> FGenerationRequest;
+[[nodiscard]] auto default_generation_requests() -> TArray<FGenerationRequest>;
+[[nodiscard]] auto generate_image(FGenerationRequest const& request) -> FGeneratedImage;
+[[nodiscard]] auto describe_request(FGenerationRequest const& request) -> FString;
 
 }

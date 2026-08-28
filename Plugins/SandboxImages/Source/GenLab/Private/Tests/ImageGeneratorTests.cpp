@@ -87,6 +87,41 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
     }
 };
 
+TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(DefaultRequestsAreNamedUniqueAndGenerateValidImages)
+    {
+        auto const requests{default_generation_requests()};
+        TestRunner->TestEqual(
+            TEXT("There is one request per proof-of-concept generator"), requests.Num(), 5);
+
+        TSet<FString> output_names;
+        for (auto const& request : requests) {
+            TestRunner->TestFalse(TEXT("Default output name is present"),
+                                  request.output_name.IsEmpty());
+            output_names.Add(request.output_name);
+            TestRunner->TestTrue(TEXT("Default request generates a valid image"),
+                                 generate_image(request).is_valid());
+            TestRunner->TestTrue(TEXT("Request description contains its format version"),
+                                 describe_request(request).StartsWith(TEXT("version=1;")));
+        }
+        TestRunner->TestEqual(
+            TEXT("Default output names are unique"), output_names.Num(), requests.Num());
+    }
+
+    TEST_METHOD(SeedChangesFlowThroughUnifiedRequests)
+    {
+        auto first{make_default_request(EGeneratorType::Starfield)};
+        auto second{first};
+        second.starfield.seed += 1;
+
+        TestRunner->TestTrue(TEXT("Same request remains deterministic"),
+                             generate_image(first).pixels == generate_image(first).pixels);
+        TestRunner->TestTrue(TEXT("A changed request seed changes output"),
+                             generate_image(first).pixels != generate_image(second).pixels);
+    }
+};
+
 TEST_CLASS(RadialAndRingGenerators, "SandboxImages.UnitTests")
 {
     TEST_METHOD(RadialGradientHasBrightCentreTransparentEdgeAndSymmetry)

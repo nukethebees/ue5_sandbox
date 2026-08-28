@@ -279,4 +279,105 @@ auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage 
     return image;
 }
 
+auto make_default_request(EGeneratorType const generator) -> FGenerationRequest {
+    FGenerationRequest request{};
+    request.generator = generator;
+    switch (generator) {
+        case EGeneratorType::RadialGradient:
+            request.output_name = TEXT("soft_radial_gradient");
+            break;
+        case EGeneratorType::RingMask:
+            request.output_name = TEXT("ring_mask");
+            break;
+        case EGeneratorType::Starfield:
+            request.output_name = TEXT("starfield");
+            break;
+        case EGeneratorType::Noise:
+            request.output_name = TEXT("coherent_noise");
+            break;
+        case EGeneratorType::HexGrid:
+            request.output_name = TEXT("hex_grid_mask");
+            break;
+    }
+    return request;
+}
+
+auto default_generation_requests() -> TArray<FGenerationRequest> {
+    return {
+        make_default_request(EGeneratorType::RadialGradient),
+        make_default_request(EGeneratorType::RingMask),
+        make_default_request(EGeneratorType::Starfield),
+        make_default_request(EGeneratorType::Noise),
+        make_default_request(EGeneratorType::HexGrid),
+    };
+}
+
+auto generate_image(FGenerationRequest const& request) -> FGeneratedImage {
+    switch (request.generator) {
+        case EGeneratorType::RadialGradient:
+            return generate_radial_gradient(request.radial_gradient);
+        case EGeneratorType::RingMask:
+            return generate_ring_mask(request.ring_mask);
+        case EGeneratorType::Starfield:
+            return generate_starfield(request.starfield);
+        case EGeneratorType::Noise:
+            return generate_noise(request.noise);
+        case EGeneratorType::HexGrid:
+            return generate_hex_grid(request.hex_grid);
+    }
+    return invalid_image(TEXT("Unknown image generator."));
+}
+
+auto describe_request(FGenerationRequest const& request) -> FString {
+    switch (request.generator) {
+        case EGeneratorType::RadialGradient:
+            return FString::Printf(TEXT("version=1; generator=radial_gradient; dimensions=%dx%d; "
+                                        "inner_radius=%g; outer_radius=%g"),
+                                   request.radial_gradient.width,
+                                   request.radial_gradient.height,
+                                   request.radial_gradient.inner_radius,
+                                   request.radial_gradient.outer_radius);
+        case EGeneratorType::RingMask:
+            return FString::Printf(
+                TEXT("version=1; generator=ring_mask; dimensions=%dx%d; radius=%g; "
+                     "thickness=%g; falloff=%g"),
+                request.ring_mask.width,
+                request.ring_mask.height,
+                request.ring_mask.radius,
+                request.ring_mask.thickness,
+                request.ring_mask.falloff);
+        case EGeneratorType::Starfield:
+            return FString::Printf(
+                TEXT("version=1; generator=starfield; dimensions=%dx%d; seed=%u; "
+                     "star_count=%d; minimum_brightness=%g; minimum_radius=%g; "
+                     "maximum_radius=%g; transparent_background=%s"),
+                request.starfield.width,
+                request.starfield.height,
+                request.starfield.seed,
+                request.starfield.star_count,
+                request.starfield.minimum_brightness,
+                request.starfield.minimum_radius,
+                request.starfield.maximum_radius,
+                request.starfield.transparent_background ? TEXT("true") : TEXT("false"));
+        case EGeneratorType::Noise:
+            return FString::Printf(TEXT("version=1; generator=noise; dimensions=%dx%d; seed=%u; "
+                                        "base_scale=%g; octave_count=%d; persistence=%g"),
+                                   request.noise.width,
+                                   request.noise.height,
+                                   request.noise.seed,
+                                   request.noise.base_scale,
+                                   request.noise.octave_count,
+                                   request.noise.persistence);
+        case EGeneratorType::HexGrid:
+            return FString::Printf(TEXT("version=1; generator=hex_grid; dimensions=%dx%d; "
+                                        "cell_radius=%g; line_thickness=%g; falloff=%g"),
+                                   request.hex_grid.width,
+                                   request.hex_grid.height,
+                                   request.hex_grid.cell_radius,
+                                   request.hex_grid.line_thickness,
+                                   request.hex_grid.falloff);
+    }
+    return TEXT("version=1; generator=unknown");
+}
+
 }

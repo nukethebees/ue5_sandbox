@@ -17,11 +17,13 @@ public class GenLab : ModuleRules
             "ImageCore",
             "LevelEditor",
             "Projects",
+            "PropertyEditor",
             "SandboxImages",
             "Slate",
             "SlateCore",
             "ToolMenus",
             "UnrealEd",
+            "WorkspaceMenuStructure",
         });
     }
 }
