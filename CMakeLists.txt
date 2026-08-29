@@ -95,6 +95,8 @@ if(NOT EXISTS "${UE_EDITOR_CMD_EXE}")
 endif()
 
 set(SANDBOX_UPROJECT "${CMAKE_CURRENT_SOURCE_DIR}/Sandbox.uproject")
+set(SANDBOX_LOCAL_DDC_DIR "${CMAKE_CURRENT_BINARY_DIR}/local-derived-data-cache")
+file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
@@ -132,6 +134,25 @@ add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
 add_dependencies(editor check-generated-code)
 add_dependencies(game check-generated-code)
+
+add_custom_target(generate-lab-images
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=GenerateSandboxImages
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+    -ddc=NoZenLocalFallback
+    -unattended
+    -nop4
+    -nosplash
+    -nullrhi
+    -nosound
+    -stdout
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Regenerating SandboxImages Lab PNGs"
+  USES_TERMINAL
+  VERBATIM
+)
+
 set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.enum
   Sandbox.fighters
@@ -142,6 +163,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxShaders.UnitTests
   SandboxCoreEngine.UnitTests
   SandboxGpuTutorials.UnitTests
+  SandboxImages.UnitTests
   SandboxUI.UnitTests
 )
 set(SANDBOX_LEVEL_AUTOMATION_FILTERS

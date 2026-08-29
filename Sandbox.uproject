@@ -461,6 +461,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxImages",
+			"Enabled": true
+		},
+		{
 			"Name": "SandboxGameShared",
 			"Enabled": true
 		},

@@ -95,6 +95,9 @@ Content/Fab
 # Functional test result exports
 /Content/test_results/
 
+# Disposable procedural image Lab output
+/Plugins/SandboxImages/Content/Lab/Images/
+
 # CQ Test maps
 /Content/CQTestMapTemp
 
