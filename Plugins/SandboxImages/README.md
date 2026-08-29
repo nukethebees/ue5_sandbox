@@ -66,12 +66,16 @@ controls the apparent surface slope; wrapping preserves seams for periodic sourc
 Signed-distance output thresholds a shaped scalar mask and stores outside values below 0.5 and
 inside values above 0.5 over a configurable pixel range. This supports shader-side outlines,
 expansion, erosion and dissolve effects; periodic padding keeps tileable masks seamless.
+The shockwave flipbook is a deliberately specific animated experiment: it lays expanding, fading
+ring frames into a configurable grid for use by particle flipbook sampling without introducing a
+general animation system.
 
 | Output | Channel meaning |
 | --- | --- |
 | `soft_radial_gradient.png` | White intensity duplicated into RGB and alpha |
 | `ring_mask.png` | White intensity duplicated into RGB and alpha |
 | `ring_distance.png` | Signed distance around the ring mask, with 0.5 at its boundary |
+| `shockwave_flipbook.png` | 4x4 expanding and fading shockwave-ring frames |
 | `starfield.png` | Star intensity duplicated into RGB and alpha over transparency |
 | `coherent_noise.png` | Grayscale data in RGB with opaque alpha |
 | `nebula_soft.png` | Soft tileable domain-warped grayscale noise |

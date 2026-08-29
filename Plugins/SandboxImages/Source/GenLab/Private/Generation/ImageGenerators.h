@@ -28,6 +28,20 @@ struct FRingMaskParameters {
     float falloff{0.035f};
 };
 
+struct FShockwaveFlipbookParameters {
+    int32 width{512};
+    int32 height{512};
+    int32 columns{4};
+    int32 rows{4};
+    int32 frame_count{16};
+    float start_radius{0.08f};
+    float end_radius{0.78f};
+    float thickness{0.10f};
+    float falloff{0.04f};
+    float start_intensity{1.0f};
+    float end_intensity{0.15f};
+};
+
 struct FStarfieldParameters {
     int32 width{256};
     int32 height{256};
@@ -103,6 +117,7 @@ struct FHexGridParameters {
 enum class EGeneratorType : uint8 {
     RadialGradient,
     RingMask,
+    ShockwaveFlipbook,
     Starfield,
     Noise,
     DomainWarpedNoise,
@@ -136,6 +151,7 @@ struct FGenerationRequest {
     FString output_name{TEXT("soft_radial_gradient")};
     FRadialGradientParameters radial_gradient;
     FRingMaskParameters ring_mask;
+    FShockwaveFlipbookParameters shockwave_flipbook;
     FStarfieldParameters starfield;
     FNoiseParameters noise;
     FDomainWarpedNoiseParameters domain_warped_noise;
@@ -148,6 +164,8 @@ struct FGenerationRequest {
 [[nodiscard]] auto generate_radial_gradient(FRadialGradientParameters const& parameters)
     -> FGeneratedImage;
 [[nodiscard]] auto generate_ring_mask(FRingMaskParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] auto generate_shockwave_flipbook(FShockwaveFlipbookParameters const& parameters)
+    -> FGeneratedImage;
 [[nodiscard]] auto generate_starfield(FStarfieldParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage;
 [[nodiscard]] auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters)

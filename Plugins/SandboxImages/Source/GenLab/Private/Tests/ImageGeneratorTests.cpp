@@ -51,6 +51,11 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
                          width,
                          height);
         test_valid_image(*TestRunner,
+                         TEXT("shockwave flipbook"),
+                         generate_shockwave_flipbook({.width = width, .height = height}),
+                         width,
+                         height);
+        test_valid_image(*TestRunner,
                          TEXT("starfield"),
                          generate_starfield({.width = width, .height = height}),
                          width,
@@ -92,6 +97,7 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
     {
         auto const invalid_dimensions{generate_radial_gradient({.width = 0})};
         auto const invalid_ring{generate_ring_mask({.thickness = 0.0f})};
+        auto const invalid_flipbook{generate_shockwave_flipbook({.width = 255})};
         auto const invalid_starfield{generate_starfield({.minimum_radius = -1.0f})};
         auto const invalid_noise{generate_noise({.base_scale = 0.0f})};
         auto const invalid_domain_noise{generate_domain_warped_noise({.warp_octave_count = 0})};
@@ -109,6 +115,7 @@ TEST_CLASS(ImageGeneratorBuffers, "SandboxImages.UnitTests")
 
         for (auto const* image : {&invalid_dimensions,
                                   &invalid_ring,
+                                  &invalid_flipbook,
                                   &invalid_starfield,
                                   &invalid_noise,
                                   &invalid_domain_noise,
@@ -130,7 +137,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
     TEST_METHOD(DefaultRequestsAreNamedUniqueAndGenerateValidImages)
     {
         auto const requests{default_generation_requests()};
-        TestRunner->TestEqual(TEXT("There are seventeen canonical examples"), requests.Num(), 17);
+        TestRunner->TestEqual(TEXT("There are eighteen canonical examples"), requests.Num(), 18);
 
         TSet<FString> output_names;
         for (auto const& request : requests) {
@@ -140,7 +147,7 @@ TEST_CLASS(GenerationRequests, "SandboxImages.UnitTests")
             TestRunner->TestTrue(TEXT("Default request generates a valid image"),
                                  generate_image(request).is_valid());
             TestRunner->TestTrue(TEXT("Request description contains its format version"),
-                                 describe_request(request).StartsWith(TEXT("version=5;")));
+                                 describe_request(request).StartsWith(TEXT("version=6;")));
         }
         TestRunner->TestEqual(
             TEXT("Default output names are unique"), output_names.Num(), requests.Num());
@@ -310,6 +317,60 @@ TEST_CLASS(RadialAndRingGenerators, "SandboxImages.UnitTests")
                              pixel_at(image, ring_x, 32).R >= uint8{240});
         TestRunner->TestEqual(
             TEXT("Image corner is outside the ring"), pixel_at(image, 0, 0).R, uint8{0});
+    }
+};
+
+TEST_CLASS(ShockwaveFlipbookGenerator, "SandboxImages.UnitTests")
+{
+    TEST_METHOD(FramesExpandFadeAndLeaveUnusedCellsEmpty)
+    {
+        FShockwaveFlipbookParameters const parameters{.width = 260,
+                                                      .height = 65,
+                                                      .columns = 4,
+                                                      .rows = 1,
+                                                      .frame_count = 3,
+                                                      .start_radius = 0.30f,
+                                                      .end_radius = 0.75f,
+                                                      .thickness = 0.08f,
+                                                      .falloff = 0.03f,
+                                                      .start_intensity = 1.0f,
+                                                      .end_intensity = 0.25f};
+        auto const first{generate_shockwave_flipbook(parameters)};
+        auto const second{generate_shockwave_flipbook(parameters)};
+        TestRunner->TestTrue(TEXT("Identical parameters produce identical flipbooks"),
+                             first.pixels == second.pixels);
+
+        constexpr int32 frame_width{65};
+        uint8 previous_peak{255};
+        int32 previous_peak_offset{-1};
+        for (int32 frame{0}; frame < parameters.frame_count; ++frame) {
+            uint8 peak{0};
+            int32 peak_offset{0};
+            for (int32 offset{0}; offset <= frame_width / 2; ++offset) {
+                auto const value{pixel_at(first, frame * frame_width + 32 + offset, 32).R};
+                if (value > peak) {
+                    peak = value;
+                    peak_offset = offset;
+                }
+            }
+
+            TestRunner->TestTrue(TEXT("Each frame contains a visible ring"), peak > 0);
+            TestRunner->TestTrue(TEXT("The ring expands from frame to frame"),
+                                 peak_offset > previous_peak_offset);
+            TestRunner->TestTrue(TEXT("The ring fades from frame to frame"),
+                                 frame == 0 || peak < previous_peak);
+            previous_peak = peak;
+            previous_peak_offset = peak_offset;
+        }
+
+        int32 unused_nonzero_pixels{0};
+        for (int32 y{0}; y < parameters.height; ++y) {
+            for (int32 x{3 * frame_width}; x < parameters.width; ++x) {
+                unused_nonzero_pixels += pixel_at(first, x, y) != FColor::Transparent ? 1 : 0;
+            }
+        }
+        TestRunner->TestEqual(
+            TEXT("Unused flipbook cells stay transparent"), unused_nonzero_pixels, 0);
     }
 };
 

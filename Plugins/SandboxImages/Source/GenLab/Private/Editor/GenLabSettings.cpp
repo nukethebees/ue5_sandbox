@@ -8,6 +8,8 @@ auto to_generator_type(EGenLabGenerator const generator) -> SandboxImages::GenLa
             return RadialGradient;
         case EGenLabGenerator::RingMask:
             return RingMask;
+        case EGenLabGenerator::ShockwaveFlipbook:
+            return ShockwaveFlipbook;
         case EGenLabGenerator::Starfield:
             return Starfield;
         case EGenLabGenerator::Noise:
@@ -32,6 +34,8 @@ auto to_editor_generator(SandboxImages::GenLab::EGeneratorType const generator)
             return EGenLabGenerator::RadialGradient;
         case RingMask:
             return EGenLabGenerator::RingMask;
+        case ShockwaveFlipbook:
+            return EGenLabGenerator::ShockwaveFlipbook;
         case Starfield:
             return EGenLabGenerator::Starfield;
         case Noise:
@@ -95,6 +99,17 @@ auto UGenLabSettings::to_request() const -> SandboxImages::GenLab::FGenerationRe
                          .radius = ring_radius,
                          .thickness = ring_thickness,
                          .falloff = ring_falloff};
+    request.shockwave_flipbook = {.width = width,
+                                  .height = height,
+                                  .columns = flipbook_columns,
+                                  .rows = flipbook_rows,
+                                  .frame_count = flipbook_frame_count,
+                                  .start_radius = shockwave_start_radius,
+                                  .end_radius = shockwave_end_radius,
+                                  .thickness = shockwave_thickness,
+                                  .falloff = shockwave_falloff,
+                                  .start_intensity = shockwave_start_intensity,
+                                  .end_intensity = shockwave_end_intensity};
     request.starfield = {.width = width,
                          .height = height,
                          .seed = seed,
@@ -186,6 +201,19 @@ void UGenLabSettings::load_request(SandboxImages::GenLab::FGenerationRequest con
             ring_radius = request.ring_mask.radius;
             ring_thickness = request.ring_mask.thickness;
             ring_falloff = request.ring_mask.falloff;
+            break;
+        case EGenLabGenerator::ShockwaveFlipbook:
+            width = request.shockwave_flipbook.width;
+            height = request.shockwave_flipbook.height;
+            flipbook_columns = request.shockwave_flipbook.columns;
+            flipbook_rows = request.shockwave_flipbook.rows;
+            flipbook_frame_count = request.shockwave_flipbook.frame_count;
+            shockwave_start_radius = request.shockwave_flipbook.start_radius;
+            shockwave_end_radius = request.shockwave_flipbook.end_radius;
+            shockwave_thickness = request.shockwave_flipbook.thickness;
+            shockwave_falloff = request.shockwave_flipbook.falloff;
+            shockwave_start_intensity = request.shockwave_flipbook.start_intensity;
+            shockwave_end_intensity = request.shockwave_flipbook.end_intensity;
             break;
         case EGenLabGenerator::Starfield:
             width = request.starfield.width;

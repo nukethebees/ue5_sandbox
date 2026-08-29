@@ -430,6 +430,65 @@ auto generate_ring_mask(FRingMaskParameters const& parameters) -> FGeneratedImag
     return image;
 }
 
+auto generate_shockwave_flipbook(FShockwaveFlipbookParameters const& parameters)
+    -> FGeneratedImage {
+    if (parameters.columns <= 0 || parameters.rows <= 0 || parameters.frame_count <= 0 ||
+        parameters.columns > MAX_int32 / parameters.rows ||
+        parameters.frame_count > parameters.columns * parameters.rows) {
+        return invalid_image(
+            TEXT("Flipbook grid dimensions must be positive and contain every frame."));
+    }
+    if (parameters.width <= 0 || parameters.height <= 0 ||
+        parameters.width % parameters.columns != 0 || parameters.height % parameters.rows != 0) {
+        return invalid_image(
+            TEXT("Flipbook image dimensions must be positive and divisible by the grid."));
+    }
+    if (parameters.start_radius < 0.0f || parameters.end_radius < parameters.start_radius ||
+        parameters.thickness <= 0.0f || parameters.falloff < 0.0f ||
+        parameters.start_intensity < 0.0f || parameters.start_intensity > 1.0f ||
+        parameters.end_intensity < 0.0f || parameters.end_intensity > 1.0f) {
+        return invalid_image(
+            TEXT("Shockwave radii must increase, thickness must be positive, "
+                 "falloff must be non-negative, and intensities must be in [0, 1]."));
+    }
+
+    auto image{make_image(parameters.width, parameters.height, FColor::Transparent)};
+    if (!image.is_valid()) {
+        return image;
+    }
+
+    auto const frame_width{parameters.width / parameters.columns};
+    auto const frame_height{parameters.height / parameters.rows};
+    auto const half_thickness{parameters.thickness * 0.5f};
+    for (int32 frame{0}; frame < parameters.frame_count; ++frame) {
+        auto const progress{parameters.frame_count > 1
+                                ? static_cast<float>(frame) /
+                                      static_cast<float>(parameters.frame_count - 1)
+                                : 0.0f};
+        auto const radius{FMath::Lerp(parameters.start_radius, parameters.end_radius, progress)};
+        auto const intensity{
+            FMath::Lerp(parameters.start_intensity, parameters.end_intensity, progress)};
+        auto const frame_x{frame % parameters.columns};
+        auto const frame_y{frame / parameters.columns};
+        auto const origin_x{frame_x * frame_width};
+        auto const origin_y{frame_y * frame_height};
+
+        for (int32 local_y{0}; local_y < frame_height; ++local_y) {
+            for (int32 local_x{0}; local_x < frame_width; ++local_x) {
+                auto const distance{
+                    normalized_distance(local_x, local_y, frame_width, frame_height)};
+                auto const distance_from_ring{FMath::Abs(distance - radius)};
+                auto const coverage{1.0f - smooth_step(half_thickness,
+                                                       half_thickness + parameters.falloff,
+                                                       distance_from_ring)};
+                image.pixels[(origin_y + local_y) * parameters.width + origin_x + local_x] =
+                    grayscale_mask(coverage * intensity);
+            }
+        }
+    }
+    return image;
+}
+
 auto generate_starfield(FStarfieldParameters const& parameters) -> FGeneratedImage {
     if (parameters.star_count < 0 || parameters.minimum_brightness < 0.0f ||
         parameters.minimum_brightness > 1.0f || parameters.minimum_radius <= 0.0f ||
@@ -761,6 +820,9 @@ auto make_default_request(EGeneratorType const generator) -> FGenerationRequest 
         case EGeneratorType::RingMask:
             request.output_name = TEXT("ring_mask");
             break;
+        case EGeneratorType::ShockwaveFlipbook:
+            request.output_name = TEXT("shockwave_flipbook");
+            break;
         case EGeneratorType::Starfield:
             request.output_name = TEXT("starfield");
             break;
@@ -883,6 +945,7 @@ auto default_generation_requests() -> TArray<FGenerationRequest> {
         make_default_request(EGeneratorType::RadialGradient),
         make_default_request(EGeneratorType::RingMask),
         MoveTemp(ring_distance),
+        make_default_request(EGeneratorType::ShockwaveFlipbook),
         make_default_request(EGeneratorType::Starfield),
         make_default_request(EGeneratorType::Noise),
         MoveTemp(nebula_soft),
@@ -910,6 +973,10 @@ auto generate_image(FGenerationRequest const& request) -> FGeneratedImage {
             break;
         case EGeneratorType::RingMask:
             image = generate_ring_mask(request.ring_mask);
+            alpha_is_intensity = true;
+            break;
+        case EGeneratorType::ShockwaveFlipbook:
+            image = generate_shockwave_flipbook(request.shockwave_flipbook);
             alpha_is_intensity = true;
             break;
         case EGeneratorType::Starfield:
@@ -943,7 +1010,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
     FString description;
     switch (request.generator) {
         case EGeneratorType::RadialGradient:
-            description = FString::Printf(TEXT("version=5; generator=radial_gradient; "
+            description = FString::Printf(TEXT("version=6; generator=radial_gradient; "
                                                "dimensions=%dx%d; inner_radius=%g; "
                                                "outer_radius=%g"),
                                           request.radial_gradient.width,
@@ -953,7 +1020,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::RingMask:
             description =
-                FString::Printf(TEXT("version=5; generator=ring_mask; dimensions=%dx%d; radius=%g; "
+                FString::Printf(TEXT("version=6; generator=ring_mask; dimensions=%dx%d; radius=%g; "
                                      "thickness=%g; falloff=%g"),
                                 request.ring_mask.width,
                                 request.ring_mask.height,
@@ -961,9 +1028,26 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                                 request.ring_mask.thickness,
                                 request.ring_mask.falloff);
             break;
+        case EGeneratorType::ShockwaveFlipbook:
+            description = FString::Printf(
+                TEXT("version=6; generator=shockwave_flipbook; dimensions=%dx%d; grid=%dx%d; "
+                     "frame_count=%d; start_radius=%g; end_radius=%g; thickness=%g; falloff=%g; "
+                     "start_intensity=%g; end_intensity=%g"),
+                request.shockwave_flipbook.width,
+                request.shockwave_flipbook.height,
+                request.shockwave_flipbook.columns,
+                request.shockwave_flipbook.rows,
+                request.shockwave_flipbook.frame_count,
+                request.shockwave_flipbook.start_radius,
+                request.shockwave_flipbook.end_radius,
+                request.shockwave_flipbook.thickness,
+                request.shockwave_flipbook.falloff,
+                request.shockwave_flipbook.start_intensity,
+                request.shockwave_flipbook.end_intensity);
+            break;
         case EGeneratorType::Starfield:
             description = FString::Printf(
-                TEXT("version=5; generator=starfield; dimensions=%dx%d; seed=%u; "
+                TEXT("version=6; generator=starfield; dimensions=%dx%d; seed=%u; "
                      "star_count=%d; minimum_brightness=%g; minimum_radius=%g; "
                      "maximum_radius=%g; transparent_background=%s"),
                 request.starfield.width,
@@ -977,7 +1061,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::Noise:
             description = FString::Printf(
-                TEXT("version=5; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
+                TEXT("version=6; generator=noise; dimensions=%dx%d; seed=%u; base_scale=%g; "
                      "octave_count=%d; persistence=%g; tileable=%s"),
                 request.noise.width,
                 request.noise.height,
@@ -989,7 +1073,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::DomainWarpedNoise:
             description = FString::Printf(
-                TEXT("version=5; generator=domain_warped_noise; dimensions=%dx%d; base_seed=%u; "
+                TEXT("version=6; generator=domain_warped_noise; dimensions=%dx%d; base_seed=%u; "
                      "warp_seed=%u; base_scale=%g; warp_scale=%g; warp_strength=%g; "
                      "base_octave_count=%d; warp_octave_count=%d; persistence=%g; tileable=%s"),
                 request.domain_warped_noise.width,
@@ -1006,7 +1090,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::CurlNoiseFlow:
             description = FString::Printf(
-                TEXT("version=5; generator=curl_noise_flow; dimensions=%dx%d; seed=%u; "
+                TEXT("version=6; generator=curl_noise_flow; dimensions=%dx%d; seed=%u; "
                      "base_scale=%g; octave_count=%d; persistence=%g; derivative_step=%g; "
                      "strength=%g; tileable=%s"),
                 request.curl_noise_flow.width,
@@ -1021,7 +1105,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
             break;
         case EGeneratorType::CellularNoise:
             description = FString::Printf(
-                TEXT("version=5; generator=cellular_noise; dimensions=%dx%d; seed=%u; "
+                TEXT("version=6; generator=cellular_noise; dimensions=%dx%d; seed=%u; "
                      "cell_size=%g; jitter=%g; mode=%s; edge_width=%g; falloff=%g; tileable=%s"),
                 request.cellular_noise.width,
                 request.cellular_noise.height,
@@ -1035,7 +1119,7 @@ auto describe_request(FGenerationRequest const& request) -> FString {
                 request.cellular_noise.tileable ? TEXT("true") : TEXT("false"));
             break;
         case EGeneratorType::HexGrid:
-            description = FString::Printf(TEXT("version=5; generator=hex_grid; dimensions=%dx%d; "
+            description = FString::Printf(TEXT("version=6; generator=hex_grid; dimensions=%dx%d; "
                                                "cell_radius=%g; line_thickness=%g; falloff=%g"),
                                           request.hex_grid.width,
                                           request.hex_grid.height,

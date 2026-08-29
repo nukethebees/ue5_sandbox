@@ -10,6 +10,7 @@ UENUM()
 enum class EGenLabGenerator : uint8 {
     RadialGradient UMETA(DisplayName = "Soft Radial Gradient"),
     RingMask UMETA(DisplayName = "Ring Mask"),
+    ShockwaveFlipbook UMETA(DisplayName = "Shockwave Flipbook"),
     Starfield UMETA(DisplayName = "Starfield"),
     Noise UMETA(DisplayName = "Coherent Noise"),
     DomainWarpedNoise UMETA(DisplayName = "Domain-Warped Noise"),
@@ -180,6 +181,78 @@ class UGenLabSettings final : public UObject {
                       ClampMin = "0.0",
                       ClampMax = "1.0"))
     float ring_falloff{0.035f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "1",
+                      ClampMax = "64"))
+    int32 flipbook_columns{4};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "1",
+                      ClampMax = "64"))
+    int32 flipbook_rows{4};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "1",
+                      ClampMax = "4096"))
+    int32 flipbook_frame_count{16};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "2.0"))
+    float shockwave_start_radius{0.08f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "2.0"))
+    float shockwave_end_radius{0.78f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "0.001",
+                      ClampMax = "1.0"))
+    float shockwave_thickness{0.10f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float shockwave_falloff{0.04f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float shockwave_start_intensity{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Shockwave Flipbook",
+              meta = (EditCondition = "generator == EGenLabGenerator::ShockwaveFlipbook",
+                      EditConditionHides,
+                      ClampMin = "0.0",
+                      ClampMax = "1.0"))
+    float shockwave_end_intensity{0.15f};
 
     UPROPERTY(
         EditAnywhere,
