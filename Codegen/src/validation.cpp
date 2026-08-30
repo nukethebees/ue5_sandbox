@@ -327,6 +327,69 @@ void validate_settings(ModuleSettings const& settings) {
     require_unique_names(settings.include_order, "Module '" + settings.name + "' include order");
 }
 
+void validate_enum(EnumModuleSchema const& module,
+                   std::map<std::string, CppType> const& types) {
+    if (module.enums.empty()) {
+        throw std::invalid_argument{"Enum module '" + module.settings.name +
+                                    "' must have enums"};
+    }
+    if (module.helper_namespace.has_value()) {
+        require_qualified_identifier(*module.helper_namespace,
+                                     "Enum module '" + module.settings.name +
+                                         "' helper namespace");
+    }
+    std::set<std::string> enum_names;
+    for (auto const& schema : module.enums) {
+        require_identifier(schema.name, "Enum name");
+        if (!enum_names.insert(schema.name).second) {
+            throw std::invalid_argument{"Duplicate enum name: " + schema.name};
+        }
+        validate_type(schema.underlying_type, types, "Enum '" + schema.name + "' underlying");
+        validate_export_specifier(schema.export_specifier,
+                                  "Enum '" + schema.name + "' export specifier");
+        if (schema.reflection != EnumReflection::none &&
+            module.settings.namespace_name.has_value()) {
+            throw std::invalid_argument{"Reflected enum '" + schema.name +
+                                        "' must be declared at global scope"};
+        }
+        if (schema.values.empty()) {
+            throw std::invalid_argument{"Enum '" + schema.name + "' must have values"};
+        }
+        std::vector<std::string> value_names;
+        for (auto const& value : schema.values) {
+            require_identifier(value.name, "Enum '" + schema.name + "' value name");
+            value_names.push_back(value.name);
+            if (value.initializer.has_value()) {
+                require_value(*value.initializer,
+                              "Enum '" + schema.name + "' value '" + value.name +
+                                  "' initializer");
+            }
+            if (value.display_name.has_value()) {
+                require_value(*value.display_name,
+                              "Enum '" + schema.name + "' value '" + value.name +
+                                  "' display name");
+            }
+            if (value.hidden && schema.reflection == EnumReflection::none) {
+                throw std::invalid_argument{"Plain enum '" + schema.name + "' value '" +
+                                            value.name + "' cannot be hidden"};
+            }
+        }
+        require_unique_names(value_names, "Enum '" + schema.name + "' values");
+
+        std::set<EnumConversion> conversions;
+        for (auto const conversion : schema.conversions) {
+            if (!conversions.insert(conversion).second) {
+                throw std::invalid_argument{"Enum '" + schema.name +
+                                            "' contains duplicate conversion"};
+            }
+        }
+        if (!schema.conversions.empty() && !module.settings.source.has_value()) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' conversions require a source output"};
+        }
+    }
+}
+
 void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> const& types) {
     if (module.structs.empty()) {
         throw std::invalid_argument{"SOA module '" + module.settings.name + "' must have schemas"};
@@ -444,6 +507,90 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
     if (!module.settings.source.has_value()) {
         throw std::invalid_argument{"SOA module '" + module.settings.name +
                                     "' must have a source output"};
+    }
+}
+
+void validate_static_table(StaticTableModuleSchema const& module,
+                           std::map<std::string, CppType> const& types) {
+    if (module.settings.source.has_value()) {
+        throw std::invalid_argument{"Static table module '" + module.settings.name +
+                                    "' must not have a source output"};
+    }
+    if (module.tables.empty()) {
+        throw std::invalid_argument{"Static table module '" + module.settings.name +
+                                    "' must have tables"};
+    }
+
+    std::set<std::string> table_names;
+    for (auto const& table : module.tables) {
+        require_identifier(table.name, "Static table name");
+        if (!table_names.insert(table.name).second) {
+            throw std::invalid_argument{"Duplicate static table name: " + table.name};
+        }
+        validate_export_specifier(table.export_specifier,
+                                  "Static table '" + table.name + "' export specifier");
+        if (table.rows.empty()) {
+            throw std::invalid_argument{"Static table '" + table.name + "' must have rows"};
+        }
+        if (table.columns.empty()) {
+            throw std::invalid_argument{"Static table '" + table.name + "' must have columns"};
+        }
+
+        std::vector<std::string> row_names;
+        std::set<std::string> generated_names{
+            table.name, "num_rows", "num", "apply_arrays", "apply_array_pairs"};
+        for (auto const& row : table.rows) {
+            require_identifier(row.name, "Static table '" + table.name + "' row name");
+            row_names.push_back(row.name);
+            generated_names.insert(row.name + "_index");
+        }
+        require_unique_names(row_names, "Static table '" + table.name + "' rows");
+
+        std::vector<std::string> column_names;
+        for (auto const& column : table.columns) {
+            require_identifier(column.name,
+                               "Static table '" + table.name + "' column name");
+            if (generated_names.contains(column.name)) {
+                throw std::invalid_argument{"Static table '" + table.name + "' column '" +
+                                            column.name + "' collides with generated API"};
+            }
+            column_names.push_back(column.name);
+            validate_type(column.type,
+                          types,
+                          "Static table '" + table.name + "' column '" + column.name + "'");
+        }
+        require_unique_names(column_names, "Static table '" + table.name + "' columns");
+
+        std::set<std::string> column_name_set{column_names.begin(), column_names.end()};
+        std::set<std::string> member_names{generated_names};
+        member_names.insert(column_names.begin(), column_names.end());
+        std::set<std::string> group_names;
+        for (auto const& group : table.groups) {
+            auto const context{"Static table '" + table.name + "' group '" + group.name + "'"};
+            require_identifier(group.name, "Static table '" + table.name + "' group name");
+            if (!group_names.insert(group.name).second) {
+                throw std::invalid_argument{"Duplicate static table group name: " + group.name};
+            }
+            validate_type(group.type, types, context + " type");
+            if (group.columns.empty()) {
+                throw std::invalid_argument{context + " must have columns"};
+            }
+
+            for (auto const& column_name : group.columns) {
+                require_identifier(column_name, context + " column name");
+                if (!column_name_set.contains(column_name)) {
+                    throw std::invalid_argument{context + " references unknown column '" +
+                                                column_name + "'"};
+                }
+            }
+            require_unique_names(group.columns, context + " columns");
+
+            auto const getter_name{"get_" + group.name};
+            if (!member_names.insert(getter_name).second) {
+                throw std::invalid_argument{context + " getter '" + getter_name +
+                                            "' collides with another table member"};
+            }
+        }
     }
 }
 
@@ -658,8 +805,12 @@ void validate_manifest(Manifest const& manifest) {
                     }
                 }
                 using T = std::decay_t<decltype(module)>;
-                if constexpr (std::is_same_v<T, SoaModuleSchema>) {
+                if constexpr (std::is_same_v<T, EnumModuleSchema>) {
+                    validate_enum(module, manifest.types);
+                } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     validate_soa(module, manifest.types);
+                } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {
+                    validate_static_table(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, HomogeneousModuleSchema>) {
                     validate_homogeneous(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, VectorModuleSchema>) {

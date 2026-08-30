@@ -3,6 +3,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(codegen-lib
   src/ast.cpp
+  src/enum_lowering.cpp
   src/facade_lowering.cpp
   src/fixed_soa_lowering.cpp
   src/fixed_soa_layout.cpp
@@ -19,6 +20,7 @@ add_library(codegen-lib
   src/soa_member_resolution.cpp
   src/soa_storage_lowering.cpp
   src/soa_view_lowering.cpp
+  src/static_table_lowering.cpp
   src/validation.cpp
   src/vector_lowering.cpp
 )
@@ -41,6 +43,9 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/InlineFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/StaticTables.h"
 )
 set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.cpp"
@@ -49,6 +54,8 @@ set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector2.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.cpp"
 )
 add_custom_command(
   OUTPUT
@@ -84,6 +91,7 @@ add_executable(codegen-tests
   tests/homogeneous_lowering_tests.cpp
   tests/json_tests.cpp
   tests/lowering_tests.cpp
+  tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
 )
 add_dependencies(codegen-tests codegen-generated-compile-tests)

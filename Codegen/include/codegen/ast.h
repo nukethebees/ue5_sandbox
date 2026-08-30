@@ -4,6 +4,8 @@
 #include <codegen/ast/assignment_statement.h>
 #include <codegen/ast/cpp_file.h>
 #include <codegen/ast/cpp_type.h>
+#include <codegen/ast/enum.h>
+#include <codegen/ast/enumerator.h>
 #include <codegen/ast/expression_statement.h>
 #include <codegen/ast/forward_declaration.h>
 #include <codegen/ast/friend_declaration.h>

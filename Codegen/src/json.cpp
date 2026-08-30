@@ -331,9 +331,163 @@ auto parse_facade_method(Json const& value, std::string const& path) -> FacadeMe
     };
 }
 
+auto parse_enum_reflection(std::string const& value, std::string const& path) -> EnumReflection {
+    if (value == "none") {
+        return EnumReflection::none;
+    }
+    if (value == "uenum") {
+        return EnumReflection::uenum;
+    }
+    if (value == "blueprint") {
+        return EnumReflection::blueprint;
+    }
+    throw ManifestError{path + ": unknown enum reflection mode '" + value + "'"};
+}
+
+auto parse_enum_conversion(std::string const& value, std::string const& path) -> EnumConversion {
+    if (value == "lex_to_string") {
+        return EnumConversion::lex_to_string;
+    }
+    if (value == "string_view") {
+        return EnumConversion::string_view;
+    }
+    if (value == "string") {
+        return EnumConversion::string;
+    }
+    if (value == "lex_to_display_string") {
+        return EnumConversion::lex_to_display_string;
+    }
+    if (value == "display_string_view") {
+        return EnumConversion::display_string_view;
+    }
+    if (value == "display_string") {
+        return EnumConversion::display_string;
+    }
+    throw ManifestError{path + ": unknown enum conversion '" + value + "'"};
+}
+
+auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
+    reject_unknown(value,
+                   path,
+                   {"name",
+                    "underlying_type",
+                    "reflection",
+                    "values",
+                    "conversions",
+                    "export_specifier"});
+    std::vector<EnumeratorSchema> values;
+    auto const& value_entries{required_array(value, "values", path)};
+    for (std::size_t index{0}; index < value_entries.size(); ++index) {
+        auto const& entry{value_entries[index]};
+        auto const entry_path{path + "/values/" + std::to_string(index)};
+        reject_unknown(entry, entry_path, {"name", "value", "display_name", "hidden"});
+        values.push_back(EnumeratorSchema{
+            .name = required<std::string>(entry, "name", entry_path),
+            .initializer = optional<std::string>(entry, "value", entry_path),
+            .display_name = optional<std::string>(entry, "display_name", entry_path),
+            .hidden = value_or<bool>(entry, "hidden", false, entry_path),
+        });
+    }
+
+    std::vector<EnumConversion> conversions;
+    auto const conversion_names{
+        value_or<std::vector<std::string>>(value, "conversions", {}, path)};
+    for (std::size_t index{0}; index < conversion_names.size(); ++index) {
+        conversions.push_back(parse_enum_conversion(
+            conversion_names[index], path + "/conversions/" + std::to_string(index)));
+    }
+    auto const reflection_name{value_or<std::string>(value, "reflection", "none", path)};
+    return EnumSchema{
+        .name = required<std::string>(value, "name", path),
+        .underlying_type = parse_type_ref(required_value(value, "underlying_type", path),
+                                          path + "/underlying_type"),
+        .reflection = parse_enum_reflection(reflection_name, path + "/reflection"),
+        .values = std::move(values),
+        .conversions = std::move(conversions),
+        .export_specifier = optional<std::string>(value, "export_specifier", path),
+    };
+}
+
+auto parse_static_table(Json const& value, std::string const& path) -> StaticTableSchema {
+    reject_unknown(value, path, {"name", "rows", "columns", "groups", "export_specifier"});
+
+    std::vector<StaticTableRowSchema> rows;
+    auto const& row_values{required_array(value, "rows", path)};
+    for (std::size_t index{0}; index < row_values.size(); ++index) {
+        auto const& row{row_values[index]};
+        auto const row_path{path + "/rows/" + std::to_string(index)};
+        reject_unknown(row, row_path, {"name"});
+        rows.push_back(StaticTableRowSchema{
+            .name = required<std::string>(row, "name", row_path),
+        });
+    }
+
+    std::vector<StaticTableColumnSchema> columns;
+    auto const& column_values{required_array(value, "columns", path)};
+    for (std::size_t index{0}; index < column_values.size(); ++index) {
+        auto const& column{column_values[index]};
+        auto const column_path{path + "/columns/" + std::to_string(index)};
+        reject_unknown(column, column_path, {"name", "type"});
+        columns.push_back(StaticTableColumnSchema{
+            .name = required<std::string>(column, "name", column_path),
+            .type = parse_type_ref(required_value(column, "type", column_path),
+                                   column_path + "/type"),
+        });
+    }
+
+    std::vector<StaticTableGroupSchema> groups;
+    if (value.contains("groups")) {
+        auto const& group_values{required_array(value, "groups", path)};
+        for (std::size_t index{0}; index < group_values.size(); ++index) {
+            auto const& group{group_values[index]};
+            auto const group_path{path + "/groups/" + std::to_string(index)};
+            reject_unknown(group, group_path, {"name", "type", "columns"});
+            groups.push_back(StaticTableGroupSchema{
+                .name = required<std::string>(group, "name", group_path),
+                .type = parse_type_ref(required_value(group, "type", group_path),
+                                       group_path + "/type"),
+                .columns = required<std::vector<std::string>>(group, "columns", group_path),
+            });
+        }
+    }
+
+    return StaticTableSchema{
+        .name = required<std::string>(value, "name", path),
+        .rows = std::move(rows),
+        .columns = std::move(columns),
+        .groups = std::move(groups),
+        .export_specifier = optional<std::string>(value, "export_specifier", path),
+    };
+}
+
 auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
     auto const kind{required<std::string>(value, "kind", path)};
     auto settings{parse_settings(value, path)};
+    if (kind == "enum") {
+        reject_unknown(value,
+                       path,
+                       {"kind",
+                        "name",
+                        "header",
+                        "source",
+                        "header_include",
+                        "namespace",
+                        "helper_namespace",
+                        "include_order",
+                        "prelude",
+                        "enums"});
+        std::vector<EnumSchema> enums;
+        auto const& values{required_array(value, "enums", path)};
+        for (std::size_t index{0}; index < values.size(); ++index) {
+            enums.push_back(
+                parse_enum(values[index], path + "/enums/" + std::to_string(index)));
+        }
+        return EnumModuleSchema{
+            .settings = std::move(settings),
+            .helper_namespace = optional<std::string>(value, "helper_namespace", path),
+            .enums = std::move(enums),
+        };
+    }
     if (kind == "soa") {
         reject_unknown(value,
                        path,
@@ -352,6 +506,29 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
             structs.push_back(parse_soa(values[index], path + "/structs/" + std::to_string(index)));
         }
         return SoaModuleSchema{std::move(settings), std::move(structs)};
+    }
+    if (kind == "static_table") {
+        reject_unknown(value,
+                       path,
+                       {"kind",
+                        "name",
+                        "header",
+                        "source",
+                        "header_include",
+                        "namespace",
+                        "include_order",
+                        "prelude",
+                        "tables"});
+        std::vector<StaticTableSchema> tables;
+        auto const& values{required_array(value, "tables", path)};
+        for (std::size_t index{0}; index < values.size(); ++index) {
+            tables.push_back(parse_static_table(values[index],
+                                                path + "/tables/" + std::to_string(index)));
+        }
+        return StaticTableModuleSchema{
+            .settings = std::move(settings),
+            .tables = std::move(tables),
+        };
     }
     if (kind == "facade") {
         reject_unknown(value,

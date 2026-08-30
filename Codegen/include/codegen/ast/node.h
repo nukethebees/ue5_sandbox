@@ -3,6 +3,7 @@
 #include <codegen/ast/access_specifier.h>
 #include <codegen/ast/assignment_statement.h>
 #include <codegen/ast/expression_statement.h>
+#include <codegen/ast/enum.h>
 #include <codegen/ast/forward_declaration.h>
 #include <codegen/ast/friend_declaration.h>
 #include <codegen/ast/function.h>
@@ -35,6 +36,7 @@ using NodeValue = std::variant<Raw,
                                UsingDeclaration,
                                Member,
                                Function,
+                               Enum,
                                Struct,
                                Namespace>;
 
