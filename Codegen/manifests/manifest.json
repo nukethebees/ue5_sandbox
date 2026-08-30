@@ -5,6 +5,7 @@
     "dynamic_core.json",
     "core_layouts.json",
     "test_fixtures.json",
+    "collision.json",
     "dynamic_entities.json",
     "entity_registry.json",
     "batch_game.json",

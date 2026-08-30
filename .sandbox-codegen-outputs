@@ -22,6 +22,8 @@ Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3i32.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3u32.h
 Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.cpp
 Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.h
+Plugins/SpaceGame/Source/SGCollision/Private/world_aabbs.cpp
+Plugins/SpaceGame/Source/SGCollision/Public/SGCollision/world_aabbs.h
 Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLaserCollisionDataSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLasersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLasersSoA.cpp

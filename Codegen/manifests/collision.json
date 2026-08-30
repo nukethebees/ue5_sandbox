@@ -1,0 +1,28 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "world_aabbs",
+      "header": "Plugins/SpaceGame/Source/SGCollision/Public/SGCollision/world_aabbs.h",
+      "source": "Plugins/SpaceGame/Source/SGCollision/Private/world_aabbs.cpp",
+      "header_include": "SGCollision/world_aabbs.h",
+      "namespace": "ml",
+      "include_order": ["SGCollision/", "SandboxCore/"],
+      "structs": [
+        {
+          "name": "WorldAABBs",
+          "export_specifier": "SGCOLLISION_API",
+          "members": [
+            {"name": "min_xs", "kind": "array", "type": "float"},
+            {"name": "min_ys", "kind": "array", "type": "float"},
+            {"name": "min_zs", "kind": "array", "type": "float"},
+            {"name": "max_xs", "kind": "array", "type": "float"},
+            {"name": "max_ys", "kind": "array", "type": "float"},
+            {"name": "max_zs", "kind": "array", "type": "float"}
+          ],
+          "operations": ["all"]
+        }
+      ]
+    }
+  ]
+}

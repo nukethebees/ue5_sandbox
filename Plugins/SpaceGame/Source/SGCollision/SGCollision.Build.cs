@@ -8,7 +8,11 @@ public class SGCollision : ModuleRules
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
-        PublicDependencyModuleNames.Add("Core");
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "Core",
+            "SandboxCore",
+        });
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "CoreUObject",
