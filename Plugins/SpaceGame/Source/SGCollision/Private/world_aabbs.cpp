@@ -19,12 +19,8 @@ auto WorldAABBsConstView::get_view() const -> ConstView {
 
 auto WorldAABBsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<float>{min_xs}.Slice(offset, count),
-        TConstArrayView<float>{min_ys}.Slice(offset, count),
-        TConstArrayView<float>{min_zs}.Slice(offset, count),
-        TConstArrayView<float>{max_xs}.Slice(offset, count),
-        TConstArrayView<float>{max_ys}.Slice(offset, count),
-        TConstArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_const_view(offset, count),
+        maxes.get_const_view(offset, count),
     };
 }
 
@@ -34,17 +30,13 @@ auto WorldAABBsConstView::get_const_view() const -> ConstView {
 
 auto WorldAABBsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<float>{min_xs}.Slice(offset, count),
-        TConstArrayView<float>{min_ys}.Slice(offset, count),
-        TConstArrayView<float>{min_zs}.Slice(offset, count),
-        TConstArrayView<float>{max_xs}.Slice(offset, count),
-        TConstArrayView<float>{max_ys}.Slice(offset, count),
-        TConstArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_const_view(offset, count),
+        maxes.get_const_view(offset, count),
     };
 }
 
 auto WorldAABBsConstView::num() const noexcept -> int32 {
-    return ml::num(min_xs);
+    return ml::num(mins);
 }
 
 auto WorldAABBsConstView::is_empty() const noexcept -> bool {
@@ -53,12 +45,8 @@ auto WorldAABBsConstView::is_empty() const noexcept -> bool {
 
 void WorldAABBsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(min_xs),
-        ml::num(min_ys),
-        ml::num(min_zs),
-        ml::num(max_xs),
-        ml::num(max_ys),
-        ml::num(max_zs),
+        ml::num(mins),
+        ml::num(maxes),
     });
 }
 
@@ -80,12 +68,8 @@ auto WorldAABBsView::get_view() -> View {
 
 auto WorldAABBsView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<float>{min_xs}.Slice(offset, count),
-        TArrayView<float>{min_ys}.Slice(offset, count),
-        TArrayView<float>{min_zs}.Slice(offset, count),
-        TArrayView<float>{max_xs}.Slice(offset, count),
-        TArrayView<float>{max_ys}.Slice(offset, count),
-        TArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_view(offset, count),
+        maxes.get_view(offset, count),
     };
 }
 
@@ -95,12 +79,8 @@ auto WorldAABBsView::get_view() const -> ConstView {
 
 auto WorldAABBsView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<float>{min_xs}.Slice(offset, count),
-        TConstArrayView<float>{min_ys}.Slice(offset, count),
-        TConstArrayView<float>{min_zs}.Slice(offset, count),
-        TConstArrayView<float>{max_xs}.Slice(offset, count),
-        TConstArrayView<float>{max_ys}.Slice(offset, count),
-        TConstArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_const_view(offset, count),
+        maxes.get_const_view(offset, count),
     };
 }
 
@@ -110,17 +90,13 @@ auto WorldAABBsView::get_const_view() const -> ConstView {
 
 auto WorldAABBsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<float>{min_xs}.Slice(offset, count),
-        TConstArrayView<float>{min_ys}.Slice(offset, count),
-        TConstArrayView<float>{min_zs}.Slice(offset, count),
-        TConstArrayView<float>{max_xs}.Slice(offset, count),
-        TConstArrayView<float>{max_ys}.Slice(offset, count),
-        TConstArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_const_view(offset, count),
+        maxes.get_const_view(offset, count),
     };
 }
 
 auto WorldAABBsView::num() const noexcept -> int32 {
-    return ml::num(min_xs);
+    return ml::num(mins);
 }
 
 auto WorldAABBsView::is_empty() const noexcept -> bool {
@@ -129,12 +105,8 @@ auto WorldAABBsView::is_empty() const noexcept -> bool {
 
 void WorldAABBsView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(min_xs),
-        ml::num(min_ys),
-        ml::num(min_zs),
-        ml::num(max_xs),
-        ml::num(max_ys),
-        ml::num(max_zs),
+        ml::num(mins),
+        ml::num(maxes),
     });
 }
 
@@ -163,59 +135,35 @@ auto WorldAABBsView::right(int32 const count) const -> ConstView {
 }
 
 void WorldAABBs::reset() {
-    ml::reset(min_xs);
-    ml::reset(min_ys);
-    ml::reset(min_zs);
-    ml::reset(max_xs);
-    ml::reset(max_ys);
-    ml::reset(max_zs);
+    ml::reset(mins);
+    ml::reset(maxes);
 }
 
 void WorldAABBs::reserve(int32 const count) {
-    ml::reserve(min_xs, count);
-    ml::reserve(min_ys, count);
-    ml::reserve(min_zs, count);
-    ml::reserve(max_xs, count);
-    ml::reserve(max_ys, count);
-    ml::reserve(max_zs, count);
+    ml::reserve(mins, count);
+    ml::reserve(maxes, count);
 }
 
 void WorldAABBs::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(min_xs, count);
-    ml::add_uninitialised(min_ys, count);
-    ml::add_uninitialised(min_zs, count);
-    ml::add_uninitialised(max_xs, count);
-    ml::add_uninitialised(max_ys, count);
-    ml::add_uninitialised(max_zs, count);
+    ml::add_uninitialised(mins, count);
+    ml::add_uninitialised(maxes, count);
 }
 
 void WorldAABBs::add_defaulted(int32 const count) {
-    ml::add_defaulted(min_xs, count);
-    ml::add_defaulted(min_ys, count);
-    ml::add_defaulted(min_zs, count);
-    ml::add_defaulted(max_xs, count);
-    ml::add_defaulted(max_ys, count);
-    ml::add_defaulted(max_zs, count);
+    ml::add_defaulted(mins, count);
+    ml::add_defaulted(maxes, count);
 }
 
 void WorldAABBs::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(min_xs, count, allow_shrinking);
-    ml::set_num(min_ys, count, allow_shrinking);
-    ml::set_num(min_zs, count, allow_shrinking);
-    ml::set_num(max_xs, count, allow_shrinking);
-    ml::set_num(max_ys, count, allow_shrinking);
-    ml::set_num(max_zs, count, allow_shrinking);
+    ml::set_num(mins, count, allow_shrinking);
+    ml::set_num(maxes, count, allow_shrinking);
 }
 
 void WorldAABBs::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(min_xs, indices);
-    ml::apply_permutation(min_ys, indices);
-    ml::apply_permutation(min_zs, indices);
-    ml::apply_permutation(max_xs, indices);
-    ml::apply_permutation(max_ys, indices);
-    ml::apply_permutation(max_zs, indices);
+    ml::apply_permutation(mins, indices);
+    ml::apply_permutation(maxes, indices);
 }
 
 auto WorldAABBs::get_view() -> View {
@@ -224,12 +172,8 @@ auto WorldAABBs::get_view() -> View {
 
 auto WorldAABBs::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<float>{min_xs}.Slice(offset, count),
-        TArrayView<float>{min_ys}.Slice(offset, count),
-        TArrayView<float>{min_zs}.Slice(offset, count),
-        TArrayView<float>{max_xs}.Slice(offset, count),
-        TArrayView<float>{max_ys}.Slice(offset, count),
-        TArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_view(offset, count),
+        maxes.get_view(offset, count),
     };
 }
 
@@ -239,12 +183,8 @@ auto WorldAABBs::get_view() const -> ConstView {
 
 auto WorldAABBs::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<float>{min_xs}.Slice(offset, count),
-        TConstArrayView<float>{min_ys}.Slice(offset, count),
-        TConstArrayView<float>{min_zs}.Slice(offset, count),
-        TConstArrayView<float>{max_xs}.Slice(offset, count),
-        TConstArrayView<float>{max_ys}.Slice(offset, count),
-        TConstArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_const_view(offset, count),
+        maxes.get_const_view(offset, count),
     };
 }
 
@@ -254,17 +194,13 @@ auto WorldAABBs::get_const_view() const -> ConstView {
 
 auto WorldAABBs::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<float>{min_xs}.Slice(offset, count),
-        TConstArrayView<float>{min_ys}.Slice(offset, count),
-        TConstArrayView<float>{min_zs}.Slice(offset, count),
-        TConstArrayView<float>{max_xs}.Slice(offset, count),
-        TConstArrayView<float>{max_ys}.Slice(offset, count),
-        TConstArrayView<float>{max_zs}.Slice(offset, count),
+        mins.get_const_view(offset, count),
+        maxes.get_const_view(offset, count),
     };
 }
 
 auto WorldAABBs::num() const noexcept -> int32 {
-    return ml::num(min_xs);
+    return ml::num(mins);
 }
 
 auto WorldAABBs::is_empty() const noexcept -> bool {
@@ -273,12 +209,8 @@ auto WorldAABBs::is_empty() const noexcept -> bool {
 
 void WorldAABBs::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(min_xs),
-        ml::num(min_ys),
-        ml::num(min_zs),
-        ml::num(max_xs),
-        ml::num(max_ys),
-        ml::num(max_zs),
+        ml::num(mins),
+        ml::num(maxes),
     });
 }
 

@@ -160,6 +160,13 @@
         "remove_at_swap": "remove_at_swap"
       }
     },
+    "vectors_3i32": {
+      "spelling": "FVectors3i32",
+      "header": "SandboxCore/soa_vectors_3i32.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
     "test_fighters": {
       "spelling": "ATestCapitalShipFighters",
       "header": "SpaceGame/ships/fighters/TestCapitalShipFighters.h"

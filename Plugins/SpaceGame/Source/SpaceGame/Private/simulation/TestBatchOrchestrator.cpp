@@ -105,8 +105,7 @@ void bind_and_destroy_proxy_actors(UWorld& world,
 
 FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
 
-ATestBatchOrchestrator::ATestBatchOrchestrator()
-    : query_manager{entity_registry} {
+ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
@@ -398,8 +397,13 @@ void ATestBatchOrchestrator::begin_play() {
     spinners_phase.begin_play();
     lasers_phase.begin_play();
 
-    query_manager.initialise(
-        *world, player_ship.Get(), *capital_ships, *capital_ship_fighters, *turrets, *spinners);
+    query_manager.initialise(entity_registry,
+                             *world,
+                             player_ship.Get(),
+                             *capital_ships,
+                             *capital_ship_fighters,
+                             *turrets,
+                             *spinners);
     query_manager.reserve_thread_buffers(
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads()));
 

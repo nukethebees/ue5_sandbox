@@ -47,6 +47,7 @@ Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFighter
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFightersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFightersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/player/TestSpaceShipPhaseInterface.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/simulation/EntityCellData.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLaserCollisionDataSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersSoA.h
@@ -71,3 +72,4 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalSh
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFightersSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityAABBs.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityCellData.h

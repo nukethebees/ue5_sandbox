@@ -42,10 +42,6 @@ auto FThreadBufferLease::get() const -> FThreadBuffers& {
 }
 
 namespace ml {
-FSpatialQueryManager::FSpatialQueryManager(FTestEntityRegistry const& in_entity_registry) noexcept
-    : entity_registry{&in_entity_registry}
-    , collision{in_entity_registry} {}
-
 void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
     auto const hardware_thread_count{
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads())};
@@ -94,13 +90,17 @@ void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
     --active_thread_buffer_count;
 }
 
-void FSpatialQueryManager::initialise(UWorld& in_world,
+void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_registry,
+                                      UWorld& in_world,
                                       ATestSpaceShip const* const player_ship,
                                       ATestCapitalShips const& capital_ships,
                                       ATestCapitalShipFighters const& capital_ship_fighters,
                                       ATestStaticTurrets const& static_turrets,
                                       ATestTubeSpinners const& tube_spinners) {
     reserve_thread_buffers(1);
+
+    entity_registry = &in_entity_registry;
+    collision.set_entity_registry(in_entity_registry);
 
     world = &in_world;
     player_ship_access = FTestSpaceShipSpatialQueryAccess{player_ship};

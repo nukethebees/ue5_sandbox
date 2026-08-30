@@ -69,13 +69,10 @@ class FThreadBufferLease {
 namespace ml {
 struct SPACEGAME_API FSpatialQueryManager {
   public:
-    // Required only for Unreal's default-construction path.
-    // Pointer members are otherwise required to be non-null.
-    // Explicitly default-constructing this type violates its contract.
     FSpatialQueryManager() = default;
-    explicit FSpatialQueryManager(FTestEntityRegistry const& entity_registry) noexcept;
 
-    void initialise(UWorld& world,
+    void initialise(FTestEntityRegistry const& entity_registry,
+                    UWorld& world,
                     ATestSpaceShip const* player_ship,
                     ATestCapitalShips const& capital_ships,
                     ATestCapitalShipFighters const& capital_ship_fighters,
@@ -121,7 +118,7 @@ struct SPACEGAME_API FSpatialQueryManager {
 
     using ComponentResolvers =
         TArray<FComponentResolver, TInlineAllocator<std::to_underlying(EHitResolverKind::Count)>>;
-    FTestEntityRegistry const* const entity_registry{nullptr};
+    FTestEntityRegistry const* entity_registry{nullptr};
     UWorld* world{nullptr};
 
     ComponentResolvers component_resolvers;

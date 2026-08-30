@@ -4,30 +4,41 @@
 
 #pragma once
 
+#include "SpaceGame/entities/TestEntityType.h"
+
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_vectors_3f.h"
+#include "SandboxCore/soa_vectors_3i32.h"
+
+#include "SandboxNative/RegistryEntityHandle.h"
 
 #include "Containers/AllowShrinking.h"
+#include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 
 #include <utility>
 
-namespace ml {
-struct WorldAABBsView;
-struct WorldAABBsConstView;
+namespace ml::ioj {
+struct FEntityCellDataView;
+struct FEntityCellDataConstView;
 
-struct SGCOLLISION_API WorldAABBsConstView {
-    using View = WorldAABBsView;
-    using ConstView = WorldAABBsConstView;
+struct SPACEGAME_API FEntityCellDataConstView {
+    using View = FEntityCellDataView;
+    using ConstView = FEntityCellDataConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
+            self.locations,
+            self.min_points,
+            self.max_points,
             self.mins,
-            self.maxes
+            self.maxes,
+            self.entity_types,
+            self.handles
         );
     }
 
@@ -42,19 +53,29 @@ struct SGCOLLISION_API WorldAABBsConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    FVectors3f::ConstView mins;
-    FVectors3f::ConstView maxes;
+    FVectors3f::ConstView locations;
+    FVectors3f::ConstView min_points;
+    FVectors3f::ConstView max_points;
+    FVectors3i32::ConstView mins;
+    FVectors3i32::ConstView maxes;
+    TConstArrayView<ETestEntityType> entity_types;
+    TConstArrayView<FRegistryEntityHandle> handles;
 };
 
-struct SGCOLLISION_API WorldAABBsView {
-    using View = WorldAABBsView;
-    using ConstView = WorldAABBsConstView;
+struct SPACEGAME_API FEntityCellDataView {
+    using View = FEntityCellDataView;
+    using ConstView = FEntityCellDataConstView;
 
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
+            self.locations,
+            self.min_points,
+            self.max_points,
             self.mins,
-            self.maxes
+            self.maxes,
+            self.entity_types,
+            self.handles
         );
     }
 
@@ -74,13 +95,18 @@ struct SGCOLLISION_API WorldAABBsView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    FVectors3f::View mins;
-    FVectors3f::View maxes;
+    FVectors3f::View locations;
+    FVectors3f::View min_points;
+    FVectors3f::View max_points;
+    FVectors3i32::View mins;
+    FVectors3i32::View maxes;
+    TArrayView<ETestEntityType> entity_types;
+    TArrayView<FRegistryEntityHandle> handles;
 };
 
-struct SGCOLLISION_API WorldAABBs {
-    using View = WorldAABBsView;
-    using ConstView = WorldAABBsConstView;
+struct SPACEGAME_API FEntityCellData {
+    using View = FEntityCellDataView;
+    using ConstView = FEntityCellDataConstView;
 
     void reset();
 
@@ -91,22 +117,37 @@ struct SGCOLLISION_API WorldAABBs {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        locations.remove_at_swap(index, count, allow_shrinking);
+        min_points.remove_at_swap(index, count, allow_shrinking);
+        max_points.remove_at_swap(index, count, allow_shrinking);
         mins.remove_at_swap(index, count, allow_shrinking);
         maxes.remove_at_swap(index, count, allow_shrinking);
+        entity_types.RemoveAtSwap(index, count, allow_shrinking);
+        handles.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(min_points, dst_i, other.min_points, src_i);
+        ml::copy_element(max_points, dst_i, other.max_points, src_i);
         ml::copy_element(mins, dst_i, other.mins, src_i);
         ml::copy_element(maxes, dst_i, other.maxes, src_i);
+        ml::copy_element(entity_types, dst_i, other.entity_types, src_i);
+        ml::copy_element(handles, dst_i, other.handles, src_i);
     }
 
     template <typename Other>
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(min_points, dst_i, other.min_points, src_i, count);
+        ml::copy_elements(max_points, dst_i, other.max_points, src_i, count);
         ml::copy_elements(mins, dst_i, other.mins, src_i, count);
         ml::copy_elements(maxes, dst_i, other.maxes, src_i, count);
+        ml::copy_elements(entity_types, dst_i, other.entity_types, src_i, count);
+        ml::copy_elements(handles, dst_i, other.handles, src_i, count);
     }
 
     template <typename Other>
@@ -118,9 +159,14 @@ struct SGCOLLISION_API WorldAABBs {
 
     template <typename Other>
     void append_from(Other const& other)
-        requires ml::SupportsApplyArrayPairsWith<WorldAABBs, Other> {
+        requires ml::SupportsApplyArrayPairsWith<FEntityCellData, Other> {
+        ml::append_from(locations, other.locations);
+        ml::append_from(min_points, other.min_points);
+        ml::append_from(max_points, other.max_points);
         ml::append_from(mins, other.mins);
         ml::append_from(maxes, other.maxes);
+        ml::append_from(entity_types, other.entity_types);
+        ml::append_from(handles, other.handles);
     }
 
     void apply_permutation(TArrayView<int32> indices);
@@ -154,8 +200,13 @@ struct SGCOLLISION_API WorldAABBs {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
+            self.locations,
+            self.min_points,
+            self.max_points,
             self.mins,
-            self.maxes
+            self.maxes,
+            self.entity_types,
+            self.handles
         );
     }
 
@@ -163,8 +214,13 @@ struct SGCOLLISION_API WorldAABBs {
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
+            self.locations, other.locations,
+            self.min_points, other.min_points,
+            self.max_points, other.max_points,
             self.mins, other.mins,
-            self.maxes, other.maxes
+            self.maxes, other.maxes,
+            self.entity_types, other.entity_types,
+            self.handles, other.handles
         );
     }
 
@@ -184,8 +240,13 @@ struct SGCOLLISION_API WorldAABBs {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    FVectors3f mins;
-    FVectors3f maxes;
+    FVectors3f locations;
+    FVectors3f min_points;
+    FVectors3f max_points;
+    FVectors3i32 mins;
+    FVectors3i32 maxes;
+    TArray<ETestEntityType> entity_types;
+    TArray<FRegistryEntityHandle> handles;
 };
-} // namespace ml
+} // namespace ml::ioj
 // clang-format on

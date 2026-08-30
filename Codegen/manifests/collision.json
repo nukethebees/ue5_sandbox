@@ -13,12 +13,33 @@
           "name": "WorldAABBs",
           "export_specifier": "SGCOLLISION_API",
           "members": [
-            {"name": "min_xs", "kind": "array", "type": "float"},
-            {"name": "min_ys", "kind": "array", "type": "float"},
-            {"name": "min_zs", "kind": "array", "type": "float"},
-            {"name": "max_xs", "kind": "array", "type": "float"},
-            {"name": "max_ys", "kind": "array", "type": "float"},
-            {"name": "max_zs", "kind": "array", "type": "float"}
+            {"name": "mins", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "maxes", "kind": "nested", "type": "@vectors_3f"}
+          ],
+          "operations": ["all"]
+        }
+      ]
+    },
+    {
+      "kind": "soa",
+      "name": "entity_cell_data",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityCellData.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/simulation/EntityCellData.cpp",
+      "header_include": "SpaceGame/simulation/EntityCellData.h",
+      "namespace": "ml::ioj",
+      "include_order": ["SpaceGame/", "SandboxCore/", "SandboxNative/"],
+      "structs": [
+        {
+          "name": "FEntityCellData",
+          "export_specifier": "SPACEGAME_API",
+          "members": [
+            {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "min_points", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "max_points", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "mins", "kind": "nested", "type": "@vectors_3i32"},
+            {"name": "maxes", "kind": "nested", "type": "@vectors_3i32"},
+            {"name": "entity_types", "kind": "array", "type": "@entity_type"},
+            {"name": "handles", "kind": "array", "type": "@registry_handle"}
           ],
           "operations": ["all"]
         }
