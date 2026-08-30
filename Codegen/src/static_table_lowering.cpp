@@ -14,6 +14,27 @@ auto static_array_type(CppType const& element_type) -> CppType {
     };
 }
 
+auto group_getter(StaticTableGroupSchema const& group,
+                  CppType const& int32_type,
+                  std::map<std::string, CppType> const& types) -> Node {
+    auto const result_type{resolve_type(group.type, types)};
+    std::vector<std::string> arguments;
+    arguments.reserve(group.columns.size());
+    for (auto const& column : group.columns) {
+        arguments.push_back(column + "[index]");
+    }
+
+    return header_function(FunctionSpec{
+        .name = "get_" + group.name,
+        .return_type = "auto",
+        .parameters = {FunctionParameter{
+            CppType{"int32 const", int32_type.dependencies}, "index"}},
+        .body = {ReturnStatement{result_type.spelling + "{" + join(arguments, ", ") + "}"}},
+        .qualifiers = {.trailing_return_type = result_type, .is_const = true},
+        .is_inline = true,
+    });
+}
+
 auto table_node(StaticTableSchema const& table,
                 std::map<std::string, CppType> const& types) -> Node {
     CppType const int32_type{"int32", "CoreMinimal.h"};
@@ -54,6 +75,10 @@ auto table_node(StaticTableSchema const& table,
     }
     children.add(column_apply_arrays_function(column_names), 2)
         .add(column_apply_array_pairs_function(column_names), 2);
+
+    for (std::size_t index{0}; index < table.groups.size(); ++index) {
+        children.add(group_getter(table.groups[index], int32_type, types), 2);
+    }
 
     for (auto const& column : table.columns) {
         children.add(Member{static_array_type(resolve_type(column.type, types)), column.name, ""},

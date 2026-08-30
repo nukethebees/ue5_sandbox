@@ -22,6 +22,8 @@ auto static_table_module() -> StaticTableModuleSchema {
                      StaticTableRowSchema{"third"}},
             .columns = {StaticTableColumnSchema{"ids", TypeRef{"int32"}},
                         StaticTableColumnSchema{"values", TypeRef{"@value"}}},
+            .groups = {StaticTableGroupSchema{
+                "point", TypeRef{"@point"}, {"ids", "values"}}},
             .export_specifier = "PROJECT_API",
         }},
     };
@@ -30,7 +32,8 @@ auto static_table_module() -> StaticTableModuleSchema {
 auto render_static_table(StaticTableModuleSchema module) -> std::string {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"value", CppType{"FValue", "Project/Value.h"}}},
+        .types = {{"value", CppType{"FValue", "Project/Value.h"}},
+                  {"point", CppType{"FPoint", "Project/Point.h"}}},
         .modules = {std::move(module)},
     };
     auto const files{render_modules(lower_modules(manifest))};
@@ -42,6 +45,7 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
     auto const output{render_static_table(static_table_module())};
 
     EXPECT_NE(output.find("#include \"Project/Value.h\""), std::string::npos);
+    EXPECT_NE(output.find("#include \"Project/Point.h\""), std::string::npos);
     EXPECT_NE(output.find("#include \"Containers/StaticArray.h\""), std::string::npos);
     EXPECT_NE(output.find("struct PROJECT_API FValues"), std::string::npos);
     EXPECT_NE(output.find("static constexpr int32 num_rows{3};"), std::string::npos);
@@ -52,6 +56,9 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
               std::string::npos);
     EXPECT_NE(output.find("auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)"),
               std::string::npos);
+    EXPECT_NE(output.find("auto get_point(int32 const index) const -> FPoint"),
+              std::string::npos);
+    EXPECT_NE(output.find("return FPoint{ids[index], values[index]};"), std::string::npos);
     EXPECT_NE(output.find("TStaticArray<int32, num_rows> ids{};"), std::string::npos);
     EXPECT_NE(output.find("TStaticArray<FValue, num_rows> values{};"), std::string::npos);
     EXPECT_NE(output.find("namespace project::generated"), std::string::npos);

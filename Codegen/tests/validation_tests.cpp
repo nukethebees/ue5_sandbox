@@ -205,6 +205,51 @@ TEST(Validation, RejectsStaticTableColumnsCollidingWithGeneratedApis) {
     }
 }
 
+TEST(Validation, RejectsInvalidStaticTableGroups) {
+    auto module{valid_static_table_module()};
+    module.tables.front().groups = {
+        StaticTableGroupSchema{"point", TypeRef{"FPoint"}, {"ids"}}};
+
+    auto duplicate_group{module};
+    duplicate_group.tables.front().groups.push_back(
+        duplicate_group.tables.front().groups.front());
+    EXPECT_THROW(lower_modules(manifest_with(std::move(duplicate_group))),
+                 std::invalid_argument);
+
+    auto invalid_name{module};
+    invalid_name.tables.front().groups.front().name = "bad-name";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(invalid_name))), std::invalid_argument);
+
+    auto unknown_type{module};
+    unknown_type.tables.front().groups.front().type = TypeRef{"@missing"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(unknown_type))), std::invalid_argument);
+
+    auto empty_columns{module};
+    empty_columns.tables.front().groups.front().columns.clear();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(empty_columns))),
+                 std::invalid_argument);
+
+    auto unknown_column{module};
+    unknown_column.tables.front().groups.front().columns = {"missing"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(unknown_column))),
+                 std::invalid_argument);
+
+    auto duplicate_column{module};
+    duplicate_column.tables.front().groups.front().columns = {"ids", "ids"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(duplicate_column))),
+                 std::invalid_argument);
+}
+
+TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
+    auto module{valid_static_table_module()};
+    module.tables.front().columns.push_back(
+        StaticTableColumnSchema{"get_point", TypeRef{"float"}});
+    module.tables.front().groups = {
+        StaticTableGroupSchema{"point", TypeRef{"FPoint"}, {"ids"}}};
+
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsEmptyModuleOutputs) {
     auto module{valid_soa_module()};
     module.settings.header.clear();

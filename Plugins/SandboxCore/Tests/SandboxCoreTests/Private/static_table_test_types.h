@@ -43,5 +43,58 @@ struct FTestStaticTable {
 
 };
 
+struct FTestStaticGroupTable {
+    static constexpr int32 num_rows{3};
+
+    static constexpr int32 first_index{0};
+    static constexpr int32 second_index{1};
+    static constexpr int32 third_index{2};
+
+    static constexpr auto num() noexcept -> int32 {
+        return num_rows;
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.min_xs,
+            self.min_ys,
+            self.min_zs,
+            self.max_xs,
+            self.max_ys,
+            self.max_zs
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.min_xs, other.min_xs,
+            self.min_ys, other.min_ys,
+            self.min_zs, other.min_zs,
+            self.max_xs, other.max_xs,
+            self.max_ys, other.max_ys,
+            self.max_zs, other.max_zs
+        );
+    }
+
+    auto get_min_point(int32 const index) const -> FVector3f {
+        return FVector3f{min_xs[index], min_ys[index], min_zs[index]};
+    }
+
+    auto get_max_point(int32 const index) const -> FVector3f {
+        return FVector3f{max_xs[index], max_ys[index], max_zs[index]};
+    }
+
+    TStaticArray<float, num_rows> min_xs{};
+    TStaticArray<float, num_rows> min_ys{};
+    TStaticArray<float, num_rows> min_zs{};
+    TStaticArray<float, num_rows> max_xs{};
+    TStaticArray<float, num_rows> max_ys{};
+    TStaticArray<float, num_rows> max_zs{};
+
+};
+
 } // namespace ml::static_table_tests
 // clang-format on

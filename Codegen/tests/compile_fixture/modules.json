@@ -96,6 +96,34 @@
             {"name": "ids", "type": "int32"},
             {"name": "weights", "type": "float"}
           ]
+        },
+        {
+          "name": "FStaticGroupFixture",
+          "rows": [
+            {"name": "first"},
+            {"name": "second"},
+            {"name": "third"}
+          ],
+          "columns": [
+            {"name": "min_xs", "type": "float"},
+            {"name": "min_ys", "type": "float"},
+            {"name": "min_zs", "type": "float"},
+            {"name": "max_xs", "type": "float"},
+            {"name": "max_ys", "type": "float"},
+            {"name": "max_zs", "type": "float"}
+          ],
+          "groups": [
+            {
+              "name": "min_point",
+              "type": "@vector3",
+              "columns": ["min_xs", "min_ys", "min_zs"]
+            },
+            {
+              "name": "max_point",
+              "type": "@vector3",
+              "columns": ["max_xs", "max_ys", "max_zs"]
+            }
+          ]
         }
       ]
     },

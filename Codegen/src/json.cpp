@@ -409,7 +409,7 @@ auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
 }
 
 auto parse_static_table(Json const& value, std::string const& path) -> StaticTableSchema {
-    reject_unknown(value, path, {"name", "rows", "columns", "export_specifier"});
+    reject_unknown(value, path, {"name", "rows", "columns", "groups", "export_specifier"});
 
     std::vector<StaticTableRowSchema> rows;
     auto const& row_values{required_array(value, "rows", path)};
@@ -435,10 +435,27 @@ auto parse_static_table(Json const& value, std::string const& path) -> StaticTab
         });
     }
 
+    std::vector<StaticTableGroupSchema> groups;
+    if (value.contains("groups")) {
+        auto const& group_values{required_array(value, "groups", path)};
+        for (std::size_t index{0}; index < group_values.size(); ++index) {
+            auto const& group{group_values[index]};
+            auto const group_path{path + "/groups/" + std::to_string(index)};
+            reject_unknown(group, group_path, {"name", "type", "columns"});
+            groups.push_back(StaticTableGroupSchema{
+                .name = required<std::string>(group, "name", group_path),
+                .type = parse_type_ref(required_value(group, "type", group_path),
+                                       group_path + "/type"),
+                .columns = required<std::vector<std::string>>(group, "columns", group_path),
+            });
+        }
+    }
+
     return StaticTableSchema{
         .name = required<std::string>(value, "name", path),
         .rows = std::move(rows),
         .columns = std::move(columns),
+        .groups = std::move(groups),
         .export_specifier = optional<std::string>(value, "export_specifier", path),
     };
 }

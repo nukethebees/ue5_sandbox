@@ -560,6 +560,37 @@ void validate_static_table(StaticTableModuleSchema const& module,
                           "Static table '" + table.name + "' column '" + column.name + "'");
         }
         require_unique_names(column_names, "Static table '" + table.name + "' columns");
+
+        std::set<std::string> column_name_set{column_names.begin(), column_names.end()};
+        std::set<std::string> member_names{generated_names};
+        member_names.insert(column_names.begin(), column_names.end());
+        std::set<std::string> group_names;
+        for (auto const& group : table.groups) {
+            auto const context{"Static table '" + table.name + "' group '" + group.name + "'"};
+            require_identifier(group.name, "Static table '" + table.name + "' group name");
+            if (!group_names.insert(group.name).second) {
+                throw std::invalid_argument{"Duplicate static table group name: " + group.name};
+            }
+            validate_type(group.type, types, context + " type");
+            if (group.columns.empty()) {
+                throw std::invalid_argument{context + " must have columns"};
+            }
+
+            for (auto const& column_name : group.columns) {
+                require_identifier(column_name, context + " column name");
+                if (!column_name_set.contains(column_name)) {
+                    throw std::invalid_argument{context + " references unknown column '" +
+                                                column_name + "'"};
+                }
+            }
+            require_unique_names(group.columns, context + " columns");
+
+            auto const getter_name{"get_" + group.name};
+            if (!member_names.insert(getter_name).second) {
+                throw std::invalid_argument{context + " getter '" + getter_name +
+                                            "' collides with generated API"};
+            }
+        }
     }
 }
 

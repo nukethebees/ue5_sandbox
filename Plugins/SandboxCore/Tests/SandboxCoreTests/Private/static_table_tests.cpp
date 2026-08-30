@@ -40,3 +40,18 @@ TEST_CASE("SandboxCore.StaticTable exposes fixed rows and table-level functions"
     const_table.apply_arrays([&visited]<typename... Columns>(Columns const&...) { visited = sizeof...(Columns); });
     CHECK(visited == 2);
 }
+
+TEST_CASE("SandboxCore.StaticTable constructs grouped aggregate values") {
+    using Table = ml::static_table_tests::FTestStaticGroupTable;
+
+    Table table{};
+    table.min_xs[Table::second_index] = 1.0f;
+    table.min_ys[Table::second_index] = 2.0f;
+    table.min_zs[Table::second_index] = 3.0f;
+    table.max_xs[Table::second_index] = 4.0f;
+    table.max_ys[Table::second_index] = 5.0f;
+    table.max_zs[Table::second_index] = 6.0f;
+
+    CHECK(table.get_min_point(Table::second_index) == FVector3f{1.0f, 2.0f, 3.0f});
+    CHECK(table.get_max_point(Table::second_index) == FVector3f{4.0f, 5.0f, 6.0f});
+}

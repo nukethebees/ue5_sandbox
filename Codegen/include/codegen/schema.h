@@ -23,6 +23,7 @@
 #include <codegen/schema/soa_module_schema.h>
 #include <codegen/schema/soa_schema.h>
 #include <codegen/schema/static_table_column_schema.h>
+#include <codegen/schema/static_table_group_schema.h>
 #include <codegen/schema/static_table_module_schema.h>
 #include <codegen/schema/static_table_row_schema.h>
 #include <codegen/schema/static_table_schema.h>
