@@ -135,9 +135,9 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
         entities_buffer_.entity_types.Add(entity_type);
         entities_buffer_.handles.Add({i, gens[i]});
 
-        for (int32 x{min_coord.X}; x < max_coord.X; ++x) {
-            for (int32 y{min_coord.Y}; y < max_coord.Y; ++y) {
-                for (int32 z{min_coord.Z}; z < max_coord.Z; ++z) {
+        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
                     auto const cell_index{to_index(x, y, z)};
                     ++cell_entity_counts_[cell_index];
                 }
@@ -189,9 +189,9 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
             entities_buffer_.max_points.zs[i],
         };
 
-        for (int32 x{min_coord.X}; x < max_coord.X; ++x) {
-            for (int32 y{min_coord.Y}; y < max_coord.Y; ++y) {
-                for (int32 z{min_coord.Z}; z < max_coord.Z; ++z) {
+        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
                     auto const cell_index{to_index(x, y, z)};
                     auto const write_index{cell_entity_write_indexes_[cell_index]++};
 
