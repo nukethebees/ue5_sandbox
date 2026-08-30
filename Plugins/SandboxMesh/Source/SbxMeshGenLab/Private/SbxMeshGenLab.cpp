@@ -1,6 +1,8 @@
+#include "SbxMeshGenLab/SbxMeshGenLabEditorMode.h"
 #include "SbxMeshGenLab/SbxMeshGenLabWidget.h"
 
 #include "Editor.h"
+#include "EditorModeManager.h"
 #include "Framework/Docking/TabManager.h"
 #include "Modules/ModuleManager.h"
 #include "Styling/AppStyle.h"
@@ -54,13 +56,15 @@ class FSbxMeshGenLabModule final : public IModuleInterface {
             tools_menu->FindOrAddSection(TEXT("SandboxMesh"), LOCTEXT("Section", "Sandbox Mesh"))};
         tools_section.AddMenuEntry(
             TEXT("OpenSbxMeshGenLab"),
-            LOCTEXT("MenuEntry", "Mesh Gen Lab"),
-            LOCTEXT("MenuEntryTooltip", "Open the procedural mesh generation lab."),
+            LOCTEXT("MenuEntry", "Sandbox Mesh Mode"),
+            LOCTEXT("MenuEntryTooltip", "Activate the procedural mesh kitbashing mode."),
             icon,
             action);
     }
 
-    void open_mesh_gen_lab() { FGlobalTabmanager::Get()->TryInvokeTab(mesh_gen_lab_tab_name); }
+    void open_mesh_gen_lab() {
+        GLevelEditorModeTools().ActivateMode(USbxMeshGenLabEditorMode::mode_id);
+    }
 
     auto spawn_mesh_gen_lab_tab(FSpawnTabArgs const&) -> TSharedRef<SDockTab> {
         auto const tab{SNew(SDockTab).TabRole(ETabRole::NomadTab)};
