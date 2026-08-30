@@ -25,15 +25,16 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto get_cell_entities(FIntVector3 const cell_coord) const
         -> TConstArrayView<FRegistryEntityHandle>;
 
+    auto to_min_cell_coord(FVector3f pos) const -> FIntVector3;
+    auto to_max_cell_coord(FVector3f pos) const -> FIntVector3;
+    auto is_cell_coord_in_bounds(FIntVector3 coord) const -> bool;
+
     void reset();
     void rebuild_grid(FTestEntityRegistry const& entity_registry, FEntityAABBs const& entity_aabbs);
   private:
     auto to_cell_x(float value) const -> int32;
     auto to_cell_y(float value) const -> int32;
     auto to_cell_z(float value) const -> int32;
-    auto to_cell_coord(FVector3f pos) const -> FIntVector3;
-    auto to_last_cell_coord(FVector3f pos) const -> FIntVector3;
-    auto is_cell_coord_in_bounds(FIntVector3 coord) const -> bool;
     auto to_index(int32 x, int32 y, int32 z) const -> int32;
     auto to_index(FIntVector3 coord) const -> int32;
     auto to_index(FVector3f pos) const -> int32;

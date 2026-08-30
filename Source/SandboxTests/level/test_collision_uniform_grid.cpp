@@ -31,29 +31,6 @@ FVector3f const cell_dims{
     grid_size.Z / static_cast<float>(grid_dims.Z),
 };
 
-auto to_min_cell_coord(FVector3f const point) -> FIntVector3 {
-    FVector3f const half_grid_size{grid_size * 0.5f};
-    return {
-        FMath::FloorToInt((point.X + half_grid_size.X) / cell_dims.X),
-        FMath::FloorToInt((point.Y + half_grid_size.Y) / cell_dims.Y),
-        FMath::FloorToInt((point.Z + half_grid_size.Z) / cell_dims.Z),
-    };
-}
-
-auto to_max_cell_coord(FVector3f const point) -> FIntVector3 {
-    FVector3f const half_grid_size{grid_size * 0.5f};
-    return {
-        FMath::CeilToInt((point.X + half_grid_size.X) / cell_dims.X) - 1,
-        FMath::CeilToInt((point.Y + half_grid_size.Y) / cell_dims.Y) - 1,
-        FMath::CeilToInt((point.Z + half_grid_size.Z) / cell_dims.Z) - 1,
-    };
-}
-
-auto is_cell_coord_in_bounds(FIntVector3 const cell_coord) -> bool {
-    return cell_coord.X >= 0 && cell_coord.X < grid_dims.X && cell_coord.Y >= 0 &&
-           cell_coord.Y < grid_dims.Y && cell_coord.Z >= 0 && cell_coord.Z < grid_dims.Z;
-}
-
 auto count_handle(TConstArrayView<FRegistryEntityHandle> const handles,
                   FRegistryEntityHandle const expected) -> int32 {
     int32 count{};
@@ -216,10 +193,10 @@ void FCollisionUniformGridScenario::sample_grid() {
         auto const registered_type{registry.get_entity_type(handle)};
         auto const location{registry.get_location(handle)};
         auto const half_extents{entity_aabbs.get_half_extents(std::to_underlying(registered_type))};
-        auto const min_coord{to_min_cell_coord(location - half_extents)};
-        auto const max_coord{to_max_cell_coord(location + half_extents)};
+        auto const min_coord{grid.to_min_cell_coord(location - half_extents)};
+        auto const max_coord{grid.to_max_cell_coord(location + half_extents)};
 
-        if (!is_cell_coord_in_bounds(min_coord) || !is_cell_coord_in_bounds(max_coord)) {
+        if (!grid.is_cell_coord_in_bounds(min_coord) || !grid.is_cell_coord_in_bounds(max_coord)) {
             sample.expected_cell_counts.Add(0);
             sample.found_cell_counts.Add(0);
             continue;

@@ -151,8 +151,8 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
         auto const min_point{location - half_extents};
         auto const max_point{location + half_extents};
 
-        auto const min_coord{to_cell_coord(min_point)};
-        auto const max_coord{to_last_cell_coord(max_point)};
+        auto const min_coord{to_min_cell_coord(min_point)};
+        auto const max_coord{to_max_cell_coord(max_point)};
 
         if (!is_cell_coord_in_bounds(min_coord) || !is_cell_coord_in_bounds(max_coord)) {
             UE_LOG(LogSandbox,
@@ -281,14 +281,14 @@ auto CollisionUniformGrid::to_cell_z(float const value) const -> int32 {
     auto const half_grid_extent{static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f};
     return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.Z);
 }
-auto CollisionUniformGrid::to_cell_coord(FVector3f const pos) const -> FIntVector3 {
+auto CollisionUniformGrid::to_min_cell_coord(FVector3f const pos) const -> FIntVector3 {
     return {
         to_cell_x(pos.X),
         to_cell_y(pos.Y),
         to_cell_z(pos.Z),
     };
 }
-auto CollisionUniformGrid::to_last_cell_coord(FVector3f const pos) const -> FIntVector3 {
+auto CollisionUniformGrid::to_max_cell_coord(FVector3f const pos) const -> FIntVector3 {
     FVector3f const half_grid_extent{
         static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f,
         static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f,
@@ -312,7 +312,7 @@ auto CollisionUniformGrid::to_index(FIntVector3 const coord) const -> int32 {
     return to_index(coord.X, coord.Y, coord.Z);
 }
 auto CollisionUniformGrid::to_index(FVector3f const pos) const -> int32 {
-    return to_index(to_cell_coord(pos));
+    return to_index(to_min_cell_coord(pos));
 }
 
 void FCollisionSystem::initialise(EntityMeshes const& meshes) {
