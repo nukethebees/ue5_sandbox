@@ -4,12 +4,14 @@
 #include "SbxMeshGenLab/BoxGenerator.h"
 #include "SbxMeshGenLab/ConeGenerator.h"
 #include "SbxMeshGenLab/CylinderGenerator.h"
+#include "SbxMeshGenLab/HexFrameGenerator.h"
 #include "SbxMeshGenLab/SphereGenerator.h"
 
 #include "AssetThumbnail.h"
 #include "Engine/StaticMesh.h"
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SCheckBox.h"
 #include "Widgets/Input/SSegmentedControl.h"
 #include "Widgets/Input/SSpinBox.h"
 #include "Widgets/Layout/SBorder.h"
@@ -21,6 +23,7 @@ namespace {
 FName const generated_box_asset_name{TEXT("SM_GeneratedBox")};
 FName const generated_cone_asset_name{TEXT("SM_GeneratedCone")};
 FName const generated_cylinder_asset_name{TEXT("SM_GeneratedCylinder")};
+FName const generated_hex_frame_asset_name{TEXT("SM_GeneratedHexFrame")};
 FName const generated_sphere_asset_name{TEXT("SM_GeneratedSphere")};
 constexpr uint32 thumbnail_size{256};
 constexpr float minimum_dimension{1.0f};
@@ -190,6 +193,43 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
             SSpinBox<int32>::FOnValueChanged::CreateLambda(
                 [this](int32 const value) { cone_radial_segments_ = value; }))]};
 
+    auto const hex_frame_controls{
+        SNew(SVerticalBox).Visibility_Lambda([this] {
+            return selected_shape_ == ESbxMeshShape::HexFrame ? EVisibility::Visible
+                                                              : EVisibility::Collapsed;
+        }) +
+        SVerticalBox::Slot().AutoHeight().Padding(
+            0.0f,
+            0.0f,
+            0.0f,
+            4.0f)[SNew(STextBlock)
+                      .Text(NSLOCTEXT("SbxMeshGenLab", "HexFrameDimensions", "Hex Frame (cm)"))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)[make_float_control(
+            NSLOCTEXT("SbxMeshGenLab", "HexFrameOuterRadius", "Outer Radius"),
+            TAttribute<float>::CreateLambda([this] { return hex_frame_outer_radius_; }),
+            SSpinBox<float>::FOnValueChanged::CreateLambda(
+                [this](float const value) { hex_frame_outer_radius_ = value; }))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)[make_float_control(
+            NSLOCTEXT("SbxMeshGenLab", "HexFrameWallThickness", "Wall Thickness"),
+            TAttribute<float>::CreateLambda([this] { return hex_frame_wall_thickness_; }),
+            SSpinBox<float>::FOnValueChanged::CreateLambda(
+                [this](float const value) { hex_frame_wall_thickness_ = value; }))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)[make_float_control(
+            NSLOCTEXT("SbxMeshGenLab", "HexFrameDepth", "Depth"),
+            TAttribute<float>::CreateLambda([this] { return hex_frame_depth_; }),
+            SSpinBox<float>::FOnValueChanged::CreateLambda(
+                [this](float const value) { hex_frame_depth_ = value; }))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
+            [SNew(SCheckBox)
+                 .IsChecked_Lambda([this] {
+                     return hex_frame_pointy_top_ ? ECheckBoxState::Checked
+                                                  : ECheckBoxState::Unchecked;
+                 })
+                 .OnCheckStateChanged_Lambda([this](ECheckBoxState const state) {
+                     hex_frame_pointy_top_ = state == ECheckBoxState::Checked;
+                 })[SNew(STextBlock)
+                        .Text(NSLOCTEXT("SbxMeshGenLab", "HexFramePointyTop", "Pointy Top"))]]};
+
     return SNew(SBorder)
         .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
         .Padding(12.0f)
@@ -214,11 +254,14 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                   SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Sphere)
                       .Text(NSLOCTEXT("SbxMeshGenLab", "SphereShape", "Sphere")) +
                   SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Cone)
-                      .Text(NSLOCTEXT("SbxMeshGenLab", "ConeShape", "Cone"))] +
+                      .Text(NSLOCTEXT("SbxMeshGenLab", "ConeShape", "Cone")) +
+                  SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::HexFrame)
+                      .Text(NSLOCTEXT("SbxMeshGenLab", "HexFrameShape", "Hex Frame"))] +
              SVerticalBox::Slot().AutoHeight()[box_controls] +
              SVerticalBox::Slot().AutoHeight()[cylinder_controls] +
              SVerticalBox::Slot().AutoHeight()[sphere_controls] +
              SVerticalBox::Slot().AutoHeight()[cone_controls] +
+             SVerticalBox::Slot().AutoHeight()[hex_frame_controls] +
              SVerticalBox::Slot().AutoHeight()
                  [SNew(SButton)
                       .Text_Lambda([this] { return generate_button_text(); })
@@ -262,6 +305,19 @@ auto USbxMeshGenLabWidget::generate_selected_shape() -> FReply {
             mesh_data = SandboxMesh::generate_cone(
                 FSbxConeParameters{cone_radius_, cone_height_, cone_radial_segments_});
             break;
+        case ESbxMeshShape::HexFrame:
+            if (hex_frame_wall_thickness_ >= hex_frame_outer_radius_) {
+                status_text_->SetText(NSLOCTEXT("SbxMeshGenLab",
+                                                "InvalidHexFrameThickness",
+                                                "Wall thickness must be less than outer radius."));
+                return FReply::Handled();
+            }
+            mesh_data =
+                SandboxMesh::generate_hex_frame(FSbxHexFrameParameters{hex_frame_outer_radius_,
+                                                                       hex_frame_wall_thickness_,
+                                                                       hex_frame_depth_,
+                                                                       hex_frame_pointy_top_});
+            break;
     }
 
     set_preview_mesh(nullptr);
@@ -302,6 +358,8 @@ auto USbxMeshGenLabWidget::generated_asset_name() const -> FName {
             return generated_sphere_asset_name;
         case ESbxMeshShape::Cone:
             return generated_cone_asset_name;
+        case ESbxMeshShape::HexFrame:
+            return generated_hex_frame_asset_name;
     }
 
     checkNoEntry();
@@ -318,6 +376,8 @@ auto USbxMeshGenLabWidget::selected_shape_text() const -> FText {
             return NSLOCTEXT("SbxMeshGenLab", "Sphere", "Sphere");
         case ESbxMeshShape::Cone:
             return NSLOCTEXT("SbxMeshGenLab", "Cone", "Cone");
+        case ESbxMeshShape::HexFrame:
+            return NSLOCTEXT("SbxMeshGenLab", "HexFrame", "Hex Frame");
     }
 
     checkNoEntry();
@@ -334,6 +394,8 @@ auto USbxMeshGenLabWidget::generate_button_text() const -> FText {
             return NSLOCTEXT("SbxMeshGenLab", "GenerateSphere", "Generate Sphere");
         case ESbxMeshShape::Cone:
             return NSLOCTEXT("SbxMeshGenLab", "GenerateCone", "Generate Cone");
+        case ESbxMeshShape::HexFrame:
+            return NSLOCTEXT("SbxMeshGenLab", "GenerateHexFrame", "Generate Hex Frame");
     }
 
     checkNoEntry();
