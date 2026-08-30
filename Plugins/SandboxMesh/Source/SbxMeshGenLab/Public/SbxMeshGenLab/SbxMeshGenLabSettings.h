@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SbxMeshGenLab/MeshAssembly.h"
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
 #include "UObject/Object.h"
 
@@ -14,6 +15,15 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
 
     UPROPERTY(EditAnywhere, Category = "Output")
     FName asset_name{TEXT("SM_GeneratedBox")};
+
+    UPROPERTY(EditAnywhere, Category = "Part Transform")
+    FVector part_translation{FVector::ZeroVector};
+
+    UPROPERTY(EditAnywhere, Category = "Part Transform")
+    FRotator part_rotation{FRotator::ZeroRotator};
+
+    UPROPERTY(EditAnywhere, Category = "Part Transform", meta = (ClampMin = "0.001"))
+    FVector part_scale{FVector::OneVector};
 
     UPROPERTY(EditAnywhere,
               Category = "Box",
@@ -184,5 +194,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     bool honeycomb_pointy_top{false};
 
     [[nodiscard]] auto to_request() const -> FSbxMeshGenerationRequest;
+    [[nodiscard]] auto to_transform() const -> FSbxMeshTransform;
     void load_request(FSbxMeshGenerationRequest const& request);
+    void load_transform(FSbxMeshTransform const& transform);
 };

@@ -22,6 +22,10 @@ auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
     return request;
 }
 
+auto USbxMeshGenLabSettings::to_transform() const -> FSbxMeshTransform {
+    return {FVector3f{part_translation}, FRotator3f{part_rotation}, FVector3f{part_scale}};
+}
+
 void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& request) {
     shape = request.shape;
     asset_name = request.asset_name;
@@ -49,4 +53,10 @@ void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& reque
     honeycomb_wall_thickness = request.honeycomb_panel.wall_thickness;
     honeycomb_depth = request.honeycomb_panel.depth;
     honeycomb_pointy_top = request.honeycomb_panel.pointy_top;
+}
+
+void USbxMeshGenLabSettings::load_transform(FSbxMeshTransform const& transform) {
+    part_translation = FVector{transform.translation};
+    part_rotation = FRotator{transform.rotation};
+    part_scale = FVector{transform.scale};
 }
