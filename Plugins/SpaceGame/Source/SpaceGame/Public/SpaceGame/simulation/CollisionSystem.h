@@ -8,9 +8,12 @@
 #include <CoreMinimal.h>
 
 class UStaticMesh;
+struct FTestEntityRegistry;
 
 namespace ml::ioj {
 struct CollisionUniformGrid {
+    static inline FVector3f const origin{FVector3f::ZeroVector};
+
     TArray<int32> cell_entity_offsets;
     TArray<int32> cell_entity_lengths;
     TArray<FRegistryEntityHandle> entities;
@@ -22,6 +25,7 @@ struct SPACEGAME_API FCollisionSystem {
     using EntityMeshes = TStaticArray<UStaticMesh const*, FEntityAABBs::num_rows>;
 
     FCollisionSystem() = default;
+    explicit FCollisionSystem(FTestEntityRegistry const& entity_registry) noexcept;
 
     void initialise(EntityMeshes const& meshes);
     void update();
@@ -34,6 +38,13 @@ struct SPACEGAME_API FCollisionSystem {
     auto get_cell_dims() const noexcept -> FVector3f { return cell_dims_; }
     void set_cell_dims(FVector3f const cell_dims) noexcept { cell_dims_ = cell_dims; }
   private:
+    auto to_cell_x(float value) const -> int32;
+    auto to_cell_y(float value) const -> int32;
+    auto to_cell_z(float value) const -> int32;
+
+    void rebuild_grid();
+
+    FTestEntityRegistry const* entity_registry_{nullptr};
     CollisionUniformGrid uniform_grid_{};
 
     FEntityAABBs entity_aabbs_{};

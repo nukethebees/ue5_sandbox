@@ -1,6 +1,7 @@
 #include "SpaceGame/simulation/CollisionSystem.h"
 
 #include <SGCollision/mesh_data_extraction.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
@@ -64,6 +65,9 @@ void set_mesh_aabb(FEntityAABBs& aabbs,
 }
 }
 
+FCollisionSystem::FCollisionSystem(FTestEntityRegistry const& entity_registry) noexcept
+    : entity_registry_{&entity_registry} {}
+
 void FCollisionSystem::initialise(EntityMeshes const& meshes) {
     auto const count{FEntityAABBs::num()};
     for (int32 i{0}; i < count; ++i) {
@@ -72,5 +76,25 @@ void FCollisionSystem::initialise(EntityMeshes const& meshes) {
     }
 }
 
-void FCollisionSystem::update() {}
+void FCollisionSystem::update() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::update);
+    rebuild_grid();
+}
+
+auto FCollisionSystem::to_cell_x(float const value) const -> int32 {
+    auto const half_grid_extent{static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f};
+    return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.X);
+}
+
+auto FCollisionSystem::to_cell_y(float const value) const -> int32 {
+    auto const half_grid_extent{static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f};
+    return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.Y);
+}
+
+auto FCollisionSystem::to_cell_z(float const value) const -> int32 {
+    auto const half_grid_extent{static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f};
+    return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.Z);
+}
+
+void FCollisionSystem::rebuild_grid() {}
 }

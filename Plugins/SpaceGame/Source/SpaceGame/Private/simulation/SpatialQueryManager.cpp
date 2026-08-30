@@ -43,7 +43,8 @@ auto FThreadBufferLease::get() const -> FThreadBuffers& {
 
 namespace ml {
 FSpatialQueryManager::FSpatialQueryManager(FTestEntityRegistry const& in_entity_registry) noexcept
-    : entity_registry{&in_entity_registry} {}
+    : entity_registry{&in_entity_registry}
+    , collision{in_entity_registry} {}
 
 void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
     auto const hardware_thread_count{
