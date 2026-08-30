@@ -13,6 +13,7 @@
 #include "Widgets/Input/SComboBox.h"
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
+#include "Widgets/Input/SNumericEntryBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -65,6 +66,9 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
         initial_system = Cast<UNiagaraSystem>(template_asset_path_.TryLoad());
     }
     preview_viewport_->set_system(initial_system);
+    if (subsystem != nullptr) {
+        selected_configuration_ = subsystem->get_preset_configuration(selected_preset_);
+    }
 
     return SNew(SBorder)
         .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
@@ -115,6 +119,119 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
                                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
                                     [SAssignNew(experiment_name_input_, SEditableTextBox)
                                          .Text(FText::FromString(initial_name))] +
+                                SVerticalBox::Slot()
+                                    .AutoHeight()
+                                    .Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                        [SNew(SBox)
+                                             .Visibility_Lambda([this]() {
+                                                 return get_lorenz_parameter_visibility();
+                                             })[SNew(STextBlock)
+                                                    .Text(NSLOCTEXT("SandboxNiagara",
+                                                                   "LorenzParametersLabel",
+                                                                   "Lorenz Parameters"))]] +
+                                SVerticalBox::Slot()
+                                    .AutoHeight()
+                                    .Padding(0.0f, 0.0f, 0.0f, 12.0f)
+                                        [SNew(SBox)
+                                             .Visibility_Lambda([this]() {
+                                                 return get_lorenz_parameter_visibility();
+                                             })[SNew(SUniformGridPanel)
+                                             .SlotPadding(FMargin{3.0f}) +
+                                         SUniformGridPanel::Slot(0, 0)
+                                             [SNew(STextBlock)
+                                                  .Text(NSLOCTEXT("SandboxNiagara",
+                                                                 "SigmaLabel",
+                                                                 "Sigma"))] +
+                                         SUniformGridPanel::Slot(1, 0)
+                                             [SNew(SNumericEntryBox<float>)
+                                                  .MinValue(0.001f)
+                                                  .Value_Lambda([this]() {
+                                                      return get_float_parameter(TEXT("User.Sigma"));
+                                                  })
+                                                  .OnValueCommitted_Lambda(
+                                                      [this](float const value, ETextCommit::Type) {
+                                                          set_float_parameter(TEXT("User.Sigma"),
+                                                                              value);
+                                                      })] +
+                                         SUniformGridPanel::Slot(0, 1)
+                                             [SNew(STextBlock)
+                                                  .Text(NSLOCTEXT("SandboxNiagara",
+                                                                 "RhoLabel",
+                                                                 "Rho"))] +
+                                         SUniformGridPanel::Slot(1, 1)
+                                             [SNew(SNumericEntryBox<float>)
+                                                  .MinValue(0.001f)
+                                                  .Value_Lambda([this]() {
+                                                      return get_float_parameter(TEXT("User.Rho"));
+                                                  })
+                                                  .OnValueCommitted_Lambda(
+                                                      [this](float const value, ETextCommit::Type) {
+                                                          set_float_parameter(TEXT("User.Rho"), value);
+                                                      })] +
+                                         SUniformGridPanel::Slot(0, 2)
+                                             [SNew(STextBlock)
+                                                  .Text(NSLOCTEXT("SandboxNiagara",
+                                                                 "BetaLabel",
+                                                                 "Beta"))] +
+                                         SUniformGridPanel::Slot(1, 2)
+                                             [SNew(SNumericEntryBox<float>)
+                                                  .MinValue(0.001f)
+                                                  .Value_Lambda([this]() {
+                                                      return get_float_parameter(TEXT("User.Beta"));
+                                                  })
+                                                  .OnValueCommitted_Lambda(
+                                                      [this](float const value, ETextCommit::Type) {
+                                                          set_float_parameter(TEXT("User.Beta"),
+                                                                              value);
+                                                      })] +
+                                         SUniformGridPanel::Slot(2, 0)
+                                             [SNew(STextBlock)
+                                                  .Text(NSLOCTEXT("SandboxNiagara",
+                                                                 "SpeedLabel",
+                                                                 "Speed"))] +
+                                         SUniformGridPanel::Slot(3, 0)
+                                             [SNew(SNumericEntryBox<float>)
+                                                  .MinValue(0.001f)
+                                                  .Value_Lambda([this]() {
+                                                      return get_float_parameter(TEXT("User.Speed"));
+                                                  })
+                                                  .OnValueCommitted_Lambda(
+                                                      [this](float const value, ETextCommit::Type) {
+                                                          set_float_parameter(TEXT("User.Speed"),
+                                                                              value);
+                                                      })] +
+                                         SUniformGridPanel::Slot(2, 1)
+                                             [SNew(STextBlock)
+                                                  .Text(NSLOCTEXT("SandboxNiagara",
+                                                                 "ScaleLabel",
+                                                                 "Scale"))] +
+                                         SUniformGridPanel::Slot(3, 1)
+                                             [SNew(SNumericEntryBox<float>)
+                                                  .MinValue(0.001f)
+                                                  .Value_Lambda([this]() {
+                                                      return get_float_parameter(TEXT("User.Scale"));
+                                                  })
+                                                  .OnValueCommitted_Lambda(
+                                                      [this](float const value, ETextCommit::Type) {
+                                                          set_float_parameter(TEXT("User.Scale"),
+                                                                              value);
+                                                      })] +
+                                         SUniformGridPanel::Slot(2, 2)
+                                             [SNew(STextBlock)
+                                                  .Text(NSLOCTEXT("SandboxNiagara",
+                                                                 "SpriteSizeLabel",
+                                                                 "Sprite Size"))] +
+                                         SUniformGridPanel::Slot(3, 2)
+                                             [SNew(SNumericEntryBox<float>)
+                                                  .MinValue(0.1f)
+                                                  .Value_Lambda([this]() {
+                                                      return TOptional<float>{
+                                                          selected_configuration_.sprite_size};
+                                                  })
+                                                  .OnValueCommitted_Lambda(
+                                                      [this](float const value, ETextCommit::Type) {
+                                                          selected_configuration_.sprite_size = value;
+                                                      })]]] +
                                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                                     [SNew(SUniformGridPanel)
                                          .SlotPadding(FMargin{3.0f}) +
@@ -212,6 +329,8 @@ void USandboxNiagaraControlPanel::select_preset(
         GEditor != nullptr) {
         auto* const subsystem{GEditor->GetEditorSubsystem<USandboxNiagaraSubsystem>()};
         if (subsystem != nullptr) {
+            selected_configuration_ =
+                subsystem->get_preset_configuration(selected_preset_);
             experiment_name_input_->SetText(
                 FText::FromString(subsystem->get_default_experiment_name(selected_preset_)));
             refresh_preview();
@@ -238,13 +357,44 @@ auto USandboxNiagaraControlPanel::run_generation(bool const replace_existing) ->
         return FReply::Handled();
     }
 
-    auto const result{subsystem->generate_preset(
-        template_system, selected_preset_, get_experiment_name(), replace_existing)};
+    auto const result{replace_existing
+                          ? subsystem->regenerate_experiment(template_system,
+                                                             get_experiment_name(),
+                                                             selected_configuration_)
+                          : subsystem->generate_experiment(template_system,
+                                                           get_experiment_name(),
+                                                           selected_configuration_)};
     set_generation_status(result);
     if (result.success && preview_viewport_.IsValid()) {
         preview_viewport_->set_system(result.generated_system);
     }
     return FReply::Handled();
+}
+
+auto USandboxNiagaraControlPanel::get_float_parameter(FName const parameter_name) const
+    -> TOptional<float> {
+    auto const* parameter{selected_configuration_.float_parameters.FindByPredicate(
+        [parameter_name](FSandboxNiagaraFloatParameter const& candidate) {
+            return candidate.name == parameter_name;
+        })};
+    return parameter != nullptr ? TOptional<float>{parameter->value} : TOptional<float>{};
+}
+
+void USandboxNiagaraControlPanel::set_float_parameter(FName const parameter_name,
+                                                      float const value) {
+    auto* const parameter{selected_configuration_.float_parameters.FindByPredicate(
+        [parameter_name](FSandboxNiagaraFloatParameter const& candidate) {
+            return candidate.name == parameter_name;
+        })};
+    if (parameter != nullptr) {
+        parameter->value = value;
+    }
+}
+
+auto USandboxNiagaraControlPanel::get_lorenz_parameter_visibility() const -> EVisibility {
+    return selected_preset_ == ESandboxNiagaraExperimentPreset::LorenzAttractor
+               ? EVisibility::Visible
+               : EVisibility::Collapsed;
 }
 
 auto USandboxNiagaraControlPanel::regenerate_all() -> FReply {

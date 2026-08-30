@@ -507,12 +507,18 @@ auto verify_enum_input(UNiagaraSystem& system,
 auto apply_baseline_configuration(UNiagaraSystem& system,
                                   FSandboxNiagaraExperimentConfiguration const& configuration,
                                   FSandboxNiagaraGenerationResult& result) -> bool {
-    if (configuration.spawn_rate < 0.0f || configuration.particle_lifetime <= 0.0f ||
+    if (!FMath::IsFinite(configuration.spawn_rate) ||
+        !FMath::IsFinite(configuration.particle_lifetime) ||
+        !FMath::IsFinite(configuration.sprite_size) ||
+        !FMath::IsFinite(configuration.spawn_radius) ||
+        !FMath::IsFinite(configuration.fixed_bounds_extent) ||
+        configuration.spawn_rate < 0.0f || configuration.particle_lifetime <= 0.0f ||
         configuration.sprite_size <= 0.0f || configuration.spawn_radius < 0.0f ||
         configuration.fixed_bounds_extent <= 0.0f) {
         add_error(result,
-                  TEXT("Spawn rate and radius must be non-negative; lifetime, sprite size, and "
-                       "fixed-bounds extent must be positive."));
+                  TEXT("Spawn rate, lifetime, sprite size, radius, and fixed-bounds extent must "
+                       "be finite. Spawn rate and radius must be non-negative; lifetime, sprite "
+                       "size, and fixed-bounds extent must be positive."));
         return false;
     }
 
@@ -617,6 +623,13 @@ auto add_float_user_parameters(
     TSet<FName> parameter_names{};
     bool success{true};
     for (FSandboxNiagaraFloatParameter const& parameter : parameters) {
+        if (!FMath::IsFinite(parameter.value)) {
+            add_error(result,
+                      FString::Printf(TEXT("Float parameter '%s' must have a finite value."),
+                                      *parameter.name.ToString()));
+            success = false;
+            continue;
+        }
         if (parameter.name.IsNone() ||
             !parameter.name.ToString().StartsWith(TEXT("User."))) {
             add_error(result,
