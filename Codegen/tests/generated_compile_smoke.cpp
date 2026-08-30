@@ -256,6 +256,8 @@ void test_static_tables() {
     const_values.apply_arrays(
         [&visited]<typename... Columns>(Columns const&...) { visited = sizeof...(Columns); });
     check(visited == 2);
+    auto const row{const_values.get_row(FStaticTableFixture::third_index)};
+    check(row.id == 30 && row.weight == 3.0f);
 
     FStaticGroupFixture groups{};
     groups.min_xs[FStaticGroupFixture::second_index] = 1.0f;
@@ -265,8 +267,9 @@ void test_static_tables() {
     groups.max_ys[FStaticGroupFixture::second_index] = 5.0f;
     groups.max_zs[FStaticGroupFixture::second_index] = 6.0f;
 
-    auto const min_point{groups.get_min_point(FStaticGroupFixture::second_index)};
-    auto const max_point{groups.get_max_point(FStaticGroupFixture::second_index)};
+    auto const& const_groups{groups};
+    auto const min_point{const_groups.get_min_point(FStaticGroupFixture::second_index)};
+    auto const max_point{const_groups.get_max_point(FStaticGroupFixture::second_index)};
     check(min_point.X == 1.0f && min_point.Y == 2.0f && min_point.Z == 3.0f);
     check(max_point.X == 4.0f && max_point.Y == 5.0f && max_point.Z == 6.0f);
 }

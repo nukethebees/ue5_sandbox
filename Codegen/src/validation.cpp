@@ -588,7 +588,7 @@ void validate_static_table(StaticTableModuleSchema const& module,
             auto const getter_name{"get_" + group.name};
             if (!member_names.insert(getter_name).second) {
                 throw std::invalid_argument{context + " getter '" + getter_name +
-                                            "' collides with generated API"};
+                                            "' collides with another table member"};
             }
         }
     }

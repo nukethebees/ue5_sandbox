@@ -95,6 +95,13 @@
           "columns": [
             {"name": "ids", "type": "int32"},
             {"name": "weights", "type": "float"}
+          ],
+          "groups": [
+            {
+              "name": "row",
+              "type": "@row",
+              "columns": ["ids", "weights"]
+            }
           ]
         },
         {
