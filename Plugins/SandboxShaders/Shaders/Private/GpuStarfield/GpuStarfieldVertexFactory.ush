@@ -3,16 +3,17 @@
 #include "/Engine/Private/VertexFactoryCommon.ush"
 
 struct FGpuStarfieldStarData {
-    float3 Position;
+    float3 Direction;
     float Size;
     float Brightness;
     float3 Padding;
 };
 
 StructuredBuffer<FGpuStarfieldStarData> GpuStarfieldStarData;
+float GpuStarfieldRadius;
 float GpuStarfieldGlobalStarSize;
 float GpuStarfieldGlobalBrightness;
-float GpuStarfieldParallaxScale;
+float GpuStarfieldParallaxStrength;
 
 #undef GetInstanceIdFromVF
 #define GetInstanceIdFromVF(VFInput) (GetInstanceId(VFInput.InstanceId))
@@ -48,17 +49,18 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     FGpuStarfieldStarData const Star = GpuStarfieldStarData[StarIndex];
     FPrimitiveSceneData const PrimitiveData = GetPrimitiveData(Intermediates);
 
-    float3 const StarOffset = mul(Star.Position, DFToFloat3x3(PrimitiveData.LocalToWorld));
+    float3 const StarOffset =
+        mul(Star.Direction * GpuStarfieldRadius, DFToFloat3x3(PrimitiveData.LocalToWorld));
     float3 const CameraFromAnchor =
         DFFastSubtractDemote(ResolvedView.WorldCameraOrigin, PrimitiveData.ObjectWorldPosition);
-    float3 const RelativePosition = StarOffset - CameraFromAnchor * GpuStarfieldParallaxScale;
+    float3 const RelativePosition = StarOffset - CameraFromAnchor * GpuStarfieldParallaxStrength;
     float const HalfSize = Star.Size * GpuStarfieldGlobalStarSize * 0.5;
     float3 const BillboardOffset =
         (Input.Corner.x * ResolvedView.ViewRight + Input.Corner.y * ResolvedView.ViewUp) * HalfSize;
 
     Intermediates.WorldPosition =
         float4(ResolvedView.TranslatedWorldCameraOrigin + RelativePosition + BillboardOffset, 1.0);
-    Intermediates.PositionInstanceSpace = Star.Position;
+    Intermediates.PositionInstanceSpace = Star.Direction;
     Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
     Intermediates.Brightness = Star.Brightness * GpuStarfieldGlobalBrightness;
     return Intermediates;

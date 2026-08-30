@@ -23,30 +23,31 @@ struct SBXSHADERSEXPERIMENTS_API FGpuStarfieldSettings {
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "GPU Starfield",
-              meta = (ClampMin = "1.0"))
-    float distribution_radius{50000.0f};
+              meta = (ClampMin = "0.001",
+                      ToolTip = "Scales the logical shell distance and billboard size together."))
+    float starfield_scale{1.0f};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
-              Category = "GPU Starfield",
+              Category = "GPU Starfield|Advanced",
               meta = (ClampMin = "0.0"))
-    float global_star_size{100.0f};
+    float star_size_multiplier{1.0f};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
-              Category = "GPU Starfield",
+              Category = "GPU Starfield|Advanced",
               meta = (ClampMin = "0.0"))
     float global_brightness{8.0f};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
-              Category = "GPU Starfield",
+              Category = "GPU Starfield|Advanced",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float parallax_scale{0.25f};
+    float parallax_strength{0.01f};
 };
 
 struct FGpuStarfieldGpuData {
-    FVector3f position{FVector3f::ZeroVector};
+    FVector3f direction{FVector3f::ZeroVector};
     float size{1.0f};
     float brightness{1.0f};
     float padding[3]{0.0f, 0.0f, 0.0f};

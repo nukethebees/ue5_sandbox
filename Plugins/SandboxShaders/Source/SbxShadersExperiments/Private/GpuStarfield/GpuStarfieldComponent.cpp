@@ -25,6 +25,8 @@ DEFINE_LOG_CATEGORY_STATIC(LogGpuStarfieldExperiment, Log, All);
 
 namespace {
 constexpr int32 maximum_star_count{1000000};
+constexpr float base_starfield_radius{100000000.0f};
+constexpr float base_star_size{50000.0f};
 
 auto get_profile_star_count_override() -> int32 {
     int32 star_count{0};
@@ -33,17 +35,20 @@ auto get_profile_star_count_override() -> int32 {
 }
 
 struct FGpuStarfieldRenderParameters {
+    float starfield_radius{0.0f};
     float global_star_size{0.0f};
     float global_brightness{0.0f};
-    float parallax_scale{0.0f};
+    float parallax_strength{0.0f};
 };
 
 auto make_render_parameters(FGpuStarfieldSettings const& settings)
     -> FGpuStarfieldRenderParameters {
     return {
-        .global_star_size = settings.global_star_size,
+        .starfield_radius = base_starfield_radius * settings.starfield_scale,
+        .global_star_size =
+            base_star_size * settings.starfield_scale * settings.star_size_multiplier,
         .global_brightness = settings.global_brightness,
-        .parallax_scale = settings.parallax_scale,
+        .parallax_strength = settings.parallax_strength,
     };
 }
 
@@ -89,9 +94,10 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
   public:
     void Bind(FShaderParameterMap const& parameter_map) {
         star_data_.Bind(parameter_map, TEXT("GpuStarfieldStarData"));
+        starfield_radius_.Bind(parameter_map, TEXT("GpuStarfieldRadius"));
         global_star_size_.Bind(parameter_map, TEXT("GpuStarfieldGlobalStarSize"));
         global_brightness_.Bind(parameter_map, TEXT("GpuStarfieldGlobalBrightness"));
-        parallax_scale_.Bind(parameter_map, TEXT("GpuStarfieldParallaxScale"));
+        parallax_strength_.Bind(parameter_map, TEXT("GpuStarfieldParallaxStrength"));
     }
 
     void GetElementShaderBindings(FSceneInterface const* scene,
@@ -105,9 +111,10 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
                                   FVertexInputStreamArray& vertex_streams) const;
   private:
     LAYOUT_FIELD(FShaderResourceParameter, star_data_);
+    LAYOUT_FIELD(FShaderParameter, starfield_radius_);
     LAYOUT_FIELD(FShaderParameter, global_star_size_);
     LAYOUT_FIELD(FShaderParameter, global_brightness_);
-    LAYOUT_FIELD(FShaderParameter, parallax_scale_);
+    LAYOUT_FIELD(FShaderParameter, parallax_strength_);
 };
 
 IMPLEMENT_TYPE_LAYOUT(FGpuStarfieldVertexFactoryShaderParameters);
@@ -161,9 +168,10 @@ void FGpuStarfieldVertexFactoryShaderParameters::GetElementShaderBindings(
     check(user_data != nullptr);
 
     shader_bindings.Add(star_data_, user_data->star_data_srv);
+    shader_bindings.Add(starfield_radius_, user_data->parameters.starfield_radius);
     shader_bindings.Add(global_star_size_, user_data->parameters.global_star_size);
     shader_bindings.Add(global_brightness_, user_data->parameters.global_brightness);
-    shader_bindings.Add(parallax_scale_, user_data->parameters.parallax_scale);
+    shader_bindings.Add(parallax_strength_, user_data->parameters.parallax_strength);
 }
 
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FGpuStarfieldVertexFactory,
@@ -225,6 +233,7 @@ class FGpuStarfieldSceneProxy final : public FPrimitiveSceneProxy {
         , parameters_{parameters}
         , star_count_{star_data.Num()} {
         bWillEverBeLit = false;
+        bIsAlwaysVisible = true;
         BeginInitResource(&star_buffer_);
         BeginInitResource(&vertex_factory_);
     }
@@ -342,20 +351,19 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
         normalised.star_count = profile_star_count;
     }
     normalised.star_count = FMath::Clamp(normalised.star_count, 1, maximum_star_count);
-    normalised.distribution_radius = FMath::Max(normalised.distribution_radius, 1.0f);
-    normalised.global_star_size = FMath::Max(normalised.global_star_size, 0.0f);
+    normalised.starfield_scale = FMath::Max(normalised.starfield_scale, 0.001f);
+    normalised.star_size_multiplier = FMath::Max(normalised.star_size_multiplier, 0.0f);
     normalised.global_brightness = FMath::Max(normalised.global_brightness, 0.0f);
-    normalised.parallax_scale = FMath::Clamp(normalised.parallax_scale, 0.0f, 1.0f);
+    normalised.parallax_strength = FMath::Clamp(normalised.parallax_strength, 0.0f, 1.0f);
 
     auto const structural_change{!has_generated_stars_ ||
                                  settings_.star_count != normalised.star_count ||
-                                 settings_.random_seed != normalised.random_seed ||
-                                 settings_.distribution_radius != normalised.distribution_radius};
-    auto const bounds_change{settings_.global_star_size != normalised.global_star_size};
-    auto const shader_parameter_change{settings_.global_star_size != normalised.global_star_size ||
-                                       settings_.global_brightness !=
-                                           normalised.global_brightness ||
-                                       settings_.parallax_scale != normalised.parallax_scale};
+                                 settings_.random_seed != normalised.random_seed};
+    auto const bounds_change{settings_.starfield_scale != normalised.starfield_scale ||
+                             settings_.star_size_multiplier != normalised.star_size_multiplier};
+    auto const shader_parameter_change{
+        bounds_change || settings_.global_brightness != normalised.global_brightness ||
+        settings_.parallax_strength != normalised.parallax_strength};
 
     settings_ = normalised;
     if (structural_change) {
@@ -386,7 +394,8 @@ FPrimitiveSceneProxy* UGpuStarfieldComponent::CreateSceneProxy() {
 }
 
 FBoxSphereBounds UGpuStarfieldComponent::CalcBounds(FTransform const& local_to_world) const {
-    auto const radius{settings_.distribution_radius + settings_.global_star_size};
+    auto const radius{base_starfield_radius * settings_.starfield_scale +
+                      base_star_size * settings_.starfield_scale * settings_.star_size_multiplier};
     return FBoxSphereBounds{FVector::ZeroVector, FVector{radius}, radius}.TransformBy(
         local_to_world);
 }
@@ -421,7 +430,7 @@ void UGpuStarfieldComponent::generate_stars() {
     for (int32 star_index{0}; star_index < star_count; ++star_index) {
         auto const direction{random_stream.VRand()};
         auto& star{star_data_[star_index]};
-        star.position = FVector3f{direction * settings_.distribution_radius};
+        star.direction = FVector3f{direction};
         star.size = random_stream.FRandRange(0.75f, 1.25f);
         star.brightness = random_stream.FRandRange(0.5f, 1.0f);
         star.padding[0] = 0.0f;

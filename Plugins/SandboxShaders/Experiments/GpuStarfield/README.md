@@ -2,14 +2,15 @@
 
 This experiment tests a minimal custom scene renderer for deterministic, camera-relative stars. An
 `AGpuStarfieldExperimentActor` owns one `UGpuStarfieldComponent`. The component generates one
-immutable 32-byte record per star and hands a copy to its `FPrimitiveSceneProxy`; the proxy uploads
-that array to a render-thread-owned structured buffer.
+immutable 32-byte unit-direction record per star and hands a copy to its `FPrimitiveSceneProxy`; the
+proxy uploads that array to a render-thread-owned structured buffer.
 
 Each visible view submits one indexed, instanced mesh batch. The vertex factory reuses one
-four-vertex quad, indexes the structured buffer with the stereo-correct instance ID, subtracts a
-scaled LWC camera-to-actor offset, and expands the result along the view right/up axes. The additive
-unlit material applies a squared circular falloff using the interpolated quad UV and uses vertex
-colour for per-star brightness. There is no tick and no per-star work after generation.
+four-vertex quad, indexes the structured buffer with the stereo-correct instance ID, scales the unit
+direction to the logical shell radius, subtracts a scaled LWC camera-to-actor offset, and expands the
+result along the view right/up axes. The additive unlit material applies a squared circular falloff
+using the interpolated quad UV and uses vertex colour for per-star brightness. There is no tick and
+no per-star work after generation.
 
 The additive translucent material retains the normal scene depth test but does not write scene
 depth. Opaque geometry therefore occludes stars while the background renderer does not contaminate
@@ -18,16 +19,18 @@ depth, so geometry farther away than a star can still render behind it.
 
 ## Controls
 
-- `star_count`, `random_seed`, and `distribution_radius` regenerate and reupload the immutable star
-  set.
-- `global_star_size`, `global_brightness`, and `parallax_scale` update proxy shader parameters
-  without rebuilding star data.
-- `parallax_scale = 0` makes the logical field follow camera translation; `1` behaves like ordinary
-  actor-anchored world geometry. Intermediate values provide the intended reduced parallax.
+- `star_count` and `random_seed` regenerate and reupload the immutable star set.
+- `starfield_scale` is the primary distance control. At `1`, the logical shell radius is 1,000 km
+  and the base billboard diameter is 500 m. Scaling both together preserves angular star size.
+- `star_size_multiplier`, `global_brightness`, and `parallax_strength` are advanced shader controls
+  and update without rebuilding star data.
+- `parallax_strength = 0` makes the logical field follow camera translation; `1` behaves like
+  ordinary actor-anchored world geometry. The default `0.01` gives the base scale an effective
+  apparent distance of approximately 100,000 km.
 
-The showcase actor defaults to 10,000 stars, seed 1337, a 50,000-unit spherical shell, and a 0.25
-parallax scale. The editor clamp permits profiling up to one million stars. A standalone profiling
-run can override the placed actor without resaving the map by passing `-GpuStarfieldCount=N`.
+The showcase actor defaults to 10,000 stars, seed 1337, and a scale of `1`. The editor clamp permits
+profiling up to one million stars. A standalone profiling run can override the placed actor without
+resaving the map by passing `-GpuStarfieldCount=N`.
 
 ## UE 5.8 references
 
@@ -112,11 +115,28 @@ Unreal Insights captures are still required before drawing a SpaceGame productio
 
 ## Current limits and next step
 
-The component bounds remain actor-centred even when a low parallax value makes the rendered field
-follow the camera, so a camera travelling beyond the configured logical radius can cull the whole
-primitive. The shell also has no frustum, size, or brightness culling and supports SM5-class desktop
-feature levels only.
+The scene proxy uses UE 5.8's always-visible primitive path because its shader-relative star
+positions do not fit stable actor-centred CPU bounds. This prevents primitive-level frustum,
+distance, and occlusion culling after long camera travel without adding a game-thread camera-follow
+tick. Normal material depth testing remains active, so opaque geometry still occludes star pixels.
+The shell has no per-star frustum, size, or brightness culling and supports SM5-class desktop feature
+levels only.
 
-If profiling validates the basic cost, the next experiment should add a camera-following bounds
-policy and GPU-side coarse visibility/size culling while preserving the same component, immutable
-star buffer, and single-draw data path.
+## Roadmap
+
+Each step remains reviewable and usable before the next one begins. Unless measurements justify a
+change, all steps preserve one component, one immutable star buffer, one draw per visible view, and
+no per-star CPU work per frame.
+
+1. **Camera-travel-safe bounds — complete.** The proxy uses UE 5.8's always-visible primitive path,
+   preventing shader-relative stars from being culled after long camera travel without a CPU tick.
+2. **Magnitude and colour distribution.** Add mostly dim stars, a small bright population, subtle
+   warm/cool colour variation, and per-star depth/parallax classes in the same buffer and draw.
+3. **Subpixel stability.** Evaluate TAA/TSR and exposure behavior, then preserve energy or enforce a
+   minimum projected footprint where necessary to reduce shimmer and disappearing distant stars.
+4. **Bright-star shape.** Give only the brightest population an optional compact procedural cross
+   or diffraction spike without adding a texture or draw submission.
+5. **Camera-motion benchmark.** Add a deterministic translation path to the automated A/B benchmark
+   to validate parallax stability, bounds behavior, and motion cost.
+6. **Coarse GPU culling, if justified.** Evaluate frustum and projected-size culling only after
+   representative hardware and resolution measurements show that unculled quads need it.
