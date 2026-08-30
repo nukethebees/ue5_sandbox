@@ -93,9 +93,16 @@ void CollisionUniformGrid::reset() {
     aabbs_.reset();
     entities_buffer_.reset();
 }
+
 void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_registry,
                                         FEntityAABBs const& entity_aabbs) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid);
+
+    if (grid_dims_.X <= 0 || grid_dims_.Y <= 0 || grid_dims_.Z <= 0 || cell_dims_.X <= 0.0f ||
+        cell_dims_.Y <= 0.0f || cell_dims_.Z <= 0.0f) {
+        reset();
+        return;
+    }
 
     auto const& entity_data{entity_registry.get_entity_data()};
     auto const entity_count{entity_registry.get_num_elements()};
