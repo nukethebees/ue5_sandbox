@@ -36,6 +36,11 @@
 			"Name": "SpaceGame",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SGCollision",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
 		}
 	]
 }
