@@ -429,13 +429,30 @@ void UGpuStarfieldComponent::generate_stars() {
     auto const star_count{star_data_.Num()};
     for (int32 star_index{0}; star_index < star_count; ++star_index) {
         auto const direction{random_stream.VRand()};
+        auto const population_roll{random_stream.FRand()};
+        auto const depth_roll{random_stream.FRand()};
+        auto const is_near_star{population_roll < 0.01f};
+        auto depth_factor{1.0f};
+        if (is_near_star) {
+            depth_factor = FMath::Lerp(0.001f, 0.01f, depth_roll);
+        } else if (population_roll < 0.15f) {
+            depth_factor = FMath::Lerp(0.03f, 0.2f, depth_roll);
+        } else {
+            depth_factor = FMath::Lerp(0.5f, 1.0f, depth_roll);
+        }
+
+        auto magnitude{FMath::Pow(random_stream.FRand(), 4.0f)};
+        if (is_near_star) {
+            magnitude = FMath::Max(magnitude, 0.5f);
+        }
+
         auto& star{star_data_[star_index]};
         star.direction = FVector3f{direction};
-        star.size = random_stream.FRandRange(0.75f, 1.25f);
-        star.brightness = random_stream.FRandRange(0.5f, 1.0f);
-        star.padding[0] = 0.0f;
-        star.padding[1] = 0.0f;
-        star.padding[2] = 0.0f;
+        star.size = FMath::Lerp(0.65f, 1.8f, magnitude);
+        star.brightness = FMath::Lerp(0.08f, 1.0f, magnitude);
+        star.depth_factor = depth_factor;
+        star.colour_temperature = (random_stream.FRand() + random_stream.FRand()) * 0.5f;
+        star.padding = 0.0f;
     }
 
     has_generated_stars_ = true;

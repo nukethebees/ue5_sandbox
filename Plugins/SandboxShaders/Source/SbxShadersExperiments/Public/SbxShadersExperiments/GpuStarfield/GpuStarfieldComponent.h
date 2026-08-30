@@ -50,7 +50,9 @@ struct FGpuStarfieldGpuData {
     FVector3f direction{FVector3f::ZeroVector};
     float size{1.0f};
     float brightness{1.0f};
-    float padding[3]{0.0f, 0.0f, 0.0f};
+    float depth_factor{1.0f};
+    float colour_temperature{0.5f};
+    float padding{0.0f};
 };
 
 static_assert(sizeof(FGpuStarfieldGpuData) == 32);

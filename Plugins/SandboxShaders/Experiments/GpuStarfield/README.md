@@ -2,14 +2,17 @@
 
 This experiment tests a minimal custom scene renderer for deterministic, camera-relative stars. An
 `AGpuStarfieldExperimentActor` owns one `UGpuStarfieldComponent`. The component generates one
-immutable 32-byte unit-direction record per star and hands a copy to its `FPrimitiveSceneProxy`; the
-proxy uploads that array to a render-thread-owned structured buffer.
+immutable 32-byte record per star and hands a copy to its `FPrimitiveSceneProxy`; the proxy uploads
+that array to a render-thread-owned structured buffer. Each record stores a unit direction, angular
+size, brightness, relative depth, and warm-to-cool colour value.
 
 Each visible view submits one indexed, instanced mesh batch. The vertex factory reuses one
 four-vertex quad, indexes the structured buffer with the stereo-correct instance ID, scales the unit
-direction to the logical shell radius, subtracts a scaled LWC camera-to-actor offset, and expands the
-result along the view right/up axes. The additive unlit material applies a squared circular falloff
-using the interpolated quad UV and uses vertex colour for per-star brightness. There is no tick and
+direction to its relative logical depth, subtracts a scaled LWC camera-to-actor offset, and expands
+the result along the view right/up axes. Billboard size scales with relative depth, preserving its
+generated angular size while camera translation produces stronger motion in nearer populations.
+The additive unlit material applies a squared circular falloff using the interpolated quad UV and
+uses vertex colour for per-star brightness and subtle temperature variation. There is no tick and
 no per-star work after generation.
 
 The additive translucent material retains the normal scene depth test but does not write scene
@@ -31,6 +34,12 @@ depth, so geometry farther away than a star can still render behind it.
 The showcase actor defaults to 10,000 stars, seed 1337, and a scale of `1`. The editor clamp permits
 profiling up to one million stars. A standalone profiling run can override the placed actor without
 resaving the map by passing `-GpuStarfieldCount=N`.
+
+Generation uses continuous randomized depth within three deliberately sparse populations: 1% near
+at `0.001-0.01` of the base radius, 14% middle at `0.03-0.2`, and 85% distant at `0.5-1.0`. These are
+not separate renderer layers: they remain interleaved in one structured buffer and one instanced
+draw. The distribution is mostly dim and neutral-white, with the near population kept bright enough
+to make its stronger translational parallax identifiable during this experiment.
 
 ## UE 5.8 references
 
@@ -75,14 +84,16 @@ scope measures `GetDynamicMeshElements`, which UE schedules on a worker in this 
 
 | Stars | Whole GT delta ms | Whole RT delta ms | Submit CPU ms | Whole GPU delta ms | Translucency GPU delta ms | Draw delta |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10,000 | 0.0352 | 0.0808 | 0.0063 | 0.0655 | 0.0169 | 1 |
-| 100,000 | 0.0069 | 0.0382 | 0.0061 | 0.1081 | 0.0624 | 1 |
-| 1,000,000 | 0.0314 | 0.1211 | 0.0061 | 0.5815 | 0.5143 | 1 |
+| 10,000 | 0.0948 | 0.1679 | 0.0083 | 0.0747 | 0.0165 | 1 |
+| 100,000 | 0.0724 | 0.0759 | 0.0089 | 0.1184 | 0.0611 | 1 |
+| 1,000,000 | 0.0393 | -0.1616 | 0.0092 | 0.5618 | 0.5045 | 1 |
 
 The whole-frame CPU deltas are small enough to remain sensitive to ordinary frame-to-frame
-scheduling noise. The directly instrumented mesh submission is stable at approximately 0.006 ms
-and does not scale with star count. GPU work scales with the number of unculled quads, reaching
-approximately 0.58 ms total and 0.51 ms in translucency at one million stars.
+scheduling noise. The directly instrumented mesh submission remains below 0.01 ms and does not
+scale with star count. GPU work scales with the number of unculled quads, reaching approximately
+0.56 ms total and 0.50 ms in translucency at one million stars. Adding continuous depth, magnitude,
+and colour to the existing record did not increase its 32-byte size or its one-draw architecture;
+the measured GPU result remained within run-to-run variation of the single-depth implementation.
 
 ## Initial whole-showcase profiling baseline
 
@@ -130,8 +141,9 @@ no per-star CPU work per frame.
 
 1. **Camera-travel-safe bounds — complete.** The proxy uses UE 5.8's always-visible primitive path,
    preventing shader-relative stars from being culled after long camera travel without a CPU tick.
-2. **Magnitude and colour distribution.** Add mostly dim stars, a small bright population, subtle
-   warm/cool colour variation, and per-star depth/parallax classes in the same buffer and draw.
+2. **Magnitude, colour, and depth distribution — complete.** Stars now use mostly dim magnitudes,
+   a small identifiable bright population, subtle warm/cool variation, and continuous depth within
+   sparse near, middle, and distant populations in the same 32-byte buffer and draw.
 3. **Subpixel stability.** Evaluate TAA/TSR and exposure behavior, then preserve energy or enforce a
    minimum projected footprint where necessary to reduce shimmer and disappearing distant stars.
 4. **Bright-star shape.** Give only the brightest population an optional compact procedural cross
