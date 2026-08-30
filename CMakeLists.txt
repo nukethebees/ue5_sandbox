@@ -45,6 +45,18 @@ set(CACHE{SANDBOX_TEST_SUITE}
 set_property(CACHE SANDBOX_TEST_SUITE PROPERTY STRINGS
   default
   benchmark
+  editor-only
+)
+
+set(CACHE{SANDBOX_ISMC_BENCHMARK_SECONDS}
+  TYPE STRING
+  HELP "Duration of the offscreen SandboxISMC paired benchmark"
+  VALUE 10
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_INSTANCES}
+  TYPE STRING
+  HELP "Instances per renderer in the offscreen SandboxISMC paired benchmark"
+  VALUE 40000
 )
 
 if(NOT CMAKE_HOST_WIN32)
@@ -245,6 +257,29 @@ add_unreal_automation_test(
   LABELS all
 )
 
+add_test(
+  NAME SandboxISMC.RemoteBenchmark
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests SandboxISMC.RemoteBenchmark; Quit"
+    "-SandboxISMCBenchmarkSeconds=${SANDBOX_ISMC_BENCHMARK_SECONDS}"
+    "-SandboxISMCBenchmarkInstances=${SANDBOX_ISMC_BENCHMARK_INSTANCES}"
+    -SandboxISMCBenchmarkEndPIE
+    -RenderOffscreen
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+    -FullStdOutLogOutput
+    -ddc=NoZenLocalFallback
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+)
+set_tests_properties(SandboxISMC.RemoteBenchmark PROPERTIES
+  LABELS sandbox-ismc-benchmark
+  TIMEOUT 600
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 add_custom_target(dev-core
   DEPENDS
     editor
@@ -265,9 +300,11 @@ elseif(SANDBOX_TEST_SUITE STREQUAL "default")
     core-tests
     native-tests
   )
+elseif(SANDBOX_TEST_SUITE STREQUAL "editor-only")
+  # Editor automation tests are registered above and need no low-level test executable.
 else()
   message(FATAL_ERROR
-    "SANDBOX_TEST_SUITE must be one of: default, benchmark. "
+    "SANDBOX_TEST_SUITE must be one of: default, benchmark, editor-only. "
     "Got '${SANDBOX_TEST_SUITE}'."
   )
 endif()

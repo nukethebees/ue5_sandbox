@@ -48,6 +48,8 @@ TRACE_DECLARE_INT_COUNTER(SandboxISMCRenderThreadUploadInstances,
 struct FSandboxISMCMetricsState {
     TAtomic<int32> instance_count{0};
     TAtomic<uint64> prepare_cycles{0};
+    TAtomic<uint64> pack_cycles{0};
+    TAtomic<uint64> bounds_cycles{0};
     TAtomic<uint64> submit_cycles{0};
     TAtomic<uint64> upload_cycles{0};
     TAtomic<uint64> upload_bytes{0};
@@ -583,28 +585,50 @@ void USandboxISMCComponent::commit_instance_updates() {
     auto const instance_count = positions_.Num();
     update->instances.SetNumUninitialized(instance_count);
 
-    FBox local_box{ForceInit};
     auto const has_mesh = static_mesh_ != nullptr;
-    auto const mesh_box = has_mesh ? static_mesh_->GetBoundingBox() : FBox{ForceInit};
-
-    for (auto instance_index = 0; instance_index < instance_count; ++instance_index) {
-        auto const transform = FTransform3f{
-            rotations_[instance_index], positions_[instance_index], scales_[instance_index]};
-        auto const matrix = transform.ToMatrixWithScale();
-        auto& packed = update->instances[instance_index];
-        packed.origin = FVector4f{positions_[instance_index], 0.0f};
-        packed.transform_row_0 = FVector4f{matrix.M[0][0], matrix.M[0][1], matrix.M[0][2], 0.0f};
-        packed.transform_row_1 = FVector4f{matrix.M[1][0], matrix.M[1][1], matrix.M[1][2], 0.0f};
-        packed.transform_row_2 = FVector4f{matrix.M[2][0], matrix.M[2][1], matrix.M[2][2], 0.0f};
-
-        if (has_mesh) {
-            local_box += mesh_box.TransformBy(FTransform{transform});
+    auto const pack_start_cycles = FPlatformTime::Cycles64();
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_PackTransforms);
+        for (auto instance_index = 0; instance_index < instance_count; ++instance_index) {
+            auto const transform = FTransform3f{
+                rotations_[instance_index], positions_[instance_index], scales_[instance_index]};
+            auto const matrix = transform.ToMatrixWithScale();
+            auto& packed = update->instances[instance_index];
+            packed.origin = FVector4f{positions_[instance_index], 0.0f};
+            packed.transform_row_0 =
+                FVector4f{matrix.M[0][0], matrix.M[0][1], matrix.M[0][2], 0.0f};
+            packed.transform_row_1 =
+                FVector4f{matrix.M[1][0], matrix.M[1][1], matrix.M[1][2], 0.0f};
+            packed.transform_row_2 =
+                FVector4f{matrix.M[2][0], matrix.M[2][1], matrix.M[2][2], 0.0f};
         }
     }
+    auto const pack_cycles = FPlatformTime::Cycles64() - pack_start_cycles;
 
-    local_bounds_ = local_box.IsValid != 0
-                      ? FBoxSphereBounds{local_box}
-                      : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
+    auto const bounds_start_cycles = FPlatformTime::Cycles64();
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_RebuildConservativeBounds);
+        FBox3f local_box{ForceInit};
+        if (has_mesh) {
+            auto const mesh_bounds{static_mesh_->GetBounds()};
+            auto const mesh_origin{FVector3f{mesh_bounds.Origin}};
+            auto const mesh_radius{static_cast<float>(mesh_bounds.SphereRadius)};
+            for (auto instance_index = 0; instance_index < instance_count; ++instance_index) {
+                auto const& scale{scales_[instance_index]};
+                auto const center{positions_[instance_index] +
+                                  rotations_[instance_index].RotateVector(mesh_origin * scale)};
+                auto const radius{mesh_radius * scale.GetAbsMax()};
+                auto const extent{FVector3f{radius}};
+                local_box += center - extent;
+                local_box += center + extent;
+            }
+        }
+
+        local_bounds_ = local_box.IsValid != 0
+                          ? FBoxSphereBounds{FBoxSphereBounds3f{local_box}}
+                          : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
+    }
+    auto const bounds_cycles = FPlatformTime::Cycles64() - bounds_start_cycles;
     pending_render_update_ = MoveTemp(update);
 
     auto const elapsed_cycles = FPlatformTime::Cycles64() - start_cycles;
@@ -612,6 +636,8 @@ void USandboxISMCComponent::commit_instance_updates() {
         static_cast<uint64>(instance_count) * sizeof(FSandboxISMCRenderInstance);
     metrics_->instance_count.Store(instance_count);
     metrics_->prepare_cycles.Store(elapsed_cycles);
+    metrics_->pack_cycles.Store(pack_cycles);
+    metrics_->bounds_cycles.Store(bounds_cycles);
     metrics_->upload_bytes.Store(upload_bytes);
     SET_DWORD_STAT(STAT_SandboxISMCInstances, instance_count);
     SET_DWORD_STAT(STAT_SandboxISMCUploadBytes,
@@ -628,6 +654,8 @@ FSandboxISMCUpdateMetrics USandboxISMCComponent::get_update_metrics() const {
     return {
         .instance_count = metrics_->instance_count.Load(),
         .prepare_ms = FPlatformTime::ToMilliseconds64(metrics_->prepare_cycles.Load()),
+        .pack_ms = FPlatformTime::ToMilliseconds64(metrics_->pack_cycles.Load()),
+        .bounds_ms = FPlatformTime::ToMilliseconds64(metrics_->bounds_cycles.Load()),
         .submit_ms = FPlatformTime::ToMilliseconds64(metrics_->submit_cycles.Load()),
         .upload_ms = FPlatformTime::ToMilliseconds64(metrics_->upload_cycles.Load()),
         .upload_bytes = metrics_->upload_bytes.Load(),

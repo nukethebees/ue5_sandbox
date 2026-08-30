@@ -23,14 +23,16 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     struct FUpdateTiming {
         double total_ms{0.0};
         double prepare_ms{0.0};
-        double pack_bounds_ms{-1.0};
+        double pack_ms{-1.0};
+        double bounds_ms{-1.0};
         double api_ms{0.0};
     };
 
     struct FRendererSamples {
         TArray<double> total_update_ms;
         TArray<double> prepare_ms;
-        TArray<double> pack_bounds_ms;
+        TArray<double> pack_ms;
+        TArray<double> bounds_ms;
         TArray<double> api_ms;
     };
 
@@ -39,6 +41,7 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     FUpdateTiming update_custom(float vertical_offset, float angle_radians);
     FUpdateTiming update_engine_ismc(float vertical_offset, float angle_radians);
     void record_samples(FRendererSamples& samples, FUpdateTiming const& timing);
+    void finish_benchmark();
     void start_insights_trace();
     void stop_insights_trace();
     void disable_frame_rate_limits();
@@ -87,6 +90,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Timing")
     bool disable_frame_rate_limits_{true};
 
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Timing", meta = (ClampMin = "0.0"))
+    float automatic_stop_seconds_{0.0f};
+
     TArray<FVector3f> base_positions_;
     TArray<FTransform> engine_update_transforms_;
     TArray<double> frame_ms_;
@@ -95,6 +101,7 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
 
     float animation_elapsed_seconds_{0.0f};
     bool running_{false};
+    bool request_end_pie_on_completion_{false};
     bool owns_insights_trace_{false};
     bool frame_rate_limits_disabled_{false};
     int32 previous_vsync_{0};

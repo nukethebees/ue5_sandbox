@@ -15,6 +15,7 @@ public class SandboxISMCLab : ModuleRules
             "Engine",
             "RenderCore",
             "SandboxISMC",
+            "UnrealEd",
         });
     }
 }

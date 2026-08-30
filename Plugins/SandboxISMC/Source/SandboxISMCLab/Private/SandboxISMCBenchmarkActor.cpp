@@ -3,6 +3,7 @@
 #include "Camera/CameraComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
+#include "Editor/UnrealEdEngine.h"
 #include "Engine/StaticMesh.h"
 #include "HAL/FileManager.h"
 #include "HAL/IConsoleManager.h"
@@ -10,14 +11,18 @@
 #include "Kismet/GameplayStatics.h"
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
+#include "Misc/CommandLine.h"
 #include "Misc/DateTime.h"
 #include "Misc/FileHelper.h"
+#include "Misc/Parse.h"
 #include "Misc/Paths.h"
 #include "ProfilingDebugging/CountersTrace.h"
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "ProfilingDebugging/MiscTrace.h"
 #include "ProfilingDebugging/TraceAuxiliary.h"
+#include "RenderingThread.h"
 #include "SandboxISMCComponent.h"
+#include "UnrealEdGlobals.h"
 #include "UObject/ConstructorHelpers.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(SandboxISMCBenchmarkActor)
@@ -33,8 +38,10 @@ TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomTotalMs,
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomPrepareMs,
                             TEXT("SandboxISMCBenchmark/Custom/PrepareTransformsMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomApiMs, TEXT("SandboxISMCBenchmark/Custom/CommitApiMs"));
-TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomPackBoundsMs,
-                            TEXT("SandboxISMCBenchmark/Custom/PackAndBoundsMs"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomPackMs,
+                            TEXT("SandboxISMCBenchmark/Custom/PackTransformsMs"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomBoundsMs,
+                            TEXT("SandboxISMCBenchmark/Custom/RebuildBoundsMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEngineTotalMs,
                             TEXT("SandboxISMCBenchmark/EngineISMC/TotalUpdateMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEnginePrepareMs,
@@ -128,6 +135,13 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     }
 
     configure_components();
+    FParse::Value(
+        FCommandLine::Get(), TEXT("SandboxISMCBenchmarkSeconds="), automatic_stop_seconds_);
+    automatic_stop_seconds_ = FMath::Max(automatic_stop_seconds_, 0.0f);
+    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkInstances="), instance_count_);
+    instance_count_ = FMath::Max(instance_count_, 1);
+    request_end_pie_on_completion_ =
+        FParse::Param(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkEndPIE"));
     output_base_name_ = FString::Printf(TEXT("SandboxISMC_Paired_%s"),
                                         *FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S")));
     start_insights_trace();
@@ -153,13 +167,7 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
 
 void ASandboxISMCBenchmarkActor::EndPlay(EEndPlayReason::Type const end_play_reason) {
     if (running_) {
-        running_ = false;
-        TRACE_COUNTER_SET(BenchmarkRunning, 0);
-        TRACE_BOOKMARK(TEXT("SandboxISMC paired continuous benchmark stop: %d frames"),
-                       frame_ms_.Num());
-        if (save_csv_) {
-            save_report();
-        }
+        finish_benchmark();
     }
 
     stop_insights_trace();
@@ -191,10 +199,18 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomTotalMs, custom_timing.total_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomPrepareMs, custom_timing.prepare_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomApiMs, custom_timing.api_ms);
-    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomPackBoundsMs, custom_timing.pack_bounds_ms);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomPackMs, custom_timing.pack_ms);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomBoundsMs, custom_timing.bounds_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineTotalMs, engine_timing.total_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEnginePrepareMs, engine_timing.prepare_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineApiMs, engine_timing.api_ms);
+
+    if (automatic_stop_seconds_ > 0.0f && animation_elapsed_seconds_ >= automatic_stop_seconds_) {
+        finish_benchmark();
+        if (request_end_pie_on_completion_ && GUnrealEd != nullptr) {
+            GUnrealEd->RequestEndPlayMap();
+        }
+    }
 }
 
 void ASandboxISMCBenchmarkActor::configure_components() {
@@ -317,7 +333,8 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
     return {
         .total_ms = FPlatformTime::ToMilliseconds64(total_cycles),
         .prepare_ms = FPlatformTime::ToMilliseconds64(prepare_cycles),
-        .pack_bounds_ms = metrics.prepare_ms,
+        .pack_ms = metrics.pack_ms,
+        .bounds_ms = metrics.bounds_ms,
         .api_ms = FPlatformTime::ToMilliseconds64(api_cycles),
     };
 }
@@ -359,10 +376,36 @@ void ASandboxISMCBenchmarkActor::record_samples(FRendererSamples& samples,
                                                 FUpdateTiming const& timing) {
     samples.total_update_ms.Add(timing.total_ms);
     samples.prepare_ms.Add(timing.prepare_ms);
-    if (timing.pack_bounds_ms >= 0.0) {
-        samples.pack_bounds_ms.Add(timing.pack_bounds_ms);
+    if (timing.pack_ms >= 0.0) {
+        samples.pack_ms.Add(timing.pack_ms);
+    }
+    if (timing.bounds_ms >= 0.0) {
+        samples.bounds_ms.Add(timing.bounds_ms);
     }
     samples.api_ms.Add(timing.api_ms);
+}
+
+void ASandboxISMCBenchmarkActor::finish_benchmark() {
+    if (!running_) {
+        return;
+    }
+
+    running_ = false;
+    TRACE_COUNTER_SET(BenchmarkRunning, 0);
+    TRACE_BOOKMARK(TEXT("SandboxISMC paired continuous benchmark stop: %d frames"),
+                   frame_ms_.Num());
+    FlushRenderingCommands();
+    if (save_csv_) {
+        save_report();
+    }
+    stop_insights_trace();
+    restore_frame_rate_limits();
+
+    UE_LOG(LogSandboxISMCBenchmark,
+           Display,
+           TEXT("Continuous paired benchmark complete after %.2f seconds and %d frames"),
+           animation_elapsed_seconds_,
+           frame_ms_.Num());
 }
 
 void ASandboxISMCBenchmarkActor::start_insights_trace() {
@@ -474,11 +517,10 @@ void ASandboxISMCBenchmarkActor::save_report() const {
                    custom_samples_.total_update_ms);
     append_summary(
         csv, TEXT("custom"), TEXT("prepare"), base_positions_.Num(), custom_samples_.prepare_ms);
-    append_summary(csv,
-                   TEXT("custom"),
-                   TEXT("pack_bounds"),
-                   base_positions_.Num(),
-                   custom_samples_.pack_bounds_ms);
+    append_summary(
+        csv, TEXT("custom"), TEXT("pack"), base_positions_.Num(), custom_samples_.pack_ms);
+    append_summary(
+        csv, TEXT("custom"), TEXT("bounds"), base_positions_.Num(), custom_samples_.bounds_ms);
     append_summary(csv, TEXT("custom"), TEXT("api"), base_positions_.Num(), custom_samples_.api_ms);
     append_summary(csv,
                    TEXT("engine_ismc"),

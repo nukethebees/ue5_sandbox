@@ -30,6 +30,10 @@ instance contains an origin and three scaled-rotation rows, for 64 bytes per ins
 crosses to the render thread, where it is copied into one dynamic vertex buffer. A shared zero stream
 supplies the unused lightmap-bias attribute required by the engine shader layout.
 
+Component bounds use a conservative transformed mesh sphere per instance. This avoids transforming
+all eight mesh-box corners in double precision for every commit. The resulting bounds can be looser
+for elongated meshes, but remain safe for culling and are appropriate for this experiment.
+
 ## Current update cost
 
 Every commit currently:
@@ -80,6 +84,24 @@ the same slow vertical translation and rotation. The custom update and engine up
 inside the same Game Thread frame, so their sibling scopes can be compared directly. There are no
 phases, warmups, or automatic stop; stop PIE after capturing the interval you want.
 
+The same benchmark can run unattended with a real offscreen rendering RHI:
+
+```text
+cmake --workflow --preset sandbox-ismc-benchmark
+```
+
+The remote workflow builds a Development editor, starts PIE for ten seconds with 40,000 instances per
+renderer, flushes final render work, saves the CSV and Insights trace, ends PIE, and exits. Configure a
+different duration or instance count before running its build and test presets:
+
+```text
+cmake --preset sandbox-ismc-benchmark -DSANDBOX_ISMC_BENCHMARK_SECONDS=30 -DSANDBOX_ISMC_BENCHMARK_INSTANCES=100000
+cmake --build --preset sandbox-ismc-benchmark
+ctest --preset sandbox-ismc-benchmark
+```
+
+Do not add `-nullrhi`; the Render Thread and GPU comparison require a real RHI.
+
 The comparison uses the same mesh, default material, local transforms, mobility, movement, and view.
 Collision, overlap events, navigation contribution, character stepping, ray tracing visibility, and
 distance culling are disabled on the engine ISMC and on the custom component where applicable. The
@@ -93,8 +115,8 @@ minimum, median, p95, and maximum values over the complete run:
 - `total_update` covers preparation plus the public component update call.
 - `prepare` is benchmark-side writing or construction of the changed transforms.
 - `api` is `commit_instance_updates()` or `BatchUpdateInstancesTransforms()`.
-- `pack_bounds` is the custom component's full SoA packing and bounds rebuild; it is contained
-  within `api`, not an additional cost.
+- `pack` and `bounds` split the custom component's snapshot packing and conservative bounds rebuild;
+  both are contained within `api`, not additional costs.
 
 When tracing is enabled, the actor records `Saved/Profiling/SandboxISMC_Paired_*.utrace`, including
 CPU, GPU, frame, bookmark, counter, stats, render-command, and RHI-command channels. An editor `Failed
@@ -116,7 +138,9 @@ The nested scopes separate caller-side preparation from component API cost. Crea
 
 Filter timers by `SandboxISMC_Custom` to follow the custom path across threads:
 
-- `SandboxISMC_Custom_PackAndBounds` runs on the Game Thread.
+- `SandboxISMC_Custom_PackAndBounds` contains the complete custom preparation pass.
+- `SandboxISMC_Custom_PackTransforms` packs the SoA transforms.
+- `SandboxISMC_Custom_RebuildConservativeBounds` rebuilds conservative component bounds.
 - `SandboxISMC_Custom_SubmitRenderUpdate` submits the snapshot.
 - `SandboxISMC_Custom_RenderThreadUpload` uploads the packed buffer on the Render Thread.
 
