@@ -6,9 +6,15 @@
 #include "NiagaraSystem.h"
 
 #include "Editor.h"
+#include "Dom/JsonObject.h"
 #include "HAL/FileManager.h"
+#include "Interfaces/IPluginManager.h"
+#include "Misc/FileHelper.h"
+#include "Misc/Paths.h"
 #include "Misc/Guid.h"
 #include "Misc/PackageName.h"
+#include "Serialization/JsonReader.h"
+#include "Serialization/JsonSerializer.h"
 #include "Subsystems/EditorAssetSubsystem.h"
 #include "UObject/Package.h"
 
@@ -17,47 +23,272 @@ DEFINE_LOG_CATEGORY_STATIC(LogSandboxNiagara, Log, All);
 namespace {
 FString const generated_output_root{TEXT("/SandboxNiagara/Generated")};
 
-auto default_experiment_name(ESandboxNiagaraExperimentPreset const preset) -> FString {
-    switch (preset) {
-        case ESandboxNiagaraExperimentPreset::Orbit:
-            return TEXT("NS_SandboxNiagaraOrbit");
-        case ESandboxNiagaraExperimentPreset::LorenzAttractor:
-            return TEXT("NS_SandboxNiagaraLorenz");
-    }
-    return TEXT("NS_SandboxNiagaraExperiment");
+void add_catalog_error(FSandboxNiagaraExperimentCatalogResult& result,
+                       FString const& source_file,
+                       FString message) {
+    message = FString::Printf(TEXT("%s: %s"), *source_file, *message);
+    UE_LOG(LogSandboxNiagara, Error, TEXT("%s"), *message);
+    result.errors.Add(MoveTemp(message));
 }
 
-auto make_preset_configuration(ESandboxNiagaraExperimentPreset const preset)
-    -> FSandboxNiagaraExperimentConfiguration {
-    FSandboxNiagaraExperimentConfiguration configuration{};
-    switch (preset) {
-        case ESandboxNiagaraExperimentPreset::Orbit:
-            configuration.spawn_rate = 2000.0f;
-            configuration.particle_lifetime = 20.0f;
-            configuration.particle_color = FLinearColor{0.1f, 0.55f, 1.0f};
-            configuration.particle_velocity_expression =
-                TEXT("float3(-Particles.Position.y, Particles.Position.x, 0.0f) * 0.35f");
-            break;
-        case ESandboxNiagaraExperimentPreset::LorenzAttractor:
-            configuration.spawn_rate = 1500.0f;
-            configuration.particle_lifetime = 30.0f;
-            configuration.spawn_radius = 25.0f;
-            configuration.particle_color = FLinearColor{1.0f, 0.2f, 0.03f};
-            configuration.float_parameters = {
-                {TEXT("User.Sigma"), 10.0f},
-                {TEXT("User.Rho"), 28.0f},
-                {TEXT("User.Beta"), 8.0f / 3.0f},
-                {TEXT("User.Speed"), 1.0f},
-                {TEXT("User.Scale"), 10.0f},
-            };
-            configuration.particle_velocity_expression =
-                TEXT("float3(User.Sigma * (Particles.Position.y - Particles.Position.x), "
-                     "Particles.Position.x * (User.Rho - Particles.Position.z / User.Scale) - "
-                     "Particles.Position.y, Particles.Position.x * Particles.Position.y / "
-                     "User.Scale - User.Beta * Particles.Position.z) * User.Speed");
-            break;
+auto read_required_string(FJsonObject const& object,
+                          FStringView const field,
+                          FString const& source_file,
+                          FString& value,
+                          FSandboxNiagaraExperimentCatalogResult& result) -> bool {
+    if (!object.TryGetStringField(field, value) || value.TrimStartAndEnd().IsEmpty()) {
+        add_catalog_error(result,
+                          source_file,
+                          FString::Printf(TEXT("Required string field '%.*s' is missing or empty."),
+                                          field.Len(),
+                                          field.GetData()));
+        return false;
     }
-    return configuration;
+    value.TrimStartAndEndInline();
+    return true;
+}
+
+auto read_required_float(FJsonObject const& object,
+                         FStringView const field,
+                         FString const& source_file,
+                         float& value,
+                         FSandboxNiagaraExperimentCatalogResult& result) -> bool {
+    if (!object.TryGetNumberField(field, value) || !FMath::IsFinite(value)) {
+        add_catalog_error(result,
+                          source_file,
+                          FString::Printf(TEXT("Required numeric field '%.*s' is missing or invalid."),
+                                          field.Len(),
+                                          field.GetData()));
+        return false;
+    }
+    return true;
+}
+
+auto read_color(FJsonObject const& object,
+                FString const& source_file,
+                FLinearColor& color,
+                FSandboxNiagaraExperimentCatalogResult& result) -> bool {
+    TArray<TSharedPtr<FJsonValue>> const* values{nullptr};
+    if (!object.TryGetArrayField(TEXTVIEW("particle_color"), values) || values == nullptr ||
+        values->Num() != 4) {
+        add_catalog_error(result,
+                          source_file,
+                          TEXT("'particle_color' must contain four numeric RGBA values."));
+        return false;
+    }
+
+    float channels[4]{};
+    for (int32 channel_index{0}; channel_index < 4; ++channel_index) {
+        if (!(*values)[channel_index].IsValid() ||
+            !(*values)[channel_index]->TryGetNumber(channels[channel_index]) ||
+            !FMath::IsFinite(channels[channel_index])) {
+            add_catalog_error(result,
+                              source_file,
+                              TEXT("'particle_color' must contain four finite numeric values."));
+            return false;
+        }
+    }
+    color = FLinearColor{channels[0], channels[1], channels[2], channels[3]};
+    return true;
+}
+
+auto read_parameters(FJsonObject const& object,
+                     FString const& source_file,
+                     TArray<FSandboxNiagaraFloatParameter>& parameters,
+                     FSandboxNiagaraExperimentCatalogResult& result) -> bool {
+    TArray<TSharedPtr<FJsonValue>> const* values{nullptr};
+    if (!object.TryGetArrayField(TEXTVIEW("parameters"), values) || values == nullptr) {
+        add_catalog_error(result, source_file, TEXT("'parameters' must be an array."));
+        return false;
+    }
+
+    bool valid{true};
+    TSet<FName> names{};
+    for (int32 parameter_index{0}; parameter_index < values->Num(); ++parameter_index) {
+        TSharedPtr<FJsonObject> const* parameter_object{nullptr};
+        if (!(*values)[parameter_index].IsValid() ||
+            !(*values)[parameter_index]->TryGetObject(parameter_object) ||
+            parameter_object == nullptr || !parameter_object->IsValid()) {
+            add_catalog_error(result,
+                              source_file,
+                              FString::Printf(TEXT("Parameter %d must be an object."),
+                                              parameter_index));
+            valid = false;
+            continue;
+        }
+
+        FSandboxNiagaraFloatParameter parameter{};
+        FString parameter_name{};
+        valid &= read_required_string(**parameter_object,
+                                      TEXTVIEW("name"),
+                                      source_file,
+                                      parameter_name,
+                                      result);
+        valid &= read_required_string(**parameter_object,
+                                      TEXTVIEW("display_name"),
+                                      source_file,
+                                      parameter.display_name,
+                                      result);
+        valid &= read_required_float(**parameter_object,
+                                     TEXTVIEW("default"),
+                                     source_file,
+                                     parameter.value,
+                                     result);
+        (*parameter_object)->TryGetNumberField(TEXTVIEW("minimum"), parameter.minimum);
+        (*parameter_object)->TryGetNumberField(TEXTVIEW("maximum"), parameter.maximum);
+        parameter.name = FName{parameter_name};
+
+        if (!parameter_name.StartsWith(TEXT("User.")) || parameter.name.IsNone()) {
+            add_catalog_error(result,
+                              source_file,
+                              FString::Printf(TEXT("Parameter '%s' must use the User namespace."),
+                                              *parameter_name));
+            valid = false;
+        } else if (names.Contains(parameter.name)) {
+            add_catalog_error(result,
+                              source_file,
+                              FString::Printf(TEXT("Parameter '%s' is defined more than once."),
+                                              *parameter_name));
+            valid = false;
+        } else {
+            names.Add(parameter.name);
+        }
+        if (!FMath::IsFinite(parameter.minimum) || !FMath::IsFinite(parameter.maximum) ||
+            parameter.minimum > parameter.maximum || parameter.value < parameter.minimum ||
+            parameter.value > parameter.maximum) {
+            add_catalog_error(result,
+                              source_file,
+                              FString::Printf(TEXT("Parameter '%s' has invalid bounds or default."),
+                                              *parameter_name));
+            valid = false;
+        }
+        parameters.Add(MoveTemp(parameter));
+    }
+    return valid;
+}
+
+auto read_hlsl_expression(FJsonObject const& object,
+                          FString const& experiments_directory,
+                          FString const& source_file,
+                          FString& expression,
+                          FSandboxNiagaraExperimentCatalogResult& result) -> bool {
+    FString relative_path{};
+    if (!read_required_string(object,
+                              TEXTVIEW("velocity_expression_file"),
+                              source_file,
+                              relative_path,
+                              result)) {
+        return false;
+    }
+    if (!FPaths::IsRelative(relative_path)) {
+        add_catalog_error(result,
+                          source_file,
+                          TEXT("'velocity_expression_file' must be relative to Experiments."));
+        return false;
+    }
+
+    auto expression_path{FPaths::ConvertRelativePathToFull(
+        FPaths::Combine(experiments_directory, relative_path))};
+    FPaths::CollapseRelativeDirectories(expression_path);
+    if (!FPaths::IsUnderDirectory(expression_path, experiments_directory)) {
+        add_catalog_error(result,
+                          source_file,
+                          TEXT("'velocity_expression_file' must stay inside Experiments."));
+        return false;
+    }
+    if (!FFileHelper::LoadFileToString(expression, *expression_path)) {
+        add_catalog_error(result,
+                          source_file,
+                          FString::Printf(TEXT("Could not read HLSL expression file '%s'."),
+                                          *relative_path));
+        return false;
+    }
+    expression.TrimStartAndEndInline();
+    if (expression.IsEmpty() || expression.Contains(TEXT(";"))) {
+        add_catalog_error(result,
+                          source_file,
+                          TEXT("HLSL expression must be a non-empty single rvalue without ';'."));
+        return false;
+    }
+    return true;
+}
+
+auto load_experiment_definition(FString const& filename,
+                                FString const& experiments_directory,
+                                FSandboxNiagaraExperimentDefinition& definition,
+                                FSandboxNiagaraExperimentCatalogResult& result) -> bool {
+    FString json_text{};
+    if (!FFileHelper::LoadFileToString(json_text, *filename)) {
+        add_catalog_error(result, filename, TEXT("Could not read experiment definition."));
+        return false;
+    }
+
+    TSharedPtr<FJsonObject> root{};
+    auto const reader{TJsonReaderFactory<>::Create(json_text)};
+    if (!FJsonSerializer::Deserialize(reader, root) || !root.IsValid()) {
+        add_catalog_error(result, filename, TEXT("Invalid JSON."));
+        return false;
+    }
+
+    definition.source_file = filename;
+    bool valid{true};
+    int32 schema_version{0};
+    if (!root->TryGetNumberField(TEXTVIEW("schema_version"), schema_version) ||
+        schema_version != 1) {
+        add_catalog_error(result, filename, TEXT("'schema_version' must be 1."));
+        valid = false;
+    }
+    valid &= read_required_string(
+        *root, TEXTVIEW("id"), filename, definition.id, result);
+    valid &= read_required_string(
+        *root, TEXTVIEW("display_name"), filename, definition.display_name, result);
+    valid &= read_required_string(*root,
+                                  TEXTVIEW("default_asset_name"),
+                                  filename,
+                                  definition.default_asset_name,
+                                  result);
+
+    TSharedPtr<FJsonObject> const* configuration_object{nullptr};
+    if (!root->TryGetObjectField(TEXTVIEW("configuration"), configuration_object) ||
+        configuration_object == nullptr || !configuration_object->IsValid()) {
+        add_catalog_error(result, filename, TEXT("'configuration' must be an object."));
+        return false;
+    }
+    auto const& configuration{**configuration_object};
+    valid &= read_required_float(configuration,
+                                 TEXTVIEW("spawn_rate"),
+                                 filename,
+                                 definition.configuration.spawn_rate,
+                                 result);
+    valid &= read_required_float(configuration,
+                                 TEXTVIEW("particle_lifetime"),
+                                 filename,
+                                 definition.configuration.particle_lifetime,
+                                 result);
+    valid &= read_required_float(configuration,
+                                 TEXTVIEW("sprite_size"),
+                                 filename,
+                                 definition.configuration.sprite_size,
+                                 result);
+    valid &= read_required_float(configuration,
+                                 TEXTVIEW("spawn_radius"),
+                                 filename,
+                                 definition.configuration.spawn_radius,
+                                 result);
+    valid &= read_required_float(configuration,
+                                 TEXTVIEW("fixed_bounds_extent"),
+                                 filename,
+                                 definition.configuration.fixed_bounds_extent,
+                                 result);
+    valid &= read_color(configuration, filename, definition.configuration.particle_color, result);
+    valid &= read_parameters(
+        configuration, filename, definition.configuration.float_parameters, result);
+    valid &= read_hlsl_expression(configuration,
+                                  experiments_directory,
+                                  filename,
+                                  definition.configuration.particle_velocity_expression,
+                                  result);
+    return valid;
 }
 
 void add_error(FSandboxNiagaraGenerationResult& result, FString message) {
@@ -623,9 +854,12 @@ auto add_float_user_parameters(
     TSet<FName> parameter_names{};
     bool success{true};
     for (FSandboxNiagaraFloatParameter const& parameter : parameters) {
-        if (!FMath::IsFinite(parameter.value)) {
+        if (!FMath::IsFinite(parameter.value) || !FMath::IsFinite(parameter.minimum) ||
+            !FMath::IsFinite(parameter.maximum) || parameter.minimum > parameter.maximum ||
+            parameter.value < parameter.minimum || parameter.value > parameter.maximum) {
             add_error(result,
-                      FString::Printf(TEXT("Float parameter '%s' must have a finite value."),
+                      FString::Printf(TEXT("Float parameter '%s' must have finite, ordered bounds "
+                                           "and a value inside those bounds."),
                                       *parameter.name.ToString()));
             success = false;
             continue;
@@ -933,6 +1167,72 @@ auto verify_particle_velocity_update(UNiagaraSystem& system,
 }
 }
 
+FSandboxNiagaraExperimentCatalogResult
+USandboxNiagaraSubsystem::load_experiment_catalog() const {
+    FSandboxNiagaraExperimentCatalogResult result{};
+    auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxNiagara"))};
+    if (!plugin.IsValid()) {
+        add_catalog_error(result,
+                          TEXT("SandboxNiagara"),
+                          TEXT("Plugin descriptor could not be found."));
+        return result;
+    }
+
+    auto const experiments_directory{FPaths::ConvertRelativePathToFull(
+        FPaths::Combine(plugin->GetBaseDir(), TEXT("Experiments")))};
+    TArray<FString> definition_names{};
+    IFileManager::Get().FindFiles(
+        definition_names, *(experiments_directory / TEXT("*.json")), true, false);
+    definition_names.Sort();
+    if (definition_names.IsEmpty()) {
+        add_catalog_error(result,
+                          experiments_directory,
+                          TEXT("No experiment JSON files were found."));
+        return result;
+    }
+
+    TSet<FString> ids{};
+    TSet<FString> asset_names{};
+    for (FString const& definition_name : definition_names) {
+        FSandboxNiagaraExperimentDefinition definition{};
+        auto const definition_path{experiments_directory / definition_name};
+        if (!load_experiment_definition(
+                definition_path, experiments_directory, definition, result)) {
+            continue;
+        }
+
+        auto const normalized_id{definition.id.ToLower()};
+        auto const normalized_asset_name{definition.default_asset_name.ToLower()};
+        if (ids.Contains(normalized_id)) {
+            add_catalog_error(result,
+                              definition_path,
+                              FString::Printf(TEXT("Experiment id '%s' is duplicated."),
+                                              *definition.id));
+            continue;
+        }
+        if (asset_names.Contains(normalized_asset_name)) {
+            add_catalog_error(result,
+                              definition_path,
+                              FString::Printf(TEXT("Default asset name '%s' is duplicated."),
+                                              *definition.default_asset_name));
+            continue;
+        }
+        ids.Add(normalized_id);
+        asset_names.Add(normalized_asset_name);
+        result.experiments.Add(MoveTemp(definition));
+    }
+
+    result.success = result.errors.IsEmpty() && !result.experiments.IsEmpty();
+    if (result.success) {
+        UE_LOG(LogSandboxNiagara,
+               Display,
+               TEXT("Loaded %d text-defined Niagara experiment(s) from %s."),
+               result.experiments.Num(),
+               *experiments_directory);
+    }
+    return result;
+}
+
 FSandboxNiagaraValidationResult
 USandboxNiagaraSubsystem::validate_template(UNiagaraSystem* template_system) {
     FSandboxNiagaraValidationResult validation_result{};
@@ -1199,17 +1499,6 @@ FSandboxNiagaraGenerationResult USandboxNiagaraSubsystem::regenerate_experiment(
         template_system, experiment_name, configuration, true);
 }
 
-FSandboxNiagaraGenerationResult USandboxNiagaraSubsystem::generate_preset(
-    UNiagaraSystem* template_system,
-    ESandboxNiagaraExperimentPreset const preset,
-    FString const& experiment_name,
-    bool const replace_existing) {
-    auto const resolved_name{experiment_name.IsEmpty() ? default_experiment_name(preset)
-                                                       : experiment_name};
-    return generate_experiment_internal(
-        template_system, resolved_name, make_preset_configuration(preset), replace_existing);
-}
-
 FSandboxNiagaraValidationResult
 USandboxNiagaraSubsystem::delete_generated_asset(FString const& asset_path) {
     FSandboxNiagaraValidationResult result{};
@@ -1269,30 +1558,24 @@ USandboxNiagaraSubsystem::delete_generated_asset(FString const& asset_path) {
 }
 
 FSandboxNiagaraValidationResult
-USandboxNiagaraSubsystem::regenerate_all_presets(UNiagaraSystem* template_system) {
+USandboxNiagaraSubsystem::regenerate_all_experiments(UNiagaraSystem* template_system) {
     FSandboxNiagaraValidationResult result{};
-    TArray<ESandboxNiagaraExperimentPreset> const presets{
-        ESandboxNiagaraExperimentPreset::Orbit,
-        ESandboxNiagaraExperimentPreset::LorenzAttractor,
-    };
+    auto const catalog{load_experiment_catalog()};
+    result.warnings.Append(catalog.warnings);
+    result.errors.Append(catalog.errors);
+    if (!catalog.success) {
+        return result;
+    }
 
     result.success = true;
-    for (auto const preset : presets) {
-        auto const generation_result{
-            generate_preset(template_system, preset, default_experiment_name(preset), true)};
+    for (FSandboxNiagaraExperimentDefinition const& experiment : catalog.experiments) {
+        auto const generation_result{generate_experiment_internal(template_system,
+                                                                  experiment.default_asset_name,
+                                                                  experiment.configuration,
+                                                                  true)};
         result.success &= generation_result.success;
         result.warnings.Append(generation_result.warnings);
         result.errors.Append(generation_result.errors);
     }
     return result;
-}
-
-FSandboxNiagaraExperimentConfiguration USandboxNiagaraSubsystem::get_preset_configuration(
-    ESandboxNiagaraExperimentPreset const preset) const {
-    return make_preset_configuration(preset);
-}
-
-FString USandboxNiagaraSubsystem::get_default_experiment_name(
-    ESandboxNiagaraExperimentPreset const preset) const {
-    return default_experiment_name(preset);
 }

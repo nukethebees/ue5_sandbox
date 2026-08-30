@@ -11,6 +11,7 @@
 class SEditableTextBox;
 class SMultiLineEditableTextBox;
 class SSandboxNiagaraPreviewViewport;
+class SVerticalBox;
 struct FAssetData;
 template <typename OptionType>
 class SComboBox;
@@ -27,11 +28,12 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraControlPanel : public UEditorUtili
 
   private:
     void select_template(FAssetData const& asset_data);
-    void select_preset(TSharedPtr<ESandboxNiagaraExperimentPreset> preset,
-                       ESelectInfo::Type selection_type);
+    void select_experiment(TSharedPtr<FSandboxNiagaraExperimentDefinition> experiment,
+                           ESelectInfo::Type selection_type);
     auto generate() -> FReply;
     auto regenerate() -> FReply;
     auto regenerate_all() -> FReply;
+    auto reload_definitions() -> FReply;
     auto open_generated_asset() -> FReply;
     auto delete_generated_asset() -> FReply;
     auto restart_preview() -> FReply;
@@ -41,7 +43,7 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraControlPanel : public UEditorUtili
     auto run_generation(bool replace_existing) -> FReply;
     auto get_float_parameter(FName parameter_name) const -> TOptional<float>;
     void set_float_parameter(FName parameter_name, float value);
-    auto get_lorenz_parameter_visibility() const -> EVisibility;
+    void rebuild_parameter_controls();
     auto get_template_system() const -> UNiagaraSystem*;
     auto get_experiment_name() const -> FString;
     auto get_generated_asset_path() const -> FString;
@@ -52,10 +54,11 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraControlPanel : public UEditorUtili
     void refresh_preview();
 
     FSoftObjectPath template_asset_path_{};
-    ESandboxNiagaraExperimentPreset selected_preset_{
-        ESandboxNiagaraExperimentPreset::Orbit};
+    TSharedPtr<FSandboxNiagaraExperimentDefinition> selected_experiment_{};
     FSandboxNiagaraExperimentConfiguration selected_configuration_{};
-    TArray<TSharedPtr<ESandboxNiagaraExperimentPreset>> preset_options_{};
+    TArray<TSharedPtr<FSandboxNiagaraExperimentDefinition>> experiment_options_{};
+    TSharedPtr<SComboBox<TSharedPtr<FSandboxNiagaraExperimentDefinition>>> experiment_combo_{};
+    TSharedPtr<SVerticalBox> parameter_list_{};
     TSharedPtr<SSandboxNiagaraPreviewViewport> preview_viewport_{};
     TSharedPtr<SEditableTextBox> experiment_name_input_{};
     TSharedPtr<SMultiLineEditableTextBox> status_output_{};

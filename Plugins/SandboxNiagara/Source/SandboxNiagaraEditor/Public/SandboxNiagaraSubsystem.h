@@ -7,12 +7,6 @@
 
 class UNiagaraSystem;
 
-UENUM(BlueprintType)
-enum class ESandboxNiagaraExperimentPreset : uint8 {
-    Orbit,
-    LorenzAttractor,
-};
-
 USTRUCT(BlueprintType)
 struct FSandboxNiagaraFloatParameter {
     GENERATED_BODY()
@@ -22,6 +16,15 @@ struct FSandboxNiagaraFloatParameter {
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
     float value{0.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    FString display_name{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    float minimum{-1000000000.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    float maximum{1000000000.0f};
 };
 
 USTRUCT(BlueprintType)
@@ -93,11 +96,51 @@ struct FSandboxNiagaraGenerationResult {
     TArray<FString> errors{};
 };
 
+USTRUCT(BlueprintType)
+struct FSandboxNiagaraExperimentDefinition {
+    GENERATED_BODY()
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    FString id{};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    FString display_name{};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    FString default_asset_name{};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    FString source_file{};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    FSandboxNiagaraExperimentConfiguration configuration{};
+};
+
+USTRUCT(BlueprintType)
+struct FSandboxNiagaraExperimentCatalogResult {
+    GENERATED_BODY()
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    bool success{false};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    TArray<FSandboxNiagaraExperimentDefinition> experiments{};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    TArray<FString> warnings{};
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Sandbox Niagara")
+    TArray<FString> errors{};
+};
+
 UCLASS()
 class SANDBOXNIAGARAEDITOR_API USandboxNiagaraSubsystem : public UEditorSubsystem {
     GENERATED_BODY()
 
   public:
+    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
+    FSandboxNiagaraExperimentCatalogResult load_experiment_catalog() const;
+
     UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
     FSandboxNiagaraValidationResult validate_template(UNiagaraSystem* template_system);
 
@@ -114,23 +157,10 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraSubsystem : public UEditorSubsyste
                           FSandboxNiagaraExperimentConfiguration const& configuration);
 
     UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
-    FSandboxNiagaraGenerationResult generate_preset(UNiagaraSystem* template_system,
-                                                     ESandboxNiagaraExperimentPreset preset,
-                                                     FString const& experiment_name,
-                                                     bool replace_existing);
-
-    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
     FSandboxNiagaraValidationResult delete_generated_asset(FString const& asset_path);
 
     UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
-    FSandboxNiagaraValidationResult regenerate_all_presets(UNiagaraSystem* template_system);
-
-    UFUNCTION(BlueprintPure, Category = "Sandbox Niagara")
-    FSandboxNiagaraExperimentConfiguration
-    get_preset_configuration(ESandboxNiagaraExperimentPreset preset) const;
-
-    UFUNCTION(BlueprintPure, Category = "Sandbox Niagara")
-    FString get_default_experiment_name(ESandboxNiagaraExperimentPreset preset) const;
+    FSandboxNiagaraValidationResult regenerate_all_experiments(UNiagaraSystem* template_system);
 
   private:
     FSandboxNiagaraGenerationResult

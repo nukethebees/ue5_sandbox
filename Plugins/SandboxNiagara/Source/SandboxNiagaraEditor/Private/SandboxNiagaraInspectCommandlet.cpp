@@ -233,7 +233,7 @@ int32 USandboxNiagaraInspectCommandlet::Main(FString const& parameters) {
         }
 
         if (regenerate_all) {
-            auto const regeneration_result{subsystem->regenerate_all_presets(system)};
+            auto const regeneration_result{subsystem->regenerate_all_experiments(system)};
             for (FString const& warning : regeneration_result.warnings) {
                 UE_LOG(LogSandboxNiagaraInspect, Warning, TEXT("%s"), *warning);
             }
@@ -243,20 +243,44 @@ int32 USandboxNiagaraInspectCommandlet::Main(FString const& parameters) {
             if (!regeneration_result.success) {
                 return 1;
             }
-            UE_LOG(LogSandboxNiagaraInspect, Display, TEXT("Regenerated all Niagara presets."));
+            UE_LOG(LogSandboxNiagaraInspect,
+                   Display,
+                   TEXT("Regenerated all text-defined Niagara experiments."));
         }
 
         if (generate) {
-            auto const preset{FParse::Param(*parameters, TEXT("Lorenz"))
-                                  ? ESandboxNiagaraExperimentPreset::LorenzAttractor
-                                  : ESandboxNiagaraExperimentPreset::Orbit};
-            FString experiment_name{subsystem->get_default_experiment_name(preset)};
+            auto const catalog{subsystem->load_experiment_catalog()};
+            for (FString const& error : catalog.errors) {
+                UE_LOG(LogSandboxNiagaraInspect, Error, TEXT("%s"), *error);
+            }
+            if (!catalog.success) {
+                return 1;
+            }
+
+            FString experiment_id{FParse::Param(*parameters, TEXT("Lorenz"))
+                                      ? TEXT("lorenz")
+                                      : TEXT("orbit")};
+            FParse::Value(*parameters, TEXT("Experiment="), experiment_id);
+            auto const* experiment{catalog.experiments.FindByPredicate(
+                [&experiment_id](FSandboxNiagaraExperimentDefinition const& candidate) {
+                    return candidate.id.Equals(experiment_id, ESearchCase::IgnoreCase);
+                })};
+            if (experiment == nullptr) {
+                UE_LOG(LogSandboxNiagaraInspect,
+                       Error,
+                       TEXT("Text-defined Niagara experiment was not found: %s"),
+                       *experiment_id);
+                return 1;
+            }
+
+            FString experiment_name{experiment->default_asset_name};
             FParse::Value(*parameters, TEXT("Name="), experiment_name);
-            auto const generation_result{subsystem->generate_preset(
-                system,
-                preset,
-                experiment_name,
-                FParse::Param(*parameters, TEXT("Replace")))};
+            auto const generation_result{
+                FParse::Param(*parameters, TEXT("Replace"))
+                    ? subsystem->regenerate_experiment(
+                          system, experiment_name, experiment->configuration)
+                    : subsystem->generate_experiment(
+                          system, experiment_name, experiment->configuration)};
             for (FString const& warning : generation_result.warnings) {
                 UE_LOG(LogSandboxNiagaraInspect, Warning, TEXT("%s"), *warning);
             }

@@ -1,0 +1,1 @@
+float3(sin(Particles.Position.y * User.Frequency) - cos(Particles.Position.z * User.Frequency), sin(Particles.Position.z * User.Frequency) - cos(Particles.Position.x * User.Frequency), sin(Particles.Position.x * User.Frequency) - cos(Particles.Position.y * User.Frequency)) * User.Strength
