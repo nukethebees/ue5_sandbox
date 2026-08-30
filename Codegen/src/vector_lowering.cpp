@@ -28,10 +28,13 @@ auto lower_vector_module(VectorModuleSchema const& module,
     }
     add_body.emplace_back("return index;");
     std::vector<std::string> equivalent_arguments;
+    std::vector<std::string> set_body;
     std::vector<std::string> data_pointers;
     static std::vector<std::string> const axes{"X", "Y", "Z"};
     for (std::size_t index{0}; index < module.components.size(); ++index) {
         equivalent_arguments.push_back("value." + axes[index]);
+        set_body.push_back(module.components[index] + "[i] = " +
+                           std::string(1, module.components[index].front()) + ";");
         data_pointers.push_back(module.components[index] + ".GetData()");
     }
     auto const joined_data_pointers{join(data_pointers, ", ")};
@@ -49,7 +52,7 @@ auto lower_vector_module(VectorModuleSchema const& module,
                        .is_inline = true},
         FunctionSchema{.name = "add",
                        .return_type = TypeRef{"auto"},
-                       .parameters = std::move(add_parameters),
+                       .parameters = add_parameters,
                        .body_lines = std::move(add_body),
                        .trailing_return_type = TypeRef{"size_type"},
                        .is_inline = true},
@@ -60,6 +63,27 @@ auto lower_vector_module(VectorModuleSchema const& module,
                 TypeRef{.name = module.equivalent_type.name, .suffix = " const&"}, "value"}},
             .body_lines = {"return add(" + join(equivalent_arguments, ", ") + ");"},
             .trailing_return_type = TypeRef{"size_type"},
+            .is_inline = true},
+        FunctionSchema{.name = "set",
+                       .return_type = TypeRef{"void"},
+                       .parameters = [&] {
+                           std::vector<ParameterSchema> parameters{
+                               ParameterSchema{TypeRef{"int32 const"}, "i"}};
+                           parameters.insert(parameters.end(),
+                                             add_parameters.begin(),
+                                             add_parameters.end());
+                           return parameters;
+                       }(),
+                       .body_lines = std::move(set_body),
+                       .is_inline = true},
+        FunctionSchema{
+            .name = "set",
+            .return_type = TypeRef{"void"},
+            .parameters = {ParameterSchema{TypeRef{"int32 const"}, "i"},
+                           ParameterSchema{
+                               TypeRef{.name = module.equivalent_type.name, .suffix = " const"},
+                               "value"}},
+            .body_lines = {"set(i, " + join(equivalent_arguments, ", ") + ");"},
             .is_inline = true},
     };
     for (auto const& [name, method] : std::vector<std::pair<std::string, std::string>>{

@@ -160,6 +160,16 @@ struct SANDBOXCORE_API FVectors3u32 {
         return add(value.X, value.Y, value.Z);
     }
 
+    void set(int32 const i, value_type const x, value_type const y, value_type const z) {
+        xs[i] = x;
+        ys[i] = y;
+        zs[i] = z;
+    }
+
+    void set(int32 const i, FUintVector3 const value) {
+        set(i, value.X, value.Y, value.Z);
+    }
+
     void empty() {
         xs.Empty();
         ys.Empty();

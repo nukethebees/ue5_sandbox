@@ -223,13 +223,8 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
 
                     entities_[write_index] = entities_buffer_.handles[i];
 
-                    aabbs_.mins.xs[write_index] = min_point.X;
-                    aabbs_.mins.ys[write_index] = min_point.Y;
-                    aabbs_.mins.zs[write_index] = min_point.Z;
-
-                    aabbs_.maxes.xs[write_index] = max_point.X;
-                    aabbs_.maxes.ys[write_index] = max_point.Y;
-                    aabbs_.maxes.zs[write_index] = max_point.Z;
+                    aabbs_.mins.set(write_index, min_point);
+                    aabbs_.maxes.set(write_index, max_point);
                 }
             }
         }
