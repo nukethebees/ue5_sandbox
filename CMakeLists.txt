@@ -164,6 +164,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxCoreEngine.UnitTests
   SandboxGpuTutorials.UnitTests
   SandboxImages.UnitTests
+  S7Lab.UnitTests
   SandboxUI.UnitTests
 )
 set(SANDBOX_LEVEL_AUTOMATION_FILTERS
