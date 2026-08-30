@@ -58,6 +58,36 @@ set(CACHE{SANDBOX_ISMC_BENCHMARK_INSTANCES}
   HELP "Instances per renderer in the offscreen SandboxISMC paired benchmark"
   VALUE 40000
 )
+set(CACHE{SANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT}
+  TYPE STRING
+  HELP "Percentage of instances updated per frame in the offscreen SandboxISMC benchmark"
+  VALUE 100
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_MODE}
+  TYPE STRING
+  HELP "SandboxISMC benchmark renderer mode: paired, custom, or engine_ismc"
+  VALUE paired
+)
+set_property(CACHE SANDBOX_ISMC_BENCHMARK_MODE PROPERTY STRINGS
+  paired
+  custom
+  engine_ismc
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_VISIBILITY}
+  TYPE STRING
+  HELP "SandboxISMC benchmark visibility distribution: all, half, or none"
+  VALUE all
+)
+set_property(CACHE SANDBOX_ISMC_BENCHMARK_VISIBILITY PROPERTY STRINGS
+  all
+  half
+  none
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_SHADOWS}
+  TYPE STRING
+  HELP "Whether the offscreen SandboxISMC benchmark casts shadows (0 or 1)"
+  VALUE 0
+)
 
 if(NOT CMAKE_HOST_WIN32)
   message(FATAL_ERROR
@@ -263,6 +293,10 @@ add_test(
     "-ExecCmds=Automation RunTests SandboxISMC.RemoteBenchmark; Quit"
     "-SandboxISMCBenchmarkSeconds=${SANDBOX_ISMC_BENCHMARK_SECONDS}"
     "-SandboxISMCBenchmarkInstances=${SANDBOX_ISMC_BENCHMARK_INSTANCES}"
+    "-SandboxISMCBenchmarkUpdatePercent=${SANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT}"
+    "-SandboxISMCBenchmarkMode=${SANDBOX_ISMC_BENCHMARK_MODE}"
+    "-SandboxISMCBenchmarkVisibility=${SANDBOX_ISMC_BENCHMARK_VISIBILITY}"
+    "-SandboxISMCBenchmarkShadows=${SANDBOX_ISMC_BENCHMARK_SHADOWS}"
     -SandboxISMCBenchmarkEndPIE
     -RenderOffscreen
     -unattended

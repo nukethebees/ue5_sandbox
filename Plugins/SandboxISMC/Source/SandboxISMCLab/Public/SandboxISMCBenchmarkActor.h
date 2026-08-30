@@ -10,6 +10,20 @@ class USandboxISMCComponent;
 class USceneComponent;
 class UStaticMesh;
 
+UENUM()
+enum class ESandboxISMCBenchmarkMode : uint8 {
+    Paired,
+    CustomOnly,
+    EngineISMCOnly,
+};
+
+UENUM()
+enum class ESandboxISMCBenchmarkVisibility : uint8 {
+    All,
+    Half,
+    None,
+};
+
 UCLASS()
 class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     GENERATED_BODY()
@@ -26,6 +40,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         double pack_ms{-1.0};
         double bounds_ms{-1.0};
         double api_ms{0.0};
+        double uploaded_bytes{-1.0};
+        double dirty_instances{-1.0};
+        double dirty_ranges{-1.0};
     };
 
     struct FRendererSamples {
@@ -34,8 +51,12 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         TArray<double> pack_ms;
         TArray<double> bounds_ms;
         TArray<double> api_ms;
+        TArray<double> uploaded_bytes;
+        TArray<double> dirty_instances;
+        TArray<double> dirty_ranges;
     };
 
+    void parse_command_line();
     void configure_components();
     bool create_instances();
     FUpdateTiming update_custom(float vertical_offset, float angle_radians);
@@ -47,6 +68,11 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     void disable_frame_rate_limits();
     void restore_frame_rate_limits();
     void save_report() const;
+    bool runs_custom() const;
+    bool runs_engine_ismc() const;
+    int32 get_update_count() const;
+    FString get_mode_name() const;
+    FString get_visibility_name() const;
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Benchmark")
     TObjectPtr<USceneComponent> root_;
@@ -65,6 +91,20 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark", meta = (ClampMin = "1"))
     int32 instance_count_{40000};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark")
+    ESandboxISMCBenchmarkMode mode_{ESandboxISMCBenchmarkMode::Paired};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark")
+    ESandboxISMCBenchmarkVisibility visibility_{ESandboxISMCBenchmarkVisibility::All};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox ISMC Benchmark|Movement",
+              meta = (ClampMin = "0.0", ClampMax = "100.0"))
+    float update_percentage_{100.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Rendering")
+    bool cast_shadows_{false};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark")
     float grid_spacing_{150.0f};

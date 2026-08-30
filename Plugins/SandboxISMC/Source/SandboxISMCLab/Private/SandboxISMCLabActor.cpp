@@ -38,8 +38,8 @@ void ASandboxISMCLabActor::Tick(float delta_seconds) {
 
     auto const instance_count = instances_->get_instance_count();
     if (animate_ && instance_count > 0 && animated_instance_count_ > 0) {
-        auto rotations = instances_->rotations();
         auto const update_count = FMath::Min(animated_instance_count_, instance_count);
+        auto rotations = instances_->edit_rotations(0, update_count);
         auto const delta_rotation = FQuat4f{
             FVector3f::UpVector, FMath::DegreesToRadians(rotation_speed_degrees_ * delta_seconds)};
 
@@ -60,8 +60,11 @@ void ASandboxISMCLabActor::Tick(float delta_seconds) {
     auto const metrics = instances_->get_update_metrics();
     UE_LOG(LogSandboxISMCLab,
            Display,
-           TEXT("instances=%d prepare=%.3f ms submit=%.3f ms upload=%.3f ms bytes=%llu"),
+           TEXT("instances=%d dirty=%d ranges=%d prepare=%.3f ms submit=%.3f ms upload=%.3f ms "
+                "bytes=%llu"),
            metrics.instance_count,
+           metrics.dirty_instance_count,
+           metrics.dirty_range_count,
            metrics.prepare_ms,
            metrics.submit_ms,
            metrics.upload_ms,

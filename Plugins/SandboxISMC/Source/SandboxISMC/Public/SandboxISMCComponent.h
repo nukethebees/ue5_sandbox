@@ -11,6 +11,11 @@ class UMaterialInterface;
 struct FSandboxISMCMetricsState;
 struct FSandboxISMCRenderUpdate;
 
+struct FSandboxISMCDirtyRange {
+    int32 first_index{0};
+    int32 count{0};
+};
+
 struct SANDBOXISMC_API FSandboxISMCRemoveResult {
     bool removed{false};
     int32 moved_from_index{INDEX_NONE};
@@ -24,6 +29,8 @@ struct SANDBOXISMC_API FSandboxISMCUpdateMetrics {
     double submit_ms{0.0};
     double upload_ms{0.0};
     uint64 upload_bytes{0};
+    int32 dirty_instance_count{0};
+    int32 dirty_range_count{0};
 };
 
 UCLASS(ClassGroup = (Rendering), meta = (DisplayName = "Sandbox ISMC"))
@@ -53,6 +60,11 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     TConstArrayView<FQuat4f> rotations() const;
     TArrayView<FVector3f> scales();
     TConstArrayView<FVector3f> scales() const;
+    TArrayView<FVector3f> edit_positions(int32 first_index, int32 count);
+    TArrayView<FQuat4f> edit_rotations(int32 first_index, int32 count);
+    TArrayView<FVector3f> edit_scales(int32 first_index, int32 count);
+    void mark_instance_range_dirty(int32 first_index, int32 count);
+    void mark_all_instances_dirty();
 
     void commit_instance_updates();
     FSandboxISMCUpdateMetrics get_update_metrics() const;
@@ -63,14 +75,29 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     virtual FBoxSphereBounds CalcBounds(FTransform const& local_to_world) const override;
     virtual void SendRenderDynamicData_Concurrent() override;
   private:
+    FBox3f calculate_instance_bounds(int32 instance_index) const;
+    void rebuild_bounds_tree();
+    void update_bounds_tree(TConstArrayView<FSandboxISMCDirtyRange> dirty_ranges);
+    void update_local_bounds_from_tree();
+
     UPROPERTY(EditAnywhere, Category = "Mesh")
     TObjectPtr<UStaticMesh> static_mesh_;
 
     TArray<FVector3f> positions_;
     TArray<FQuat4f> rotations_;
     TArray<FVector3f> scales_;
+    TArray<FSandboxISMCDirtyRange> dirty_ranges_;
+    TArray<FBox3f> bounds_tree_;
 
     FBoxSphereBounds local_bounds_{ForceInit};
+    FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
+    float mesh_bounds_radius_{0.0f};
     TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> pending_render_update_;
     TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics_;
+    int32 bounds_leaf_capacity_{0};
+    int32 submitted_buffer_capacity_{0};
+    bool force_full_upload_{true};
+    bool bounds_rebuild_required_{true};
+    bool bounds_tree_valid_{false};
+    bool instance_count_changed_{false};
 };
