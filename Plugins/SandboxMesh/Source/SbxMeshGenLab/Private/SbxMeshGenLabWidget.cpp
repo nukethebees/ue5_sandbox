@@ -3,6 +3,7 @@
 #include "Generation/MeshAssetWriter.h"
 #include "SbxMeshGenLab/BoxGenerator.h"
 #include "SbxMeshGenLab/CylinderGenerator.h"
+#include "SbxMeshGenLab/SphereGenerator.h"
 
 #include "AssetThumbnail.h"
 #include "Engine/StaticMesh.h"
@@ -18,6 +19,7 @@
 namespace {
 FName const generated_box_asset_name{TEXT("SM_GeneratedBox")};
 FName const generated_cylinder_asset_name{TEXT("SM_GeneratedCylinder")};
+FName const generated_sphere_asset_name{TEXT("SM_GeneratedSphere")};
 constexpr uint32 thumbnail_size{256};
 constexpr float minimum_dimension{1.0f};
 constexpr float maximum_dimension{100000.0f};
@@ -46,7 +48,8 @@ auto make_float_control(FText const& label,
 
 auto make_segment_control(FText const& label,
                           TAttribute<int32> value,
-                          SSpinBox<int32>::FOnValueChanged on_value_changed)
+                          SSpinBox<int32>::FOnValueChanged on_value_changed,
+                          int32 const minimum_segments = minimum_radial_segments)
     -> TSharedRef<SWidget> {
     return SNew(SHorizontalBox) +
            SHorizontalBox::Slot()
@@ -56,9 +59,9 @@ auto make_segment_control(FText const& label,
            SHorizontalBox::Slot().FillWidth(
                1.0f)[SNew(SSpinBox<int32>)
                          .Value(value)
-                         .MinValue(minimum_radial_segments)
+                         .MinValue(minimum_segments)
                          .MaxValue(maximum_radial_segments)
-                         .MinSliderValue(minimum_radial_segments)
+                         .MinSliderValue(minimum_segments)
                          .MaxSliderValue(maximum_slider_radial_segments)
                          .Delta(1)
                          .OnValueChanged(on_value_changed)];
@@ -138,6 +141,30 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
             SSpinBox<int32>::FOnValueChanged::CreateLambda(
                 [this](int32 const value) { cylinder_radial_segments_ = value; }))]};
 
+    auto const sphere_controls{
+        SNew(SVerticalBox).Visibility_Lambda([this] {
+            return selected_shape_ == ESbxMeshShape::Sphere ? EVisibility::Visible
+                                                            : EVisibility::Collapsed;
+        }) +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
+            [SNew(STextBlock).Text(NSLOCTEXT("SbxMeshGenLab", "SphereDimensions", "Sphere (cm)"))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)[make_float_control(
+            NSLOCTEXT("SbxMeshGenLab", "SphereRadius", "Radius"),
+            TAttribute<float>::CreateLambda([this] { return sphere_radius_; }),
+            SSpinBox<float>::FOnValueChanged::CreateLambda(
+                [this](float const value) { sphere_radius_ = value; }))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)[make_segment_control(
+            NSLOCTEXT("SbxMeshGenLab", "SphereLongitudeSegments", "Longitude Segments"),
+            TAttribute<int32>::CreateLambda([this] { return sphere_longitude_segments_; }),
+            SSpinBox<int32>::FOnValueChanged::CreateLambda(
+                [this](int32 const value) { sphere_longitude_segments_ = value; }))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)[make_segment_control(
+            NSLOCTEXT("SbxMeshGenLab", "SphereLatitudeSegments", "Latitude Segments"),
+            TAttribute<int32>::CreateLambda([this] { return sphere_latitude_segments_; }),
+            SSpinBox<int32>::FOnValueChanged::CreateLambda(
+                [this](int32 const value) { sphere_latitude_segments_ = value; }),
+            2)]};
+
     return SNew(SBorder)
         .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
         .Padding(12.0f)
@@ -158,9 +185,12 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                   SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Box)
                       .Text(NSLOCTEXT("SbxMeshGenLab", "BoxShape", "Box")) +
                   SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Cylinder)
-                      .Text(NSLOCTEXT("SbxMeshGenLab", "CylinderShape", "Cylinder"))] +
+                      .Text(NSLOCTEXT("SbxMeshGenLab", "CylinderShape", "Cylinder")) +
+                  SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Sphere)
+                      .Text(NSLOCTEXT("SbxMeshGenLab", "SphereShape", "Sphere"))] +
              SVerticalBox::Slot().AutoHeight()[box_controls] +
              SVerticalBox::Slot().AutoHeight()[cylinder_controls] +
+             SVerticalBox::Slot().AutoHeight()[sphere_controls] +
              SVerticalBox::Slot().AutoHeight()
                  [SNew(SButton)
                       .Text_Lambda([this] { return generate_button_text(); })
@@ -195,6 +225,10 @@ auto USbxMeshGenLabWidget::generate_selected_shape() -> FReply {
         case ESbxMeshShape::Cylinder:
             mesh_data = SandboxMesh::generate_cylinder(FSbxCylinderParameters{
                 cylinder_radius_, cylinder_height_, cylinder_radial_segments_});
+            break;
+        case ESbxMeshShape::Sphere:
+            mesh_data = SandboxMesh::generate_sphere(FSbxSphereParameters{
+                sphere_radius_, sphere_longitude_segments_, sphere_latitude_segments_});
             break;
     }
 
@@ -232,6 +266,8 @@ auto USbxMeshGenLabWidget::generated_asset_name() const -> FName {
             return generated_box_asset_name;
         case ESbxMeshShape::Cylinder:
             return generated_cylinder_asset_name;
+        case ESbxMeshShape::Sphere:
+            return generated_sphere_asset_name;
     }
 
     checkNoEntry();
@@ -244,6 +280,8 @@ auto USbxMeshGenLabWidget::selected_shape_text() const -> FText {
             return NSLOCTEXT("SbxMeshGenLab", "Box", "Box");
         case ESbxMeshShape::Cylinder:
             return NSLOCTEXT("SbxMeshGenLab", "Cylinder", "Cylinder");
+        case ESbxMeshShape::Sphere:
+            return NSLOCTEXT("SbxMeshGenLab", "Sphere", "Sphere");
     }
 
     checkNoEntry();
@@ -256,6 +294,8 @@ auto USbxMeshGenLabWidget::generate_button_text() const -> FText {
             return NSLOCTEXT("SbxMeshGenLab", "GenerateBox", "Generate Box");
         case ESbxMeshShape::Cylinder:
             return NSLOCTEXT("SbxMeshGenLab", "GenerateCylinder", "Generate Cylinder");
+        case ESbxMeshShape::Sphere:
+            return NSLOCTEXT("SbxMeshGenLab", "GenerateSphere", "Generate Sphere");
     }
 
     checkNoEntry();

@@ -4,11 +4,11 @@
 
 namespace SandboxMesh {
 namespace {
-auto is_finite(FVector3f const value) -> bool {
+auto is_finite_cylinder_vector(FVector3f const value) -> bool {
     return FMath::IsFinite(value.X) && FMath::IsFinite(value.Y) && FMath::IsFinite(value.Z);
 }
 
-auto is_valid_uv(FVector2f const value) -> bool {
+auto is_valid_cylinder_uv(FVector2f const value) -> bool {
     return FMath::IsFinite(value.X) && FMath::IsFinite(value.Y) && value.X >= 0.0f &&
            value.X <= 1.0f && value.Y >= 0.0f && value.Y <= 1.0f;
 }
@@ -66,13 +66,14 @@ TEST_CLASS(CylinderGenerator, "SandboxMesh.UnitTests")
         }
 
         for (auto const normal : mesh_data.normals) {
-            TestRunner->TestTrue(TEXT("Normal is finite"), is_finite(normal));
+            TestRunner->TestTrue(TEXT("Normal is finite"), is_finite_cylinder_vector(normal));
             TestRunner->TestTrue(TEXT("Normal has unit length"),
                                  FMath::IsNearlyEqual(normal.SizeSquared(), 1.0f));
         }
 
         for (auto const uv : mesh_data.uvs) {
-            TestRunner->TestTrue(TEXT("UV is finite and in the unit square"), is_valid_uv(uv));
+            TestRunner->TestTrue(TEXT("UV is finite and in the unit square"),
+                                 is_valid_cylinder_uv(uv));
         }
 
         auto const side_vertex_count{(parameters.radial_segments + 1) * 2};

@@ -13,6 +13,7 @@ class UStaticMesh;
 enum class ESbxMeshShape : uint8 {
     Box,
     Cylinder,
+    Sphere,
 };
 
 UCLASS()
@@ -36,6 +37,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget
     float cylinder_radius_{50.0f};
     float cylinder_height_{100.0f};
     int32 cylinder_radial_segments_{32};
+    float sphere_radius_{50.0f};
+    int32 sphere_longitude_segments_{32};
+    int32 sphere_latitude_segments_{16};
     TSharedPtr<FAssetThumbnailPool> thumbnail_pool_;
     TSharedPtr<FAssetThumbnail> thumbnail_;
     TSharedPtr<STextBlock> status_text_;
