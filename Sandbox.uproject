@@ -477,6 +477,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxMesh",
+			"Enabled": true
+		},
+		{
 			"Name": "SandboxGameShared",
 			"Enabled": true
 		},

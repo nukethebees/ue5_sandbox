@@ -1,0 +1,19 @@
+{
+    "FileVersion": 3,
+    "Version": 1,
+    "VersionName": "1.0",
+    "FriendlyName": "Sandbox Mesh",
+    "Description": "Focused procedural static-mesh generation experiments and tooling.",
+    "Category": "Sandbox",
+    "CanContainContent": true,
+    "IsBetaVersion": false,
+    "IsExperimentalVersion": true,
+    "Installed": false,
+    "Modules": [
+        {
+            "Name": "SbxMeshGenLab",
+            "Type": "Editor",
+            "LoadingPhase": "Default"
+        }
+    ]
+}

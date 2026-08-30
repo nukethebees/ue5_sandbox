@@ -102,6 +102,9 @@ Content/Fab
 # Disposable procedural image Lab output
 /Plugins/SandboxImages/Content/Lab/Images/
 
+# Disposable procedural mesh Lab output
+/Plugins/SandboxMesh/Content/MeshGenLab/Generated/
+
 # CQ Test maps
 /Content/CQTestMapTemp
 /Content/SandboxReusableTestLevels

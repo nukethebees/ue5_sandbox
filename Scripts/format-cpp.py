@@ -171,6 +171,7 @@ def main() -> None:
         project_root / "Plugins" / "SandboxEditorTools",
         project_root / "Plugins" / "SandboxISMC",
         project_root / "Plugins" / "SandboxMaterialExprs",
+        project_root / "Plugins" / "SandboxMesh",
         project_root / "Plugins" / "SandboxUI",
         project_root / "Plugins" / "SbxLangLab",
         project_root / "Plugins" / "SGLegacy",
