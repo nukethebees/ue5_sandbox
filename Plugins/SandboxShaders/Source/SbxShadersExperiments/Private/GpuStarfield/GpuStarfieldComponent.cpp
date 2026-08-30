@@ -11,6 +11,7 @@
 #include "Misc/Parse.h"
 #include "PrimitiveSceneProxy.h"
 #include "PrimitiveViewRelevance.h"
+#include "ProfilingDebugging/CsvProfiler.h"
 #include "RenderingThread.h"
 #include "RenderResource.h"
 #include "RHIResourceUtils.h"
@@ -238,6 +239,7 @@ class FGpuStarfieldSceneProxy final : public FPrimitiveSceneProxy {
                                 uint32 const visibility_map,
                                 FMeshElementCollector& collector) const override {
         QUICK_SCOPE_CYCLE_COUNTER(STAT_GpuStarfieldSceneProxy_GetDynamicMeshElements);
+        CSV_SCOPED_TIMING_STAT_EXCLUSIVE(GpuStarfieldSubmit);
 
         auto const star_srv{star_buffer_.srv()};
         if (!star_srv.IsValid() || star_count_ <= 0) {

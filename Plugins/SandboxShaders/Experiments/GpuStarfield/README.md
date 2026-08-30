@@ -51,7 +51,37 @@ requires converting `SV_InstanceID` through `GetInstanceId`. Camera/actor subtra
 float LWC helpers before demotion to translated float space. The material's particle-sprite usage
 flag is only a shader-permutation gate for this private vertex factory; no particle system is used.
 
-## Profiling baseline
+## Automated isolated benchmark
+
+Run the Development offscreen A/B benchmark through CMake:
+
+```text
+cmake --workflow --preset gpu-starfield-benchmark
+```
+
+The benchmark uses the showcase camera at 1280x720 with deterministic timing, but hides and stops
+the other placed showcase experiments. For each star count it alternates disabled and enabled
+captures across three repeats, with 60 warmup frames followed by 180 measured frames per capture.
+The CTest wrapper validates that enabling the starfield adds exactly one translucency draw and two
+rendered primitives per star, then writes raw captures and consolidated CSV/Markdown reports below
+`Saved/Benchmarks/GpuStarfield`. `latest.txt` identifies the most recent successful run.
+
+The following Development results were measured on the same RTX 5090 and Ryzen 9 9950X3D system.
+Values are medians of the three paired enabled-minus-disabled capture medians. The direct submission
+scope measures `GetDynamicMeshElements`, which UE schedules on a worker in this configuration.
+
+| Stars | Whole GT delta ms | Whole RT delta ms | Submit CPU ms | Whole GPU delta ms | Translucency GPU delta ms | Draw delta |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10,000 | 0.0352 | 0.0808 | 0.0063 | 0.0655 | 0.0169 | 1 |
+| 100,000 | 0.0069 | 0.0382 | 0.0061 | 0.1081 | 0.0624 | 1 |
+| 1,000,000 | 0.0314 | 0.1211 | 0.0061 | 0.5815 | 0.5143 | 1 |
+
+The whole-frame CPU deltas are small enough to remain sensitive to ordinary frame-to-frame
+scheduling noise. The directly instrumented mesh submission is stable at approximately 0.006 ms
+and does not scale with star count. GPU work scales with the number of unculled quads, reaching
+approximately 0.58 ms total and 0.51 ms in translucency at one million stars.
+
+## Initial whole-showcase profiling baseline
 
 The architecture produces one draw submission per visible view at every tested count. Expected
 star-buffer sizes are:
@@ -64,9 +94,9 @@ star-buffer sizes are:
 
 An offscreen 1280x720 D3D12 SM6 capture was made on an RTX 5090 with a Ryzen 9 9950X3D. Values below
 are means of the final 30 steady frames in a 90-frame DebugGame editor-process CSV capture. They are
-useful as an architecture sanity check, not as production gameplay numbers: the level contains all
-showcase experiments, the render-thread and total-GPU columns include the whole frame, and the
-translucency GPU bucket includes the showcase's other translucent effects.
+useful as an architecture sanity check and historical comparison, not as isolated starfield costs:
+the level contains all showcase experiments, the render-thread and total-GPU columns include the
+whole frame, and the translucency GPU bucket includes the showcase's other translucent effects.
 
 | Stars | Game thread ms | Render thread ms | Total GPU ms | Translucency GPU ms |
 | ---: | ---: | ---: | ---: | ---: |

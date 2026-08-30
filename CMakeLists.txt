@@ -247,6 +247,20 @@ set_tests_properties(SandboxShaders.ShaderSmoke PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+add_test(
+  NAME SandboxShaders.GpuStarfieldBenchmark
+  COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
+    "--editor=${UE_EDITOR_CMD_EXE}"
+    "--project=${SANDBOX_UPROJECT}"
+    "--output=${CMAKE_CURRENT_SOURCE_DIR}/Saved/Benchmarks/GpuStarfield"
+)
+set_tests_properties(SandboxShaders.GpuStarfieldBenchmark PROPERTIES
+  LABELS gpu-benchmark
+  TIMEOUT 2400
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 add_custom_target(gpu-tutorial-shader-tests
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:SandboxGpuTutorials.UnitTests; Quit"
