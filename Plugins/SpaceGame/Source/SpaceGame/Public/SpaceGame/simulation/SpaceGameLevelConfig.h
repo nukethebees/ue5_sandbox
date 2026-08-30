@@ -385,6 +385,20 @@ struct SPACEGAME_API FTubeSpinnerConfig {
     FDrawDebugConfig debug_drawer;
 };
 
+USTRUCT(BlueprintType)
+struct SPACEGAME_API FCollisionGridConfig {
+    GENERATED_BODY()
+
+    [[nodiscard]] auto calculate_grid_dimensions() const noexcept -> FIntVector3;
+    [[nodiscard]] auto is_valid() const noexcept -> bool;
+
+    UPROPERTY(EditAnywhere, Category = "Collision", meta = (Units = "cm"))
+    FVector3f grid_size{2000000.f, 2000000.f, 100000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Collision", meta = (Units = "cm"))
+    FVector3f cell_size{5000.f, 5000.f, 20000.f};
+};
+
 UCLASS(BlueprintType)
 class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     GENERATED_BODY()
@@ -417,4 +431,7 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Level")
     FTubeSpinnerConfig tube_spinners;
+
+    UPROPERTY(EditAnywhere, Category = "Level")
+    FCollisionGridConfig collision_grid;
 };
