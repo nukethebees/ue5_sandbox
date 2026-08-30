@@ -19,6 +19,11 @@
 			"Name": "GenLab",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "GenLabTests",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	]
 }

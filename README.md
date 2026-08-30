@@ -66,6 +66,34 @@ and their worktree directories.
 CMake 4.3 or newer and Ninja on `PATH` provide a small command-line wrapper around UnrealBuildTool (UBT). It does not
 compile Unreal modules itself; `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 
+### vcpkg dependencies
+
+The CMake presets use the root `vcpkg.json` manifest for native dependencies. Install a standalone
+vcpkg copy outside Visual Studio (for example, `C:\\dev\\vcpkg`) and set the persistent user
+environment variable `VCPKG_ROOT` to that directory. Restart terminals, Visual Studio, and Codex
+after changing it.
+
+Verify the selected installation explicitly:
+
+```powershell
+& "$env:VCPKG_ROOT\\vcpkg.exe" version
+```
+
+Use that explicit form rather than bare `vcpkg` if a Visual Studio Developer shell places its embedded
+vcpkg copy earlier on `PATH`. To make bare `vcpkg` reliable too, put `C:\\dev\\vcpkg` before the Visual
+Studio vcpkg directory in your user `PATH`.
+
+For a new or reset worktree, install the manifest before the first build:
+
+```powershell
+& "$env:VCPKG_ROOT\\vcpkg.exe" install --x-manifest-root $PWD --triplet x64-windows
+cmake --workflow --preset debug-game
+```
+
+`vcpkg_installed` is generated per worktree and ignored by Git. If a worktree retains a CMake cache
+from a previous vcpkg location, delete only that worktree's `out/build/<preset>` directory and rerun
+the workflow.
+
 This initial wrapper supports Windows builds. Set `UE_ROOT` to the root of a
 usable Unreal Engine installation, either in the environment or in an untracked
 `CMakeUserPresets.json` that inherits from `development`:

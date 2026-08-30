@@ -43,7 +43,7 @@ enum class EGenLabOutput : uint8 {
 };
 
 UCLASS(Transient)
-class UGenLabSettings final : public UObject {
+class GENLAB_API UGenLabSettings final : public UObject {
     GENERATED_BODY()
   public:
     UPROPERTY(EditAnywhere, Category = "Output")

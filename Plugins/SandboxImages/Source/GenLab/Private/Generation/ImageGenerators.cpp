@@ -1,161 +1,12 @@
 #include "Generation/ImageGenerators.h"
+#include "Generation/ImageGenerationUtilities.h"
+#include "Generation/NoiseSampling.h"
 
 namespace SandboxImages::GenLab {
+using namespace ImageGeneration;
+using namespace NoiseSampling;
+
 namespace {
-constexpr float inverse_uint24{1.0f / 16777215.0f};
-
-auto smooth_step(float const edge0, float const edge1, float const value) -> float {
-    if (edge0 == edge1) {
-        return value < edge0 ? 0.0f : 1.0f;
-    }
-
-    auto const alpha{FMath::Clamp((value - edge0) / (edge1 - edge0), 0.0f, 1.0f)};
-    return alpha * alpha * (3.0f - 2.0f * alpha);
-}
-
-auto to_byte(float const value) -> uint8 {
-    return static_cast<uint8>(FMath::RoundToInt(FMath::Clamp(value, 0.0f, 1.0f) * 255.0f));
-}
-
-auto grayscale(float const value, uint8 const alpha) -> FColor {
-    auto const intensity{to_byte(value)};
-    return {intensity, intensity, intensity, alpha};
-}
-
-auto grayscale_mask(float const value) -> FColor {
-    auto const intensity{to_byte(value)};
-    return {intensity, intensity, intensity, intensity};
-}
-
-auto make_image(int32 const width, int32 const height, FColor const fill) -> FGeneratedImage {
-    FGeneratedImage image{.width = width, .height = height};
-    if (width <= 0 || height <= 0 || width > MAX_int32 / height) {
-        image.error = TEXT("Image dimensions must be positive and fit in an int32 pixel count.");
-        return image;
-    }
-
-    image.pixels.Init(fill, width * height);
-    return image;
-}
-
-auto invalid_image(FString const& error) -> FGeneratedImage {
-    return {.error = error};
-}
-
-auto normalized_distance(int32 const x, int32 const y, int32 const width, int32 const height)
-    -> float {
-    auto const center_x{static_cast<float>(width - 1) * 0.5f};
-    auto const center_y{static_cast<float>(height - 1) * 0.5f};
-    auto const half_minimum_dimension{static_cast<float>(FMath::Min(width, height)) * 0.5f};
-    auto const dx{(static_cast<float>(x) - center_x) / half_minimum_dimension};
-    auto const dy{(static_cast<float>(y) - center_y) / half_minimum_dimension};
-    return FMath::Sqrt(dx * dx + dy * dy);
-}
-
-class FDeterministicRandom {
-  public:
-    explicit FDeterministicRandom(uint32 const seed)
-        : state_{seed} {}
-
-    auto next_unit() -> float {
-        state_ = state_ * 1664525u + 1013904223u;
-        return static_cast<float>(state_ >> 8u) * inverse_uint24;
-    }
-  private:
-    uint32 state_;
-};
-
-auto hash_lattice(int32 const x, int32 const y, uint32 const seed) -> uint32 {
-    auto value{seed ^ (static_cast<uint32>(x) * 0x9E3779B9u) ^
-               (static_cast<uint32>(y) * 0x85EBCA6Bu)};
-    value ^= value >> 16u;
-    value *= 0x7FEB352Du;
-    value ^= value >> 15u;
-    value *= 0x846CA68Bu;
-    value ^= value >> 16u;
-    return value;
-}
-
-auto lattice_value(int32 const x, int32 const y, uint32 const seed) -> float {
-    return static_cast<float>(hash_lattice(x, y, seed) & 0x00FFFFFFu) * inverse_uint24;
-}
-
-auto value_noise(float const x, float const y, uint32 const seed) -> float {
-    auto const x0{FMath::FloorToInt(x)};
-    auto const y0{FMath::FloorToInt(y)};
-    auto const tx{smooth_step(0.0f, 1.0f, x - static_cast<float>(x0))};
-    auto const ty{smooth_step(0.0f, 1.0f, y - static_cast<float>(y0))};
-    auto const top{FMath::Lerp(lattice_value(x0, y0, seed), lattice_value(x0 + 1, y0, seed), tx)};
-    auto const bottom{
-        FMath::Lerp(lattice_value(x0, y0 + 1, seed), lattice_value(x0 + 1, y0 + 1, seed), tx)};
-    return FMath::Lerp(top, bottom, ty);
-}
-
-auto periodic_lattice_value(int32 const x,
-                            int32 const y,
-                            int32 const period_x,
-                            int32 const period_y,
-                            uint32 const seed) -> float {
-    auto const wrapped_x{((x % period_x) + period_x) % period_x};
-    auto const wrapped_y{((y % period_y) + period_y) % period_y};
-    return lattice_value(wrapped_x, wrapped_y, seed);
-}
-
-auto periodic_value_noise(float const x,
-                          float const y,
-                          int32 const period_x,
-                          int32 const period_y,
-                          uint32 const seed) -> float {
-    auto const x0{FMath::FloorToInt(x)};
-    auto const y0{FMath::FloorToInt(y)};
-    auto const tx{smooth_step(0.0f, 1.0f, x - static_cast<float>(x0))};
-    auto const ty{smooth_step(0.0f, 1.0f, y - static_cast<float>(y0))};
-    auto const top{FMath::Lerp(periodic_lattice_value(x0, y0, period_x, period_y, seed),
-                               periodic_lattice_value(x0 + 1, y0, period_x, period_y, seed),
-                               tx)};
-    auto const bottom{FMath::Lerp(periodic_lattice_value(x0, y0 + 1, period_x, period_y, seed),
-                                  periodic_lattice_value(x0 + 1, y0 + 1, period_x, period_y, seed),
-                                  tx)};
-    return FMath::Lerp(top, bottom, ty);
-}
-
-auto fractal_noise_sample(float const x,
-                          float const y,
-                          int32 const width,
-                          int32 const height,
-                          uint32 const seed,
-                          float const base_scale,
-                          int32 const octave_count,
-                          float const persistence,
-                          bool const tileable) -> float {
-    auto const base_period_x{
-        FMath::Max(1, FMath::RoundToInt(static_cast<float>(width) / base_scale))};
-    auto const base_period_y{
-        FMath::Max(1, FMath::RoundToInt(static_cast<float>(height) / base_scale))};
-    float value{0.0f};
-    float amplitude{1.0f};
-    float total_amplitude{0.0f};
-    float scale{base_scale};
-    for (int32 octave{0}; octave < octave_count; ++octave) {
-        auto const octave_seed{seed + static_cast<uint32>(octave) * 0x9E3779B9u};
-        if (tileable) {
-            auto const octave_multiplier{1 << octave};
-            auto const period_x{base_period_x * octave_multiplier};
-            auto const period_y{base_period_y * octave_multiplier};
-            auto const sample_x{width > 1 ? x / static_cast<float>(width - 1) * period_x : 0.0f};
-            auto const sample_y{height > 1 ? y / static_cast<float>(height - 1) * period_y : 0.0f};
-            value += periodic_value_noise(sample_x, sample_y, period_x, period_y, octave_seed) *
-                     amplitude;
-        } else {
-            value += value_noise(x / scale, y / scale, octave_seed) * amplitude;
-        }
-        total_amplitude += amplitude;
-        amplitude *= persistence;
-        scale *= 0.5f;
-    }
-    return total_amplitude > 0.0f ? value / total_amplitude : 0.0f;
-}
-
 void chamfer_distance_transform(TArray<float>& distances, int32 const width, int32 const height) {
     constexpr float diagonal_cost{1.4142135624f};
     auto update_distance{[&](int32 const x,
@@ -259,10 +110,6 @@ auto hex_signed_distance(float const x, float const y, float const radius) -> fl
     auto const absolute_y{FMath::Abs(y)};
     return FMath::Max(absolute_x * 0.8660254038f + absolute_y * 0.5f, absolute_y) - radius;
 }
-}
-
-auto FGeneratedImage::is_valid() const -> bool {
-    return width > 0 && height > 0 && width <= MAX_int32 / height && pixels.Num() == width * height;
 }
 
 auto generate_normal_map(FGeneratedImage const& height_image, float const strength, bool const wrap)

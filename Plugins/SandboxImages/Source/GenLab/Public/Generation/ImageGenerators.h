@@ -4,7 +4,7 @@
 
 namespace SandboxImages::GenLab {
 
-struct FGeneratedImage {
+struct GENLAB_API FGeneratedImage {
     int32 width{};
     int32 height{};
     TArray<FColor> pixels;
@@ -161,30 +161,30 @@ struct FGenerationRequest {
     FImagePostProcessParameters post_process;
 };
 
-[[nodiscard]] auto generate_radial_gradient(FRadialGradientParameters const& parameters)
+[[nodiscard]] GENLAB_API auto generate_radial_gradient(FRadialGradientParameters const& parameters)
     -> FGeneratedImage;
-[[nodiscard]] auto generate_ring_mask(FRingMaskParameters const& parameters) -> FGeneratedImage;
-[[nodiscard]] auto generate_shockwave_flipbook(FShockwaveFlipbookParameters const& parameters)
+[[nodiscard]] GENLAB_API auto generate_ring_mask(FRingMaskParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] GENLAB_API auto generate_shockwave_flipbook(FShockwaveFlipbookParameters const& parameters)
     -> FGeneratedImage;
-[[nodiscard]] auto generate_starfield(FStarfieldParameters const& parameters) -> FGeneratedImage;
-[[nodiscard]] auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage;
-[[nodiscard]] auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters)
+[[nodiscard]] GENLAB_API auto generate_starfield(FStarfieldParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] GENLAB_API auto generate_noise(FNoiseParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] GENLAB_API auto generate_domain_warped_noise(FDomainWarpedNoiseParameters const& parameters)
     -> FGeneratedImage;
-[[nodiscard]] auto generate_curl_noise_flow(FCurlNoiseFlowParameters const& parameters)
+[[nodiscard]] GENLAB_API auto generate_curl_noise_flow(FCurlNoiseFlowParameters const& parameters)
     -> FGeneratedImage;
-[[nodiscard]] auto generate_cellular_noise(FCellularNoiseParameters const& parameters)
+[[nodiscard]] GENLAB_API auto generate_cellular_noise(FCellularNoiseParameters const& parameters)
     -> FGeneratedImage;
-[[nodiscard]] auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage;
-[[nodiscard]] auto generate_normal_map(FGeneratedImage const& height_image,
+[[nodiscard]] GENLAB_API auto generate_hex_grid(FHexGridParameters const& parameters) -> FGeneratedImage;
+[[nodiscard]] GENLAB_API auto generate_normal_map(FGeneratedImage const& height_image,
                                        float strength,
                                        bool wrap) -> FGeneratedImage;
-[[nodiscard]] auto generate_signed_distance_field(FGeneratedImage const& mask_image,
+[[nodiscard]] GENLAB_API auto generate_signed_distance_field(FGeneratedImage const& mask_image,
                                                   float threshold,
                                                   float distance_range,
                                                   bool wrap) -> FGeneratedImage;
-[[nodiscard]] auto make_default_request(EGeneratorType generator) -> FGenerationRequest;
-[[nodiscard]] auto default_generation_requests() -> TArray<FGenerationRequest>;
-[[nodiscard]] auto generate_image(FGenerationRequest const& request) -> FGeneratedImage;
-[[nodiscard]] auto describe_request(FGenerationRequest const& request) -> FString;
+[[nodiscard]] GENLAB_API auto make_default_request(EGeneratorType generator) -> FGenerationRequest;
+[[nodiscard]] GENLAB_API auto default_generation_requests() -> TArray<FGenerationRequest>;
+[[nodiscard]] GENLAB_API auto generate_image(FGenerationRequest const& request) -> FGeneratedImage;
+[[nodiscard]] GENLAB_API auto describe_request(FGenerationRequest const& request) -> FString;
 
 }

@@ -7,12 +7,15 @@ public class GenLab : ModuleRules
         PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
         CppStandard = CppStandardVersion.Latest;
 
+        PublicDependencyModuleNames.AddRange(new string[]
+        {
+            "Core",
+            "CoreUObject",
+        });
+
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "AssetTools",
-            "Core",
-            "CoreUObject",
-            "CQTest",
             "Engine",
             "ImageCore",
             "InputCore",
