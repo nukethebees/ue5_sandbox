@@ -28,6 +28,23 @@ constexpr int32 maximum_star_count{1000000};
 constexpr float base_starfield_radius{100000000.0f};
 constexpr float base_star_size{50000.0f};
 
+auto generate_band_direction(FRandomStream& random_stream, float const width_degrees) -> FVector {
+    auto const longitude{random_stream.FRandRange(-UE_PI, UE_PI)};
+    auto latitude{0.0f};
+    do {
+        auto const normal_sample_radius{
+            FMath::Sqrt(-2.0f * FMath::Loge(FMath::Max(random_stream.FRand(), UE_SMALL_NUMBER)))};
+        auto const normal_sample{normal_sample_radius *
+                                 FMath::Cos(2.0f * UE_PI * random_stream.FRand())};
+        latitude = normal_sample * FMath::DegreesToRadians(width_degrees);
+    } while (FMath::Abs(latitude) > UE_HALF_PI);
+
+    auto const latitude_cosine{FMath::Cos(latitude)};
+    return {latitude_cosine * FMath::Cos(longitude),
+            latitude_cosine * FMath::Sin(longitude),
+            FMath::Sin(latitude)};
+}
+
 auto get_profile_star_count_override() -> int32 {
     int32 star_count{0};
     FParse::Value(FCommandLine::Get(), TEXT("GpuStarfieldCount="), star_count);
@@ -358,6 +375,9 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
         normalised.star_count = profile_star_count;
     }
     normalised.star_count = FMath::Clamp(normalised.star_count, 1, maximum_star_count);
+    normalised.galactic_band_strength = FMath::Clamp(normalised.galactic_band_strength, 0.0f, 1.0f);
+    normalised.galactic_band_width_degrees =
+        FMath::Clamp(normalised.galactic_band_width_degrees, 1.0f, 45.0f);
     normalised.starfield_scale = FMath::Max(normalised.starfield_scale, 0.001f);
     normalised.star_size_multiplier = FMath::Max(normalised.star_size_multiplier, 0.0f);
     normalised.global_brightness = FMath::Max(normalised.global_brightness, 0.0f);
@@ -365,9 +385,11 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
     normalised.bright_star_shape_strength =
         FMath::Clamp(normalised.bright_star_shape_strength, 0.0f, 1.0f);
 
-    auto const structural_change{!has_generated_stars_ ||
-                                 settings_.star_count != normalised.star_count ||
-                                 settings_.random_seed != normalised.random_seed};
+    auto const structural_change{
+        !has_generated_stars_ || settings_.star_count != normalised.star_count ||
+        settings_.random_seed != normalised.random_seed ||
+        settings_.galactic_band_strength != normalised.galactic_band_strength ||
+        settings_.galactic_band_width_degrees != normalised.galactic_band_width_degrees};
     auto const bounds_change{settings_.starfield_scale != normalised.starfield_scale ||
                              settings_.star_size_multiplier != normalised.star_size_multiplier};
     auto const shader_parameter_change{
@@ -438,7 +460,13 @@ void UGpuStarfieldComponent::generate_stars() {
 
     auto const star_count{star_data_.Num()};
     for (int32 star_index{0}; star_index < star_count; ++star_index) {
-        auto const direction{random_stream.VRand()};
+        auto direction{random_stream.VRand()};
+        if (settings_.galactic_band_strength > 0.0f &&
+            random_stream.FRand() < settings_.galactic_band_strength) {
+            direction =
+                generate_band_direction(random_stream, settings_.galactic_band_width_degrees);
+        }
+
         auto const population_roll{random_stream.FRand()};
         auto const depth_roll{random_stream.FRand()};
         auto const is_near_star{population_roll < 0.01f};

@@ -20,6 +20,16 @@ struct SBXSHADERSEXPERIMENTS_API FGpuStarfieldSettings {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GPU Starfield")
     int32 random_seed{1337};
 
+    UPROPERTY(
+        EditAnywhere,
+        BlueprintReadWrite,
+        Category = "GPU Starfield",
+        meta = (ClampMin = "0.0",
+                ClampMax = "1.0",
+                ToolTip =
+                    "Fraction of stars in the actor's equatorial band. Zero keeps a uniform sky."))
+    float galactic_band_strength{0.65f};
+
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "GPU Starfield",
@@ -55,6 +65,15 @@ struct SBXSHADERSEXPERIMENTS_API FGpuStarfieldSettings {
              ToolTip =
                  "Adds a procedural cross to only the brightest stars. Zero disables the effect."))
     float bright_star_shape_strength{0.25f};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "GPU Starfield|Advanced",
+              meta = (ClampMin = "1.0",
+                      ClampMax = "45.0",
+                      Units = "deg",
+                      ToolTip = "Standard deviation of the galactic band's latitude distribution."))
+    float galactic_band_width_degrees{15.0f};
 };
 
 struct FGpuStarfieldGpuData {

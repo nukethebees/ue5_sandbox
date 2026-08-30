@@ -27,6 +27,9 @@ depth, so geometry farther away than a star can still render behind it.
 ## Controls
 
 - `star_count` and `random_seed` regenerate and reupload the immutable star set.
+- `galactic_band_strength` controls the fraction of stars concentrated around the actor's local
+  equatorial plane. `0` exactly retains uniform spherical generation. Actor rotation orients the
+  band without regenerating it.
 - `starfield_scale` is the primary distance control. At `1`, the logical shell radius is 1,000 km
   and the base billboard diameter is 500 m. Scaling both together preserves angular star size.
 - `star_size_multiplier`, `global_brightness`, and `parallax_strength` are advanced shader controls
@@ -34,6 +37,8 @@ depth, so geometry farther away than a star can still render behind it.
 - `bright_star_shape_strength` controls the procedural cross on only the brightest stars. `0`
   retains the original circular falloff; the default `0.25` is intentionally subtle. This is also a
   dynamic shader control and does not rebuild star data.
+- `galactic_band_width_degrees` controls the standard deviation of the generated band latitude.
+  Changing it or band strength regenerates the immutable star set.
 - `parallax_strength = 0` makes the logical field follow camera translation; `1` behaves like
   ordinary actor-anchored world geometry. The default `0.01` gives the base scale an effective
   apparent distance of approximately 100,000 km.
@@ -46,7 +51,10 @@ Generation uses continuous randomized depth within three deliberately sparse pop
 at `0.001-0.01` of the base radius, 14% middle at `0.03-0.2`, and 85% distant at `0.5-1.0`. These are
 not separate renderer layers: they remain interleaved in one structured buffer and one instanced
 draw. The distribution is mostly dim and neutral-white, with the near population kept bright enough
-to make its stronger translational parallax identifiable during this experiment.
+to make its stronger translational parallax identifiable during this experiment. Direction
+generation mixes a uniform sphere with a truncated normal latitude distribution around the local
+equator. The default places 65% of stars in a 15-degree band while retaining a uniform population
+throughout the rest of the sky.
 
 ## UE 5.8 references
 
@@ -96,12 +104,12 @@ scope measures `GetDynamicMeshElements`, which UE schedules on a worker in this 
 
 | Stars | Camera | Whole GT delta ms | Whole RT delta ms | Submit CPU ms | Whole GPU delta ms | Translucency GPU delta ms | Draw delta |
 | ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10,000 | Stationary | 0.0209 | 0.1093 | 0.0082 | 0.0663 | 0.0165 | 1 |
-| 10,000 | Moving | -0.0735 | -0.0157 | 0.0066 | 0.0560 | 0.0165 | 1 |
-| 100,000 | Stationary | 0.0723 | 0.0984 | 0.0073 | 0.1113 | 0.0608 | 1 |
-| 100,000 | Moving | 0.0220 | 0.0893 | 0.0069 | 0.1094 | 0.0606 | 1 |
-| 1,000,000 | Stationary | 0.0346 | 0.0473 | 0.0072 | 0.5703 | 0.5020 | 1 |
-| 1,000,000 | Moving | -0.0076 | 0.0497 | 0.0072 | 0.5606 | 0.5005 | 1 |
+| 10,000 | Stationary | 0.0496 | 0.0661 | 0.0062 | 0.0656 | 0.0167 | 1 |
+| 10,000 | Moving | 0.0331 | 0.0716 | 0.0058 | 0.0657 | 0.0169 | 1 |
+| 100,000 | Stationary | 0.0252 | 0.0885 | 0.0060 | 0.1091 | 0.0608 | 1 |
+| 100,000 | Moving | 0.0231 | 0.0450 | 0.0058 | 0.1104 | 0.0610 | 1 |
+| 1,000,000 | Stationary | 0.0474 | 0.1158 | 0.0063 | 0.5584 | 0.5000 | 1 |
+| 1,000,000 | Moving | 0.0335 | 0.0638 | 0.0059 | 0.5484 | 0.4997 | 1 |
 
 The whole-frame CPU deltas are small enough to remain sensitive to ordinary frame-to-frame
 scheduling noise. The directly instrumented mesh submission remains below 0.01 ms and does not
@@ -171,5 +179,8 @@ no per-star CPU work per frame.
 5. **Camera-motion benchmark — complete.** The automated benchmark now compares stationary and
    deterministic 10,000-km moving-camera A/B captures, verifies the camera travel, and checks the
    full one-draw primitive submission survives every measured moving frame.
-6. **Coarse GPU culling, if justified.** Evaluate frustum and projected-size culling only after
+6. **Galactic density band — complete.** Deterministic generation can now mix the uniform sky with
+   a configurable soft band around the actor's local equator. Strength zero preserves the original
+   distribution, and the feature does not change GPU data or per-frame work.
+7. **Coarse GPU culling, if justified.** Evaluate frustum and projected-size culling only after
    representative hardware and resolution measurements show that unculled quads need it.
