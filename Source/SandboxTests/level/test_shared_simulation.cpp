@@ -3,6 +3,7 @@
 #include "test_capital_command_fighters_scenario.h"
 #include "test_capital_fighter_handles_scenario.h"
 #include "test_capital_ship_proxy_scenario.h"
+#include "test_collision_uniform_grid_scenario.h"
 #include "test_entity_interface_scenario.h"
 #include "test_entity_registry_scenario.h"
 #include "test_fighter_attack_scenario.h"
@@ -197,6 +198,8 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(SpatialQuery_TeamAndInclusiveRadiusFiltering,
                            ml::FSpatialQueryRangeScenario)
     SHARED_SIMULATION_TEST(SpatialQuery_ResolvesHitBatches, ml::FSpatialQueryResolutionScenario)
+    SHARED_SIMULATION_TEST(Collision_UniformGridContainsAllEntityTypes,
+                           ml::FCollisionUniformGridScenario)
 
     SHARED_SIMULATION_TEST(Turrets_LineOfSightBlocking, ml::FTurretLineOfSightBlockingScenario)
     SHARED_SIMULATION_TEST(

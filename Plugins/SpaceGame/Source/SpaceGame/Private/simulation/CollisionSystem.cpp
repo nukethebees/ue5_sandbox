@@ -83,6 +83,23 @@ auto CollisionUniformGrid::num_cells() const -> int32 {
     return grid_dims_.X * grid_dims_.Y * grid_dims_.Z;
 }
 
+auto CollisionUniformGrid::get_cell_entities(FIntVector3 const cell_coord) const
+    -> TConstArrayView<FRegistryEntityHandle> {
+    checkf(is_cell_coord_in_bounds(cell_coord),
+           TEXT("Collision grid cell coordinate (%d, %d, %d) is outside grid dimensions (%d, %d, "
+                "%d)"),
+           cell_coord.X,
+           cell_coord.Y,
+           cell_coord.Z,
+           grid_dims_.X,
+           grid_dims_.Y,
+           grid_dims_.Z);
+
+    auto const cell_index{to_index(cell_coord)};
+    return TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(cell_entity_offsets_[cell_index],
+                                                                   cell_entity_counts_[cell_index]);
+}
+
 void CollisionUniformGrid::reset() {
     grid_dims_ = FIntVector3::ZeroValue;
     cell_dims_ = FVector3f::ZeroVector;

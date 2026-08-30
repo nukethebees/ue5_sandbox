@@ -22,6 +22,8 @@ struct SPACEGAME_API CollisionUniformGrid {
     void set_cell_dims(FVector3f const cell_dims) noexcept;
 
     auto num_cells() const -> int32;
+    auto get_cell_entities(FIntVector3 const cell_coord) const
+        -> TConstArrayView<FRegistryEntityHandle>;
 
     void reset();
     void rebuild_grid(FTestEntityRegistry const& entity_registry, FEntityAABBs const& entity_aabbs);
