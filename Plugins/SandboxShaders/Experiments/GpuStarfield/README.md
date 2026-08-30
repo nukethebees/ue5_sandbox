@@ -1,0 +1,92 @@
+# GPU Starfield
+
+This experiment tests a minimal custom scene renderer for deterministic, camera-relative stars. An
+`AGpuStarfieldExperimentActor` owns one `UGpuStarfieldComponent`. The component generates one
+immutable 32-byte record per star and hands a copy to its `FPrimitiveSceneProxy`; the proxy uploads
+that array to a render-thread-owned structured buffer.
+
+Each visible view submits one indexed, instanced mesh batch. The vertex factory reuses one
+four-vertex quad, indexes the structured buffer with the stereo-correct instance ID, subtracts a
+scaled LWC camera-to-actor offset, and expands the result along the view right/up axes. The additive
+unlit material applies a squared circular falloff using the interpolated quad UV and uses vertex
+colour for per-star brightness. There is no tick and no per-star work after generation.
+
+The additive translucent material retains the normal scene depth test but does not write scene
+depth. Opaque geometry therefore occludes stars while the background renderer does not contaminate
+gameplay depth. The prototype does not force stars to the far plane: their logical radius controls
+depth, so geometry farther away than a star can still render behind it.
+
+## Controls
+
+- `star_count`, `random_seed`, and `distribution_radius` regenerate and reupload the immutable star
+  set.
+- `global_star_size`, `global_brightness`, and `parallax_scale` update proxy shader parameters
+  without rebuilding star data.
+- `parallax_scale = 0` makes the logical field follow camera translation; `1` behaves like ordinary
+  actor-anchored world geometry. Intermediate values provide the intended reduced parallax.
+
+The showcase actor defaults to 10,000 stars, seed 1337, a 50,000-unit spherical shell, and a 0.25
+parallax scale. The editor clamp permits profiling up to one million stars. A standalone profiling
+run can override the placed actor without resaving the map by passing `-GpuStarfieldCount=N`.
+
+## UE 5.8 references
+
+The implementation was checked against this checkout's current engine source rather than older API
+examples:
+
+- `Engine/Source/Runtime/Engine/Private/VectorFieldVisualization.cpp` and
+  `Engine/Shaders/Private/VectorFieldVisualizationVertexFactory.ush` for the smallest material mesh
+  batch/custom vertex-factory pair and stereo-correct `GetInstanceId` usage.
+- `Engine/Plugins/Enterprise/LidarPointCloud/Source/LidarPointCloudRuntime/Private/Rendering` for
+  proxy-owned render resources and vertex-factory lifetime.
+- `Engine/Source/Runtime/Engine/Private/Particles/ParticleSpriteVertexFactory.cpp` and
+  `Engine/Shaders/Private/ParticleSpriteVertexFactory.ush` for camera-facing view-axis expansion.
+- `Engine/Source/Runtime/Engine/Private/Components/ArrowComponent.cpp` and
+  `PaperSpriteComponent.cpp` for current dynamic `FMeshBatch` population and view relevance.
+- `Engine/Source/Runtime/RHI/Public/RHIResources.h` and engine uses of
+  `FRHIBufferCreateDesc::CreateStructured` for immutable structured-buffer/SRV creation.
+
+UE 5.8's GPU-scene vertex-factory path requires `VF_GPUSCENE_GET_INTERMEDIATES`, and instanced stereo
+requires converting `SV_InstanceID` through `GetInstanceId`. Camera/actor subtraction uses double-
+float LWC helpers before demotion to translated float space. The material's particle-sprite usage
+flag is only a shader-permutation gate for this private vertex factory; no particle system is used.
+
+## Profiling baseline
+
+The architecture produces one draw submission per visible view at every tested count. Expected
+star-buffer sizes are:
+
+| Stars | Buffer bytes | Approximate MiB |
+| ---: | ---: | ---: |
+| 10,000 | 320,000 | 0.31 |
+| 100,000 | 3,200,000 | 3.05 |
+| 1,000,000 | 32,000,000 | 30.52 |
+
+An offscreen 1280x720 D3D12 SM6 capture was made on an RTX 5090 with a Ryzen 9 9950X3D. Values below
+are means of the final 30 steady frames in a 90-frame DebugGame editor-process CSV capture. They are
+useful as an architecture sanity check, not as production gameplay numbers: the level contains all
+showcase experiments, the render-thread and total-GPU columns include the whole frame, and the
+translucency GPU bucket includes the showcase's other translucent effects.
+
+| Stars | Game thread ms | Render thread ms | Total GPU ms | Translucency GPU ms |
+| ---: | ---: | ---: | ---: | ---: |
+| 10,000 | 1.11 | 3.08 | 1.08 | 0.031 |
+| 100,000 | 1.04 | 2.73 | 0.99 | 0.073 |
+| 1,000,000 | 1.15 | 2.92 | 1.48 | 0.535 |
+
+The whole showcase reported 18 translucency draws at every count; the starfield contributes one of
+them, once per visible view. Its render-thread submission cost was below the noise floor of this
+short capture. One million unculled additive quads remained viable on this hardware, with the
+expected GPU scaling rather than draw-call or game-thread scaling. Target-hardware viewport and
+Unreal Insights captures are still required before drawing a SpaceGame production conclusion.
+
+## Current limits and next step
+
+The component bounds remain actor-centred even when a low parallax value makes the rendered field
+follow the camera, so a camera travelling beyond the configured logical radius can cull the whole
+primitive. The shell also has no frustum, size, or brightness culling and supports SM5-class desktop
+feature levels only.
+
+If profiling validates the basic cost, the next experiment should add a camera-following bounds
+policy and GPU-side coarse visibility/size culling while preserving the same component, immutable
+star buffer, and single-draw data path.

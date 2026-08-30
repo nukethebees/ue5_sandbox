@@ -1,0 +1,167 @@
+#define PARTICLE_SPRITE_FACTORY 1
+
+#include "/Engine/Private/VertexFactoryCommon.ush"
+
+struct FGpuStarfieldStarData {
+    float3 Position;
+    float Size;
+    float Brightness;
+    float3 Padding;
+};
+
+StructuredBuffer<FGpuStarfieldStarData> GpuStarfieldStarData;
+float GpuStarfieldGlobalStarSize;
+float GpuStarfieldGlobalBrightness;
+float GpuStarfieldParallaxScale;
+
+#undef GetInstanceIdFromVF
+#define GetInstanceIdFromVF(VFInput) (GetInstanceId(VFInput.InstanceId))
+
+struct FVertexFactoryInput {
+    float2 Corner   : ATTRIBUTE0;
+    uint InstanceId : SV_InstanceID;
+    VF_MOBILE_MULTI_VIEW_DECLARE_INPUT_BLOCK()
+};
+
+struct FVertexFactoryInterpolantsVSToPS {
+    float2 TexCoord  : TEXCOORD0;
+    float Brightness : TEXCOORD1;
+};
+
+struct FVertexFactoryIntermediates {
+    float4 WorldPosition;
+    float3 PositionInstanceSpace;
+    float2 TexCoord;
+    float Brightness;
+    FSceneDataIntermediates SceneData;
+};
+
+FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.SceneData.Primitive;
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input) {
+    FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
+    Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+
+    uint const StarIndex = GetInstanceId(Input.InstanceId);
+    FGpuStarfieldStarData const Star = GpuStarfieldStarData[StarIndex];
+    FPrimitiveSceneData const PrimitiveData = GetPrimitiveData(Intermediates);
+
+    float3 const StarOffset = mul(Star.Position, DFToFloat3x3(PrimitiveData.LocalToWorld));
+    float3 const CameraFromAnchor =
+        DFFastSubtractDemote(ResolvedView.WorldCameraOrigin, PrimitiveData.ObjectWorldPosition);
+    float3 const RelativePosition = StarOffset - CameraFromAnchor * GpuStarfieldParallaxScale;
+    float const HalfSize = Star.Size * GpuStarfieldGlobalStarSize * 0.5;
+    float3 const BillboardOffset =
+        (Input.Corner.x * ResolvedView.ViewRight + Input.Corner.y * ResolvedView.ViewUp) * HalfSize;
+
+    Intermediates.WorldPosition =
+        float4(ResolvedView.TranslatedWorldCameraOrigin + RelativePosition + BillboardOffset, 1.0);
+    Intermediates.PositionInstanceSpace = Star.Position;
+    Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
+    Intermediates.Brightness = Star.Brightness * GpuStarfieldGlobalBrightness;
+    return Intermediates;
+}
+
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants,
+                                                    float4 SvPosition) {
+    FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
+
+#if NUM_MATERIAL_TEXCOORDS
+    UNROLL
+    for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; ++CoordinateIndex) {
+        Result.TexCoords[CoordinateIndex] = Interpolants.TexCoord;
+    }
+#endif
+
+    Result.VertexColor = Interpolants.Brightness.xxxx;
+    Result.TwoSidedSign = 1.0;
+    return Result;
+}
+
+float3 VertexFactoryGetPreviousInstanceSpacePosition(FVertexFactoryInput Input,
+                                                     FVertexFactoryIntermediates Intermediates);
+float3 VertexFactoryGetInstanceSpacePosition(FVertexFactoryInput Input,
+                                             FVertexFactoryIntermediates Intermediates);
+
+FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
+                                                      FVertexFactoryIntermediates Intermediates,
+                                                      float3 WorldPosition,
+                                                      float3x3 TangentToLocal,
+                                                      bool bIsPreviousFrame = false) {
+    FMaterialVertexParameters Result = MakeInitializedMaterialVertexParameters();
+    Result.SceneData = Intermediates.SceneData;
+    Result.WorldPosition = WorldPosition;
+    Result.PositionInstanceSpace = Intermediates.PositionInstanceSpace;
+    Result.PositionPrimitiveSpace = Intermediates.PositionInstanceSpace;
+    Result.VertexColor = Intermediates.Brightness.xxxx;
+    Result.TangentToWorld =
+        mul(TangentToLocal, DFToFloat3x3(GetPrimitiveData(Intermediates).LocalToWorld));
+    Result.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().LocalToWorld;
+    Result.LWCData = MakeMaterialLWCData(Result);
+    return Result;
+}
+
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input,
+                                     FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.WorldPosition;
+}
+
+float3 VertexFactoryGetPreviousInstanceSpacePosition(FVertexFactoryInput Input,
+                                                     FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.PositionInstanceSpace;
+}
+
+float3 VertexFactoryGetInstanceSpacePosition(FVertexFactoryInput Input,
+                                             FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.PositionInstanceSpace;
+}
+
+float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input,
+                                   FVertexFactoryIntermediates Intermediates) {
+    return float3(0.0, 0.0, 1.0);
+}
+
+float4 VertexFactoryGetRasterizedWorldPosition(FVertexFactoryInput Input,
+                                               FVertexFactoryIntermediates Intermediates,
+                                               float4 TranslatedWorldPosition) {
+    return TranslatedWorldPosition;
+}
+
+float3 VertexFactoryGetPositionForVertexLighting(FVertexFactoryInput Input,
+                                                 FVertexFactoryIntermediates Intermediates,
+                                                 float3 TranslatedWorldPosition) {
+    return TranslatedWorldPosition;
+}
+
+FVertexFactoryInterpolantsVSToPS
+    VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input,
+                                       FVertexFactoryIntermediates Intermediates,
+                                       FMaterialVertexParameters VertexParameters) {
+    FVertexFactoryInterpolantsVSToPS Interpolants;
+    Interpolants.TexCoord = Intermediates.TexCoord;
+    Interpolants.Brightness = Intermediates.Brightness;
+    return Interpolants;
+}
+
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input,
+                                             FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.WorldPosition;
+}
+
+float3x3 VertexFactoryGetTangentToLocal(FVertexFactoryInput Input,
+                                        FVertexFactoryIntermediates Intermediates) {
+    return float3x3(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+}
+
+float4
+    VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants) {
+    return 0.0;
+}
+
+uint VertexFactoryGetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants) {
+    return 0;
+}
+
+#include "/Engine/Private/VertexFactoryDefaultInterface.ush"
