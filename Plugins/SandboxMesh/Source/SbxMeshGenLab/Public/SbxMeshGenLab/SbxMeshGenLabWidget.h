@@ -6,9 +6,8 @@
 
 #include "SbxMeshGenLabWidget.generated.h"
 
-class FAssetThumbnail;
-class FAssetThumbnailPool;
 class IDetailsView;
+class SMeshGenLabViewport;
 class STextBlock;
 class UStaticMesh;
 class USbxMeshGenLabSettings;
@@ -25,6 +24,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget
   private:
     void on_property_changed(FPropertyChangedEvent const& event);
     auto save_generated_mesh() -> FReply;
+    auto focus_preview() -> FReply;
     void update_preview();
     void set_preview_mesh(UStaticMesh* static_mesh);
 
@@ -36,7 +36,6 @@ class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget
 
     ESbxMeshShape last_shape_{ESbxMeshShape::Box};
     TSharedPtr<IDetailsView> details_view_;
-    TSharedPtr<FAssetThumbnailPool> thumbnail_pool_;
-    TSharedPtr<FAssetThumbnail> thumbnail_;
+    TSharedPtr<SMeshGenLabViewport> preview_viewport_;
     TSharedPtr<STextBlock> status_text_;
 };

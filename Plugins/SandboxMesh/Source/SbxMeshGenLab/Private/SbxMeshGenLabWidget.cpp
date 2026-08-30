@@ -1,9 +1,9 @@
 #include "SbxMeshGenLab/SbxMeshGenLabWidget.h"
 
+#include "Editor/SMeshGenLabViewport.h"
 #include "Generation/MeshAssetWriter.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
-#include "AssetThumbnail.h"
 #include "Engine/StaticMesh.h"
 #include "IDetailsView.h"
 #include "Modules/ModuleManager.h"
@@ -15,10 +15,6 @@
 #include "Widgets/Layout/SSplitter.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
-
-namespace {
-constexpr uint32 thumbnail_size{512};
-}
 
 USbxMeshGenLabWidget::USbxMeshGenLabWidget() {
     TabDisplayName = NSLOCTEXT("SbxMeshGenLab", "WidgetLabel", "Mesh Gen Lab");
@@ -40,14 +36,6 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
     details_view_->SetObject(settings_);
     details_view_->OnFinishedChangingProperties().AddUObject(this, &ThisClass::on_property_changed);
 
-    thumbnail_pool_ = MakeShared<FAssetThumbnailPool>(1);
-    thumbnail_ =
-        MakeShared<FAssetThumbnail>(FAssetData{}, thumbnail_size, thumbnail_size, thumbnail_pool_);
-    FAssetThumbnailConfig thumbnail_config{};
-    thumbnail_config.ThumbnailLabel = EThumbnailLabel::NoLabel;
-    thumbnail_config.ShowAssetColor = false;
-    auto const preview_widget{thumbnail_->MakeThumbnailWidget(thumbnail_config)};
-
     auto const root{
         SNew(SBorder)
             .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
@@ -64,22 +52,35 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                                           "Edit a procedural mesh with a transient preview, then "
                                           "save it into the plugin's generated-content directory."))
                           .AutoWrapText(true)] +
-                 SVerticalBox::Slot().FillHeight(
-                     1.0f)[SNew(SSplitter) +
-                           SSplitter::Slot().Value(0.45f)[details_view_.ToSharedRef()] +
-                           SSplitter::Slot().Value(0.55f)[SNew(SBorder).Padding(
-                               8.0f)[SNew(SBox)
-                                         .WidthOverride(static_cast<float>(thumbnail_size))
-                                         .HeightOverride(static_cast<float>(
-                                             thumbnail_size))[preview_widget]]]] +
+                 SVerticalBox::Slot().FillHeight(1.0f)
+                     [SNew(SSplitter) +
+                      SSplitter::Slot().Value(0.45f)[details_view_.ToSharedRef()] +
+                      SSplitter::Slot().Value(0.55f)[SNew(SBorder).Padding(
+                          8.0f)[SNew(SVerticalBox) +
+                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)
+                                    [SNew(STextBlock)
+                                         .Text(NSLOCTEXT("SbxMeshGenLab",
+                                                         "PreviewControls",
+                                                         "Left-drag: rotate | Middle-drag: pan | "
+                                                         "Right-drag or wheel: zoom | F: focus"))
+                                         .AutoWrapText(true)] +
+                                SVerticalBox::Slot().FillHeight(1.0f)
+                                    [SNew(SBox).MinDesiredWidth(320.0f).MinDesiredHeight(320.0f)
+                                         [SAssignNew(preview_viewport_, SMeshGenLabViewport)]]]]] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 10.0f, 0.0f, 0.0f)
-                     [SNew(SButton)
-                          .Text(NSLOCTEXT("SbxMeshGenLab", "SaveMesh", "Save Generated Mesh"))
-                          .ToolTipText(NSLOCTEXT("SbxMeshGenLab",
-                                                 "SaveMeshTooltip",
-                                                 "Create or replace the configured asset in the "
-                                                 "plugin's generated-content directory."))
-                          .OnClicked_UObject(this, &ThisClass::save_generated_mesh)] +
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 6.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(NSLOCTEXT("SbxMeshGenLab", "SaveMesh", "Save Generated Mesh"))
+                               .ToolTipText(NSLOCTEXT("SbxMeshGenLab",
+                                                      "SaveMeshTooltip",
+                                                      "Create or replace the configured asset in "
+                                                      "the plugin's generated-content directory."))
+                               .OnClicked_UObject(this, &ThisClass::save_generated_mesh)] +
+                      SHorizontalBox::Slot().AutoWidth()
+                          [SNew(SButton)
+                               .Text(NSLOCTEXT("SbxMeshGenLab", "FocusPreview", "Focus Preview"))
+                               .OnClicked_UObject(this, &ThisClass::focus_preview)]] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 0.0f)
                      [SAssignNew(status_text_, STextBlock).AutoWrapText(true)]]};
 
@@ -93,8 +94,7 @@ void USbxMeshGenLabWidget::ReleaseSlateResources(bool const release_children) {
     preview_mesh_ = nullptr;
     status_text_.Reset();
     details_view_.Reset();
-    thumbnail_.Reset();
-    thumbnail_pool_.Reset();
+    preview_viewport_.Reset();
 }
 
 void USbxMeshGenLabWidget::on_property_changed(FPropertyChangedEvent const&) {
@@ -131,6 +131,13 @@ auto USbxMeshGenLabWidget::save_generated_mesh() -> FReply {
     return FReply::Handled();
 }
 
+auto USbxMeshGenLabWidget::focus_preview() -> FReply {
+    if (preview_viewport_.IsValid()) {
+        preview_viewport_->focus_mesh();
+    }
+    return FReply::Handled();
+}
+
 void USbxMeshGenLabWidget::update_preview() {
     auto const request{settings_->to_request()};
     auto const validation_error{SandboxMesh::validate_mesh_request(request)};
@@ -158,10 +165,12 @@ void USbxMeshGenLabWidget::update_preview() {
 }
 
 void USbxMeshGenLabWidget::set_preview_mesh(UStaticMesh* const static_mesh) {
-    if (!thumbnail_.IsValid()) {
+    if (!preview_viewport_.IsValid()) {
         return;
     }
 
-    thumbnail_->SetAsset(static_mesh != nullptr ? FAssetData{static_mesh} : FAssetData{});
-    thumbnail_->RefreshThumbnail();
+    preview_viewport_->set_mesh(static_mesh);
+    if (static_mesh != nullptr) {
+        preview_viewport_->focus_mesh();
+    }
 }
