@@ -16,7 +16,7 @@
   "Modules": [
     {
       "Name": "S7Lab",
-      "Type": "Runtime",
+      "Type": "Editor",
       "LoadingPhase": "Default",
       "PlatformAllowList": [
         "Win64"

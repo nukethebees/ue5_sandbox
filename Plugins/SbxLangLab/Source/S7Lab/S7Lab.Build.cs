@@ -18,6 +18,8 @@ public class S7Lab : ModuleRules
 
         PrivateDefinitions.AddRange(new string[]
         {
+            "DISABLE_AUTOLOAD=1",
+            "DISABLE_FILE_OUTPUT=1",
             "HAVE_COMPLEX_NUMBERS=0",
             "HAVE_COMPLEX_TRIG=0",
             "WITH_C_LOADER=0",

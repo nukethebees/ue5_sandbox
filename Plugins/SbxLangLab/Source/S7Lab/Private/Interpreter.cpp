@@ -11,6 +11,43 @@
 namespace S7Lab {
 namespace {
 constexpr ANSICHAR source_variable_name[]{"*sbx-lang-lab-source*"};
+constexpr ANSICHAR permission_error_name[]{"permission-error"};
+
+auto disabled_operation(s7_scheme* const scheme, s7_pointer) -> s7_pointer {
+    return s7_error(
+        scheme,
+        s7_make_symbol(scheme, permission_error_name),
+        s7_list(
+            scheme, 1, s7_make_string(scheme, "This operation is disabled by the S7Lab sandbox.")));
+}
+
+void disable_unsafe_operations(s7_scheme& scheme) {
+    constexpr ANSICHAR const* operations[]{
+        "autoload",
+        "call-with-input-file",
+        "call-with-output-file",
+        "delete-file",
+        "directory->list",
+        "directory?",
+        "emergency-exit",
+        "exit",
+        "file-exists?",
+        "file-mtime",
+        "getenv",
+        "load",
+        "open-input-file",
+        "open-output-file",
+        "require",
+        "system",
+        "with-input-from-file",
+        "with-output-to-file",
+    };
+
+    for (auto const* const operation : operations) {
+        s7_define_function(
+            &scheme, operation, disabled_operation, 0, 0, true, "Disabled by the S7Lab sandbox.");
+    }
+}
 
 auto to_fstring(ANSICHAR const* const value) -> FString {
     auto const converted{FUTF8ToTCHAR{value}};
@@ -66,6 +103,8 @@ class FInterpreter::FImpl final {
     FImpl() {
         scheme_ = s7_init();
         checkf(scheme_ != nullptr, TEXT("s7 failed to initialise."));
+
+        disable_unsafe_operations(*scheme_);
 
         source_symbol_ = s7_make_symbol(scheme_, source_variable_name);
         s7_define_variable(scheme_, source_variable_name, s7_make_string(scheme_, ""));

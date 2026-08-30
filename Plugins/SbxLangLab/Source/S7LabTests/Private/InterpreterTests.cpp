@@ -66,4 +66,27 @@ TEST_CLASS(S7Interpreter, "S7Lab.UnitTests")
                               lookup.succeeded);
         TestRunner->TestFalse(TEXT("Missing state produces an error"), lookup.error.IsEmpty());
     }
+
+    TEST_METHOD(RejectsUnsafeOperationsAndRemainsUsable)
+    {
+        S7Lab::FInterpreter interpreter;
+        constexpr TCHAR const* expressions[]{
+            TEXT("(exit)"),
+            TEXT("(emergency-exit)"),
+            TEXT("(load \"scenario.scm\")"),
+            TEXT("(open-input-file \"scenario.scm\")"),
+            TEXT("(open-output-file \"scenario.scm\")"),
+            TEXT("(system \"echo unsafe\")"),
+        };
+
+        for (auto const* const expression : expressions) {
+            auto const result{interpreter.evaluate(expression)};
+            TestRunner->TestFalse(TEXT("Unsafe operation fails evaluation"), result.succeeded);
+            TestRunner->TestTrue(TEXT("Unsafe operation reports the sandbox restriction"),
+                                 result.error.Contains(TEXT("disabled by the S7Lab sandbox")));
+        }
+
+        auto const recovery{interpreter.evaluate(TEXT("(+ 20 22)"))};
+        test_success(*TestRunner, recovery, TEXT("42"));
+    }
 };
