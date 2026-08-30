@@ -57,7 +57,19 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float3 const CameraFromAnchor =
         DFFastSubtractDemote(ResolvedView.WorldCameraOrigin, PrimitiveData.ObjectWorldPosition);
     float3 const RelativePosition = StarOffset - CameraFromAnchor * GpuStarfieldParallaxStrength;
-    float const HalfSize = Star.Size * GpuStarfieldGlobalStarSize * Star.DepthFactor * 0.5;
+    float const UnstabilizedHalfSize =
+        Star.Size * GpuStarfieldGlobalStarSize * Star.DepthFactor * 0.5;
+    bool const IsOrthographic = IsOrthoProjection(ResolvedView.ViewToClip);
+    float const ProjectionDepth =
+        IsOrthographic ? 1.0 : max(abs(dot(RelativePosition, ResolvedView.ViewForward)), 1.0);
+    float const ViewToPixels =
+        ResolvedView.ViewToClip[1][1] * ResolvedView.ViewSizeAndInvSize.y * 0.5;
+    float const ProjectedHalfSize = UnstabilizedHalfSize * ViewToPixels / ProjectionDepth;
+    float const MinimumHalfSizePixels = 0.75;
+    float const StabilizationScale =
+        max(1.0, MinimumHalfSizePixels / max(ProjectedHalfSize, 0.0001));
+    float const HalfSize = UnstabilizedHalfSize * StabilizationScale;
+    float const EnergyScale = rcp(StabilizationScale * StabilizationScale);
     float3 const BillboardOffset =
         (Input.Corner.x * ResolvedView.ViewRight + Input.Corner.y * ResolvedView.ViewUp) * HalfSize;
 
@@ -74,7 +86,8 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float3 const CoolColour = float3(0.72, 0.85, 1.0);
     float3 const StarColour =
         WarmColour * WarmWeight + NeutralColour * NeutralWeight + CoolColour * CoolWeight;
-    Intermediates.Colour = StarColour * Star.Brightness * GpuStarfieldGlobalBrightness;
+    Intermediates.Colour =
+        StarColour * Star.Brightness * GpuStarfieldGlobalBrightness * EnergyScale;
     return Intermediates;
 }
 

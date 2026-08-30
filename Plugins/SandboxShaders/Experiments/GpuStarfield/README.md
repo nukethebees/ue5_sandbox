@@ -11,9 +11,12 @@ four-vertex quad, indexes the structured buffer with the stereo-correct instance
 direction to its relative logical depth, subtracts a scaled LWC camera-to-actor offset, and expands
 the result along the view right/up axes. Billboard size scales with relative depth, preserving its
 generated angular size while camera translation produces stronger motion in nearer populations.
-The additive unlit material applies a squared circular falloff using the interpolated quad UV and
-uses vertex colour for per-star brightness and subtle temperature variation. There is no tick and
-no per-star work after generation.
+The vertex shader also projects that size into pixels. It expands diameters below 1.5 pixels to a
+stable raster footprint and applies inverse-area intensity compensation, preserving the original
+star energy rather than making stabilized stars artificially brighter. The additive unlit material
+applies a squared circular falloff using the interpolated quad UV and uses vertex colour for
+per-star brightness and subtle temperature variation. There is no tick and no per-star work after
+generation.
 
 The additive translucent material retains the normal scene depth test but does not write scene
 depth. Opaque geometry therefore occludes stars while the background renderer does not contaminate
@@ -57,6 +60,8 @@ examples:
   `PaperSpriteComponent.cpp` for current dynamic `FMeshBatch` population and view relevance.
 - `Engine/Source/Runtime/RHI/Public/RHIResources.h` and engine uses of
   `FRHIBufferCreateDesc::CreateStructured` for immutable structured-buffer/SRV creation.
+- `Engine/Shaders/Private/Nanite/NaniteDataDecode.ush` for UE 5.8's current view-space-to-pixel
+  projection scale.
 
 UE 5.8's GPU-scene vertex-factory path requires `VF_GPUSCENE_GET_INTERMEDIATES`, and instanced stereo
 requires converting `SV_InstanceID` through `GetInstanceId`. Camera/actor subtraction uses double-
@@ -84,9 +89,9 @@ scope measures `GetDynamicMeshElements`, which UE schedules on a worker in this 
 
 | Stars | Whole GT delta ms | Whole RT delta ms | Submit CPU ms | Whole GPU delta ms | Translucency GPU delta ms | Draw delta |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10,000 | 0.0948 | 0.1679 | 0.0083 | 0.0747 | 0.0165 | 1 |
-| 100,000 | 0.0724 | 0.0759 | 0.0089 | 0.1184 | 0.0611 | 1 |
-| 1,000,000 | 0.0393 | -0.1616 | 0.0092 | 0.5618 | 0.5045 | 1 |
+| 10,000 | 0.0725 | 0.1528 | 0.0073 | 0.0743 | 0.0167 | 1 |
+| 100,000 | 0.0038 | -0.0020 | 0.0060 | 0.1092 | 0.0607 | 1 |
+| 1,000,000 | -0.0015 | -0.0161 | 0.0060 | 0.5625 | 0.5010 | 1 |
 
 The whole-frame CPU deltas are small enough to remain sensitive to ordinary frame-to-frame
 scheduling noise. The directly instrumented mesh submission remains below 0.01 ms and does not
@@ -94,6 +99,7 @@ scale with star count. GPU work scales with the number of unculled quads, reachi
 0.56 ms total and 0.50 ms in translucency at one million stars. Adding continuous depth, magnitude,
 and colour to the existing record did not increase its 32-byte size or its one-draw architecture;
 the measured GPU result remained within run-to-run variation of the single-depth implementation.
+The subpixel footprint and energy correction also remained within that variation.
 
 ## Initial whole-showcase profiling baseline
 
@@ -144,8 +150,9 @@ no per-star CPU work per frame.
 2. **Magnitude, colour, and depth distribution — complete.** Stars now use mostly dim magnitudes,
    a small identifiable bright population, subtle warm/cool variation, and continuous depth within
    sparse near, middle, and distant populations in the same 32-byte buffer and draw.
-3. **Subpixel stability.** Evaluate TAA/TSR and exposure behavior, then preserve energy or enforce a
-   minimum projected footprint where necessary to reduce shimmer and disappearing distant stars.
+3. **Subpixel stability — complete.** The vertex shader now enforces a 1.5-pixel minimum diameter
+   and compensates intensity by the inverse area increase, reducing unstable subpixel coverage
+   without changing the star's intended energy, data, or draw count.
 4. **Bright-star shape.** Give only the brightest population an optional compact procedural cross
    or diffraction spike without adding a texture or draw submission.
 5. **Camera-motion benchmark.** Add a deterministic translation path to the automated A/B benchmark
