@@ -103,6 +103,9 @@ struct SPACEGAME_API FSpatialQueryManager {
                                      FVectors3f const& locations,
                                      TArrayView<bool> const results) const;
 
+    auto get_collision_system() noexcept -> ioj::FCollisionSystem& { return collision; }
+    auto get_collision_system() const noexcept -> ioj::FCollisionSystem const& { return collision; }
+
     void update();
   private:
     friend class query_manager::FThreadBufferLease;
