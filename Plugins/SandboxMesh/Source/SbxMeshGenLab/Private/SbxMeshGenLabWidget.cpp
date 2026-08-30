@@ -59,10 +59,12 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                           8.0f)[SNew(SVerticalBox) +
                                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)
                                     [SNew(STextBlock)
-                                         .Text(NSLOCTEXT("SbxMeshGenLab",
-                                                         "PreviewControls",
-                                                         "Left-drag: rotate | Middle-drag: pan | "
-                                                         "Right-drag or wheel: zoom | F: focus"))
+                                         .Text(NSLOCTEXT(
+                                             "SbxMeshGenLab",
+                                             "PreviewControls",
+                                             "Left-drag: rotate camera | Shift+left-drag: "
+                                             "rotate light | Middle-drag: pan | Right-drag "
+                                             "or wheel: zoom | F: focus"))
                                          .AutoWrapText(true)] +
                                 SVerticalBox::Slot().FillHeight(1.0f)
                                     [SNew(SBox).MinDesiredWidth(320.0f).MinDesiredHeight(320.0f)

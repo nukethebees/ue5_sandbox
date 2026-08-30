@@ -19,6 +19,7 @@ public class SbxMeshGenLab : ModuleRules
             "Blutility",
             "CQTest",
             "Engine",
+            "InputCore",
             "MeshDescription",
             "PropertyEditor",
             "Projects",
