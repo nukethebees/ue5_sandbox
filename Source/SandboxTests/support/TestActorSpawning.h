@@ -25,7 +25,8 @@ void resolve_proxy_entity_bindings(FProxyEntityMap const& proxy_entities,
 
 auto spawn_player_ship(UWorld& world,
                        TSubclassOf<ATestSpaceShip> const player_class,
-                       FPlayerShipConfig const* player_config) -> ATestSpaceShip*;
+                       FPlayerShipConfig const* player_config,
+                       FTransform const& transform = FTransform::Identity) -> ATestSpaceShip*;
 
 auto spawn_capital_proxy(UWorld& world,
                          USpaceGameLevelConfig const& config,
