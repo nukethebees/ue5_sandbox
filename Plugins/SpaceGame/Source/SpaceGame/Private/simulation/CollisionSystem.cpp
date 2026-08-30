@@ -79,6 +79,16 @@ void CollisionUniformGrid::set_cell_dims(FVector3f const cell_dims) noexcept {
     cell_dims_ = cell_dims;
 }
 
+auto CollisionUniformGrid::is_configured() const noexcept -> bool {
+    if (grid_dims_.X <= 0 || grid_dims_.Y <= 0 || grid_dims_.Z <= 0 || cell_dims_.X <= 0.0f ||
+        cell_dims_.Y <= 0.0f || cell_dims_.Z <= 0.0f) {
+        return false;
+    }
+
+    auto const xy_cell_count{static_cast<int64>(grid_dims_.X) * grid_dims_.Y};
+    return xy_cell_count <= (std::numeric_limits<int32>::max() / grid_dims_.Z);
+}
+
 auto CollisionUniformGrid::num_cells() const -> int32 {
     return grid_dims_.X * grid_dims_.Y * grid_dims_.Z;
 }
@@ -110,10 +120,15 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
                                         FEntityAABBs const& entity_aabbs) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid);
 
-    if (grid_dims_.X <= 0 || grid_dims_.Y <= 0 || grid_dims_.Z <= 0 || cell_dims_.X <= 0.0f ||
-        cell_dims_.Y <= 0.0f || cell_dims_.Z <= 0.0f) {
-        reset();
-        return;
+    if (!is_configured()) {
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("Cannot rebuild unconfigured collision grid: cell dimensions are (%g, %g, "
+                    "%g), grid dimensions are %s"),
+               cell_dims_.X,
+               cell_dims_.Y,
+               cell_dims_.Z,
+               *to_string(grid_dims_));
     }
 
     auto const& entity_data{entity_registry.get_entity_data()};

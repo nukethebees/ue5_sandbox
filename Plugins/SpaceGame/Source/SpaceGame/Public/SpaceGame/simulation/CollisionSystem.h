@@ -20,6 +20,7 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     auto get_cell_dims() const noexcept -> FVector3f;
     void set_cell_dims(FVector3f const cell_dims) noexcept;
+    auto is_configured() const noexcept -> bool;
 
     auto num_cells() const -> int32;
     auto get_cell_entities(FIntVector3 const cell_coord) const
