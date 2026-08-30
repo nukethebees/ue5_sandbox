@@ -9,6 +9,7 @@
 #include "Misc/Paths.h"
 #include "StaticMeshAttributes.h"
 #include "StaticMeshOperations.h"
+#include "UObject/MetaData.h"
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
 
@@ -87,6 +88,57 @@ auto has_valid_bounds(FMeshDescription const& mesh_description) -> bool {
     return !bounds.Origin.ContainsNaN() && !bounds.BoxExtent.ContainsNaN() &&
            FMath::IsFinite(bounds.SphereRadius) && bounds.SphereRadius > 0.0;
 }
+
+auto has_valid_mesh_data(FSbxMeshData const& mesh_data) -> bool {
+    if (mesh_data.positions.IsEmpty() || mesh_data.indices.IsEmpty() ||
+        mesh_data.indices.Num() % 3 != 0 || mesh_data.normals.Num() != mesh_data.positions.Num() ||
+        mesh_data.uvs.Num() != mesh_data.positions.Num()) {
+        return false;
+    }
+
+    auto const vertex_count{static_cast<uint32>(mesh_data.positions.Num())};
+    for (auto const index : mesh_data.indices) {
+        if (index >= vertex_count) {
+            return false;
+        }
+    }
+    return true;
+}
+
+auto build_static_mesh(UStaticMesh& static_mesh,
+                       FSbxMeshData const& mesh_data,
+                       bool const fast_build) -> bool {
+    if (!has_valid_mesh_data(mesh_data)) {
+        UE_LOG(LogSbxMeshGenLab, Error, TEXT("Generated mesh buffers are invalid."));
+        return false;
+    }
+
+    auto mesh_description{make_mesh_description(mesh_data)};
+    FStaticMeshOperations::ComputeTriangleTangentsAndNormals(mesh_description);
+    FStaticMeshOperations::ComputeTangentsAndNormals(mesh_description, EComputeNTBsFlags::Tangents);
+    if (!has_valid_bounds(mesh_description)) {
+        UE_LOG(LogSbxMeshGenLab, Error, TEXT("Generated mesh has invalid bounds."));
+        return false;
+    }
+
+    TArray<FMeshDescription const*> mesh_descriptions{&mesh_description};
+    static_mesh.Modify();
+    static_mesh.PreEditChange(nullptr);
+    static_mesh.GetStaticMaterials().Reset();
+    static_mesh.GetStaticMaterials().Add(FStaticMaterial{});
+    static_mesh.SetNumSourceModels(1);
+
+    auto& build_settings{static_mesh.GetSourceModel(0).BuildSettings};
+    build_settings.bRecomputeNormals = false;
+    build_settings.bRecomputeTangents = false;
+    build_settings.bGenerateLightmapUVs = false;
+
+    UStaticMesh::FBuildMeshDescriptionsParams build_parameters{};
+    build_parameters.bFastBuild = fast_build;
+    static_mesh.BuildFromMeshDescriptions(mesh_descriptions, build_parameters);
+    static_mesh.PostEditChange();
+    return true;
+}
 }
 
 auto get_generated_asset_filename(FName const asset_name) -> FString {
@@ -99,8 +151,17 @@ auto get_generated_asset_object_path(FName const asset_name) -> FString {
     return FString::Printf(TEXT("%s.%s"), *package_name, *asset_name.ToString());
 }
 
-auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data, FName const asset_name)
-    -> UStaticMesh* {
+auto create_transient_static_mesh(FSbxMeshData const& mesh_data) -> UStaticMesh* {
+    auto* const static_mesh{NewObject<UStaticMesh>(GetTransientPackage(), NAME_None, RF_Transient)};
+    if (static_mesh == nullptr || !build_static_mesh(*static_mesh, mesh_data, true)) {
+        return nullptr;
+    }
+    return static_mesh;
+}
+
+auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data,
+                                       FName const asset_name,
+                                       FString const& generation_description) -> UStaticMesh* {
     if (!ensure_generated_content_directory()) {
         return nullptr;
     }
@@ -127,34 +188,16 @@ auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data, FName cons
         return nullptr;
     }
 
-    auto mesh_description{make_mesh_description(mesh_data)};
-    FStaticMeshOperations::ComputeTriangleTangentsAndNormals(mesh_description);
-    FStaticMeshOperations::ComputeTangentsAndNormals(mesh_description, EComputeNTBsFlags::Tangents);
-    if (!has_valid_bounds(mesh_description)) {
-        UE_LOG(LogSbxMeshGenLab,
-               Error,
-               TEXT("Generated mesh has invalid bounds and will not be built: %s"),
-               *object_path);
+    if (!build_static_mesh(*static_mesh, mesh_data, false)) {
+        UE_LOG(
+            LogSbxMeshGenLab, Error, TEXT("Generated mesh could not be built: %s"), *object_path);
         return nullptr;
     }
 
-    TArray<FMeshDescription const*> mesh_descriptions{&mesh_description};
-
-    static_mesh->Modify();
-    static_mesh->PreEditChange(nullptr);
-    static_mesh->GetStaticMaterials().Reset();
-    static_mesh->GetStaticMaterials().Add(FStaticMaterial{});
-    static_mesh->SetNumSourceModels(1);
-
-    auto& build_settings{static_mesh->GetSourceModel(0).BuildSettings};
-    build_settings.bRecomputeNormals = false;
-    build_settings.bRecomputeTangents = false;
-    build_settings.bGenerateLightmapUVs = false;
-
-    UStaticMesh::FBuildMeshDescriptionsParams build_parameters{};
-    build_parameters.bFastBuild = false;
-    static_mesh->BuildFromMeshDescriptions(mesh_descriptions, build_parameters);
-    static_mesh->PostEditChange();
+    if (!generation_description.IsEmpty()) {
+        package->GetMetaData().SetValue(
+            static_mesh, TEXT("SandboxMesh.MeshGenLab.Generation"), *generation_description);
+    }
     static_mesh->MarkPackageDirty();
 
     if (is_new_asset) {

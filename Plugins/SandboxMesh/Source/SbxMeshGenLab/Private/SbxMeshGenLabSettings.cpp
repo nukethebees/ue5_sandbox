@@ -1,0 +1,46 @@
+#include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
+
+auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
+    auto request{SandboxMesh::make_default_mesh_request(shape)};
+    request.asset_name = asset_name;
+    request.box.dimensions = FVector3f{static_cast<float>(box_dimensions.X),
+                                       static_cast<float>(box_dimensions.Y),
+                                       static_cast<float>(box_dimensions.Z)};
+    request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
+    request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
+    request.cone = {cone_radius, cone_height, cone_radial_segments};
+    request.hex_frame = {
+        hex_frame_outer_radius, hex_frame_wall_thickness, hex_frame_depth, hex_frame_pointy_top};
+    request.honeycomb_panel = {honeycomb_rows,
+                               honeycomb_columns,
+                               honeycomb_cell_radius,
+                               honeycomb_wall_thickness,
+                               honeycomb_depth,
+                               honeycomb_pointy_top};
+    return request;
+}
+
+void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& request) {
+    shape = request.shape;
+    asset_name = request.asset_name;
+    box_dimensions = FVector{request.box.dimensions};
+    cylinder_radius = request.cylinder.radius;
+    cylinder_height = request.cylinder.height;
+    cylinder_radial_segments = request.cylinder.radial_segments;
+    sphere_radius = request.sphere.radius;
+    sphere_longitude_segments = request.sphere.longitude_segments;
+    sphere_latitude_segments = request.sphere.latitude_segments;
+    cone_radius = request.cone.radius;
+    cone_height = request.cone.height;
+    cone_radial_segments = request.cone.radial_segments;
+    hex_frame_outer_radius = request.hex_frame.outer_radius;
+    hex_frame_wall_thickness = request.hex_frame.wall_thickness;
+    hex_frame_depth = request.hex_frame.depth;
+    hex_frame_pointy_top = request.hex_frame.pointy_top;
+    honeycomb_rows = request.honeycomb_panel.rows;
+    honeycomb_columns = request.honeycomb_panel.columns;
+    honeycomb_cell_radius = request.honeycomb_panel.cell_radius;
+    honeycomb_wall_thickness = request.honeycomb_panel.wall_thickness;
+    honeycomb_depth = request.honeycomb_panel.depth;
+    honeycomb_pointy_top = request.honeycomb_panel.pointy_top;
+}

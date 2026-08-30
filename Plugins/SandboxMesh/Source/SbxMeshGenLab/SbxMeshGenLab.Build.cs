@@ -20,6 +20,7 @@ public class SbxMeshGenLab : ModuleRules
             "CQTest",
             "Engine",
             "MeshDescription",
+            "PropertyEditor",
             "Projects",
             "Slate",
             "SlateCore",
