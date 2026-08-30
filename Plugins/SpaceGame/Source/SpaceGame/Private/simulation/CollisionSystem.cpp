@@ -106,6 +106,9 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
     cell_entity_counts_.Reset();
     cell_entity_counts_.AddZeroed(n_cells);
 
+    cell_entity_offsets_.Reset();
+    cell_entity_offsets_.AddZeroed(n_cells);
+
     entities_buffer_.reset();
 
     for (int32 i{0}; i < entity_count; ++i) {
