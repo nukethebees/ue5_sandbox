@@ -102,6 +102,9 @@ Content/Fab
 # CQ Test maps
 /Content/CQTestMapTemp
 
+# Disposable Niagara experiment output
+/Plugins/SandboxNiagara/Content/Generated/
+
 # Assets
 Content/Purchased
 Content/Purchased/Derived
