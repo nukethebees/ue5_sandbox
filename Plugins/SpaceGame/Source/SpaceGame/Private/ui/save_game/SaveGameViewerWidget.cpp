@@ -178,6 +178,19 @@ void USaveGameViewerWidget::handle_activate_profile() {
     refresh_and_select(selected_profile_id_);
 }
 
+void USaveGameViewerWidget::handle_reset_test_profile() {
+    auto* const save_subsystem{resolve_save_subsystem()};
+    if (!IsValid(save_subsystem) || !save_subsystem->reset_test_profile()) {
+        UE_LOG(LogSandboxUI,
+               Warning,
+               TEXT("USaveGameViewerWidget::handle_reset_test_profile: Failed to reset the test "
+                    "profile."));
+        return;
+    }
+
+    refresh_and_select(save_subsystem->get_active_profile_id());
+}
+
 auto USaveGameViewerWidget::resolve_browser() -> FSaveGameBrowser* {
     if (browser_override_) {
         return browser_override_;
@@ -222,6 +235,34 @@ void USaveGameViewerWidget::show_create_profile_error(FText const& error) {
     profile_create_error_text->SetVisibility(ESlateVisibility::Visible);
 }
 
+void USaveGameViewerWidget::add_test_profile_button() {
+#if !UE_BUILD_SHIPPING
+    auto* button{Cast<UButton>(WidgetTree->FindWidget(TEXT("reset_test_profile_button")))};
+    if (!IsValid(button)) {
+        button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),
+                                                      TEXT("reset_test_profile_button"));
+        auto* const label{WidgetTree->ConstructWidget<UTextBlock>(
+            UTextBlock::StaticClass(), TEXT("reset_test_profile_button_label"))};
+        if (!IsValid(button) || !IsValid(label)) {
+            UE_LOG(LogSandboxUI,
+                   Error,
+                   TEXT("USaveGameViewerWidget::add_test_profile_button: Failed to construct the "
+                        "test profile button."));
+            return;
+        }
+
+        label->SetText(NSLOCTEXT("SaveGameViewer", "CreateTestProfile", "Create Test Profile"));
+        button->SetContent(label);
+        button->SetToolTipText(NSLOCTEXT("SaveGameViewer",
+                                         "ResetTestProfileTooltip",
+                                         "Create or replace the deterministic test profile."));
+        button->OnClicked.AddUniqueDynamic(this, &ThisClass::handle_reset_test_profile);
+    }
+
+    profile_list->AddChild(button);
+#endif
+}
+
 void USaveGameViewerWidget::rebuild_profiles() {
     if (!IsValid(profile_row_widget_class_)) {
         profile_row_widget_class_ = LoadClass<USaveGameRowWidget>(
@@ -248,6 +289,7 @@ void USaveGameViewerWidget::rebuild_profiles() {
     auto const profiles{browser ? browser->get_summaries()
                                 : TConstArrayView<FSaveProfileSummary>{}};
     if (profiles.IsEmpty()) {
+        add_test_profile_button();
         show_empty_profiles();
         return;
     }
@@ -273,6 +315,8 @@ void USaveGameViewerWidget::rebuild_profiles() {
         profile_list->AddChild(row);
         profile_rows_.Add(row);
     }
+
+    add_test_profile_button();
 
     auto const previous_selection{selected_profile_id_};
     selected_profile_id_.Reset();

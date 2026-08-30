@@ -97,9 +97,12 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void handle_cancel_create_profile();
     UFUNCTION()
     void handle_activate_profile();
+    UFUNCTION()
+    void handle_reset_test_profile();
 
     auto resolve_browser() -> FSaveGameBrowser*;
     auto resolve_save_subsystem() const -> USpaceSaveSubsystem*;
+    void add_test_profile_button();
     void refresh_and_select(FString const& profile_id);
     void show_create_profile_error(FText const& error);
     void rebuild_profiles();

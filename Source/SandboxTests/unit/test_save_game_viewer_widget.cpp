@@ -113,17 +113,21 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
             Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("active_profile_text")))};
         auto* const activate_profile_button{
             Cast<UButton>(widget->GetWidgetFromName(TEXT("activate_profile_button")))};
-        auto const bindings_valid{IsValid(profile_list) && IsValid(outcome_list) &&
-                                  IsValid(profile_name) && IsValid(outcome_empty_state) &&
-                                  IsValid(result_sections) && IsValid(refresh_button) &&
-                                  IsValid(create_profile_button) && IsValid(create_profile_panel) &&
-                                  IsValid(cancel_create_profile_button) &&
-                                  IsValid(active_profile_text) && IsValid(activate_profile_button)};
+        auto* const reset_test_profile_button{
+            Cast<UButton>(widget->GetWidgetFromName(TEXT("reset_test_profile_button")))};
+        auto const bindings_valid{
+            IsValid(profile_list) && IsValid(outcome_list) && IsValid(profile_name) &&
+            IsValid(outcome_empty_state) && IsValid(result_sections) && IsValid(refresh_button) &&
+            IsValid(create_profile_button) && IsValid(create_profile_panel) &&
+            IsValid(cancel_create_profile_button) && IsValid(active_profile_text) &&
+            IsValid(activate_profile_button) && IsValid(reset_test_profile_button)};
         if (!TestRunner->TestTrue(TEXT("Viewer bindings are valid"), bindings_valid)) {
             return;
         }
 
-        TestRunner->TestEqual(TEXT("All profiles are listed"), profile_list->GetChildrenCount(), 3);
+        TestRunner->TestEqual(TEXT("All profiles and the test action are listed"),
+                              profile_list->GetChildrenCount(),
+                              4);
         TestRunner->TestEqual(
             TEXT("Selected profile outcomes are indexed"), outcome_list->GetChildrenCount(), 2);
         TestRunner->TestEqual(TEXT("Every outcome has a full result section"),
@@ -205,7 +209,7 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
 
         refresh_button->OnClicked.Broadcast();
         TestRunner->TestEqual(
-            TEXT("Refresh rebuilds without duplication"), profile_list->GetChildrenCount(), 3);
+            TEXT("Refresh rebuilds without duplication"), profile_list->GetChildrenCount(), 4);
         TestRunner->TestEqual(TEXT("Refresh preserves the selected profile"),
                               profile_name->GetText().ToString(),
                               FString{TEXT("Empty Profile")});
