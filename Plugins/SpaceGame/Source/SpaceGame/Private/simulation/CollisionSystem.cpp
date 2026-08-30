@@ -86,14 +86,9 @@ auto CollisionUniformGrid::num_cells() const -> int32 {
 auto CollisionUniformGrid::get_cell_entities(FIntVector3 const cell_coord) const
     -> TConstArrayView<FRegistryEntityHandle> {
     checkf(is_cell_coord_in_bounds(cell_coord),
-           TEXT("Collision grid cell coordinate (%d, %d, %d) is outside grid dimensions (%d, %d, "
-                "%d)"),
-           cell_coord.X,
-           cell_coord.Y,
-           cell_coord.Z,
-           grid_dims_.X,
-           grid_dims_.Y,
-           grid_dims_.Z);
+           TEXT("Collision grid cell coordinate %s is outside grid dimensions %s"),
+           *to_string(cell_coord),
+           *to_string(grid_dims_));
 
     auto const cell_index{to_index(cell_coord)};
     return TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(cell_entity_offsets_[cell_index],
@@ -279,6 +274,9 @@ auto CollisionUniformGrid::to_max_cell_coord(FVector3f const pos) const -> FIntV
 auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const coord) const -> bool {
     return coord.X >= 0 && coord.X < grid_dims_.X && coord.Y >= 0 && coord.Y < grid_dims_.Y &&
            coord.Z >= 0 && coord.Z < grid_dims_.Z;
+}
+auto CollisionUniformGrid::to_string(FIntVector3 const value) -> FString {
+    return FString::Printf(TEXT("(%d, %d, %d)"), value.X, value.Y, value.Z);
 }
 auto CollisionUniformGrid::to_index(int32 const x, int32 const y, int32 const z) const -> int32 {
     return x + (y * grid_dims_.X) + (z * grid_dims_.X * grid_dims_.Y);

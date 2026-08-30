@@ -28,6 +28,7 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_min_cell_coord(FVector3f pos) const -> FIntVector3;
     auto to_max_cell_coord(FVector3f pos) const -> FIntVector3;
     auto is_cell_coord_in_bounds(FIntVector3 coord) const -> bool;
+    static auto to_string(FIntVector3 value) -> FString;
 
     void reset();
     void rebuild_grid(FTestEntityRegistry const& entity_registry, FEntityAABBs const& entity_aabbs);
