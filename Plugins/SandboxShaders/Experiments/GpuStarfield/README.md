@@ -82,20 +82,26 @@ cmake --workflow --preset gpu-starfield-benchmark
 
 The benchmark uses the showcase camera at 1280x720 with deterministic timing, but hides and stops
 the other placed showcase experiments. For each star count it alternates disabled and enabled
-captures across three repeats, with 60 warmup frames followed by 180 measured frames per capture.
-The CTest wrapper validates that enabling the starfield adds exactly one translucency draw and two
-rendered primitives per star, then writes raw captures and consolidated CSV/Markdown reports below
+captures across three repeats in both stationary and moving-camera modes, with 60 warmup frames
+followed by 180 measured frames per capture. The moving mode follows a deterministic curved path
+covering 10,000 km. The actor verifies the camera completed at least 95% of that distance. The CTest
+wrapper validates that enabling the starfield adds exactly one translucency draw and two rendered
+primitives per star in both modes, and that every measured moving frame retains the full star
+primitive count. It then writes raw captures and consolidated CSV/Markdown reports below
 `Saved/Benchmarks/GpuStarfield`. `latest.txt` identifies the most recent successful run.
 
 The following Development results were measured on the same RTX 5090 and Ryzen 9 9950X3D system.
 Values are medians of the three paired enabled-minus-disabled capture medians. The direct submission
 scope measures `GetDynamicMeshElements`, which UE schedules on a worker in this configuration.
 
-| Stars | Whole GT delta ms | Whole RT delta ms | Submit CPU ms | Whole GPU delta ms | Translucency GPU delta ms | Draw delta |
-| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10,000 | 0.0632 | 0.1136 | 0.0064 | 0.0689 | 0.0169 | 1 |
-| 100,000 | 0.0618 | 0.1017 | 0.0063 | 0.1090 | 0.0611 | 1 |
-| 1,000,000 | 0.0099 | 0.0490 | 0.0061 | 0.5605 | 0.5019 | 1 |
+| Stars | Camera | Whole GT delta ms | Whole RT delta ms | Submit CPU ms | Whole GPU delta ms | Translucency GPU delta ms | Draw delta |
+| ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 10,000 | Stationary | 0.0209 | 0.1093 | 0.0082 | 0.0663 | 0.0165 | 1 |
+| 10,000 | Moving | -0.0735 | -0.0157 | 0.0066 | 0.0560 | 0.0165 | 1 |
+| 100,000 | Stationary | 0.0723 | 0.0984 | 0.0073 | 0.1113 | 0.0608 | 1 |
+| 100,000 | Moving | 0.0220 | 0.0893 | 0.0069 | 0.1094 | 0.0606 | 1 |
+| 1,000,000 | Stationary | 0.0346 | 0.0473 | 0.0072 | 0.5703 | 0.5020 | 1 |
+| 1,000,000 | Moving | -0.0076 | 0.0497 | 0.0072 | 0.5606 | 0.5005 | 1 |
 
 The whole-frame CPU deltas are small enough to remain sensitive to ordinary frame-to-frame
 scheduling noise. The directly instrumented mesh submission remains below 0.01 ms and does not
@@ -104,7 +110,8 @@ scale with star count. GPU work scales with the number of unculled quads, reachi
 and colour to the existing record did not increase its 32-byte size or its one-draw architecture;
 the measured GPU result remained within run-to-run variation of the single-depth implementation.
 The subpixel footprint, energy correction, and default subtle bright-star shape also remained within
-that variation.
+that variation. Moving the camera across the 10,000-km path did not add measurable starfield GPU
+cost or change its draw/primitive counts. Whole-frame render-thread differences remain noisy.
 
 ## Initial whole-showcase profiling baseline
 
@@ -161,7 +168,8 @@ no per-star CPU work per frame.
 4. **Bright-star shape — complete.** The brightest population can now receive a configurable
    procedural cross around its radial core. Strength zero preserves the circular path, and the
    effect adds no texture, star data, or draw submission.
-5. **Camera-motion benchmark.** Add a deterministic translation path to the automated A/B benchmark
-   to validate parallax stability, bounds behavior, and motion cost.
+5. **Camera-motion benchmark — complete.** The automated benchmark now compares stationary and
+   deterministic 10,000-km moving-camera A/B captures, verifies the camera travel, and checks the
+   full one-draw primitive submission survives every measured moving frame.
 6. **Coarse GPU culling, if justified.** Evaluate frustum and projected-size culling only after
    representative hardware and resolution measurements show that unculled quads need it.

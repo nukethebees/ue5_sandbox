@@ -5,6 +5,7 @@
 #include "Engine/Level.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/PlayerController.h"
 #include "HAL/FileManager.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -18,6 +19,8 @@ namespace {
 constexpr int32 default_warmup_frames{60};
 constexpr int32 default_capture_frames{180};
 constexpr int32 default_repeat_count{3};
+constexpr double benchmark_camera_distance{1000000000.0};
+constexpr double benchmark_camera_lateral_distance{50000000.0};
 
 auto parse_star_counts() -> TArray<int32> {
     FString values;
@@ -68,7 +71,13 @@ void AGpuStarfieldExperimentActor::EndPlay(EEndPlayReason::Type const end_play_r
 void AGpuStarfieldExperimentActor::Tick(float const delta_seconds) {
     Super::Tick(delta_seconds);
 
-    if (!benchmark_active_ || benchmark_capture_pending_) {
+    if (!benchmark_active_) {
+        return;
+    }
+
+    update_benchmark_camera();
+
+    if (benchmark_capture_pending_) {
         return;
     }
 
@@ -132,9 +141,12 @@ void AGpuStarfieldExperimentActor::start_benchmark() {
 
     for (auto const star_count : star_counts) {
         for (int32 repeat_index{0}; repeat_index < repeat_count; ++repeat_index) {
-            auto const enabled_first{repeat_index % 2 == 1};
-            benchmark_phases_.Add({star_count, repeat_index, enabled_first});
-            benchmark_phases_.Add({star_count, repeat_index, !enabled_first});
+            for (auto const camera_motion : {false, true}) {
+                auto const enabled_first{(repeat_index + static_cast<int32>(camera_motion)) % 2 ==
+                                         1};
+                benchmark_phases_.Add({star_count, repeat_index, enabled_first, camera_motion});
+                benchmark_phases_.Add({star_count, repeat_index, !enabled_first, camera_motion});
+            }
         }
     }
 
@@ -144,6 +156,25 @@ void AGpuStarfieldExperimentActor::start_benchmark() {
         FPlatformMisc::RequestExitWithStatus(true, 1);
         return;
     }
+
+    for (TActorIterator<ACameraActor> camera_iterator{world}; camera_iterator; ++camera_iterator) {
+        auto* const camera{*camera_iterator};
+        if (camera->GetLevel() == GetLevel()) {
+            benchmark_camera_ = camera;
+            benchmark_camera_origin_ = camera->GetActorLocation();
+            break;
+        }
+    }
+
+    auto* const player_controller{world->GetFirstPlayerController()};
+    if (!benchmark_camera_.IsValid() || player_controller == nullptr) {
+        UE_LOG(LogGpuStarfieldBenchmark,
+               Error,
+               TEXT("Benchmark requires a showcase camera and player controller."));
+        FPlatformMisc::RequestExitWithStatus(true, 1);
+        return;
+    }
+    player_controller->SetViewTarget(benchmark_camera_.Get());
 
     for (TActorIterator<AActor> actor_iterator{world}; actor_iterator; ++actor_iterator) {
         auto* const actor{*actor_iterator};
@@ -164,25 +195,30 @@ void AGpuStarfieldExperimentActor::begin_benchmark_phase() {
     settings.star_count = phase.star_count;
     apply_settings();
     starfield_component_->SetVisibility(phase.enabled, true);
+    benchmark_camera_->SetActorLocation(benchmark_camera_origin_);
     FlushRenderingCommands();
 
     benchmark_frames_remaining_ = benchmark_warmup_frames_;
+    benchmark_motion_frame_ = 0;
+    benchmark_max_camera_distance_ = 0.0;
     benchmark_capture_pending_ = false;
 
     UE_LOG(LogGpuStarfieldBenchmark,
            Display,
-           TEXT("Warming phase %d/%d: %d stars, %s, repeat %d."),
+           TEXT("Warming phase %d/%d: %d stars, %s, %s camera, repeat %d."),
            benchmark_phase_index_ + 1,
            benchmark_phases_.Num(),
            phase.star_count,
            phase.enabled ? TEXT("enabled") : TEXT("disabled"),
+           phase.camera_motion ? TEXT("moving") : TEXT("stationary"),
            phase.repeat_index + 1);
 }
 
 void AGpuStarfieldExperimentActor::begin_csv_capture() {
     auto const& phase{benchmark_phases_[benchmark_phase_index_]};
-    auto const filename{FString::Printf(TEXT("gpu_starfield_%d_%s_r%d.csv"),
+    auto const filename{FString::Printf(TEXT("gpu_starfield_%d_%s_%s_r%d.csv"),
                                         phase.star_count,
+                                        phase.camera_motion ? TEXT("moving") : TEXT("stationary"),
                                         phase.enabled ? TEXT("enabled") : TEXT("disabled"),
                                         phase.repeat_index + 1)};
 
@@ -206,6 +242,19 @@ void AGpuStarfieldExperimentActor::finish_benchmark_phase(FString const& filenam
     FCsvProfiler::Get()->OnCSVProfileFinished().Remove(csv_finished_delegate_);
     csv_finished_delegate_.Reset();
 
+    auto const& phase{benchmark_phases_[benchmark_phase_index_]};
+    if (phase.camera_motion && benchmark_max_camera_distance_ < benchmark_camera_distance * 0.95) {
+        UE_LOG(LogGpuStarfieldBenchmark,
+               Error,
+               TEXT("Moving benchmark reached only %.2f km of the required %.2f km."),
+               benchmark_max_camera_distance_ / 100000.0,
+               benchmark_camera_distance / 100000.0);
+        benchmark_active_ = false;
+        SetActorTickEnabled(false);
+        FPlatformMisc::RequestExitWithStatus(true, 1);
+        return;
+    }
+
     UE_LOG(LogGpuStarfieldBenchmark, Display, TEXT("Finished %s"), *filename);
     ++benchmark_phase_index_;
     if (benchmark_phase_index_ >= benchmark_phases_.Num()) {
@@ -216,4 +265,30 @@ void AGpuStarfieldExperimentActor::finish_benchmark_phase(FString const& filenam
     }
 
     begin_benchmark_phase();
+}
+
+void AGpuStarfieldExperimentActor::update_benchmark_camera() {
+    auto* const camera{benchmark_camera_.Get()};
+    if (camera == nullptr || !benchmark_phases_.IsValidIndex(benchmark_phase_index_)) {
+        return;
+    }
+
+    auto const& phase{benchmark_phases_[benchmark_phase_index_]};
+    if (!phase.camera_motion) {
+        return;
+    }
+
+    auto const total_frames{FMath::Max(benchmark_warmup_frames_ + benchmark_capture_frames_, 2)};
+    auto const alpha{FMath::Clamp(static_cast<double>(benchmark_motion_frame_) /
+                                      static_cast<double>(total_frames - 1),
+                                  0.0,
+                                  1.0)};
+    auto const offset{FVector{benchmark_camera_distance * alpha,
+                              benchmark_camera_lateral_distance * FMath::Sin(2.0 * PI * alpha),
+                              benchmark_camera_lateral_distance * 0.25 * FMath::Sin(PI * alpha)}};
+    camera->SetActorLocation(benchmark_camera_origin_ + offset);
+    benchmark_max_camera_distance_ =
+        FMath::Max(benchmark_max_camera_distance_,
+                   FVector::Distance(camera->GetActorLocation(), benchmark_camera_origin_));
+    ++benchmark_motion_frame_;
 }

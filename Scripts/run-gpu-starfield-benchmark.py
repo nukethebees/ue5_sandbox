@@ -28,13 +28,17 @@ class CaptureSummary:
     star_count: int
     repeat_index: int
     enabled: bool
+    camera_motion: bool
     frame_count: int
     medians: dict[str, float]
+    minima: dict[str, float]
+    maxima: dict[str, float]
 
 
 @dataclass(frozen=True)
 class BenchmarkDelta:
     star_count: int
+    camera_motion: bool
     metric: str
     disabled_median: float
     enabled_median: float
@@ -117,6 +121,7 @@ def read_capture(
     star_count: int,
     repeat_index: int,
     enabled: bool,
+    camera_motion: bool,
     trim_frames: int,
 ) -> CaptureSummary:
     with path.open("r", encoding="utf-8-sig", errors="replace", newline="") as csv_file:
@@ -157,14 +162,29 @@ def read_capture(
         raise RuntimeError(f"Capture has only {frame_count} frames: {path}")
 
     medians: dict[str, float] = {}
+    minima: dict[str, float] = {}
+    maxima: dict[str, float] = {}
     for name, samples in values.items():
         if not samples:
             medians[name] = 0.0
+            minima[name] = 0.0
+            maxima[name] = 0.0
             continue
         trimmed = samples[trim_frames:-trim_frames]
         medians[name] = statistics.median(trimmed) if trimmed else 0.0
+        minima[name] = min(trimmed) if trimmed else 0.0
+        maxima[name] = max(trimmed) if trimmed else 0.0
 
-    return CaptureSummary(star_count, repeat_index, enabled, frame_count, medians)
+    return CaptureSummary(
+        star_count,
+        repeat_index,
+        enabled,
+        camera_motion,
+        frame_count,
+        medians,
+        minima,
+        maxima,
+    )
 
 
 def load_captures(
@@ -176,14 +196,26 @@ def load_captures(
     captures: list[CaptureSummary] = []
     for star_count in counts:
         for repeat_index in range(1, repeats + 1):
-            for enabled in (False, True):
-                state = "enabled" if enabled else "disabled"
-                path = raw_directory / f"gpu_starfield_{star_count}_{state}_r{repeat_index}.csv"
-                if not path.is_file():
-                    raise RuntimeError(f"Expected capture was not produced: {path}")
-                captures.append(
-                    read_capture(path, star_count, repeat_index, enabled, trim_frames)
-                )
+            for camera_motion in (False, True):
+                motion = "moving" if camera_motion else "stationary"
+                for enabled in (False, True):
+                    state = "enabled" if enabled else "disabled"
+                    path = (
+                        raw_directory
+                        / f"gpu_starfield_{star_count}_{motion}_{state}_r{repeat_index}.csv"
+                    )
+                    if not path.is_file():
+                        raise RuntimeError(f"Expected capture was not produced: {path}")
+                    captures.append(
+                        read_capture(
+                            path,
+                            star_count,
+                            repeat_index,
+                            enabled,
+                            camera_motion,
+                            trim_frames,
+                        )
+                    )
     return captures
 
 
@@ -191,57 +223,99 @@ def calculate_deltas(
     captures: list[CaptureSummary], counts: list[int], repeats: int
 ) -> list[BenchmarkDelta]:
     by_key = {
-        (capture.star_count, capture.repeat_index, capture.enabled): capture
+        (
+            capture.star_count,
+            capture.repeat_index,
+            capture.enabled,
+            capture.camera_motion,
+        ): capture
         for capture in captures
     }
     result: list[BenchmarkDelta] = []
     for star_count in counts:
-        for metric in METRICS:
-            disabled_values: list[float] = []
-            enabled_values: list[float] = []
-            deltas: list[float] = []
-            for repeat_index in range(1, repeats + 1):
-                disabled = by_key[(star_count, repeat_index, False)].medians[metric]
-                enabled = by_key[(star_count, repeat_index, True)].medians[metric]
-                disabled_values.append(disabled)
-                enabled_values.append(enabled)
-                deltas.append(enabled - disabled)
-            result.append(
-                BenchmarkDelta(
-                    star_count=star_count,
-                    metric=metric,
-                    disabled_median=statistics.median(disabled_values),
-                    enabled_median=statistics.median(enabled_values),
-                    delta_median=statistics.median(deltas),
-                    delta_min=min(deltas),
-                    delta_max=max(deltas),
+        for camera_motion in (False, True):
+            for metric in METRICS:
+                disabled_values: list[float] = []
+                enabled_values: list[float] = []
+                deltas: list[float] = []
+                for repeat_index in range(1, repeats + 1):
+                    disabled = by_key[
+                        (star_count, repeat_index, False, camera_motion)
+                    ].medians[metric]
+                    enabled = by_key[
+                        (star_count, repeat_index, True, camera_motion)
+                    ].medians[metric]
+                    disabled_values.append(disabled)
+                    enabled_values.append(enabled)
+                    deltas.append(enabled - disabled)
+                result.append(
+                    BenchmarkDelta(
+                        star_count=star_count,
+                        camera_motion=camera_motion,
+                        metric=metric,
+                        disabled_median=statistics.median(disabled_values),
+                        enabled_median=statistics.median(enabled_values),
+                        delta_median=statistics.median(deltas),
+                        delta_min=min(deltas),
+                        delta_max=max(deltas),
+                    )
                 )
-            )
     return result
 
 
-def validate_results(deltas: list[BenchmarkDelta], counts: list[int]) -> None:
-    by_key = {(delta.star_count, delta.metric): delta for delta in deltas}
+def validate_results(
+    captures: list[CaptureSummary], deltas: list[BenchmarkDelta], counts: list[int]
+) -> None:
+    by_key = {
+        (delta.star_count, delta.camera_motion, delta.metric): delta
+        for delta in deltas
+    }
     errors: list[str] = []
     for star_count in counts:
-        draw_delta = by_key[(star_count, "translucency_draw_calls")].delta_median
-        if not 0.5 <= draw_delta <= 1.5:
-            errors.append(
-                f"{star_count:,} stars changed translucency draws by {draw_delta:.2f}, expected 1"
-            )
+        for camera_motion in (False, True):
+            mode = "moving" if camera_motion else "stationary"
+            draw_delta = by_key[
+                (star_count, camera_motion, "translucency_draw_calls")
+            ].delta_median
+            if not 0.5 <= draw_delta <= 1.5:
+                errors.append(
+                    f"{star_count:,} {mode} stars changed translucency draws by "
+                    f"{draw_delta:.2f}, expected 1"
+                )
 
-        primitive_delta = by_key[(star_count, "primitives_drawn")].delta_median
+            primitive_delta = by_key[
+                (star_count, camera_motion, "primitives_drawn")
+            ].delta_median
+            expected_primitives = star_count * 2
+            tolerance = max(expected_primitives * 0.02, 4.0)
+            if abs(primitive_delta - expected_primitives) > tolerance:
+                errors.append(
+                    f"{star_count:,} {mode} stars changed primitives by "
+                    f"{primitive_delta:.0f}, expected {expected_primitives:,}"
+                )
+
+            submit_time = by_key[
+                (star_count, camera_motion, "starfield_submit_cpu_ms")
+            ].enabled_median
+            if submit_time <= 0.0:
+                errors.append(
+                    f"{star_count:,} {mode} stars did not record the mesh submission scope"
+                )
+
         expected_primitives = star_count * 2
-        tolerance = max(expected_primitives * 0.02, 4.0)
-        if abs(primitive_delta - expected_primitives) > tolerance:
-            errors.append(
-                f"{star_count:,} stars changed primitives by {primitive_delta:.0f}, "
-                f"expected {expected_primitives:,}"
-            )
-
-        submit_time = by_key[(star_count, "starfield_submit_cpu_ms")].enabled_median
-        if submit_time <= 0.0:
-            errors.append(f"{star_count:,} stars did not record the mesh submission scope")
+        moving_captures = [
+            capture
+            for capture in captures
+            if capture.star_count == star_count
+            and capture.camera_motion
+            and capture.enabled
+        ]
+        for capture in moving_captures:
+            if capture.minima["primitives_drawn"] < expected_primitives:
+                errors.append(
+                    f"{star_count:,} moving stars disappeared during repeat "
+                    f"{capture.repeat_index}"
+                )
 
     if errors:
         raise RuntimeError("Benchmark validation failed:\n- " + "\n- ".join(errors))
@@ -253,6 +327,7 @@ def write_csv(path: Path, deltas: list[BenchmarkDelta]) -> None:
         writer.writerow(
             [
                 "star_count",
+                "camera_motion",
                 "metric",
                 "disabled_median",
                 "enabled_median",
@@ -265,6 +340,7 @@ def write_csv(path: Path, deltas: list[BenchmarkDelta]) -> None:
             writer.writerow(
                 [
                     delta.star_count,
+                    "moving" if delta.camera_motion else "stationary",
                     delta.metric,
                     f"{delta.disabled_median:.6f}",
                     f"{delta.enabled_median:.6f}",
@@ -276,50 +352,71 @@ def write_csv(path: Path, deltas: list[BenchmarkDelta]) -> None:
 
 
 def write_markdown(path: Path, deltas: list[BenchmarkDelta], counts: list[int]) -> str:
-    by_key = {(delta.star_count, delta.metric): delta for delta in deltas}
+    by_key = {
+        (delta.star_count, delta.camera_motion, delta.metric): delta
+        for delta in deltas
+    }
     lines = [
         "# GPU starfield isolated A/B benchmark",
         "",
         "Values are medians of paired enabled-minus-disabled captures. The range is the minimum",
         "and maximum paired delta across repeats. CPU totals remain whole-frame deltas; the",
         "starfield submission scope measures only `GetDynamicMeshElements`, which UE schedules on a worker.",
+        "Moving captures translate the camera 10,000 km along a deterministic curved path.",
         "",
-        "| Stars | GT delta ms | RT delta ms | Submit CPU ms | GPU delta ms | Translucency GPU delta ms | Draw delta | Primitive delta |",
-        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+        "| Stars | Camera | GT delta ms | RT delta ms | Submit CPU ms | GPU delta ms | Translucency GPU delta ms | Draw delta | Primitive delta |",
+        "| ---: | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
     ]
     for star_count in counts:
-        game_thread = metric_for(by_key, star_count, "game_thread_ms")
-        render_thread = metric_for(by_key, star_count, "render_thread_ms")
-        submit = metric_for(by_key, star_count, "starfield_submit_cpu_ms")
-        gpu = metric_for(by_key, star_count, "gpu_ms")
-        translucency_gpu = metric_for(by_key, star_count, "translucency_gpu_ms")
-        translucency_draws = metric_for(by_key, star_count, "translucency_draw_calls")
-        primitives = metric_for(by_key, star_count, "primitives_drawn")
-        lines.append(
-            f"| {star_count:,} "
-            f"| {game_thread.delta_median:.4f} "
-            f"| {render_thread.delta_median:.4f} "
-            f"| {submit.enabled_median:.4f} "
-            f"| {gpu.delta_median:.4f} "
-            f"| {translucency_gpu.delta_median:.4f} "
-            f"| {translucency_draws.delta_median:.1f} "
-            f"| {primitives.delta_median:.0f} |"
-        )
+        for camera_motion in (False, True):
+            mode = "Moving" if camera_motion else "Stationary"
+            game_thread = metric_for(
+                by_key, star_count, camera_motion, "game_thread_ms"
+            )
+            render_thread = metric_for(
+                by_key, star_count, camera_motion, "render_thread_ms"
+            )
+            submit = metric_for(
+                by_key, star_count, camera_motion, "starfield_submit_cpu_ms"
+            )
+            gpu = metric_for(by_key, star_count, camera_motion, "gpu_ms")
+            translucency_gpu = metric_for(
+                by_key, star_count, camera_motion, "translucency_gpu_ms"
+            )
+            translucency_draws = metric_for(
+                by_key, star_count, camera_motion, "translucency_draw_calls"
+            )
+            primitives = metric_for(
+                by_key, star_count, camera_motion, "primitives_drawn"
+            )
+            lines.append(
+                f"| {star_count:,} "
+                f"| {mode} "
+                f"| {game_thread.delta_median:.4f} "
+                f"| {render_thread.delta_median:.4f} "
+                f"| {submit.enabled_median:.4f} "
+                f"| {gpu.delta_median:.4f} "
+                f"| {translucency_gpu.delta_median:.4f} "
+                f"| {translucency_draws.delta_median:.1f} "
+                f"| {primitives.delta_median:.0f} |"
+            )
 
     lines.extend(["", "Paired delta ranges:", ""])
     for star_count in counts:
-        lines.append(f"- {star_count:,} stars:")
-        for name in (
-            "game_thread_ms",
-            "render_thread_ms",
-            "gpu_ms",
-            "translucency_gpu_ms",
-        ):
-            delta = metric_for(by_key, star_count, name)
-            lines.append(
-                f"  - `{name}`: {delta.delta_median:.4f} ms "
-                f"[{delta.delta_min:.4f}, {delta.delta_max:.4f}]"
-            )
+        for camera_motion in (False, True):
+            mode = "moving" if camera_motion else "stationary"
+            lines.append(f"- {star_count:,} stars, {mode} camera:")
+            for name in (
+                "game_thread_ms",
+                "render_thread_ms",
+                "gpu_ms",
+                "translucency_gpu_ms",
+            ):
+                delta = metric_for(by_key, star_count, camera_motion, name)
+                lines.append(
+                    f"  - `{name}`: {delta.delta_median:.4f} ms "
+                    f"[{delta.delta_min:.4f}, {delta.delta_max:.4f}]"
+                )
 
     report = "\n".join(lines) + "\n"
     path.write_text(report, encoding="utf-8")
@@ -327,9 +424,12 @@ def write_markdown(path: Path, deltas: list[BenchmarkDelta], counts: list[int]) 
 
 
 def metric_for(
-    by_key: dict[tuple[int, str], BenchmarkDelta], star_count: int, name: str
+    by_key: dict[tuple[int, bool, str], BenchmarkDelta],
+    star_count: int,
+    camera_motion: bool,
+    name: str,
 ) -> BenchmarkDelta:
-    return by_key[(star_count, name)]
+    return by_key[(star_count, camera_motion, name)]
 
 
 def main() -> int:
@@ -344,7 +444,7 @@ def main() -> int:
     run_editor(args, raw_directory, log_path)
     captures = load_captures(raw_directory, counts, args.repeats, args.trim_frames)
     deltas = calculate_deltas(captures, counts, args.repeats)
-    validate_results(deltas, counts)
+    validate_results(captures, deltas, counts)
 
     write_csv(run_directory / "GpuStarfieldBenchmark.csv", deltas)
     report = write_markdown(run_directory / "GpuStarfieldBenchmark.md", deltas, counts)
