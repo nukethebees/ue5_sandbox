@@ -56,6 +56,8 @@ struct SPACEGAME_API FCollisionSystem {
     void update();
 
     auto get_entity_aabbs() const noexcept -> FEntityAABBs const& { return entity_aabbs_; }
+    auto get_uniform_grid() noexcept -> CollisionUniformGrid& { return uniform_grid_; }
+    auto get_uniform_grid() const noexcept -> CollisionUniformGrid const& { return uniform_grid_; }
 
     void set_entity_registry(FTestEntityRegistry const& registry);
   private:
