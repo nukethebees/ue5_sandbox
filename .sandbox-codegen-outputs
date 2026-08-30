@@ -37,6 +37,7 @@ Plugins/SpaceGame/Source/SpaceGame/Private/entities/DirectDamageEventsSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/EntityDeathInfo.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/RegistryEntityHandles.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityRegistryData.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityTypeEnum.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityUniqueEntityDataSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionMode.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp
@@ -58,6 +59,7 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/DirectDamageEventsS
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/EntityDeathInfo.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/RegistryEntityHandles.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityRegistryData.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityType.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityUniqueEntityDataSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h
@@ -68,3 +70,4 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalSh
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFightersSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipPhaseInterface.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityAABBs.h

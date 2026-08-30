@@ -25,6 +25,39 @@
           "conversions": ["lex_to_string", "string_view", "display_string_view"]
         }
       ]
+    },
+    {
+      "kind": "enum",
+      "name": "test_entity_type",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityType.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityTypeEnum.cpp",
+      "header_include": "SpaceGame/entities/TestEntityType.h",
+      "helper_namespace": "ml",
+      "prelude": [
+        "enum class ETestEntityType : uint8;",
+        "namespace ml {",
+        "auto get_entity_display_name(ETestEntityType type) -> FString const&;",
+        "auto get_entity_class_name(ETestEntityType type) -> FString const&;",
+        "auto get_entity_short_name(ETestEntityType type) -> FString const&;",
+        "}"
+      ],
+      "enums": [
+        {
+          "name": "ETestEntityType",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "PlayerShip", "display_name": "Player Ship"},
+            {"name": "Turret"},
+            {"name": "CapitalShip", "display_name": "Capital Ship"},
+            {"name": "CapitalShipFighter", "display_name": "Capital Ship Fighter"},
+            {"name": "TubeSpinner", "display_name": "Tube Spinner"},
+            {"name": "COUNT", "hidden": true}
+          ],
+          "conversions": ["lex_to_string", "string_view", "display_string_view"]
+        }
+      ]
     }
   ]
 }

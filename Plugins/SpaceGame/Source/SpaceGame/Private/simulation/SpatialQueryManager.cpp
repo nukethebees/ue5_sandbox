@@ -2,6 +2,7 @@
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/support/mesh.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
@@ -22,6 +23,7 @@ auto spatial_query_component_less(UPrimitiveComponent const* const lhs,
                                   UPrimitiveComponent const* const rhs) -> bool {
     return std::less<UPrimitiveComponent const*>{}(lhs, rhs);
 }
+
 }
 }
 
@@ -112,6 +114,8 @@ void FSpatialQueryManager::initialise(UWorld& in_world,
         capital_ship_fighters_access.get_spatial_query_component()};
     auto const* const static_turret_instances{static_turrets_access.get_spatial_query_component()};
     auto const* const tube_spinner_instances{tube_spinners_access.get_spatial_query_component()};
+    auto const* const player_ship_mesh{
+        player_ship ? player_ship_access.get_spatial_query_component() : nullptr};
 
     fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(capital_ship_instances),
@@ -124,7 +128,6 @@ void FSpatialQueryManager::initialise(UWorld& in_world,
     component_resolvers.Reserve(std::to_underlying(EHitResolverKind::Count));
 
     if (player_ship) {
-        auto const* const player_ship_mesh{player_ship_access.get_spatial_query_component()};
         fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(player_ship_mesh)});
         component_resolvers.Add({player_ship_mesh, EHitResolverKind::PlayerShipMesh});
     }
@@ -134,6 +137,18 @@ void FSpatialQueryManager::initialise(UWorld& in_world,
         {capital_ship_fighter_instances, EHitResolverKind::CapitalShipFighterInstances});
     component_resolvers.Add({static_turret_instances, EHitResolverKind::StaticTurretInstances});
     component_resolvers.Add({tube_spinner_instances, EHitResolverKind::TubeSpinnerInstances});
+
+    ioj::FCollisionSystem::EntityMeshes meshes{};
+    meshes[std::to_underlying(ETestEntityType::PlayerShip)] = ml::get_static_mesh(player_ship_mesh);
+    meshes[std::to_underlying(ETestEntityType::Turret)] =
+        ml::get_static_mesh(static_turret_instances);
+    meshes[std::to_underlying(ETestEntityType::CapitalShip)] =
+        ml::get_static_mesh(capital_ship_instances);
+    meshes[std::to_underlying(ETestEntityType::CapitalShipFighter)] =
+        ml::get_static_mesh(capital_ship_fighter_instances);
+    meshes[std::to_underlying(ETestEntityType::TubeSpinner)] =
+        ml::get_static_mesh(tube_spinner_instances);
+    collision.initialise(meshes);
 }
 
 auto FSpatialQueryManager::classify_component(UPrimitiveComponent const* const component) const

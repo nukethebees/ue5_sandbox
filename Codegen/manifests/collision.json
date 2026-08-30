@@ -23,6 +23,46 @@
           "operations": ["all"]
         }
       ]
+    },
+    {
+      "kind": "static_table",
+      "name": "entity_aabbs",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityAABBs.h",
+      "namespace": "ml::ioj",
+      "include_order": ["SpaceGame/", "SandboxCore/"],
+      "tables": [
+        {
+          "name": "FEntityAABBs",
+          "export_specifier": "SPACEGAME_API",
+          "rows": [
+            {"name": "space_ship"},
+            {"name": "static_turret"},
+            {"name": "capital_ship"},
+            {"name": "fighter"},
+            {"name": "tube_spinner"}
+          ],
+          "columns": [
+            {"name": "centre_xs", "type": "float"},
+            {"name": "centre_ys", "type": "float"},
+            {"name": "centre_zs", "type": "float"},
+            {"name": "half_extent_xs", "type": "float"},
+            {"name": "half_extent_ys", "type": "float"},
+            {"name": "half_extent_zs", "type": "float"}
+          ],
+          "groups": [
+            {
+              "name": "centre",
+              "type": "@vector_3f_value",
+              "columns": ["centre_xs", "centre_ys", "centre_zs"]
+            },
+            {
+              "name": "half_extents",
+              "type": "@vector_3f_value",
+              "columns": ["half_extent_xs", "half_extent_ys", "half_extent_zs"]
+            }
+          ]
+        }
+      ]
     }
   ]
 }
