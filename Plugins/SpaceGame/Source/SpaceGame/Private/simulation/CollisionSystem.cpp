@@ -140,11 +140,7 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
             continue;
         }
 
-        FVector3f const location{
-            entity_data.locations.xs[i],
-            entity_data.locations.ys[i],
-            entity_data.locations.zs[i],
-        };
+        auto const location{entity_data.locations[i]};
 
         auto const entity_type{entity_data.entity_types[i]};
         auto const half_extents{entity_aabbs.get_half_extents(std::to_underlying(entity_type))};
@@ -213,27 +209,11 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
 
     auto const buffer_count{entities_buffer_.num()};
     for (int32 i{0}; i < buffer_count; ++i) {
-        FIntVector3 const min_coord{
-            entities_buffer_.mins.xs[i],
-            entities_buffer_.mins.ys[i],
-            entities_buffer_.mins.zs[i],
-        };
-        FIntVector3 const max_coord{
-            entities_buffer_.maxes.xs[i],
-            entities_buffer_.maxes.ys[i],
-            entities_buffer_.maxes.zs[i],
-        };
+        auto const min_coord{entities_buffer_.mins[i]};
+        auto const max_coord{entities_buffer_.maxes[i]};
 
-        FVector3f const min_point{
-            entities_buffer_.min_points.xs[i],
-            entities_buffer_.min_points.ys[i],
-            entities_buffer_.min_points.zs[i],
-        };
-        FVector3f const max_point{
-            entities_buffer_.max_points.xs[i],
-            entities_buffer_.max_points.ys[i],
-            entities_buffer_.max_points.zs[i],
-        };
+        auto const min_point{entities_buffer_.min_points[i]};
+        auto const max_point{entities_buffer_.max_points[i]};
 
         for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
             for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
