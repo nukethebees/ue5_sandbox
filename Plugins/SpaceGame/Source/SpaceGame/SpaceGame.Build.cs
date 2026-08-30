@@ -22,6 +22,7 @@ public class SpaceGame : ModuleRules
             "InputCore",
             "RenderCore",
             "UMG",
+            "SGCollision",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]
