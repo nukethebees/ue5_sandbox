@@ -108,3 +108,6 @@ Content/Purchased/Derived
 UltraDynamicSky/
 /Content/__ExternalActors__
 /Content/__ExternalObjects__
+
+# vcpkg
+vcpkg_installed/
