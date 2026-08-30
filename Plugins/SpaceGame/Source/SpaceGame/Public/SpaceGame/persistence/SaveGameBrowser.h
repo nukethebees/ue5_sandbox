@@ -30,6 +30,7 @@ struct SPACEGAME_API FSaveProfileSummary {
     float total_simulation_duration_seconds{};
     int32 total_kills{};
     int32 outcome_count{};
+    bool active{};
 };
 
 struct SPACEGAME_API FSaveProfileReport {

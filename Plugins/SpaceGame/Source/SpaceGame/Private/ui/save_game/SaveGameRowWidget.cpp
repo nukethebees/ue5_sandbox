@@ -35,7 +35,9 @@ void USaveGameRowWidget::set_summary(FSaveProfileSummary const& summary) {
     }
 
     profile_id_ = summary.profile_id;
-    display_name_text->SetText(FText::FromString(summary.display_name));
+    display_name_text->SetText(FText::FromString(
+        summary.active ? FString::Printf(TEXT("%s  [Active]"), *summary.display_name)
+                       : summary.display_name));
 }
 
 void USaveGameRowWidget::set_selected(bool const is_selected) {

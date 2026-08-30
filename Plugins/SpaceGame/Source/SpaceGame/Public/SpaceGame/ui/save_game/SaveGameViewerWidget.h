@@ -5,11 +5,13 @@
 #include "SaveGameViewerWidget.generated.h"
 
 class UButton;
+class UEditableTextBox;
 class UHorizontalBox;
 class UScrollBox;
 class UTextBlock;
 class UVerticalBox;
 class UWidgetSwitcher;
+class USpaceSaveSubsystem;
 
 namespace ml::ioj {
 struct FLevelOutcomeSummary;
@@ -40,6 +42,18 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     UTextBlock* profile_empty_state_text{nullptr};
     UPROPERTY(meta = (BindWidget))
     UButton* refresh_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UButton* create_profile_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVerticalBox* create_profile_panel{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UEditableTextBox* profile_name_input{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UTextBlock* profile_create_error_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UButton* confirm_create_profile_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UButton* cancel_create_profile_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UScrollBox* outcome_list{nullptr};
@@ -65,14 +79,29 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UTextBlock* profile_score_text{nullptr};
     UPROPERTY(meta = (BindWidget))
+    UTextBlock* active_profile_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UButton* activate_profile_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
     UScrollBox* results_scroll_box{nullptr};
     UPROPERTY(meta = (BindWidget))
     UVerticalBox* result_sections_box{nullptr};
   private:
     UFUNCTION()
     void handle_refresh();
+    UFUNCTION()
+    void handle_begin_create_profile();
+    UFUNCTION()
+    void handle_confirm_create_profile();
+    UFUNCTION()
+    void handle_cancel_create_profile();
+    UFUNCTION()
+    void handle_activate_profile();
 
     auto resolve_browser() -> FSaveGameBrowser*;
+    auto resolve_save_subsystem() const -> USpaceSaveSubsystem*;
+    void refresh_and_select(FString const& profile_id);
+    void show_create_profile_error(FText const& error);
     void rebuild_profiles();
     void select_profile(FString const& profile_id);
     void rebuild_outcomes(FSaveProfileReport const& report);

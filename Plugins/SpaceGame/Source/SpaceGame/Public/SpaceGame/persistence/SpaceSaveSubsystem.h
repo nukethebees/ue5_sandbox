@@ -1,43 +1,40 @@
 #pragma once
 
+#include "SpaceGame/persistence/SaveProfileManager.h"
+
 #include <CoreMinimal.h>
 #include <Subsystems/GameInstanceSubsystem.h>
 
 #include "SpaceSaveSubsystem.generated.h"
 
-class USpaceSaveGame;
 struct FScoreRecord;
 
 UCLASS()
-class USpaceSaveSubsystem : public UGameInstanceSubsystem {
+class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     GENERATED_BODY()
   public:
     virtual void Initialize(FSubsystemCollectionBase& collection) override;
     virtual void Deinitialize() override;
 
-    // Accessors
-    auto get_save() const -> USpaceSaveGame const*;
-    auto get_mutable_save() -> USpaceSaveGame&;
+    [[nodiscard]] auto get_profiles() const -> TConstArrayView<FSaveProfileMetadata>;
+    [[nodiscard]] auto get_active_profile_id() const -> FString const&;
+    bool load_profile_records(FString const& profile_id, TArray<FScoreRecord>& records) const;
 
-    // Appending
+    auto create_profile(FString display_name) -> ml::ioj::FCreateSaveProfileResponse;
+    bool activate_profile(FString const& profile_id);
+    bool reset_test_profile();
+
     void save_score_record(FScoreRecord const& record);
-
-    // Loading
-    bool load_or_create();
-
-    // Saving
-    bool save_to_disk();
-
-    // Displaying
     void log_save_data() const;
-
-    static auto slot_name() -> FString;
   private:
     static constexpr int32 user_index{0};
 
-    void migrate_if_needed();
-    void migrate_to_v2();
+    static auto profile_index_slot_name() -> FString;
+    static auto profile_results_slot_name(FString const& profile_id) -> FString;
+    static auto legacy_slot_name() -> FString;
 
-    UPROPERTY()
-    TObjectPtr<USpaceSaveGame> current_save{nullptr};
+    auto make_storage() -> ml::ioj::FSaveProfileStorage;
+    static void migrate_legacy_records(int32 save_version, TArray<FScoreRecord>& records);
+
+    ml::ioj::FSaveProfileManager profile_manager_{};
 };

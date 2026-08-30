@@ -53,7 +53,8 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
                      .last_played_at = FDateTime{2026, 8, 27},
                      .total_simulation_duration_seconds = 600.f,
                      .total_kills = 10,
-                     .outcome_count = 2},
+                     .outcome_count = 2,
+                     .active = true},
                     {.profile_id = TEXT("test_run_12"),
                      .display_name = TEXT("Test Run 12"),
                      .created_at = FDateTime{2026, 8, 26},
@@ -102,9 +103,22 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
             Cast<UVerticalBox>(widget->GetWidgetFromName(TEXT("result_sections_box")))};
         auto* const refresh_button{
             Cast<UButton>(widget->GetWidgetFromName(TEXT("refresh_button")))};
+        auto* const create_profile_button{
+            Cast<UButton>(widget->GetWidgetFromName(TEXT("create_profile_button")))};
+        auto* const create_profile_panel{
+            Cast<UVerticalBox>(widget->GetWidgetFromName(TEXT("create_profile_panel")))};
+        auto* const cancel_create_profile_button{
+            Cast<UButton>(widget->GetWidgetFromName(TEXT("cancel_create_profile_button")))};
+        auto* const active_profile_text{
+            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("active_profile_text")))};
+        auto* const activate_profile_button{
+            Cast<UButton>(widget->GetWidgetFromName(TEXT("activate_profile_button")))};
         auto const bindings_valid{IsValid(profile_list) && IsValid(outcome_list) &&
                                   IsValid(profile_name) && IsValid(outcome_empty_state) &&
-                                  IsValid(result_sections) && IsValid(refresh_button)};
+                                  IsValid(result_sections) && IsValid(refresh_button) &&
+                                  IsValid(create_profile_button) && IsValid(create_profile_panel) &&
+                                  IsValid(cancel_create_profile_button) &&
+                                  IsValid(active_profile_text) && IsValid(activate_profile_button)};
         if (!TestRunner->TestTrue(TEXT("Viewer bindings are valid"), bindings_valid)) {
             return;
         }
@@ -118,6 +132,18 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Newest profile is selected initially"),
                               profile_name->GetText().ToString(),
                               FString{TEXT("Battle at Vega")});
+        TestRunner->TestEqual(TEXT("Active profile is identified"),
+                              active_profile_text->GetText().ToString(),
+                              FString{TEXT("Active profile")});
+        TestRunner->TestFalse(TEXT("Active profile cannot be activated again"),
+                              activate_profile_button->GetIsEnabled());
+
+        create_profile_button->OnClicked.Broadcast();
+        TestRunner->TestTrue(TEXT("Create profile form opens"),
+                             create_profile_panel->GetVisibility() == ESlateVisibility::Visible);
+        cancel_create_profile_button->OnClicked.Broadcast();
+        TestRunner->TestTrue(TEXT("Create profile form cancels"),
+                             create_profile_panel->GetVisibility() == ESlateVisibility::Collapsed);
 
         auto* const second_outcome{
             Cast<ml::ioj::ULevelOutcomeRowWidget>(outcome_list->GetChildAt(1))};
@@ -158,6 +184,8 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
             TEXT("Outcome index is rebuilt for profile"), outcome_list->GetChildrenCount(), 1);
         TestRunner->TestEqual(
             TEXT("Full results are rebuilt for profile"), result_sections->GetChildrenCount(), 1);
+        TestRunner->TestTrue(TEXT("Inactive profile can be explicitly activated"),
+                             activate_profile_button->GetIsEnabled());
 
         auto* const empty_profile{Cast<ml::ioj::USaveGameRowWidget>(profile_list->GetChildAt(2))};
         auto* const empty_profile_button{
