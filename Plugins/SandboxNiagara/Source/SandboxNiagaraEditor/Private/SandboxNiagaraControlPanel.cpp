@@ -1,4 +1,5 @@
 #include "SandboxNiagaraControlPanel.h"
+#include "SandboxNiagaraPreviewViewport.h"
 
 #include "NiagaraSystem.h"
 
@@ -13,6 +14,7 @@
 #include "Widgets/Input/SEditableTextBox.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Layout/SBorder.h"
+#include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
 #include "Widgets/Layout/SUniformGridPanel.h"
 #include "Widgets/SBoxPanel.h"
@@ -54,6 +56,15 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
     auto const initial_name{subsystem != nullptr
                                 ? subsystem->get_default_experiment_name(selected_preset_)
                                 : FString{TEXT("NS_SandboxNiagaraOrbit")}};
+    SAssignNew(preview_viewport_, SSandboxNiagaraPreviewViewport);
+    auto const initial_asset_path{FString::Printf(
+        TEXT("/SandboxNiagara/Generated/%s.%s"), *initial_name, *initial_name)};
+    auto* initial_system{
+        LoadObject<UNiagaraSystem>(nullptr, *initial_asset_path, nullptr, LOAD_NoWarn)};
+    if (initial_system == nullptr) {
+        initial_system = Cast<UNiagaraSystem>(template_asset_path_.TryLoad());
+    }
+    preview_viewport_->set_system(initial_system);
 
     return SNew(SBorder)
         .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
@@ -141,6 +152,40 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
                                               .OnClicked_UObject(
                                                   this,
                                                   &USandboxNiagaraControlPanel::delete_generated_asset)]] +
+                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 8.0f)
+                                    [SNew(STextBlock).Text(NSLOCTEXT(
+                                        "SandboxNiagara", "PreviewLabel", "Live Preview"))] +
+                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                    [SNew(SUniformGridPanel)
+                                         .SlotPadding(FMargin{3.0f}) +
+                                     SUniformGridPanel::Slot(0, 0)
+                                         [SNew(SButton)
+                                              .Text(NSLOCTEXT("SandboxNiagara",
+                                                             "RestartPreview",
+                                                             "Restart Preview"))
+                                              .OnClicked_UObject(
+                                                  this,
+                                                  &USandboxNiagaraControlPanel::restart_preview)] +
+                                     SUniformGridPanel::Slot(1, 0)
+                                         [SNew(SButton)
+                                              .Text_Lambda([this]() {
+                                                  return get_pause_button_text();
+                                              })
+                                              .OnClicked_UObject(
+                                                  this,
+                                                  &USandboxNiagaraControlPanel::toggle_preview_paused)] +
+                                     SUniformGridPanel::Slot(2, 0)
+                                         [SNew(SButton)
+                                              .Text(NSLOCTEXT("SandboxNiagara",
+                                                             "FramePreview",
+                                                             "Frame Effect"))
+                                              .OnClicked_UObject(
+                                                  this,
+                                                  &USandboxNiagaraControlPanel::frame_preview)]] +
+                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                    [SNew(SBox)
+                                         .HeightOverride(520.0f)
+                                         [preview_viewport_.ToSharedRef()]] +
                                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 4.0f)
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "StatusLabel", "Status"))] +
@@ -169,6 +214,7 @@ void USandboxNiagaraControlPanel::select_preset(
         if (subsystem != nullptr) {
             experiment_name_input_->SetText(
                 FText::FromString(subsystem->get_default_experiment_name(selected_preset_)));
+            refresh_preview();
         }
     }
 }
@@ -195,6 +241,9 @@ auto USandboxNiagaraControlPanel::run_generation(bool const replace_existing) ->
     auto const result{subsystem->generate_preset(
         template_system, selected_preset_, get_experiment_name(), replace_existing)};
     set_generation_status(result);
+    if (result.success && preview_viewport_.IsValid()) {
+        preview_viewport_->set_system(result.generated_system);
+    }
     return FReply::Handled();
 }
 
@@ -209,8 +258,11 @@ auto USandboxNiagaraControlPanel::regenerate_all() -> FReply {
         return FReply::Handled();
     }
 
-    set_operation_status(subsystem->regenerate_all_presets(template_system),
-                         TEXT("Regenerated all preset experiments."));
+    auto const result{subsystem->regenerate_all_presets(template_system)};
+    set_operation_status(result, TEXT("Regenerated all preset experiments."));
+    if (result.success) {
+        refresh_preview();
+    }
     return FReply::Handled();
 }
 
@@ -252,9 +304,39 @@ auto USandboxNiagaraControlPanel::delete_generated_asset() -> FReply {
         set_status(TEXT("The Sandbox Niagara subsystem is unavailable."), false);
         return FReply::Handled();
     }
-    set_operation_status(subsystem->delete_generated_asset(get_generated_asset_path()),
-                         TEXT("Deleted the generated asset."));
+    auto const result{subsystem->delete_generated_asset(get_generated_asset_path())};
+    set_operation_status(result, TEXT("Deleted the generated asset."));
+    if (result.success) {
+        refresh_preview();
+    }
     return FReply::Handled();
+}
+
+auto USandboxNiagaraControlPanel::restart_preview() -> FReply {
+    if (preview_viewport_.IsValid()) {
+        preview_viewport_->restart();
+    }
+    return FReply::Handled();
+}
+
+auto USandboxNiagaraControlPanel::frame_preview() -> FReply {
+    if (preview_viewport_.IsValid()) {
+        preview_viewport_->frame_system();
+    }
+    return FReply::Handled();
+}
+
+auto USandboxNiagaraControlPanel::toggle_preview_paused() -> FReply {
+    if (preview_viewport_.IsValid()) {
+        preview_viewport_->toggle_paused();
+    }
+    return FReply::Handled();
+}
+
+auto USandboxNiagaraControlPanel::get_pause_button_text() const -> FText {
+    return preview_viewport_.IsValid() && preview_viewport_->is_paused()
+               ? NSLOCTEXT("SandboxNiagara", "ResumePreview", "Resume Preview")
+               : NSLOCTEXT("SandboxNiagara", "PausePreview", "Pause Preview");
 }
 
 auto USandboxNiagaraControlPanel::get_template_system() const -> UNiagaraSystem* {
@@ -295,4 +377,17 @@ void USandboxNiagaraControlPanel::set_operation_status(
     FSandboxNiagaraValidationResult const& result,
     FString const& success_message) {
     set_status(result.success ? success_message : join_messages(result.errors), result.success);
+}
+
+void USandboxNiagaraControlPanel::refresh_preview() {
+    if (!preview_viewport_.IsValid()) {
+        return;
+    }
+
+    auto* system{LoadObject<UNiagaraSystem>(
+        nullptr, *get_generated_asset_path(), nullptr, LOAD_NoWarn)};
+    if (system == nullptr) {
+        system = get_template_system();
+    }
+    preview_viewport_->set_system(system);
 }

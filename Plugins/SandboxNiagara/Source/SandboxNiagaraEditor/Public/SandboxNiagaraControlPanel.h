@@ -10,6 +10,7 @@
 
 class SEditableTextBox;
 class SMultiLineEditableTextBox;
+class SSandboxNiagaraPreviewViewport;
 struct FAssetData;
 template <typename OptionType>
 class SComboBox;
@@ -33,6 +34,10 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraControlPanel : public UEditorUtili
     auto regenerate_all() -> FReply;
     auto open_generated_asset() -> FReply;
     auto delete_generated_asset() -> FReply;
+    auto restart_preview() -> FReply;
+    auto frame_preview() -> FReply;
+    auto toggle_preview_paused() -> FReply;
+    auto get_pause_button_text() const -> FText;
     auto run_generation(bool replace_existing) -> FReply;
     auto get_template_system() const -> UNiagaraSystem*;
     auto get_experiment_name() const -> FString;
@@ -41,11 +46,13 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraControlPanel : public UEditorUtili
     void set_generation_status(FSandboxNiagaraGenerationResult const& result);
     void set_operation_status(FSandboxNiagaraValidationResult const& result,
                               FString const& success_message);
+    void refresh_preview();
 
     FSoftObjectPath template_asset_path_{};
     ESandboxNiagaraExperimentPreset selected_preset_{
         ESandboxNiagaraExperimentPreset::Orbit};
     TArray<TSharedPtr<ESandboxNiagaraExperimentPreset>> preset_options_{};
+    TSharedPtr<SSandboxNiagaraPreviewViewport> preview_viewport_{};
     TSharedPtr<SEditableTextBox> experiment_name_input_{};
     TSharedPtr<SMultiLineEditableTextBox> status_output_{};
 };

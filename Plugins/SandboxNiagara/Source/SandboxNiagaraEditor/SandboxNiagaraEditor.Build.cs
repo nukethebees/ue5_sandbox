@@ -19,6 +19,7 @@ public class SandboxNiagaraEditor : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
+            "AdvancedPreviewScene",
             "Engine",
             "AssetRegistry",
             "BlueprintEditorLibrary",
