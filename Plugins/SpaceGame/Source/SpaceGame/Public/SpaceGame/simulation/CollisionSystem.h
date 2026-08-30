@@ -30,6 +30,8 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_cell_y(float value) const -> int32;
     auto to_cell_z(float value) const -> int32;
     auto to_cell_coord(FVector3f pos) const -> FIntVector3;
+    auto to_last_cell_coord(FVector3f pos) const -> FIntVector3;
+    auto is_cell_coord_in_bounds(FIntVector3 coord) const -> bool;
     auto to_index(int32 x, int32 y, int32 z) const -> int32;
     auto to_index(FIntVector3 coord) const -> int32;
     auto to_index(FVector3f pos) const -> int32;

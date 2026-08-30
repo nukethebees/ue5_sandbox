@@ -135,7 +135,26 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
         auto const max_point{location + half_extents};
 
         auto const min_coord{to_cell_coord(min_point)};
-        auto const max_coord{to_cell_coord(max_point)};
+        auto const max_coord{to_last_cell_coord(max_point)};
+
+        if (!is_cell_coord_in_bounds(min_coord) || !is_cell_coord_in_bounds(max_coord)) {
+            UE_LOG(LogSandbox,
+                   Warning,
+                   TEXT("Skipping collision-grid entity %d of type %s: AABB cells (%d, %d, %d) "
+                        "through (%d, %d, %d) are outside grid dimensions (%d, %d, %d)"),
+                   i,
+                   LexToString(entity_type),
+                   min_coord.X,
+                   min_coord.Y,
+                   min_coord.Z,
+                   max_coord.X,
+                   max_coord.Y,
+                   max_coord.Z,
+                   grid_dims_.X,
+                   grid_dims_.Y,
+                   grid_dims_.Z);
+            continue;
+        }
 
         entities_buffer_.locations.add(location);
         entities_buffer_.min_points.add(min_point);
@@ -251,6 +270,23 @@ auto CollisionUniformGrid::to_cell_coord(FVector3f const pos) const -> FIntVecto
         to_cell_y(pos.Y),
         to_cell_z(pos.Z),
     };
+}
+auto CollisionUniformGrid::to_last_cell_coord(FVector3f const pos) const -> FIntVector3 {
+    FVector3f const half_grid_extent{
+        static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f,
+        static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f,
+        static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f,
+    };
+
+    return {
+        FMath::CeilToInt((pos.X + half_grid_extent.X) / cell_dims_.X) - 1,
+        FMath::CeilToInt((pos.Y + half_grid_extent.Y) / cell_dims_.Y) - 1,
+        FMath::CeilToInt((pos.Z + half_grid_extent.Z) / cell_dims_.Z) - 1,
+    };
+}
+auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const coord) const -> bool {
+    return coord.X >= 0 && coord.X < grid_dims_.X && coord.Y >= 0 && coord.Y < grid_dims_.Y &&
+           coord.Z >= 0 && coord.Z < grid_dims_.Z;
 }
 auto CollisionUniformGrid::to_index(int32 const x, int32 const y, int32 const z) const -> int32 {
     return x + (y * grid_dims_.X) + (z * grid_dims_.X * grid_dims_.Y);
