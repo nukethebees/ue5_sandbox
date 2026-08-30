@@ -1,18 +1,85 @@
 #include "SandboxNiagaraInspectCommandlet.h"
 
+#include "SandboxNiagaraControlPanel.h"
 #include "SandboxNiagaraSubsystem.h"
 
 #include "NiagaraExternalSystemEditorUtilities.h"
 #include "NiagaraSystem.h"
 
+#include "AssetRegistry/AssetRegistryModule.h"
 #include "Editor.h"
+#include "EditorUtilityWidgetBlueprint.h"
+#include "EditorUtilityWidgetBlueprintFactory.h"
+#include "Kismet2/KismetEditorUtilities.h"
 #include "Misc/Parse.h"
+#include "Subsystems/EditorAssetSubsystem.h"
+#include "Components/CanvasPanel.h"
+#include "UObject/Package.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogSandboxNiagaraInspect, Log, All);
 
 namespace {
 TCHAR const* const seed_asset_path{
     TEXT("/SandboxNiagara/Templates/NS_SandboxNiagaraSeed.NS_SandboxNiagaraSeed")};
+TCHAR const* const control_panel_package_path{
+    TEXT("/SandboxNiagara/Editor/EUW_SandboxNiagaraControlPanel")};
+TCHAR const* const control_panel_asset_name{TEXT("EUW_SandboxNiagaraControlPanel")};
+
+auto create_control_panel_asset() -> bool {
+    auto* const existing{LoadObject<UEditorUtilityWidgetBlueprint>(
+        nullptr,
+        TEXT("/SandboxNiagara/Editor/EUW_SandboxNiagaraControlPanel."
+             "EUW_SandboxNiagaraControlPanel"))};
+    if (existing != nullptr) {
+        auto const valid_parent{existing->GeneratedClass != nullptr &&
+                                existing->GeneratedClass->IsChildOf(
+                                    USandboxNiagaraControlPanel::StaticClass())};
+        if (!valid_parent) {
+            UE_LOG(LogSandboxNiagaraInspect,
+                   Error,
+                   TEXT("Existing control panel asset has the wrong parent class."));
+        }
+        return valid_parent;
+    }
+
+    auto* const package{CreatePackage(control_panel_package_path)};
+    auto* const factory{NewObject<UEditorUtilityWidgetBlueprintFactory>()};
+    factory->ParentClass = USandboxNiagaraControlPanel::StaticClass();
+    factory->RootWidgetClass = UCanvasPanel::StaticClass();
+    auto* const widget_blueprint{Cast<UEditorUtilityWidgetBlueprint>(factory->FactoryCreateNew(
+        UEditorUtilityWidgetBlueprint::StaticClass(),
+        package,
+        control_panel_asset_name,
+        RF_Public | RF_Standalone | RF_Transactional,
+        nullptr,
+        GWarn))};
+    if (widget_blueprint == nullptr || widget_blueprint->Status == BS_Error || GEditor == nullptr) {
+        UE_LOG(LogSandboxNiagaraInspect,
+               Error,
+               TEXT("Failed to create the Sandbox Niagara control panel asset."));
+        return false;
+    }
+
+    FKismetEditorUtilities::CompileBlueprint(widget_blueprint);
+    FAssetRegistryModule::AssetCreated(widget_blueprint);
+    widget_blueprint->MarkPackageDirty();
+
+    auto* const asset_subsystem{GEditor->GetEditorSubsystem<UEditorAssetSubsystem>()};
+    if (asset_subsystem == nullptr ||
+        !asset_subsystem->SaveLoadedAsset(widget_blueprint, false)) {
+        UE_LOG(LogSandboxNiagaraInspect,
+               Error,
+               TEXT("Failed to save the Sandbox Niagara control panel asset."));
+        return false;
+    }
+
+    UE_LOG(LogSandboxNiagaraInspect,
+           Display,
+           TEXT("Created control panel asset %s.%s."),
+           control_panel_package_path,
+           control_panel_asset_name);
+    return true;
+}
 
 void log_stack(FNiagaraExt_ScriptStackTopology const& stack) {
     UE_LOG(LogSandboxNiagaraInspect,
@@ -137,7 +204,17 @@ int32 USandboxNiagaraInspectCommandlet::Main(FString const& parameters) {
         return 1;
     }
 
-    if (FParse::Param(*parameters, TEXT("Generate"))) {
+    auto const create_control_panel{FParse::Param(*parameters, TEXT("CreateControlPanel"))};
+    auto const generate{FParse::Param(*parameters, TEXT("Generate"))};
+    auto const regenerate_all{FParse::Param(*parameters, TEXT("RegenerateAll"))};
+    if (create_control_panel && (generate || regenerate_all)) {
+        UE_LOG(LogSandboxNiagaraInspect,
+               Error,
+               TEXT("CreateControlPanel must run separately from Niagara generation so Unreal "
+                    "can complete the Widget Blueprint save before saving Niagara graphs."));
+        return 1;
+    }
+    if (create_control_panel || generate || regenerate_all) {
         if (GEditor == nullptr) {
             UE_LOG(LogSandboxNiagaraInspect, Error, TEXT("The Unreal Editor is unavailable."));
             return 1;
@@ -151,32 +228,50 @@ int32 USandboxNiagaraInspectCommandlet::Main(FString const& parameters) {
             return 1;
         }
 
-        FSandboxNiagaraExperimentConfiguration configuration{};
-        FString experiment_name{TEXT("NS_SandboxNiagaraConfigured")};
-        if (FParse::Param(*parameters, TEXT("Orbit"))) {
-            experiment_name = TEXT("NS_SandboxNiagaraOrbit");
-            configuration.spawn_rate = 2000.0f;
-            configuration.particle_lifetime = 20.0f;
-            configuration.particle_velocity_expression =
-                TEXT("float3(-Particles.Position.y, Particles.Position.x, 0.0f) * 0.35f");
-        }
-        FParse::Value(*parameters, TEXT("Name="), experiment_name);
-        auto const generation_result{
-            subsystem->generate_experiment(system, experiment_name, configuration)};
-        for (FString const& warning : generation_result.warnings) {
-            UE_LOG(LogSandboxNiagaraInspect, Warning, TEXT("%s"), *warning);
-        }
-        for (FString const& error : generation_result.errors) {
-            UE_LOG(LogSandboxNiagaraInspect, Error, TEXT("%s"), *error);
-        }
-        if (!generation_result.success) {
+        if (create_control_panel && !create_control_panel_asset()) {
             return 1;
         }
 
-        UE_LOG(LogSandboxNiagaraInspect,
-               Display,
-               TEXT("Generated configured system: %s"),
-               *generation_result.generated_asset_path);
+        if (regenerate_all) {
+            auto const regeneration_result{subsystem->regenerate_all_presets(system)};
+            for (FString const& warning : regeneration_result.warnings) {
+                UE_LOG(LogSandboxNiagaraInspect, Warning, TEXT("%s"), *warning);
+            }
+            for (FString const& error : regeneration_result.errors) {
+                UE_LOG(LogSandboxNiagaraInspect, Error, TEXT("%s"), *error);
+            }
+            if (!regeneration_result.success) {
+                return 1;
+            }
+            UE_LOG(LogSandboxNiagaraInspect, Display, TEXT("Regenerated all Niagara presets."));
+        }
+
+        if (generate) {
+            auto const preset{FParse::Param(*parameters, TEXT("Lorenz"))
+                                  ? ESandboxNiagaraExperimentPreset::LorenzAttractor
+                                  : ESandboxNiagaraExperimentPreset::Orbit};
+            FString experiment_name{subsystem->get_default_experiment_name(preset)};
+            FParse::Value(*parameters, TEXT("Name="), experiment_name);
+            auto const generation_result{subsystem->generate_preset(
+                system,
+                preset,
+                experiment_name,
+                FParse::Param(*parameters, TEXT("Replace")))};
+            for (FString const& warning : generation_result.warnings) {
+                UE_LOG(LogSandboxNiagaraInspect, Warning, TEXT("%s"), *warning);
+            }
+            for (FString const& error : generation_result.errors) {
+                UE_LOG(LogSandboxNiagaraInspect, Error, TEXT("%s"), *error);
+            }
+            if (!generation_result.success) {
+                return 1;
+            }
+
+            UE_LOG(LogSandboxNiagaraInspect,
+                   Display,
+                   TEXT("Generated configured system: %s"),
+                   *generation_result.generated_asset_path);
+        }
     }
 
     return context.HasErrors() ? 1 : 0;

@@ -7,6 +7,23 @@
 
 class UNiagaraSystem;
 
+UENUM(BlueprintType)
+enum class ESandboxNiagaraExperimentPreset : uint8 {
+    Orbit,
+    LorenzAttractor,
+};
+
+USTRUCT(BlueprintType)
+struct FSandboxNiagaraFloatParameter {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    FName name{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    float value{0.0f};
+};
+
 USTRUCT(BlueprintType)
 struct FSandboxNiagaraExperimentConfiguration {
     GENERATED_BODY()
@@ -29,8 +46,14 @@ struct FSandboxNiagaraExperimentConfiguration {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
     float fixed_bounds_extent{750.0f};
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    FLinearColor particle_color{FLinearColor::White};
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara", meta = (MultiLine))
     FString particle_velocity_expression{};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    TArray<FSandboxNiagaraFloatParameter> float_parameters{};
 };
 
 USTRUCT(BlueprintType)
@@ -83,4 +106,36 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraSubsystem : public UEditorSubsyste
     generate_experiment(UNiagaraSystem* template_system,
                         FString const& experiment_name,
                         FSandboxNiagaraExperimentConfiguration const& configuration);
+
+    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
+    FSandboxNiagaraGenerationResult
+    regenerate_experiment(UNiagaraSystem* template_system,
+                          FString const& experiment_name,
+                          FSandboxNiagaraExperimentConfiguration const& configuration);
+
+    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
+    FSandboxNiagaraGenerationResult generate_preset(UNiagaraSystem* template_system,
+                                                     ESandboxNiagaraExperimentPreset preset,
+                                                     FString const& experiment_name,
+                                                     bool replace_existing);
+
+    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
+    FSandboxNiagaraValidationResult delete_generated_asset(FString const& asset_path);
+
+    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
+    FSandboxNiagaraValidationResult regenerate_all_presets(UNiagaraSystem* template_system);
+
+    UFUNCTION(BlueprintPure, Category = "Sandbox Niagara")
+    FSandboxNiagaraExperimentConfiguration
+    get_preset_configuration(ESandboxNiagaraExperimentPreset preset) const;
+
+    UFUNCTION(BlueprintPure, Category = "Sandbox Niagara")
+    FString get_default_experiment_name(ESandboxNiagaraExperimentPreset preset) const;
+
+  private:
+    FSandboxNiagaraGenerationResult
+    generate_experiment_internal(UNiagaraSystem* template_system,
+                                 FString const& experiment_name,
+                                 FSandboxNiagaraExperimentConfiguration const& configuration,
+                                 bool replace_existing);
 };

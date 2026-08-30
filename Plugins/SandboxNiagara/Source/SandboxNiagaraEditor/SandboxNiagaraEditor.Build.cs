@@ -11,15 +11,24 @@ public class SandboxNiagaraEditor : ModuleRules
         {
             "Core",
             "CoreUObject",
+            "Blutility",
             "EditorSubsystem",
+            "SlateCore",
             "UnrealEd",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Engine",
+            "AssetRegistry",
+            "BlueprintEditorLibrary",
+            "InputCore",
             "Niagara",
             "NiagaraEditor",
+            "PropertyEditor",
+            "Slate",
+            "UMG",
+            "UMGEditor",
         });
     }
 }
