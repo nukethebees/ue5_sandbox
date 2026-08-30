@@ -223,6 +223,41 @@ void test_enums() {
           "<invalid EReflectedFixture>");
 }
 
+void test_static_tables() {
+    static_assert(FStaticTableFixture::num() == 3);
+    static_assert(FStaticTableFixture::first_index == 0);
+    static_assert(FStaticTableFixture::third_index == 2);
+
+    FStaticTableFixture values{
+        .ids = {10, 20, 30},
+        .weights = {1.0f, 2.0f, 3.0f},
+    };
+    values.apply_arrays([](auto& ids, auto& weights) {
+        ids[FStaticTableFixture::second_index] = {};
+        weights[FStaticTableFixture::second_index] = {};
+    });
+    check(values.ids[0] == 10 && values.ids[1] == 0);
+    check(values.weights[1] == 0.0f && values.weights[2] == 3.0f);
+
+    FStaticTableFixture other{};
+    values.apply_array_pairs(other, [](auto const& source_ids,
+                                       auto& destination_ids,
+                                       auto const& source_weights,
+                                       auto& destination_weights) {
+        destination_ids[FStaticTableFixture::third_index] =
+            source_ids[FStaticTableFixture::third_index];
+        destination_weights[FStaticTableFixture::third_index] =
+            source_weights[FStaticTableFixture::third_index];
+    });
+    check(other.ids[2] == 30 && other.weights[2] == 3.0f);
+
+    auto const& const_values{values};
+    int visited{};
+    const_values.apply_arrays(
+        [&visited]<typename... Columns>(Columns const&...) { visited = sizeof...(Columns); });
+    check(visited == 2);
+}
+
 } // namespace
 
 auto main() -> int {
@@ -233,6 +268,7 @@ auto main() -> int {
         test_vectors();
         test_facades();
         test_enums();
+        test_static_tables();
         return 0;
     } catch (std::exception const&) {
         return 1;

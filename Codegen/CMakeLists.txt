@@ -20,6 +20,7 @@ add_library(codegen-lib
   src/soa_member_resolution.cpp
   src/soa_storage_lowering.cpp
   src/soa_view_lowering.cpp
+  src/static_table_lowering.cpp
   src/validation.cpp
   src/vector_lowering.cpp
 )
@@ -44,6 +45,7 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/StaticTables.h"
 )
 set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.cpp"
@@ -89,6 +91,7 @@ add_executable(codegen-tests
   tests/homogeneous_lowering_tests.cpp
   tests/json_tests.cpp
   tests/lowering_tests.cpp
+  tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
 )
 add_dependencies(codegen-tests codegen-generated-compile-tests)

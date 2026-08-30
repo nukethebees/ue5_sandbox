@@ -4,6 +4,7 @@
 #include <codegen/schema/facade_module_schema.h>
 #include <codegen/schema/homogeneous_module_schema.h>
 #include <codegen/schema/soa_module_schema.h>
+#include <codegen/schema/static_table_module_schema.h>
 #include <codegen/schema/umbrella_module_schema.h>
 #include <codegen/schema/vector_module_schema.h>
 
@@ -13,6 +14,7 @@ namespace codegen {
 
 using ModuleSchema = std::variant<EnumModuleSchema,
                                   SoaModuleSchema,
+                                  StaticTableModuleSchema,
                                   HomogeneousModuleSchema,
                                   VectorModuleSchema,
                                   FacadeModuleSchema,

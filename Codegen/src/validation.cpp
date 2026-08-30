@@ -510,6 +510,59 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
     }
 }
 
+void validate_static_table(StaticTableModuleSchema const& module,
+                           std::map<std::string, CppType> const& types) {
+    if (module.settings.source.has_value()) {
+        throw std::invalid_argument{"Static table module '" + module.settings.name +
+                                    "' must not have a source output"};
+    }
+    if (module.tables.empty()) {
+        throw std::invalid_argument{"Static table module '" + module.settings.name +
+                                    "' must have tables"};
+    }
+
+    std::set<std::string> table_names;
+    for (auto const& table : module.tables) {
+        require_identifier(table.name, "Static table name");
+        if (!table_names.insert(table.name).second) {
+            throw std::invalid_argument{"Duplicate static table name: " + table.name};
+        }
+        validate_export_specifier(table.export_specifier,
+                                  "Static table '" + table.name + "' export specifier");
+        if (table.rows.empty()) {
+            throw std::invalid_argument{"Static table '" + table.name + "' must have rows"};
+        }
+        if (table.columns.empty()) {
+            throw std::invalid_argument{"Static table '" + table.name + "' must have columns"};
+        }
+
+        std::vector<std::string> row_names;
+        std::set<std::string> generated_names{
+            table.name, "num_rows", "num", "apply_arrays", "apply_array_pairs"};
+        for (auto const& row : table.rows) {
+            require_identifier(row.name, "Static table '" + table.name + "' row name");
+            row_names.push_back(row.name);
+            generated_names.insert(row.name + "_index");
+        }
+        require_unique_names(row_names, "Static table '" + table.name + "' rows");
+
+        std::vector<std::string> column_names;
+        for (auto const& column : table.columns) {
+            require_identifier(column.name,
+                               "Static table '" + table.name + "' column name");
+            if (generated_names.contains(column.name)) {
+                throw std::invalid_argument{"Static table '" + table.name + "' column '" +
+                                            column.name + "' collides with generated API"};
+            }
+            column_names.push_back(column.name);
+            validate_type(column.type,
+                          types,
+                          "Static table '" + table.name + "' column '" + column.name + "'");
+        }
+        require_unique_names(column_names, "Static table '" + table.name + "' columns");
+    }
+}
+
 void validate_homogeneous(HomogeneousModuleSchema const& module,
                           std::map<std::string, CppType> const& types) {
     if (!module.settings.source.has_value()) {
@@ -725,6 +778,8 @@ void validate_manifest(Manifest const& manifest) {
                     validate_enum(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     validate_soa(module, manifest.types);
+                } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {
+                    validate_static_table(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, HomogeneousModuleSchema>) {
                     validate_homogeneous(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, VectorModuleSchema>) {

@@ -80,6 +80,26 @@
       ]
     },
     {
+      "kind": "static_table",
+      "name": "static_table_fixture",
+      "header": "StaticTables.h",
+      "namespace": "codegen_compile_fixture",
+      "tables": [
+        {
+          "name": "FStaticTableFixture",
+          "rows": [
+            {"name": "first"},
+            {"name": "second"},
+            {"name": "third"}
+          ],
+          "columns": [
+            {"name": "ids", "type": "int32"},
+            {"name": "weights", "type": "float"}
+          ]
+        }
+      ]
+    },
+    {
       "kind": "soa",
       "name": "soa_fixture",
       "header": "Soa.h",
@@ -252,6 +272,7 @@
         "SourceFacade.h"
         ,"PlainEnums.h"
         ,"ReflectedEnums.h"
+        ,"StaticTables.h"
       ]
     }
   ]

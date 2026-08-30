@@ -2,6 +2,6 @@
 
 namespace codegen {
 
-inline constexpr int manifest_schema_version{3};
+inline constexpr int manifest_schema_version{4};
 
 } // namespace codegen

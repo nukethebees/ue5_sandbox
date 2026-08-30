@@ -28,6 +28,27 @@
           }
         }
       ]
+    },
+    {
+      "kind": "static_table",
+      "name": "static_table_test_types",
+      "header": "Plugins/SandboxCore/Tests/SandboxCoreTests/Private/static_table_test_types.h",
+      "namespace": "ml::static_table_tests",
+      "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
+      "tables": [
+        {
+          "name": "FTestStaticTable",
+          "rows": [
+            {"name": "first"},
+            {"name": "second"},
+            {"name": "third"}
+          ],
+          "columns": [
+            {"name": "ids", "type": "int32"},
+            {"name": "weights", "type": "float"}
+          ]
+        }
+      ]
     }
   ]
 }

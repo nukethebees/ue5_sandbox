@@ -92,6 +92,17 @@ auto valid_enum_module() -> EnumModuleSchema {
     };
 }
 
+auto valid_static_table_module() -> StaticTableModuleSchema {
+    return StaticTableModuleSchema{
+        .settings = ModuleSettings{.name = "tables", .header = "Tables.h"},
+        .tables = {StaticTableSchema{
+            .name = "FValues",
+            .rows = {StaticTableRowSchema{"first"}, StaticTableRowSchema{"second"}},
+            .columns = {StaticTableColumnSchema{"ids", TypeRef{"int32"}}},
+        }},
+    };
+}
+
 TEST(Validation, RejectsEmptyModuleNames) {
     auto module{valid_soa_module()};
     module.settings.name.clear();
@@ -142,6 +153,56 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     module.enums.front().reflection = EnumReflection::none;
     module.enums.front().values.front().hidden = true;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
+    auto module{valid_static_table_module()};
+    module.tables.clear();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_static_table_module();
+    module.settings.source = "Tables.cpp";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_static_table_module();
+    module.tables.front().rows.clear();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_static_table_module();
+    module.tables.front().columns.clear();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
+    auto module{valid_static_table_module()};
+    module.tables.push_back(module.tables.front());
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_static_table_module();
+    module.tables.front().rows.push_back(StaticTableRowSchema{"first"});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_static_table_module();
+    module.tables.front().rows.front().name = "bad-name";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_static_table_module();
+    module.tables.front().columns.push_back(module.tables.front().columns.front());
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_static_table_module();
+    module.tables.front().columns.front().type = TypeRef{"@missing"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsStaticTableColumnsCollidingWithGeneratedApis) {
+    for (auto const& name :
+         {"FValues", "num_rows", "num", "apply_arrays", "apply_array_pairs", "first_index"}) {
+        SCOPED_TRACE(name);
+        auto module{valid_static_table_module()};
+        module.tables.front().columns.front().name = name;
+        EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    }
 }
 
 TEST(Validation, RejectsEmptyModuleOutputs) {
@@ -455,6 +516,10 @@ TEST(Validation, RejectsMalformedExportSpecifiers) {
     auto facade{valid_facade_module()};
     facade.facade.export_specifier = "two words";
     EXPECT_THROW(lower_modules(manifest_with(std::move(facade))), std::invalid_argument);
+
+    auto table{valid_static_table_module()};
+    table.tables.front().export_specifier = "bad-specifier";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(table))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsHomogeneousModulesWithoutLayouts) {

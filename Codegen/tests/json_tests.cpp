@@ -43,7 +43,7 @@ TEST(Json, LoadsTypedSoaManifest) {
         "modules.json",
         R"({"modules":[{"kind":"soa","name":"example","header":"Generated.h","structs":[{"name":"FData","members":[{"name":"handles","kind":"array","type":"@handle"}],"operations":["all"]}]}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     auto const manifest{load_manifest(files.path("manifest.json"))};
 
@@ -66,7 +66,7 @@ TEST(Json, ReportsUnknownFieldsWithTheirPath) {
         "modules.json",
         R"({"modules":[{"kind":"umbrella","name":"all","header":"All.h","headers":[],"typo":true}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     EXPECT_THROW(
         {
@@ -88,7 +88,7 @@ TEST(Json, RejectsUnknownTypeReferencesAfterDecoding) {
 
 TEST(Json, RejectsMalformedDocumentsWithTheirFileName) {
     TemporaryManifest files;
-    files.write("manifest.json", R"({"schema_version":3,)");
+    files.write("manifest.json", R"({"schema_version":4,)");
 
     EXPECT_THROW(
         {
@@ -105,7 +105,7 @@ TEST(Json, RejectsMalformedDocumentsWithTheirFileName) {
 TEST(Json, RejectsDuplicateFieldsInsteadOfSilentlyOverwritingThem) {
     TemporaryManifest files;
     files.write("manifest.json",
-                R"({"schema_version":3,"schema_version":3,"types":"types.json","modules":[]})");
+                R"({"schema_version":4,"schema_version":4,"types":"types.json","modules":[]})");
 
     EXPECT_THROW(
         {
@@ -120,7 +120,7 @@ TEST(Json, RejectsDuplicateFieldsInsteadOfSilentlyOverwritingThem) {
         },
         ManifestError);
 
-    files.write("manifest.json", R"({"schema_version":3,"types":"types.json","modules":[]})");
+    files.write("manifest.json", R"({"schema_version":4,"types":"types.json","modules":[]})");
     files.write("types.json", R"({"types":{"value":{"spelling":"int32","spelling":"float"}}})");
     EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
 }
@@ -128,7 +128,7 @@ TEST(Json, RejectsDuplicateFieldsInsteadOfSilentlyOverwritingThem) {
 TEST(Json, ReportsMissingRequiredFields) {
     TemporaryManifest files;
     files.write("types.json", R"({"types":{}})");
-    files.write("manifest.json", R"({"schema_version":3,"types":"types.json"})");
+    files.write("manifest.json", R"({"schema_version":4,"types":"types.json"})");
 
     EXPECT_THROW(
         {
@@ -148,7 +148,7 @@ TEST(Json, RejectsUnknownModuleKinds) {
     files.write("modules.json",
                 R"({"modules":[{"kind":"mystery","name":"bad","header":"Bad.h"}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
 }
@@ -160,7 +160,7 @@ TEST(Json, RejectsUnknownStorageOperations) {
         "modules.json",
         R"({"modules":[{"kind":"soa","name":"bad","header":"Bad.h","structs":[{"name":"FData","members":[{"name":"values","kind":"array","type":"int32"}],"operations":["explode"]}]}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
 }
@@ -172,7 +172,7 @@ TEST(Json, RejectsAllCombinedWithSpecificOperations) {
         "modules.json",
         R"({"modules":[{"kind":"soa","name":"bad","header":"Bad.h","structs":[{"name":"FData","members":[{"name":"values","kind":"array","type":"int32"}],"operations":["all","reset"]}]}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
 }
@@ -181,7 +181,7 @@ TEST(Json, ReportsMissingReferencedDocuments) {
     TemporaryManifest files;
     files.write("types.json", R"({"types":{}})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["missing.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["missing.json"]})");
 
     EXPECT_THROW(
         {
@@ -204,7 +204,7 @@ TEST(Json, LoadsEveryModuleKindAndStructuredTypeReference) {
         "modules.json",
         R"({"modules":[{"kind":"facade","name":"facade","header":"Facade.h","source":"Facade.cpp","namespace":"project","facade":{"name":"FFacade","target_type":"@target","target_member_name":"target","methods":[{"name":"get","return_type":{"name":"@vector","suffix":" const&"},"parameters":[{"type":"int32","name":"index","default":"0"}],"const":true,"target_name":"get_value"}],"validation":["check(target);"],"validation_dependencies":["check"],"friends":["FOwner"],"definitions_in_source":true}},{"kind":"vector_soa","name":"vectors","header":"Vectors.h","source":"Vectors.cpp","storage_name":"FVectors","value_type":"float","components":["xs","ys"],"equivalent_type":"@vector","fixed":{"storage_name":"TFixedVectors","containers":["TFixedVectorArray"]}},{"kind":"homogeneous_soa","name":"homogeneous","header":"Values.h","source":"Values.cpp","layouts":[{"name":"Values","components":["xs","ys"],"value_types":[{"type":"float","suffix":"f","equivalent_type":"@vector","input_types":["@vector"]}],"export_specifier":"PROJECT_API"}]},{"kind":"umbrella","name":"all","header":"All.h","headers":["Vectors.h","Values.h"]}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     auto const manifest{load_manifest(files.path("manifest.json"))};
 
@@ -241,7 +241,7 @@ TEST(Json, LoadsEnumModulesAndConversions) {
         "modules.json",
         R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","source":"Modes.cpp","helper_namespace":"ml","enums":[{"name":"EMode","underlying_type":"uint8","reflection":"blueprint","export_specifier":"PROJECT_API","values":[{"name":"First"},{"name":"Readable","value":"7","display_name":"Readable Value"},{"name":"COUNT","hidden":true}],"conversions":["lex_to_string","string_view","string","lex_to_display_string","display_string_view","display_string"]}]}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     auto const manifest{load_manifest(files.path("manifest.json"))};
 
@@ -260,6 +260,32 @@ TEST(Json, LoadsEnumModulesAndConversions) {
     EXPECT_EQ(schema.conversions.size(), 6);
 }
 
+TEST(Json, LoadsStaticTableModules) {
+    TemporaryManifest files;
+    files.write("types.json",
+                R"({"types":{"value":{"spelling":"FValue","header":"Value.h"}}})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"static_table","name":"tables","header":"Tables.h","namespace":"project","tables":[{"name":"FValues","export_specifier":"PROJECT_API","rows":[{"name":"first"},{"name":"second"}],"columns":[{"name":"ids","type":"int32"},{"name":"values","type":"@value"}]}]}]})");
+    files.write("manifest.json",
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
+
+    auto const manifest{load_manifest(files.path("manifest.json"))};
+
+    ASSERT_EQ(manifest.modules.size(), 1);
+    auto const& module{std::get<StaticTableModuleSchema>(manifest.modules.front())};
+    EXPECT_EQ(module.settings.namespace_name, "project");
+    ASSERT_EQ(module.tables.size(), 1);
+    auto const& table{module.tables.front()};
+    EXPECT_EQ(table.name, "FValues");
+    EXPECT_EQ(table.export_specifier, "PROJECT_API");
+    ASSERT_EQ(table.rows.size(), 2);
+    EXPECT_EQ(table.rows[1].name, "second");
+    ASSERT_EQ(table.columns.size(), 2);
+    EXPECT_EQ(table.columns[1].name, "values");
+    EXPECT_EQ(table.columns[1].type.name, "@value");
+}
+
 TEST(Json, RejectsUnknownEnumReflectionAndConversionValues) {
     for (auto const& enum_body : {
              R"({"name":"EMode","underlying_type":"uint8","reflection":"reflected","values":[{"name":"Value"}]})",
@@ -271,7 +297,7 @@ TEST(Json, RejectsUnknownEnumReflectionAndConversionValues) {
                     std::string{R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","source":"Modes.cpp","enums":[)"} +
                         enum_body + "]}]}");
         files.write("manifest.json",
-                    R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                    R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
         EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
     }
 }
@@ -283,7 +309,7 @@ TEST(Json, ReportsMissingNestedRequiredFieldsWithTheirPath) {
         "modules.json",
         R"({"modules":[{"kind":"facade","name":"facade","header":"Facade.h","facade":{"name":"FFacade","target_type":"FTarget","target_member_name":"target","methods":[{"name":"get"}]}}]})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     EXPECT_THROW(
         {
@@ -304,7 +330,7 @@ TEST(Json, RejectsWrongCollectionTypesWithTheirPath) {
     files.write("types.json", R"({"types":{}})");
     files.write("modules.json", R"({"modules":{"kind":"umbrella"}})");
     files.write("manifest.json",
-                R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
 
     EXPECT_THROW(
         {
@@ -341,7 +367,7 @@ TEST(Json, RejectsEveryCustomParsedCollectionWhenItIsNotAnArray) {
         files.write("types.json", R"({"types":{}})");
         files.write("modules.json", cases[index].modules);
         files.write("manifest.json",
-                    R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                    R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
         EXPECT_THROW(
             {
                 try {
@@ -378,7 +404,7 @@ TEST(Json, RejectsNullForPresentOptionalSchemaValues) {
         files.write("types.json", R"({"types":{}})");
         files.write("modules.json", cases[index].modules);
         files.write("manifest.json",
-                    R"({"schema_version":3,"types":"types.json","modules":["modules.json"]})");
+                    R"({"schema_version":4,"types":"types.json","modules":["modules.json"]})");
         EXPECT_THROW(
             {
                 try {
@@ -396,7 +422,7 @@ TEST(Json, RejectsNullForPresentOptionalSchemaValues) {
 TEST(Json, RejectsNonObjectTypeRegistriesWithTheirPath) {
     TemporaryManifest files;
     files.write("types.json", R"({"types":[]})");
-    files.write("manifest.json", R"({"schema_version":3,"types":"types.json","modules":[]})");
+    files.write("manifest.json", R"({"schema_version":4,"types":"types.json","modules":[]})");
 
     EXPECT_THROW(
         {
@@ -413,7 +439,7 @@ TEST(Json, RejectsNonObjectTypeRegistriesWithTheirPath) {
 
 TEST(Json, RejectsUnsupportedSchemaVersionsWithTheirPath) {
     TemporaryManifest files;
-    files.write("manifest.json", R"({"schema_version":4,"types":"types.json","modules":[]})");
+    files.write("manifest.json", R"({"schema_version":5,"types":"types.json","modules":[]})");
 
     EXPECT_THROW(
         {

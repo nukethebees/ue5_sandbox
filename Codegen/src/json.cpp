@@ -408,6 +408,41 @@ auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
     };
 }
 
+auto parse_static_table(Json const& value, std::string const& path) -> StaticTableSchema {
+    reject_unknown(value, path, {"name", "rows", "columns", "export_specifier"});
+
+    std::vector<StaticTableRowSchema> rows;
+    auto const& row_values{required_array(value, "rows", path)};
+    for (std::size_t index{0}; index < row_values.size(); ++index) {
+        auto const& row{row_values[index]};
+        auto const row_path{path + "/rows/" + std::to_string(index)};
+        reject_unknown(row, row_path, {"name"});
+        rows.push_back(StaticTableRowSchema{
+            .name = required<std::string>(row, "name", row_path),
+        });
+    }
+
+    std::vector<StaticTableColumnSchema> columns;
+    auto const& column_values{required_array(value, "columns", path)};
+    for (std::size_t index{0}; index < column_values.size(); ++index) {
+        auto const& column{column_values[index]};
+        auto const column_path{path + "/columns/" + std::to_string(index)};
+        reject_unknown(column, column_path, {"name", "type"});
+        columns.push_back(StaticTableColumnSchema{
+            .name = required<std::string>(column, "name", column_path),
+            .type = parse_type_ref(required_value(column, "type", column_path),
+                                   column_path + "/type"),
+        });
+    }
+
+    return StaticTableSchema{
+        .name = required<std::string>(value, "name", path),
+        .rows = std::move(rows),
+        .columns = std::move(columns),
+        .export_specifier = optional<std::string>(value, "export_specifier", path),
+    };
+}
+
 auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
     auto const kind{required<std::string>(value, "kind", path)};
     auto settings{parse_settings(value, path)};
@@ -454,6 +489,29 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
             structs.push_back(parse_soa(values[index], path + "/structs/" + std::to_string(index)));
         }
         return SoaModuleSchema{std::move(settings), std::move(structs)};
+    }
+    if (kind == "static_table") {
+        reject_unknown(value,
+                       path,
+                       {"kind",
+                        "name",
+                        "header",
+                        "source",
+                        "header_include",
+                        "namespace",
+                        "include_order",
+                        "prelude",
+                        "tables"});
+        std::vector<StaticTableSchema> tables;
+        auto const& values{required_array(value, "tables", path)};
+        for (std::size_t index{0}; index < values.size(); ++index) {
+            tables.push_back(parse_static_table(values[index],
+                                                path + "/tables/" + std::to_string(index)));
+        }
+        return StaticTableModuleSchema{
+            .settings = std::move(settings),
+            .tables = std::move(tables),
+        };
     }
     if (kind == "facade") {
         reject_unknown(value,
