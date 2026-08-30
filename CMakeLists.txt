@@ -171,6 +171,24 @@ add_custom_target(generate-s7lab-assets
   VERBATIM
 )
 
+add_custom_target(generate-lualab-assets
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=GenerateLuaLabAssets
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+    -ddc=NoZenLocalFallback
+    -unattended
+    -nop4
+    -nosplash
+    -nullrhi
+    -nosound
+    -stdout
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Generating LuaLab Editor Utility Widget assets"
+  USES_TERMINAL
+  VERBATIM
+)
+
 set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.enum
   Sandbox.fighters
@@ -182,6 +200,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxCoreEngine.UnitTests
   SandboxGpuTutorials.UnitTests
   SandboxImages.UnitTests
+  LuaLab.UnitTests
   S7Lab.UnitTests
   SandboxUI.UnitTests
 )
