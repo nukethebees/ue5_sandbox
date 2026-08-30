@@ -23,6 +23,7 @@
 class UPrimitiveComponent;
 class UWorld;
 struct FTestEntityRegistry;
+struct FCollisionGridConfig;
 
 namespace ml {
 struct FSpatialQueryManager;
@@ -72,6 +73,7 @@ struct SPACEGAME_API FSpatialQueryManager {
     FSpatialQueryManager() = default;
 
     void initialise(FTestEntityRegistry const& entity_registry,
+                    FCollisionGridConfig const& collision_grid_config,
                     UWorld& world,
                     ATestSpaceShip const* player_ship,
                     ATestCapitalShips const& capital_ships,

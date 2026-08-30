@@ -4,9 +4,44 @@
 #include <SpaceGame/ships/player/TestSpaceShipController.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
 
+#include <limits>
 #if WITH_EDITOR
 #include <Misc/DataValidation.h>
 #endif
+
+namespace {
+auto calculate_dimension(float const grid_size, float const cell_size) noexcept -> int32 {
+    if (!FMath::IsFinite(grid_size) || !FMath::IsFinite(cell_size) || grid_size <= 0.f ||
+        cell_size <= 0.f) {
+        return 0;
+    }
+
+    auto const dimension{FMath::CeilToDouble(static_cast<double>(grid_size) / cell_size)};
+    if (dimension > static_cast<double>(std::numeric_limits<int32>::max())) {
+        return 0;
+    }
+
+    return static_cast<int32>(dimension);
+}
+}
+
+auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
+    return {
+        calculate_dimension(grid_size.X, cell_size.X),
+        calculate_dimension(grid_size.Y, cell_size.Y),
+        calculate_dimension(grid_size.Z, cell_size.Z),
+    };
+}
+
+auto FCollisionGridConfig::is_valid() const noexcept -> bool {
+    auto const dimensions{calculate_grid_dimensions()};
+    if (dimensions.X <= 0 || dimensions.Y <= 0 || dimensions.Z <= 0) {
+        return false;
+    }
+
+    auto const xy_cell_count{static_cast<int64>(dimensions.X) * dimensions.Y};
+    return xy_cell_count <= (std::numeric_limits<int32>::max() / dimensions.Z);
+}
 
 auto USpaceGameLevelConfig::is_valid() const noexcept -> bool {
     TArray<FString> errors;
@@ -51,6 +86,14 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors) const
                    "turrets.laser.projectile_speed must be positive");
     REQUIRE_CONFIG(tube_spinners.laser.projectile_speed > 0.f,
                    "tube_spinners.laser.projectile_speed must be positive");
+    REQUIRE_CONFIG(collision_grid.grid_size.X > 0.f && collision_grid.grid_size.Y > 0.f &&
+                       collision_grid.grid_size.Z > 0.f,
+                   "collision_grid.grid_size components must be positive");
+    REQUIRE_CONFIG(collision_grid.cell_size.X > 0.f && collision_grid.cell_size.Y > 0.f &&
+                       collision_grid.cell_size.Z > 0.f,
+                   "collision_grid.cell_size components must be positive");
+    REQUIRE_CONFIG(collision_grid.is_valid(),
+                   "collision_grid calculated dimensions and cell count must fit in int32");
 
 #undef REQUIRE_CONFIG
 }

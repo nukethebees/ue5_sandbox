@@ -1,6 +1,7 @@
 #include "SpaceGame/simulation/SpatialQueryManager.h"
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
 
@@ -91,6 +92,7 @@ void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
 }
 
 void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_registry,
+                                      FCollisionGridConfig const& collision_grid_config,
                                       UWorld& in_world,
                                       ATestSpaceShip const* const player_ship,
                                       ATestCapitalShips const& capital_ships,
@@ -101,6 +103,9 @@ void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_regis
 
     entity_registry = &in_entity_registry;
     collision.set_entity_registry(in_entity_registry);
+    auto& uniform_grid{collision.get_uniform_grid()};
+    uniform_grid.set_grid_dims(collision_grid_config.calculate_grid_dimensions());
+    uniform_grid.set_cell_dims(collision_grid_config.cell_size);
 
     world = &in_world;
     player_ship_access = FTestSpaceShipSpatialQueryAccess{player_ship};

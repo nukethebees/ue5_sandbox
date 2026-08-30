@@ -398,6 +398,7 @@ void ATestBatchOrchestrator::begin_play() {
     lasers_phase.begin_play();
 
     query_manager.initialise(entity_registry,
+                             level_config->collision_grid,
                              *world,
                              player_ship.Get(),
                              *capital_ships,
