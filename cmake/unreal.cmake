@@ -45,7 +45,10 @@ function(add_unreal_automation_test test_name)
   )
 
   # Unreal's queued Quit waits for automation completion and exits non-zero on test errors.
+  # Also inspect the test output so a future engine regression cannot turn a reported
+  # automation failure into a passing CTest result.
   set_tests_properties("${test_name}" PROPERTIES
+    FAIL_REGULAR_EXPRESSION "Test Completed\\. Result=\\{Fail\\};TEST COMPLETE\\. EXIT CODE: -[0-9]+"
     LABELS "${automation_test_LABELS}"
     TIMEOUT 900
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
