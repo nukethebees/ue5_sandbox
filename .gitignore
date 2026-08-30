@@ -101,6 +101,7 @@ Content/Fab
 
 # CQ Test maps
 /Content/CQTestMapTemp
+/Content/SandboxReusableTestLevels
 
 # Assets
 Content/Purchased
