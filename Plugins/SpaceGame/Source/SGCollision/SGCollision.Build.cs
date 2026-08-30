@@ -9,5 +9,10 @@ public class SGCollision : ModuleRules
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
 
         PublicDependencyModuleNames.Add("Core");
+        PrivateDependencyModuleNames.AddRange(new string[]
+        {
+            "CoreUObject",
+            "Engine",
+        });
     }
 }

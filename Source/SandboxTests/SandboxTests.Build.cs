@@ -29,6 +29,7 @@ public class SandboxTests : ModuleRules
             "SandboxGameShared",
             "SandboxNative",
             "Sandbox",
+            "SGCollision",
             "SpaceGame",
             "Core",
             "CoreUObject",
