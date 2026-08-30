@@ -1,213 +1,241 @@
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/persistence/SpaceSaveGame.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
-#include <SandboxGameShared/utilities/enums.h>
+#include "TestSaveProfileSource.h"
 
-#include <CoreMinimal.h>
+#include "SpaceGame/persistence/SpaceSaveGame.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
+
+#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+
+#include <Engine/GameInstance.h>
+#include <Engine/World.h>
+#include <HAL/IConsoleManager.h>
 #include <Kismet/GameplayStatics.h>
-#include <Subsystems/GameInstanceSubsystem.h>
+
+namespace space_save_subsystem {
+void reset_test_profile_command(TArray<FString> const&, UWorld* const world) {
+    if (!IsValid(world)) {
+        UE_LOG(
+            LogSandboxSubsystem, Warning, TEXT("spacegame_reset_test_profile: World is invalid."));
+        return;
+    }
+
+    auto* const game_instance{world->GetGameInstance()};
+    auto* const subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
+    if (!IsValid(subsystem)) {
+        UE_LOG(LogSandboxSubsystem,
+               Warning,
+               TEXT("spacegame_reset_test_profile: Save subsystem is invalid."));
+        return;
+    }
+
+    if (subsystem->reset_test_profile()) {
+        UE_LOG(LogSandboxSubsystem,
+               Display,
+               TEXT("Reset and activated the deterministic Test Profile."));
+    }
+}
+
+#if !UE_BUILD_SHIPPING
+FAutoConsoleCommandWithWorldAndArgs reset_test_profile_console_command{
+    TEXT("spacegame_reset_test_profile"),
+    TEXT("Replaces the dedicated Test Profile with deterministic outcomes and activates it."),
+    FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&reset_test_profile_command)};
+#endif
+}
 
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Initialize."));
 
-    load_or_create();
-    log_save_data();
-}
-void USpaceSaveSubsystem::Deinitialize() {
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Deinitialize."));
-
-    if (current_save) {
-        save_to_disk();
-    }
-
-    log_save_data();
-
-    Super::Deinitialize();
-}
-
-// Accessors
-auto USpaceSaveSubsystem::get_save() const -> USpaceSaveGame const* {
-    return current_save;
-}
-auto USpaceSaveSubsystem::get_mutable_save() -> USpaceSaveGame& {
-    if (!current_save) {
-        load_or_create();
-    }
-
-    check(current_save);
-    return *current_save;
-}
-auto USpaceSaveSubsystem::slot_name() -> FString {
-    return TEXT("SandboxSave");
-}
-
-// Appending
-void USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) {
-    auto& save{get_mutable_save()};
-
-    save.score_records.Add(record);
-
-    save_to_disk();
-}
-
-// Loading
-bool USpaceSaveSubsystem::load_or_create() {
-    auto const loaded_slot_name{slot_name()};
-
-    if (UGameplayStatics::DoesSaveGameExist(loaded_slot_name, user_index)) {
-        auto* loaded_save =
-            Cast<USpaceSaveGame>(UGameplayStatics::LoadGameFromSlot(loaded_slot_name, user_index));
-
-        if (loaded_save) {
-            current_save = loaded_save;
-            migrate_if_needed();
-
-            UE_LOG(LogSandboxSubsystem,
-                   Display,
-                   TEXT("USpaceSaveSubsystem::load_or_create: Loaded save file: %s"),
-                   *loaded_slot_name);
-
-            return true;
-        }
-
+    profile_manager_ = ml::ioj::FSaveProfileManager{make_storage()};
+    if (!profile_manager_.initialise()) {
         UE_LOG(LogSandboxSubsystem,
-               Warning,
-               TEXT("USpaceSaveSubsystem::load_or_create: Save file existed but failed to load. "
-                    "Creating a new save."));
-    }
-
-    auto* new_save =
-        Cast<USpaceSaveGame>(UGameplayStatics::CreateSaveGameObject(USpaceSaveGame::StaticClass()));
-
-    check(new_save);
-
-    current_save = new_save;
-    current_save->save_version = USpaceSaveGame::current_save_version;
-
-    UE_LOG(LogSandboxSubsystem,
-           Display,
-           TEXT("USpaceSaveSubsystem::load_or_create: Created new save file."));
-
-    return save_to_disk();
-}
-
-// Saving
-bool USpaceSaveSubsystem::save_to_disk() {
-    if (!current_save) {
-        UE_LOG(LogSandboxSubsystem,
-               Warning,
-               TEXT("USpaceSaveSubsystem::save_to_disk: No save to write to."));
-        return false;
-    }
-
-    auto const saving_slot{slot_name()};
-
-    UE_LOG(LogSandboxSubsystem,
-           Display,
-           TEXT("USpaceSaveSubsystem::save_to_disk: Saving game: %s"),
-           *saving_slot);
-
-    return UGameplayStatics::SaveGameToSlot(current_save, saving_slot, user_index);
-}
-
-// Displaying
-void USpaceSaveSubsystem::log_save_data() const {
-    if (!current_save) {
-        UE_LOG(LogSandboxSubsystem,
-               Warning,
-               TEXT("USpaceSaveSubsystem::log_save_data: No save to print."));
+               Error,
+               TEXT("USpaceSaveSubsystem::Initialize: Failed to initialise save profiles."));
         return;
     }
 
+    log_save_data();
+}
+
+void USpaceSaveSubsystem::Deinitialize() {
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Deinitialize."));
+    log_save_data();
+    Super::Deinitialize();
+}
+
+auto USpaceSaveSubsystem::get_profiles() const -> TConstArrayView<FSaveProfileMetadata> {
+    return profile_manager_.get_profiles();
+}
+
+auto USpaceSaveSubsystem::get_active_profile_id() const -> FString const& {
+    return profile_manager_.get_active_profile_id();
+}
+
+bool USpaceSaveSubsystem::load_profile_records(FString const& profile_id,
+                                               TArray<FScoreRecord>& records) const {
+    return profile_manager_.load_profile_records(profile_id, records);
+}
+
+auto USpaceSaveSubsystem::create_profile(FString display_name)
+    -> ml::ioj::FCreateSaveProfileResponse {
+    return profile_manager_.create_profile(MoveTemp(display_name));
+}
+
+bool USpaceSaveSubsystem::activate_profile(FString const& profile_id) {
+    return profile_manager_.activate_profile(profile_id);
+}
+
+bool USpaceSaveSubsystem::reset_test_profile() {
+#if UE_BUILD_SHIPPING
+    return false;
+#else
+    return profile_manager_.reset_test_profile(ml::ioj::detail::make_test_profile_records());
+#endif
+}
+
+void USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) {
+    if (!profile_manager_.append_score_record(record)) {
+        UE_LOG(LogSandboxSubsystem,
+               Error,
+               TEXT("USpaceSaveSubsystem::save_score_record: Failed to save mission result."));
+    }
+}
+
+void USpaceSaveSubsystem::log_save_data() const {
 #if WITH_EDITOR
-    auto const* settings{GetDefault<USandboxDeveloperSettings>()};
+    auto const* const settings{GetDefault<USandboxDeveloperSettings>()};
     if (!settings->print_save_data) {
         return;
     }
 #endif
 
-    auto const dump_name{slot_name()};
-
-    FString msg{};
-    msg += FString::Printf(TEXT("\nPrinting save slot: %s"), *dump_name);
-
-    auto const n{current_save->score_records.Num()};
-    msg += FString::Printf(TEXT("\nRecords: %d"), n);
-
-    for (auto const& record : current_save->score_records) {
-        msg += FString::Printf(TEXT(R"(
-    Date: %s, Level: %s, Mode: %s, End state: %s
-        Kills: %d, Time: %.2f)"),
-                               *record.date.ToString(),
-                               *record.level_name.ToString(),
-                               *ml::to_string_without_type_prefix(record.mission_mode),
-                               *ml::to_string_without_type_prefix(record.end_state),
-                               record.kills,
-                               record.time_seconds);
-
-        switch (record.mission_mode) {
-            case ETestMissionMode::None: {
-                break;
-            }
-            case ETestMissionMode::KillEnemies: {
-                msg += FString::Printf(TEXT(", Kill target: %d"), record.target_kills);
-                break;
-            }
-            case ETestMissionMode::SurviveTime: {
-                msg += FString::Printf(TEXT(", Target completion time: %.2f"),
-                                       record.target_completion_time);
-                break;
-            }
-        }
-
-        if (record.end_state == ETestMissionState::Failed) {
-            msg += FString::Printf(TEXT("\n    Fail reason: %s"),
-                                   *ml::to_string_without_type_prefix(record.fail_reason));
-        }
+    FString message{FString::Printf(TEXT("\nActive save profile: %s"),
+                                    *profile_manager_.get_active_profile_id())};
+    auto const profiles{profile_manager_.get_profiles()};
+    message += FString::Printf(TEXT("\nProfiles: %d"), profiles.Num());
+    for (auto const& profile : profiles) {
+        message += FString::Printf(TEXT("\n    %s (%s): %d outcomes, %d kills, %.2f seconds"),
+                                   *profile.display_name,
+                                   *profile.profile_id,
+                                   profile.outcome_count,
+                                   profile.total_kills,
+                                   profile.total_simulation_duration_seconds);
     }
 
-    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::log_save_data: %s"), *msg);
+    UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::log_save_data: %s"), *message);
 }
 
-// Migration
-void USpaceSaveSubsystem::migrate_if_needed() {
-    if (!current_save) {
-        return;
-    }
-
-    while (current_save->save_version < USpaceSaveGame::current_save_version) {
-        switch (current_save->save_version) {
-            case 1:
-                migrate_to_v2();
-                current_save->save_version = 2;
-                break;
-            default:
-                checkNoEntry(); // Unknown or unsupported version.
-                return;
-        }
-    }
-
-    save_to_disk();
+auto USpaceSaveSubsystem::profile_index_slot_name() -> FString {
+    return TEXT("SpaceProfileIndex");
 }
-void USpaceSaveSubsystem::migrate_to_v2() {
-    for (auto& record : current_save->score_records) {
-        record.fail_reason = ETestMissionFailReason::None;
 
-        if (record.end_state == ETestMissionState::Failed) {
-            continue;
-        }
+auto USpaceSaveSubsystem::profile_results_slot_name(FString const& profile_id) -> FString {
+    return FString::Printf(TEXT("SpaceProfile_%s_Results"), *profile_id);
+}
 
-        switch (record.mission_mode) {
-            case ETestMissionMode::KillEnemiesWithinTime: {
-                if (record.time_seconds >= record.target_completion_time) {
-                    record.fail_reason = ETestMissionFailReason::TimeElapsed;
+auto USpaceSaveSubsystem::legacy_slot_name() -> FString {
+    return TEXT("SandboxSave");
+}
+
+auto USpaceSaveSubsystem::make_storage() -> ml::ioj::FSaveProfileStorage {
+    return {
+        .load_index =
+            [](FSaveProfileIndexData& data) {
+                auto const slot{profile_index_slot_name()};
+                if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
+                    return ml::ioj::ESaveProfileLoadResult::not_found;
                 }
+                auto* const save{Cast<USpaceSaveProfileIndexSaveGame>(
+                    UGameplayStatics::LoadGameFromSlot(slot, user_index))};
+                if (!IsValid(save)) {
+                    return ml::ioj::ESaveProfileLoadResult::failed;
+                }
+                data = save->data;
+                return ml::ioj::ESaveProfileLoadResult::succeeded;
+            },
+        .save_index =
+            [](FSaveProfileIndexData const& data) {
+                auto* const save{
+                    Cast<USpaceSaveProfileIndexSaveGame>(UGameplayStatics::CreateSaveGameObject(
+                        USpaceSaveProfileIndexSaveGame::StaticClass()))};
+                if (!IsValid(save)) {
+                    return false;
+                }
+                save->data = data;
+                return UGameplayStatics::SaveGameToSlot(
+                    save, profile_index_slot_name(), user_index);
+            },
+        .load_results =
+            [](FString const& profile_id, FSaveProfileResultsData& data) {
+                auto const slot{profile_results_slot_name(profile_id)};
+                if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
+                    return ml::ioj::ESaveProfileLoadResult::not_found;
+                }
+                auto* const save{Cast<USpaceSaveProfileResultsSaveGame>(
+                    UGameplayStatics::LoadGameFromSlot(slot, user_index))};
+                if (!IsValid(save)) {
+                    return ml::ioj::ESaveProfileLoadResult::failed;
+                }
+                data = save->data;
+                return ml::ioj::ESaveProfileLoadResult::succeeded;
+            },
+        .save_results =
+            [](FString const& profile_id, FSaveProfileResultsData const& data) {
+                auto* const save{
+                    Cast<USpaceSaveProfileResultsSaveGame>(UGameplayStatics::CreateSaveGameObject(
+                        USpaceSaveProfileResultsSaveGame::StaticClass()))};
+                if (!IsValid(save)) {
+                    return false;
+                }
+                save->data = data;
+                return UGameplayStatics::SaveGameToSlot(
+                    save, profile_results_slot_name(profile_id), user_index);
+            },
+        .load_legacy_results =
+            [](TArray<FScoreRecord>& records) {
+                auto const slot{legacy_slot_name()};
+                if (!UGameplayStatics::DoesSaveGameExist(slot, user_index)) {
+                    return ml::ioj::ESaveProfileLoadResult::not_found;
+                }
+                auto* const save{
+                    Cast<USpaceSaveGame>(UGameplayStatics::LoadGameFromSlot(slot, user_index))};
+                if (!IsValid(save)) {
+                    return ml::ioj::ESaveProfileLoadResult::failed;
+                }
+                records = save->score_records;
+                migrate_legacy_records(save->save_version, records);
+                return ml::ioj::ESaveProfileLoadResult::succeeded;
+            },
+    };
+}
+
+void USpaceSaveSubsystem::migrate_legacy_records(int32 save_version,
+                                                 TArray<FScoreRecord>& records) {
+    while (save_version < USpaceSaveGame::current_save_version) {
+        switch (save_version) {
+            case 1: {
+                for (auto& record : records) {
+                    record.fail_reason = ETestMissionFailReason::None;
+                    if (record.end_state != ETestMissionState::Failed) {
+                        continue;
+                    }
+                    if (record.mission_mode == ETestMissionMode::KillEnemiesWithinTime &&
+                        record.time_seconds >= record.target_completion_time) {
+                        record.fail_reason = ETestMissionFailReason::TimeElapsed;
+                    }
+                }
+                save_version = 2;
+                break;
             }
             default: {
-                break;
+                UE_LOG(LogSandboxSubsystem,
+                       Error,
+                       TEXT("Unsupported legacy save version %d."),
+                       save_version);
+                return;
             }
         }
     }

@@ -6,7 +6,6 @@
 namespace codegen::detail {
 namespace {
 
-TypeDependency const std_forward{"std::forward", "utility", {}};
 TypeDependency const array_checks{"ml::fatal_if_nums_not_equal", "SandboxCore/array_checks.h", {}};
 TypeDependency const container_ops{"ml::num", "SandboxCore/container_ops.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
@@ -27,48 +26,13 @@ auto equivalent_expression(ResolvedMember const& member, std::string const& inde
     return member.name + "[" + index + "]";
 }
 
-auto apply_arrays_function(std::vector<ResolvedMember> const& members) -> Node {
-    std::vector<std::string> body{"return std::forward<TFunc>(func)("};
-    auto const count{members.size()};
-    for (std::size_t index{0}; index < count; ++index) {
-        body.push_back("    self." + members[index].name + (index + 1 < count ? "," : ""));
+auto column_names(std::vector<ResolvedMember> const& members) -> std::vector<std::string> {
+    std::vector<std::string> result;
+    result.reserve(members.size());
+    for (auto const& member : members) {
+        result.push_back(member.name);
     }
-    body.emplace_back(");");
-    return header_function(FunctionSpec{
-        .name = "apply_arrays",
-        .return_type = "auto",
-        .parameters = {FunctionParameter{"this auto&&", "self"},
-                       FunctionParameter{"TFunc&&", "func"}},
-        .body = {raw(join_lines(body), {std_forward})},
-        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
-        .is_inline = true,
-        .template_parameters = "typename TFunc",
-    });
-}
-
-auto apply_array_pairs_function(std::vector<ResolvedMember> const& members) -> Node {
-    std::vector<std::string> body{"return std::forward<TFunc>(func)("};
-    auto const count{members.size()};
-    for (std::size_t index{0}; index < count; ++index) {
-        auto const& name{members[index].name};
-        body.push_back("    self." + name + ", other." + name + (index + 1 < count ? "," : ""));
-    }
-    body.emplace_back(");");
-    return header_function(FunctionSpec{
-        .name = "apply_array_pairs",
-        .return_type = "auto",
-        .parameters = {FunctionParameter{"this Self&&", "self"},
-                       FunctionParameter{"Other&&", "other"},
-                       FunctionParameter{"TFunc&&", "func"}},
-        .body = {raw(join_lines(body), {std_forward})},
-        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
-        .is_inline = true,
-        .template_parameters = "typename Self, typename Other, typename TFunc",
-        .formatting =
-            {
-                .trailing_return_placement = FunctionFormatting::TrailingReturnPlacement::next_line,
-            },
-    });
+    return result;
 }
 
 auto declaration_nodes(std::vector<FunctionSpec> const& specs) -> Nodes {
@@ -97,7 +61,7 @@ auto view_struct(std::string name,
     if (equivalent.has_value()) {
         nodes.append(soa_equivalent_nodes(*equivalent, members, types)).new_lines(2);
     }
-    nodes.add(apply_arrays_function(members), 2)
+    nodes.add(column_apply_arrays_function(column_names(members)), 2)
         .append(declaration_nodes(soa_view_specs(members, const_only)))
         .new_lines(2);
     for (std::size_t index{0}; index < members.size(); ++index) {
@@ -301,8 +265,9 @@ auto soa_view_struct_nodes(SoaSchema const& schema,
 
 auto soa_storage_view_nodes(std::vector<ResolvedMember> const& members) -> Nodes {
     NodeListBuilder result;
-    return result.add(apply_arrays_function(members), 2)
-        .add(apply_array_pairs_function(members), 2)
+    auto const columns{column_names(members)};
+    return result.add(column_apply_arrays_function(columns), 2)
+        .add(column_apply_array_pairs_function(columns), 2)
         .append(declaration_nodes(soa_view_specs(members, false)))
         .build();
 }

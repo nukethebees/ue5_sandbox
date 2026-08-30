@@ -58,4 +58,49 @@ auto output_path_key(std::filesystem::path const& path) -> std::string {
     return result;
 }
 
+auto column_apply_arrays_function(std::vector<std::string> const& columns) -> Node {
+    std::vector<std::string> body{"return std::forward<TFunc>(func)("};
+    auto const count{columns.size()};
+    for (std::size_t index{0}; index < count; ++index) {
+        body.push_back("    self." + columns[index] + (index + 1 < count ? "," : ""));
+    }
+    body.emplace_back(");");
+    return header_function(FunctionSpec{
+        .name = "apply_arrays",
+        .return_type = "auto",
+        .parameters = {FunctionParameter{"this auto&&", "self"},
+                       FunctionParameter{"TFunc&&", "func"}},
+        .body = {raw(join_lines(body), {TypeDependency{"std::forward", "utility", {}}})},
+        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
+        .is_inline = true,
+        .template_parameters = "typename TFunc",
+    });
+}
+
+auto column_apply_array_pairs_function(std::vector<std::string> const& columns) -> Node {
+    std::vector<std::string> body{"return std::forward<TFunc>(func)("};
+    auto const count{columns.size()};
+    for (std::size_t index{0}; index < count; ++index) {
+        auto const& name{columns[index]};
+        body.push_back("    self." + name + ", other." + name +
+                       (index + 1 < count ? "," : ""));
+    }
+    body.emplace_back(");");
+    return header_function(FunctionSpec{
+        .name = "apply_array_pairs",
+        .return_type = "auto",
+        .parameters = {FunctionParameter{"this Self&&", "self"},
+                       FunctionParameter{"Other&&", "other"},
+                       FunctionParameter{"TFunc&&", "func"}},
+        .body = {raw(join_lines(body), {TypeDependency{"std::forward", "utility", {}}})},
+        .qualifiers = {.trailing_return_type = CppType{"decltype(auto)"}},
+        .is_inline = true,
+        .template_parameters = "typename Self, typename Other, typename TFunc",
+        .formatting =
+            {
+                .trailing_return_placement = FunctionFormatting::TrailingReturnPlacement::next_line,
+            },
+    });
+}
+
 } // namespace codegen::detail

@@ -107,6 +107,9 @@ auto render_signature(Function const& function) -> std::string {
                                                          : spec.name};
     auto signature{declaration_specifier_prefix(spec.is_static && !function.owner.has_value(),
                                                 spec.is_constexpr)};
+    if (spec.export_specifier.has_value() && (function.declaration || function.is_header)) {
+        signature += *spec.export_specifier + " ";
+    }
     if (!spec.return_type.spelling.empty()) {
         signature += spec.return_type.spelling + " ";
     }
@@ -350,6 +353,8 @@ auto dependencies(Node const& node) -> std::vector<TypeDependency> {
                                   parameter.type.dependencies.end());
                 }
                 return result;
+            } else if constexpr (std::is_same_v<T, Enum>) {
+                return value.underlying_type.dependencies;
             } else if constexpr (std::is_same_v<T, Struct>) {
                 auto result{value.dependencies};
                 for (auto const& base : value.bases) {
@@ -457,6 +462,34 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                                        ? "\n" + context.apply_indent("{")
                                        : " {"};
                 return signature + opening + "\n" + body + "\n" + context.apply_indent("}");
+            } else if constexpr (std::is_same_v<T, Enum>) {
+                std::vector<std::string> values;
+                values.reserve(value.values.size());
+                for (auto const& enumerator : value.values) {
+                    auto rendered{enumerator.name};
+                    if (enumerator.initializer.has_value()) {
+                        rendered += " = " + *enumerator.initializer;
+                    }
+                    if (enumerator.annotation.has_value()) {
+                        rendered += " " + *enumerator.annotation;
+                    }
+                    values.push_back(std::move(rendered));
+                }
+                auto header{std::string{"enum"}};
+                if (value.scoped) {
+                    header += " class";
+                }
+                if (value.export_specifier.has_value()) {
+                    header += " " + *value.export_specifier;
+                }
+                header += " " + value.name;
+                if (!value.underlying_type.spelling.empty()) {
+                    header += " : " + value.underlying_type.spelling;
+                }
+                auto const body{join(values, ",\n")};
+                return context.apply_indent(header + " {") + "\n" +
+                       context.indent().apply_indent(body) + ",\n" +
+                       context.apply_indent("};");
             } else if constexpr (std::is_same_v<T, Struct>) {
                 std::vector<std::string> bases;
                 for (auto const& base : value.bases) {
@@ -481,9 +514,12 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                        render_nodes(value.children, context.indent(), 2) + "\n" +
                        context.apply_indent("};");
             } else if constexpr (std::is_same_v<T, Namespace>) {
-                return context.apply_indent("namespace " + value.name + " {") + "\n" +
+                auto const opening{value.name.empty() ? "namespace {" : "namespace " + value.name + " {"};
+                auto const closing{value.name.empty() ? "} // namespace"
+                                                       : "} // namespace " + value.name};
+                return context.apply_indent(opening) + "\n" +
                        render_nodes(value.children, context, 2) + "\n" +
-                       context.apply_indent("} // namespace " + value.name);
+                       context.apply_indent(closing);
             }
         },
         node);

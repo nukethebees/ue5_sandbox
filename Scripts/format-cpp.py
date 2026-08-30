@@ -40,7 +40,7 @@ def find_files(directory: Path, extensions: set[str]) -> list[Path]:
 
     try:
         for file_path in directory.rglob("*"):
-            if "generated" in file_path.parts:
+            if "generated" in file_path.parts or "ThirdParty" in file_path.parts:
                 continue
             if file_path.is_file() and file_path.suffix.lower() in extensions:
                 files.append(file_path.resolve())
@@ -94,7 +94,7 @@ def get_git_paths(repository_root: Path, arguments: list[str]) -> set[Path]:
 
 def is_format_candidate(file_path: Path, directories: list[Path], extensions: set[str]) -> bool:
     """Return whether a path is an existing in-scope file supported by clang-format."""
-    if "generated" in file_path.parts:
+    if "generated" in file_path.parts or "ThirdParty" in file_path.parts:
         return False
     if not file_path.is_file() or file_path.suffix.lower() not in extensions:
         return False
@@ -169,6 +169,7 @@ def main() -> None:
         project_root / "Plugins" / "SandboxCore",
         project_root / "Plugins" / "SandboxEditorTools",
         project_root / "Plugins" / "SandboxMaterialExprs",
+        project_root / "Plugins" / "SbxLangLab",
         project_root / "Plugins" / "SpaceGame",
     ]
     directories = [directory.resolve() for directory in directories]

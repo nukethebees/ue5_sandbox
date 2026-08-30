@@ -34,6 +34,15 @@ auto render_soa(SoaSchema schema, std::map<std::string, CppType> types = {}) -> 
     return RenderedModule{files[0].content, files[1].content};
 }
 
+auto render_enum(EnumModuleSchema module) -> RenderedModule {
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {std::move(module)},
+    }))};
+    EXPECT_EQ(files.size(), 2);
+    return RenderedModule{files[0].content, files[1].content};
+}
+
 auto basic_schema() -> SoaSchema {
     return SoaSchema{
         .name = "FData",
@@ -80,6 +89,79 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
     EXPECT_EQ(minimal.header.find("void copy_element("), std::string::npos);
     EXPECT_EQ(minimal.header.find("void append_from("), std::string::npos);
     EXPECT_EQ(minimal.source.find("void FData::reset()"), std::string::npos);
+}
+
+TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
+    auto const output{render_enum(EnumModuleSchema{
+        .settings = ModuleSettings{
+            .name = "modes",
+            .header = "Modes.h",
+            .source = "Modes.cpp",
+            .header_include = "Project/Modes.h",
+        },
+        .helper_namespace = "project",
+        .enums = {EnumSchema{
+            .name = "EMode",
+            .underlying_type = TypeRef{"uint8"},
+            .reflection = EnumReflection::blueprint,
+            .values =
+                {
+                    EnumeratorSchema{"First"},
+                    EnumeratorSchema{"Readable", "7", "Readable Value"},
+                    EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true},
+                },
+            .conversions =
+                {
+                    EnumConversion::lex_to_string,
+                    EnumConversion::string_view,
+                    EnumConversion::display_string_view,
+                },
+            .export_specifier = "PROJECT_API",
+        }},
+    })};
+
+    EXPECT_NE(output.header.find("#include \"Modes.generated.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : uint8"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("Readable = 7 UMETA(DisplayName = \"Readable Value\")"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("COUNT UMETA(Hidden)"), std::string::npos);
+    EXPECT_NE(output.header.find("PROJECT_API auto LexToString(EMode const value) -> TCHAR const*;"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("namespace project {\nPROJECT_API auto to_string_view"),
+              std::string::npos);
+    EXPECT_EQ(output.header.find("auto to_string(EMode"), std::string::npos);
+
+    EXPECT_NE(output.source.find("#include \"Project/Modes.h\""), std::string::npos);
+    EXPECT_NE(output.source.find("switch (value)"), std::string::npos);
+    EXPECT_NE(output.source.find("TEXT(\"<invalid EMode>\")"), std::string::npos);
+    EXPECT_NE(output.source.find("return TEXT(\"Readable Value\");"), std::string::npos);
+    EXPECT_NE(output.source.find("auto LexToString(EMode const value) -> TCHAR const*"),
+              std::string::npos);
+}
+
+TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
+    auto const output{render_enum(EnumModuleSchema{
+        .settings = ModuleSettings{
+            .name = "states",
+            .header = "States.h",
+            .source = "States.cpp",
+            .namespace_name = "project::states",
+        },
+        .enums = {EnumSchema{
+            .name = "EState",
+            .underlying_type = TypeRef{"int"},
+            .values = {EnumeratorSchema{"Ready"}},
+            .conversions = {EnumConversion::string},
+        }},
+    })};
+
+    EXPECT_NE(output.header.find("namespace project::states {\nenum class EState : int"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("namespace project::states {\nauto to_string(EState const value)"),
+              std::string::npos);
+    EXPECT_EQ(output.header.find("UENUM"), std::string::npos);
+    EXPECT_NE(output.source.find("project::states::EState::Ready"), std::string::npos);
 }
 
 TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {

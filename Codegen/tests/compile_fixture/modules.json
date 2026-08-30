@@ -1,6 +1,53 @@
 {
   "modules": [
     {
+      "kind": "enum",
+      "name": "plain_enum_fixture",
+      "header": "PlainEnums.h",
+      "source": "PlainEnums.cpp",
+      "header_include": "PlainEnums.h",
+      "namespace": "codegen_compile_fixture",
+      "enums": [
+        {
+          "name": "EPlainFixture",
+          "underlying_type": "uint8",
+          "values": [
+            {"name": "First", "value": "1"},
+            {"name": "ReadableName", "value": "2", "display_name": "Readable Name"}
+          ],
+          "conversions": [
+            "lex_to_string",
+            "string_view",
+            "string",
+            "lex_to_display_string",
+            "display_string_view",
+            "display_string"
+          ],
+          "export_specifier": "COMPILE_FIXTURE_API"
+        }
+      ]
+    },
+    {
+      "kind": "enum",
+      "name": "reflected_enum_fixture",
+      "header": "ReflectedEnums.h",
+      "source": "ReflectedEnums.cpp",
+      "header_include": "ReflectedEnums.h",
+      "helper_namespace": "codegen_compile_fixture",
+      "enums": [
+        {
+          "name": "EReflectedFixture",
+          "underlying_type": "uint8",
+          "reflection": "blueprint",
+          "values": [
+            {"name": "Visible", "display_name": "Visible Value"},
+            {"name": "COUNT", "hidden": true}
+          ],
+          "conversions": ["lex_to_string", "display_string_view"]
+        }
+      ]
+    },
+    {
       "kind": "homogeneous_soa",
       "name": "homogeneous_fixture",
       "header": "Homogeneous.h",
@@ -29,6 +76,61 @@
           "name": "Scalar",
           "components": ["values"],
           "value_types": [{"type": "int32", "suffix": "i"}]
+        }
+      ]
+    },
+    {
+      "kind": "static_table",
+      "name": "static_table_fixture",
+      "header": "StaticTables.h",
+      "namespace": "codegen_compile_fixture",
+      "tables": [
+        {
+          "name": "FStaticTableFixture",
+          "rows": [
+            {"name": "first"},
+            {"name": "second"},
+            {"name": "third"}
+          ],
+          "columns": [
+            {"name": "ids", "type": "int32"},
+            {"name": "weights", "type": "float"}
+          ],
+          "groups": [
+            {
+              "name": "row",
+              "type": "@row",
+              "columns": ["ids", "weights"]
+            }
+          ]
+        },
+        {
+          "name": "FStaticGroupFixture",
+          "rows": [
+            {"name": "first"},
+            {"name": "second"},
+            {"name": "third"}
+          ],
+          "columns": [
+            {"name": "min_xs", "type": "float"},
+            {"name": "min_ys", "type": "float"},
+            {"name": "min_zs", "type": "float"},
+            {"name": "max_xs", "type": "float"},
+            {"name": "max_ys", "type": "float"},
+            {"name": "max_zs", "type": "float"}
+          ],
+          "groups": [
+            {
+              "name": "min_point",
+              "type": "@vector3",
+              "columns": ["min_xs", "min_ys", "min_zs"]
+            },
+            {
+              "name": "max_point",
+              "type": "@vector3",
+              "columns": ["max_xs", "max_ys", "max_zs"]
+            }
+          ]
         }
       ]
     },
@@ -203,6 +305,9 @@
         "Vector3.h",
         "InlineFacade.h",
         "SourceFacade.h"
+        ,"PlainEnums.h"
+        ,"ReflectedEnums.h"
+        ,"StaticTables.h"
       ]
     }
   ]

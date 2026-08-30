@@ -209,6 +209,71 @@ void test_facades() {
     check(source_facade.get() == 42);
 }
 
+void test_enums() {
+    check(std::string_view{LexToString(EPlainFixture::First)} == "First");
+    check(to_string_view(EPlainFixture::ReadableName) == "ReadableName");
+    check(to_string(EPlainFixture::ReadableName) == "ReadableName");
+    check(std::string_view{LexToDisplayString(EPlainFixture::ReadableName)} == "Readable Name");
+    check(to_display_string_view(EPlainFixture::ReadableName) == "Readable Name");
+    check(to_display_string(EPlainFixture::First) == "First");
+
+    check(std::string_view{LexToString(EReflectedFixture::Visible)} == "Visible");
+    check(to_display_string_view(EReflectedFixture::Visible) == "Visible Value");
+    check(std::string_view{LexToString(static_cast<EReflectedFixture>(99))} ==
+          "<invalid EReflectedFixture>");
+}
+
+void test_static_tables() {
+    static_assert(FStaticTableFixture::num() == 3);
+    static_assert(FStaticTableFixture::first_index == 0);
+    static_assert(FStaticTableFixture::third_index == 2);
+
+    FStaticTableFixture values{
+        .ids = {10, 20, 30},
+        .weights = {1.0f, 2.0f, 3.0f},
+    };
+    values.apply_arrays([](auto& ids, auto& weights) {
+        ids[FStaticTableFixture::second_index] = {};
+        weights[FStaticTableFixture::second_index] = {};
+    });
+    check(values.ids[0] == 10 && values.ids[1] == 0);
+    check(values.weights[1] == 0.0f && values.weights[2] == 3.0f);
+
+    FStaticTableFixture other{};
+    values.apply_array_pairs(other, [](auto const& source_ids,
+                                       auto& destination_ids,
+                                       auto const& source_weights,
+                                       auto& destination_weights) {
+        destination_ids[FStaticTableFixture::third_index] =
+            source_ids[FStaticTableFixture::third_index];
+        destination_weights[FStaticTableFixture::third_index] =
+            source_weights[FStaticTableFixture::third_index];
+    });
+    check(other.ids[2] == 30 && other.weights[2] == 3.0f);
+
+    auto const& const_values{values};
+    int visited{};
+    const_values.apply_arrays(
+        [&visited]<typename... Columns>(Columns const&...) { visited = sizeof...(Columns); });
+    check(visited == 2);
+    auto const row{const_values.get_row(FStaticTableFixture::third_index)};
+    check(row.id == 30 && row.weight == 3.0f);
+
+    FStaticGroupFixture groups{};
+    groups.min_xs[FStaticGroupFixture::second_index] = 1.0f;
+    groups.min_ys[FStaticGroupFixture::second_index] = 2.0f;
+    groups.min_zs[FStaticGroupFixture::second_index] = 3.0f;
+    groups.max_xs[FStaticGroupFixture::second_index] = 4.0f;
+    groups.max_ys[FStaticGroupFixture::second_index] = 5.0f;
+    groups.max_zs[FStaticGroupFixture::second_index] = 6.0f;
+
+    auto const& const_groups{groups};
+    auto const min_point{const_groups.get_min_point(FStaticGroupFixture::second_index)};
+    auto const max_point{const_groups.get_max_point(FStaticGroupFixture::second_index)};
+    check(min_point.X == 1.0f && min_point.Y == 2.0f && min_point.Z == 3.0f);
+    check(max_point.X == 4.0f && max_point.Y == 5.0f && max_point.Z == 6.0f);
+}
+
 } // namespace
 
 auto main() -> int {
@@ -218,6 +283,8 @@ auto main() -> int {
         test_fixed_soa_lifetimes();
         test_vectors();
         test_facades();
+        test_enums();
+        test_static_tables();
         return 0;
     } catch (std::exception const&) {
         return 1;

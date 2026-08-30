@@ -54,3 +54,70 @@ class SPACEGAME_API USpaceSaveGame : public USaveGame {
     UPROPERTY()
     TArray<FScoreRecord> score_records;
 };
+
+USTRUCT()
+struct SPACEGAME_API FSaveProfileMetadata {
+    GENERATED_BODY()
+
+    UPROPERTY()
+    FString profile_id{};
+
+    UPROPERTY()
+    FString display_name{};
+
+    UPROPERTY()
+    FDateTime created_at{};
+
+    UPROPERTY()
+    FDateTime last_played_at{};
+
+    UPROPERTY()
+    float total_simulation_duration_seconds{};
+
+    UPROPERTY()
+    int32 total_kills{};
+
+    UPROPERTY()
+    int32 outcome_count{};
+};
+
+USTRUCT()
+struct SPACEGAME_API FSaveProfileIndexData {
+    GENERATED_BODY()
+
+    UPROPERTY()
+    int32 save_version{1};
+
+    UPROPERTY()
+    FString active_profile_id{};
+
+    UPROPERTY()
+    TArray<FSaveProfileMetadata> profiles{};
+};
+
+USTRUCT()
+struct SPACEGAME_API FSaveProfileResultsData {
+    GENERATED_BODY()
+
+    UPROPERTY()
+    int32 save_version{1};
+
+    UPROPERTY()
+    TArray<FScoreRecord> score_records{};
+};
+
+UCLASS()
+class SPACEGAME_API USpaceSaveProfileIndexSaveGame : public USaveGame {
+    GENERATED_BODY()
+  public:
+    UPROPERTY()
+    FSaveProfileIndexData data{};
+};
+
+UCLASS()
+class SPACEGAME_API USpaceSaveProfileResultsSaveGame : public USaveGame {
+    GENERATED_BODY()
+  public:
+    UPROPERTY()
+    FSaveProfileResultsData data{};
+};

@@ -3,6 +3,7 @@
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
+#include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 
 #include <Components/Button.h>
 #include <Components/TextBlock.h>
@@ -35,13 +36,21 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto* const play_button{Cast<UButton>(widget->GetWidgetFromName(TEXT("play_button")))};
         auto* const options_button{
             Cast<UButton>(widget->GetWidgetFromName(TEXT("options_button")))};
+        auto* const save_games_button{
+            Cast<UButton>(widget->GetWidgetFromName(TEXT("save_games_button")))};
         auto* const level_select_widget{Cast<ml::ioj::ULevelSelectWidget>(
             widget->GetWidgetFromName(TEXT("level_select_widget")))};
         auto* const options_widget{
             Cast<ml::ioj::UOptionsWidget>(widget->GetWidgetFromName(TEXT("options_widget")))};
+        auto* const save_game_viewer{Cast<ml::ioj::USaveGameViewerWidget>(
+            widget->GetWidgetFromName(TEXT("save_game_viewer")))};
+        auto* const save_games_back_button{
+            Cast<UButton>(widget->GetWidgetFromName(TEXT("save_games_back_button")))};
 
-        auto const main_bindings_valid{IsValid(play_button) && IsValid(options_button) &&
-                                       IsValid(level_select_widget) && IsValid(options_widget)};
+        auto const main_bindings_valid{IsValid(play_button) && IsValid(save_games_button) &&
+                                       IsValid(options_button) && IsValid(level_select_widget) &&
+                                       IsValid(save_game_viewer) &&
+                                       IsValid(save_games_back_button) && IsValid(options_widget)};
         if (!TestRunner->TestTrue(TEXT("All required main menu bindings are valid"),
                                   main_bindings_valid)) {
             return;
@@ -84,6 +93,14 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 
         level_back_button->OnClicked.Broadcast();
         TestRunner->TestTrue(TEXT("Level select Back returns to main"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
+
+        save_games_button->OnClicked.Broadcast();
+        TestRunner->TestTrue(TEXT("Save Games opens save viewer"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::SaveGames);
+
+        save_games_back_button->OnClicked.Broadcast();
+        TestRunner->TestTrue(TEXT("Save Games Back returns to main"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
 
         options_button->OnClicked.Broadcast();

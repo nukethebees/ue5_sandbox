@@ -1,5 +1,10 @@
 #pragma once
 
+#include <codegen/schema/enum_conversion.h>
+#include <codegen/schema/enum_module_schema.h>
+#include <codegen/schema/enum_reflection.h>
+#include <codegen/schema/enum_schema.h>
+#include <codegen/schema/enumerator_schema.h>
 #include <codegen/schema/facade_method_schema.h>
 #include <codegen/schema/facade_module_schema.h>
 #include <codegen/schema/facade_schema.h>
@@ -17,6 +22,11 @@
 #include <codegen/schema/soa_member_schema.h>
 #include <codegen/schema/soa_module_schema.h>
 #include <codegen/schema/soa_schema.h>
+#include <codegen/schema/static_table_column_schema.h>
+#include <codegen/schema/static_table_group_schema.h>
+#include <codegen/schema/static_table_module_schema.h>
+#include <codegen/schema/static_table_row_schema.h>
+#include <codegen/schema/static_table_schema.h>
 #include <codegen/schema/storage_operation.h>
 #include <codegen/schema/type_ref.h>
 #include <codegen/schema/umbrella_module_schema.h>
