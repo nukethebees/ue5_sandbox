@@ -5,6 +5,7 @@
 #include <SpaceGame/simulation/SimulationActorClasses.h>
 
 #include <limits>
+
 #if WITH_EDITOR
 #include <Misc/DataValidation.h>
 #endif

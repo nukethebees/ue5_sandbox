@@ -7,6 +7,7 @@
 
 #include <Engine/StaticMesh.h>
 
+#include <limits>
 #include <utility>
 
 namespace ml::ioj {
@@ -161,22 +162,25 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
         auto const max_coord{to_max_cell_coord(max_point)};
 
         if (!is_cell_coord_in_bounds(min_coord) || !is_cell_coord_in_bounds(max_coord)) {
+            FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
+                                            static_cast<float>(grid_dims_.Y),
+                                            static_cast<float>(grid_dims_.Z)};
+            auto const half_grid_size{grid_dimensions * cell_dims_ * 0.5f};
             UE_LOG(LogSandbox,
-                   Warning,
-                   TEXT("Skipping collision-grid entity %d of type %s: AABB cells (%d, %d, %d) "
-                        "through (%d, %d, %d) are outside grid dimensions (%d, %d, %d)"),
-                   i,
+                   Fatal,
+                   TEXT("Collision-grid entity %s of type %s has world AABB (%s) through (%s), "
+                        "cell AABB %s through %s, outside grid world bounds (%s) through (%s) and "
+                        "cell bounds %s through %s"),
+                   *LexToString(FRegistryEntityHandle{i, gens[i]}),
                    LexToString(entity_type),
-                   min_coord.X,
-                   min_coord.Y,
-                   min_coord.Z,
-                   max_coord.X,
-                   max_coord.Y,
-                   max_coord.Z,
-                   grid_dims_.X,
-                   grid_dims_.Y,
-                   grid_dims_.Z);
-            continue;
+                   *min_point.ToString(),
+                   *max_point.ToString(),
+                   *to_string(min_coord),
+                   *to_string(max_coord),
+                   *(-half_grid_size).ToString(),
+                   *half_grid_size.ToString(),
+                   *to_string(FIntVector3::ZeroValue),
+                   *to_string(grid_dims_ - FIntVector3{1, 1, 1}));
         }
 
         entities_buffer_.locations.add(location);
