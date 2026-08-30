@@ -331,9 +331,9 @@ add_custom_target(generate-lualab-assets
   VERBATIM
 )
 
-add_custom_target(generate-lab-mesh-cube
+add_custom_target(generate-lab-mesh-box
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    -run=GenerateSandboxMeshCube
+    -run=GenerateSandboxMeshBox
     "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
     -ddc=NoZenLocalFallback
     -unattended
@@ -344,7 +344,7 @@ add_custom_target(generate-lab-mesh-cube
     -stdout
   DEPENDS editor
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
-  COMMENT "Generating the SandboxMesh Lab cube"
+  COMMENT "Generating the SandboxMesh Lab box"
   USES_TERMINAL
   VERBATIM
 )

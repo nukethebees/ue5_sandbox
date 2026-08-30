@@ -1,4 +1,4 @@
-#include "SbxMeshGenLab/CubeGenerator.h"
+#include "SbxMeshGenLab/BoxGenerator.h"
 
 #include "Framework/Docking/TabManager.h"
 #include "Widgets/Docking/SDockTab.h"
@@ -17,24 +17,46 @@ auto is_valid_uv(FVector2f const value) -> bool {
 }
 }
 
-TEST_CLASS(CubeGenerator, "SandboxMesh.UnitTests")
+TEST_CLASS(BoxGenerator, "SandboxMesh.UnitTests")
 {
-    TEST_METHOD(GeneratesExpectedCubeBuffers)
+    TEST_METHOD(GeneratesExpectedBoxBuffers)
     {
-        auto const mesh_data{generate_cube()};
+        auto const mesh_data{generate_box()};
 
-        TestRunner->TestEqual(TEXT("Cube has 24 face vertices"), mesh_data.positions.Num(), 24);
-        TestRunner->TestEqual(TEXT("Cube has 36 triangle indices"), mesh_data.indices.Num(), 36);
-        TestRunner->TestEqual(TEXT("Cube has a normal per vertex"),
+        TestRunner->TestEqual(TEXT("Box has 24 face vertices"), mesh_data.positions.Num(), 24);
+        TestRunner->TestEqual(TEXT("Box has 36 triangle indices"), mesh_data.indices.Num(), 36);
+        TestRunner->TestEqual(TEXT("Box has a normal per vertex"),
                               mesh_data.normals.Num(),
                               mesh_data.positions.Num());
         TestRunner->TestEqual(
-            TEXT("Cube has a UV per vertex"), mesh_data.uvs.Num(), mesh_data.positions.Num());
+            TEXT("Box has a UV per vertex"), mesh_data.uvs.Num(), mesh_data.positions.Num());
+    }
+
+    TEST_METHOD(UsesRequestedDimensions)
+    {
+        FSbxBoxParameters const parameters{FVector3f{120.0f, 80.0f, 40.0f}};
+        auto const mesh_data{generate_box(parameters)};
+        auto minimum{mesh_data.positions[0]};
+        auto maximum{mesh_data.positions[0]};
+
+        for (auto const position : mesh_data.positions) {
+            minimum.X = FMath::Min(minimum.X, position.X);
+            minimum.Y = FMath::Min(minimum.Y, position.Y);
+            minimum.Z = FMath::Min(minimum.Z, position.Z);
+            maximum.X = FMath::Max(maximum.X, position.X);
+            maximum.Y = FMath::Max(maximum.Y, position.Y);
+            maximum.Z = FMath::Max(maximum.Z, position.Z);
+        }
+
+        TestRunner->TestTrue(TEXT("Minimum bounds are negative half-dimensions"),
+                             minimum.Equals(FVector3f{-60.0f, -40.0f, -20.0f}));
+        TestRunner->TestTrue(TEXT("Maximum bounds are positive half-dimensions"),
+                             maximum.Equals(FVector3f{60.0f, 40.0f, 20.0f}));
     }
 
     TEST_METHOD(GeneratesValidIndexedGeometry)
     {
-        auto const mesh_data{generate_cube()};
+        auto const mesh_data{generate_box(FSbxBoxParameters{FVector3f{120.0f, 80.0f, 40.0f}})};
         auto const vertex_count{static_cast<uint32>(mesh_data.positions.Num())};
 
         for (auto const index : mesh_data.indices) {
@@ -54,7 +76,7 @@ TEST_CLASS(CubeGenerator, "SandboxMesh.UnitTests")
 
     TEST_METHOD(GeneratesConsistentlyWoundTriangles)
     {
-        auto const mesh_data{generate_cube()};
+        auto const mesh_data{generate_box(FSbxBoxParameters{FVector3f{120.0f, 80.0f, 40.0f}})};
         auto const triangle_count{mesh_data.indices.Num() / 3};
 
         for (int32 triangle_index{0}; triangle_index < triangle_count; ++triangle_index) {
@@ -71,7 +93,7 @@ TEST_CLASS(CubeGenerator, "SandboxMesh.UnitTests")
 
             TestRunner->TestTrue(TEXT("Triangle is not degenerate"),
                                  front_face_normal.SizeSquared() > 0.0f);
-            TestRunner->TestTrue(TEXT("Unreal front-face winding points away from the cube centre"),
+            TestRunner->TestTrue(TEXT("Unreal front-face winding points away from the box centre"),
                                  FVector3f::DotProduct(front_face_normal, triangle_centre) > 0.0f);
             TestRunner->TestTrue(
                 TEXT("Vertex normal agrees with Unreal front-face winding"),
@@ -79,10 +101,11 @@ TEST_CLASS(CubeGenerator, "SandboxMesh.UnitTests")
         }
     }
 
-    TEST_METHOD(GeneratesDeterministicCubeData)
+    TEST_METHOD(GeneratesDeterministicBoxData)
     {
-        auto const first{generate_cube()};
-        auto const second{generate_cube()};
+        FSbxBoxParameters const parameters{FVector3f{120.0f, 80.0f, 40.0f}};
+        auto const first{generate_box(parameters)};
+        auto const second{generate_box(parameters)};
 
         TestRunner->TestTrue(TEXT("Positions are deterministic"),
                              first.positions == second.positions);

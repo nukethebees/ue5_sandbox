@@ -1,7 +1,5 @@
 #include "Generation/MeshAssetWriter.h"
 
-#include "SbxMeshGenLab/CubeGenerator.h"
-
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/StaticMesh.h"
 #include "HAL/FileManager.h"
@@ -10,6 +8,7 @@
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
 #include "StaticMeshAttributes.h"
+#include "StaticMeshOperations.h"
 #include "UObject/Package.h"
 #include "UObject/SavePackage.h"
 
@@ -17,11 +16,11 @@ DEFINE_LOG_CATEGORY_STATIC(LogSbxMeshGenLab, Log, All);
 
 namespace SandboxMesh {
 namespace {
-FString const generated_cube_package_name{
-    TEXT("/SandboxMesh/MeshGenLab/Generated/SM_GeneratedCube")};
-FName const generated_cube_asset_name{TEXT("SM_GeneratedCube")};
-FString const generated_cube_object_path{
-    TEXT("/SandboxMesh/MeshGenLab/Generated/SM_GeneratedCube.SM_GeneratedCube")};
+FString const generated_package_path{TEXT("/SandboxMesh/MeshGenLab/Generated")};
+
+auto get_generated_asset_package_name(FName const asset_name) -> FString {
+    return FString::Printf(TEXT("%s/%s"), *generated_package_path, *asset_name.ToString());
+}
 
 auto ensure_generated_content_directory() -> bool {
     auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxMesh"))};
@@ -82,50 +81,80 @@ auto make_mesh_description(FSbxMeshData const& mesh_data) -> FMeshDescription {
 
     return mesh_description;
 }
+
+auto has_valid_bounds(FMeshDescription const& mesh_description) -> bool {
+    auto const bounds{mesh_description.GetBounds()};
+    return !bounds.Origin.ContainsNaN() && !bounds.BoxExtent.ContainsNaN() &&
+           FMath::IsFinite(bounds.SphereRadius) && bounds.SphereRadius > 0.0;
+}
 }
 
-auto get_generated_cube_filename() -> FString {
-    return FPackageName::LongPackageNameToFilename(generated_cube_package_name,
+auto get_generated_asset_filename(FName const asset_name) -> FString {
+    return FPackageName::LongPackageNameToFilename(get_generated_asset_package_name(asset_name),
                                                    FPackageName::GetAssetPackageExtension());
 }
 
-auto generate_cube_asset() -> UStaticMesh* {
+auto get_generated_asset_object_path(FName const asset_name) -> FString {
+    auto const package_name{get_generated_asset_package_name(asset_name)};
+    return FString::Printf(TEXT("%s.%s"), *package_name, *asset_name.ToString());
+}
+
+auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data, FName const asset_name)
+    -> UStaticMesh* {
     if (!ensure_generated_content_directory()) {
         return nullptr;
     }
 
-    auto* static_mesh{LoadObject<UStaticMesh>(nullptr, *generated_cube_object_path)};
+    auto const package_name{get_generated_asset_package_name(asset_name)};
+    auto const object_path{get_generated_asset_object_path(asset_name)};
+    auto* static_mesh{LoadObject<UStaticMesh>(nullptr, *object_path)};
     auto const is_new_asset{static_mesh == nullptr};
-    auto* const package{is_new_asset ? CreatePackage(*generated_cube_package_name)
-                                     : static_mesh->GetOutermost()};
+    auto* const package{is_new_asset ? CreatePackage(*package_name) : static_mesh->GetOutermost()};
     if (package == nullptr) {
         UE_LOG(LogSbxMeshGenLab,
                Error,
-               TEXT("Failed to create generated cube package: %s"),
-               *generated_cube_package_name);
+               TEXT("Failed to create generated mesh package: %s"),
+               *package_name);
         return nullptr;
     }
 
     if (is_new_asset) {
         static_mesh = NewObject<UStaticMesh>(
-            package, generated_cube_asset_name, RF_Public | RF_Standalone | RF_Transactional);
+            package, asset_name, RF_Public | RF_Standalone | RF_Transactional);
     }
     if (static_mesh == nullptr) {
-        UE_LOG(LogSbxMeshGenLab, Error, TEXT("Failed to create generated cube static mesh."));
+        UE_LOG(LogSbxMeshGenLab, Error, TEXT("Failed to create generated static mesh."));
         return nullptr;
     }
 
-    auto const mesh_data{generate_cube()};
     auto mesh_description{make_mesh_description(mesh_data)};
+    FStaticMeshOperations::ComputeTriangleTangentsAndNormals(mesh_description);
+    FStaticMeshOperations::ComputeTangentsAndNormals(mesh_description, EComputeNTBsFlags::Tangents);
+    if (!has_valid_bounds(mesh_description)) {
+        UE_LOG(LogSbxMeshGenLab,
+               Error,
+               TEXT("Generated mesh has invalid bounds and will not be built: %s"),
+               *object_path);
+        return nullptr;
+    }
+
     TArray<FMeshDescription const*> mesh_descriptions{&mesh_description};
 
     static_mesh->Modify();
+    static_mesh->PreEditChange(nullptr);
     static_mesh->GetStaticMaterials().Reset();
     static_mesh->GetStaticMaterials().Add(FStaticMaterial{});
+    static_mesh->SetNumSourceModels(1);
+
+    auto& build_settings{static_mesh->GetSourceModel(0).BuildSettings};
+    build_settings.bRecomputeNormals = false;
+    build_settings.bRecomputeTangents = false;
+    build_settings.bGenerateLightmapUVs = false;
 
     UStaticMesh::FBuildMeshDescriptionsParams build_parameters{};
-    build_parameters.bFastBuild = true;
+    build_parameters.bFastBuild = false;
     static_mesh->BuildFromMeshDescriptions(mesh_descriptions, build_parameters);
+    static_mesh->PostEditChange();
     static_mesh->MarkPackageDirty();
 
     if (is_new_asset) {
@@ -134,18 +163,18 @@ auto generate_cube_asset() -> UStaticMesh* {
 
     FSavePackageArgs save_arguments{};
     save_arguments.TopLevelFlags = RF_Public | RF_Standalone;
-    auto const package_filename{get_generated_cube_filename()};
+    auto const package_filename{get_generated_asset_filename(asset_name)};
     if (!UPackage::SavePackage(package, static_mesh, *package_filename, save_arguments)) {
         UE_LOG(LogSbxMeshGenLab,
                Error,
-               TEXT("Failed to save generated cube asset: %s"),
+               TEXT("Failed to save generated mesh asset: %s"),
                *package_filename);
         return nullptr;
     }
 
     UE_LOG(LogSbxMeshGenLab,
            Display,
-           TEXT("Generated cube static mesh asset: %s"),
+           TEXT("Generated static mesh asset: %s"),
            *static_mesh->GetPathName());
     return static_mesh;
 }

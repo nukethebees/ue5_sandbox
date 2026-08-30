@@ -1,4 +1,4 @@
-#include "SbxMeshGenLab/CubeGenerator.h"
+#include "SbxMeshGenLab/BoxGenerator.h"
 
 namespace SandboxMesh {
 namespace {
@@ -25,51 +25,54 @@ void add_face(FSbxMeshData& mesh_data,
 }
 }
 
-auto generate_cube(float const half_extent) -> FSbxMeshData {
+auto generate_box(FSbxBoxParameters const& parameters) -> FSbxMeshData {
     FSbxMeshData mesh_data{};
     mesh_data.positions.Reserve(24);
     mesh_data.normals.Reserve(24);
     mesh_data.uvs.Reserve(24);
     mesh_data.indices.Reserve(36);
 
-    auto const h{half_extent};
+    auto const half_dimensions{parameters.dimensions * 0.5f};
+    auto const x{half_dimensions.X};
+    auto const y{half_dimensions.Y};
+    auto const z{half_dimensions.Z};
 
     add_face(mesh_data,
              FVector3f::XAxisVector,
-             FVector3f{h, -h, -h},
-             FVector3f{h, h, -h},
-             FVector3f{h, h, h},
-             FVector3f{h, -h, h});
+             FVector3f{x, -y, -z},
+             FVector3f{x, y, -z},
+             FVector3f{x, y, z},
+             FVector3f{x, -y, z});
     add_face(mesh_data,
              -FVector3f::XAxisVector,
-             FVector3f{-h, h, -h},
-             FVector3f{-h, -h, -h},
-             FVector3f{-h, -h, h},
-             FVector3f{-h, h, h});
+             FVector3f{-x, y, -z},
+             FVector3f{-x, -y, -z},
+             FVector3f{-x, -y, z},
+             FVector3f{-x, y, z});
     add_face(mesh_data,
              FVector3f::YAxisVector,
-             FVector3f{-h, h, -h},
-             FVector3f{-h, h, h},
-             FVector3f{h, h, h},
-             FVector3f{h, h, -h});
+             FVector3f{-x, y, -z},
+             FVector3f{-x, y, z},
+             FVector3f{x, y, z},
+             FVector3f{x, y, -z});
     add_face(mesh_data,
              -FVector3f::YAxisVector,
-             FVector3f{h, -h, -h},
-             FVector3f{h, -h, h},
-             FVector3f{-h, -h, h},
-             FVector3f{-h, -h, -h});
+             FVector3f{x, -y, -z},
+             FVector3f{x, -y, z},
+             FVector3f{-x, -y, z},
+             FVector3f{-x, -y, -z});
     add_face(mesh_data,
              FVector3f::ZAxisVector,
-             FVector3f{-h, -h, h},
-             FVector3f{h, -h, h},
-             FVector3f{h, h, h},
-             FVector3f{-h, h, h});
+             FVector3f{-x, -y, z},
+             FVector3f{x, -y, z},
+             FVector3f{x, y, z},
+             FVector3f{-x, y, z});
     add_face(mesh_data,
              -FVector3f::ZAxisVector,
-             FVector3f{-h, h, -h},
-             FVector3f{h, h, -h},
-             FVector3f{h, -h, -h},
-             FVector3f{-h, -h, -h});
+             FVector3f{-x, y, -z},
+             FVector3f{x, y, -z},
+             FVector3f{x, -y, -z},
+             FVector3f{-x, -y, -z});
 
     return mesh_data;
 }
