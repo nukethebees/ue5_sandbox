@@ -136,6 +136,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     TArray<FVector3f> base_positions_;
     TArray<FTransform> engine_update_transforms_;
     TArray<double> frame_ms_;
+    TArray<double> game_thread_ms_;
+    TArray<double> render_thread_ms_;
+    TArray<double> gpu_ms_;
     FRendererSamples custom_samples_;
     FRendererSamples engine_samples_;
 

@@ -21,6 +21,8 @@
 #include "ProfilingDebugging/MiscTrace.h"
 #include "ProfilingDebugging/TraceAuxiliary.h"
 #include "RenderingThread.h"
+#include "RenderTimer.h"
+#include "RHI.h"
 #include "SandboxISMCComponent.h"
 #include "UnrealEdGlobals.h"
 #include "UObject/ConstructorHelpers.h"
@@ -35,6 +37,9 @@ TRACE_DECLARE_INT_COUNTER(BenchmarkInstanceCount, TEXT("SandboxISMCBenchmark/Ins
 TRACE_DECLARE_INT_COUNTER(BenchmarkUpdatedInstanceCount,
                           TEXT("SandboxISMCBenchmark/UpdatedInstanceCount"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkFrameMs, TEXT("SandboxISMCBenchmark/FrameMs"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkGameThreadMs, TEXT("SandboxISMCBenchmark/GameThreadMs"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkRenderThreadMs, TEXT("SandboxISMCBenchmark/RenderThreadMs"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkGpuMs, TEXT("SandboxISMCBenchmark/GpuMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomTotalMs,
                             TEXT("SandboxISMCBenchmark/Custom/TotalUpdateMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomPrepareMs,
@@ -226,8 +231,19 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
         record_samples(engine_samples_, engine_timing);
     }
     frame_ms_.Add(static_cast<double>(delta_seconds) * 1000.0);
+    auto const game_thread_ms{FPlatformTime::ToMilliseconds(GGameThreadTime)};
+    auto const render_thread_ms{FPlatformTime::ToMilliseconds(GRenderThreadTime)};
+    auto const gpu_ms{FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles())};
+    game_thread_ms_.Add(game_thread_ms);
+    render_thread_ms_.Add(render_thread_ms);
+    if (gpu_ms > 0.0) {
+        gpu_ms_.Add(gpu_ms);
+    }
 
     TRACE_COUNTER_SET_ALWAYS(BenchmarkFrameMs, static_cast<double>(delta_seconds) * 1000.0);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkGameThreadMs, game_thread_ms);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkRenderThreadMs, render_thread_ms);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkGpuMs, gpu_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomTotalMs, custom_timing.total_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomPrepareMs, custom_timing.prepare_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomApiMs, custom_timing.api_ms);
@@ -678,6 +694,9 @@ void ASandboxISMCBenchmarkActor::save_report() const {
     }};
 
     append(TEXT("benchmark"), TEXT("frame"), TEXT("ms"), frame_ms_);
+    append(TEXT("benchmark"), TEXT("game_thread"), TEXT("ms"), game_thread_ms_);
+    append(TEXT("benchmark"), TEXT("render_thread"), TEXT("ms"), render_thread_ms_);
+    append(TEXT("benchmark"), TEXT("gpu"), TEXT("ms"), gpu_ms_);
     if (runs_custom()) {
         append(TEXT("custom"), TEXT("creation"), TEXT("ms"), {custom_creation_ms_});
         append(TEXT("custom"), TEXT("total_update"), TEXT("ms"), custom_samples_.total_update_ms);

@@ -131,6 +131,9 @@ mode, update percentage, and visibility. Each metric reports its unit plus minim
 maximum values over the complete run:
 
 - `frame` is the PIE game-frame duration.
+- `game_thread`, `render_thread`, and `gpu` are Unreal's whole-frame thread/GPU timers. They are most
+  useful in isolated custom-only and engine-only runs; GPU startup samples reported as zero are
+  omitted from the CSV.
 - `total_update` covers preparation plus the public component update call.
 - `prepare` is benchmark-side writing or construction of the changed transforms.
 - `api` is `commit_instance_updates()` or `BatchUpdateInstancesTransforms()`.

@@ -14,6 +14,7 @@ public class SandboxISMCLab : ModuleRules
             "CoreUObject",
             "Engine",
             "RenderCore",
+            "RHI",
             "SandboxISMC",
             "UnrealEd",
         });
