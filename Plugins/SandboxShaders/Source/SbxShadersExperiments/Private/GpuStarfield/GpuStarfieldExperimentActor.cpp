@@ -41,6 +41,29 @@ auto parse_star_counts() -> TArray<int32> {
     }
     return result;
 }
+
+auto parse_camera_motion_modes() -> TArray<bool> {
+    FString values;
+    if (!FParse::Value(
+            FCommandLine::Get(), TEXT("GpuStarfieldBenchmarkCameraModes="), values, false)) {
+        return {false, true};
+    }
+
+    values.TrimQuotesInline();
+    TArray<FString> entries;
+    values.ParseIntoArray(entries, TEXT(","), true);
+
+    TArray<bool> result;
+    for (auto entry : entries) {
+        entry.TrimStartAndEndInline();
+        if (entry.Equals(TEXT("stationary"), ESearchCase::IgnoreCase)) {
+            result.AddUnique(false);
+        } else if (entry.Equals(TEXT("moving"), ESearchCase::IgnoreCase)) {
+            result.AddUnique(true);
+        }
+    }
+    return result;
+}
 }
 
 AGpuStarfieldExperimentActor::AGpuStarfieldExperimentActor() {
@@ -107,13 +130,20 @@ void AGpuStarfieldExperimentActor::apply_settings() {
 
 void AGpuStarfieldExperimentActor::start_benchmark() {
     auto const star_counts{parse_star_counts()};
-    if (star_counts.IsEmpty()) {
+    auto const camera_motion_modes{parse_camera_motion_modes()};
+    if (star_counts.IsEmpty() || camera_motion_modes.IsEmpty()) {
         UE_LOG(LogGpuStarfieldBenchmark,
                Error,
-               TEXT("GpuStarfieldBenchmarkCounts did not contain a valid star count."));
+               TEXT("GPU starfield benchmark counts or camera modes were invalid."));
         FPlatformMisc::RequestExitWithStatus(true, 1);
         return;
     }
+
+    auto star_size_multiplier{settings.star_size_multiplier};
+    FParse::Value(FCommandLine::Get(),
+                  TEXT("GpuStarfieldBenchmarkStarSizeMultiplier="),
+                  star_size_multiplier);
+    settings.star_size_multiplier = FMath::Max(star_size_multiplier, 0.0f);
 
     benchmark_warmup_frames_ = default_warmup_frames;
     benchmark_capture_frames_ = default_capture_frames;
@@ -141,7 +171,7 @@ void AGpuStarfieldExperimentActor::start_benchmark() {
 
     for (auto const star_count : star_counts) {
         for (int32 repeat_index{0}; repeat_index < repeat_count; ++repeat_index) {
-            for (auto const camera_motion : {false, true}) {
+            for (auto const camera_motion : camera_motion_modes) {
                 auto const enabled_first{(repeat_index + static_cast<int32>(camera_motion)) % 2 ==
                                          1};
                 benchmark_phases_.Add({star_count, repeat_index, enabled_first, camera_motion});

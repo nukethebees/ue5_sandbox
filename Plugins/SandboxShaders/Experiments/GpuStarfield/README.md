@@ -121,6 +121,37 @@ The subpixel footprint, energy correction, and default subtle bright-star shape 
 that variation. Moving the camera across the 10,000-km path did not add measurable starfield GPU
 cost or change its draw/primitive counts. Whole-frame render-thread differences remain noisy.
 
+### Resolution and apparent-size matrix
+
+Run the bounded stationary matrix separately:
+
+```text
+cmake --workflow --preset gpu-starfield-matrix
+```
+
+This reuses the same paired A/B capture and validation path for 1080p and 4K, 100,000 and one
+million stars, and the default and 4x star-size multipliers. Each of the eight cases uses three
+paired repeats. Unreal requires `-ForceRes` for these offscreen resolutions; the runner reads the
+CSV metadata and fails the test if the actual render resolution does not match the requested one.
+
+The following RTX 5090 results came from the verified run in `20260830_180144`:
+
+| Resolution | Size | Stars | Submit CPU ms | GPU delta ms | Translucency GPU delta ms | Draw delta |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 1920x1080 | 1x | 100,000 | 0.0061 | 0.1079 | 0.0609 | 1 |
+| 1920x1080 | 1x | 1,000,000 | 0.0065 | 0.5665 | 0.4979 | 1 |
+| 1920x1080 | 4x | 100,000 | 0.0061 | 0.1084 | 0.0611 | 1 |
+| 1920x1080 | 4x | 1,000,000 | 0.0060 | 0.5719 | 0.4999 | 1 |
+| 3840x2160 | 1x | 100,000 | 0.0061 | 0.1052 | 0.0606 | 1 |
+| 3840x2160 | 1x | 1,000,000 | 0.0075 | 0.5742 | 0.4980 | 1 |
+| 3840x2160 | 4x | 100,000 | 0.0067 | 0.1164 | 0.0612 | 1 |
+| 3840x2160 | 4x | 1,000,000 | 0.0059 | 0.5782 | 0.5030 | 1 |
+
+The small differences across resolution and size are comparable to run-to-run variation. For the
+current tiny stabilized stars, this indicates that instance/vertex work and minimum footprints
+dominate rather than resolution-scaled fill. Coarse GPU culling is therefore not justified by this
+hardware result. Target-hardware measurements remain necessary before making a production choice.
+
 ## Initial whole-showcase profiling baseline
 
 The architecture produces one draw submission per visible view at every tested count. Expected
@@ -182,5 +213,6 @@ no per-star CPU work per frame.
 6. **Galactic density band — complete.** Deterministic generation can now mix the uniform sky with
    a configurable soft band around the actor's local equator. Strength zero preserves the original
    distribution, and the feature does not change GPU data or per-frame work.
-7. **Coarse GPU culling, if justified.** Evaluate frustum and projected-size culling only after
-   representative hardware and resolution measurements show that unculled quads need it.
+7. **Coarse GPU culling evaluation — complete.** The verified resolution/size matrix does not show
+   a current need for it on the measured hardware. Revisit this only if representative target
+   hardware or substantially different star appearance makes the unculled draw material.

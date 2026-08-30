@@ -200,6 +200,21 @@
       }
     },
     {
+      "name": "gpu-starfield-matrix-tests",
+      "configurePreset": "development",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "gpu-starfield-matrix"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
       "name": "debug-game-level-tests",
       "configurePreset": "debug-game",
       "output": {
@@ -331,6 +346,14 @@
         { "type": "configure", "name": "development" },
         { "type": "build", "name": "gpu-starfield-benchmark" },
         { "type": "test", "name": "gpu-starfield-benchmark-tests" }
+      ]
+    },
+    {
+      "name": "gpu-starfield-matrix",
+      "steps": [
+        { "type": "configure", "name": "development" },
+        { "type": "build", "name": "gpu-starfield-benchmark" },
+        { "type": "test", "name": "gpu-starfield-matrix-tests" }
       ]
     },
     {

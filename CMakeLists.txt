@@ -261,6 +261,24 @@ set_tests_properties(SandboxShaders.GpuStarfieldBenchmark PROPERTIES
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
+add_test(
+  NAME SandboxShaders.GpuStarfieldMatrix
+  COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
+    "--editor=${UE_EDITOR_CMD_EXE}"
+    "--project=${SANDBOX_UPROJECT}"
+    "--output=${CMAKE_CURRENT_SOURCE_DIR}/Saved/Benchmarks/GpuStarfield"
+    "--counts=100000,1000000"
+    "--resolutions=1920x1080,3840x2160"
+    "--size-multipliers=1,4"
+    "--camera-modes=stationary"
+)
+set_tests_properties(SandboxShaders.GpuStarfieldMatrix PROPERTIES
+  LABELS gpu-starfield-matrix
+  TIMEOUT 3600
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 add_custom_target(gpu-tutorial-shader-tests
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests StartsWith:SandboxGpuTutorials.UnitTests; Quit"
