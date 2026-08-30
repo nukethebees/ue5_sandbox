@@ -20,6 +20,9 @@ auto make_default_mesh_request(ESbxMeshShape const shape) -> FSbxMeshGenerationR
         case ESbxMeshShape::Cone:
             request.asset_name = TEXT("SM_GeneratedCone");
             break;
+        case ESbxMeshShape::HexTile:
+            request.asset_name = TEXT("SM_GeneratedHexTile");
+            break;
         case ESbxMeshShape::HexFrame:
             request.asset_name = TEXT("SM_GeneratedHexFrame");
             break;
@@ -67,6 +70,16 @@ auto validate_mesh_request(FSbxMeshGenerationRequest const& request) -> FString 
                 return TEXT("Cone radius and height must be positive, with at least 3 segments.");
             }
             break;
+        case ESbxMeshShape::HexTile:
+            if (request.hex_tile.outer_radius <= 0.0f || request.hex_tile.depth <= 0.0f ||
+                request.hex_tile.bevel_width <= 0.0f) {
+                return TEXT("Hex-tile radius, depth, and bevel width must be positive.");
+            }
+            if (request.hex_tile.bevel_width >= request.hex_tile.outer_radius ||
+                request.hex_tile.bevel_width >= request.hex_tile.depth * 0.5f) {
+                return TEXT("Hex-tile bevel width must be less than its radius and half-depth.");
+            }
+            break;
         case ESbxMeshShape::HexFrame:
             if (request.hex_frame.outer_radius <= 0.0f ||
                 request.hex_frame.wall_thickness <= 0.0f || request.hex_frame.depth <= 0.0f) {
@@ -104,6 +117,8 @@ auto generate_mesh(FSbxMeshGenerationRequest const& request) -> FSbxMeshData {
             return generate_sphere(request.sphere);
         case ESbxMeshShape::Cone:
             return generate_cone(request.cone);
+        case ESbxMeshShape::HexTile:
+            return generate_hex_tile(request.hex_tile);
         case ESbxMeshShape::HexFrame:
             return generate_hex_frame(request.hex_frame);
         case ESbxMeshShape::HoneycombPanel:
@@ -135,6 +150,13 @@ auto describe_mesh_request(FSbxMeshGenerationRequest const& request) -> FString 
                                    request.cone.radius,
                                    request.cone.height,
                                    request.cone.radial_segments);
+        case ESbxMeshShape::HexTile:
+            return FString::Printf(TEXT("version=1;shape=hex_tile;outer_radius=%g;depth=%g;bevel_"
+                                        "width=%g;pointy_top=%s"),
+                                   request.hex_tile.outer_radius,
+                                   request.hex_tile.depth,
+                                   request.hex_tile.bevel_width,
+                                   request.hex_tile.pointy_top ? TEXT("true") : TEXT("false"));
         case ESbxMeshShape::HexFrame:
             return FString::Printf(TEXT("version=1;shape=hex_frame;outer_radius=%g;wall_thickness=%"
                                         "g;depth=%g;pointy_top=%s"),

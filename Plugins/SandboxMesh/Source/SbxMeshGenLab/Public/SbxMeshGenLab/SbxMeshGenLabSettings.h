@@ -90,6 +90,32 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     int32 cone_radial_segments{32};
 
     UPROPERTY(EditAnywhere,
+              Category = "Hex Tile",
+              meta = (EditCondition = "shape == ESbxMeshShape::HexTile",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float hex_tile_outer_radius{50.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Hex Tile",
+              meta = (EditCondition = "shape == ESbxMeshShape::HexTile",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float hex_tile_depth{20.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Hex Tile",
+              meta = (EditCondition = "shape == ESbxMeshShape::HexTile",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float hex_tile_bevel_width{5.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Hex Tile",
+              meta = (EditCondition = "shape == ESbxMeshShape::HexTile", EditConditionHides))
+    bool hex_tile_pointy_top{false};
+
+    UPROPERTY(EditAnywhere,
               Category = "Hex Frame",
               meta = (EditCondition = "shape == ESbxMeshShape::HexFrame",
                       EditConditionHides,

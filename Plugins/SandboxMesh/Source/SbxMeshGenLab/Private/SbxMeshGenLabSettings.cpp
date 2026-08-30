@@ -9,6 +9,8 @@ auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
     request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
     request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
     request.cone = {cone_radius, cone_height, cone_radial_segments};
+    request.hex_tile = {
+        hex_tile_outer_radius, hex_tile_depth, hex_tile_bevel_width, hex_tile_pointy_top};
     request.hex_frame = {
         hex_frame_outer_radius, hex_frame_wall_thickness, hex_frame_depth, hex_frame_pointy_top};
     request.honeycomb_panel = {honeycomb_rows,
@@ -33,6 +35,10 @@ void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& reque
     cone_radius = request.cone.radius;
     cone_height = request.cone.height;
     cone_radial_segments = request.cone.radial_segments;
+    hex_tile_outer_radius = request.hex_tile.outer_radius;
+    hex_tile_depth = request.hex_tile.depth;
+    hex_tile_bevel_width = request.hex_tile.bevel_width;
+    hex_tile_pointy_top = request.hex_tile.pointy_top;
     hex_frame_outer_radius = request.hex_frame.outer_radius;
     hex_frame_wall_thickness = request.hex_frame.wall_thickness;
     hex_frame_depth = request.hex_frame.depth;

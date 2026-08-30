@@ -4,6 +4,7 @@
 #include "SbxMeshGenLab/ConeGenerator.h"
 #include "SbxMeshGenLab/CylinderGenerator.h"
 #include "SbxMeshGenLab/HexFrameGenerator.h"
+#include "SbxMeshGenLab/HexTileGenerator.h"
 #include "SbxMeshGenLab/HoneycombPanelGenerator.h"
 #include "SbxMeshGenLab/SphereGenerator.h"
 
@@ -15,6 +16,7 @@ enum class ESbxMeshShape : uint8 {
     Cylinder UMETA(DisplayName = "Cylinder"),
     Sphere UMETA(DisplayName = "Sphere"),
     Cone UMETA(DisplayName = "Cone"),
+    HexTile UMETA(DisplayName = "Hex Tile"),
     HexFrame UMETA(DisplayName = "Hex Frame"),
     HoneycombPanel UMETA(DisplayName = "Honeycomb Panel"),
 };
@@ -26,6 +28,7 @@ struct FSbxMeshGenerationRequest {
     FSbxCylinderParameters cylinder;
     FSbxSphereParameters sphere;
     FSbxConeParameters cone;
+    FSbxHexTileParameters hex_tile;
     FSbxHexFrameParameters hex_frame;
     FSbxHoneycombPanelParameters honeycomb_panel;
 };
