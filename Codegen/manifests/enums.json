@@ -1,0 +1,30 @@
+{
+  "modules": [
+    {
+      "kind": "enum",
+      "name": "mission_modes",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionMode.cpp",
+      "header_include": "SpaceGame/missions/TestMissionMode.h",
+      "helper_namespace": "ml",
+      "enums": [
+        {
+          "name": "ETestMissionMode",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "None"},
+            {"name": "SurviveTime", "display_name": "Survive Time"},
+            {"name": "KillEnemies", "display_name": "Kill Enemies"},
+            {
+              "name": "KillEnemiesWithinTime",
+              "display_name": "Kill Enemies Within Time"
+            }
+          ],
+          "conversions": ["lex_to_string", "string_view", "display_string_view"]
+        }
+      ]
+    }
+  ]
+}

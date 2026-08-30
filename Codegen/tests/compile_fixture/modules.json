@@ -1,6 +1,53 @@
 {
   "modules": [
     {
+      "kind": "enum",
+      "name": "plain_enum_fixture",
+      "header": "PlainEnums.h",
+      "source": "PlainEnums.cpp",
+      "header_include": "PlainEnums.h",
+      "namespace": "codegen_compile_fixture",
+      "enums": [
+        {
+          "name": "EPlainFixture",
+          "underlying_type": "uint8",
+          "values": [
+            {"name": "First", "value": "1"},
+            {"name": "ReadableName", "value": "2", "display_name": "Readable Name"}
+          ],
+          "conversions": [
+            "lex_to_string",
+            "string_view",
+            "string",
+            "lex_to_display_string",
+            "display_string_view",
+            "display_string"
+          ],
+          "export_specifier": "COMPILE_FIXTURE_API"
+        }
+      ]
+    },
+    {
+      "kind": "enum",
+      "name": "reflected_enum_fixture",
+      "header": "ReflectedEnums.h",
+      "source": "ReflectedEnums.cpp",
+      "header_include": "ReflectedEnums.h",
+      "helper_namespace": "codegen_compile_fixture",
+      "enums": [
+        {
+          "name": "EReflectedFixture",
+          "underlying_type": "uint8",
+          "reflection": "blueprint",
+          "values": [
+            {"name": "Visible", "display_name": "Visible Value"},
+            {"name": "COUNT", "hidden": true}
+          ],
+          "conversions": ["lex_to_string", "display_string_view"]
+        }
+      ]
+    },
+    {
       "kind": "homogeneous_soa",
       "name": "homogeneous_fixture",
       "header": "Homogeneous.h",
@@ -203,6 +250,8 @@
         "Vector3.h",
         "InlineFacade.h",
         "SourceFacade.h"
+        ,"PlainEnums.h"
+        ,"ReflectedEnums.h"
       ]
     }
   ]

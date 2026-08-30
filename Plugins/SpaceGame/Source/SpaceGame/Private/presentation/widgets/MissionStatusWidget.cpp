@@ -1,13 +1,13 @@
 #include "SpaceGame/presentation/widgets/MissionStatusWidget.h"
 
-#include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/presentation/HUDManager.h>
-#include <SpaceGame/presentation/widgets/MissionEntityHealthRowWidget.h>
 #include <SandboxCore/error_msg.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 #include <SandboxGameShared/ui/widgets/ValueWidget.h>
 #include <SandboxGameShared/utilities/enums.h>
+#include <SpaceGame/presentation/HUDManager.h>
+#include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/presentation/widgets/MissionEntityHealthRowWidget.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/VerticalBox.h>
@@ -105,15 +105,15 @@ void UMissionStatusWidget::set_mission_data(ml::hud_manager::FMissionDataCache c
 void UMissionStatusWidget::set_mission_mode(ETestMissionMode const new_mode,
                                             ETestMissionState const initial_state) {
     current_mission_mode = new_mode;
-    auto const mode_name{ml::to_string_without_type_prefix(new_mode)};
+    auto const mode_name{ml::to_display_string_view(new_mode)};
     auto const state_name{ml::to_string_without_type_prefix(initial_state)};
-    mission_mode_widget->update(FStringView{mode_name}, FStringView{state_name});
+    mission_mode_widget->update(mode_name, FStringView{state_name});
 }
 
 void UMissionStatusWidget::set_mission_state(ETestMissionState const new_state) {
-    auto const mode_name{ml::to_string_without_type_prefix(current_mission_mode)};
+    auto const mode_name{ml::to_display_string_view(current_mission_mode)};
     auto const state_name{ml::to_string_without_type_prefix(new_state)};
-    mission_mode_widget->update(FStringView{mode_name}, FStringView{state_name});
+    mission_mode_widget->update(mode_name, FStringView{state_name});
 }
 
 void UMissionStatusWidget::set_mission_time(float const mission_time) {

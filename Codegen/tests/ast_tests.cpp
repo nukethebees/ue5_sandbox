@@ -515,5 +515,36 @@ TEST(Ast, AppliesStaticAndDefaultArgumentRulesToFunctionForms) {
               "}");
 }
 
+TEST(Ast, RendersEnumsAndExportedFreeFunctions) {
+    Enum const value{
+        .name = "EMode",
+        .underlying_type = CppType{"uint8", "CoreMinimal.h"},
+        .values =
+            {
+                Enumerator{"First", "1"},
+                Enumerator{"Second", std::nullopt, "UMETA(DisplayName = \"Second Value\")"},
+            },
+        .export_specifier = "PROJECT_API",
+    };
+
+    EXPECT_EQ(render(value),
+              "enum class PROJECT_API EMode : uint8 {\n"
+              "    First = 1,\n"
+              "    Second UMETA(DisplayName = \"Second Value\"),\n"
+              "};");
+    auto const spec{FunctionSpec{
+        .name = "to_string_view",
+        .return_type = "auto",
+        .qualifiers = {.trailing_return_type = CppType{"FStringView"}},
+        .export_specifier = "PROJECT_API",
+    }};
+    EXPECT_EQ(render(declaration(spec)),
+              "PROJECT_API auto to_string_view() -> FStringView;");
+    EXPECT_EQ(render(Function{spec, std::nullopt, false, false}),
+              "auto to_string_view() -> FStringView {\n\n}");
+    EXPECT_EQ(render(Namespace{"", {raw("int value;")}}),
+              "namespace {\nint value;\n} // namespace");
+}
+
 } // namespace
 } // namespace codegen

@@ -331,9 +331,111 @@ auto parse_facade_method(Json const& value, std::string const& path) -> FacadeMe
     };
 }
 
+auto parse_enum_reflection(std::string const& value, std::string const& path) -> EnumReflection {
+    if (value == "none") {
+        return EnumReflection::none;
+    }
+    if (value == "uenum") {
+        return EnumReflection::uenum;
+    }
+    if (value == "blueprint") {
+        return EnumReflection::blueprint;
+    }
+    throw ManifestError{path + ": unknown enum reflection mode '" + value + "'"};
+}
+
+auto parse_enum_conversion(std::string const& value, std::string const& path) -> EnumConversion {
+    if (value == "lex_to_string") {
+        return EnumConversion::lex_to_string;
+    }
+    if (value == "string_view") {
+        return EnumConversion::string_view;
+    }
+    if (value == "string") {
+        return EnumConversion::string;
+    }
+    if (value == "lex_to_display_string") {
+        return EnumConversion::lex_to_display_string;
+    }
+    if (value == "display_string_view") {
+        return EnumConversion::display_string_view;
+    }
+    if (value == "display_string") {
+        return EnumConversion::display_string;
+    }
+    throw ManifestError{path + ": unknown enum conversion '" + value + "'"};
+}
+
+auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
+    reject_unknown(value,
+                   path,
+                   {"name",
+                    "underlying_type",
+                    "reflection",
+                    "values",
+                    "conversions",
+                    "export_specifier"});
+    std::vector<EnumeratorSchema> values;
+    auto const& value_entries{required_array(value, "values", path)};
+    for (std::size_t index{0}; index < value_entries.size(); ++index) {
+        auto const& entry{value_entries[index]};
+        auto const entry_path{path + "/values/" + std::to_string(index)};
+        reject_unknown(entry, entry_path, {"name", "value", "display_name", "hidden"});
+        values.push_back(EnumeratorSchema{
+            .name = required<std::string>(entry, "name", entry_path),
+            .initializer = optional<std::string>(entry, "value", entry_path),
+            .display_name = optional<std::string>(entry, "display_name", entry_path),
+            .hidden = value_or<bool>(entry, "hidden", false, entry_path),
+        });
+    }
+
+    std::vector<EnumConversion> conversions;
+    auto const conversion_names{
+        value_or<std::vector<std::string>>(value, "conversions", {}, path)};
+    for (std::size_t index{0}; index < conversion_names.size(); ++index) {
+        conversions.push_back(parse_enum_conversion(
+            conversion_names[index], path + "/conversions/" + std::to_string(index)));
+    }
+    auto const reflection_name{value_or<std::string>(value, "reflection", "none", path)};
+    return EnumSchema{
+        .name = required<std::string>(value, "name", path),
+        .underlying_type = parse_type_ref(required_value(value, "underlying_type", path),
+                                          path + "/underlying_type"),
+        .reflection = parse_enum_reflection(reflection_name, path + "/reflection"),
+        .values = std::move(values),
+        .conversions = std::move(conversions),
+        .export_specifier = optional<std::string>(value, "export_specifier", path),
+    };
+}
+
 auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
     auto const kind{required<std::string>(value, "kind", path)};
     auto settings{parse_settings(value, path)};
+    if (kind == "enum") {
+        reject_unknown(value,
+                       path,
+                       {"kind",
+                        "name",
+                        "header",
+                        "source",
+                        "header_include",
+                        "namespace",
+                        "helper_namespace",
+                        "include_order",
+                        "prelude",
+                        "enums"});
+        std::vector<EnumSchema> enums;
+        auto const& values{required_array(value, "enums", path)};
+        for (std::size_t index{0}; index < values.size(); ++index) {
+            enums.push_back(
+                parse_enum(values[index], path + "/enums/" + std::to_string(index)));
+        }
+        return EnumModuleSchema{
+            .settings = std::move(settings),
+            .helper_namespace = optional<std::string>(value, "helper_namespace", path),
+            .enums = std::move(enums),
+        };
+    }
     if (kind == "soa") {
         reject_unknown(value,
                        path,

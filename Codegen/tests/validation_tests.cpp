@@ -74,10 +74,73 @@ auto valid_homogeneous_module() -> HomogeneousModuleSchema {
     };
 }
 
+auto valid_enum_module() -> EnumModuleSchema {
+    return EnumModuleSchema{
+        .settings = ModuleSettings{
+            .name = "enums",
+            .header = "Enums.h",
+            .source = "Enums.cpp",
+        },
+        .helper_namespace = "project",
+        .enums = {EnumSchema{
+            .name = "EMode",
+            .underlying_type = TypeRef{"uint8"},
+            .reflection = EnumReflection::uenum,
+            .values = {EnumeratorSchema{"Value"}},
+            .conversions = {EnumConversion::string_view},
+        }},
+    };
+}
+
 TEST(Validation, RejectsEmptyModuleNames) {
     auto module{valid_soa_module()};
     module.settings.name.clear();
 
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsInvalidEnumDefinitions) {
+    auto module{valid_enum_module()};
+    module.enums.clear();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().values.clear();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().values.push_back(EnumeratorSchema{"Value"});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().values.front().name = "bad-name";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().underlying_type = TypeRef{"@missing"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
+    auto module{valid_enum_module()};
+    module.settings.namespace_name = "project";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.settings.source.reset();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.helper_namespace = "bad-name";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().conversions.push_back(EnumConversion::string_view);
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().values.front().hidden = true;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 

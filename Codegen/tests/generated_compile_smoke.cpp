@@ -209,6 +209,20 @@ void test_facades() {
     check(source_facade.get() == 42);
 }
 
+void test_enums() {
+    check(std::string_view{LexToString(EPlainFixture::First)} == "First");
+    check(to_string_view(EPlainFixture::ReadableName) == "ReadableName");
+    check(to_string(EPlainFixture::ReadableName) == "ReadableName");
+    check(std::string_view{LexToDisplayString(EPlainFixture::ReadableName)} == "Readable Name");
+    check(to_display_string_view(EPlainFixture::ReadableName) == "Readable Name");
+    check(to_display_string(EPlainFixture::First) == "First");
+
+    check(std::string_view{LexToString(EReflectedFixture::Visible)} == "Visible");
+    check(to_display_string_view(EReflectedFixture::Visible) == "Visible Value");
+    check(std::string_view{LexToString(static_cast<EReflectedFixture>(99))} ==
+          "<invalid EReflectedFixture>");
+}
+
 } // namespace
 
 auto main() -> int {
@@ -218,6 +232,7 @@ auto main() -> int {
         test_fixed_soa_lifetimes();
         test_vectors();
         test_facades();
+        test_enums();
         return 0;
     } catch (std::exception const&) {
         return 1;

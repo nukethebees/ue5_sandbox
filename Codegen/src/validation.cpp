@@ -327,6 +327,69 @@ void validate_settings(ModuleSettings const& settings) {
     require_unique_names(settings.include_order, "Module '" + settings.name + "' include order");
 }
 
+void validate_enum(EnumModuleSchema const& module,
+                   std::map<std::string, CppType> const& types) {
+    if (module.enums.empty()) {
+        throw std::invalid_argument{"Enum module '" + module.settings.name +
+                                    "' must have enums"};
+    }
+    if (module.helper_namespace.has_value()) {
+        require_qualified_identifier(*module.helper_namespace,
+                                     "Enum module '" + module.settings.name +
+                                         "' helper namespace");
+    }
+    std::set<std::string> enum_names;
+    for (auto const& schema : module.enums) {
+        require_identifier(schema.name, "Enum name");
+        if (!enum_names.insert(schema.name).second) {
+            throw std::invalid_argument{"Duplicate enum name: " + schema.name};
+        }
+        validate_type(schema.underlying_type, types, "Enum '" + schema.name + "' underlying");
+        validate_export_specifier(schema.export_specifier,
+                                  "Enum '" + schema.name + "' export specifier");
+        if (schema.reflection != EnumReflection::none &&
+            module.settings.namespace_name.has_value()) {
+            throw std::invalid_argument{"Reflected enum '" + schema.name +
+                                        "' must be declared at global scope"};
+        }
+        if (schema.values.empty()) {
+            throw std::invalid_argument{"Enum '" + schema.name + "' must have values"};
+        }
+        std::vector<std::string> value_names;
+        for (auto const& value : schema.values) {
+            require_identifier(value.name, "Enum '" + schema.name + "' value name");
+            value_names.push_back(value.name);
+            if (value.initializer.has_value()) {
+                require_value(*value.initializer,
+                              "Enum '" + schema.name + "' value '" + value.name +
+                                  "' initializer");
+            }
+            if (value.display_name.has_value()) {
+                require_value(*value.display_name,
+                              "Enum '" + schema.name + "' value '" + value.name +
+                                  "' display name");
+            }
+            if (value.hidden && schema.reflection == EnumReflection::none) {
+                throw std::invalid_argument{"Plain enum '" + schema.name + "' value '" +
+                                            value.name + "' cannot be hidden"};
+            }
+        }
+        require_unique_names(value_names, "Enum '" + schema.name + "' values");
+
+        std::set<EnumConversion> conversions;
+        for (auto const conversion : schema.conversions) {
+            if (!conversions.insert(conversion).second) {
+                throw std::invalid_argument{"Enum '" + schema.name +
+                                            "' contains duplicate conversion"};
+            }
+        }
+        if (!schema.conversions.empty() && !module.settings.source.has_value()) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' conversions require a source output"};
+        }
+    }
+}
+
 void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> const& types) {
     if (module.structs.empty()) {
         throw std::invalid_argument{"SOA module '" + module.settings.name + "' must have schemas"};
@@ -658,7 +721,9 @@ void validate_manifest(Manifest const& manifest) {
                     }
                 }
                 using T = std::decay_t<decltype(module)>;
-                if constexpr (std::is_same_v<T, SoaModuleSchema>) {
+                if constexpr (std::is_same_v<T, EnumModuleSchema>) {
+                    validate_enum(module, manifest.types);
+                } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     validate_soa(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, HomogeneousModuleSchema>) {
                     validate_homogeneous(module, manifest.types);

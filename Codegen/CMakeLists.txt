@@ -3,6 +3,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 add_library(codegen-lib
   src/ast.cpp
+  src/enum_lowering.cpp
   src/facade_lowering.cpp
   src/fixed_soa_lowering.cpp
   src/fixed_soa_layout.cpp
@@ -41,6 +42,8 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/InlineFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.h"
 )
 set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Homogeneous.cpp"
@@ -49,6 +52,8 @@ set(CODEGEN_COMPILE_FIXTURE_SOURCES
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector2.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Vector3.cpp"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.cpp"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.cpp"
 )
 add_custom_command(
   OUTPUT
