@@ -27,3 +27,4 @@ See the experiment-specific documentation:
 - [Planet Atmosphere](Experiments/PlanetAtmosphere/README.md)
 - [Construction / Spawn](Experiments/ConstructionSpawn/README.md)
 - [Energy Beam](Experiments/EnergyBeam/README.md)
+- [GPU Starfield](Experiments/GpuStarfield/README.md)
