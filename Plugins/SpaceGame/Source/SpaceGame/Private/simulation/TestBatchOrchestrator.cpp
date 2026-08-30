@@ -411,6 +411,8 @@ void ATestBatchOrchestrator::begin_play() {
 
     entity_registry.commit_updates();
     entity_registry.end_tick();
+    query_manager.update();
+
     level_telemetry_manager.initialise(entity_registry);
 
     mission_manager.begin_play();
@@ -689,6 +691,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             spinners_phase.end_tick();
             lasers_phase.end_tick();
             entity_registry.end_tick();
+            query_manager.update();
         }
 
 #if WITH_EDITOR

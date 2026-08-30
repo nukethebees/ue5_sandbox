@@ -104,6 +104,8 @@ struct SPACEGAME_API FSpatialQueryManager {
     void are_entities_within_dist_sq(float const dist_sq,
                                      FVectors3f const& locations,
                                      TArrayView<bool> const results) const;
+
+    void update();
   private:
     friend class query_manager::FThreadBufferLease;
 

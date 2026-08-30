@@ -465,4 +465,8 @@ auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team,
 
     return {};
 }
+
+void FSpatialQueryManager::update() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::update);
+}
 }
