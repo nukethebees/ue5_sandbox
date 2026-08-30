@@ -6,6 +6,9 @@
 #include "SbxMeshGenLabWidget.generated.h"
 
 class STextBlock;
+class FAssetThumbnail;
+class FAssetThumbnailPool;
+class UStaticMesh;
 
 UCLASS()
 class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget {
@@ -14,8 +17,12 @@ class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget
     USbxMeshGenLabWidget();
   protected:
     TSharedRef<SWidget> RebuildWidget() override;
+    void ReleaseSlateResources(bool release_children) override;
   private:
     auto generate_cube() -> FReply;
+    void set_preview_mesh(UStaticMesh* static_mesh);
 
+    TSharedPtr<FAssetThumbnailPool> thumbnail_pool_;
+    TSharedPtr<FAssetThumbnail> thumbnail_;
     TSharedPtr<STextBlock> status_text_;
 };
