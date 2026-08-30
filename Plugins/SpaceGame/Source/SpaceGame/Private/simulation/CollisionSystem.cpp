@@ -83,6 +83,16 @@ auto CollisionUniformGrid::num_cells() const -> int32 {
     return grid_dims_.X * grid_dims_.Y * grid_dims_.Z;
 }
 
+void CollisionUniformGrid::reset() {
+    grid_dims_ = FIntVector3::ZeroValue;
+    cell_dims_ = FVector3f::ZeroVector;
+    cell_entity_offsets_.Reset();
+    cell_entity_counts_.Reset();
+    cell_entity_write_indexes_.Reset();
+    entities_.Reset();
+    aabbs_.reset();
+    entities_buffer_.reset();
+}
 void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_registry,
                                         FEntityAABBs const& entity_aabbs) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid);

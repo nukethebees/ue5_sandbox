@@ -23,6 +23,7 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     auto num_cells() const -> int32;
 
+    void reset();
     void rebuild_grid(FTestEntityRegistry const& entity_registry, FEntityAABBs const& entity_aabbs);
   private:
     auto to_cell_x(float value) const -> int32;
