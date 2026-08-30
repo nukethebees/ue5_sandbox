@@ -1,14 +1,15 @@
 #pragma once
 
-#include <SpaceGame/simulation/SpatialQueryHit.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/entities/TestEntityType.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
-#include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
 #include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/CollisionSystem.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
 
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
@@ -122,15 +123,19 @@ struct SPACEGAME_API FSpatialQueryManager {
         TArray<FComponentResolver, TInlineAllocator<std::to_underlying(EHitResolverKind::Count)>>;
     FTestEntityRegistry const* const entity_registry{nullptr};
     UWorld* world{nullptr};
+
     ComponentResolvers component_resolvers;
     mutable std::mutex thread_buffers_mutex;
     mutable TArray<FThreadBuffers> thread_buffers;
     mutable TArray<int32> free_thread_buffer_indices;
     mutable int32 active_thread_buffer_count{};
+
     FTestSpaceShipSpatialQueryAccess player_ship_access;
     FTestCapitalShipsSpatialQueryAccess capital_ships_access;
     FTestCapitalShipFightersSpatialQueryAccess capital_ship_fighters_access;
     FTestStaticTurretsSpatialQueryAccess static_turrets_access;
     FTestTubeSpinnersSpatialQueryAccess tube_spinners_access;
+
+    ioj::FCollisionSystem collision;
 };
 }
