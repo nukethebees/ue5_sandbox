@@ -2,6 +2,7 @@
 
 #include "Generation/MeshAssetWriter.h"
 #include "SbxMeshGenLab/BoxGenerator.h"
+#include "SbxMeshGenLab/ConeGenerator.h"
 #include "SbxMeshGenLab/CylinderGenerator.h"
 #include "SbxMeshGenLab/SphereGenerator.h"
 
@@ -18,6 +19,7 @@
 
 namespace {
 FName const generated_box_asset_name{TEXT("SM_GeneratedBox")};
+FName const generated_cone_asset_name{TEXT("SM_GeneratedCone")};
 FName const generated_cylinder_asset_name{TEXT("SM_GeneratedCylinder")};
 FName const generated_sphere_asset_name{TEXT("SM_GeneratedSphere")};
 constexpr uint32 thumbnail_size{256};
@@ -165,6 +167,29 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                 [this](int32 const value) { sphere_latitude_segments_ = value; }),
             2)]};
 
+    auto const cone_controls{
+        SNew(SVerticalBox).Visibility_Lambda([this] {
+            return selected_shape_ == ESbxMeshShape::Cone ? EVisibility::Visible
+                                                          : EVisibility::Collapsed;
+        }) +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
+            [SNew(STextBlock).Text(NSLOCTEXT("SbxMeshGenLab", "ConeDimensions", "Cone (cm)"))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)[make_float_control(
+            NSLOCTEXT("SbxMeshGenLab", "ConeRadius", "Radius"),
+            TAttribute<float>::CreateLambda([this] { return cone_radius_; }),
+            SSpinBox<float>::FOnValueChanged::CreateLambda(
+                [this](float const value) { cone_radius_ = value; }))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)[make_float_control(
+            NSLOCTEXT("SbxMeshGenLab", "ConeHeight", "Height"),
+            TAttribute<float>::CreateLambda([this] { return cone_height_; }),
+            SSpinBox<float>::FOnValueChanged::CreateLambda(
+                [this](float const value) { cone_height_ = value; }))] +
+        SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)[make_segment_control(
+            NSLOCTEXT("SbxMeshGenLab", "ConeRadialSegments", "Radial Segments"),
+            TAttribute<int32>::CreateLambda([this] { return cone_radial_segments_; }),
+            SSpinBox<int32>::FOnValueChanged::CreateLambda(
+                [this](int32 const value) { cone_radial_segments_ = value; }))]};
+
     return SNew(SBorder)
         .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
         .Padding(12.0f)
@@ -187,10 +212,13 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                   SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Cylinder)
                       .Text(NSLOCTEXT("SbxMeshGenLab", "CylinderShape", "Cylinder")) +
                   SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Sphere)
-                      .Text(NSLOCTEXT("SbxMeshGenLab", "SphereShape", "Sphere"))] +
+                      .Text(NSLOCTEXT("SbxMeshGenLab", "SphereShape", "Sphere")) +
+                  SSegmentedControl<ESbxMeshShape>::Slot(ESbxMeshShape::Cone)
+                      .Text(NSLOCTEXT("SbxMeshGenLab", "ConeShape", "Cone"))] +
              SVerticalBox::Slot().AutoHeight()[box_controls] +
              SVerticalBox::Slot().AutoHeight()[cylinder_controls] +
              SVerticalBox::Slot().AutoHeight()[sphere_controls] +
+             SVerticalBox::Slot().AutoHeight()[cone_controls] +
              SVerticalBox::Slot().AutoHeight()
                  [SNew(SButton)
                       .Text_Lambda([this] { return generate_button_text(); })
@@ -230,6 +258,10 @@ auto USbxMeshGenLabWidget::generate_selected_shape() -> FReply {
             mesh_data = SandboxMesh::generate_sphere(FSbxSphereParameters{
                 sphere_radius_, sphere_longitude_segments_, sphere_latitude_segments_});
             break;
+        case ESbxMeshShape::Cone:
+            mesh_data = SandboxMesh::generate_cone(
+                FSbxConeParameters{cone_radius_, cone_height_, cone_radial_segments_});
+            break;
     }
 
     set_preview_mesh(nullptr);
@@ -268,6 +300,8 @@ auto USbxMeshGenLabWidget::generated_asset_name() const -> FName {
             return generated_cylinder_asset_name;
         case ESbxMeshShape::Sphere:
             return generated_sphere_asset_name;
+        case ESbxMeshShape::Cone:
+            return generated_cone_asset_name;
     }
 
     checkNoEntry();
@@ -282,6 +316,8 @@ auto USbxMeshGenLabWidget::selected_shape_text() const -> FText {
             return NSLOCTEXT("SbxMeshGenLab", "Cylinder", "Cylinder");
         case ESbxMeshShape::Sphere:
             return NSLOCTEXT("SbxMeshGenLab", "Sphere", "Sphere");
+        case ESbxMeshShape::Cone:
+            return NSLOCTEXT("SbxMeshGenLab", "Cone", "Cone");
     }
 
     checkNoEntry();
@@ -296,6 +332,8 @@ auto USbxMeshGenLabWidget::generate_button_text() const -> FText {
             return NSLOCTEXT("SbxMeshGenLab", "GenerateCylinder", "Generate Cylinder");
         case ESbxMeshShape::Sphere:
             return NSLOCTEXT("SbxMeshGenLab", "GenerateSphere", "Generate Sphere");
+        case ESbxMeshShape::Cone:
+            return NSLOCTEXT("SbxMeshGenLab", "GenerateCone", "Generate Cone");
     }
 
     checkNoEntry();

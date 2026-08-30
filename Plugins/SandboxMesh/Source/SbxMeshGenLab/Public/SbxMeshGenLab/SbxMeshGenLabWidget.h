@@ -14,6 +14,7 @@ enum class ESbxMeshShape : uint8 {
     Box,
     Cylinder,
     Sphere,
+    Cone,
 };
 
 UCLASS()
@@ -40,6 +41,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget
     float sphere_radius_{50.0f};
     int32 sphere_longitude_segments_{32};
     int32 sphere_latitude_segments_{16};
+    float cone_radius_{50.0f};
+    float cone_height_{100.0f};
+    int32 cone_radial_segments_{32};
     TSharedPtr<FAssetThumbnailPool> thumbnail_pool_;
     TSharedPtr<FAssetThumbnail> thumbnail_;
     TSharedPtr<STextBlock> status_text_;
