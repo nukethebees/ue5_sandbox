@@ -21,13 +21,16 @@ struct FSandboxNiagaraExperimentConfiguration {
     float particle_lifetime{10.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
-    float sprite_size{4.0f};
+    float sprite_size{10.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
-    float spawn_radius{10.0f};
+    float spawn_radius{250.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
-    float fixed_bounds_extent{5000.0f};
+    float fixed_bounds_extent{750.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara", meta = (MultiLine))
+    FString particle_velocity_expression{};
 };
 
 USTRUCT(BlueprintType)

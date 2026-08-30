@@ -71,12 +71,14 @@ USandboxNiagaraInspectCommandlet::USandboxNiagaraInspectCommandlet() {
 }
 
 int32 USandboxNiagaraInspectCommandlet::Main(FString const& parameters) {
-    auto* const system{LoadObject<UNiagaraSystem>(nullptr, seed_asset_path)};
+    FString asset_path{seed_asset_path};
+    FParse::Value(*parameters, TEXT("Asset="), asset_path);
+    auto* const system{LoadObject<UNiagaraSystem>(nullptr, *asset_path)};
     if (!IsValid(system)) {
         UE_LOG(LogSandboxNiagaraInspect,
                Error,
-               TEXT("Failed to load seed Niagara System: %s"),
-               seed_asset_path);
+               TEXT("Failed to load Niagara System: %s"),
+               *asset_path);
         return 1;
     }
 
@@ -128,7 +130,10 @@ int32 USandboxNiagaraInspectCommandlet::Main(FString const& parameters) {
     FNiagaraExt_SystemCompileState compile_state{};
     UNiagaraExternalEditUtilities::GetSystemCompileState(system, compile_state, context);
     if (compile_state.bHasErrors || compile_state.bIsCompiling || compile_state.bIsStale) {
-        UE_LOG(LogSandboxNiagaraInspect, Error, TEXT("The seed is not compile-clean."));
+        UE_LOG(LogSandboxNiagaraInspect,
+               Error,
+               TEXT("The Niagara System is not compile-clean: %s"),
+               *asset_path);
         return 1;
     }
 
@@ -146,8 +151,15 @@ int32 USandboxNiagaraInspectCommandlet::Main(FString const& parameters) {
             return 1;
         }
 
-        FSandboxNiagaraExperimentConfiguration const configuration{};
+        FSandboxNiagaraExperimentConfiguration configuration{};
         FString experiment_name{TEXT("NS_SandboxNiagaraConfigured")};
+        if (FParse::Param(*parameters, TEXT("Orbit"))) {
+            experiment_name = TEXT("NS_SandboxNiagaraOrbit");
+            configuration.spawn_rate = 2000.0f;
+            configuration.particle_lifetime = 20.0f;
+            configuration.particle_velocity_expression =
+                TEXT("float3(-Particles.Position.y, Particles.Position.x, 0.0f) * 0.35f");
+        }
         FParse::Value(*parameters, TEXT("Name="), experiment_name);
         auto const generation_result{
             subsystem->generate_experiment(system, experiment_name, configuration)};

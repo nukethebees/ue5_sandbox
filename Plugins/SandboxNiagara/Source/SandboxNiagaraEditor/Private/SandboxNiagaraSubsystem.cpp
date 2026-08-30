@@ -325,6 +325,25 @@ auto set_enum_input(UNiagaraSystem& system,
     return !context.HasErrors();
 }
 
+auto set_hlsl_input(UNiagaraSystem& system,
+                    FName const emitter_name,
+                    FName const script_name,
+                    FName const module_name,
+                    FName const input_name,
+                    FString const& expression,
+                    FSandboxNiagaraGenerationResult& result) -> bool {
+    FNiagaraExt_StackInputValue input_value{};
+    input_value.InitializeAs<FNiagaraExt_StackInputData_HlslExpression>().HlslExpression =
+        expression;
+    return set_stack_input(system,
+                           emitter_name,
+                           script_name,
+                           module_name,
+                           input_name,
+                           input_value,
+                           result);
+}
+
 auto get_stack_input(UNiagaraSystem& system,
                      FName const emitter_name,
                      FName const script_name,
@@ -546,6 +565,80 @@ auto apply_baseline_configuration(UNiagaraSystem& system,
     return success;
 }
 
+auto add_particle_velocity_update(UNiagaraSystem& system,
+                                  FString const& velocity_expression,
+                                  FSandboxNiagaraGenerationResult& result) -> bool {
+    if (velocity_expression.IsEmpty()) {
+        return true;
+    }
+
+    auto const& emitter_handles{system.GetEmitterHandles()};
+    if (emitter_handles.Num() != 1) {
+        add_error(result, TEXT("Cannot add particle update logic without exactly one emitter."));
+        return false;
+    }
+
+    auto const emitter_name{emitter_handles[0].GetName()};
+    FNiagaraExt_SetParameterEntry velocity_entry{};
+    velocity_entry.Variable.Name = TEXT("Particles.Velocity");
+    velocity_entry.Variable.Type = FNiagaraTypeDefinition::GetVec3Def();
+    auto const default_velocity{FVector3f::ZeroVector};
+    velocity_entry.DefaultValue.InitializeAs(
+        velocity_entry.Variable.Type.GetScriptStruct(),
+        reinterpret_cast<uint8 const*>(&default_velocity));
+
+    FNiagaraExt_StackItemReference assignment_location{
+        &system, emitter_name, TEXT("ParticleUpdateScript"), TEXT("ParticleState")};
+    FNiagaraExt_ModuleTopology assignment_topology{};
+    FNiagaraExternalEditContext assignment_context{&system};
+    UNiagaraExternalEditUtilities::AddSetParametersModule(
+        assignment_location, {velocity_entry}, assignment_topology, assignment_context);
+    append_context_errors(assignment_context, result);
+    if (assignment_context.HasErrors() || assignment_topology.ModuleName.IsNone()) {
+        add_error(result, TEXT("Failed to add the particle velocity Set Parameters module."));
+        return false;
+    }
+
+    if (!set_hlsl_input(system,
+                        emitter_name,
+                        TEXT("ParticleUpdateScript"),
+                        assignment_topology.ModuleName,
+                        velocity_entry.Variable.Name,
+                        velocity_expression,
+                        result)) {
+        return false;
+    }
+
+    auto* const solver_module{LoadObject<UNiagaraScript>(
+        nullptr,
+        TEXT("/Niagara/Modules/Solvers/SolveForcesAndVelocity.SolveForcesAndVelocity"))};
+    if (!IsValid(solver_module)) {
+        add_error(result, TEXT("Failed to load Niagara's Solve Forces and Velocity module."));
+        return false;
+    }
+
+    FNiagaraExt_StackItemReference solver_location{&system,
+                                                   emitter_name,
+                                                   TEXT("ParticleUpdateScript"),
+                                                   assignment_topology.ModuleName};
+    FNiagaraExt_ModuleTopology solver_topology{};
+    FNiagaraExternalEditContext solver_context{&system};
+    UNiagaraExternalEditUtilities::AddModule(
+        solver_location, solver_module, solver_topology, solver_context);
+    append_context_errors(solver_context, result);
+    if (solver_context.HasErrors() || solver_topology.ModuleName.IsNone()) {
+        add_error(result, TEXT("Failed to add Niagara's Solve Forces and Velocity module."));
+        return false;
+    }
+
+    UE_LOG(LogSandboxNiagara,
+           Display,
+           TEXT("Added particle update modules %s and %s."),
+           *assignment_topology.ModuleName.ToString(),
+           *solver_topology.ModuleName.ToString());
+    return true;
+}
+
 auto verify_baseline_configuration(UNiagaraSystem& system,
                                    FSandboxNiagaraExperimentConfiguration const& configuration,
                                    FSandboxNiagaraGenerationResult& result) -> bool {
@@ -649,6 +742,61 @@ auto verify_baseline_configuration(UNiagaraSystem& system,
                                  result);
 
     return success;
+}
+
+auto verify_particle_velocity_update(UNiagaraSystem& system,
+                                     FString const& expected_expression,
+                                     FSandboxNiagaraGenerationResult& result) -> bool {
+    if (expected_expression.IsEmpty()) {
+        return true;
+    }
+
+    auto const& emitter_handles{system.GetEmitterHandles()};
+    if (emitter_handles.Num() != 1) {
+        return false;
+    }
+
+    auto const emitter_name{emitter_handles[0].GetName()};
+    FNiagaraExt_StackItemReference const emitter_ref{&system, emitter_name};
+    FNiagaraExt_EmitterTopology topology{};
+    FNiagaraExternalEditContext topology_context{&system};
+    UNiagaraExternalEditUtilities::GetEmitterTopology(
+        emitter_ref, topology, topology_context);
+    append_context_errors(topology_context, result);
+    if (topology_context.HasErrors()) {
+        return false;
+    }
+
+    auto const& update_modules{topology.ParticleUpdateScript.Modules};
+    if (update_modules.Num() != 3 || update_modules[0].ModuleName != TEXT("ParticleState") ||
+        !update_modules[1].bIsSetParametersModule ||
+        update_modules[2].ModuleScript == nullptr ||
+        update_modules[2].ModuleScript->GetPathName() !=
+            TEXT("/Niagara/Modules/Solvers/SolveForcesAndVelocity.SolveForcesAndVelocity")) {
+        add_error(result,
+                  TEXT("Generated Particle Update stack must contain Particle State, the velocity "
+                       "Set Parameters module, and Solve Forces and Velocity in that order."));
+        return false;
+    }
+
+    FNiagaraExt_StackInputValue value{};
+    if (!get_stack_input(system,
+                         emitter_name,
+                         TEXT("ParticleUpdateScript"),
+                         update_modules[1].ModuleName,
+                         TEXT("Particles.Velocity"),
+                         value,
+                         result)) {
+        return false;
+    }
+
+    auto const* expression{value.GetPtr<FNiagaraExt_StackInputData_HlslExpression>()};
+    if (expression == nullptr || expression->HlslExpression != expected_expression) {
+        add_error(result,
+                  TEXT("Generated Particles.Velocity did not retain its custom HLSL expression."));
+        return false;
+    }
+    return true;
 }
 }
 
@@ -770,12 +918,21 @@ FSandboxNiagaraGenerationResult USandboxNiagaraSubsystem::generate_experiment(
                   FString::Printf(TEXT("Failed to configure generated Niagara System: %s"),
                                   *generated_system->GetPathName()));
     }
+    if (!add_particle_velocity_update(
+            *generated_system, configuration.particle_velocity_expression, result)) {
+        add_error(result,
+                  FString::Printf(TEXT("Failed to add particle update logic to generated Niagara "
+                                       "System: %s"),
+                                  *generated_system->GetPathName()));
+    }
 
     generated_system->RequestCompile(true);
     generated_system->WaitForCompilationComplete(true, false);
     auto const compile_success{collect_compile_diagnostics(*generated_system, result)};
     auto const configuration_verified{
         verify_baseline_configuration(*generated_system, configuration, result)};
+    auto const particle_update_verified{verify_particle_velocity_update(
+        *generated_system, configuration.particle_velocity_expression, result)};
 
     auto const save_success{asset_subsystem->SaveLoadedAsset(generated_system, false)};
     if (!save_success) {
@@ -784,8 +941,8 @@ FSandboxNiagaraGenerationResult USandboxNiagaraSubsystem::generate_experiment(
                                   *generated_system->GetPathName()));
     }
 
-    result.success = compile_success && configuration_verified && save_success &&
-                     result.errors.IsEmpty();
+    result.success = compile_success && configuration_verified && particle_update_verified &&
+                     save_success && result.errors.IsEmpty();
     if (result.success) {
         UE_LOG(LogSandboxNiagara,
                Display,
