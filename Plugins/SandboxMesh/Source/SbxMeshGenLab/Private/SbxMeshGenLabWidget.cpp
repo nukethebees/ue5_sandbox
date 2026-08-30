@@ -7,14 +7,117 @@
 #include "Engine/StaticMesh.h"
 #include "IDetailsView.h"
 #include "Modules/ModuleManager.h"
+#include "PropertyEditorDelegates.h"
 #include "PropertyEditorModule.h"
 #include "Styling/AppStyle.h"
+#include "UObject/UnrealType.h"
 #include "Widgets/Input/SButton.h"
+#include "Widgets/Input/SComboBox.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SSplitter.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/SCompoundWidget.h"
 #include "Widgets/Text/STextBlock.h"
+
+namespace {
+
+class SMeshShapeSelector final : public SCompoundWidget {
+  public:
+    DECLARE_DELEGATE_OneParam(FOnShapeSelected, ESbxMeshShape);
+
+    SLATE_BEGIN_ARGS(SMeshShapeSelector) {}
+    SLATE_ARGUMENT(ESbxMeshShape, InitialShape)
+    SLATE_EVENT(FOnShapeSelected, OnShapeSelected)
+    SLATE_END_ARGS()
+
+    void Construct(FArguments const& arguments) {
+        for (auto const shape : {ESbxMeshShape::Box,
+                                 ESbxMeshShape::Cylinder,
+                                 ESbxMeshShape::Sphere,
+                                 ESbxMeshShape::Cone,
+                                 ESbxMeshShape::HexTile,
+                                 ESbxMeshShape::HexFrame,
+                                 ESbxMeshShape::HoneycombPanel}) {
+            shape_options_.Add(MakeShared<ESbxMeshShape>(shape));
+        }
+
+        selected_shape_ = find_shape(arguments._InitialShape);
+        on_shape_selected_ = arguments._OnShapeSelected;
+
+        ChildSlot
+            [SAssignNew(shape_combo_box_, SComboBox<TSharedPtr<ESbxMeshShape>>)
+                 .OptionsSource(&shape_options_)
+                 .InitiallySelectedItem(selected_shape_)
+                 .OnGenerateWidget(this, &SMeshShapeSelector::make_shape_widget)
+                 .OnSelectionChanged(this, &SMeshShapeSelector::on_selection_changed)
+                 .ToolTipText(NSLOCTEXT(
+                     "SbxMeshGenLab",
+                     "ShapeSelectorTooltip",
+                     "Choose a shape. With this control focused, use Up/Down; while hovering, "
+                     "use the mouse wheel."))
+                     [SNew(STextBlock).Text(this, &SMeshShapeSelector::get_selected_shape_text)]];
+    }
+
+    auto OnMouseWheel(FGeometry const&, FPointerEvent const& mouse_event) -> FReply override {
+        auto const wheel_delta{mouse_event.GetWheelDelta()};
+        if (FMath::IsNearlyZero(wheel_delta)) {
+            return FReply::Unhandled();
+        }
+
+        step_selection(wheel_delta > 0.0f ? -1 : 1);
+        return FReply::Handled();
+    }
+  private:
+    auto find_shape(ESbxMeshShape const shape) const -> TSharedPtr<ESbxMeshShape> {
+        auto const* const option{shape_options_.FindByPredicate(
+            [shape](TSharedPtr<ESbxMeshShape> const& candidate) { return *candidate == shape; })};
+        return option == nullptr ? nullptr : *option;
+    }
+
+    auto get_shape_text(ESbxMeshShape const shape) const -> FText {
+        auto const* const shape_enum{StaticEnum<ESbxMeshShape>()};
+        return shape_enum == nullptr
+                 ? FText::GetEmpty()
+                 : shape_enum->GetDisplayNameTextByValue(static_cast<int64>(shape));
+    }
+
+    auto get_selected_shape_text() const -> FText {
+        return selected_shape_.IsValid() ? get_shape_text(*selected_shape_) : FText::GetEmpty();
+    }
+
+    auto make_shape_widget(TSharedPtr<ESbxMeshShape> const shape) const -> TSharedRef<SWidget> {
+        return SNew(STextBlock).Text(shape.IsValid() ? get_shape_text(*shape) : FText::GetEmpty());
+    }
+
+    void on_selection_changed(TSharedPtr<ESbxMeshShape> const shape, ESelectInfo::Type) {
+        if (!shape.IsValid() || shape == selected_shape_) {
+            return;
+        }
+
+        selected_shape_ = shape;
+        on_shape_selected_.ExecuteIfBound(*selected_shape_);
+    }
+
+    void step_selection(int32 const offset) {
+        auto const current_index{shape_options_.IndexOfByKey(selected_shape_)};
+        if (current_index == INDEX_NONE) {
+            return;
+        }
+
+        auto const next_index{FMath::Clamp(current_index + offset, 0, shape_options_.Num() - 1)};
+        if (next_index != current_index) {
+            shape_combo_box_->SetSelectedItem(shape_options_[next_index]);
+        }
+    }
+
+    TArray<TSharedPtr<ESbxMeshShape>> shape_options_;
+    TSharedPtr<ESbxMeshShape> selected_shape_;
+    TSharedPtr<SComboBox<TSharedPtr<ESbxMeshShape>>> shape_combo_box_;
+    FOnShapeSelected on_shape_selected_;
+};
+
+}
 
 USbxMeshGenLabWidget::USbxMeshGenLabWidget() {
     TabDisplayName = NSLOCTEXT("SbxMeshGenLab", "WidgetLabel", "Mesh Gen Lab");
@@ -33,6 +136,11 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto& property_editor{
         FModuleManager::LoadModuleChecked<FPropertyEditorModule>(TEXT("PropertyEditor"))};
     details_view_ = property_editor.CreateDetailView(details_arguments);
+    details_view_->SetIsPropertyVisibleDelegate(
+        FIsPropertyVisible::CreateLambda([](FPropertyAndParent const& property_and_parent) {
+            return property_and_parent.Property.GetFName() !=
+                   GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, shape);
+        }));
     details_view_->SetObject(settings_);
     details_view_->OnFinishedChangingProperties().AddUObject(this, &ThisClass::on_property_changed);
 
@@ -54,7 +162,25 @@ auto USbxMeshGenLabWidget::RebuildWidget() -> TSharedRef<SWidget> {
                           .AutoWrapText(true)] +
                  SVerticalBox::Slot().FillHeight(1.0f)
                      [SNew(SSplitter) +
-                      SSplitter::Slot().Value(0.45f)[details_view_.ToSharedRef()] +
+                      SSplitter::Slot().Value(0.45f)
+                          [SNew(SVerticalBox) +
+                           SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                               [SNew(SHorizontalBox) +
+                                SHorizontalBox::Slot()
+                                    .AutoWidth()
+                                    .VAlign(VAlign_Center)
+                                    .Padding(0.0f, 0.0f, 8.0f, 0.0f)[SNew(STextBlock)
+                                                                         .Text(NSLOCTEXT(
+                                                                             "SbxMeshGenLab",
+                                                                             "ShapeLabel",
+                                                                             "Shape"))] +
+                                SHorizontalBox::Slot().FillWidth(1.0f)
+                                    [SNew(SMeshShapeSelector)
+                                         .InitialShape(settings_->shape)
+                                         .OnShapeSelected_Lambda([this](ESbxMeshShape const shape) {
+                                             select_shape(shape);
+                                         })]] +
+                           SVerticalBox::Slot().FillHeight(1.0f)[details_view_.ToSharedRef()]] +
                       SSplitter::Slot().Value(0.55f)[SNew(SBorder).Padding(
                           8.0f)[SNew(SVerticalBox) +
                                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)
@@ -101,10 +227,20 @@ void USbxMeshGenLabWidget::ReleaseSlateResources(bool const release_children) {
 
 void USbxMeshGenLabWidget::on_property_changed(FPropertyChangedEvent const&) {
     if (last_shape_ != settings_->shape) {
-        last_shape_ = settings_->shape;
-        settings_->load_request(SandboxMesh::make_default_mesh_request(last_shape_));
-        details_view_->ForceRefresh();
+        select_shape(settings_->shape);
+        return;
     }
+    update_preview();
+}
+
+void USbxMeshGenLabWidget::select_shape(ESbxMeshShape const shape) {
+    if (last_shape_ == shape) {
+        return;
+    }
+
+    last_shape_ = shape;
+    settings_->load_request(SandboxMesh::make_default_mesh_request(shape));
+    details_view_->ForceRefresh();
     update_preview();
 }
 

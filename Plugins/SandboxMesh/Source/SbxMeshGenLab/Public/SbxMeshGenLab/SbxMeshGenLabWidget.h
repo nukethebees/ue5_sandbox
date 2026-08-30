@@ -23,6 +23,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabWidget final : public UEditorUtilityWidget
     void ReleaseSlateResources(bool release_children) override;
   private:
     void on_property_changed(FPropertyChangedEvent const& event);
+    void select_shape(ESbxMeshShape shape);
     auto save_generated_mesh() -> FReply;
     auto focus_preview() -> FReply;
     void update_preview();
