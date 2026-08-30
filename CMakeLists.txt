@@ -349,6 +349,24 @@ add_custom_target(generate-lab-mesh-box
   VERBATIM
 )
 
+add_custom_target(generate-lab-mesh-cylinder
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=GenerateSandboxMeshCylinder
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+    -ddc=NoZenLocalFallback
+    -unattended
+    -nop4
+    -nosplash
+    -nullrhi
+    -nosound
+    -stdout
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Generating the SandboxMesh Lab cylinder"
+  USES_TERMINAL
+  VERBATIM
+)
+
 set(SANDBOX_UNIT_AUTOMATION_FILTERS
   Sandbox.enum
   Sandbox.fighters
