@@ -21,6 +21,8 @@ METRICS = {
     "translucency_draw_calls": "DrawCall/Translucency",
     "primitives_drawn": "RHI/PrimitivesDrawn",
 }
+EXPECTED_STARFIELD_DRAWS = 2
+HAZE_PRIMITIVES = 2
 
 
 @dataclass(frozen=True)
@@ -388,15 +390,16 @@ def validate_results(
                 draw_delta = by_key[
                     (configuration, star_count, camera_motion, "translucency_draw_calls")
                 ].delta_median
-                if not 0.5 <= draw_delta <= 1.5:
+                if not EXPECTED_STARFIELD_DRAWS - 0.5 <= draw_delta <= EXPECTED_STARFIELD_DRAWS + 0.5:
                     errors.append(
-                        f"{label} changed translucency draws by {draw_delta:.2f}, expected 1"
+                        f"{label} changed translucency draws by {draw_delta:.2f}, "
+                        f"expected {EXPECTED_STARFIELD_DRAWS}"
                     )
 
                 primitive_delta = by_key[
                     (configuration, star_count, camera_motion, "primitives_drawn")
                 ].delta_median
-                expected_primitives = star_count * 2
+                expected_primitives = star_count * 2 + HAZE_PRIMITIVES
                 tolerance = max(expected_primitives * 0.02, 4.0)
                 if abs(primitive_delta - expected_primitives) > tolerance:
                     errors.append(
@@ -410,7 +413,7 @@ def validate_results(
                 if submit_time <= 0.0:
                     errors.append(f"{label} did not record the mesh submission scope")
 
-            expected_primitives = star_count * 2
+            expected_primitives = star_count * 2 + HAZE_PRIMITIVES
             moving_captures = [
                 capture
                 for capture in captures

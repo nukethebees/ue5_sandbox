@@ -45,6 +45,31 @@ auto generate_band_direction(FRandomStream& random_stream, float const width_deg
             FMath::Sin(latitude)};
 }
 
+auto calculate_dust_lane_attenuation(FVector const& direction,
+                                     float const strength,
+                                     float const width_degrees,
+                                     float const irregularity) -> float {
+    auto const longitude{static_cast<float>(FMath::Atan2(direction.Y, direction.X))};
+    auto const latitude{static_cast<float>(FMath::Asin(FMath::Clamp(direction.Z, -1.0, 1.0)))};
+    auto const base_width{FMath::DegreesToRadians(width_degrees)};
+
+    auto const centre_wave{0.4f * FMath::Sin(2.0f * longitude + 0.7f) +
+                           0.2f * FMath::Sin(5.0f * longitude - 1.3f)};
+    auto const lane_centre{base_width * irregularity * centre_wave};
+    auto const width_scale{
+        FMath::Max(1.0f + irregularity * 0.3f * FMath::Sin(3.0f * longitude + 2.1f), 0.35f)};
+    auto const lane_width{base_width * width_scale};
+    auto const normalised_latitude{(latitude - lane_centre) / lane_width};
+    auto const latitude_profile{FMath::Exp(-0.5f * normalised_latitude * normalised_latitude)};
+
+    auto const opacity_wave{0.55f * FMath::Sin(2.0f * longitude - 0.4f) +
+                            0.3f * FMath::Sin(5.0f * longitude + 1.7f) +
+                            0.15f * FMath::Sin(11.0f * longitude - 0.9f)};
+    auto const irregular_opacity{0.55f + 0.45f * (opacity_wave * 0.5f + 0.5f)};
+    auto const opacity{FMath::Lerp(1.0f, irregular_opacity, irregularity)};
+    return FMath::Clamp(1.0f - strength * latitude_profile * opacity, 0.0f, 1.0f);
+}
+
 auto get_profile_star_count_override() -> int32 {
     int32 star_count{0};
     FParse::Value(FCommandLine::Get(), TEXT("GpuStarfieldCount="), star_count);
@@ -55,8 +80,18 @@ struct FGpuStarfieldRenderParameters {
     float starfield_radius{0.0f};
     float global_star_size{0.0f};
     float global_brightness{0.0f};
+    float star_colour_variation_strength{0.0f};
+    float bright_star_size_multiplier{1.0f};
+    float bright_star_brightness_multiplier{1.0f};
     float parallax_strength{0.0f};
     float bright_star_shape_strength{0.0f};
+    float dust_lane_strength{0.0f};
+    float dust_lane_width_degrees{0.0f};
+    float dust_lane_irregularity{0.0f};
+    float galactic_haze_strength{0.0f};
+    float galactic_haze_width_degrees{0.0f};
+    FVector3f galactic_haze_colour{FVector3f::ZeroVector};
+    float render_haze{0.0f};
 };
 
 auto make_render_parameters(FGpuStarfieldSettings const& settings)
@@ -66,8 +101,19 @@ auto make_render_parameters(FGpuStarfieldSettings const& settings)
         .global_star_size =
             base_star_size * settings.starfield_scale * settings.star_size_multiplier,
         .global_brightness = settings.global_brightness,
+        .star_colour_variation_strength = settings.star_colour_variation_strength,
+        .bright_star_size_multiplier = settings.bright_star_size_multiplier,
+        .bright_star_brightness_multiplier = settings.bright_star_brightness_multiplier,
         .parallax_strength = settings.parallax_strength,
         .bright_star_shape_strength = settings.bright_star_shape_strength,
+        .dust_lane_strength = settings.dust_lane_strength,
+        .dust_lane_width_degrees = settings.dust_lane_width_degrees,
+        .dust_lane_irregularity = settings.dust_lane_irregularity,
+        .galactic_haze_strength = settings.galactic_haze_strength,
+        .galactic_haze_width_degrees = settings.galactic_haze_width_degrees,
+        .galactic_haze_colour = {settings.galactic_haze_colour.R,
+                                 settings.galactic_haze_colour.G,
+                                 settings.galactic_haze_colour.B},
     };
 }
 
@@ -116,9 +162,23 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
         starfield_radius_.Bind(parameter_map, TEXT("GpuStarfieldRadius"));
         global_star_size_.Bind(parameter_map, TEXT("GpuStarfieldGlobalStarSize"));
         global_brightness_.Bind(parameter_map, TEXT("GpuStarfieldGlobalBrightness"));
+        star_colour_variation_strength_.Bind(parameter_map,
+                                             TEXT("GpuStarfieldColourVariationStrength"));
+        bright_star_size_multiplier_.Bind(parameter_map,
+                                          TEXT("GpuStarfieldBrightStarSizeMultiplier"));
+        bright_star_brightness_multiplier_.Bind(parameter_map,
+                                                TEXT("GpuStarfieldBrightStarBrightnessMultiplier"));
         parallax_strength_.Bind(parameter_map, TEXT("GpuStarfieldParallaxStrength"));
         bright_star_shape_strength_.Bind(parameter_map,
                                          TEXT("GpuStarfieldBrightStarShapeStrength"));
+        dust_lane_strength_.Bind(parameter_map, TEXT("GpuStarfieldDustLaneStrength"));
+        dust_lane_width_degrees_.Bind(parameter_map, TEXT("GpuStarfieldDustLaneWidthDegrees"));
+        dust_lane_irregularity_.Bind(parameter_map, TEXT("GpuStarfieldDustLaneIrregularity"));
+        galactic_haze_strength_.Bind(parameter_map, TEXT("GpuStarfieldGalacticHazeStrength"));
+        galactic_haze_width_degrees_.Bind(parameter_map,
+                                          TEXT("GpuStarfieldGalacticHazeWidthDegrees"));
+        galactic_haze_colour_.Bind(parameter_map, TEXT("GpuStarfieldGalacticHazeColour"));
+        render_haze_.Bind(parameter_map, TEXT("GpuStarfieldRenderHaze"));
     }
 
     void GetElementShaderBindings(FSceneInterface const* scene,
@@ -135,8 +195,18 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
     LAYOUT_FIELD(FShaderParameter, starfield_radius_);
     LAYOUT_FIELD(FShaderParameter, global_star_size_);
     LAYOUT_FIELD(FShaderParameter, global_brightness_);
+    LAYOUT_FIELD(FShaderParameter, star_colour_variation_strength_);
+    LAYOUT_FIELD(FShaderParameter, bright_star_size_multiplier_);
+    LAYOUT_FIELD(FShaderParameter, bright_star_brightness_multiplier_);
     LAYOUT_FIELD(FShaderParameter, parallax_strength_);
     LAYOUT_FIELD(FShaderParameter, bright_star_shape_strength_);
+    LAYOUT_FIELD(FShaderParameter, dust_lane_strength_);
+    LAYOUT_FIELD(FShaderParameter, dust_lane_width_degrees_);
+    LAYOUT_FIELD(FShaderParameter, dust_lane_irregularity_);
+    LAYOUT_FIELD(FShaderParameter, galactic_haze_strength_);
+    LAYOUT_FIELD(FShaderParameter, galactic_haze_width_degrees_);
+    LAYOUT_FIELD(FShaderParameter, galactic_haze_colour_);
+    LAYOUT_FIELD(FShaderParameter, render_haze_);
 };
 
 IMPLEMENT_TYPE_LAYOUT(FGpuStarfieldVertexFactoryShaderParameters);
@@ -193,9 +263,23 @@ void FGpuStarfieldVertexFactoryShaderParameters::GetElementShaderBindings(
     shader_bindings.Add(starfield_radius_, user_data->parameters.starfield_radius);
     shader_bindings.Add(global_star_size_, user_data->parameters.global_star_size);
     shader_bindings.Add(global_brightness_, user_data->parameters.global_brightness);
+    shader_bindings.Add(star_colour_variation_strength_,
+                        user_data->parameters.star_colour_variation_strength);
+    shader_bindings.Add(bright_star_size_multiplier_,
+                        user_data->parameters.bright_star_size_multiplier);
+    shader_bindings.Add(bright_star_brightness_multiplier_,
+                        user_data->parameters.bright_star_brightness_multiplier);
     shader_bindings.Add(parallax_strength_, user_data->parameters.parallax_strength);
     shader_bindings.Add(bright_star_shape_strength_,
                         user_data->parameters.bright_star_shape_strength);
+    shader_bindings.Add(dust_lane_strength_, user_data->parameters.dust_lane_strength);
+    shader_bindings.Add(dust_lane_width_degrees_, user_data->parameters.dust_lane_width_degrees);
+    shader_bindings.Add(dust_lane_irregularity_, user_data->parameters.dust_lane_irregularity);
+    shader_bindings.Add(galactic_haze_strength_, user_data->parameters.galactic_haze_strength);
+    shader_bindings.Add(galactic_haze_width_degrees_,
+                        user_data->parameters.galactic_haze_width_degrees);
+    shader_bindings.Add(galactic_haze_colour_, user_data->parameters.galactic_haze_colour);
+    shader_bindings.Add(render_haze_, user_data->parameters.render_haze);
 }
 
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FGpuStarfieldVertexFactory,
@@ -285,32 +369,40 @@ class FGpuStarfieldSceneProxy final : public FPrimitiveSceneProxy {
                 continue;
             }
 
-            auto& user_data{
-                collector.AllocateOneFrameResource<FGpuStarfieldBatchElementUserData>()};
-            user_data.star_data_srv = star_srv;
-            user_data.parameters = parameters_;
+            auto const add_quad_draw = [&](int32 const instance_count, bool const render_haze) {
+                auto& user_data{
+                    collector.AllocateOneFrameResource<FGpuStarfieldBatchElementUserData>()};
+                user_data.star_data_srv = star_srv;
+                user_data.parameters = parameters_;
+                user_data.parameters.render_haze = render_haze ? 1.0f : 0.0f;
 
-            auto& mesh{collector.AllocateMesh()};
-            mesh.VertexFactory = &vertex_factory_;
-            mesh.MaterialRenderProxy = material_render_proxy_;
-            mesh.Type = PT_TriangleList;
-            mesh.DepthPriorityGroup = SDPG_World;
-            mesh.CastShadow = false;
-            mesh.bUseAsOccluder = false;
-            mesh.bCanApplyViewModeOverrides = false;
-            mesh.bDisableBackfaceCulling = true;
+                auto& mesh{collector.AllocateMesh()};
+                mesh.VertexFactory = &vertex_factory_;
+                mesh.MaterialRenderProxy = material_render_proxy_;
+                mesh.Type = PT_TriangleList;
+                mesh.DepthPriorityGroup = SDPG_World;
+                mesh.CastShadow = false;
+                mesh.bUseAsOccluder = false;
+                mesh.bCanApplyViewModeOverrides = false;
+                mesh.bDisableBackfaceCulling = true;
 
-            auto& element{mesh.Elements[0]};
-            element.IndexBuffer = &gpu_starfield_quad_index_buffer;
-            element.FirstIndex = 0;
-            element.NumPrimitives = 2;
-            element.NumInstances = star_count_;
-            element.MinVertexIndex = 0;
-            element.MaxVertexIndex = 3;
-            element.PrimitiveUniformBuffer = GetUniformBuffer();
-            element.UserData = &user_data;
+                auto& element{mesh.Elements[0]};
+                element.IndexBuffer = &gpu_starfield_quad_index_buffer;
+                element.FirstIndex = 0;
+                element.NumPrimitives = 2;
+                element.NumInstances = instance_count;
+                element.MinVertexIndex = 0;
+                element.MaxVertexIndex = 3;
+                element.PrimitiveUniformBuffer = GetUniformBuffer();
+                element.UserData = &user_data;
 
-            collector.AddMesh(view_index, mesh);
+                collector.AddMesh(view_index, mesh);
+            };
+
+            if (parameters_.galactic_haze_strength > 0.0f) {
+                add_quad_draw(1, true);
+            }
+            add_quad_draw(star_count_, false);
         }
     }
 
@@ -378,9 +470,27 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
     normalised.galactic_band_strength = FMath::Clamp(normalised.galactic_band_strength, 0.0f, 1.0f);
     normalised.galactic_band_width_degrees =
         FMath::Clamp(normalised.galactic_band_width_degrees, 1.0f, 45.0f);
+    normalised.dust_lane_strength = FMath::Clamp(normalised.dust_lane_strength, 0.0f, 1.0f);
+    normalised.dust_lane_width_degrees =
+        FMath::Clamp(normalised.dust_lane_width_degrees, 0.5f, 20.0f);
+    normalised.dust_lane_irregularity = FMath::Clamp(normalised.dust_lane_irregularity, 0.0f, 1.0f);
+    normalised.galactic_haze_strength =
+        FMath::Clamp(normalised.galactic_haze_strength, 0.0f, 10.0f);
+    normalised.galactic_haze_width_degrees =
+        FMath::Clamp(normalised.galactic_haze_width_degrees, 1.0f, 60.0f);
+    normalised.galactic_haze_colour.R = FMath::Max(normalised.galactic_haze_colour.R, 0.0f);
+    normalised.galactic_haze_colour.G = FMath::Max(normalised.galactic_haze_colour.G, 0.0f);
+    normalised.galactic_haze_colour.B = FMath::Max(normalised.galactic_haze_colour.B, 0.0f);
     normalised.starfield_scale = FMath::Max(normalised.starfield_scale, 0.001f);
     normalised.star_size_multiplier = FMath::Max(normalised.star_size_multiplier, 0.0f);
     normalised.global_brightness = FMath::Max(normalised.global_brightness, 0.0f);
+    normalised.star_colour_variation_strength =
+        FMath::Clamp(normalised.star_colour_variation_strength, 0.0f, 1.0f);
+    normalised.bright_star_fraction = FMath::Clamp(normalised.bright_star_fraction, 0.0f, 0.1f);
+    normalised.bright_star_size_multiplier =
+        FMath::Max(normalised.bright_star_size_multiplier, 1.0f);
+    normalised.bright_star_brightness_multiplier =
+        FMath::Max(normalised.bright_star_brightness_multiplier, 1.0f);
     normalised.parallax_strength = FMath::Clamp(normalised.parallax_strength, 0.0f, 1.0f);
     normalised.bright_star_shape_strength =
         FMath::Clamp(normalised.bright_star_shape_strength, 0.0f, 1.0f);
@@ -389,13 +499,25 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
         !has_generated_stars_ || settings_.star_count != normalised.star_count ||
         settings_.random_seed != normalised.random_seed ||
         settings_.galactic_band_strength != normalised.galactic_band_strength ||
-        settings_.galactic_band_width_degrees != normalised.galactic_band_width_degrees};
+        settings_.galactic_band_width_degrees != normalised.galactic_band_width_degrees ||
+        settings_.dust_lane_strength != normalised.dust_lane_strength ||
+        settings_.dust_lane_width_degrees != normalised.dust_lane_width_degrees ||
+        settings_.dust_lane_irregularity != normalised.dust_lane_irregularity ||
+        settings_.bright_star_fraction != normalised.bright_star_fraction};
     auto const bounds_change{settings_.starfield_scale != normalised.starfield_scale ||
-                             settings_.star_size_multiplier != normalised.star_size_multiplier};
+                             settings_.star_size_multiplier != normalised.star_size_multiplier ||
+                             settings_.bright_star_size_multiplier !=
+                                 normalised.bright_star_size_multiplier};
     auto const shader_parameter_change{
         bounds_change || settings_.global_brightness != normalised.global_brightness ||
+        settings_.star_colour_variation_strength != normalised.star_colour_variation_strength ||
+        settings_.bright_star_brightness_multiplier !=
+            normalised.bright_star_brightness_multiplier ||
         settings_.parallax_strength != normalised.parallax_strength ||
-        settings_.bright_star_shape_strength != normalised.bright_star_shape_strength};
+        settings_.bright_star_shape_strength != normalised.bright_star_shape_strength ||
+        settings_.galactic_haze_strength != normalised.galactic_haze_strength ||
+        settings_.galactic_haze_width_degrees != normalised.galactic_haze_width_degrees ||
+        settings_.galactic_haze_colour != normalised.galactic_haze_colour};
 
     settings_ = normalised;
     if (structural_change) {
@@ -427,7 +549,8 @@ FPrimitiveSceneProxy* UGpuStarfieldComponent::CreateSceneProxy() {
 
 FBoxSphereBounds UGpuStarfieldComponent::CalcBounds(FTransform const& local_to_world) const {
     auto const radius{base_starfield_radius * settings_.starfield_scale +
-                      base_star_size * settings_.starfield_scale * settings_.star_size_multiplier};
+                      base_star_size * settings_.starfield_scale * settings_.star_size_multiplier *
+                          settings_.bright_star_size_multiplier};
     return FBoxSphereBounds{FVector::ZeroVector, FVector{radius}, radius}.TransformBy(
         local_to_world);
 }
@@ -488,9 +611,15 @@ void UGpuStarfieldComponent::generate_stars() {
         star.direction = FVector3f{direction};
         star.size = FMath::Lerp(0.65f, 1.8f, magnitude);
         star.brightness = FMath::Lerp(0.08f, 1.0f, magnitude);
+        if (settings_.dust_lane_strength > 0.0f) {
+            star.brightness *= calculate_dust_lane_attenuation(direction,
+                                                               settings_.dust_lane_strength,
+                                                               settings_.dust_lane_width_degrees,
+                                                               settings_.dust_lane_irregularity);
+        }
         star.depth_factor = depth_factor;
         star.colour_temperature = (random_stream.FRand() + random_stream.FRand()) * 0.5f;
-        star.padding = 0.0f;
+        star.bright_star_factor = population_roll < settings_.bright_star_fraction ? 1.0f : 0.0f;
     }
 
     has_generated_stars_ = true;

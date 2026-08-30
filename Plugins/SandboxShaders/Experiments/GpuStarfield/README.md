@@ -4,9 +4,10 @@ This experiment tests a minimal custom scene renderer for deterministic, camera-
 `AGpuStarfieldExperimentActor` owns one `UGpuStarfieldComponent`. The component generates one
 immutable 32-byte record per star and hands a copy to its `FPrimitiveSceneProxy`; the proxy uploads
 that array to a render-thread-owned structured buffer. Each record stores a unit direction, angular
-size, brightness, relative depth, and warm-to-cool colour value.
+size, brightness, relative depth, a warm-to-cool colour value, and sparse bright-population
+membership. The bright marker reuses the record's final padding float, keeping it at 32 bytes.
 
-Each visible view submits one indexed, instanced mesh batch. The vertex factory reuses one
+Each visible view submits one indexed, instanced star mesh batch. The vertex factory reuses one
 four-vertex quad, indexes the structured buffer with the stereo-correct instance ID, scales the unit
 direction to its relative logical depth, subtracts a scaled LWC camera-to-actor offset, and expands
 the result along the view right/up axes. Billboard size scales with relative depth, preserving its
@@ -19,10 +20,15 @@ per-star brightness and subtle temperature variation. For the brightest populati
 factory can remap that same falloff into a compact radial core and procedural cross while modestly
 expanding only those quads. There is no tick and no per-star work after generation.
 
+When galactic haze is enabled, the same proxy, canonical quad, vertex factory, and material submit
+one additional far, screen-covering draw. The vertex factory reconstructs a local sky direction,
+evaluates a broad longitude-varying luminous band per pixel, and applies the same irregular dust
+lane as a transmission mask. Strength zero omits this draw. The haze adds no GPU buffer or texture.
+
 The additive translucent material retains the normal scene depth test but does not write scene
-depth. Opaque geometry therefore occludes stars while the background renderer does not contaminate
-gameplay depth. The prototype does not force stars to the far plane: their logical radius controls
-depth, so geometry farther away than a star can still render behind it.
+depth. Opaque geometry therefore occludes both stars and haze while the background renderer does
+not contaminate gameplay depth. The haze quad uses a reversed-Z depth close to the far plane. Stars
+retain their logical depth, so geometry farther away than a star can still render behind it.
 
 ## Controls
 
@@ -30,15 +36,27 @@ depth, so geometry farther away than a star can still render behind it.
 - `galactic_band_strength` controls the fraction of stars concentrated around the actor's local
   equatorial plane. `0` exactly retains uniform spherical generation. Actor rotation orients the
   band without regenerating it.
+- `dust_lane_strength` darkens stars through the galactic midplane during generation. `0` exactly
+  preserves the distribution's previous star brightness.
+- `galactic_haze_strength` controls the luminous background band. `0` disables its draw entirely.
 - `starfield_scale` is the primary distance control. At `1`, the logical shell radius is 1,000 km
   and the base billboard diameter is 500 m. Scaling both together preserves angular star size.
 - `star_size_multiplier`, `global_brightness`, and `parallax_strength` are advanced shader controls
   and update without rebuilding star data.
+- `star_colour_variation_strength` blends deterministic warm/cool temperatures with white. `0`
+  renders every star white and does not regenerate the star set.
+- `bright_star_fraction` controls the sparse boosted population and regenerates the immutable star
+  set. `0` disables it. `bright_star_size_multiplier` and
+  `bright_star_brightness_multiplier` update on the GPU without regenerating stars.
 - `bright_star_shape_strength` controls the procedural cross on only the brightest stars. `0`
   retains the original circular falloff; the default `0.25` is intentionally subtle. This is also a
   dynamic shader control and does not rebuild star data.
 - `galactic_band_width_degrees` controls the standard deviation of the generated band latitude.
   Changing it or band strength regenerates the immutable star set.
+- `dust_lane_width_degrees` and `dust_lane_irregularity` control the lane's latitude profile and
+  broad deterministic variation around the sky. Dust controls regenerate the immutable star set.
+- `galactic_haze_width_degrees` and `galactic_haze_colour` control the background band without
+  rebuilding star data.
 - `parallax_strength = 0` makes the logical field follow camera translation; `1` behaves like
   ordinary actor-anchored world geometry. The default `0.01` gives the base scale an effective
   apparent distance of approximately 100,000 km.
@@ -50,11 +68,16 @@ resaving the map by passing `-GpuStarfieldCount=N`.
 Generation uses continuous randomized depth within three deliberately sparse populations: 1% near
 at `0.001-0.01` of the base radius, 14% middle at `0.03-0.2`, and 85% distant at `0.5-1.0`. These are
 not separate renderer layers: they remain interleaved in one structured buffer and one instanced
-draw. The distribution is mostly dim and neutral-white, with the near population kept bright enough
-to make its stronger translational parallax identifiable during this experiment. Direction
+draw. The distribution is mostly dim and near-white, with 1% receiving configurable size and
+brightness boosts. The same 1% belongs to the near population, keeping the most identifiable stars
+on the strongest translational-parallax layer. Direction
 generation mixes a uniform sphere with a truncated normal latitude distribution around the local
 equator. The default places 65% of stars in a 15-degree band while retaining a uniform population
-throughout the rest of the sky.
+throughout the rest of the sky. A default 90%-strength, 5-degree dust lane attenuates brightness at
+the local equator. A few fixed longitude waves vary its centre, width, and darkness without adding
+a noise dependency or consuming random-stream values. The optional 18-degree procedural haze uses
+the same local equator and dust mask, so rotating the actor or editing dust controls keeps both
+features aligned.
 
 ## UE 5.8 references
 
@@ -74,6 +97,8 @@ examples:
   `FRHIBufferCreateDesc::CreateStructured` for immutable structured-buffer/SRV creation.
 - `Engine/Shaders/Private/Nanite/NaniteDataDecode.ush` for UE 5.8's current view-space-to-pixel
   projection scale.
+- `Engine/Shaders/Private/RayTracing/RayTracingCommon.ush` for current reversed-Z
+  clip-to-translated-world ray reconstruction used by the far haze quad.
 
 UE 5.8's GPU-scene vertex-factory path requires `VF_GPUSCENE_GET_INTERMEDIATES`, and instanced stereo
 requires converting `SV_InstanceID` through `GetInstanceId`. Camera/actor subtraction uses double-
@@ -93,12 +118,12 @@ the other placed showcase experiments. For each star count it alternates disable
 captures across three repeats in both stationary and moving-camera modes, with 60 warmup frames
 followed by 180 measured frames per capture. The moving mode follows a deterministic curved path
 covering 10,000 km. The actor verifies the camera completed at least 95% of that distance. The CTest
-wrapper validates that enabling the starfield adds exactly one translucency draw and two rendered
-primitives per star in both modes, and that every measured moving frame retains the full star
-primitive count. It then writes raw captures and consolidated CSV/Markdown reports below
+wrapper validates that the default starfield adds exactly two translucency draws, two rendered
+primitives per star, and two haze primitives in both modes. It also checks that every measured
+moving frame retains the full primitive count. It then writes raw captures and consolidated reports below
 `Saved/Benchmarks/GpuStarfield`. `latest.txt` identifies the most recent successful run.
 
-The following Development results were measured on the same RTX 5090 and Ryzen 9 9950X3D system.
+The following pre-haze Development results were measured on the same RTX 5090 and Ryzen 9 9950X3D system.
 Values are medians of the three paired enabled-minus-disabled capture medians. The direct submission
 scope measures `GetDynamicMeshElements`, which UE schedules on a worker in this configuration.
 
@@ -115,7 +140,7 @@ The whole-frame CPU deltas are small enough to remain sensitive to ordinary fram
 scheduling noise. The directly instrumented mesh submission remains below 0.01 ms and does not
 scale with star count. GPU work scales with the number of unculled quads, reaching approximately
 0.56 ms total and 0.50 ms in translucency at one million stars. Adding continuous depth, magnitude,
-and colour to the existing record did not increase its 32-byte size or its one-draw architecture;
+and colour to the existing record did not increase its 32-byte size or its one-draw star architecture;
 the measured GPU result remained within run-to-run variation of the single-depth implementation.
 The subpixel footprint, energy correction, and default subtle bright-star shape also remained within
 that variation. Moving the camera across the 10,000-km path did not add measurable starfield GPU
@@ -152,10 +177,25 @@ current tiny stabilized stars, this indicates that instance/vertex work and mini
 dominate rather than resolution-scaled fill. Coarse GPU culling is therefore not justified by this
 hardware result. Target-hardware measurements remain necessary before making a production choice.
 
+### Galactic haze smoke measurement
+
+The initial stronger haze (`0.5` strength and 24-degree width) was measured with 10,000 stars in
+three paired stationary repeats. The values are combined starfield-plus-haze costs; the purpose of
+this bounded run was to validate the second draw and detect gross full-screen fill scaling, not to
+create another benchmark matrix. The reviewed defaults are `0.15` strength and 18-degree width.
+
+| Resolution | Submit CPU ms | GPU delta ms | Translucency GPU delta ms | Draw delta | Primitive delta |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| 1920x1080 | 0.0079 | 0.0722 | 0.0230 | 2 | 20,002 |
+| 3840x2160 | 0.0085 | 0.0801 | 0.0287 | 2 | 20,002 |
+
+The screen-covering haze produced a small measurable 4K increase on the RTX 5090 while remaining
+well below 0.1 ms combined with 10,000 stars. The raw verified run is `20260830_183332`.
+
 ## Initial whole-showcase profiling baseline
 
-The architecture produces one draw submission per visible view at every tested count. Expected
-star-buffer sizes are:
+Before the optional haze was added, the architecture produced one draw submission per visible view
+at every tested count. Expected star-buffer sizes are unchanged:
 
 | Stars | Buffer bytes | Approximate MiB |
 | ---: | ---: | ---: |
@@ -193,8 +233,8 @@ levels only.
 ## Roadmap
 
 Each step remains reviewable and usable before the next one begins. Unless measurements justify a
-change, all steps preserve one component, one immutable star buffer, one draw per visible view, and
-no per-star CPU work per frame.
+change, all steps preserve one component, one immutable star buffer, one star draw per visible view,
+and no per-star CPU work per frame. The optional haze adds one bufferless background draw.
 
 1. **Camera-travel-safe bounds — complete.** The proxy uses UE 5.8's always-visible primitive path,
    preventing shader-relative stars from being culled after long camera travel without a CPU tick.
@@ -209,10 +249,16 @@ no per-star CPU work per frame.
    effect adds no texture, star data, or draw submission.
 5. **Camera-motion benchmark — complete.** The automated benchmark now compares stationary and
    deterministic 10,000-km moving-camera A/B captures, verifies the camera travel, and checks the
-   full one-draw primitive submission survives every measured moving frame.
+   full star primitive submission survives every measured moving frame.
 6. **Galactic density band — complete.** Deterministic generation can now mix the uniform sky with
    a configurable soft band around the actor's local equator. Strength zero preserves the original
    distribution, and the feature does not change GPU data or per-frame work.
 7. **Coarse GPU culling evaluation — complete.** The verified resolution/size matrix does not show
    a current need for it on the measured hardware. Revisit this only if representative target
    hardware or substantially different star appearance makes the unculled draw material.
+8. **Dust lane — complete.** Deterministic generation attenuates stars through an irregular
+   galactic midplane. Strength zero preserves the previous generated brightness, and stellar
+   attenuation changes no GPU data layout, draw submission, or per-frame work.
+9. **Procedural galactic haze — complete.** An optional far background quad gives the dust lane a
+   luminous silhouette. It reuses the star material and vertex factory, adds no texture or buffer,
+   and costs one draw only while its strength is nonzero.

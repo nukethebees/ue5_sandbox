@@ -8,15 +8,25 @@ struct FGpuStarfieldStarData {
     float Brightness;
     float DepthFactor;
     float ColourTemperature;
-    float Padding;
+    float BrightStarFactor;
 };
 
 StructuredBuffer<FGpuStarfieldStarData> GpuStarfieldStarData;
 float GpuStarfieldRadius;
 float GpuStarfieldGlobalStarSize;
 float GpuStarfieldGlobalBrightness;
+float GpuStarfieldColourVariationStrength;
+float GpuStarfieldBrightStarSizeMultiplier;
+float GpuStarfieldBrightStarBrightnessMultiplier;
 float GpuStarfieldParallaxStrength;
 float GpuStarfieldBrightStarShapeStrength;
+float GpuStarfieldDustLaneStrength;
+float GpuStarfieldDustLaneWidthDegrees;
+float GpuStarfieldDustLaneIrregularity;
+float GpuStarfieldGalacticHazeStrength;
+float GpuStarfieldGalacticHazeWidthDegrees;
+float3 GpuStarfieldGalacticHazeColour;
+float GpuStarfieldRenderHaze;
 
 #undef GetInstanceIdFromVF
 #define GetInstanceIdFromVF(VFInput) (GetInstanceId(VFInput.InstanceId))
@@ -31,6 +41,9 @@ struct FVertexFactoryInterpolantsVSToPS {
     float2 TexCoord             : TEXCOORD0;
     float3 Colour               : TEXCOORD1;
     float BrightStarShapeAmount : TEXCOORD2;
+    float3 HazeDirection        : TEXCOORD3;
+    float4 HazeParameters       : TEXCOORD4;
+    float RenderHaze            : TEXCOORD5;
 };
 
 struct FVertexFactoryIntermediates {
@@ -39,6 +52,9 @@ struct FVertexFactoryIntermediates {
     float2 TexCoord;
     float3 Colour;
     float BrightStarShapeAmount;
+    float3 HazeDirection;
+    float4 HazeParameters;
+    float RenderHaze;
     FSceneDataIntermediates SceneData;
 };
 
@@ -49,10 +65,34 @@ FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates) 
 FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input) {
     FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
     Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+    FPrimitiveSceneData const PrimitiveData = GetPrimitiveData(Intermediates);
+
+    [branch] if (GpuStarfieldRenderHaze > 0.5) {
+        float const HazeDeviceDepth = 0.0000001;
+        float4 TranslatedWorldPosition =
+            mul(float4(Input.Corner, HazeDeviceDepth, 1.0), ResolvedView.ClipToTranslatedWorld);
+        TranslatedWorldPosition.xyz /= TranslatedWorldPosition.w;
+
+        float3 const WorldDirection =
+            normalize(mul(float4(Input.Corner, 0.0, 1.0), ResolvedView.ClipToTranslatedWorld).xyz);
+        float3 const LocalDirection =
+            normalize(mul(WorldDirection, DFToFloat3x3(PrimitiveData.WorldToLocal)));
+
+        Intermediates.WorldPosition = float4(TranslatedWorldPosition.xyz, 1.0);
+        Intermediates.PositionInstanceSpace = LocalDirection;
+        Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
+        Intermediates.Colour = GpuStarfieldGalacticHazeColour * GpuStarfieldGalacticHazeStrength;
+        Intermediates.HazeDirection = LocalDirection;
+        Intermediates.HazeParameters = float4(GpuStarfieldGalacticHazeWidthDegrees,
+                                              GpuStarfieldDustLaneStrength,
+                                              GpuStarfieldDustLaneWidthDegrees,
+                                              GpuStarfieldDustLaneIrregularity);
+        Intermediates.RenderHaze = 1.0;
+        return Intermediates;
+    }
 
     uint const StarIndex = GetInstanceId(Input.InstanceId);
     FGpuStarfieldStarData const Star = GpuStarfieldStarData[StarIndex];
-    FPrimitiveSceneData const PrimitiveData = GetPrimitiveData(Intermediates);
 
     float const LayerRadius = GpuStarfieldRadius * Star.DepthFactor;
     float3 const StarOffset =
@@ -60,6 +100,8 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float3 const CameraFromAnchor =
         DFFastSubtractDemote(ResolvedView.WorldCameraOrigin, PrimitiveData.ObjectWorldPosition);
     float3 const RelativePosition = StarOffset - CameraFromAnchor * GpuStarfieldParallaxStrength;
+    float const BrightStarSizeScale =
+        lerp(1.0, GpuStarfieldBrightStarSizeMultiplier, Star.BrightStarFactor);
     float const UnstabilizedHalfSize =
         Star.Size * GpuStarfieldGlobalStarSize * Star.DepthFactor * 0.5;
     bool const IsOrthographic = IsOrthoProjection(ResolvedView.ViewToClip);
@@ -71,9 +113,12 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float const MinimumHalfSizePixels = 0.75;
     float const StabilizationScale =
         max(1.0, MinimumHalfSizePixels / max(ProjectedHalfSize, 0.0001));
-    float const HalfSize = UnstabilizedHalfSize * StabilizationScale;
+    float const HalfSize = UnstabilizedHalfSize * StabilizationScale * BrightStarSizeScale;
     float const EnergyScale = rcp(StabilizationScale * StabilizationScale);
-    float const BrightStarFactor = smoothstep(0.8, 1.0, Star.Brightness);
+    float const StarBrightness =
+        Star.Brightness *
+        lerp(1.0, GpuStarfieldBrightStarBrightnessMultiplier, Star.BrightStarFactor);
+    float const BrightStarFactor = smoothstep(0.8, 1.0, StarBrightness);
     float const BrightStarShapeAmount = GpuStarfieldBrightStarShapeStrength * BrightStarFactor;
     float const BrightStarShapeScale = 1.0 + BrightStarShapeAmount * 3.0;
     float3 const BillboardOffset =
@@ -85,6 +130,7 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     Intermediates.PositionInstanceSpace = Star.Direction;
     Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
     Intermediates.BrightStarShapeAmount = BrightStarShapeAmount;
+    Intermediates.HazeDirection = Star.Direction;
 
     float const WarmWeight = saturate(1.0 - Star.ColourTemperature * 2.0);
     float const CoolWeight = saturate(Star.ColourTemperature * 2.0 - 1.0);
@@ -94,8 +140,10 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float3 const CoolColour = float3(0.72, 0.85, 1.0);
     float3 const StarColour =
         WarmColour * WarmWeight + NeutralColour * NeutralWeight + CoolColour * CoolWeight;
+    float3 const DisplayColour =
+        lerp(NeutralColour, StarColour, GpuStarfieldColourVariationStrength);
     Intermediates.Colour =
-        StarColour * Star.Brightness * GpuStarfieldGlobalBrightness * EnergyScale;
+        DisplayColour * StarBrightness * GpuStarfieldGlobalBrightness * EnergyScale;
     return Intermediates;
 }
 
@@ -116,6 +164,44 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
         float const ShapedFalloff = max(RadialFalloff, SpikeFalloff);
         float const ShapedRadius = sqrt(saturate(1.0 - ShapedFalloff));
         TexCoord = float2(ShapedRadius * 0.5 + 0.5, 0.5);
+    }
+
+    [branch] if (Interpolants.RenderHaze > 0.5) {
+        float3 const Direction = normalize(Interpolants.HazeDirection);
+        float const Longitude = atan2(Direction.y, Direction.x);
+        float const Latitude = asin(clamp(Direction.z, -1.0, 1.0));
+
+        float const HazeWidth = radians(Interpolants.HazeParameters.x);
+        float const HazeLatitude = Latitude / HazeWidth;
+        float const CoreProfile = exp(-0.5 * HazeLatitude * HazeLatitude);
+        float const BroadLatitude = Latitude / (HazeWidth * 2.2);
+        float const BroadProfile = exp(-0.5 * BroadLatitude * BroadLatitude) * 0.25;
+        float const StructureWave = 0.5 * sin(Longitude - 0.8) + 0.3 * sin(3.0 * Longitude + 1.4) +
+                                    0.2 * sin(7.0 * Longitude - 2.0);
+        float const Structure = 0.55 + 0.45 * (StructureWave * 0.5 + 0.5);
+
+        float const DustStrength = Interpolants.HazeParameters.y;
+        float const DustWidth = radians(Interpolants.HazeParameters.z);
+        float const DustIrregularity = Interpolants.HazeParameters.w;
+        float const CentreWave =
+            0.4 * sin(2.0 * Longitude + 0.7) + 0.2 * sin(5.0 * Longitude - 1.3);
+        float const LaneCentre = DustWidth * DustIrregularity * CentreWave;
+        float const WidthScale =
+            max(1.0 + DustIrregularity * 0.3 * sin(3.0 * Longitude + 2.1), 0.35);
+        float const LaneWidth = DustWidth * WidthScale;
+        float const DustLatitude = (Latitude - LaneCentre) / LaneWidth;
+        float const DustProfile = exp(-0.5 * DustLatitude * DustLatitude);
+        float const OpacityWave = 0.55 * sin(2.0 * Longitude - 0.4) +
+                                  0.3 * sin(5.0 * Longitude + 1.7) +
+                                  0.15 * sin(11.0 * Longitude - 0.9);
+        float const IrregularOpacity = 0.55 + 0.45 * (OpacityWave * 0.5 + 0.5);
+        float const DustOpacity = lerp(1.0, IrregularOpacity, DustIrregularity);
+        float const DustTransmission = saturate(1.0 - DustStrength * DustProfile * DustOpacity);
+
+        float const Haze = saturate((CoreProfile + BroadProfile) * Structure * DustTransmission);
+        float const MaterialFalloff = sqrt(Haze);
+        float const EncodedRadius = sqrt(saturate(1.0 - MaterialFalloff));
+        TexCoord = float2(EncodedRadius * 0.5 + 0.5, 0.5);
     }
 
 #if NUM_MATERIAL_TEXCOORDS
@@ -193,6 +279,9 @@ FVertexFactoryInterpolantsVSToPS
     Interpolants.TexCoord = Intermediates.TexCoord;
     Interpolants.Colour = Intermediates.Colour;
     Interpolants.BrightStarShapeAmount = Intermediates.BrightStarShapeAmount;
+    Interpolants.HazeDirection = Intermediates.HazeDirection;
+    Interpolants.HazeParameters = Intermediates.HazeParameters;
+    Interpolants.RenderHaze = Intermediates.RenderHaze;
     return Interpolants;
 }
 
