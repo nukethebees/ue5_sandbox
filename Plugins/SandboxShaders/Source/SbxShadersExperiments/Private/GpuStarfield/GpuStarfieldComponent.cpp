@@ -39,6 +39,7 @@ struct FGpuStarfieldRenderParameters {
     float global_star_size{0.0f};
     float global_brightness{0.0f};
     float parallax_strength{0.0f};
+    float bright_star_shape_strength{0.0f};
 };
 
 auto make_render_parameters(FGpuStarfieldSettings const& settings)
@@ -49,6 +50,7 @@ auto make_render_parameters(FGpuStarfieldSettings const& settings)
             base_star_size * settings.starfield_scale * settings.star_size_multiplier,
         .global_brightness = settings.global_brightness,
         .parallax_strength = settings.parallax_strength,
+        .bright_star_shape_strength = settings.bright_star_shape_strength,
     };
 }
 
@@ -98,6 +100,8 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
         global_star_size_.Bind(parameter_map, TEXT("GpuStarfieldGlobalStarSize"));
         global_brightness_.Bind(parameter_map, TEXT("GpuStarfieldGlobalBrightness"));
         parallax_strength_.Bind(parameter_map, TEXT("GpuStarfieldParallaxStrength"));
+        bright_star_shape_strength_.Bind(parameter_map,
+                                         TEXT("GpuStarfieldBrightStarShapeStrength"));
     }
 
     void GetElementShaderBindings(FSceneInterface const* scene,
@@ -115,6 +119,7 @@ class FGpuStarfieldVertexFactoryShaderParameters final : public FVertexFactorySh
     LAYOUT_FIELD(FShaderParameter, global_star_size_);
     LAYOUT_FIELD(FShaderParameter, global_brightness_);
     LAYOUT_FIELD(FShaderParameter, parallax_strength_);
+    LAYOUT_FIELD(FShaderParameter, bright_star_shape_strength_);
 };
 
 IMPLEMENT_TYPE_LAYOUT(FGpuStarfieldVertexFactoryShaderParameters);
@@ -172,6 +177,8 @@ void FGpuStarfieldVertexFactoryShaderParameters::GetElementShaderBindings(
     shader_bindings.Add(global_star_size_, user_data->parameters.global_star_size);
     shader_bindings.Add(global_brightness_, user_data->parameters.global_brightness);
     shader_bindings.Add(parallax_strength_, user_data->parameters.parallax_strength);
+    shader_bindings.Add(bright_star_shape_strength_,
+                        user_data->parameters.bright_star_shape_strength);
 }
 
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FGpuStarfieldVertexFactory,
@@ -355,6 +362,8 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
     normalised.star_size_multiplier = FMath::Max(normalised.star_size_multiplier, 0.0f);
     normalised.global_brightness = FMath::Max(normalised.global_brightness, 0.0f);
     normalised.parallax_strength = FMath::Clamp(normalised.parallax_strength, 0.0f, 1.0f);
+    normalised.bright_star_shape_strength =
+        FMath::Clamp(normalised.bright_star_shape_strength, 0.0f, 1.0f);
 
     auto const structural_change{!has_generated_stars_ ||
                                  settings_.star_count != normalised.star_count ||
@@ -363,7 +372,8 @@ void UGpuStarfieldComponent::apply_settings(FGpuStarfieldSettings const& setting
                              settings_.star_size_multiplier != normalised.star_size_multiplier};
     auto const shader_parameter_change{
         bounds_change || settings_.global_brightness != normalised.global_brightness ||
-        settings_.parallax_strength != normalised.parallax_strength};
+        settings_.parallax_strength != normalised.parallax_strength ||
+        settings_.bright_star_shape_strength != normalised.bright_star_shape_strength};
 
     settings_ = normalised;
     if (structural_change) {

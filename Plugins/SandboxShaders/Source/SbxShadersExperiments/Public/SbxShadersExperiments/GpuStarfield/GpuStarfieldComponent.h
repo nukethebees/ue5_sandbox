@@ -44,6 +44,17 @@ struct SBXSHADERSEXPERIMENTS_API FGpuStarfieldSettings {
               Category = "GPU Starfield|Advanced",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float parallax_strength{0.01f};
+
+    UPROPERTY(
+        EditAnywhere,
+        BlueprintReadWrite,
+        Category = "GPU Starfield|Advanced",
+        meta =
+            (ClampMin = "0.0",
+             ClampMax = "1.0",
+             ToolTip =
+                 "Adds a procedural cross to only the brightest stars. Zero disables the effect."))
+    float bright_star_shape_strength{0.25f};
 };
 
 struct FGpuStarfieldGpuData {

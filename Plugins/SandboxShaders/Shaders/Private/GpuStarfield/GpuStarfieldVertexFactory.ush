@@ -16,6 +16,7 @@ float GpuStarfieldRadius;
 float GpuStarfieldGlobalStarSize;
 float GpuStarfieldGlobalBrightness;
 float GpuStarfieldParallaxStrength;
+float GpuStarfieldBrightStarShapeStrength;
 
 #undef GetInstanceIdFromVF
 #define GetInstanceIdFromVF(VFInput) (GetInstanceId(VFInput.InstanceId))
@@ -27,8 +28,9 @@ struct FVertexFactoryInput {
 };
 
 struct FVertexFactoryInterpolantsVSToPS {
-    float2 TexCoord : TEXCOORD0;
-    float3 Colour   : TEXCOORD1;
+    float2 TexCoord             : TEXCOORD0;
+    float3 Colour               : TEXCOORD1;
+    float BrightStarShapeAmount : TEXCOORD2;
 };
 
 struct FVertexFactoryIntermediates {
@@ -36,6 +38,7 @@ struct FVertexFactoryIntermediates {
     float3 PositionInstanceSpace;
     float2 TexCoord;
     float3 Colour;
+    float BrightStarShapeAmount;
     FSceneDataIntermediates SceneData;
 };
 
@@ -70,13 +73,18 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
         max(1.0, MinimumHalfSizePixels / max(ProjectedHalfSize, 0.0001));
     float const HalfSize = UnstabilizedHalfSize * StabilizationScale;
     float const EnergyScale = rcp(StabilizationScale * StabilizationScale);
+    float const BrightStarFactor = smoothstep(0.8, 1.0, Star.Brightness);
+    float const BrightStarShapeAmount = GpuStarfieldBrightStarShapeStrength * BrightStarFactor;
+    float const BrightStarShapeScale = 1.0 + BrightStarShapeAmount * 3.0;
     float3 const BillboardOffset =
-        (Input.Corner.x * ResolvedView.ViewRight + Input.Corner.y * ResolvedView.ViewUp) * HalfSize;
+        (Input.Corner.x * ResolvedView.ViewRight + Input.Corner.y * ResolvedView.ViewUp) *
+        HalfSize * BrightStarShapeScale;
 
     Intermediates.WorldPosition =
         float4(ResolvedView.TranslatedWorldCameraOrigin + RelativePosition + BillboardOffset, 1.0);
     Intermediates.PositionInstanceSpace = Star.Direction;
     Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
+    Intermediates.BrightStarShapeAmount = BrightStarShapeAmount;
 
     float const WarmWeight = saturate(1.0 - Star.ColourTemperature * 2.0);
     float const CoolWeight = saturate(Star.ColourTemperature * 2.0 - 1.0);
@@ -94,11 +102,26 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
 FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants,
                                                     float4 SvPosition) {
     FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
+    float2 TexCoord = Interpolants.TexCoord;
+
+    [branch] if (Interpolants.BrightStarShapeAmount > 0.0) {
+        float const ShapeScale = 1.0 + Interpolants.BrightStarShapeAmount * 3.0;
+        float2 const Position = TexCoord * 2.0 - 1.0;
+        float2 const CorePosition = Position * ShapeScale;
+        float const RadialFalloff = saturate(1.0 - dot(CorePosition, CorePosition));
+        float const AxisDistance = min(abs(CorePosition.x), abs(CorePosition.y));
+        float const AxisExtent = max(abs(Position.x), abs(Position.y));
+        float const SpikeFalloff = saturate(1.0 - AxisDistance * 8.0) * saturate(1.0 - AxisExtent) *
+                                   Interpolants.BrightStarShapeAmount;
+        float const ShapedFalloff = max(RadialFalloff, SpikeFalloff);
+        float const ShapedRadius = sqrt(saturate(1.0 - ShapedFalloff));
+        TexCoord = float2(ShapedRadius * 0.5 + 0.5, 0.5);
+    }
 
 #if NUM_MATERIAL_TEXCOORDS
     UNROLL
     for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; ++CoordinateIndex) {
-        Result.TexCoords[CoordinateIndex] = Interpolants.TexCoord;
+        Result.TexCoords[CoordinateIndex] = TexCoord;
     }
 #endif
 
@@ -169,6 +192,7 @@ FVertexFactoryInterpolantsVSToPS
     FVertexFactoryInterpolantsVSToPS Interpolants;
     Interpolants.TexCoord = Intermediates.TexCoord;
     Interpolants.Colour = Intermediates.Colour;
+    Interpolants.BrightStarShapeAmount = Intermediates.BrightStarShapeAmount;
     return Interpolants;
 }
 

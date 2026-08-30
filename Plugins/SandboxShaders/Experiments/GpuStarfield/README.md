@@ -15,8 +15,9 @@ The vertex shader also projects that size into pixels. It expands diameters belo
 stable raster footprint and applies inverse-area intensity compensation, preserving the original
 star energy rather than making stabilized stars artificially brighter. The additive unlit material
 applies a squared circular falloff using the interpolated quad UV and uses vertex colour for
-per-star brightness and subtle temperature variation. There is no tick and no per-star work after
-generation.
+per-star brightness and subtle temperature variation. For the brightest population, the vertex
+factory can remap that same falloff into a compact radial core and procedural cross while modestly
+expanding only those quads. There is no tick and no per-star work after generation.
 
 The additive translucent material retains the normal scene depth test but does not write scene
 depth. Opaque geometry therefore occludes stars while the background renderer does not contaminate
@@ -30,6 +31,9 @@ depth, so geometry farther away than a star can still render behind it.
   and the base billboard diameter is 500 m. Scaling both together preserves angular star size.
 - `star_size_multiplier`, `global_brightness`, and `parallax_strength` are advanced shader controls
   and update without rebuilding star data.
+- `bright_star_shape_strength` controls the procedural cross on only the brightest stars. `0`
+  retains the original circular falloff; the default `0.25` is intentionally subtle. This is also a
+  dynamic shader control and does not rebuild star data.
 - `parallax_strength = 0` makes the logical field follow camera translation; `1` behaves like
   ordinary actor-anchored world geometry. The default `0.01` gives the base scale an effective
   apparent distance of approximately 100,000 km.
@@ -89,9 +93,9 @@ scope measures `GetDynamicMeshElements`, which UE schedules on a worker in this 
 
 | Stars | Whole GT delta ms | Whole RT delta ms | Submit CPU ms | Whole GPU delta ms | Translucency GPU delta ms | Draw delta |
 | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| 10,000 | 0.0725 | 0.1528 | 0.0073 | 0.0743 | 0.0167 | 1 |
-| 100,000 | 0.0038 | -0.0020 | 0.0060 | 0.1092 | 0.0607 | 1 |
-| 1,000,000 | -0.0015 | -0.0161 | 0.0060 | 0.5625 | 0.5010 | 1 |
+| 10,000 | 0.0632 | 0.1136 | 0.0064 | 0.0689 | 0.0169 | 1 |
+| 100,000 | 0.0618 | 0.1017 | 0.0063 | 0.1090 | 0.0611 | 1 |
+| 1,000,000 | 0.0099 | 0.0490 | 0.0061 | 0.5605 | 0.5019 | 1 |
 
 The whole-frame CPU deltas are small enough to remain sensitive to ordinary frame-to-frame
 scheduling noise. The directly instrumented mesh submission remains below 0.01 ms and does not
@@ -99,7 +103,8 @@ scale with star count. GPU work scales with the number of unculled quads, reachi
 0.56 ms total and 0.50 ms in translucency at one million stars. Adding continuous depth, magnitude,
 and colour to the existing record did not increase its 32-byte size or its one-draw architecture;
 the measured GPU result remained within run-to-run variation of the single-depth implementation.
-The subpixel footprint and energy correction also remained within that variation.
+The subpixel footprint, energy correction, and default subtle bright-star shape also remained within
+that variation.
 
 ## Initial whole-showcase profiling baseline
 
@@ -153,8 +158,9 @@ no per-star CPU work per frame.
 3. **Subpixel stability — complete.** The vertex shader now enforces a 1.5-pixel minimum diameter
    and compensates intensity by the inverse area increase, reducing unstable subpixel coverage
    without changing the star's intended energy, data, or draw count.
-4. **Bright-star shape.** Give only the brightest population an optional compact procedural cross
-   or diffraction spike without adding a texture or draw submission.
+4. **Bright-star shape — complete.** The brightest population can now receive a configurable
+   procedural cross around its radial core. Strength zero preserves the circular path, and the
+   effect adds no texture, star data, or draw submission.
 5. **Camera-motion benchmark.** Add a deterministic translation path to the automated A/B benchmark
    to validate parallax stability, bounds behavior, and motion cost.
 6. **Coarse GPU culling, if justified.** Evaluate frustum and projected-size culling only after
