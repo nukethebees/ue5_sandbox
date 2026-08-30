@@ -13,6 +13,7 @@ public class SandboxISMCLab : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "RenderCore",
             "SandboxISMC",
         });
     }

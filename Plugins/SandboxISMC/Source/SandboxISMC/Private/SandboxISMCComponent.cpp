@@ -13,6 +13,8 @@
 #include "MeshMaterialShader.h"
 #include "PrimitiveSceneProxy.h"
 #include "PrimitiveUniformShaderParametersBuilder.h"
+#include "ProfilingDebugging/CountersTrace.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "Rendering/ColorVertexBuffer.h"
 #include "RenderResource.h"
 #include "RHICommandList.h"
@@ -35,6 +37,13 @@ DECLARE_DWORD_COUNTER_STAT(TEXT("Active instances"),
 DECLARE_DWORD_COUNTER_STAT(TEXT("Last upload bytes"),
                            STAT_SandboxISMCUploadBytes,
                            STATGROUP_SandboxISMC);
+
+TRACE_DECLARE_FLOAT_COUNTER(SandboxISMCRenderThreadUploadMs,
+                            TEXT("SandboxISMC/RenderThreadUploadMs"));
+TRACE_DECLARE_MEMORY_COUNTER(SandboxISMCRenderThreadUploadBytes,
+                             TEXT("SandboxISMC/RenderThreadUploadBytes"));
+TRACE_DECLARE_INT_COUNTER(SandboxISMCRenderThreadUploadInstances,
+                          TEXT("SandboxISMC/RenderThreadUploadInstances"));
 
 struct FSandboxISMCMetricsState {
     TAtomic<int32> instance_count{0};
@@ -86,6 +95,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
 
     void upload(FRHICommandListBase& rhi_command_list,
                 TConstArrayView<FSandboxISMCRenderInstance> instances) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_RenderThreadUpload);
         SCOPE_CYCLE_COUNTER(STAT_SandboxISMCUpload);
         auto const start_cycles = FPlatformTime::Cycles64();
         auto const instance_count = instances.Num();
@@ -104,6 +114,11 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
         }
 
         auto const elapsed_cycles = FPlatformTime::Cycles64() - start_cycles;
+        TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadMs,
+                                 FPlatformTime::ToMilliseconds64(elapsed_cycles));
+        TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadBytes,
+                                 static_cast<int64>(byte_count));
+        TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadInstances, instance_count);
         metrics_->upload_cycles.Store(elapsed_cycles);
         metrics_->upload_bytes.Store(byte_count);
         SET_DWORD_STAT(STAT_SandboxISMCUploadBytes,
@@ -557,6 +572,7 @@ TConstArrayView<FVector3f> USandboxISMCComponent::scales() const {
 }
 
 void USandboxISMCComponent::commit_instance_updates() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_PackAndBounds);
     SCOPE_CYCLE_COUNTER(STAT_SandboxISMCPrepare);
     auto const start_cycles = FPlatformTime::Cycles64();
 
@@ -669,6 +685,7 @@ void USandboxISMCComponent::SendRenderDynamicData_Concurrent() {
         return;
     }
 
+    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_SubmitRenderUpdate);
     SCOPE_CYCLE_COUNTER(STAT_SandboxISMCSubmit);
     auto const start_cycles = FPlatformTime::Cycles64();
     auto* proxy = static_cast<FSandboxISMCSceneProxy*>(SceneProxy);

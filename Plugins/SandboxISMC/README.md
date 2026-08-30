@@ -71,3 +71,63 @@ engine cube mesh, a 200 x 200 grid (40,000 instances), lighting, and a camera ai
 instances regenerate when the actor is constructed so they are visible in the editor. In Simulate or
 PIE, the first 1,024 instances rotate and commit a full update every tick; the Output Log reports update
 timings and the approximately 2.44 MiB upload payload.
+
+## ISMC comparison benchmark
+
+Open `/SandboxISMC/Lab/FT_SandboxISMCBenchmark` and start PIE. The fixed camera shows two matching
+40,000-instance grids: custom on the left and engine ISMC on the right. Every tick, both grids receive
+the same slow vertical translation and rotation. The custom update and engine update run consecutively
+inside the same Game Thread frame, so their sibling scopes can be compared directly. There are no
+phases, warmups, or automatic stop; stop PIE after capturing the interval you want.
+
+The comparison uses the same mesh, default material, local transforms, mobility, movement, and view.
+Collision, overlap events, navigation contribution, character stepping, ray tracing visibility, and
+distance culling are disabled on the engine ISMC and on the custom component where applicable. The
+actor temporarily sets `r.VSync`, `r.VSyncEditor`, and `t.MaxFPS` to zero and restores their previous
+values when PIE ends.
+
+Results are written to `Saved/Benchmarks/SandboxISMC_Paired_*.csv` when PIE stops. Each metric reports
+minimum, median, p95, and maximum values over the complete run:
+
+- `frame` is the PIE game-frame duration.
+- `total_update` covers preparation plus the public component update call.
+- `prepare` is benchmark-side writing or construction of the changed transforms.
+- `api` is `commit_instance_updates()` or `BatchUpdateInstancesTransforms()`.
+- `pack_bounds` is the custom component's full SoA packing and bounds rebuild; it is contained
+  within `api`, not an additional cost.
+
+When tracing is enabled, the actor records `Saved/Profiling/SandboxISMC_Paired_*.utrace`, including
+CPU, GPU, frame, bookmark, counter, stats, render-command, and RHI-command channels. An editor `Failed
+to connect to the store client` message does not invalidate a file trace when the log also reports
+`Trace started (writing to file ...)`.
+
+### Reading the Insights trace
+
+On the Game Thread, expand `SandboxISMCBenchmark_PairedFrameUpdates`. Every frame contains these two
+sibling scopes:
+
+- `SandboxISMCBenchmark_CustomUpdate`, containing transform preparation and the custom commit.
+- `SandboxISMCBenchmark_EngineISMCUpdate`, containing transform preparation and
+  `BatchUpdateInstancesTransforms()`.
+
+The nested scopes separate caller-side preparation from component API cost. Creation is captured as
+`SandboxISMCBenchmark_CustomCreateInstances` and
+`SandboxISMCBenchmark_EngineISMCCreateInstances`.
+
+Filter timers by `SandboxISMC_Custom` to follow the custom path across threads:
+
+- `SandboxISMC_Custom_PackAndBounds` runs on the Game Thread.
+- `SandboxISMC_Custom_SubmitRenderUpdate` submits the snapshot.
+- `SandboxISMC_Custom_RenderThreadUpload` uploads the packed buffer on the Render Thread.
+
+The Render Thread also writes `SandboxISMC/RenderThreadUploadMs`,
+`SandboxISMC/RenderThreadUploadBytes`, and `SandboxISMC/RenderThreadUploadInstances` directly after
+every upload. Use these counters when inspecting upload cost because they are written on the Render
+Thread without asynchronous Game Thread readback. The custom component commits every tick, so these
+counters receive a new sample every frame.
+
+Add counters beginning with `SandboxISMCBenchmark/Custom/` and
+`SandboxISMCBenchmark/EngineISMC/` to the same graph to overlay total update, preparation, and API
+time. `SandboxISMCBenchmark/FrameMs` provides frame context. Engine ISMC's normal GPU Scene and
+culling path remains enabled because it is part of the renderer being compared; the chosen cube has
+one LOD, matching the custom renderer's LOD0-only limitation.
