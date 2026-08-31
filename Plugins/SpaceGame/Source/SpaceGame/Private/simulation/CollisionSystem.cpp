@@ -112,6 +112,7 @@ void CollisionUniformGrid::reset() {
     cell_entity_offsets_.Reset();
     cell_entity_counts_.Reset();
     cell_entity_write_indexes_.Reset();
+    non_empty_cell_indices_.Reset();
     entities_.Reset();
     aabbs_.reset();
     entities_buffer_.reset();
@@ -150,6 +151,7 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
     }
 
     entities_buffer_.reset();
+    non_empty_cell_indices_.Reset();
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::count_loop);
@@ -223,6 +225,10 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
         for (int32 i{0}; i < n_cells; ++i) {
             offsets[i] = offset;
             offset += counts[i];
+
+            if (counts[i] > 0) {
+                non_empty_cell_indices_.Add(i);
+            }
         }
         return offset;
     }()};
@@ -273,9 +279,9 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
         auto* RESTRICT offsets{cell_entity_offsets_.GetData()};
         auto* RESTRICT counts{cell_entity_counts_.GetData()};
 
-        for (int32 i{0}; i < n_cells; ++i) {
-            auto const write_index{write_indexes[i]};
-            auto const expected{offsets[i] + counts[i]};
+        for (auto const cell_index : non_empty_cell_indices_) {
+            auto const write_index{write_indexes[cell_index]};
+            auto const expected{offsets[cell_index] + counts[cell_index]};
 
             if (write_index != expected) {
                 UE_LOG(LogSandbox,
