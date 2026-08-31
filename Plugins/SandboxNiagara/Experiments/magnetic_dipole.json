@@ -1,0 +1,32 @@
+{
+  "schema_version": 2,
+  "id": "magnetic_dipole",
+  "display_name": "Magnetic Dipole Field",
+  "default_asset_name": "NS_SandboxNiagaraMagneticDipole",
+  "configuration": {
+    "spawn_rate": 2600.0,
+    "particle_lifetime": 10.0,
+    "sprite_size": 7.0,
+    "spawn_shape": "sphere",
+    "spawn_radius": 400.0,
+    "fixed_bounds_extent": 700.0,
+    "particle_color": [0.2, 0.45, 1.0, 1.0],
+    "velocity_expression_file": "Hlsl/magnetic_dipole.hlsl",
+    "parameters": [
+      {
+        "name": "User.FieldSpeed",
+        "display_name": "Field Speed",
+        "default": 140.0,
+        "minimum": -1000.0,
+        "maximum": 1000.0
+      },
+      {
+        "name": "User.TwistSpeed",
+        "display_name": "Twist Speed",
+        "default": 30.0,
+        "minimum": -500.0,
+        "maximum": 500.0
+      }
+    ]
+  }
+}
