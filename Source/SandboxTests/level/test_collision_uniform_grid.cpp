@@ -23,13 +23,8 @@
 
 namespace ml {
 namespace {
-FIntVector3 const grid_dims{1024, 1024, 3};
-FVector3f const grid_size{5000.f, 5000.f, 20000.f};
-FVector3f const cell_dims{
-    grid_size.X / static_cast<float>(grid_dims.X),
-    grid_size.Y / static_cast<float>(grid_dims.Y),
-    grid_size.Z / static_cast<float>(grid_dims.Z),
-};
+FIntVector3 const grid_dims{400, 400, 5};
+FVector3f const cell_dims{5000.f, 5000.f, 20000.f};
 
 auto count_handle(TConstArrayView<FRegistryEntityHandle> const handles,
                   FRegistryEntityHandle const expected) -> int32 {
@@ -50,11 +45,6 @@ FCollisionUniformGridScenario::FCollisionUniformGridScenario(FSimulationTestCont
 
 void FCollisionUniformGridScenario::on_tear_down() {
     ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-
-    auto& grid{context_.orchestrator.get_spatial_query_manager()
-                   .get_collision_system()
-                   .get_uniform_grid()};
-    grid.reset();
 }
 
 void FCollisionUniformGridScenario::spawn_fixture() {
@@ -134,12 +124,6 @@ void FCollisionUniformGridScenario::bind_proxy_entities(FProxyEntityMap const& p
 void FCollisionUniformGridScenario::initialise_simulation() {
     initialise_test_driver();
 
-    auto& grid{test_driver->orchestrator.get_spatial_query_manager()
-                   .get_collision_system()
-                   .get_uniform_grid()};
-    grid.set_grid_dims(grid_dims);
-    grid.set_cell_dims(cell_dims);
-
     test_driver->orchestrator.start_simulation();
 
     auto const* const player{test_driver->orchestrator.get_player_ship()};
@@ -153,6 +137,14 @@ void FCollisionUniformGridScenario::initialise_simulation() {
 
     expected_handles_[std::to_underlying(ETestEntityType::PlayerShip)] =
         player->get_entity_handle();
+
+    auto const& grid{test_driver->orchestrator.get_spatial_query_manager()
+                         .get_collision_system()
+                         .get_uniform_grid()};
+    checks.is_true(grid.get_grid_dims() == grid_dims,
+                   TEXT("Collision grid uses the production dimensions"));
+    checks.is_true(grid.get_cell_dims() == cell_dims,
+                   TEXT("Collision grid uses the production cell size"));
 
     test_driver->orchestrator.set_end_tick_test_hook(
         FOrchestratorEndTickTestHook::CreateRaw(this, &FCollisionUniformGridScenario::on_end_tick));
@@ -168,6 +160,8 @@ void FCollisionUniformGridScenario::sample_grid() {
 
     auto const* const fighters{orchestrator.get_capital_ship_fighters()};
     checks.is_valid(fighters, TEXT("Collision-grid fighters are available at sample time"));
+    checks.is_true(fighters && !fighters->get_handles().IsEmpty(),
+                   TEXT("Collision-grid fighter is placed"));
     if (fighters && !fighters->get_handles().IsEmpty()) {
         expected_handles_[std::to_underlying(ETestEntityType::CapitalShipFighter)] =
             fighters->get_handles()[0];
@@ -196,7 +190,12 @@ void FCollisionUniformGridScenario::sample_grid() {
         auto const min_coord{grid.to_min_cell_coord(location - half_extents)};
         auto const max_coord{grid.to_max_cell_coord(location + half_extents)};
 
-        if (!grid.is_cell_coord_in_bounds(min_coord) || !grid.is_cell_coord_in_bounds(max_coord)) {
+        auto const is_in_bounds{grid.is_cell_coord_in_bounds(min_coord) &&
+                                grid.is_cell_coord_in_bounds(max_coord)};
+        checks.is_true(is_in_bounds,
+                       FString::Printf(TEXT("Expected collision-grid %s entity is placed"),
+                                       LexToString(entity_type)));
+        if (!is_in_bounds) {
             sample.expected_cell_counts.Add(0);
             sample.found_cell_counts.Add(0);
             continue;
@@ -218,8 +217,6 @@ void FCollisionUniformGridScenario::sample_grid() {
     }
 
     samples_.add(test_driver->get_time(), MoveTemp(sample));
-
-    grid.reset();
 }
 
 void FCollisionUniformGridScenario::on_end_tick(ATestBatchOrchestrator&) {

@@ -171,6 +171,7 @@ auto FSpatialQueryManager::classify_component(UPrimitiveComponent const* const c
 void FSpatialQueryManager::resolve_hits(
     TConstArrayView<FSpatialQueryHit> const hits,
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::resolve_hits);
     check(hits.Num() == out_entity_handles.Num());
     check(component_resolvers.Num() >= (std::to_underlying(EHitResolverKind::Count) - 1));
 
@@ -374,37 +375,86 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range);
 
-    auto const& entity_data{entity_registry->get_entity_data()};
-    auto const generations{entity_registry->get_generations()};
-    int32 count{0};
-
-    auto const radius_squared{radius * radius};
-    auto const n{entity_registry->get_num_elements()};
     auto const n_out_limit{out_entities.Num()};
     if (n_out_limit == 0) {
         return 0;
     }
 
-    auto const ox{origin.X};
-    auto const oy{origin.Y};
-    auto const oz{origin.Z};
+    auto const& grid{collision.get_uniform_grid()};
+    if (!grid.is_configured()) {
+        auto const grid_dims{grid.get_grid_dims()};
+        auto const cell_dims{grid.get_cell_dims()};
+        UE_LOG(LogSandbox,
+               Fatal,
+               TEXT("Cannot query unconfigured collision grid: origin is %s, radius is %g, cell "
+                    "dimensions are (%g, %g, %g), grid dimensions are %s"),
+               *origin.ToString(),
+               radius,
+               cell_dims.X,
+               cell_dims.Y,
+               cell_dims.Z,
+               *ioj::CollisionUniformGrid::to_string(grid_dims));
+    }
 
-    for (int32 i{0}; i < n; ++i) {
-        if (!entity_data.alive[i]) {
-            continue;
-        }
-        if (entity_data.teams[i] == team) {
-            continue;
-        }
+    auto const abs_radius{FMath::Abs(radius)};
+    FVector3f const radius_extent{abs_radius, abs_radius, abs_radius};
+    auto const min_point{origin - radius_extent};
+    auto const max_point{origin + radius_extent};
+    auto min_coord{grid.to_min_cell_coord(min_point)};
+    auto max_coord{grid.to_max_cell_coord(max_point)};
+    auto const grid_dims{grid.get_grid_dims()};
+    auto const max_grid_coord{grid_dims - FIntVector3{1, 1, 1}};
+    if (max_coord.X < 0 || max_coord.Y < 0 || max_coord.Z < 0 || min_coord.X > max_grid_coord.X ||
+        min_coord.Y > max_grid_coord.Y || min_coord.Z > max_grid_coord.Z) {
+        return 0;
+    }
 
-        auto const dist_sq{ml::dist_sq(entity_data.locations, i, ox, oy, oz)};
-        if (dist_sq > radius_squared) {
-            continue;
-        }
-        out_entities[count++] = FRegistryEntityHandle{i, generations[i]};
+    min_coord.X = FMath::Max(min_coord.X, 0);
+    min_coord.Y = FMath::Max(min_coord.Y, 0);
+    min_coord.Z = FMath::Max(min_coord.Z, 0);
+    max_coord.X = FMath::Min(max_coord.X, max_grid_coord.X);
+    max_coord.Y = FMath::Min(max_coord.Y, max_grid_coord.Y);
+    max_coord.Z = FMath::Min(max_coord.Z, max_grid_coord.Z);
 
-        if (count >= n_out_limit) {
-            break;
+    query_manager::FThreadBufferLease const buffer_lease{*this};
+    auto& seen_entities{buffer_lease.get().range_query_seen_entities};
+    auto const entity_count{entity_registry->get_num_elements()};
+    seen_entities.Init(false, entity_count);
+
+    auto const& entity_data{entity_registry->get_entity_data()};
+    auto const radius_squared{radius * radius};
+    int32 count{};
+
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(
+            Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range::loop);
+        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                    for (auto const handle : grid.get_cell_entities({x, y, z})) {
+                        if (!entity_registry->is_valid_alive(handle) ||
+                            seen_entities[handle.index]) {
+                            continue;
+                        }
+                        seen_entities[handle.index] = true;
+
+                        if (entity_data.teams[handle.index] == team) {
+                            continue;
+                        }
+
+                        auto const dist_sq{ml::dist_sq(
+                            entity_data.locations, handle.index, origin.X, origin.Y, origin.Z)};
+                        if (dist_sq > radius_squared) {
+                            continue;
+                        }
+
+                        out_entities[count++] = handle;
+                        if (count >= n_out_limit) {
+                            return count;
+                        }
+                    }
+                }
+            }
         }
     }
 

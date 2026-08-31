@@ -20,7 +20,18 @@
 namespace ml {
 FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
+    level_config = DuplicateObject<USpaceGameLevelConfig>(&context.config, &context.orchestrator);
+    if (!checks.not_nullptr(level_config.Get(), TEXT("Entity interface level config is created"))) {
+        return;
+    }
+    level_config->collision_grid.grid_size.Z = 2000000.f;
+    context.orchestrator.set_level_config(*level_config);
+
     TestCommandBuilder.Do([this] { spawn_fixture(); });
+}
+
+void FEntityInterfaceScenario::on_tear_down() {
+    context_.orchestrator.set_level_config(const_cast<USpaceGameLevelConfig&>(context_.config));
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -59,7 +70,7 @@ void FEntityInterfaceScenario::spawn_fixture() {
                 actor.set_team(ETestTeam::White);
                 return;
             }
-            actor.SetActorLocation(FVector{1181760.f, 23320.f, 15650.f});
+            actor.SetActorLocation(FVector{118176.f, 23320.f, 15650.f});
             turret = &actor;
         });
     if (!checks.is_valid(turret, TEXT("Turret proxy is spawned"))) {

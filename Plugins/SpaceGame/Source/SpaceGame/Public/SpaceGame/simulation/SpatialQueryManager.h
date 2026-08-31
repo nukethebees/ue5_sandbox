@@ -13,6 +13,7 @@
 
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
+#include <Containers/BitArray.h>
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
@@ -50,6 +51,7 @@ struct FThreadBuffers {
     TArray<FSpatialQueryHit> sorted_line_of_sight_hits;
     TArray<FRegistryEntityHandle> sorted_line_of_sight_entity_handles;
     TArray<int32> line_of_sight_sort_indices;
+    TBitArray<> range_query_seen_entities;
 };
 
 class FThreadBufferLease {

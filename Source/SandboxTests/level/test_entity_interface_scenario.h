@@ -12,6 +12,7 @@ class FEntityInterfaceScenario final : public FSimulationTestScenario {
     explicit FEntityInterfaceScenario(FSimulationTestContext& context);
     void run() override;
   private:
+    void on_tear_down() override;
     void spawn_fixture();
     void initial_setup();
     void sample_values();
@@ -25,5 +26,6 @@ class FEntityInterfaceScenario final : public FSimulationTestScenario {
     TimeSeriesData<int32> spinner_proxy_counts;
     TimeSeriesData<TArray<FRegistryEntityHandle>> capital_target_handles;
     TimeSeriesData<TArray<uint8>> capital_target_alive;
+    TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 };
 }
