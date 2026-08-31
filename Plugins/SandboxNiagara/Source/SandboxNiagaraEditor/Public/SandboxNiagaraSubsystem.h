@@ -7,6 +7,14 @@
 
 class UNiagaraSystem;
 
+UENUM(BlueprintType)
+enum class ESandboxNiagaraSpawnShape : uint8 {
+    Sphere,
+    Disc,
+    Cylinder,
+    Ring,
+};
+
 USTRUCT(BlueprintType)
 struct FSandboxNiagaraFloatParameter {
     GENERATED_BODY()
@@ -44,7 +52,16 @@ struct FSandboxNiagaraExperimentConfiguration {
     float sprite_size{10.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    ESandboxNiagaraSpawnShape spawn_shape{ESandboxNiagaraSpawnShape::Sphere};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
     float spawn_radius{250.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    float spawn_height{500.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    float spawn_inner_radius{0.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
     float fixed_bounds_extent{750.0f};

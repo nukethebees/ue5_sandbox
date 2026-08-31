@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "curl_field",
   "display_name": "Analytic Curl Field",
   "default_asset_name": "NS_SandboxNiagaraCurlField",
@@ -7,6 +7,7 @@
     "spawn_rate": 2500.0,
     "particle_lifetime": 18.0,
     "sprite_size": 8.0,
+    "spawn_shape": "sphere",
     "spawn_radius": 300.0,
     "fixed_bounds_extent": 1200.0,
     "particle_color": [0.05, 0.8, 1.0, 1.0],

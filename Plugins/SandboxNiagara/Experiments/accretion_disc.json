@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "accretion_disc",
   "display_name": "Accretion Disc",
   "default_asset_name": "NS_SandboxNiagaraAccretionDisc",
@@ -7,6 +7,7 @@
     "spawn_rate": 3000.0,
     "particle_lifetime": 24.0,
     "sprite_size": 7.0,
+    "spawn_shape": "disc",
     "spawn_radius": 550.0,
     "fixed_bounds_extent": 900.0,
     "particle_color": [1.0, 0.35, 0.04, 1.0],

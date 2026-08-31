@@ -316,7 +316,7 @@ void USandboxNiagaraControlPanel::rebuild_parameter_controls() {
         float minimum{0.0f};
         float maximum{0.0f};
     };
-    TArray<FConfigurationParameter> const configuration_parameters{
+    TArray<FConfigurationParameter> configuration_parameters{
         {NSLOCTEXT("SandboxNiagara", "SpawnRateParameter", "Spawn Rate"),
          &FSandboxNiagaraExperimentConfiguration::spawn_rate,
          0.0f,
@@ -333,11 +333,26 @@ void USandboxNiagaraControlPanel::rebuild_parameter_controls() {
          &FSandboxNiagaraExperimentConfiguration::spawn_radius,
          0.0f,
          1000000.0f},
+    };
+    if (selected_configuration_.spawn_shape == ESandboxNiagaraSpawnShape::Cylinder) {
+        configuration_parameters.Add(
+            {NSLOCTEXT("SandboxNiagara", "SpawnHeightParameter", "Spawn Height"),
+             &FSandboxNiagaraExperimentConfiguration::spawn_height,
+             0.001f,
+             1000000.0f});
+    }
+    if (selected_configuration_.spawn_shape == ESandboxNiagaraSpawnShape::Ring) {
+        configuration_parameters.Add(
+            {NSLOCTEXT("SandboxNiagara", "SpawnInnerRadiusParameter", "Spawn Inner Radius"),
+             &FSandboxNiagaraExperimentConfiguration::spawn_inner_radius,
+             0.0f,
+             selected_configuration_.spawn_radius});
+    }
+    configuration_parameters.Add(
         {NSLOCTEXT("SandboxNiagara", "BoundsParameter", "Bounds Extent"),
          &FSandboxNiagaraExperimentConfiguration::fixed_bounds_extent,
          0.001f,
-         10000000.0f},
-    };
+         10000000.0f});
 
     for (FConfigurationParameter const& parameter : configuration_parameters) {
         auto const member{parameter.member};

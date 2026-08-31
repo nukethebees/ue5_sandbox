@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "vortex_column",
   "display_name": "Vortex Column",
   "default_asset_name": "NS_SandboxNiagaraVortexColumn",
@@ -7,7 +7,9 @@
     "spawn_rate": 2200.0,
     "particle_lifetime": 12.0,
     "sprite_size": 9.0,
+    "spawn_shape": "cylinder",
     "spawn_radius": 350.0,
+    "spawn_height": 500.0,
     "fixed_bounds_extent": 550.0,
     "particle_color": [0.15, 0.75, 1.0, 1.0],
     "velocity_expression_file": "Hlsl/vortex_column.hlsl",

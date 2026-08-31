@@ -64,6 +64,33 @@ auto read_required_float(FJsonObject const& object,
     return true;
 }
 
+auto read_spawn_shape(FJsonObject const& object,
+                      FString const& source_file,
+                      ESandboxNiagaraSpawnShape& spawn_shape,
+                      FSandboxNiagaraExperimentCatalogResult& result) -> bool {
+    FString value{};
+    if (!read_required_string(object, TEXTVIEW("spawn_shape"), source_file, value, result)) {
+        return false;
+    }
+
+    if (value == TEXT("sphere")) {
+        spawn_shape = ESandboxNiagaraSpawnShape::Sphere;
+    } else if (value == TEXT("disc")) {
+        spawn_shape = ESandboxNiagaraSpawnShape::Disc;
+    } else if (value == TEXT("cylinder")) {
+        spawn_shape = ESandboxNiagaraSpawnShape::Cylinder;
+    } else if (value == TEXT("ring")) {
+        spawn_shape = ESandboxNiagaraSpawnShape::Ring;
+    } else {
+        add_catalog_error(
+            result,
+            source_file,
+            FString::Printf(TEXT("Unknown spawn shape '%s'."), *value));
+        return false;
+    }
+    return true;
+}
+
 auto read_color(FJsonObject const& object,
                 FString const& source_file,
                 FLinearColor& color,
@@ -234,8 +261,8 @@ auto load_experiment_definition(FString const& filename,
     bool valid{true};
     int32 schema_version{0};
     if (!root->TryGetNumberField(TEXTVIEW("schema_version"), schema_version) ||
-        schema_version != 1) {
-        add_catalog_error(result, filename, TEXT("'schema_version' must be 1."));
+        schema_version != 2) {
+        add_catalog_error(result, filename, TEXT("'schema_version' must be 2."));
         valid = false;
     }
     valid &= read_required_string(
@@ -270,11 +297,27 @@ auto load_experiment_definition(FString const& filename,
                                  filename,
                                  definition.configuration.sprite_size,
                                  result);
+    valid &= read_spawn_shape(
+        configuration, filename, definition.configuration.spawn_shape, result);
     valid &= read_required_float(configuration,
                                  TEXTVIEW("spawn_radius"),
                                  filename,
                                  definition.configuration.spawn_radius,
                                  result);
+    if (definition.configuration.spawn_shape == ESandboxNiagaraSpawnShape::Cylinder) {
+        valid &= read_required_float(configuration,
+                                     TEXTVIEW("spawn_height"),
+                                     filename,
+                                     definition.configuration.spawn_height,
+                                     result);
+    }
+    if (definition.configuration.spawn_shape == ESandboxNiagaraSpawnShape::Ring) {
+        valid &= read_required_float(configuration,
+                                     TEXTVIEW("spawn_inner_radius"),
+                                     filename,
+                                     definition.configuration.spawn_inner_radius,
+                                     result);
+    }
     valid &= read_required_float(configuration,
                                  TEXTVIEW("fixed_bounds_extent"),
                                  filename,
@@ -735,6 +778,146 @@ auto verify_enum_input(UNiagaraSystem& system,
     return true;
 }
 
+auto spawn_primitive_display_name(ESandboxNiagaraSpawnShape const spawn_shape) -> FString {
+    switch (spawn_shape) {
+        case ESandboxNiagaraSpawnShape::Sphere:
+            return TEXT("Sphere");
+        case ESandboxNiagaraSpawnShape::Disc:
+        case ESandboxNiagaraSpawnShape::Ring:
+            return TEXT("Ring / Disc");
+        case ESandboxNiagaraSpawnShape::Cylinder:
+            return TEXT("Cylinder");
+    }
+    return {};
+}
+
+auto ring_disc_coverage(FSandboxNiagaraExperimentConfiguration const& configuration) -> float {
+    if (configuration.spawn_shape == ESandboxNiagaraSpawnShape::Disc) {
+        return 1.0f;
+    }
+
+    auto const radius_ratio{configuration.spawn_inner_radius / configuration.spawn_radius};
+    return 1.0f - radius_ratio * radius_ratio;
+}
+
+auto apply_spawn_shape(UNiagaraSystem& system,
+                       FName const emitter_name,
+                       FSandboxNiagaraExperimentConfiguration const& configuration,
+                       FSandboxNiagaraGenerationResult& result) -> bool {
+    bool success{set_enum_input(system,
+                                emitter_name,
+                                TEXT("ParticleSpawnScript"),
+                                TEXT("ShapeLocation"),
+                                TEXT("Shape Primitive"),
+                                spawn_primitive_display_name(configuration.spawn_shape),
+                                result)};
+
+    switch (configuration.spawn_shape) {
+        case ESandboxNiagaraSpawnShape::Sphere:
+            success &= set_float_input(system,
+                                       emitter_name,
+                                       TEXT("ParticleSpawnScript"),
+                                       TEXT("ShapeLocation"),
+                                       TEXT("Sphere Radius"),
+                                       configuration.spawn_radius,
+                                       result);
+            break;
+        case ESandboxNiagaraSpawnShape::Disc:
+        case ESandboxNiagaraSpawnShape::Ring:
+            success &= set_float_input(system,
+                                       emitter_name,
+                                       TEXT("ParticleSpawnScript"),
+                                       TEXT("ShapeLocation"),
+                                       TEXT("Ring Radius"),
+                                       configuration.spawn_radius,
+                                       result);
+            success &= set_float_input(system,
+                                       emitter_name,
+                                       TEXT("ParticleSpawnScript"),
+                                       TEXT("ShapeLocation"),
+                                       TEXT("Disc Coverage"),
+                                       ring_disc_coverage(configuration),
+                                       result);
+            break;
+        case ESandboxNiagaraSpawnShape::Cylinder:
+            success &= set_float_input(system,
+                                       emitter_name,
+                                       TEXT("ParticleSpawnScript"),
+                                       TEXT("ShapeLocation"),
+                                       TEXT("Cylinder Radius"),
+                                       configuration.spawn_radius,
+                                       result);
+            success &= set_float_input(system,
+                                       emitter_name,
+                                       TEXT("ParticleSpawnScript"),
+                                       TEXT("ShapeLocation"),
+                                       TEXT("Cylinder Height"),
+                                       configuration.spawn_height,
+                                       result);
+            break;
+    }
+    return success;
+}
+
+auto verify_spawn_shape(UNiagaraSystem& system,
+                        FName const emitter_name,
+                        FSandboxNiagaraExperimentConfiguration const& configuration,
+                        FSandboxNiagaraGenerationResult& result) -> bool {
+    bool success{verify_enum_input(system,
+                                   emitter_name,
+                                   TEXT("ParticleSpawnScript"),
+                                   TEXT("ShapeLocation"),
+                                   TEXT("Shape Primitive"),
+                                   spawn_primitive_display_name(configuration.spawn_shape),
+                                   result)};
+
+    switch (configuration.spawn_shape) {
+        case ESandboxNiagaraSpawnShape::Sphere:
+            success &= verify_float_input(system,
+                                          emitter_name,
+                                          TEXT("ParticleSpawnScript"),
+                                          TEXT("ShapeLocation"),
+                                          TEXT("Sphere Radius"),
+                                          configuration.spawn_radius,
+                                          result);
+            break;
+        case ESandboxNiagaraSpawnShape::Disc:
+        case ESandboxNiagaraSpawnShape::Ring:
+            success &= verify_float_input(system,
+                                          emitter_name,
+                                          TEXT("ParticleSpawnScript"),
+                                          TEXT("ShapeLocation"),
+                                          TEXT("Ring Radius"),
+                                          configuration.spawn_radius,
+                                          result);
+            success &= verify_float_input(system,
+                                          emitter_name,
+                                          TEXT("ParticleSpawnScript"),
+                                          TEXT("ShapeLocation"),
+                                          TEXT("Disc Coverage"),
+                                          ring_disc_coverage(configuration),
+                                          result);
+            break;
+        case ESandboxNiagaraSpawnShape::Cylinder:
+            success &= verify_float_input(system,
+                                          emitter_name,
+                                          TEXT("ParticleSpawnScript"),
+                                          TEXT("ShapeLocation"),
+                                          TEXT("Cylinder Radius"),
+                                          configuration.spawn_radius,
+                                          result);
+            success &= verify_float_input(system,
+                                          emitter_name,
+                                          TEXT("ParticleSpawnScript"),
+                                          TEXT("ShapeLocation"),
+                                          TEXT("Cylinder Height"),
+                                          configuration.spawn_height,
+                                          result);
+            break;
+    }
+    return success;
+}
+
 auto apply_baseline_configuration(UNiagaraSystem& system,
                                   FSandboxNiagaraExperimentConfiguration const& configuration,
                                   FSandboxNiagaraGenerationResult& result) -> bool {
@@ -742,14 +925,26 @@ auto apply_baseline_configuration(UNiagaraSystem& system,
         !FMath::IsFinite(configuration.particle_lifetime) ||
         !FMath::IsFinite(configuration.sprite_size) ||
         !FMath::IsFinite(configuration.spawn_radius) ||
+        !FMath::IsFinite(configuration.spawn_height) ||
+        !FMath::IsFinite(configuration.spawn_inner_radius) ||
         !FMath::IsFinite(configuration.fixed_bounds_extent) ||
         configuration.spawn_rate < 0.0f || configuration.particle_lifetime <= 0.0f ||
         configuration.sprite_size <= 0.0f || configuration.spawn_radius < 0.0f ||
+        configuration.spawn_height <= 0.0f || configuration.spawn_inner_radius < 0.0f ||
         configuration.fixed_bounds_extent <= 0.0f) {
         add_error(result,
-                  TEXT("Spawn rate, lifetime, sprite size, radius, and fixed-bounds extent must "
-                       "be finite. Spawn rate and radius must be non-negative; lifetime, sprite "
-                       "size, and fixed-bounds extent must be positive."));
+                  TEXT("Spawn rate, lifetime, sprite size, shape dimensions, and fixed-bounds "
+                       "extent must be finite. Spawn rate, radius, and inner radius must be "
+                       "non-negative; lifetime, sprite size, height, and fixed-bounds extent "
+                       "must be positive."));
+        return false;
+    }
+    if (configuration.spawn_shape == ESandboxNiagaraSpawnShape::Ring &&
+        (configuration.spawn_radius <= 0.0f ||
+         configuration.spawn_inner_radius >= configuration.spawn_radius)) {
+        add_error(result,
+                  TEXT("A ring spawn shape requires a positive radius and an inner radius smaller "
+                       "than its outer radius."));
         return false;
     }
 
@@ -822,20 +1017,7 @@ auto apply_baseline_configuration(UNiagaraSystem& system,
                                TEXT("Uniform Sprite Size"),
                                configuration.sprite_size,
                                result);
-    success &= set_enum_input(system,
-                              emitter_name,
-                              TEXT("ParticleSpawnScript"),
-                              TEXT("ShapeLocation"),
-                              TEXT("Shape Primitive"),
-                              TEXT("Sphere"),
-                              result);
-    success &= set_float_input(system,
-                               emitter_name,
-                               TEXT("ParticleSpawnScript"),
-                               TEXT("ShapeLocation"),
-                               TEXT("Sphere Radius"),
-                               configuration.spawn_radius,
-                               result);
+    success &= apply_spawn_shape(system, emitter_name, configuration, result);
     success &= set_bool_input(system,
                               emitter_name,
                               TEXT("ParticleUpdateScript"),
@@ -1049,20 +1231,7 @@ auto verify_baseline_configuration(UNiagaraSystem& system,
                                   TEXT("Uniform Sprite Size"),
                                   configuration.sprite_size,
                                   result);
-    success &= verify_enum_input(system,
-                                 emitter_name,
-                                 TEXT("ParticleSpawnScript"),
-                                 TEXT("ShapeLocation"),
-                                 TEXT("Shape Primitive"),
-                                 TEXT("Sphere"),
-                                 result);
-    success &= verify_float_input(system,
-                                  emitter_name,
-                                  TEXT("ParticleSpawnScript"),
-                                  TEXT("ShapeLocation"),
-                                  TEXT("Sphere Radius"),
-                                  configuration.spawn_radius,
-                                  result);
+    success &= verify_spawn_shape(system, emitter_name, configuration, result);
     success &= verify_bool_input(system,
                                  emitter_name,
                                  TEXT("ParticleUpdateScript"),

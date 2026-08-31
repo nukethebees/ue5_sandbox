@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "orbit",
   "display_name": "Orbit",
   "default_asset_name": "NS_SandboxNiagaraOrbit",
@@ -7,7 +7,9 @@
     "spawn_rate": 2000.0,
     "particle_lifetime": 20.0,
     "sprite_size": 10.0,
+    "spawn_shape": "ring",
     "spawn_radius": 250.0,
+    "spawn_inner_radius": 200.0,
     "fixed_bounds_extent": 750.0,
     "particle_color": [0.1, 0.55, 1.0, 1.0],
     "velocity_expression_file": "Hlsl/orbit.hlsl",

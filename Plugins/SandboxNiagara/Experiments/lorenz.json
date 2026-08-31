@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "id": "lorenz",
   "display_name": "Lorenz Attractor",
   "default_asset_name": "NS_SandboxNiagaraLorenz",
@@ -7,6 +7,7 @@
     "spawn_rate": 1500.0,
     "particle_lifetime": 30.0,
     "sprite_size": 10.0,
+    "spawn_shape": "sphere",
     "spawn_radius": 25.0,
     "fixed_bounds_extent": 750.0,
     "particle_color": [1.0, 0.2, 0.03, 1.0],
