@@ -21,6 +21,14 @@ auto get_aabb(UStaticMesh const& mesh) -> FBox {
         aabb += collision_box.CalcAABB(FTransform::Identity, 1.0f);
     }
 
+    for (auto const& collision_sphere : body_setup->AggGeom.SphereElems) {
+        aabb += collision_sphere.CalcAABB(FTransform::Identity, 1.0f);
+    }
+
+    for (auto const& collision_capsule : body_setup->AggGeom.SphylElems) {
+        aabb += collision_capsule.CalcAABB(FTransform::Identity, 1.0f);
+    }
+
     return aabb;
 }
 }
