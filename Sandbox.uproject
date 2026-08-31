@@ -166,10 +166,6 @@
 			"Enabled": false
 		},
 		{
-			"Name": "MassGameplay",
-			"Enabled": true
-		},
-		{
 			"Name": "SlateInsights",
 			"Enabled": true
 		},
