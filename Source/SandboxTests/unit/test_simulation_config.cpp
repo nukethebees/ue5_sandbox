@@ -16,6 +16,44 @@
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 {
+    TEST_METHOD(CollisionGridDefaultsAndValidation)
+    {
+        FCollisionGridConfig const defaults{};
+        TestRunner->TestTrue(TEXT("Default collision-grid size is 20 km by 20 km by 1 km"),
+                             defaults.grid_size == FVector3f{2000000.f, 2000000.f, 100000.f});
+        TestRunner->TestTrue(TEXT("Default collision-grid cell size is preserved"),
+                             defaults.cell_size == FVector3f{5000.f, 5000.f, 20000.f});
+        TestRunner->TestTrue(TEXT("Default collision-grid dimensions are calculated"),
+                             defaults.calculate_grid_dimensions() == FIntVector3{400, 400, 5});
+        TestRunner->TestTrue(TEXT("Default collision-grid config is valid"), defaults.is_valid());
+
+        auto const* const source{ml::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
+            return;
+        }
+
+        auto* const copy{DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
+            return;
+        }
+
+        TestRunner->TestTrue(TEXT("Collision-grid size is duplicated"),
+                             copy->collision_grid.grid_size == source->collision_grid.grid_size);
+        TestRunner->TestTrue(TEXT("Collision-grid cell size is duplicated"),
+                             copy->collision_grid.cell_size == source->collision_grid.cell_size);
+        TestRunner->TestTrue(TEXT("Collision-grid calculated dimensions are duplicated"),
+                             copy->collision_grid.calculate_grid_dimensions() ==
+                                 source->collision_grid.calculate_grid_dimensions());
+
+        copy->collision_grid.grid_size.X = 0.f;
+        TArray<FString> errors;
+        copy->get_validation_errors(errors);
+        TestRunner->TestFalse(TEXT("Zero collision-grid size is invalid"), copy->is_valid());
+        TestRunner->TestTrue(
+            TEXT("Invalid collision-grid size has a validation diagnostic"),
+            errors.Contains(TEXT("collision_grid.grid_size components must be positive")));
+    }
+
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)
     {
         auto const* const source{ml::load_default_level_config()};
@@ -55,6 +93,10 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                              copy->turrets.mesh == source->turrets.mesh);
         TestRunner->TestTrue(TEXT("Spinner mesh remains shared"),
                              copy->tube_spinners.mesh == source->tube_spinners.mesh);
+        TestRunner->TestTrue(TEXT("Collision-grid size is preserved"),
+                             copy->collision_grid.grid_size == source->collision_grid.grid_size);
+        TestRunner->TestTrue(TEXT("Collision-grid cell size is preserved"),
+                             copy->collision_grid.cell_size == source->collision_grid.cell_size);
     }
 
     TEST_METHOD(LegacyDefaultValuesWerePreserved)
