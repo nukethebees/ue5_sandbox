@@ -2,6 +2,8 @@
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/simulation/LineTraces.h>
+#include <SpaceGame/simulation/TraceHits.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <limits>
@@ -259,6 +261,101 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
                        TEXT("Index incorrect. Got %d, should be %d"),
                        write_index,
                        expected);
+            }
+        }
+    }
+}
+
+void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
+                                       FTraceHitsView const& hits) const {
+    auto const n{traces.num()};
+    check(n == hits.num());
+
+    for (int32 i{0}; i < n; ++i) {
+        hits.hits[i] = 0;
+
+        auto const start_point{traces.starts[i]};
+        auto const end_point{traces.ends[i]};
+
+        auto const start_coord{to_cell_coord(start_point)};
+        auto const end_coord{to_cell_coord(end_point)};
+
+        auto const delta{end_point - start_point};
+
+        int8 const cell_step_x{delta.X > 0 ? +1 : -1};
+        int8 const cell_step_y{delta.Y > 0 ? +1 : -1};
+        int8 const cell_step_z{delta.Z > 0 ? +1 : -1};
+
+        auto const t_delta_x{cell_dims_.X / FMath::Abs(delta.X)};
+        auto const t_delta_y{cell_dims_.Y / FMath::Abs(delta.Y)};
+        auto const t_delta_z{cell_dims_.Z / FMath::Abs(delta.Z)};
+
+        auto current_point{start_point};
+        auto current_cell{start_coord};
+
+        float next_x_location{0.f};
+        float next_y_location{0.f};
+        float next_z_location{0.f};
+
+        if (delta.X > 0) {
+            next_x_location = cell_dims_.X * (current_cell.X + 1);
+        } else {
+            next_x_location = cell_dims_.X * current_cell.X;
+        }
+
+        if (delta.Y > 0) {
+            next_y_location = cell_dims_.Y * (current_cell.Y + 1);
+        } else {
+            next_y_location = cell_dims_.Y * current_cell.Y;
+        }
+
+        if (delta.Z > 0) {
+            next_z_location = cell_dims_.Z * (current_cell.Z + 1);
+        } else {
+            next_z_location = cell_dims_.Z * current_cell.Z;
+        }
+
+        // Evaluate distance to travel to next boundary based on the rate of travel
+        auto t_x{(next_x_location - current_point.X) / delta.X};
+        auto t_y{(next_y_location - current_point.Y) / delta.Y};
+        auto t_z{(next_z_location - current_point.Z) / delta.Z};
+
+        auto next_t{FMath::Min(t_x, t_y, t_z)};
+
+        if (t_x == next_t) {
+            current_cell.X += cell_step_x;
+        }
+
+        if (t_y == next_t) {
+            current_cell.Y += cell_step_y;
+        }
+
+        if (t_z == next_t) {
+            current_cell.Z += cell_step_z;
+        }
+
+        while (true) {
+            // Visit cell here. Perform line traces
+
+            if (current_cell == end_coord) {
+                break;
+            }
+
+            next_t = FMath::Min3(t_x, t_y, t_z);
+
+            if (t_x == next_t) {
+                current_cell.X += cell_step_x;
+                t_x += t_delta_x;
+            }
+
+            if (t_y == next_t) {
+                current_cell.Y += cell_step_y;
+                t_y += t_delta_y;
+            }
+
+            if (t_z == next_t) {
+                current_cell.Z += cell_step_z;
+                t_z += t_delta_z;
             }
         }
     }

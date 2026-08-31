@@ -10,6 +10,11 @@
 class UStaticMesh;
 struct FTestEntityRegistry;
 
+namespace ml {
+struct FLineTracesConstView;
+struct FTraceHitsView;
+}
+
 namespace ml::ioj {
 struct SPACEGAME_API CollisionUniformGrid {
     static inline FVector3f const origin{FVector3f::ZeroVector};
@@ -46,6 +51,8 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     void reset();
     void rebuild_grid(FTestEntityRegistry const& entity_registry, FEntityAABBs const& entity_aabbs);
+
+    void trace_aabbs(FLineTracesConstView const& traces, FTraceHitsView const& hits) const;
   private:
     auto to_cell_x(float value) const -> int32;
     auto to_cell_y(float value) const -> int32;
