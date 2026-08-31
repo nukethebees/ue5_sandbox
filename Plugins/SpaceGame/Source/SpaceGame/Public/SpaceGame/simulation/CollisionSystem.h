@@ -45,7 +45,7 @@ struct SPACEGAME_API CollisionUniformGrid {
     FVector3f cell_dims_{FVector3f::ZeroVector};
 
     TArray<int32> cell_entity_offsets_;
-    TArray<int32> cell_entity_counts_;
+    TArray<uint16> cell_entity_counts_;
     TArray<int32> cell_entity_write_indexes_;
     TArray<int32> non_empty_cell_indices_;
     TArray<FRegistryEntityHandle> entities_;
