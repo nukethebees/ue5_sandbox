@@ -461,40 +461,6 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     return count;
 }
 
-void FSpatialQueryManager::are_entities_within_dist_sq(float const dist_sq_threshold,
-                                                       FVectors3f const& locations,
-                                                       TArrayView<bool> const results) const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::are_entities_within_dist_sq);
-
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(locations),
-        SANDBOX_NAMED_NUM(results),
-    });
-    ml::fill(results, false);
-
-    auto const& entity_data{entity_registry->get_entity_data()};
-    auto const n_inputs{ml::num(locations)};
-    auto const n_entities{ml::num(entity_data.locations)};
-
-    for (int32 input_i{0}; input_i < n_inputs; ++input_i) {
-        float const x{locations.xs[input_i]};
-        float const y{locations.ys[input_i]};
-        float const z{locations.zs[input_i]};
-
-        for (int32 entity_i{0}; entity_i < n_entities; ++entity_i) {
-            if (!entity_data.alive[entity_i]) {
-                continue;
-            }
-
-            float const dist_sq{ml::dist_sq(entity_data.locations, entity_i, x, y, z)};
-            if (dist_sq <= dist_sq_threshold) {
-                results[input_i] = true;
-                break;
-            }
-        }
-    }
-}
-
 auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team) const
     -> FRegistryEntityHandle {
     auto const& entity_data{entity_registry->get_entity_data()};

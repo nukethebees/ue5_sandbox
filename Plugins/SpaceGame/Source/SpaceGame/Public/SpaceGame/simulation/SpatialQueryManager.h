@@ -103,9 +103,6 @@ struct SPACEGAME_API FSpatialQueryManager {
     auto get_any_non_team_entity(ETestTeam const team) const -> FRegistryEntityHandle;
     auto get_any_non_team_entity(ETestTeam const team, ETestEntityType const entity_type) const
         -> FRegistryEntityHandle;
-    void are_entities_within_dist_sq(float const dist_sq,
-                                     FVectors3f const& locations,
-                                     TArrayView<bool> const results) const;
 
     auto get_collision_system() noexcept -> ioj::FCollisionSystem& { return collision; }
     auto get_collision_system() const noexcept -> ioj::FCollisionSystem const& { return collision; }
