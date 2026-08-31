@@ -9,6 +9,7 @@ class AStaticMeshActor;
 class FEditorViewportClient;
 class FViewport;
 class HHitProxy;
+class USbxMeshAssemblyRecipe;
 class USbxMeshGenLabSettings;
 struct FViewportClick;
 
@@ -45,12 +46,18 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     [[nodiscard]] auto get_parts() const -> TArray<FSbxMeshAssemblyPart> const&;
     [[nodiscard]] auto get_selected_part_index() const -> int32;
     [[nodiscard]] auto get_status() const -> FText const&;
+    [[nodiscard]] auto get_recipe_document_text() const -> FText;
+    [[nodiscard]] auto has_current_recipe() const -> bool;
     auto on_session_changed() -> FOnSbxMeshSessionChanged&;
 
     void select_part(int32 part_index);
     void add_part();
     void duplicate_part();
     void remove_part();
+    void new_assembly();
+    void save_recipe();
+    void save_recipe_as();
+    void load_recipe();
     void apply_settings();
     void save_generated_mesh();
   private:
@@ -60,6 +67,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     void refresh_preview_actor(int32 part_index, bool rebuild_mesh);
     void select_preview_actor();
     void sync_part_transform_from_actor();
+    void apply_settings(bool mark_dirty);
+    void save_recipe_with_name(FName recipe_name);
+    void mark_recipe_dirty();
     void notify_session_changed(bool refresh_controls = true);
     [[nodiscard]] auto find_preview_actor(AActor const* actor) const -> int32;
     [[nodiscard]] auto make_part_world_transform(FSbxMeshAssemblyPart const& part) const
@@ -68,6 +78,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     UPROPERTY(Transient)
     TArray<TObjectPtr<AStaticMeshActor>> preview_actors_;
 
+    UPROPERTY(Transient)
+    TObjectPtr<USbxMeshAssemblyRecipe> current_recipe_;
+
     TArray<FSbxMeshAssemblyPart> parts_;
     TArray<TWeakObjectPtr<AActor>> previous_actor_selection_;
     FVector preview_origin_{FVector::ZeroVector};
@@ -75,4 +88,5 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     FOnSbxMeshSessionChanged session_changed_;
     int32 selected_part_index_{INDEX_NONE};
     bool changing_selection_{};
+    bool recipe_dirty_{};
 };

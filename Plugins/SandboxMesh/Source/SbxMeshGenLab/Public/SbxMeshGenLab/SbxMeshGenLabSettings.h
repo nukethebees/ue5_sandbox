@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SbxMeshGenLab/MeshAssembly.h"
+#include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 #include "SbxMeshGenLab/MeshGenerationRequest.h"
 #include "UObject/Object.h"
 
@@ -10,6 +11,12 @@ UCLASS(Transient)
 class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     GENERATED_BODY()
   public:
+    UPROPERTY(EditAnywhere, Category = "Recipe")
+    FName recipe_name{TEXT("SMR_NewAssembly")};
+
+    UPROPERTY(EditAnywhere, Category = "Recipe")
+    TSoftObjectPtr<USbxMeshAssemblyRecipe> recipe;
+
     UPROPERTY(EditAnywhere, Category = "Output")
     ESbxMeshShape shape{ESbxMeshShape::Box};
 

@@ -35,6 +35,44 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                                         "Select a part here or in the viewport. Use W/E/R and the "
                                         "standard viewport transform widget to manipulate it."))
                           .AutoWrapText(true)] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("NewAssembly", "New"))
+                               .ToolTipText(
+                                   LOCTEXT("NewAssemblyTooltip", "Start a new transient assembly."))
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::new_assembly)] +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("SaveRecipe", "Save"))
+                               .ToolTipText(LOCTEXT("SaveRecipeTooltip",
+                                                    "Update the currently loaded recipe."))
+                               .IsEnabled_Lambda([this]() {
+                                   return mode_.IsValid() && mode_->has_current_recipe();
+                               })
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::save_recipe)] +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("SaveRecipeAs", "Save As"))
+                               .ToolTipText(
+                                   LOCTEXT("SaveRecipeAsTooltip",
+                                           "Save to a recipe asset using the Recipe Name below."))
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::save_recipe_as)] +
+                      SHorizontalBox::Slot().AutoWidth()
+                          [SNew(SButton)
+                               .Text(LOCTEXT("LoadRecipe", "Reload"))
+                               .ToolTipText(
+                                   LOCTEXT("LoadRecipeTooltip",
+                                           "Discard live changes and reload the current recipe."))
+                               .IsEnabled_Lambda([this]() {
+                                   return mode_.IsValid() && mode_->has_current_recipe();
+                               })
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::load_recipe)]] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                     [SAssignNew(recipe_document_text_, STextBlock)
+                          .Font(FAppStyle::Get().GetFontStyle("NormalFontBold"))
+                          .AutoWrapText(true)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
                      [SNew(STextBlock)
                           .Text(LOCTEXT("Parts", "Assembly Parts"))
@@ -121,11 +159,19 @@ void FSbxMeshGenLabEditorModeToolkit::on_session_changed(bool const refresh_cont
         refresh_part_items();
         DetailsView->ForceRefresh();
     }
+    recipe_document_text_->SetText(mode_->get_recipe_document_text());
     status_text_->SetText(mode_->get_status());
 }
 
-void FSbxMeshGenLabEditorModeToolkit::on_property_changed(FPropertyChangedEvent const&) {
-    if (mode_.IsValid()) {
+void FSbxMeshGenLabEditorModeToolkit::on_property_changed(FPropertyChangedEvent const& event) {
+    if (!mode_.IsValid()) {
+        return;
+    }
+
+    auto const property_name{event.GetPropertyName()};
+    if (property_name == GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, recipe)) {
+        mode_->load_recipe();
+    } else if (property_name != GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, recipe_name)) {
         mode_->apply_settings();
     }
 }
@@ -160,6 +206,26 @@ auto FSbxMeshGenLabEditorModeToolkit::duplicate_part() -> FReply {
 
 auto FSbxMeshGenLabEditorModeToolkit::remove_part() -> FReply {
     mode_->remove_part();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::new_assembly() -> FReply {
+    mode_->new_assembly();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::save_recipe() -> FReply {
+    mode_->save_recipe();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::save_recipe_as() -> FReply {
+    mode_->save_recipe_as();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::load_recipe() -> FReply {
+    mode_->load_recipe();
     return FReply::Handled();
 }
 

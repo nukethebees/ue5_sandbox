@@ -1,7 +1,9 @@
 #include "SbxMeshGenLab/SbxMeshGenLabEditorMode.h"
 
 #include "Editor/SbxMeshGenLabEditorModeToolkit.h"
+#include "Generation/MeshAssemblyRecipeAsset.h"
 #include "Generation/MeshAssetWriter.h"
+#include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
 #include "Components/StaticMeshComponent.h"
@@ -104,6 +106,7 @@ auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_
     actor->SetActorTransform(transform, false, nullptr, ETeleportType::TeleportPhysics);
 
     sync_part_transform_from_actor();
+    mark_recipe_dirty();
     status_ = FText::Format(LOCTEXT("PartMoved", "Editing part {0}."),
                             FText::AsNumber(selected_part_index_ + 1));
     notify_session_changed(false);
@@ -164,6 +167,21 @@ auto USbxMeshGenLabEditorMode::get_status() const -> FText const& {
     return status_;
 }
 
+auto USbxMeshGenLabEditorMode::get_recipe_document_text() const -> FText {
+    if (current_recipe_ == nullptr) {
+        return LOCTEXT("UntitledRecipe", "Untitled assembly  (not saved)");
+    }
+
+    auto const recipe_name{FText::FromString(current_recipe_->GetPathName())};
+    return recipe_dirty_
+             ? FText::Format(LOCTEXT("DirtyRecipeDocument", "{0}  (unsaved changes)"), recipe_name)
+             : recipe_name;
+}
+
+auto USbxMeshGenLabEditorMode::has_current_recipe() const -> bool {
+    return current_recipe_ != nullptr;
+}
+
 auto USbxMeshGenLabEditorMode::on_session_changed() -> FOnSbxMeshSessionChanged& {
     return session_changed_;
 }
@@ -191,6 +209,7 @@ void USbxMeshGenLabEditorMode::add_part() {
     part.mesh = SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box);
     parts_.Add(part);
     create_preview_actor(parts_.Num() - 1);
+    mark_recipe_dirty();
     select_part(parts_.Num() - 1);
 }
 
@@ -204,6 +223,7 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
     part.transform.translation.X += 25.0f;
     parts_.Add(part);
     create_preview_actor(parts_.Num() - 1);
+    mark_recipe_dirty();
     select_part(parts_.Num() - 1);
 }
 
@@ -219,10 +239,137 @@ void USbxMeshGenLabEditorMode::remove_part() {
     parts_.RemoveAt(selected_part_index_);
     preview_actors_.RemoveAt(selected_part_index_);
     selected_part_index_ = FMath::Min(selected_part_index_, parts_.Num() - 1);
+    mark_recipe_dirty();
     select_part(selected_part_index_);
 }
 
+void USbxMeshGenLabEditorMode::new_assembly() {
+    if (GEditor != nullptr) {
+        changing_selection_ = true;
+        GEditor->SelectNone(false, true, false);
+        changing_selection_ = false;
+    }
+    destroy_preview_actors();
+
+    auto* const settings{get_settings()};
+    settings->load_request(SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box));
+    settings->load_transform({});
+    settings->asset_name = TEXT("SM_GeneratedAssembly");
+    settings->recipe_name = TEXT("SMR_NewAssembly");
+    settings->recipe.Reset();
+    current_recipe_ = nullptr;
+
+    parts_.Reset();
+    parts_.Add({settings->to_request(), settings->to_transform()});
+    selected_part_index_ = 0;
+    create_preview_actor(0);
+    select_preview_actor();
+
+    status_ = LOCTEXT("NewAssemblyReady", "Started a new assembly.");
+    recipe_dirty_ = false;
+    notify_session_changed();
+}
+
+void USbxMeshGenLabEditorMode::save_recipe() {
+    if (current_recipe_ == nullptr) {
+        status_ = LOCTEXT("NoCurrentRecipe", "Use Save As to create a recipe first.");
+        notify_session_changed();
+        return;
+    }
+
+    save_recipe_with_name(current_recipe_->GetFName());
+}
+
+void USbxMeshGenLabEditorMode::save_recipe_as() {
+    save_recipe_with_name(get_settings()->recipe_name);
+}
+
+void USbxMeshGenLabEditorMode::save_recipe_with_name(FName const recipe_name) {
+    apply_settings(false);
+
+    auto* const settings{get_settings()};
+    auto parts{parts_};
+    for (auto& part : parts) {
+        part.mesh.asset_name = settings->asset_name;
+    }
+    auto const validation_error{SandboxMesh::validate_mesh_assembly(parts)};
+    if (!validation_error.IsEmpty()) {
+        status_ = FText::FromString(validation_error);
+        notify_session_changed();
+        return;
+    }
+
+    auto* const saved_recipe{
+        SandboxMesh::write_mesh_assembly_recipe_asset(recipe_name, settings->asset_name, parts)};
+    if (saved_recipe == nullptr) {
+        status_ = LOCTEXT("RecipeSaveFailed", "Recipe save failed; see Output Log.");
+        notify_session_changed();
+        return;
+    }
+
+    settings->recipe = saved_recipe;
+    settings->recipe_name = saved_recipe->GetFName();
+    current_recipe_ = saved_recipe;
+    recipe_dirty_ = false;
+    status_ = FText::Format(LOCTEXT("RecipeSaved", "Saved recipe {0}."),
+                            FText::FromString(saved_recipe->GetPathName()));
+    notify_session_changed();
+}
+
+void USbxMeshGenLabEditorMode::load_recipe() {
+    auto* const settings{get_settings()};
+    auto* const selected_recipe{settings->recipe.LoadSynchronous()};
+    if (selected_recipe == nullptr) {
+        current_recipe_ = nullptr;
+        recipe_dirty_ = true;
+        status_ = LOCTEXT("RecipeDetached", "No recipe selected; the live assembly is unchanged.");
+        notify_session_changed();
+        return;
+    }
+    if (selected_recipe->format_version != 1) {
+        status_ = FText::Format(
+            LOCTEXT("RecipeVersionUnsupported", "Recipe format version {0} is not supported."),
+            FText::AsNumber(selected_recipe->format_version));
+        notify_session_changed();
+        return;
+    }
+
+    auto parts{selected_recipe->to_assembly()};
+    auto const validation_error{SandboxMesh::validate_mesh_assembly(parts)};
+    if (!validation_error.IsEmpty()) {
+        status_ = FText::FromString(validation_error);
+        notify_session_changed();
+        return;
+    }
+
+    if (GEditor != nullptr) {
+        changing_selection_ = true;
+        GEditor->SelectNone(false, true, false);
+        changing_selection_ = false;
+    }
+    destroy_preview_actors();
+    parts_ = MoveTemp(parts);
+    settings->asset_name = selected_recipe->output_asset_name;
+    settings->recipe_name = selected_recipe->GetFName();
+    current_recipe_ = selected_recipe;
+
+    auto const part_count{parts_.Num()};
+    for (int32 part_index{0}; part_index < part_count; ++part_index) {
+        create_preview_actor(part_index);
+    }
+    selected_part_index_ = INDEX_NONE;
+    select_part(0);
+    status_ = FText::Format(LOCTEXT("RecipeLoaded", "Loaded recipe {0}."),
+                            FText::FromString(selected_recipe->GetPathName()));
+    recipe_dirty_ = false;
+    notify_session_changed();
+}
+
 void USbxMeshGenLabEditorMode::apply_settings() {
+    apply_settings(true);
+}
+
+void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
     if (!parts_.IsValidIndex(selected_part_index_)) {
         return;
     }
@@ -231,6 +378,9 @@ void USbxMeshGenLabEditorMode::apply_settings() {
     parts_[selected_part_index_].mesh = settings->to_request();
     parts_[selected_part_index_].transform = settings->to_transform();
     refresh_preview_actor(selected_part_index_, true);
+    if (mark_dirty) {
+        mark_recipe_dirty();
+    }
 
     auto const validation_error{
         SandboxMesh::validate_mesh_request(parts_[selected_part_index_].mesh)};
@@ -242,7 +392,7 @@ void USbxMeshGenLabEditorMode::apply_settings() {
 }
 
 void USbxMeshGenLabEditorMode::save_generated_mesh() {
-    apply_settings();
+    apply_settings(false);
 
     auto parts{parts_};
     auto* const settings{get_settings()};
@@ -287,19 +437,7 @@ void USbxMeshGenLabEditorMode::initialize_session() {
                           GCurrentLevelEditingViewportClient->GetViewRotation().Vector() * 500.0;
     }
 
-    auto* const settings{get_settings()};
-    settings->load_request(SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box));
-    settings->load_transform({});
-    settings->asset_name = TEXT("SM_GeneratedAssembly");
-
-    parts_.Reset();
-    parts_.Add({settings->to_request(), settings->to_transform()});
-    selected_part_index_ = 0;
-    create_preview_actor(0);
-    select_preview_actor();
-
-    status_ = LOCTEXT("Ready", "Sandbox Mesh mode is ready.");
-    notify_session_changed();
+    new_assembly();
 }
 
 void USbxMeshGenLabEditorMode::create_preview_actor(int32 const part_index) {
@@ -426,6 +564,10 @@ void USbxMeshGenLabEditorMode::sync_part_transform_from_actor() {
     part_transform.rotation = FRotator3f{transform.Rotator()};
     part_transform.scale = FVector3f{transform.GetScale3D()};
     get_settings()->load_transform(part_transform);
+}
+
+void USbxMeshGenLabEditorMode::mark_recipe_dirty() {
+    recipe_dirty_ = true;
 }
 
 void USbxMeshGenLabEditorMode::notify_session_changed(bool const refresh_controls) {
