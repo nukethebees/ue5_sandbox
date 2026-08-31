@@ -155,6 +155,18 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
+    auto module{valid_enum_module()};
+    module.enums.front().enum_array = true;
+    module.enums.front().values.front().initializer = "0";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().enum_array = true;
+    module.enums.front().values.front().hidden = true;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
     auto module{valid_static_table_module()};
     module.tables.clear();

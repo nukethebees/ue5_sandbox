@@ -73,6 +73,13 @@ auto internal_name(EnumSchema const& schema, std::string_view const suffix) -> s
     return "get_" + snake_case_type_name(schema.name) + "_" + std::string{suffix};
 }
 
+auto enum_traits(EnumModuleSchema const& module, EnumSchema const& schema) -> Node {
+    return raw("template <>\n"
+               "struct TEnumTraits<" + qualified_enum_name(module, schema) + "> {\n"
+               "    static constexpr int32 count{" + std::to_string(schema.values.size()) + "};\n"
+               "};");
+}
+
 auto exact_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
     auto const enum_name{qualified_enum_name(module, schema)};
     NodeListBuilder body;
@@ -204,10 +211,13 @@ auto wrapped(std::optional<std::string> const& namespace_name, Nodes nodes) -> N
 auto lower_enum_module(EnumModuleSchema const& module,
                        std::map<std::string, CppType> const& types) -> Module {
     NodeListBuilder declarations;
+    NodeListBuilder traits;
     bool has_reflected{};
+    bool has_enum_arrays{};
     for (auto const& schema : module.enums) {
         auto const reflected{schema.reflection != EnumReflection::none};
         has_reflected = has_reflected || reflected;
+        has_enum_arrays = has_enum_arrays || schema.enum_array;
         if (reflected) {
             declarations.add(raw(schema.reflection == EnumReflection::blueprint
                                      ? "UENUM(BlueprintType)"
@@ -229,6 +239,9 @@ auto lower_enum_module(EnumModuleSchema const& module,
                              .values = std::move(values),
                          },
                          2);
+        if (schema.enum_array) {
+            traits.add(enum_traits(module, schema), 2);
+        }
     }
 
     NodeListBuilder lex_declarations;
@@ -244,6 +257,9 @@ auto lower_enum_module(EnumModuleSchema const& module,
 
     NodeListBuilder header_nodes;
     header_nodes.add(IncludeDependencies{}, 2);
+    if (has_enum_arrays) {
+        header_nodes.add(Include{"SandboxGameShared/utilities/enum_array.h", false}, 2);
+    }
     if (has_reflected) {
         header_nodes.add(Include{module.settings.header.stem().string() + ".generated.h", false}, 2);
     }
@@ -251,6 +267,7 @@ auto lower_enum_module(EnumModuleSchema const& module,
         header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
     }
     header_nodes.append(wrapped(module.settings.namespace_name, declarations.build()))
+        .append(traits.build())
         .append(wrapped(module.settings.namespace_name, lex_declarations.build()))
         .append(wrapped(module.helper_namespace.has_value() ? module.helper_namespace
                                                             : module.settings.namespace_name,

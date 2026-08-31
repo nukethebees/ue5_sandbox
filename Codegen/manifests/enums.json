@@ -12,6 +12,7 @@
           "name": "ETestMissionMode",
           "underlying_type": "uint8",
           "reflection": "uenum",
+          "enum_array": true,
           "export_specifier": "SPACEGAME_API",
           "values": [
             {"name": "None"},
