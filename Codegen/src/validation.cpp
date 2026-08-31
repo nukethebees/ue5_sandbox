@@ -376,6 +376,21 @@ void validate_enum(EnumModuleSchema const& module,
         }
         require_unique_names(value_names, "Enum '" + schema.name + "' values");
 
+        if (schema.enum_array) {
+            for (auto const& value : schema.values) {
+                if (value.initializer.has_value()) {
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
+                                                "' value '" + value.name +
+                                                "' must not have an explicit initializer"};
+                }
+                if (value.hidden) {
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
+                                                "' value '" + value.name +
+                                                "' must not be hidden"};
+                }
+            }
+        }
+
         std::set<EnumConversion> conversions;
         for (auto const conversion : schema.conversions) {
             if (!conversions.insert(conversion).second) {

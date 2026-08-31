@@ -164,6 +164,28 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
     EXPECT_NE(output.source.find("project::states::EState::Ready"), std::string::npos);
 }
 
+TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
+    auto const output{render_enum(EnumModuleSchema{
+        .settings = ModuleSettings{
+            .name = "modes",
+            .header = "Modes.h",
+            .source = "Modes.cpp",
+        },
+        .enums = {EnumSchema{
+            .name = "EMode",
+            .underlying_type = TypeRef{"uint8"},
+            .values = {EnumeratorSchema{"First"}, EnumeratorSchema{"Second"}},
+            .enum_array = true,
+        }},
+    })};
+
+    EXPECT_NE(output.header.find("#include \"SandboxGameShared/utilities/enum_array.h\""),
+              std::string::npos);
+    EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 count{2};\n};"),
+              std::string::npos);
+    EXPECT_EQ(output.header.find("COUNT"), std::string::npos);
+}
+
 TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
     auto schema{basic_schema()};
     schema.operations = all_storage_operations();

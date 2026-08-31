@@ -6,6 +6,8 @@
 
 #include "CoreMinimal.h"
 
+#include "SandboxGameShared/utilities/enum_array.h"
+
 #include "TestMissionMode.generated.h"
 
 UENUM()
@@ -14,6 +16,11 @@ enum class ETestMissionMode : uint8 {
     SurviveTime UMETA(DisplayName = "Survive Time"),
     KillEnemies UMETA(DisplayName = "Kill Enemies"),
     KillEnemiesWithinTime UMETA(DisplayName = "Kill Enemies Within Time"),
+};
+
+template <>
+struct TEnumTraits<ETestMissionMode> {
+    static constexpr int32 count{4};
 };
 
 SPACEGAME_API auto LexToString(ETestMissionMode const value) -> TCHAR const*;
