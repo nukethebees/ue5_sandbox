@@ -80,6 +80,7 @@ class SPACEGAME_API ATestSpaceShip
     auto get_unique_id() const -> TestEntityUniqueId;
     auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
+    void set_team(ETestTeam const new_team) noexcept { team = new_team; }
 
     auto get_entity_registry() const { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry* er) { entity_registry = er; }
