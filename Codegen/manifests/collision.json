@@ -46,6 +46,47 @@
       ]
     },
     {
+      "kind": "soa",
+      "name": "line_traces",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/LineTraces.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/simulation/LineTraces.cpp",
+      "header_include": "SpaceGame/simulation/LineTraces.h",
+      "namespace": "ml",
+      "include_order": ["SpaceGame/", "SandboxCore/", "SandboxNative/"],
+      "structs": [
+        {
+          "name": "FLineTraces",
+          "export_specifier": "SPACEGAME_API",
+          "members": [
+            {"name": "starts", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "ends", "kind": "nested", "type": "@vectors_3f"}
+          ],
+          "operations": ["all"]
+        }
+      ]
+    },
+    {
+      "kind": "soa",
+      "name": "trace_hits",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/TraceHits.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/simulation/TraceHits.cpp",
+      "header_include": "SpaceGame/simulation/TraceHits.h",
+      "namespace": "ml",
+      "include_order": ["SpaceGame/", "SandboxCore/", "SandboxNative/"],
+      "structs": [
+        {
+          "name": "FTraceHits",
+          "export_specifier": "SPACEGAME_API",
+          "members": [
+            {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "entities", "kind": "array", "type": "@registry_handle"},
+            {"name": "hits", "kind": "array", "type": "uint8"}
+          ],
+          "operations": ["all"]
+        }
+      ]
+    },
+    {
       "kind": "static_table",
       "name": "entity_aabbs",
       "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityAABBs.h",
