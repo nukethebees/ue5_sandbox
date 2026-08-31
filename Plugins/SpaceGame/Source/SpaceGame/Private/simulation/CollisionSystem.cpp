@@ -102,8 +102,13 @@ auto CollisionUniformGrid::get_cell_entities(FIntVector3 const cell_coord) const
            *to_string(grid_dims_));
 
     auto const cell_index{to_index(cell_coord)};
+    auto const count{cell_entity_counts_[cell_index]};
+    if (count == 0) {
+        return {};
+    }
+
     return TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(cell_entity_offsets_[cell_index],
-                                                                   cell_entity_counts_[cell_index]);
+                                                                   count);
 }
 
 void CollisionUniformGrid::reset() {
@@ -140,18 +145,23 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
     auto const n_cells{num_cells()};
 
     {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_offsets);
-        cell_entity_offsets_.Reset();
-        cell_entity_offsets_.AddZeroed(n_cells);
-    }
-    {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_counts);
-        cell_entity_counts_.Reset();
-        cell_entity_counts_.AddZeroed(n_cells);
+        for (auto const cell_index : non_empty_cell_indices_) {
+            cell_entity_counts_[cell_index] = 0;
+        }
+
+        non_empty_cell_indices_.Reset();
+
+        if (cell_entity_counts_.Num() != n_cells) {
+            cell_entity_counts_.Reset();
+            cell_entity_counts_.AddZeroed(n_cells);
+        }
+
+        cell_entity_offsets_.SetNumUninitialized(n_cells);
+        cell_entity_write_indexes_.SetNumUninitialized(n_cells);
     }
 
     entities_buffer_.reset();
-    non_empty_cell_indices_.Reset();
 
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::count_loop);
@@ -206,7 +216,11 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
                 for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
                     for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
                         auto const cell_index{to_index(x, y, z)};
-                        ++cell_entity_counts_[cell_index];
+                        auto& count{cell_entity_counts_[cell_index]};
+                        if (count == 0) {
+                            non_empty_cell_indices_.Add(cell_index);
+                        }
+                        ++count;
                     }
                 }
             }
@@ -220,15 +234,13 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
         int32 offset{0};
 
         auto* RESTRICT offsets{cell_entity_offsets_.GetData()};
+        auto* RESTRICT write_indexes{cell_entity_write_indexes_.GetData()};
         auto* RESTRICT counts{cell_entity_counts_.GetData()};
 
-        for (int32 i{0}; i < n_cells; ++i) {
-            offsets[i] = offset;
-            offset += counts[i];
-
-            if (counts[i] > 0) {
-                non_empty_cell_indices_.Add(i);
-            }
+        for (auto const cell_index : non_empty_cell_indices_) {
+            offsets[cell_index] = offset;
+            write_indexes[cell_index] = offset;
+            offset += counts[cell_index];
         }
         return offset;
     }()};
@@ -241,8 +253,6 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
 
         entities_.Reset();
         entities_.AddUninitialized(n_entries);
-
-        cell_entity_write_indexes_ = cell_entity_offsets_;
     }
 
     auto const buffer_count{entities_buffer_.num()};
