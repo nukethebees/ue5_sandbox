@@ -1,0 +1,1 @@
+float3(-Particles.Position.y, Particles.Position.x, 0.0f) * (User.OrbitalSpeed / max(length(float2(Particles.Position.x, Particles.Position.y)), 1.0f)) - float3(Particles.Position.x, Particles.Position.y, 0.0f) * (User.InwardSpeed / max(length(float2(Particles.Position.x, Particles.Position.y)), 1.0f)) + float3(0.0f, 0.0f, -Particles.Position.z * User.DiscPull)

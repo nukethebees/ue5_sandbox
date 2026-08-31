@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "id": "vortex_column",
+  "display_name": "Vortex Column",
+  "default_asset_name": "NS_SandboxNiagaraVortexColumn",
+  "configuration": {
+    "spawn_rate": 2200.0,
+    "particle_lifetime": 12.0,
+    "sprite_size": 9.0,
+    "spawn_radius": 350.0,
+    "fixed_bounds_extent": 550.0,
+    "particle_color": [0.15, 0.75, 1.0, 1.0],
+    "velocity_expression_file": "Hlsl/vortex_column.hlsl",
+    "parameters": [
+      {
+        "name": "User.AngularSpeed",
+        "display_name": "Angular Speed",
+        "default": 0.8,
+        "minimum": -5.0,
+        "maximum": 5.0
+      },
+      {
+        "name": "User.TargetRadius",
+        "display_name": "Target Radius",
+        "default": 220.0,
+        "minimum": 1.0,
+        "maximum": 1000.0
+      },
+      {
+        "name": "User.RadialStrength",
+        "display_name": "Radial Strength",
+        "default": 0.8,
+        "minimum": 0.0,
+        "maximum": 10.0
+      },
+      {
+        "name": "User.LiftSpeed",
+        "display_name": "Lift Speed",
+        "default": 120.0,
+        "minimum": -500.0,
+        "maximum": 500.0
+      },
+      {
+        "name": "User.VerticalPull",
+        "display_name": "Vertical Pull",
+        "default": 0.35,
+        "minimum": 0.0,
+        "maximum": 10.0
+      }
+    ]
+  }
+}

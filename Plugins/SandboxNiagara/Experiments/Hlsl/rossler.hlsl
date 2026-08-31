@@ -1,0 +1,1 @@
+float3(-Particles.Position.y - Particles.Position.z, Particles.Position.x + User.A * Particles.Position.y, User.B * User.Scale + Particles.Position.z * (Particles.Position.x / User.Scale - User.C)) * User.Speed

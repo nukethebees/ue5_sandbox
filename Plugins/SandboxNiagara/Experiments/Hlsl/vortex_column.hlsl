@@ -1,0 +1,1 @@
+float3(-Particles.Position.y, Particles.Position.x, 0.0f) * User.AngularSpeed + float3(Particles.Position.x, Particles.Position.y, 0.0f) * ((User.TargetRadius / max(length(float2(Particles.Position.x, Particles.Position.y)), 1.0f) - 1.0f) * User.RadialStrength) + float3(0.0f, 0.0f, User.LiftSpeed - Particles.Position.z * User.VerticalPull)
