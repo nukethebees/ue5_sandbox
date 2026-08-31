@@ -397,6 +397,17 @@ struct SPACEGAME_API FCollisionGridConfig {
 
     UPROPERTY(EditAnywhere, Category = "Collision", meta = (Units = "cm"))
     FVector3f cell_size{5000.f, 5000.f, 20000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Collision|Visualization")
+    bool show_grid{false};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Collision|Visualization",
+              meta = (ClampMin = "0.1"))
+    float line_thickness{1.f};
+
+    UPROPERTY(EditAnywhere, Category = "Collision|Visualization")
+    FLinearColor line_colour{0.f, 1.f, 1.f, 1.f};
 };
 
 UCLASS(BlueprintType)

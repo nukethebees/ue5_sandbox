@@ -93,6 +93,9 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors) const
     REQUIRE_CONFIG(collision_grid.cell_size.X > 0.f && collision_grid.cell_size.Y > 0.f &&
                        collision_grid.cell_size.Z > 0.f,
                    "collision_grid.cell_size components must be positive");
+    REQUIRE_CONFIG(FMath::IsFinite(collision_grid.line_thickness) &&
+                       collision_grid.line_thickness > 0.f,
+                   "collision_grid.line_thickness must be finite and positive");
     REQUIRE_CONFIG(collision_grid.is_valid(),
                    "collision_grid calculated dimensions and cell count must fit in int32");
 

@@ -26,6 +26,7 @@ class ATestCapitalShips;
 class ATestCapitalShipFighters;
 class ATestStaticTurrets;
 class ATestTubeSpinners;
+class UCollisionGridVisualizationComponent;
 
 class ADelayedNiagaraSpawner;
 
@@ -60,6 +61,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ATestBatchOrchestrator();
 
     void Tick(float dt) override;
+    void PostLoad() override;
     void tick(time_type const dt);
     void start_simulation();
     void pause_simulation();
@@ -142,6 +144,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void bind_simulation_dependencies();
     void start_visual_logging();
     void stop_visual_logging();
+    void refresh_collision_grid_visualization();
 
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
@@ -157,6 +160,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
+    TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};
 
     FFixedTickLoop hud_tick_loop{};
 

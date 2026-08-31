@@ -15,6 +15,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/CollisionGridVisualizationComponent.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/invoke.h>
@@ -109,7 +110,16 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
+    collision_grid_visualization = CreateDefaultSubobject<UCollisionGridVisualizationComponent>(
+        TEXT("CollisionGridVisualization"));
+
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
+}
+
+void ATestBatchOrchestrator::PostLoad() {
+    Super::PostLoad();
+
+    refresh_collision_grid_visualization();
 }
 
 void ATestBatchOrchestrator::BeginPlay() {
@@ -287,6 +297,7 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
 #endif
 
     level_config = &config;
+    refresh_collision_grid_visualization();
     if (IsValid(player_ship)) {
         apply_actor_config(*player_ship, &config.player_ship);
     }
@@ -489,6 +500,22 @@ void ATestBatchOrchestrator::stop_visual_logging() {
     }
     visual_logger.SetGetTimeStampFunc(TFunction<double(UObject const*)>{});
 #endif
+}
+
+void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
+    if (!IsValid(collision_grid_visualization)) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("Cannot refresh collision-grid visualization: component is invalid"));
+        return;
+    }
+
+    if (!IsValid(level_config)) {
+        collision_grid_visualization->clear();
+        return;
+    }
+
+    collision_grid_visualization->configure(level_config->collision_grid);
 }
 
 void ATestBatchOrchestrator::validate_proxy_handles() {
