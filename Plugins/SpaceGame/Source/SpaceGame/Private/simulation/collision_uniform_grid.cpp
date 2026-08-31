@@ -276,12 +276,15 @@ auto CollisionUniformGrid::to_cell_z(float const value) const -> int32 {
     auto const half_grid_extent{static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f};
     return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.Z);
 }
-auto CollisionUniformGrid::to_min_cell_coord(FVector3f const pos) const -> FIntVector3 {
+auto CollisionUniformGrid::to_cell_coord(FVector3f const pos) const -> FIntVector3 {
     return {
         to_cell_x(pos.X),
         to_cell_y(pos.Y),
         to_cell_z(pos.Z),
     };
+}
+auto CollisionUniformGrid::to_min_cell_coord(FVector3f const pos) const -> FIntVector3 {
+    return to_cell_coord(pos);
 }
 auto CollisionUniformGrid::to_max_cell_coord(FVector3f const pos) const -> FIntVector3 {
     FVector3f const half_grid_extent{
@@ -295,6 +298,49 @@ auto CollisionUniformGrid::to_max_cell_coord(FVector3f const pos) const -> FIntV
         FMath::CeilToInt((pos.Y + half_grid_extent.Y) / cell_dims_.Y) - 1,
         FMath::CeilToInt((pos.Z + half_grid_extent.Z) / cell_dims_.Z) - 1,
     };
+}
+auto CollisionUniformGrid::to_cell_min_x(int32 const x) const -> float {
+    auto const half_grid_extent{static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f};
+    return (static_cast<float>(x) * cell_dims_.X) - half_grid_extent;
+}
+auto CollisionUniformGrid::to_cell_min_y(int32 const y) const -> float {
+    auto const half_grid_extent{static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f};
+    return (static_cast<float>(y) * cell_dims_.Y) - half_grid_extent;
+}
+auto CollisionUniformGrid::to_cell_min_z(int32 const z) const -> float {
+    auto const half_grid_extent{static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f};
+    return (static_cast<float>(z) * cell_dims_.Z) - half_grid_extent;
+}
+auto CollisionUniformGrid::to_cell_min(int32 const x, int32 const y, int32 const z) const
+    -> FVector3f {
+    return {
+        to_cell_min_x(x),
+        to_cell_min_y(y),
+        to_cell_min_z(z),
+    };
+}
+auto CollisionUniformGrid::to_cell_min(FIntVector3 const coord) const -> FVector3f {
+    return to_cell_min(coord.X, coord.Y, coord.Z);
+}
+auto CollisionUniformGrid::to_cell_centre_x(int32 const x) const -> float {
+    return to_cell_min_x(x) + (cell_dims_.X * 0.5f);
+}
+auto CollisionUniformGrid::to_cell_centre_y(int32 const y) const -> float {
+    return to_cell_min_y(y) + (cell_dims_.Y * 0.5f);
+}
+auto CollisionUniformGrid::to_cell_centre_z(int32 const z) const -> float {
+    return to_cell_min_z(z) + (cell_dims_.Z * 0.5f);
+}
+auto CollisionUniformGrid::to_cell_centre(int32 const x, int32 const y, int32 const z) const
+    -> FVector3f {
+    return {
+        to_cell_centre_x(x),
+        to_cell_centre_y(y),
+        to_cell_centre_z(z),
+    };
+}
+auto CollisionUniformGrid::to_cell_centre(FIntVector3 const coord) const -> FVector3f {
+    return to_cell_centre(coord.X, coord.Y, coord.Z);
 }
 auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const coord) const -> bool {
     return coord.X >= 0 && coord.X < grid_dims_.X && coord.Y >= 0 && coord.Y < grid_dims_.Y &&
@@ -310,6 +356,6 @@ auto CollisionUniformGrid::to_index(FIntVector3 const coord) const -> int32 {
     return to_index(coord.X, coord.Y, coord.Z);
 }
 auto CollisionUniformGrid::to_index(FVector3f const pos) const -> int32 {
-    return to_index(to_min_cell_coord(pos));
+    return to_index(to_cell_coord(pos));
 }
 }
