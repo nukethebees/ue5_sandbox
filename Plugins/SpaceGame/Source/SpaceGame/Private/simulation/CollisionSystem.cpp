@@ -138,64 +138,74 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
 
     auto const n_cells{num_cells()};
 
-    cell_entity_counts_.Reset();
-    cell_entity_counts_.AddZeroed(n_cells);
-
-    cell_entity_offsets_.Reset();
-    cell_entity_offsets_.AddZeroed(n_cells);
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_offsets);
+        cell_entity_offsets_.Reset();
+        cell_entity_offsets_.AddZeroed(n_cells);
+    }
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_counts);
+        cell_entity_counts_.Reset();
+        cell_entity_counts_.AddZeroed(n_cells);
+    }
 
     entities_buffer_.reset();
 
-    for (int32 i{0}; i < entity_count; ++i) {
-        if (entity_data.alive[i] == 0) {
-            continue;
-        }
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::count_loop);
 
-        auto const location{entity_data.locations[i]};
+        for (int32 i{0}; i < entity_count; ++i) {
+            if (entity_data.alive[i] == 0) {
+                continue;
+            }
 
-        auto const entity_type{entity_data.entity_types[i]};
-        auto const half_extents{entity_aabbs.get_half_extents(std::to_underlying(entity_type))};
-        auto const min_point{location - half_extents};
-        auto const max_point{location + half_extents};
+            auto const location{entity_data.locations[i]};
 
-        auto const min_coord{to_min_cell_coord(min_point)};
-        auto const max_coord{to_max_cell_coord(max_point)};
+            auto const entity_type{entity_data.entity_types[i]};
+            auto const half_extents{entity_aabbs.get_half_extents(std::to_underlying(entity_type))};
+            auto const min_point{location - half_extents};
+            auto const max_point{location + half_extents};
 
-        if (!is_cell_coord_in_bounds(min_coord) || !is_cell_coord_in_bounds(max_coord)) {
-            FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
-                                            static_cast<float>(grid_dims_.Y),
-                                            static_cast<float>(grid_dims_.Z)};
-            auto const half_grid_size{grid_dimensions * cell_dims_ * 0.5f};
-            UE_LOG(LogSandbox,
-                   Fatal,
-                   TEXT("Collision-grid entity %s of type %s has world AABB (%s) through (%s), "
-                        "cell AABB %s through %s, outside grid world bounds (%s) through (%s) and "
-                        "cell bounds %s through %s"),
-                   *LexToString(FRegistryEntityHandle{i, gens[i]}),
-                   LexToString(entity_type),
-                   *min_point.ToString(),
-                   *max_point.ToString(),
-                   *to_string(min_coord),
-                   *to_string(max_coord),
-                   *(-half_grid_size).ToString(),
-                   *half_grid_size.ToString(),
-                   *to_string(FIntVector3::ZeroValue),
-                   *to_string(grid_dims_ - FIntVector3{1, 1, 1}));
-        }
+            auto const min_coord{to_min_cell_coord(min_point)};
+            auto const max_coord{to_max_cell_coord(max_point)};
 
-        entities_buffer_.locations.add(location);
-        entities_buffer_.min_points.add(min_point);
-        entities_buffer_.max_points.add(max_point);
-        entities_buffer_.mins.add(min_coord);
-        entities_buffer_.maxes.add(max_coord);
-        entities_buffer_.entity_types.Add(entity_type);
-        entities_buffer_.handles.Add({i, gens[i]});
+            if (!is_cell_coord_in_bounds(min_coord) || !is_cell_coord_in_bounds(max_coord)) {
+                FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
+                                                static_cast<float>(grid_dims_.Y),
+                                                static_cast<float>(grid_dims_.Z)};
+                auto const half_grid_size{grid_dimensions * cell_dims_ * 0.5f};
+                UE_LOG(
+                    LogSandbox,
+                    Fatal,
+                    TEXT("Collision-grid entity %s of type %s has world AABB (%s) through (%s), "
+                         "cell AABB %s through %s, outside grid world bounds (%s) through (%s) and "
+                         "cell bounds %s through %s"),
+                    *LexToString(FRegistryEntityHandle{i, gens[i]}),
+                    LexToString(entity_type),
+                    *min_point.ToString(),
+                    *max_point.ToString(),
+                    *to_string(min_coord),
+                    *to_string(max_coord),
+                    *(-half_grid_size).ToString(),
+                    *half_grid_size.ToString(),
+                    *to_string(FIntVector3::ZeroValue),
+                    *to_string(grid_dims_ - FIntVector3{1, 1, 1}));
+            }
 
-        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
-            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                    auto const cell_index{to_index(x, y, z)};
-                    ++cell_entity_counts_[cell_index];
+            entities_buffer_.locations.add(location);
+            entities_buffer_.min_points.add(min_point);
+            entities_buffer_.max_points.add(max_point);
+            entities_buffer_.mins.add(min_coord);
+            entities_buffer_.maxes.add(max_coord);
+            entities_buffer_.entity_types.Add(entity_type);
+            entities_buffer_.handles.Add({i, gens[i]});
+
+            for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+                for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                    for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                        auto const cell_index{to_index(x, y, z)};
+                        ++cell_entity_counts_[cell_index];
+                    }
                 }
             }
         }
@@ -204,56 +214,76 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
     entities_buffer_.validate_array_sizes();
 
     auto const n_entries{[&] -> int32 {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::count_entries);
         int32 offset{0};
 
+        auto* RESTRICT offsets{cell_entity_offsets_.GetData()};
+        auto* RESTRICT counts{cell_entity_counts_.GetData()};
+
         for (int32 i{0}; i < n_cells; ++i) {
-            cell_entity_offsets_[i] = offset;
-            offset += cell_entity_counts_[i];
+            offsets[i] = offset;
+            offset += counts[i];
         }
         return offset;
     }()};
 
-    aabbs_.reset();
-    aabbs_.add_uninitialised(n_entries);
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::prepare_arrays);
 
-    entities_.Reset();
-    entities_.AddUninitialized(n_entries);
+        aabbs_.reset();
+        aabbs_.add_uninitialised(n_entries);
 
-    cell_entity_write_indexes_ = cell_entity_offsets_;
+        entities_.Reset();
+        entities_.AddUninitialized(n_entries);
+
+        cell_entity_write_indexes_ = cell_entity_offsets_;
+    }
 
     auto const buffer_count{entities_buffer_.num()};
-    for (int32 i{0}; i < buffer_count; ++i) {
-        auto const min_coord{entities_buffer_.mins[i]};
-        auto const max_coord{entities_buffer_.maxes[i]};
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::build_loop);
 
-        auto const min_point{entities_buffer_.min_points[i]};
-        auto const max_point{entities_buffer_.max_points[i]};
+        for (int32 i{0}; i < buffer_count; ++i) {
+            auto const min_coord{entities_buffer_.mins[i]};
+            auto const max_coord{entities_buffer_.maxes[i]};
 
-        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
-            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
-                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
-                    auto const cell_index{to_index(x, y, z)};
-                    auto const write_index{cell_entity_write_indexes_[cell_index]++};
+            auto const min_point{entities_buffer_.min_points[i]};
+            auto const max_point{entities_buffer_.max_points[i]};
 
-                    entities_[write_index] = entities_buffer_.handles[i];
+            for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+                for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                    for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                        auto const cell_index{to_index(x, y, z)};
+                        auto const write_index{cell_entity_write_indexes_[cell_index]++};
 
-                    aabbs_.mins.set(write_index, min_point);
-                    aabbs_.maxes.set(write_index, max_point);
+                        entities_[write_index] = entities_buffer_.handles[i];
+
+                        aabbs_.mins.set(write_index, min_point);
+                        aabbs_.maxes.set(write_index, max_point);
+                    }
                 }
             }
         }
     }
 
-    for (int32 i{0}; i < n_cells; ++i) {
-        auto const write_index{cell_entity_write_indexes_[i]};
-        auto const expected{cell_entity_offsets_[i] + cell_entity_counts_[i]};
+    {
+        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid::index_check);
 
-        if (write_index != expected) {
-            UE_LOG(LogSandbox,
-                   Fatal,
-                   TEXT("Index incorrect. Got %d, should be %d"),
-                   write_index,
-                   expected);
+        auto* RESTRICT write_indexes{cell_entity_write_indexes_.GetData()};
+        auto* RESTRICT offsets{cell_entity_offsets_.GetData()};
+        auto* RESTRICT counts{cell_entity_counts_.GetData()};
+
+        for (int32 i{0}; i < n_cells; ++i) {
+            auto const write_index{write_indexes[i]};
+            auto const expected{offsets[i] + counts[i]};
+
+            if (write_index != expected) {
+                UE_LOG(LogSandbox,
+                       Fatal,
+                       TEXT("Index incorrect. Got %d, should be %d"),
+                       write_index,
+                       expected);
+            }
         }
     }
 }
