@@ -19,12 +19,15 @@ namespace ml::ioj {
 struct SPACEGAME_API CollisionUniformGrid {
     static inline FVector3f const origin{FVector3f::ZeroVector};
 
+    auto is_configured() const noexcept -> bool;
+
     auto get_grid_dims() const noexcept -> FIntVector3;
     void set_grid_dims(FIntVector3 const grid_dims) noexcept;
 
     auto get_cell_dims() const noexcept -> FVector3f;
     void set_cell_dims(FVector3f const cell_dims) noexcept;
-    auto is_configured() const noexcept -> bool;
+
+    void set_entity_registry(FTestEntityRegistry const& reg) noexcept;
 
     auto num_cells() const -> int32;
     auto get_cell_entities(FIntVector3 const cell_coord) const
@@ -39,18 +42,18 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_cell_min_z(int32 z) const -> float;
     auto to_cell_min(int32 x, int32 y, int32 z) const -> FVector3f;
     auto to_cell_min(FIntVector3 coord) const -> FVector3f;
-    
+
     auto to_cell_centre_x(int32 x) const -> float;
     auto to_cell_centre_y(int32 y) const -> float;
     auto to_cell_centre_z(int32 z) const -> float;
     auto to_cell_centre(int32 x, int32 y, int32 z) const -> FVector3f;
     auto to_cell_centre(FIntVector3 coord) const -> FVector3f;
-    
+
     auto is_cell_coord_in_bounds(FIntVector3 coord) const -> bool;
     static auto to_string(FIntVector3 value) -> FString;
 
     void reset();
-    void rebuild_grid(FTestEntityRegistry const& entity_registry, FEntityAABBs const& entity_aabbs);
+    void rebuild_grid(FEntityAABBs const& entity_aabbs);
 
     void trace_aabbs(FLineTracesConstView const& traces, FTraceHitsView const& hits) const;
   private:
@@ -60,6 +63,8 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_index(int32 x, int32 y, int32 z) const -> int32;
     auto to_index(FIntVector3 coord) const -> int32;
     auto to_index(FVector3f pos) const -> int32;
+
+    FTestEntityRegistry const* entity_registry_{nullptr};
 
     FIntVector3 grid_dims_{FIntVector3::ZeroValue};
     FVector3f cell_dims_{FVector3f::ZeroVector};

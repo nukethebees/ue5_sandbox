@@ -43,9 +43,17 @@ void CollisionUniformGrid::set_cell_dims(FVector3f const cell_dims) noexcept {
     cell_dims_ = cell_dims;
 }
 
+void CollisionUniformGrid::set_entity_registry(FTestEntityRegistry const& reg) noexcept {
+    entity_registry_ = &reg;
+}
+
 auto CollisionUniformGrid::is_configured() const noexcept -> bool {
     if (grid_dims_.X <= 0 || grid_dims_.Y <= 0 || grid_dims_.Z <= 0 || cell_dims_.X <= 0.0f ||
         cell_dims_.Y <= 0.0f || cell_dims_.Z <= 0.0f) {
+        return false;
+    }
+
+    if (entity_registry_ == nullptr) {
         return false;
     }
 
@@ -85,8 +93,7 @@ void CollisionUniformGrid::reset() {
     entities_buffer_.reset();
 }
 
-void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_registry,
-                                        FEntityAABBs const& entity_aabbs) {
+void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::rebuild_grid);
 
     if (!is_configured()) {
@@ -100,9 +107,9 @@ void CollisionUniformGrid::rebuild_grid(FTestEntityRegistry const& entity_regist
                *to_string(grid_dims_));
     }
 
-    auto const& entity_data{entity_registry.get_entity_data()};
-    auto const entity_count{entity_registry.get_num_elements()};
-    auto const gens{entity_registry.get_generations()};
+    auto const& entity_data{entity_registry_->get_entity_data()};
+    auto const entity_count{entity_registry_->get_num_elements()};
+    auto const gens{entity_registry_->get_generations()};
 
     auto const n_cells{num_cells()};
 

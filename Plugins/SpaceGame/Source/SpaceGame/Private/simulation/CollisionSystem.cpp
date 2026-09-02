@@ -76,17 +76,10 @@ void FCollisionSystem::update() {
 }
 void FCollisionSystem::set_entity_registry(FTestEntityRegistry const& registry) {
     entity_registry_ = &registry;
+    uniform_grid_.set_entity_registry(registry);
 }
 void FCollisionSystem::rebuild_grid() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::rebuild_grid);
-
-    if (entity_registry_ == nullptr) {
-        UE_LOG(LogSandbox,
-               Error,
-               TEXT("Cannot rebuild the collision grid: entity registry is unavailable"));
-        return;
-    }
-
-    uniform_grid_.rebuild_grid(*entity_registry_, entity_aabbs_);
+    uniform_grid_.rebuild_grid(entity_aabbs_);
 }
 }
