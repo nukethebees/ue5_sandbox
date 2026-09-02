@@ -80,6 +80,9 @@ auto USbxMeshGenLabEditorMode::GetWidgetLocation() const -> FVector {
     if (!UsesTransformWidget()) {
         return FVector::ZeroVector;
     }
+    if (get_settings()->selection_pivot == ESbxMeshSelectionPivot::PrimaryPart) {
+        return preview_actors_[selected_part_index_]->GetActorLocation();
+    }
 
     FVector pivot{FVector::ZeroVector};
     int32 valid_actor_count{};
@@ -291,6 +294,13 @@ void USbxMeshGenLabEditorMode::select_all_parts() {
     select_parts(part_indices, selected_part_index_);
 }
 
+void USbxMeshGenLabEditorMode::selection_settings_changed() {
+    status_ = get_settings()->selection_pivot == ESbxMeshSelectionPivot::SelectionCenter
+                ? LOCTEXT("SelectionCenterPivot", "Using the selection center as the shared pivot.")
+                : LOCTEXT("PrimaryPartPivot", "Using the primary part as the shared pivot.");
+    notify_session_changed(false);
+}
+
 void USbxMeshGenLabEditorMode::add_part() {
     FSbxMeshAssemblyPart part;
     part.mesh = SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box);
@@ -306,27 +316,52 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
     }
 
     apply_settings(false);
+    auto const* const settings{get_settings()};
     auto const original_indices{selected_part_indices_};
+    auto const pivot{GetWidgetLocation() - preview_origin_};
+    auto const translation_step{settings->duplicate_translation_step};
+    auto const rotation_step{settings->duplicate_rotation_step};
+    auto const repeat_count{FMath::Clamp(settings->duplicate_repeat_count, 1, 64)};
     TArray<int32> duplicate_indices;
-    duplicate_indices.Reserve(original_indices.Num());
+    duplicate_indices.Reserve(original_indices.Num() * repeat_count);
     int32 duplicate_primary_index{INDEX_NONE};
-    for (int32 const part_index : original_indices) {
-        if (!parts_.IsValidIndex(part_index)) {
-            continue;
-        }
+    for (int32 repeat_index{1}; repeat_index <= repeat_count; ++repeat_index) {
+        auto const rotation_delta{FRotator{rotation_step.Pitch * repeat_index,
+                                           rotation_step.Yaw * repeat_index,
+                                           rotation_step.Roll * repeat_index}
+                                      .Quaternion()};
 
-        auto part{parts_[part_index]};
-        part.transform.translation.X += 25.0f;
-        auto const duplicate_index{parts_.Add(part)};
-        create_preview_actor(duplicate_index);
-        duplicate_indices.Add(duplicate_index);
-        if (part_index == selected_part_index_) {
-            duplicate_primary_index = duplicate_index;
+        for (int32 const part_index : original_indices) {
+            if (!parts_.IsValidIndex(part_index)) {
+                continue;
+            }
+
+            auto part{parts_[part_index]};
+            FTransform transform{FRotator{part.transform.rotation},
+                                 FVector{part.transform.translation},
+                                 FVector{part.transform.scale}};
+            auto const relative_location{transform.GetLocation() - pivot};
+            transform.SetLocation(pivot + rotation_delta.RotateVector(relative_location) +
+                                  translation_step * repeat_index);
+            transform.ConcatenateRotation(rotation_delta);
+            transform.NormalizeRotation();
+            part.transform.translation = FVector3f{transform.GetLocation()};
+            part.transform.rotation = FRotator3f{transform.Rotator()};
+
+            auto const duplicate_index{parts_.Add(part)};
+            create_preview_actor(duplicate_index);
+            duplicate_indices.Add(duplicate_index);
+            if (part_index == selected_part_index_ && repeat_index == repeat_count) {
+                duplicate_primary_index = duplicate_index;
+            }
         }
     }
 
     mark_recipe_dirty();
     select_parts(duplicate_indices, duplicate_primary_index);
+    status_ = FText::Format(LOCTEXT("PartsDuplicated", "Created {0} repeated part(s)."),
+                            FText::AsNumber(duplicate_indices.Num()));
+    notify_session_changed(false);
 }
 
 void USbxMeshGenLabEditorMode::remove_part() {

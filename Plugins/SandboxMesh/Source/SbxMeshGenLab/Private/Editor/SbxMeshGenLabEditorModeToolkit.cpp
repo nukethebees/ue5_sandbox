@@ -123,7 +123,11 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                                           &FSbxMeshGenLabEditorModeToolkit::select_all_parts)] +
                       SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
                           [SNew(SButton)
-                               .Text(LOCTEXT("DuplicatePart", "Duplicate Selected"))
+                               .Text(LOCTEXT("DuplicatePart", "Duplicate / Repeat"))
+                               .ToolTipText(LOCTEXT(
+                                   "DuplicatePartTooltip",
+                                   "Duplicate the selection using the translation, rotation, and "
+                                   "repeat settings below."))
                                .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::duplicate_part)] +
                       SHorizontalBox::Slot().AutoWidth()
                           [SNew(SButton)
@@ -176,10 +180,25 @@ void FSbxMeshGenLabEditorModeToolkit::on_property_changed(FPropertyChangedEvent 
     }
 
     auto const property_name{event.GetPropertyName()};
+    auto const member_property_name{event.GetMemberPropertyName()};
     if (property_name == GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, recipe)) {
         mode_->load_recipe();
     } else if (property_name != GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, recipe_name)) {
-        mode_->apply_settings();
+        auto const is_selection_pivot{
+            member_property_name ==
+            GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, selection_pivot)};
+        auto const is_duplicate_setting{
+            member_property_name ==
+                GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, duplicate_translation_step) ||
+            member_property_name ==
+                GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, duplicate_rotation_step) ||
+            member_property_name ==
+                GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, duplicate_repeat_count)};
+        if (is_selection_pivot) {
+            mode_->selection_settings_changed();
+        } else if (!is_duplicate_setting) {
+            mode_->apply_settings();
+        }
     }
 }
 

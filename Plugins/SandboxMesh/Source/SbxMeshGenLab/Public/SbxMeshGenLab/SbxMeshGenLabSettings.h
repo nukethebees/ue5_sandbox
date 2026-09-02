@@ -7,6 +7,12 @@
 
 #include "SbxMeshGenLabSettings.generated.h"
 
+UENUM()
+enum class ESbxMeshSelectionPivot : uint8 {
+    SelectionCenter UMETA(DisplayName = "Selection Center"),
+    PrimaryPart UMETA(DisplayName = "Primary Part"),
+};
+
 UCLASS(Transient)
 class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     GENERATED_BODY()
@@ -22,6 +28,20 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
 
     UPROPERTY(EditAnywhere, Category = "Output")
     FName asset_name{TEXT("SM_GeneratedBox")};
+
+    UPROPERTY(EditAnywhere, Category = "Selection")
+    ESbxMeshSelectionPivot selection_pivot{ESbxMeshSelectionPivot::SelectionCenter};
+
+    UPROPERTY(EditAnywhere, Category = "Duplicate Selected")
+    FVector duplicate_translation_step{25.0, 0.0, 0.0};
+
+    UPROPERTY(EditAnywhere, Category = "Duplicate Selected")
+    FRotator duplicate_rotation_step{FRotator::ZeroRotator};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Duplicate Selected",
+              meta = (ClampMin = "1", ClampMax = "64"))
+    int32 duplicate_repeat_count{1};
 
     UPROPERTY(EditAnywhere, Category = "Part Transform")
     FVector part_translation{FVector::ZeroVector};

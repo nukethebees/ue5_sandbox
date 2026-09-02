@@ -55,6 +55,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     void select_part(int32 part_index);
     void select_parts(TArray<int32> const& part_indices, int32 primary_part_index);
     void select_all_parts();
+    void selection_settings_changed();
     void add_part();
     void duplicate_part();
     void remove_part();
