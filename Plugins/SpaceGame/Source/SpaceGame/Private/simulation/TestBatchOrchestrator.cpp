@@ -112,6 +112,7 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
 
     collision_grid_visualization = CreateDefaultSubobject<UCollisionGridVisualizationComponent>(
         TEXT("CollisionGridVisualization"));
+    RootComponent = collision_grid_visualization;
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
