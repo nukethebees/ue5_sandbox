@@ -6,6 +6,7 @@
 #include <SpaceGame/simulation/TraceHits.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 
@@ -275,95 +276,130 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
 
 void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                        FTraceHitsView const& hits) const {
+    constexpr int32 n_axes{3};
+
     auto const n{traces.num()};
     check(n == hits.num());
 
-    for (int32 i{0}; i < n; ++i) {
-        hits.hits[i] = 0;
-
-        auto const start_point{traces.starts[i]};
-        auto const end_point{traces.ends[i]};
-
-        auto const start_coord{to_cell_coord(start_point)};
-        auto const end_coord{to_cell_coord(end_point)};
-
-        auto const delta{end_point - start_point};
-
-        int8 const cell_step_x{delta.X > 0 ? +1 : -1};
-        int8 const cell_step_y{delta.Y > 0 ? +1 : -1};
-        int8 const cell_step_z{delta.Z > 0 ? +1 : -1};
-
-        auto const t_delta_x{cell_dims_.X / FMath::Abs(delta.X)};
-        auto const t_delta_y{cell_dims_.Y / FMath::Abs(delta.Y)};
-        auto const t_delta_z{cell_dims_.Z / FMath::Abs(delta.Z)};
-
-        auto current_point{start_point};
-        auto current_cell{start_coord};
-
-        float next_x_location{0.f};
-        float next_y_location{0.f};
-        float next_z_location{0.f};
-
-        if (delta.X > 0) {
-            next_x_location = cell_dims_.X * (current_cell.X + 1);
-        } else {
-            next_x_location = cell_dims_.X * current_cell.X;
+    constexpr auto initialise_traversal_axis{[](float const cell_min,
+                                                float const cell_dim,
+                                                float const start,
+                                                float const delta,
+                                                int32& step,
+                                                float& t,
+                                                float& t_delta) {
+        if (delta == 0.0f) {
+            step = 0;
+            t = TNumericLimits<float>::Max();
+            t_delta = TNumericLimits<float>::Max();
+            return;
         }
 
-        if (delta.Y > 0) {
-            next_y_location = cell_dims_.Y * (current_cell.Y + 1);
-        } else {
-            next_y_location = cell_dims_.Y * current_cell.Y;
+        step = delta > 0.0f ? 1 : -1;
+        auto const next_cell_boundary{cell_min + (step > 0 ? cell_dim : 0.0f)};
+        t = (next_cell_boundary - start) / delta;
+        t_delta = cell_dim / FMath::Abs(delta);
+    }};
+    constexpr auto advance_to_next_cell{
+        [](FIntVector3& cell, FIntVector3 const& steps, FVector3f& t, FVector3f const& t_deltas) {
+            auto const next_t{FMath::Min3(t.X, t.Y, t.Z)};
+            for (int32 axis{}; axis < 3; ++axis) {
+                if (t[axis] == next_t) {
+                    cell[axis] += steps[axis];
+                    t[axis] += t_deltas[axis];
+                }
+            }
+        }};
+    constexpr auto trace_entity{[](WorldAABBs::ConstView const& aabbs,
+                                   int32 const i_entity,
+                                   FVector3f const p0,
+                                   FVector3f const inv_delta,
+                                   FVector3f const delta) -> float {
+        float tmin{0.f};
+        float tmax{std::numeric_limits<float>::max()};
+
+        for (int32 axis{0}; axis < n_axes; ++axis) {
+            auto t1{(aabbs.mins[i_entity][axis] - p0[axis]) * inv_delta[axis]};
+            auto t2{(aabbs.maxes[i_entity][axis] - p0[axis]) * inv_delta[axis]};
+
+            if (t1 > t2) {
+                Swap(t1, t2);
+            }
+
+            // Compute the intersection of slab intersection intervals
+            tmin = std::max(tmin, t1);
+            tmax = std::min(tmax, t2);
+
+            // Exit with no collision as soon as slab intersection becomes empty
+            if (tmin > tmax) {
+                return std::numeric_limits<float>::infinity();
+            }
         }
 
-        if (delta.Z > 0) {
-            next_z_location = cell_dims_.Z * (current_cell.Z + 1);
-        } else {
-            next_z_location = cell_dims_.Z * current_cell.Z;
+        return tmin;
+    }};
+
+    for (int32 i_test{0}; i_test < n; ++i_test) {
+        hits.hits[i_test] = 0;
+
+        auto const p0{traces.starts[i_test]};
+        auto const p1{traces.ends[i_test]};
+        auto const coord0{to_cell_coord(p0)};
+        auto const coord1{to_cell_coord(p1)};
+        auto const delta{p1 - p0};
+        auto current_cell{coord0};
+
+        auto const cell_min{to_cell_min(current_cell)};
+        FIntVector3 cell_steps{0, 0, 0};
+        FVector3f t{FVector3f::ZeroVector};
+        FVector3f t_deltas{FVector3f::ZeroVector};
+
+        for (int32 axis{}; axis < n_axes; ++axis) {
+            initialise_traversal_axis(cell_min[axis],
+                                      cell_dims_[axis],
+                                      p0[axis],
+                                      delta[axis],
+                                      cell_steps[axis],
+                                      t[axis],
+                                      t_deltas[axis]);
         }
 
-        // Evaluate distance to travel to next boundary based on the rate of travel
-        auto t_x{(next_x_location - current_point.X) / delta.X};
-        auto t_y{(next_y_location - current_point.Y) / delta.Y};
-        auto t_z{(next_z_location - current_point.Z) / delta.Z};
-
-        auto next_t{FMath::Min(t_x, t_y, t_z)};
-
-        if (t_x == next_t) {
-            current_cell.X += cell_step_x;
-        }
-
-        if (t_y == next_t) {
-            current_cell.Y += cell_step_y;
-        }
-
-        if (t_z == next_t) {
-            current_cell.Z += cell_step_z;
-        }
+        auto nearest_t{std::numeric_limits<float>::infinity()};
+        FRegistryEntityHandle nearest_entity;
 
         while (true) {
-            // Visit cell here. Perform line traces
+            auto const cell_index{to_index(current_cell)};
 
-            if (current_cell == end_coord) {
+            auto const entity_offset{cell_entity_offsets_[cell_index]};
+            auto const entity_count{cell_entity_counts_[cell_index]};
+
+            if (entity_count > 0) {
+                auto const entities{TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(
+                    entity_offset, entity_count)};
+                auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
+
+                auto const inv_delta{delta.Reciprocal()};
+
+                for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
+                    auto const hit_t{trace_entity(aabbs, i_entity, p0, inv_delta, delta)};
+                    if (hit_t < nearest_t) {
+                        nearest_t = hit_t;
+                        nearest_entity = entities[i_entity];
+                    }
+                }
+            }
+
+            if (current_cell == coord1) {
                 break;
             }
 
-            next_t = FMath::Min3(t_x, t_y, t_z);
+            advance_to_next_cell(current_cell, cell_steps, t, t_deltas);
+        }
 
-            if (t_x == next_t) {
-                current_cell.X += cell_step_x;
-                t_x += t_delta_x;
-            }
-
-            if (t_y == next_t) {
-                current_cell.Y += cell_step_y;
-                t_y += t_delta_y;
-            }
-
-            if (t_z == next_t) {
-                current_cell.Z += cell_step_z;
-                t_z += t_delta_z;
-            }
+        if (FMath::IsFinite(nearest_t)) {
+            hits.locations.set(i_test, p0 + delta * nearest_t);
+            hits.entities[i_test] = nearest_entity;
+            hits.hits[i_test] = uint8{1};
         }
     }
 }
