@@ -7,6 +7,15 @@
 #include <SpaceGame/entities/ProxyEntityMap.h>
 
 namespace ml {
+enum class ECollisionUniformGridTraceScenario : uint8 {
+    HitsAndMisses,
+    StopsAtEndpoint,
+    ReturnsNearestHit,
+    HandlesZeroLengthTraces,
+    IncludesNegativeEndpointBoundary,
+    AppliesAABBCentre,
+};
+
 class FCollisionUniformGridScenario final : public FSimulationTestScenario {
     struct FSample {
         TArray<int32> expected_cell_counts;
@@ -29,5 +38,21 @@ class FCollisionUniformGridScenario final : public FSimulationTestScenario {
 
     TStaticArray<FRegistryEntityHandle, 5> expected_handles_{};
     TimeSeriesData<FSample> samples_;
+};
+
+class FCollisionUniformGridTraceScenario final : public FSimulationTestScenario {
+  public:
+    FCollisionUniformGridTraceScenario(FSimulationTestContext& context,
+                                       ECollisionUniformGridTraceScenario scenario);
+    void run() override;
+  private:
+    void test_hits_and_misses();
+    void test_stops_at_endpoint();
+    void test_returns_nearest_hit();
+    void test_handles_zero_length_traces();
+    void test_includes_negative_endpoint_boundary();
+    void test_applies_aabb_centre();
+
+    ECollisionUniformGridTraceScenario scenario_;
 };
 }

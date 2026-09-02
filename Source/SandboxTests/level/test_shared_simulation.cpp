@@ -200,6 +200,24 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(SpatialQuery_ResolvesHitBatches, ml::FSpatialQueryResolutionScenario)
     SHARED_SIMULATION_TEST(Collision_UniformGridContainsAllEntityTypes,
                            ml::FCollisionUniformGridScenario)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceHitsAndMisses,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::HitsAndMisses)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceStopsAtEndpoint,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::StopsAtEndpoint)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceReturnsNearestHit,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::ReturnsNearestHit)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceHandlesZeroLengthTraces,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::HandlesZeroLengthTraces)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceIncludesNegativeEndpointBoundary,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::IncludesNegativeEndpointBoundary)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceAppliesAABBCentre,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::AppliesAABBCentre)
 
     SHARED_SIMULATION_TEST(Turrets_LineOfSightBlocking, ml::FTurretLineOfSightBlockingScenario)
     SHARED_SIMULATION_TEST(

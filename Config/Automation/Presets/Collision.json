@@ -1,0 +1,13 @@
+{
+	"id": "Collision",
+	"name": "Collision",
+	"enabledTests": [
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridContainsAllEntityTypes",
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceAppliesAABBCentre",
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceHandlesZeroLengthTraces",
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceHitsAndMisses",
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceIncludesNegativeEndpointBoundary",
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceReturnsNearestHit",
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceStopsAtEndpoint"
+	]
+}

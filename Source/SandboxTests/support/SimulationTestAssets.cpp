@@ -1,7 +1,9 @@
 #include "SimulationTestAssets.h"
 
+#include <SandboxTests/SandboxTestLogCategories.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <UObject/Package.h>
 
 #include <UObject/SoftObjectPath.h>
 #include <UObject/SoftObjectPtr.h>
@@ -14,7 +16,14 @@ auto load_default_level_config() -> USpaceGameLevelConfig* {
                              "DA_FT_soa_entities_LevelConfig."
                              "DA_FT_soa_entities_LevelConfig")}};
 
-    return default_config.LoadSynchronous();
+    auto* const config{default_config.LoadSynchronous()};
+    if (IsValid(config)) {
+        UE_LOG(LogSandboxTest,
+               Log,
+               TEXT("Loaded default simulation-test asset package: %s"),
+               *config->GetPackage()->GetName());
+    }
+    return config;
 }
 
 auto get_default_level_config(FSoftTestAssertions& checks) -> USpaceGameLevelConfig const* {
