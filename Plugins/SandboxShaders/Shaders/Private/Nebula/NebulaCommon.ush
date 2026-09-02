@@ -8,6 +8,36 @@ float2 sbx_nebula_decode_flow(float2 const encoded_flow)
     return encoded_flow * 2.0 - 1.0;
 }
 
+float sbx_nebula_hash31(float3 value)
+{
+    value = frac(value * 0.1031);
+    value += dot(value, value.yzx + 33.33);
+    return frac((value.x + value.y) * value.z);
+}
+
+float sbx_nebula_value_noise_3d(float3 const value)
+{
+    float3 const cell = floor(value);
+    float3 interpolation = frac(value);
+    interpolation = interpolation * interpolation * (3.0 - 2.0 * interpolation);
+
+    float const x00 = lerp(sbx_nebula_hash31(cell),
+                           sbx_nebula_hash31(cell + float3(1.0, 0.0, 0.0)),
+                           interpolation.x);
+    float const x10 = lerp(sbx_nebula_hash31(cell + float3(0.0, 1.0, 0.0)),
+                           sbx_nebula_hash31(cell + float3(1.0, 1.0, 0.0)),
+                           interpolation.x);
+    float const x01 = lerp(sbx_nebula_hash31(cell + float3(0.0, 0.0, 1.0)),
+                           sbx_nebula_hash31(cell + float3(1.0, 0.0, 1.0)),
+                           interpolation.x);
+    float const x11 = lerp(sbx_nebula_hash31(cell + float3(0.0, 1.0, 1.0)),
+                           sbx_nebula_hash31(cell + 1.0),
+                           interpolation.x);
+    return lerp(lerp(x00, x10, interpolation.y),
+                lerp(x01, x11, interpolation.y),
+                interpolation.z);
+}
+
 float sbx_nebula_edge_fade(float2 const uv, float const softness)
 {
     float2 const distance_to_edge = min(uv, 1.0 - uv);

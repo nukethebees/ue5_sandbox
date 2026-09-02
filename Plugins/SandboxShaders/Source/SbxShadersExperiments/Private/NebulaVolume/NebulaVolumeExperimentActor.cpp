@@ -1,5 +1,6 @@
 #include "SbxShadersExperiments/NebulaVolume/NebulaVolumeExperimentActor.h"
 
+#include "Components/SceneComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"
 #include "Materials/MaterialInstanceDynamic.h"
@@ -17,11 +18,13 @@ ANebulaVolumeExperimentActor::ANebulaVolumeExperimentActor() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
 
+    scene_root_ = CreateDefaultSubobject<USceneComponent>(TEXT("SceneRoot"));
+    SetRootComponent(scene_root_);
+
     volume_mesh_ = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("NebulaVolume"));
-    SetRootComponent(volume_mesh_);
+    volume_mesh_->SetupAttachment(scene_root_);
     volume_mesh_->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     volume_mesh_->SetCastShadow(false);
-    volume_mesh_->SetRelativeScale3D(FVector{8.0, 6.0, 5.0});
 
     static ConstructorHelpers::FObjectFinder<UStaticMesh> const cube_mesh{
         TEXT("/Engine/BasicShapes/Cube.Cube")};
@@ -94,6 +97,11 @@ void ANebulaVolumeExperimentActor::ensure_material() {
 }
 
 void ANebulaVolumeExperimentActor::apply_settings() {
+    auto const extent{FVector{FMath::Max(settings.extent.X, 100.0),
+                              FMath::Max(settings.extent.Y, 100.0),
+                              FMath::Max(settings.extent.Z, 100.0)}};
+    volume_mesh_->SetRelativeScale3D(extent / 100.0);
+
     if (!IsValid(material_instance_)) {
         return;
     }
@@ -101,10 +109,10 @@ void ANebulaVolumeExperimentActor::apply_settings() {
     material_instance_->SetVectorParameterValue(TEXT("ShadowColour"), settings.shadow_colour);
     material_instance_->SetVectorParameterValue(TEXT("EmissionColour"), settings.emission_colour);
     material_instance_->SetVectorParameterValue(
-        TEXT("TextureOffset"),
-        FLinearColor{static_cast<float>(settings.texture_offset.X),
-                     static_cast<float>(settings.texture_offset.Y),
-                     static_cast<float>(settings.texture_offset.Z),
+        TEXT("VolumeExtent"),
+        FLinearColor{static_cast<float>(extent.X),
+                     static_cast<float>(extent.Y),
+                     static_cast<float>(extent.Z),
                      0.0f});
     material_instance_->SetScalarParameterValue(TEXT("AnimationTime"), animation_time_);
     material_instance_->SetScalarParameterValue(TEXT("Density"),
@@ -113,10 +121,11 @@ void ANebulaVolumeExperimentActor::apply_settings() {
                                                 FMath::Clamp(settings.extinction, 0.0f, 8.0f));
     material_instance_->SetScalarParameterValue(TEXT("EmissiveStrength"),
                                                 FMath::Max(settings.emissive_strength, 0.0f));
-    material_instance_->SetScalarParameterValue(TEXT("NoiseScale"),
-                                                FMath::Max(settings.noise_scale, 0.05f));
-    material_instance_->SetScalarParameterValue(
-        TEXT("DetailScale"), FMath::Clamp(settings.detail_scale, 1.0f, 8.0f));
+    material_instance_->SetScalarParameterValue(TEXT("FeatureSize"),
+                                                FMath::Max(settings.feature_size, 100.0f));
+    material_instance_->SetScalarParameterValue(TEXT("DetailSize"),
+                                                FMath::Max(settings.detail_size, 25.0f));
+    material_instance_->SetScalarParameterValue(TEXT("Seed"), static_cast<float>(settings.seed));
     material_instance_->SetScalarParameterValue(
         TEXT("FlowStrength"), FMath::Clamp(settings.flow_strength, 0.0f, 2.0f));
     material_instance_->SetScalarParameterValue(TEXT("DriftSpeed"),

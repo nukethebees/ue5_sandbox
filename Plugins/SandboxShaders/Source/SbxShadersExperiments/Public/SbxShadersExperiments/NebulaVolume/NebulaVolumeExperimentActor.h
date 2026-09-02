@@ -7,6 +7,7 @@
 
 class UMaterialInstanceDynamic;
 class UMaterialInterface;
+class USceneComponent;
 class UStaticMeshComponent;
 
 USTRUCT(BlueprintType)
@@ -34,17 +35,26 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaVolumeSettings {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume", meta = (ClampMin = "0.0"))
     float emissive_strength{1.8f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume", meta = (ClampMin = "0.05"))
-    float noise_scale{1.3f};
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Nebula Volume|Shape",
+              meta = (ClampMin = "100.0", Units = "cm"))
+    FVector extent{120000.0, 80000.0, 60000.0};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
-              Category = "Nebula Volume",
-              meta = (ClampMin = "1.0", ClampMax = "8.0"))
-    float detail_scale{2.7f};
+              Category = "Nebula Volume|Structure",
+              meta = (ClampMin = "100.0", Units = "cm"))
+    float feature_size{15000.0f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume")
-    FVector texture_offset{0.0, 0.0, 0.0};
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Nebula Volume|Structure",
+              meta = (ClampMin = "25.0", Units = "cm"))
+    float detail_size{3500.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume|Structure")
+    int32 seed{1337};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
@@ -92,6 +102,9 @@ class SBXSHADERSEXPERIMENTS_API ANebulaVolumeExperimentActor final : public AAct
   private:
     void ensure_material();
     void apply_settings();
+
+    UPROPERTY(VisibleAnywhere, Category = "Nebula Volume")
+    TObjectPtr<USceneComponent> scene_root_;
 
     UPROPERTY(VisibleAnywhere, Category = "Nebula Volume")
     TObjectPtr<UStaticMeshComponent> volume_mesh_;
