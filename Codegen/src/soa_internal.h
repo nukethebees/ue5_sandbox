@@ -8,6 +8,8 @@ namespace codegen::detail {
 auto resolve_members(SoaSchema const& schema,
                      std::map<std::string, CppType> const& types)
     -> std::vector<ResolvedMember>;
+auto soa_function_spec(FunctionSchema const& schema,
+                       std::map<std::string, CppType> const& types) -> FunctionSpec;
 auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
                           std::vector<ResolvedMember> const& members,
                           std::map<std::string, CppType> const& types) -> Nodes;

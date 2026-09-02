@@ -16,7 +16,7 @@ TypeDependency const soa_permutation{"ml::apply_permutation", "SandboxCore/soa_p
 TypeDependency const fill_indices{"ml::fill_indices", "SandboxCore/array_utils.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
-auto custom_function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
+auto function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
     -> FunctionSpec {
     std::vector<FunctionParameter> parameters;
     for (auto const& parameter : schema.parameters) {
@@ -53,6 +53,11 @@ auto custom_function_spec(FunctionSchema const& schema, std::map<std::string, Cp
 }
 
 } // namespace
+
+auto soa_function_spec(FunctionSchema const& schema,
+                       std::map<std::string, CppType> const& types) -> FunctionSpec {
+    return function_spec(schema, types);
+}
 
 auto soa_storage_operation_specs(SoaSchema const& schema,
                                  std::vector<ResolvedMember> const& members)
@@ -276,7 +281,7 @@ auto soa_storage_node(SoaSchema const& schema,
         nodes.add(raw("using " + declaration_text + ";"), 2);
     }
     for (auto const& function : schema.functions) {
-        auto spec{custom_function_spec(function, types)};
+        auto spec{soa_function_spec(function, types)};
         if (function.definition_in_source) {
             custom_source.push_back(spec);
             nodes.add(declaration(spec), 2);

@@ -408,6 +408,18 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
               std::string::npos);
     EXPECT_NE(files[0].content.find("auto add(value_type const x"), std::string::npos);
     EXPECT_NE(files[0].content.find("return add(value.X, value.Y, value.Z);"), std::string::npos);
+
+    auto const mutable_view_start{files[0].content.find("struct EXAMPLE_API FVectors3fView")};
+    auto const storage_start{files[0].content.find("struct EXAMPLE_API FVectors3f {")};
+    ASSERT_NE(mutable_view_start, std::string::npos);
+    ASSERT_NE(storage_start, std::string::npos);
+    auto const mutable_view{files[0].content.substr(mutable_view_start,
+                                                    storage_start - mutable_view_start)};
+    EXPECT_NE(mutable_view.find("void set(int32 const i, float const x, float const y, "
+                                "float const z) const"),
+              std::string::npos);
+    EXPECT_NE(mutable_view.find("void set(int32 const i, FVector3f const value) const"),
+              std::string::npos);
 }
 
 TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
@@ -532,7 +544,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_manifest(manifest_path)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 74);
+    EXPECT_EQ(files.size(), 78);
     EXPECT_EQ(files.front().path,
               "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h");
     EXPECT_EQ(files.back().path,

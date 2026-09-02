@@ -20,6 +20,7 @@ struct SoaSchema {
     std::vector<StorageOperation> operations;
     std::optional<std::string> export_specifier;
     std::vector<FunctionSchema> functions;
+    std::vector<FunctionSchema> mutable_view_functions;
     std::vector<std::string> using_declarations;
     std::optional<TypeRef> equivalent_type;
     bool copy_element_memberwise{false};

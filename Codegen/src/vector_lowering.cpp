@@ -14,11 +14,17 @@ auto lower_vector_module(VectorModuleSchema const& module,
         members.push_back(SoaMemberSchema{component, SoaMemberKind::array, module.value_type});
     }
     std::vector<ParameterSchema> add_parameters;
+    std::vector<ParameterSchema> view_set_parameters{
+        ParameterSchema{TypeRef{"int32 const"}, "i"}};
     for (auto const& component : module.components) {
         add_parameters.push_back(ParameterSchema{
             TypeRef{.name = "value_type", .suffix = " const"},
             std::string(1, component.front()),
         });
+        auto component_type{module.value_type};
+        component_type.suffix += " const";
+        view_set_parameters.push_back(
+            ParameterSchema{std::move(component_type), std::string(1, component.front())});
     }
     std::vector<std::string> add_body{"auto const index{" + module.components.front() + ".Add(" +
                                       std::string(1, module.components.front().front()) + ")};"};
@@ -74,7 +80,7 @@ auto lower_vector_module(VectorModuleSchema const& module,
                                              add_parameters.end());
                            return parameters;
                        }(),
-                       .body_lines = std::move(set_body),
+                       .body_lines = set_body,
                        .is_inline = true},
         FunctionSchema{
             .name = "set",
@@ -85,6 +91,27 @@ auto lower_vector_module(VectorModuleSchema const& module,
                                "value"}},
             .body_lines = {"set(i, " + join(equivalent_arguments, ", ") + ");"},
             .is_inline = true},
+    };
+    auto view_equivalent_type{module.equivalent_type};
+    view_equivalent_type.suffix += " const";
+    std::vector<FunctionSchema> mutable_view_functions{
+        FunctionSchema{
+            .name = "set",
+            .return_type = TypeRef{"void"},
+            .parameters = std::move(view_set_parameters),
+            .body_lines = std::move(set_body),
+            .is_const = true,
+            .is_inline = true,
+        },
+        FunctionSchema{
+            .name = "set",
+            .return_type = TypeRef{"void"},
+            .parameters = {ParameterSchema{TypeRef{"int32 const"}, "i"},
+                           ParameterSchema{std::move(view_equivalent_type), "value"}},
+            .body_lines = {"set(i, " + join(equivalent_arguments, ", ") + ");"},
+            .is_const = true,
+            .is_inline = true,
+        },
     };
     for (auto const& [name, method] : std::vector<std::pair<std::string, std::string>>{
              {"empty", "Empty()"},
@@ -111,6 +138,7 @@ auto lower_vector_module(VectorModuleSchema const& module,
         .operations = all_storage_operations(),
         .export_specifier = module.export_specifier,
         .functions = std::move(functions),
+        .mutable_view_functions = std::move(mutable_view_functions),
         .using_declarations = {"value_type = " + value_type.spelling,
                                "size_type = TArray<value_type>::SizeType"},
         .equivalent_type = module.equivalent_type,

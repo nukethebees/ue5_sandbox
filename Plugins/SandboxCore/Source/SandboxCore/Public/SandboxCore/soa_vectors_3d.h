@@ -75,6 +75,16 @@ struct SANDBOXCORE_API FVectors3dView {
         return (*this)[index];
     }
 
+    void set(int32 const i, double const x, double const y, double const z) const {
+        xs[i] = x;
+        ys[i] = y;
+        zs[i] = z;
+    }
+
+    void set(int32 const i, FVector3d const value) const {
+        set(i, value.X, value.Y, value.Z);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
