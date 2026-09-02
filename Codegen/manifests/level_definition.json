@@ -1,0 +1,27 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "level_definition_soa",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelDefinitionSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/levels/LevelDefinitionSoA.cpp",
+      "header_include": "SpaceGame/levels/LevelDefinitionSoA.h",
+      "namespace": "ml",
+      "include_order": ["SpaceGame/", "SandboxCore/"],
+      "structs": [
+        {
+          "name": "FLevelEntityTable",
+          "export_specifier": "SPACEGAME_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "ids", "kind": "array", "type": "@level_entity_id"},
+            {"name": "archetypes", "kind": "array", "type": "@entity_archetype_id"},
+            {"name": "teams", "kind": "array", "type": "@level_team_id"},
+            {"name": "positions", "kind": "nested", "type": "@vectors_3d"},
+            {"name": "rotations", "kind": "nested", "type": "@rotators_d"}
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -38,6 +38,7 @@ public class SandboxEditor : ModuleRules
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
             "SpaceGame",
+            "SpaceGameS7",
             "Slate",
             "SlateCore",
             "InputCore", // For SNumericVectorInputBox 

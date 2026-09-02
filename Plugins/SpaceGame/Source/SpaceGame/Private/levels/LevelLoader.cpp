@@ -59,6 +59,19 @@ void destroy_spawned_actors(TArray<AActor*> const& actors) {
 auto finish_spawn(AActor& actor, FTransform const& transform) -> bool {
     return IsValid(UGameplayStatics::FinishSpawningActor(&actor, transform));
 }
+
+auto entity_transform(FLevelEntityTableConstView const& entities, int32 const index) -> FTransform {
+    return FTransform{FRotator{entities.rotations.pitches[index],
+                               entities.rotations.yaws[index],
+                               entities.rotations.rolls[index]},
+                      entities.positions[index]};
+}
+
+auto entity_label(FLevelEntityTableConstView const& entities, int32 const index) -> FString {
+    auto const id{entities.ids[index]};
+    return id.is_set() ? FString::Printf(TEXT("'%s'"), *id.value.ToString())
+                       : FString::Printf(TEXT("at row %d"), index);
+}
 }
 
 auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadResult {
@@ -94,6 +107,16 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         return result;
     }
 
+    if (IsValid(orchestrator_.get_player_ship()) || world_contains<ATestSpaceShip>(*world) ||
+        world_contains<ATestCapitalShipProxy>(*world) ||
+        world_contains<ATestStaticTurretsProxy>(*world)) {
+        add_error(result,
+                  ELevelLoadErrorCode::ExistingLevelActors,
+                  TEXT("World already contains authored gameplay actors"));
+        return result;
+    }
+
+    orchestrator_.spawn_missing_actors();
     if (!IsValid(orchestrator_.get_lasers()) || !IsValid(orchestrator_.get_capital_ships()) ||
         !IsValid(orchestrator_.get_capital_ship_fighters()) ||
         !IsValid(orchestrator_.get_turrets()) || !IsValid(orchestrator_.get_spinners()) ||
@@ -104,22 +127,16 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         return result;
     }
 
-    if (IsValid(orchestrator_.get_player_ship()) || world_contains<ATestSpaceShip>(*world) ||
-        world_contains<ATestCapitalShipProxy>(*world) ||
-        world_contains<ATestStaticTurretsProxy>(*world)) {
-        add_error(result,
-                  ELevelLoadErrorCode::ExistingLevelActors,
-                  TEXT("World already contains authored gameplay actors"));
-        return result;
-    }
-
     TArray<AActor*> spawned_actors;
-    spawned_actors.Reserve(definition.entities.Num() + 1);
+    auto const entities{definition.entities.get_const_view()};
+    auto const entity_count{entities.num()};
+    spawned_actors.Reserve(entity_count);
 
-    auto const& player_definition{definition.player.GetValue()};
-    auto const player_team{resolve_team(player_definition.team)};
+    auto const player_index{definition.entities.ids.IndexOfByKey(definition.player_entity_id)};
+    check(player_index != INDEX_NONE);
+    auto const player_team{resolve_team(entities.teams[player_index])};
     check(player_team.IsSet());
-    auto const player_transform{FTransform{player_definition.rotation, player_definition.position}};
+    auto const player_transform{entity_transform(entities, player_index)};
     auto* const player{world->SpawnActorDeferred<ATestSpaceShip>(config->classes.player_ship_class,
                                                                  player_transform)};
     if (!IsValid(player)) {
@@ -140,15 +157,18 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         return result;
     }
 
-    auto const entity_count{definition.entities.Num()};
     for (int32 i{0}; i < entity_count; ++i) {
-        auto const& entity{definition.entities[i]};
-        auto const team{resolve_team(entity.team)};
+        if (i == player_index) {
+            continue;
+        }
+
+        auto const archetype{entities.archetypes[i]};
+        auto const team{resolve_team(entities.teams[i])};
         check(team.IsSet());
-        auto const transform{FTransform{entity.rotation, entity.position}};
+        auto const transform{entity_transform(entities, i)};
         AActor* spawned_actor{nullptr};
 
-        if (entity.archetype == level_archetypes::capital_ship) {
+        if (archetype == level_archetypes::capital_ship) {
             auto* const capital{world->SpawnActorDeferred<ATestCapitalShipProxy>(
                 config->classes.capital_ship_proxy_class, transform)};
             if (IsValid(capital)) {
@@ -157,7 +177,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
                 spawned_actor = capital;
             }
         } else {
-            check(entity.archetype == level_archetypes::static_turret);
+            check(archetype == level_archetypes::static_turret);
             auto* const turret{world->SpawnActorDeferred<ATestStaticTurretsProxy>(
                 ATestStaticTurretsProxy::StaticClass(), transform)};
             if (IsValid(turret)) {
@@ -171,7 +191,8 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
             destroy_spawned_actors(spawned_actors);
             add_error(result,
                       ELevelLoadErrorCode::ActorSpawnFailed,
-                      FString::Printf(TEXT("Failed to begin spawning entity %d"), i));
+                      FString::Printf(TEXT("Failed to begin spawning entity %s"),
+                                      *entity_label(entities, i)));
             return result;
         }
 
@@ -180,7 +201,8 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
             destroy_spawned_actors(spawned_actors);
             add_error(result,
                       ELevelLoadErrorCode::ActorSpawnFailed,
-                      FString::Printf(TEXT("Failed to finish spawning entity %d"), i));
+                      FString::Printf(TEXT("Failed to finish spawning entity %s"),
+                                      *entity_label(entities, i)));
             return result;
         }
     }

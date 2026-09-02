@@ -1,6 +1,7 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
@@ -8,6 +9,7 @@
 #include <Components/Button.h>
 #include <Components/VerticalBox.h>
 #include <Components/WidgetSwitcher.h>
+#include <Engine/GameInstance.h>
 #include <Kismet/KismetSystemLibrary.h>
 
 namespace ml::ioj {
@@ -36,7 +38,12 @@ void UMainMenuWidget::NativeOnInitialized() {
 
 void UMainMenuWidget::NativeConstruct() {
     Super::NativeConstruct();
-    set_active_page(EMainMenuPage::Main);
+    auto* const game_instance{GetGameInstance()};
+    auto* const subsystem{IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>()
+                                                 : nullptr};
+    set_active_page(IsValid(subsystem) && subsystem->has_level_launch_error()
+                        ? EMainMenuPage::LevelSelect
+                        : EMainMenuPage::Main);
 }
 
 void UMainMenuWidget::focus_primary_action() {
@@ -52,7 +59,6 @@ void UMainMenuWidget::focus_primary_action() {
 
 void UMainMenuWidget::handle_play() {
     set_active_page(EMainMenuPage::LevelSelect);
-    level_select_widget->focus_back_button();
 }
 
 void UMainMenuWidget::handle_save_games() {
@@ -122,5 +128,8 @@ void UMainMenuWidget::set_active_page(EMainMenuPage const page) {
 
     active_page_ = page;
     page_switcher->SetActiveWidget(active_widget);
+    if (page == EMainMenuPage::LevelSelect) {
+        level_select_widget->activate();
+    }
 }
 }

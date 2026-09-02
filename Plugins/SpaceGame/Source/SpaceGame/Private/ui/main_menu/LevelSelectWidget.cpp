@@ -3,13 +3,12 @@
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <Components/Button.h>
-#include <Components/TextBlock.h>
 
 namespace ml::ioj {
 void ULevelSelectWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    if (!IsValid(placeholder_text) || !IsValid(back_button)) {
+    if (!IsValid(back_button)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("ULevelSelectWidget::NativeOnInitialized: One or more bound widgets are "
@@ -18,6 +17,10 @@ void ULevelSelectWidget::NativeOnInitialized() {
     }
 
     back_button->OnClicked.AddDynamic(this, &ThisClass::handle_back);
+}
+
+void ULevelSelectWidget::activate() {
+    focus_back_button();
 }
 
 void ULevelSelectWidget::focus_back_button() {

@@ -7,13 +7,13 @@
 
 class UButton;
 class UOverlay;
-class UTextBlock;
 
 namespace ml::ioj {
 UCLASS()
 class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
     GENERATED_BODY()
   public:
+    virtual void activate();
     void focus_back_button();
 
     FBackRequested back_requested;
@@ -22,9 +22,6 @@ class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
     UOverlay* root_widget{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UTextBlock* placeholder_text{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UButton* back_button{nullptr};

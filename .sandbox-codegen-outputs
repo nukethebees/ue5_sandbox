@@ -36,6 +36,7 @@ Plugins/SpaceGame/Source/SpaceGame/Private/entities/EntityDeathInfo.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/RegistryEntityHandles.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityRegistryData.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityUniqueEntityDataSoA.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/levels/LevelDefinitionSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionMode.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsSoA.cpp
@@ -57,6 +58,7 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/EntityDeathInfo.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/RegistryEntityHandles.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityRegistryData.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityUniqueEntityDataSoA.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelDefinitionSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsSoA.h

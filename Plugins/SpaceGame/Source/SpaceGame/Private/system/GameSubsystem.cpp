@@ -45,4 +45,31 @@ auto UGameSubsystem::get_platform_capabilities() const -> FGameCapabilities cons
 auto UGameSubsystem::get_save_game_browser() -> FSaveGameBrowser& {
     return save_game_browser_;
 }
+
+void UGameSubsystem::set_pending_level(FLevelDefinition definition, FString source_path) {
+    pending_level_.Emplace(FPendingLevelDefinition{.definition = MoveTemp(definition),
+                                                   .source_path = MoveTemp(source_path)});
+    level_launch_error_.Reset();
+}
+
+auto UGameSubsystem::take_pending_level() -> TOptional<FPendingLevelDefinition> {
+    auto pending{MoveTemp(pending_level_)};
+    pending_level_.Reset();
+    return pending;
+}
+
+void UGameSubsystem::set_level_launch_error(FString error) {
+    pending_level_.Reset();
+    level_launch_error_ = MoveTemp(error);
+}
+
+auto UGameSubsystem::has_level_launch_error() const noexcept -> bool {
+    return !level_launch_error_.IsEmpty();
+}
+
+auto UGameSubsystem::take_level_launch_error() -> FString {
+    auto error{MoveTemp(level_launch_error_)};
+    level_launch_error_.Reset();
+    return error;
+}
 }

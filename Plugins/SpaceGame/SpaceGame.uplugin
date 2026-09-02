@@ -29,6 +29,10 @@
 		{
 			"Name": "SandboxUI",
 			"Enabled": true
+		},
+		{
+			"Name": "SbxLangLab",
+			"Enabled": true
 		}
 	],
 	"Modules": [
@@ -36,6 +40,11 @@
 			"Name": "SpaceGame",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SpaceGameS7",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault"
 		}
 	]
 }

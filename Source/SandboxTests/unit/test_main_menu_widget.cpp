@@ -4,9 +4,11 @@
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
+#include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include <Components/Button.h>
 #include <Components/TextBlock.h>
+#include <Components/VerticalBox.h>
 #include <CQTest.h>
 
 TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
@@ -38,7 +40,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             Cast<UButton>(widget->GetWidgetFromName(TEXT("options_button")))};
         auto* const save_games_button{
             Cast<UButton>(widget->GetWidgetFromName(TEXT("save_games_button")))};
-        auto* const level_select_widget{Cast<ml::ioj::ULevelSelectWidget>(
+        auto* const level_select_widget{Cast<ml::s7::UScriptLevelSelectWidget>(
             widget->GetWidgetFromName(TEXT("level_select_widget")))};
         auto* const options_widget{
             Cast<ml::ioj::UOptionsWidget>(widget->GetWidgetFromName(TEXT("options_widget")))};
@@ -58,8 +60,16 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 
         auto* const level_back_button{
             Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("back_button")))};
-        auto* const level_placeholder{
-            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("placeholder_text")))};
+        auto* const level_list{
+            Cast<UVerticalBox>(level_select_widget->GetWidgetFromName(TEXT("level_list")))};
+        auto* const title_text{
+            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("title_text")))};
+        auto* const description_text{
+            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("description_text")))};
+        auto* const status_text{
+            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("status_text")))};
+        auto* const launch_button{
+            Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("launch_button")))};
         auto* const video_button{
             Cast<UButton>(options_widget->GetWidgetFromName(TEXT("video_button")))};
         auto* const gameplay_button{
@@ -74,9 +84,11 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             Cast<UButton>(options_widget->GetWidgetFromName(TEXT("back_button")))};
 
         auto const child_bindings_valid{
-            IsValid(level_back_button) && IsValid(level_placeholder) && IsValid(video_button) &&
-            IsValid(gameplay_button) && IsValid(audio_button) && IsValid(controls_button) &&
-            IsValid(accessibility_button) && IsValid(options_back_button)};
+            IsValid(level_back_button) && IsValid(level_list) && IsValid(title_text) &&
+            IsValid(description_text) && IsValid(status_text) && IsValid(launch_button) &&
+            IsValid(video_button) && IsValid(gameplay_button) && IsValid(audio_button) &&
+            IsValid(controls_button) && IsValid(accessibility_button) &&
+            IsValid(options_back_button)};
         if (!TestRunner->TestTrue(TEXT("All required child menu bindings are valid"),
                                   child_bindings_valid)) {
             return;
@@ -88,8 +100,27 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         play_button->OnClicked.Broadcast();
         TestRunner->TestTrue(TEXT("Play opens level select"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::LevelSelect);
-        TestRunner->TestTrue(TEXT("Level select remains a placeholder"),
-                             level_placeholder->GetText().ToString().Contains(TEXT("later")));
+        TestRunner->TestTrue(TEXT("Level select discovers the example script"),
+                             level_list->GetChildrenCount() > 0);
+        TestRunner->TestFalse(TEXT("Launch is disabled until a level is selected"),
+                              launch_button->GetIsEnabled());
+
+        auto* const level_button{Cast<ml::s7::ULevelScriptButton>(level_list->GetChildAt(0))};
+        if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
+            return;
+        }
+        level_button->OnClicked.Broadcast();
+        TestRunner->TestEqual(TEXT("Selected level title is shown"),
+                              title_text->GetText().ToString(),
+                              FString{TEXT("Border Skirmish")});
+        TestRunner->TestTrue(
+            TEXT("Selected level description is shown"),
+            description_text->GetText().ToString().Contains(TEXT("two-team encounter")));
+        TestRunner->TestTrue(TEXT("A valid selected level can be launched"),
+                             launch_button->GetIsEnabled());
+        TestRunner->TestEqual(TEXT("Selected level reports that it is ready"),
+                              status_text->GetText().ToString(),
+                              FString{TEXT("Ready to launch.")});
 
         level_back_button->OnClicked.Broadcast();
         TestRunner->TestTrue(TEXT("Level select Back returns to main"),

@@ -11,9 +11,12 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameS7/LevelDefinitionReader.h>
 
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
+
+#include <Misc/Paths.h>
 
 #include <utility>
 
@@ -26,7 +29,7 @@ void FLevelLoaderScenario::load_fixture() {
     FLevelLoader loader{context_.orchestrator};
 
     auto invalid_definition{example_levels::make_native_example()};
-    invalid_definition.entities[0].team = level_teams::green;
+    invalid_definition.entities.teams[1] = level_teams::green;
     auto const invalid_result{loader.load(invalid_definition)};
     checks.is_true(!static_cast<bool>(invalid_result), TEXT("Invalid definition is rejected"));
     checks.are_equal(
@@ -40,7 +43,16 @@ void FLevelLoaderScenario::load_fixture() {
     checks.is_true(context_.orchestrator.get_state() == EOrchestratorState::Uninitialised,
                    TEXT("Rejected load leaves orchestrator uninitialised"));
 
-    auto const load_result{loader.load(example_levels::make_native_example())};
+    s7::FLevelDefinitionReader reader;
+    auto const script_path{
+        FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("BorderSkirmish.scm"))};
+    auto const scripted_definition{reader.read_file(script_path)};
+    if (!checks.is_true(static_cast<bool>(scripted_definition),
+                        TEXT("Scheme produces a valid native definition"))) {
+        return;
+    }
+
+    auto const load_result{loader.load(scripted_definition.definition.GetValue())};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Valid definition loads"))) {
         return;
     }
@@ -58,7 +70,7 @@ void FLevelLoaderScenario::load_fixture() {
     if (checks.is_valid(player, TEXT("Loader binds the player to the orchestrator"))) {
         checks.are_equal(
             ETestTeam::Blue, player->get_team(), TEXT("Loader resolves the player team"));
-        checks.dist_zero(FVector{100.0, 200.0, 300.0},
+        checks.dist_zero(FVector{0.0, -25000.0, 1000.0},
                          player->GetActorLocation(),
                          0.01,
                          TEXT("Loader applies the player position"));
@@ -118,15 +130,15 @@ void FLevelLoaderScenario::check_runtime() {
     checks.are_equal(1, sample.blue_capitals, TEXT("Registry contains the blue capital"));
     checks.are_equal(1, sample.red_capitals, TEXT("Registry contains the red capital"));
     checks.are_equal(1, sample.red_turrets, TEXT("Registry contains the red turret"));
-    checks.dist_zero(FVector3f{1000.f, 0.f, 0.f},
+    checks.dist_zero(FVector3f{-40000.f, 0.f, 0.f},
                      sample.blue_capital_position,
                      0.01f,
                      TEXT("Blue capital runtime position matches the definition"));
-    checks.dist_zero(FVector3f{-1000.f, 0.f, 0.f},
+    checks.dist_zero(FVector3f{40000.f, 0.f, 0.f},
                      sample.red_capital_position,
                      0.01f,
                      TEXT("Red capital runtime position matches the definition"));
-    checks.dist_zero(FVector3f{0.f, 500.f, 0.f},
+    checks.dist_zero(FVector3f{30000.f, 15000.f, 0.f},
                      sample.red_turret_position,
                      0.01f,
                      TEXT("Red turret runtime position matches the definition"));
