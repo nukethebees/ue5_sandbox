@@ -45,12 +45,16 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     [[nodiscard]] auto get_settings() const -> USbxMeshGenLabSettings*;
     [[nodiscard]] auto get_parts() const -> TArray<FSbxMeshAssemblyPart> const&;
     [[nodiscard]] auto get_selected_part_index() const -> int32;
+    [[nodiscard]] auto get_selected_part_indices() const -> TArray<int32> const&;
+    [[nodiscard]] auto can_remove_selected_parts() const -> bool;
     [[nodiscard]] auto get_status() const -> FText const&;
     [[nodiscard]] auto get_recipe_document_text() const -> FText;
     [[nodiscard]] auto has_current_recipe() const -> bool;
     auto on_session_changed() -> FOnSbxMeshSessionChanged&;
 
     void select_part(int32 part_index);
+    void select_parts(TArray<int32> const& part_indices, int32 primary_part_index);
+    void select_all_parts();
     void add_part();
     void duplicate_part();
     void remove_part();
@@ -65,8 +69,8 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     void create_preview_actor(int32 part_index);
     void destroy_preview_actors();
     void refresh_preview_actor(int32 part_index, bool rebuild_mesh);
-    void select_preview_actor();
-    void sync_part_transform_from_actor();
+    void select_preview_actors();
+    void sync_selected_part_transforms_from_actors();
     void apply_settings(bool mark_dirty);
     void save_recipe_with_name(FName recipe_name);
     void mark_recipe_dirty();
@@ -82,6 +86,7 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     TObjectPtr<USbxMeshAssemblyRecipe> current_recipe_;
 
     TArray<FSbxMeshAssemblyPart> parts_;
+    TArray<int32> selected_part_indices_;
     TArray<TWeakObjectPtr<AActor>> previous_actor_selection_;
     FVector preview_origin_{FVector::ZeroVector};
     FText status_;

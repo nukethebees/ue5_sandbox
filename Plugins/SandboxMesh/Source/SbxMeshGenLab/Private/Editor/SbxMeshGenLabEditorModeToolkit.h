@@ -20,7 +20,9 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
     void on_session_changed(bool refresh_controls);
     void on_property_changed(FPropertyChangedEvent const& event);
     void refresh_part_items();
+    void select_parts_from_list(TSharedPtr<int32> primary_item);
     auto add_part() -> FReply;
+    auto select_all_parts() -> FReply;
     auto duplicate_part() -> FReply;
     auto remove_part() -> FReply;
     auto new_assembly() -> FReply;

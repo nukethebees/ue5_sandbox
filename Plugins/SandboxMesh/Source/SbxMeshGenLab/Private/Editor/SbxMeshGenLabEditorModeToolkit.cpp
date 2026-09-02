@@ -31,9 +31,11 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                 [SNew(SVerticalBox) +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)
                      [SNew(STextBlock)
-                          .Text(LOCTEXT("Instructions",
-                                        "Select a part here or in the viewport. Use W/E/R and the "
-                                        "standard viewport transform widget to manipulate it."))
+                          .Text(
+                              LOCTEXT("Instructions",
+                                      "Select parts here or Ctrl/Shift-click them in the viewport. "
+                                      "Use W/E/R to transform the selection around its shared "
+                                      "pivot. Properties edit the primary part."))
                           .AutoWrapText(true)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +
@@ -80,7 +82,7 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                  SVerticalBox::Slot().AutoHeight().MaxHeight(180.0f).Padding(0.0f, 0.0f, 0.0f, 6.0f)
                      [SAssignNew(parts_list_, SListView<TSharedPtr<int32>>)
                           .ListItemsSource(&part_items_)
-                          .SelectionMode(ESelectionMode::Single)
+                          .SelectionMode(ESelectionMode::Multi)
                           .OnGenerateRow_Lambda([this](TSharedPtr<int32> const item,
                                                        TSharedRef<STableViewBase> const& owner) {
                               return SNew(STableRow<TSharedPtr<int32>>,
@@ -104,8 +106,8 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                           })
                           .OnSelectionChanged_Lambda(
                               [this](TSharedPtr<int32> const item, ESelectInfo::Type) {
-                                  if (!refreshing_ && mode_.IsValid() && item.IsValid()) {
-                                      mode_->select_part(*item);
+                                  if (!refreshing_ && mode_.IsValid()) {
+                                      select_parts_from_list(item);
                                   }
                               })] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
@@ -116,13 +118,18 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                                .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::add_part)] +
                       SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
                           [SNew(SButton)
-                               .Text(LOCTEXT("DuplicatePart", "Duplicate"))
+                               .Text(LOCTEXT("SelectAllParts", "Select All"))
+                               .OnClicked(this,
+                                          &FSbxMeshGenLabEditorModeToolkit::select_all_parts)] +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("DuplicatePart", "Duplicate Selected"))
                                .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::duplicate_part)] +
                       SHorizontalBox::Slot().AutoWidth()
                           [SNew(SButton)
                                .Text(LOCTEXT("RemovePart", "Remove"))
                                .IsEnabled_Lambda([this]() {
-                                   return mode_.IsValid() && mode_->get_parts().Num() > 1;
+                                   return mode_.IsValid() && mode_->can_remove_selected_parts();
                                })
                                .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::remove_part)]] +
                  SVerticalBox::Slot().FillHeight(1.0f)[DetailsView.ToSharedRef()] +
@@ -187,15 +194,36 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_part_items() {
     }
     parts_list_->RequestListRefresh();
 
-    auto const selected_index{mode_->get_selected_part_index()};
-    if (part_items_.IsValidIndex(selected_index)) {
-        parts_list_->SetSelection(part_items_[selected_index]);
+    parts_list_->ClearSelection();
+    for (int32 const selected_index : mode_->get_selected_part_indices()) {
+        if (part_items_.IsValidIndex(selected_index)) {
+            parts_list_->SetItemSelection(part_items_[selected_index], true);
+        }
     }
     refreshing_ = false;
 }
 
+void FSbxMeshGenLabEditorModeToolkit::select_parts_from_list(TSharedPtr<int32> const primary_item) {
+    TArray<int32> selected_indices;
+    for (auto const& item : parts_list_->GetSelectedItems()) {
+        if (item.IsValid()) {
+            selected_indices.Add(*item);
+        }
+    }
+
+    if (!selected_indices.IsEmpty()) {
+        auto const primary_index{primary_item.IsValid() ? *primary_item : selected_indices.Last()};
+        mode_->select_parts(selected_indices, primary_index);
+    }
+}
+
 auto FSbxMeshGenLabEditorModeToolkit::add_part() -> FReply {
     mode_->add_part();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::select_all_parts() -> FReply {
+    mode_->select_all_parts();
     return FReply::Handled();
 }
 
