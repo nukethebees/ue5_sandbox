@@ -107,41 +107,37 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Single-target camera is valid"), static_cast<bool>(validation));
     }
 
-    TEST_METHOD(BuilderReplacesPlayerAndCanBeReused)
+    TEST_METHOD(BuilderCanBeReused)
     {
         ml::FLevelBuilder builder;
         builder.set_metadata(ml::FLevelMetadata{.title = TEXT("First")});
         builder.add_team(ml::FTeamDefinition{.id = ml::level_teams::blue});
-        builder.set_player(ml::FPlayerDefinition{
+        auto const first_player{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("first-player")}},
             .archetype = ml::level_archetypes::player_fighter,
             .team = ml::level_teams::blue,
-        });
-        builder.set_player(ml::FPlayerDefinition{
-            .id = ml::FLevelEntityId{FName{TEXT("replacement-player")}},
-            .archetype = ml::level_archetypes::player_fighter,
-            .team = ml::level_teams::blue,
             .position = FVector{10.0, 20.0, 30.0},
-        });
+        })};
+        builder.set_player_entity(first_player);
 
         auto const first{builder.finish()};
-        TestRunner->TestTrue(TEXT("Replacement definition is valid"),
+        TestRunner->TestTrue(TEXT("First definition is valid"),
                              static_cast<bool>(ml::validate_level(first)));
-        TestRunner->TestEqual(TEXT("Player replacement keeps one row"), first.entities.num(), 1);
-        TestRunner->TestTrue(TEXT("Player replacement updates the authored id"),
-                             first.player_entity_id ==
-                                 ml::FLevelEntityId{FName{TEXT("replacement-player")}});
+        TestRunner->TestEqual(TEXT("First definition has one row"), first.entities.num(), 1);
+        TestRunner->TestTrue(TEXT("Player references the authored entity"),
+                             first.player_entity_id == first_player);
         TestRunner->TestTrue(
-            TEXT("Player replacement updates the position"),
+            TEXT("Player entity position is preserved"),
             first.entities.positions.get_const_view()[0].Equals(FVector{10.0, 20.0, 30.0}));
 
         builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Second")});
         builder.add_team(ml::FTeamDefinition{.id = ml::level_teams::red});
-        builder.set_player(ml::FPlayerDefinition{
+        auto const second_player{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("second-player")}},
             .archetype = ml::level_archetypes::player_fighter,
             .team = ml::level_teams::red,
-        });
+        })};
+        builder.set_player_entity(second_player);
         auto const second{builder.finish()};
 
         TestRunner->TestTrue(TEXT("Reused builder produces a valid definition"),
@@ -185,11 +181,12 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Player")});
         builder.add_team(ml::FTeamDefinition{.id = ml::level_teams::blue});
-        builder.set_player(ml::FPlayerDefinition{
+        auto const player_id{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("player")}},
             .archetype = ml::level_archetypes::player_fighter,
             .team = ml::level_teams::blue,
-        });
+        })};
+        builder.set_player_entity(player_id);
         auto const player_level{builder.finish()};
 
         TestRunner->TestFalse(TEXT("Reused builder clears the camera"),

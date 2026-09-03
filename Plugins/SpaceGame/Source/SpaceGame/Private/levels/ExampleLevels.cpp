@@ -9,13 +9,14 @@ auto make_native_example() -> FLevelDefinition {
     });
     builder.add_team(FTeamDefinition{.id = level_teams::blue});
     builder.add_team(FTeamDefinition{.id = level_teams::red});
-    builder.set_player(FPlayerDefinition{
+    auto const player_id{builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("player")}},
         .archetype = level_archetypes::player_fighter,
         .team = level_teams::blue,
         .position = FVector{0.0, -25000.0, 1000.0},
         .rotation = FRotator{0.0, 90.0, 0.0},
-    });
+    })};
+    builder.set_player_entity(player_id);
     builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("blue-capital")}},
         .archetype = level_archetypes::capital_ship,

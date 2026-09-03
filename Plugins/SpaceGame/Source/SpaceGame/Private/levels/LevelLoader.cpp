@@ -1,10 +1,11 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
 #include "LevelArchetypeResolution.h"
+#include "LevelEntityTableOperations.h"
+#include "LevelTeamResolution.h"
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
-#include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -18,28 +19,6 @@
 
 namespace ml {
 namespace {
-auto resolve_team(FLevelTeamId const id) -> TOptional<ETestTeam> {
-    if (id == level_teams::white) {
-        return ETestTeam::White;
-    }
-    if (id == level_teams::red) {
-        return ETestTeam::Red;
-    }
-    if (id == level_teams::green) {
-        return ETestTeam::Green;
-    }
-    if (id == level_teams::blue) {
-        return ETestTeam::Blue;
-    }
-    if (id == level_teams::orange) {
-        return ETestTeam::Orange;
-    }
-    if (id == level_teams::yellow) {
-        return ETestTeam::Yellow;
-    }
-    return NullOpt;
-}
-
 void add_error(FLevelLoadResult& result, ELevelLoadErrorCode const code, FString message) {
     result.errors.Add(FLevelLoadError{.code = code, .message = MoveTemp(message)});
 }
@@ -56,17 +35,9 @@ auto finish_spawn(AActor& actor, FTransform const& transform) -> bool {
     return IsValid(UGameplayStatics::FinishSpawningActor(&actor, transform));
 }
 
-auto entity_transform(FLevelEntityTableConstView const& entities, int32 const index) -> FTransform {
-    return FTransform{FRotator{entities.rotations.pitches[index],
-                               entities.rotations.yaws[index],
-                               entities.rotations.rolls[index]},
-                      entities.positions[index]};
-}
-
-auto entity_label(FLevelEntityTableConstView const& entities, int32 const index) -> FString {
-    auto const id{entities.ids[index]};
-    return id.is_set() ? FString::Printf(TEXT("'%s'"), *id.value.ToString())
-                       : FString::Printf(TEXT("at row %d"), index);
+auto entity_label(FEntitySpawnDefinition const& entity, int32 const index) -> FString {
+    return entity.id.is_set() ? FString::Printf(TEXT("'%s'"), *entity.id.value.ToString())
+                              : FString::Printf(TEXT("at row %d"), index);
 }
 
 class FSpawnedActorTransaction final {
@@ -102,9 +73,10 @@ auto spawn_player(UWorld& world,
                   int32 const player_index,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadResult& result) -> ATestSpaceShip* {
-    auto const team{resolve_team(entities.teams[player_index])};
+    auto const entity{level_entity_table_detail::get(entities, player_index)};
+    auto const team{level_team_detail::resolve(entity.team)};
     check(team.IsSet());
-    auto const transform{entity_transform(entities, player_index)};
+    auto const transform{FTransform{entity.rotation, entity.position}};
     auto* const player{
         world.SpawnActorDeferred<ATestSpaceShip>(config.classes.player_ship_class, transform)};
     if (!IsValid(player)) {
@@ -132,12 +104,13 @@ auto spawn_entity(UWorld& world,
                   int32 const index,
                   FSpawnedActorTransaction& transaction,
                   FLevelLoadResult& result) -> bool {
-    auto const team{resolve_team(entities.teams[index])};
-    auto const archetype{level_archetype_detail::resolve(entities.archetypes[index])};
+    auto const entity{level_entity_table_detail::get(entities, index)};
+    auto const team{level_team_detail::resolve(entity.team)};
+    auto const archetype{level_archetype_detail::resolve(entity.archetype)};
     check(team.IsSet());
     check(archetype.IsSet());
 
-    auto const transform{entity_transform(entities, index)};
+    auto const transform{FTransform{entity.rotation, entity.position}};
     AActor* spawned_actor{nullptr};
     switch (archetype.GetValue()) {
         case level_archetype_detail::EResolvedArchetype::CapitalShip: {
@@ -169,7 +142,7 @@ auto spawn_entity(UWorld& world,
         add_error(result,
                   ELevelLoadErrorCode::ActorSpawnFailed,
                   FString::Printf(TEXT("Failed to begin spawning entity %s"),
-                                  *entity_label(entities, index)));
+                                  *entity_label(entity, index)));
         return false;
     }
 
@@ -178,7 +151,7 @@ auto spawn_entity(UWorld& world,
         add_error(result,
                   ELevelLoadErrorCode::ActorSpawnFailed,
                   FString::Printf(TEXT("Failed to finish spawning entity %s"),
-                                  *entity_label(entities, index)));
+                                  *entity_label(entity, index)));
         return false;
     }
     return true;
@@ -189,9 +162,9 @@ auto initial_camera_transform(FLevelDefinition const& definition,
     auto const& camera{definition.camera.GetValue()};
     FVector focus{FVector::ZeroVector};
     for (auto const target_id : camera.target_entity_ids) {
-        auto const target_index{definition.entities.ids.IndexOfByKey(target_id)};
+        auto const target_index{level_entity_table_detail::find_index(entities, target_id)};
         check(target_index != INDEX_NONE);
-        focus += entities.positions[target_index];
+        focus += level_entity_table_detail::get(entities, target_index).position;
     }
     focus /= camera.target_entity_ids.Num();
 
@@ -296,9 +269,9 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     auto const entity_count{entities.num()};
     FSpawnedActorTransaction transaction{entity_count + (definition.camera.IsSet() ? 1 : 0)};
 
-    auto const player_index{has_player
-                                ? definition.entities.ids.IndexOfByKey(definition.player_entity_id)
-                                : INDEX_NONE};
+    auto const player_index{
+        has_player ? level_entity_table_detail::find_index(entities, definition.player_entity_id)
+                   : INDEX_NONE};
     ATestSpaceShip* player{nullptr};
     if (has_player) {
         check(player_index != INDEX_NONE);

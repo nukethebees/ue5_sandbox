@@ -1,16 +1,13 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 
 #include "LevelArchetypeResolution.h"
+#include "LevelEntityTableOperations.h"
+#include "LevelTeamResolution.h"
 
 #include <Containers/Set.h>
 
 namespace ml {
 namespace {
-auto is_supported_team(FLevelTeamId const id) -> bool {
-    return id == level_teams::white || id == level_teams::red || id == level_teams::green ||
-           id == level_teams::blue || id == level_teams::orange || id == level_teams::yellow;
-}
-
 auto placement_is_valid(FVector const& position, FRotator const& rotation) -> bool {
     return !position.ContainsNaN() && !rotation.ContainsNaN();
 }
@@ -25,37 +22,6 @@ auto columns_have_equal_size(FLevelEntityTable const& entities) -> bool {
     auto const count{entities.ids.Num()};
     return entities.archetypes.Num() == count && entities.teams.Num() == count &&
            entities.positions.num() == count && entities.rotations.num() == count;
-}
-
-void append_entity(FLevelEntityTable& entities,
-                   FLevelEntityId const id,
-                   FEntityArchetypeId const archetype,
-                   FLevelTeamId const team,
-                   FVector const& position,
-                   FRotator const& rotation) {
-    entities.ids.Add(id);
-    entities.archetypes.Add(archetype);
-    entities.teams.Add(team);
-    entities.positions.add(position);
-    entities.rotations.add(rotation.Pitch, rotation.Yaw, rotation.Roll);
-}
-
-void set_entity(FLevelEntityTable& entities,
-                int32 const index,
-                FLevelEntityId const id,
-                FEntityArchetypeId const archetype,
-                FLevelTeamId const team,
-                FVector const& position,
-                FRotator const& rotation) {
-    entities.ids[index] = id;
-    entities.archetypes[index] = archetype;
-    entities.teams[index] = team;
-    entities.positions.xs[index] = position.X;
-    entities.positions.ys[index] = position.Y;
-    entities.positions.zs[index] = position.Z;
-    entities.rotations.pitches[index] = rotation.Pitch;
-    entities.rotations.yaws[index] = rotation.Yaw;
-    entities.rotations.rolls[index] = rotation.Roll;
 }
 
 auto entity_owner(FLevelEntityId const id, int32 const index) -> FString {
@@ -92,7 +58,7 @@ auto validate_teams(FLevelDefinition const& definition, FLevelValidationResult& 
         }
 
         declared_teams.Add(team);
-        if (!is_supported_team(team)) {
+        if (!level_team_detail::resolve(team).IsSet()) {
             add_error(result,
                       ELevelValidationErrorCode::UnsupportedTeamId,
                       FString::Printf(TEXT("Team %d uses unsupported team id '%s'"),
@@ -164,39 +130,34 @@ auto validate_entities(FLevelDefinition const& definition,
     auto const entity_count{entities.num()};
     state.ids.Reserve(entity_count);
     for (int32 i{0}; i < entity_count; ++i) {
-        auto const id{entities.ids[i]};
-        auto const team{entities.teams[i]};
-        auto const owner{entity_owner(id, i)};
-        auto const is_player{has_player && id == definition.player_entity_id};
+        auto const entity{level_entity_table_detail::get(entities, i)};
+        auto const owner{entity_owner(entity.id, i)};
+        auto const is_player{has_player && entity.id == definition.player_entity_id};
 
-        if (id.is_set()) {
-            if (state.ids.Contains(id)) {
+        if (entity.id.is_set()) {
+            if (state.ids.Contains(entity.id)) {
                 add_error(result,
                           ELevelValidationErrorCode::DuplicateEntityId,
                           FString::Printf(TEXT("%s duplicates authored entity id '%s'"),
                                           *owner,
-                                          *id.value.ToString()));
+                                          *entity.id.value.ToString()));
             } else {
-                state.ids.Add(id);
+                state.ids.Add(entity.id);
             }
         }
 
         state.player_found = state.player_found || is_player;
-        if (!declared_teams.Contains(team)) {
+        if (!declared_teams.Contains(entity.team)) {
             add_error(result,
                       ELevelValidationErrorCode::UnknownTeamReference,
                       FString::Printf(TEXT("%s references undeclared team '%s'"),
                                       *owner,
-                                      *team.value.ToString()));
+                                      *entity.team.value.ToString()));
         }
 
-        validate_archetype(entities.archetypes[i], is_player, owner, result);
+        validate_archetype(entity.archetype, is_player, owner, result);
 
-        auto const position{entities.positions[i]};
-        auto const rotation{FRotator{entities.rotations.pitches[i],
-                                     entities.rotations.yaws[i],
-                                     entities.rotations.rolls[i]}};
-        if (!placement_is_valid(position, rotation)) {
+        if (!placement_is_valid(entity.position, entity.rotation)) {
             add_error(result,
                       ELevelValidationErrorCode::InvalidPlacement,
                       FString::Printf(TEXT("%s has a non-finite position or rotation"), *owner));
@@ -265,28 +226,6 @@ void FLevelBuilder::set_player_entity(FLevelEntityId const id) {
     definition_.player_entity_id = id;
 }
 
-void FLevelBuilder::set_player(FPlayerDefinition const& player) {
-    definition_.player_entity_id = player.id;
-    if (player_row_index_.IsSet()) {
-        set_entity(definition_.entities,
-                   player_row_index_.GetValue(),
-                   player.id,
-                   player.archetype,
-                   player.team,
-                   player.position,
-                   player.rotation);
-        return;
-    }
-
-    player_row_index_ = definition_.entities.num();
-    append_entity(definition_.entities,
-                  player.id,
-                  player.archetype,
-                  player.team,
-                  player.position,
-                  player.rotation);
-}
-
 void FLevelBuilder::set_camera(FLevelCameraDefinition const& camera) {
     definition_.camera = camera;
 }
@@ -297,19 +236,13 @@ auto FLevelBuilder::add_team(FTeamDefinition const& team) -> FLevelTeamId {
 }
 
 auto FLevelBuilder::add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId {
-    append_entity(definition_.entities,
-                  entity.id,
-                  entity.archetype,
-                  entity.team,
-                  entity.position,
-                  entity.rotation);
+    level_entity_table_detail::append(definition_.entities, entity);
     return entity.id;
 }
 
 auto FLevelBuilder::finish() -> FLevelDefinition {
     auto definition{MoveTemp(definition_)};
     definition_ = FLevelDefinition{};
-    player_row_index_.Reset();
     return definition;
 }
 
