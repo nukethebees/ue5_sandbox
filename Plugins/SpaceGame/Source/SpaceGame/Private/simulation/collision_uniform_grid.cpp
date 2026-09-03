@@ -329,11 +329,20 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
         for (int32 axis{0}; axis < n_axes; ++axis) {
             auto const slab_min{aabb_min[axis]};
             auto const slab_max{aabb_max[axis]};
-            auto const axis_delta{inv_delta[axis]};
             auto const start{p0[axis]};
+            auto const axis_delta{delta[axis]};
 
-            auto t1{(slab_min - start) * axis_delta};
-            auto t2{(slab_max - start) * axis_delta};
+            if (axis_delta == 0.0f) {
+                if (start < slab_min || start > slab_max) {
+                    return no_hit;
+                }
+
+                continue;
+            }
+
+            auto const inverse_axis_delta{inv_delta[axis]};
+            auto t1{(slab_min - start) * inverse_axis_delta};
+            auto t2{(slab_max - start) * inverse_axis_delta};
 
             if (t1 > t2) {
                 Swap(t1, t2);
@@ -370,6 +379,7 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
 
         // How far we move along an axis per cell
         FVector3f t_deltas{FVector3f::ZeroVector};
+        FVector3f inv_delta{FVector3f::ZeroVector};
 
         for (int32 axis{}; axis < n_axes; ++axis) {
             initialise_traversal_axis(cell_min[axis],
@@ -379,6 +389,10 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                       cell_steps[axis],
                                       t[axis],
                                       t_deltas[axis]);
+
+            if (delta[axis] != 0.0f) {
+                inv_delta[axis] = 1.0f / delta[axis];
+            }
         }
 
         auto nearest_t{std::numeric_limits<float>::infinity()};
@@ -394,8 +408,6 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                 auto const entities{TConstArrayView<FRegistryEntityHandle>{entities_}.Slice(
                     entity_offset, entity_count)};
                 auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
-
-                auto const inv_delta{delta.Reciprocal()};
 
                 for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
                     auto const hit_t{trace_entity(aabbs, i_entity, p0, inv_delta, delta)};
