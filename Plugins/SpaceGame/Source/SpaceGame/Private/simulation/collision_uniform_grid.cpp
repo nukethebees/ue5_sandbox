@@ -306,8 +306,11 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                    FVector3f const p0,
                                    FVector3f const inv_delta,
                                    FVector3f const delta) -> float {
+        // We want to find the hit with the smallest tmin
+        // That is the closest hit
         float tmin{0.f};
-        float tmax{std::numeric_limits<float>::max()};
+        // We don't want to find anything that is beyond the ray
+        float tmax{1.f};
 
         for (int32 axis{0}; axis < n_axes; ++axis) {
             auto t1{(aabbs.mins[i_entity][axis] - p0[axis]) * inv_delta[axis]};
@@ -342,7 +345,11 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
 
         auto const cell_min{to_cell_min(current_cell)};
         FIntVector3 cell_steps{0, 0, 0};
+
+        // The distance along the ray t: 0 -> 1
         FVector3f t{FVector3f::ZeroVector};
+
+        // How far we move along an axis per cell
         FVector3f t_deltas{FVector3f::ZeroVector};
 
         for (int32 axis{}; axis < n_axes; ++axis) {
