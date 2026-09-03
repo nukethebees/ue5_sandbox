@@ -28,39 +28,13 @@ float3 sbx_nebula_seed_offset(float const seed)
            127.0;
 }
 
-float sbx_nebula_volume_density(float3 const physical_position,
-                                float2 const flow,
-                                Texture2D density_texture,
-                                SamplerState density_sampler,
-                                float const feature_size,
-                                float const detail_size,
-                                float const seed,
-                                float const time)
-{
-    float3 const seed_offset = sbx_nebula_seed_offset(seed);
-    float3 const broad_position = physical_position / max(feature_size, 100.0) + seed_offset;
-    float3 const detail_position = physical_position / max(detail_size, 25.0) + seed_offset * 2.37;
-    float2 const broad_uv = broad_position.xy +
-                            broad_position.z * float2(0.37, 0.61) + flow * 0.08 +
-                            time * float2(0.17, -0.11);
-    float2 const detail_uv = detail_position.yz +
-                             detail_position.x * float2(-0.53, 0.41) - flow * 0.13 +
-                             time * float2(-0.09, 0.14);
-    float const broad = density_texture.SampleLevel(density_sampler, broad_uv, 0.0).r;
-    float const detail = density_texture.SampleLevel(density_sampler, detail_uv, 0.0).r;
-    float const macro = smoothstep(0.22,
-                                   0.78,
-                                   sbx_nebula_value_noise_3d(broad_position * 0.43));
-    return saturate(broad * lerp(0.48, 0.92, macro) + detail * 0.28 + macro * 0.22 - 0.36);
-}
-
 float4 sbx_nebula_volume(float2 screen_uv,
                          float3 surface_position_local,
                          float3 camera_position_local,
                          float pixel_depth,
                          float scene_depth,
-                         Texture2D density_texture,
-                         SamplerState density_sampler,
+                         Texture3D density_volume,
+                         SamplerState density_volume_sampler,
                          Texture2D flow_texture,
                          SamplerState flow_sampler,
                          float animation_time,
@@ -69,7 +43,6 @@ float4 sbx_nebula_volume(float2 screen_uv,
                          float emissive_strength,
                          float3 volume_extent,
                          float feature_size,
-                         float detail_size,
                          float seed,
                          float flow_strength,
                          float drift_speed,
@@ -109,6 +82,7 @@ float4 sbx_nebula_volume(float2 screen_uv,
     float2 const flow = sbx_nebula_decode_flow(
                             flow_texture.SampleLevel(flow_sampler, flow_uv, 0.0).rg) *
                         flow_strength;
+    float3 const density_motion = float3(flow.x, flow.y, (flow.x - flow.y) * 0.5) * time * 0.08;
     float3 const world_step = ray_direction * step_length * volume_extent * 0.01;
     float const optical_step = length(world_step) / max(feature_size, 100.0);
 
@@ -122,20 +96,14 @@ float4 sbx_nebula_volume(float2 screen_uv,
 
         float3 const position_local = camera_position_local + ray_direction * travelled;
         float3 const position_normalized = position_local * 0.01;
-        float3 const position_physical = position_normalized * volume_extent;
         float const boundary = smoothstep(0.5,
                                           0.34,
                                           max(abs(position_normalized.x),
                                               max(abs(position_normalized.y),
                                                   abs(position_normalized.z))));
-        float const raw_density = sbx_nebula_volume_density(position_physical,
-                                                            flow,
-                                                            density_texture,
-                                                            density_sampler,
-                                                            feature_size,
-                                                            detail_size,
-                                                            seed,
-                                                            time);
+        float3 const volume_uv = frac(position_normalized + 0.5 + density_motion);
+        float const raw_density =
+            density_volume.SampleLevel(density_volume_sampler, volume_uv, 0.0).r;
         float const sample_density = saturate((raw_density - 0.16) * density) * boundary;
         float const sample_alpha = 1.0 - exp(-sample_density * extinction * optical_step * 1.5);
         float const emission = smoothstep(0.28, 0.78, raw_density);

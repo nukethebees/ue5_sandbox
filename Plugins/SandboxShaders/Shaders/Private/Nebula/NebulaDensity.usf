@@ -1,0 +1,80 @@
+#include "/Engine/Public/Platform.ush"
+
+RWTexture3D<float> OutputTexture;
+int3 OutputSize;
+float3 FeaturePeriod;
+float3 DetailPeriod;
+float Seed;
+
+float sbx_nebula_density_hash(float3 value)
+{
+    value = frac(value * 0.1031);
+    value += dot(value, value.yzx + 33.33 + Seed * 0.0137);
+    return frac((value.x + value.y) * value.z);
+}
+
+float3 sbx_nebula_density_wrap(float3 const cell, float3 const period)
+{
+    return cell - floor(cell / period) * period;
+}
+
+float sbx_nebula_density_noise(float3 const value, float3 const period)
+{
+    float3 const cell = floor(value);
+    float3 interpolation = frac(value);
+    interpolation = interpolation * interpolation * (3.0 - 2.0 * interpolation);
+
+    float const x00 = lerp(
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell, period)),
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell + float3(1.0, 0.0, 0.0), period)),
+        interpolation.x);
+    float const x10 = lerp(
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell + float3(0.0, 1.0, 0.0), period)),
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell + float3(1.0, 1.0, 0.0), period)),
+        interpolation.x);
+    float const x01 = lerp(
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell + float3(0.0, 0.0, 1.0), period)),
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell + float3(1.0, 0.0, 1.0), period)),
+        interpolation.x);
+    float const x11 = lerp(
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell + float3(0.0, 1.0, 1.0), period)),
+        sbx_nebula_density_hash(sbx_nebula_density_wrap(cell + 1.0, period)),
+        interpolation.x);
+    return lerp(lerp(x00, x10, interpolation.y),
+                lerp(x01, x11, interpolation.y),
+                interpolation.z);
+}
+
+[numthreads(4, 4, 4)]
+void generate_nebula_density_cs(uint3 dispatch_thread_id : SV_DispatchThreadID)
+{
+    if (any(dispatch_thread_id >= uint3(OutputSize)))
+    {
+        return;
+    }
+
+    float3 const uv = (float3(dispatch_thread_id) + 0.5) / float3(OutputSize);
+    float3 const feature_position = uv * FeaturePeriod;
+    float3 const warp = float3(
+        sbx_nebula_density_noise(feature_position + float3(13.1, 7.7, 19.3), FeaturePeriod),
+        sbx_nebula_density_noise(feature_position + float3(31.7, 17.9, 5.3), FeaturePeriod),
+        sbx_nebula_density_noise(feature_position + float3(3.7, 43.1, 23.9), FeaturePeriod));
+    float3 const centred_warp = (warp - 0.5) * 1.35;
+    float3 const middle_period = max(round(DetailPeriod * 0.5), 1.0);
+
+    float const macro = sbx_nebula_density_noise(feature_position + centred_warp, FeaturePeriod);
+    float const middle = sbx_nebula_density_noise(
+        uv * middle_period + centred_warp * 1.7,
+        middle_period);
+    float const detail = sbx_nebula_density_noise(
+        uv * DetailPeriod + centred_warp * 2.6,
+        DetailPeriod);
+    float const fine = sbx_nebula_density_noise(
+        uv * DetailPeriod * 2.0 + centred_warp * 4.1,
+        DetailPeriod * 2.0);
+
+    float const body = smoothstep(0.38, 0.70, macro * 0.72 + middle * 0.28);
+    float const erosion = smoothstep(0.46, 0.72, detail * 0.72 + fine * 0.28);
+    float const density = saturate(body * lerp(0.35, 1.0, erosion) - 0.16);
+    OutputTexture[dispatch_thread_id] = density;
+}

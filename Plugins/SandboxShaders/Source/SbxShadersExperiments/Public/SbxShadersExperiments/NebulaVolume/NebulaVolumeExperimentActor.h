@@ -9,6 +9,7 @@ class UMaterialInstanceDynamic;
 class UMaterialInterface;
 class USceneComponent;
 class UStaticMeshComponent;
+class UTextureRenderTargetVolume;
 
 USTRUCT(BlueprintType)
 struct SBXSHADERSEXPERIMENTS_API FNebulaVolumeSettings {
@@ -58,6 +59,12 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaVolumeSettings {
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
+              Category = "Nebula Volume|Structure",
+              meta = (ClampMin = "32", ClampMax = "256", UIMin = "64", UIMax = "256"))
+    int32 volume_resolution{128};
+
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
               Category = "Nebula Volume",
               meta = (ClampMin = "0.0", ClampMax = "2.0"))
     float flow_strength{0.32f};
@@ -97,10 +104,15 @@ class SBXSHADERSEXPERIMENTS_API ANebulaVolumeExperimentActor final : public AAct
     UFUNCTION(CallInEditor, BlueprintCallable, Category = "Nebula Volume")
     void restart_animation();
 
+    UFUNCTION(CallInEditor, BlueprintCallable, Category = "Nebula Volume")
+    void regenerate_density();
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume")
     FNebulaVolumeSettings settings;
   private:
     void ensure_material();
+    void ensure_density_volume();
+    void generate_density_if_needed();
     void apply_settings();
 
     UPROPERTY(VisibleAnywhere, Category = "Nebula Volume")
@@ -115,5 +127,13 @@ class SBXSHADERSEXPERIMENTS_API ANebulaVolumeExperimentActor final : public AAct
     UPROPERTY(Transient)
     TObjectPtr<UMaterialInstanceDynamic> material_instance_;
 
+    UPROPERTY(Transient)
+    TObjectPtr<UTextureRenderTargetVolume> density_volume_;
+
     float animation_time_{0.0f};
+    FVector generated_extent_{FVector::ZeroVector};
+    float generated_feature_size_{0.0f};
+    float generated_detail_size_{0.0f};
+    int32 generated_seed_{0};
+    int32 generated_resolution_{0};
 };
