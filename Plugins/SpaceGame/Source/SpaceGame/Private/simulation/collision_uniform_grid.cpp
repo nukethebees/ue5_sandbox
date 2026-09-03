@@ -315,15 +315,25 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                    FVector3f const p0,
                                    FVector3f const inv_delta,
                                    FVector3f const delta) -> float {
+        constexpr auto no_hit{std::numeric_limits<float>::infinity()};
+
         // We want to find the hit with the smallest tmin
         // That is the closest hit
         float tmin{0.f};
         // We don't want to find anything that is beyond the ray
         float tmax{1.f};
 
+        auto const aabb_min{aabbs.mins[i_entity]};
+        auto const aabb_max{aabbs.maxes[i_entity]};
+
         for (int32 axis{0}; axis < n_axes; ++axis) {
-            auto t1{(aabbs.mins[i_entity][axis] - p0[axis]) * inv_delta[axis]};
-            auto t2{(aabbs.maxes[i_entity][axis] - p0[axis]) * inv_delta[axis]};
+            auto const slab_min{aabb_min[axis]};
+            auto const slab_max{aabb_max[axis]};
+            auto const axis_delta{inv_delta[axis]};
+            auto const start{p0[axis]};
+
+            auto t1{(slab_min - start) * axis_delta};
+            auto t2{(slab_max - start) * axis_delta};
 
             if (t1 > t2) {
                 Swap(t1, t2);
@@ -335,7 +345,7 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
 
             // Exit with no collision as soon as slab intersection becomes empty
             if (tmin > tmax) {
-                return std::numeric_limits<float>::infinity();
+                return no_hit;
             }
         }
 
