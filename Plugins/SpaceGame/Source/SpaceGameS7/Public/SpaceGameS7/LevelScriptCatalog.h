@@ -6,6 +6,7 @@ namespace ml::s7 {
 struct SPACEGAMES7_API FLevelScriptEntry {
     FString filename{};
     FString path{};
+    FString source_text{};
     FString display_title{};
     FString description{};
     FString error{};

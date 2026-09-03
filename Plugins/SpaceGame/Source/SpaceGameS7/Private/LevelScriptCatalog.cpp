@@ -3,6 +3,7 @@
 #include <SpaceGameS7/LevelDefinitionReader.h>
 
 #include <HAL/FileManager.h>
+#include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 
 namespace ml::s7 {
@@ -56,6 +57,7 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
             .path = path,
             .display_title = FPaths::GetBaseFilename(filename),
         };
+        FFileHelper::LoadFileToString(entry.source_text, *path);
         if (read_result) {
             entry.display_title = read_result.definition->metadata.title;
             entry.description = read_result.definition->metadata.description;

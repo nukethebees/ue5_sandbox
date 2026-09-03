@@ -3,8 +3,13 @@
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
 
+#include <Blueprint/WidgetTree.h>
+#include <Components/ButtonSlot.h>
+#include <Components/MultiLineEditableTextBox.h>
+#include <Components/SizeBox.h>
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
+#include <Components/VerticalBoxSlot.h>
 #include <Engine/GameInstance.h>
 #include <Kismet/GameplayStatics.h>
 
@@ -46,9 +51,62 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
         return;
     }
 
+    if (!create_script_preview()) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UScriptLevelSelectWidget::NativeOnInitialized: Failed to create the native "
+                    "script preview."));
+        return;
+    }
+
     refresh_button->OnClicked.AddDynamic(this, &ThisClass::handle_refresh);
     launch_button->OnClicked.AddDynamic(this, &ThisClass::handle_launch);
+    script_toggle_button_->OnClicked.AddDynamic(this, &ThisClass::handle_toggle_script);
     launch_button->SetIsEnabled(false);
+    script_toggle_button_->SetIsEnabled(false);
+    set_script_preview_visible(false);
+}
+
+auto UScriptLevelSelectWidget::create_script_preview() -> bool {
+    auto* const parent{IsValid(status_text) ? Cast<UVerticalBox>(status_text->GetParent())
+                                            : nullptr};
+    if (!IsValid(parent) || !IsValid(WidgetTree)) {
+        return false;
+    }
+
+    script_toggle_button_ = WidgetTree->ConstructWidget<UButton>();
+    script_toggle_text_ = WidgetTree->ConstructWidget<UTextBlock>();
+    script_preview_container_ = WidgetTree->ConstructWidget<USizeBox>();
+    script_preview_ = WidgetTree->ConstructWidget<UMultiLineEditableTextBox>();
+    if (!IsValid(script_toggle_button_) || !IsValid(script_toggle_text_) ||
+        !IsValid(script_preview_container_) || !IsValid(script_preview_)) {
+        return false;
+    }
+
+    script_toggle_text_->SetText(FText::FromString(TEXT("Show Script")));
+    auto* const button_slot{
+        Cast<UButtonSlot>(script_toggle_button_->AddChild(script_toggle_text_))};
+    if (!IsValid(button_slot)) {
+        return false;
+    }
+    button_slot->SetPadding(FMargin{12.0f, 6.0f});
+
+    script_preview_->SetIsReadOnly(true);
+    script_preview_container_->SetHeightOverride(260.0f);
+    script_preview_container_->AddChild(script_preview_);
+
+    auto const status_index{parent->GetChildIndex(status_text)};
+    auto* const toggle_slot{
+        Cast<UVerticalBoxSlot>(parent->InsertChildAt(status_index + 1, script_toggle_button_))};
+    auto* const preview_slot{
+        Cast<UVerticalBoxSlot>(parent->InsertChildAt(status_index + 2, script_preview_container_))};
+    if (!IsValid(toggle_slot) || !IsValid(preview_slot)) {
+        return false;
+    }
+    toggle_slot->SetHorizontalAlignment(HAlign_Left);
+    toggle_slot->SetPadding(FMargin{0.0f, 4.0f, 0.0f, 8.0f});
+    preview_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
+    return true;
 }
 
 void UScriptLevelSelectWidget::activate() {
@@ -64,7 +122,8 @@ void UScriptLevelSelectWidget::activate() {
 
 void UScriptLevelSelectWidget::refresh_levels() {
     if (!IsValid(level_list) || !IsValid(launch_button) || !IsValid(status_text) ||
-        !IsValid(selected_file_text) || !IsValid(title_text) || !IsValid(description_text)) {
+        !IsValid(selected_file_text) || !IsValid(title_text) || !IsValid(description_text) ||
+        !IsValid(script_toggle_button_) || !IsValid(script_preview_)) {
         return;
     }
 
@@ -73,6 +132,9 @@ void UScriptLevelSelectWidget::refresh_levels() {
     level_buttons_.Reset();
     selected_index_ = INDEX_NONE;
     launch_button->SetIsEnabled(false);
+    script_toggle_button_->SetIsEnabled(false);
+    script_preview_->SetText(FText::GetEmpty());
+    set_script_preview_visible(false);
     selected_file_text->SetText(FText::GetEmpty());
     title_text->SetText(FText::FromString(TEXT("Select a level")));
     description_text->SetText(
@@ -116,7 +178,8 @@ void UScriptLevelSelectWidget::refresh_levels() {
 
 void UScriptLevelSelectWidget::select_level(int32 const index) {
     if (!entries_.IsValidIndex(index) || !IsValid(launch_button) || !IsValid(selected_file_text) ||
-        !IsValid(title_text) || !IsValid(description_text) || !IsValid(status_text)) {
+        !IsValid(title_text) || !IsValid(description_text) || !IsValid(status_text) ||
+        !IsValid(script_toggle_button_) || !IsValid(script_preview_)) {
         return;
     }
 
@@ -132,10 +195,24 @@ void UScriptLevelSelectWidget::select_level(int32 const index) {
     description_text->SetText(FText::FromString(entry.description));
     status_text->SetText(
         FText::FromString(entry ? FString{TEXT("Ready to launch.")} : entry.error));
+    script_preview_->SetText(FText::FromString(entry.source_text));
+    script_toggle_button_->SetIsEnabled(true);
     launch_button->SetIsEnabled(static_cast<bool>(entry));
     if (entry) {
         launch_button->SetKeyboardFocus();
     }
+}
+
+void UScriptLevelSelectWidget::set_script_preview_visible(bool const visible) {
+    if (!IsValid(script_preview_container_) || !IsValid(script_toggle_text_)) {
+        return;
+    }
+
+    script_preview_visible_ = visible;
+    script_preview_container_->SetVisibility(visible ? ESlateVisibility::Visible
+                                                     : ESlateVisibility::Collapsed);
+    script_toggle_text_->SetText(
+        FText::FromString(visible ? FString{TEXT("Hide Script")} : FString{TEXT("Show Script")}));
 }
 
 void UScriptLevelSelectWidget::handle_refresh() {
@@ -161,5 +238,13 @@ void UScriptLevelSelectWidget::handle_launch() {
     launch_button->SetIsEnabled(false);
     status_text->SetText(FText::FromString(TEXT("Loading level...")));
     UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/GameRuntime")});
+}
+
+void UScriptLevelSelectWidget::handle_toggle_script() {
+    if (!entries_.IsValidIndex(selected_index_)) {
+        return;
+    }
+
+    set_script_preview_visible(!script_preview_visible_);
 }
 }

@@ -9,6 +9,8 @@
 
 class UTextBlock;
 class UVerticalBox;
+class UMultiLineEditableTextBox;
+class USizeBox;
 
 namespace ml::s7 {
 DECLARE_MULTICAST_DELEGATE_OneParam(FLevelScriptSelected, int32);
@@ -37,13 +39,17 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
   protected:
     void NativeOnInitialized() override;
   private:
+    auto create_script_preview() -> bool;
     void refresh_levels();
     void select_level(int32 index);
+    void set_script_preview_visible(bool visible);
 
     UFUNCTION()
     void handle_refresh();
     UFUNCTION()
     void handle_launch();
+    UFUNCTION()
+    void handle_toggle_script();
 
     UPROPERTY(meta = (BindWidget))
     UVerticalBox* level_list{nullptr};
@@ -63,6 +69,15 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     TArray<FLevelScriptEntry> entries_{};
     UPROPERTY(Transient)
     TArray<TObjectPtr<ULevelScriptButton>> level_buttons_{};
+    UPROPERTY(Transient)
+    TObjectPtr<UButton> script_toggle_button_{nullptr};
+    UPROPERTY(Transient)
+    TObjectPtr<UTextBlock> script_toggle_text_{nullptr};
+    UPROPERTY(Transient)
+    TObjectPtr<USizeBox> script_preview_container_{nullptr};
+    UPROPERTY(Transient)
+    TObjectPtr<UMultiLineEditableTextBox> script_preview_{nullptr};
     int32 selected_index_{INDEX_NONE};
+    bool script_preview_visible_{false};
 };
 }
