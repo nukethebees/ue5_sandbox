@@ -98,6 +98,15 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Camera distance is preserved"), camera.distance, 10000.0);
     }
 
+    TEST_METHOD(CameraCanTargetOneEntity)
+    {
+        auto definition{make_camera_level()};
+        definition.camera->target_entity_ids.SetNum(1);
+
+        auto const validation{ml::validate_level(definition)};
+        TestRunner->TestTrue(TEXT("Single-target camera is valid"), static_cast<bool>(validation));
+    }
+
     TEST_METHOD(BuilderReplacesPlayerAndCanBeReused)
     {
         ml::FLevelBuilder builder;
@@ -154,6 +163,39 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Duplicate entity id is reported"),
             contains_error(validation, ml::ELevelValidationErrorCode::DuplicateEntityId));
+    }
+
+    TEST_METHOD(BuilderReuseClearsCameraState)
+    {
+        ml::FLevelBuilder builder;
+        builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Camera")});
+        builder.add_team(ml::FTeamDefinition{.id = ml::level_teams::blue});
+        builder.add_entity(ml::FEntitySpawnDefinition{
+            .id = ml::FLevelEntityId{FName{TEXT("capital")}},
+            .archetype = ml::level_archetypes::capital_ship,
+            .team = ml::level_teams::blue,
+        });
+        builder.set_camera(ml::FLevelCameraDefinition{
+            .target_entity_ids = {ml::FLevelEntityId{FName{TEXT("capital")}}},
+            .offset_direction = FVector{-1.0, 0.0, 0.0},
+            .distance = 1000.0,
+        });
+        auto const camera_level{builder.finish()};
+        TestRunner->TestTrue(TEXT("First definition has a camera"), camera_level.camera.IsSet());
+
+        builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Player")});
+        builder.add_team(ml::FTeamDefinition{.id = ml::level_teams::blue});
+        builder.set_player(ml::FPlayerDefinition{
+            .id = ml::FLevelEntityId{FName{TEXT("player")}},
+            .archetype = ml::level_archetypes::player_fighter,
+            .team = ml::level_teams::blue,
+        });
+        auto const player_level{builder.finish()};
+
+        TestRunner->TestFalse(TEXT("Reused builder clears the camera"),
+                              player_level.camera.IsSet());
+        TestRunner->TestTrue(TEXT("Reused builder definition is valid"),
+                             static_cast<bool>(ml::validate_level(player_level)));
     }
 
     TEST_METHOD(MalformedDefinitionsReportStructuredErrors)
@@ -245,6 +287,21 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Invalid camera direction is reported"),
             contains_error(direction_validation,
+                           ml::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
+
+        auto non_finite_distance{make_camera_level()};
+        non_finite_distance.camera->distance = std::numeric_limits<double>::infinity();
+        auto const non_finite_distance_validation{ml::validate_level(non_finite_distance)};
+        TestRunner->TestTrue(TEXT("Non-finite camera distance is reported"),
+                             contains_error(non_finite_distance_validation,
+                                            ml::ELevelValidationErrorCode::InvalidCameraDistance));
+
+        auto non_finite_direction{make_camera_level()};
+        non_finite_direction.camera->offset_direction.X = std::numeric_limits<double>::quiet_NaN();
+        auto const non_finite_direction_validation{ml::validate_level(non_finite_direction)};
+        TestRunner->TestTrue(
+            TEXT("Non-finite camera direction is reported"),
+            contains_error(non_finite_direction_validation,
                            ml::ELevelValidationErrorCode::InvalidCameraOffsetDirection));
     }
 };

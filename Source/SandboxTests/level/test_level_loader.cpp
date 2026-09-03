@@ -41,8 +41,14 @@ void FLevelLoaderCameraScenario::load_fixture() {
         return;
     }
 
+    auto definition{scripted_definition.definition.GetValue()};
+    auto const red_capital_index{
+        definition.entities.ids.IndexOfByKey(FLevelEntityId{FName{TEXT("red-capital")}})};
+    check(red_capital_index != INDEX_NONE);
+    definition.entities.positions.xs[red_capital_index] = 90000.0;
+
     FLevelLoader loader{context_.orchestrator};
-    auto const load_result{loader.load(scripted_definition.definition.GetValue())};
+    auto const load_result{loader.load(definition)};
     if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
         return;
     }
@@ -60,7 +66,9 @@ void FLevelLoaderCameraScenario::load_fixture() {
 
     auto* const player_controller{UGameplayStatics::GetPlayerController(&context_.world, 0)};
     checks.is_valid(player_controller, TEXT("Test world has a player controller"));
-    auto const expected_camera_position{FVector{-1.0, -1.0, 0.6}.GetSafeNormal() * 180000.0};
+    auto const expected_focus{FVector{10000.0, 0.0, 0.0}};
+    auto const expected_camera_position{expected_focus +
+                                        FVector{-1.0, -1.0, 0.6}.GetSafeNormal() * 180000.0};
     ACameraActor* camera{nullptr};
     for (TActorIterator<ACameraActor> it{&context_.world}; it; ++it) {
         if (it->GetActorLocation().Equals(expected_camera_position, 0.1)) {
@@ -71,9 +79,10 @@ void FLevelLoaderCameraScenario::load_fixture() {
     camera_ = camera;
     if (checks.is_valid(camera, TEXT("Loader spawns the authored camera"))) {
         auto const camera_position{camera->GetActorLocation()};
-        checks.is_true(FMath::IsNearlyEqual(camera_position.Size(), 180000.0, 0.1),
-                       TEXT("Camera uses the authored distance from the target midpoint"));
-        auto const direction_to_focus{(-camera_position).GetSafeNormal()};
+        checks.is_true(
+            FMath::IsNearlyEqual((camera_position - expected_focus).Size(), 180000.0, 0.1),
+            TEXT("Camera uses the authored distance from the target midpoint"));
+        auto const direction_to_focus{(expected_focus - camera_position).GetSafeNormal()};
         checks.is_true(camera->GetActorForwardVector().Equals(direction_to_focus, 0.001),
                        TEXT("Camera centres the target midpoint"));
     }

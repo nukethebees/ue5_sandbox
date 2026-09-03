@@ -206,4 +206,53 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Camera decode error is reported"),
                               result.decode_errors.IsEmpty());
     }
+
+    TEST_METHOD(RejectsDuplicateCameraClauses)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const result{reader.read_source(LR"(
+(level
+  (title "Duplicate Camera")
+  (teams (team 'blue))
+  (camera (look-at 'capital) (distance 1000) (offset-direction -1 0 0))
+  (camera (look-at 'capital) (distance 2000) (offset-direction 1 0 0))
+  (entities
+    (entity 'capital 'capital-ship 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+
+        TestRunner->TestFalse(TEXT("Duplicate camera is rejected"), static_cast<bool>(result));
+        TestRunner->TestFalse(TEXT("Duplicate camera decode error is reported"),
+                              result.decode_errors.IsEmpty());
+    }
+
+    TEST_METHOD(ReportsInvalidCameraTargetReferences)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const empty_targets{reader.read_source(LR"(
+(level
+  (title "Empty Targets")
+  (teams (team 'blue))
+  (camera (look-at) (distance 1000) (offset-direction -1 0 0))
+  (entities
+    (entity 'capital 'capital-ship 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+        TestRunner->TestTrue(
+            TEXT("Empty camera targets are reported by native validation"),
+            contains_error(empty_targets, ml::ELevelValidationErrorCode::MissingCameraTarget));
+
+        auto const unknown_target{reader.read_source(LR"(
+(level
+  (title "Unknown Target")
+  (teams (team 'blue))
+  (camera (look-at 'missing) (distance 1000) (offset-direction -1 0 0))
+  (entities
+    (entity 'capital 'capital-ship 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+        TestRunner->TestTrue(
+            TEXT("Unknown camera target is reported by native validation"),
+            contains_error(unknown_target, ml::ELevelValidationErrorCode::CameraTargetNotFound));
+    }
 };
