@@ -19,6 +19,15 @@ static_assert(FEntityAABBs::fighter_index ==
               std::to_underlying(ETestEntityType::CapitalShipFighter));
 static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntityType::TubeSpinner));
 static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
+
+auto to_closed_max_cell(float const value, float const cell_dim, int32 const grid_dim) -> int32 {
+    auto const half_grid_extent{static_cast<float>(grid_dim) * cell_dim * 0.5f};
+    if (value == half_grid_extent) {
+        return grid_dim - 1;
+    }
+
+    return FMath::FloorToInt((value + half_grid_extent) / cell_dim);
+}
 }
 
 auto CollisionUniformGrid::get_grid_dims() const noexcept -> FIntVector3 {
@@ -425,16 +434,10 @@ auto CollisionUniformGrid::to_min_cell_coord(FVector3f const pos) const -> FIntV
     return to_cell_coord(pos);
 }
 auto CollisionUniformGrid::to_max_cell_coord(FVector3f const pos) const -> FIntVector3 {
-    FVector3f const half_grid_extent{
-        static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f,
-        static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f,
-        static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f,
-    };
-
     return {
-        FMath::CeilToInt((pos.X + half_grid_extent.X) / cell_dims_.X) - 1,
-        FMath::CeilToInt((pos.Y + half_grid_extent.Y) / cell_dims_.Y) - 1,
-        FMath::CeilToInt((pos.Z + half_grid_extent.Z) / cell_dims_.Z) - 1,
+        to_closed_max_cell(pos.X, cell_dims_.X, grid_dims_.X),
+        to_closed_max_cell(pos.Y, cell_dims_.Y, grid_dims_.Y),
+        to_closed_max_cell(pos.Z, cell_dims_.Z, grid_dims_.Z),
     };
 }
 auto CollisionUniformGrid::to_cell_min_x(int32 const x) const -> float {
