@@ -141,12 +141,14 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                 continue;
             }
 
-            auto const location{entity_data.locations[i]};
-
             auto const entity_type{entity_data.entity_types[i]};
-            auto const half_extents{entity_aabbs.get_half_extents(std::to_underlying(entity_type))};
-            auto const min_point{location - half_extents};
-            auto const max_point{location + half_extents};
+            auto const aabb_index{std::to_underlying(entity_type)};
+            auto const entity_location{entity_data.locations[i]};
+            auto const local_aabb_centre{entity_aabbs.get_centre(aabb_index)};
+            auto const half_extents{entity_aabbs.get_half_extents(aabb_index)};
+            auto const world_aabb_centre{entity_location + local_aabb_centre};
+            auto const min_point{world_aabb_centre - half_extents};
+            auto const max_point{world_aabb_centre + half_extents};
 
             auto const min_coord{to_min_cell_coord(min_point)};
             auto const max_coord{to_max_cell_coord(max_point)};
@@ -174,12 +176,10 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                     *to_string(grid_dims_ - FIntVector3{1, 1, 1}));
             }
 
-            entities_buffer_.locations.add(location);
             entities_buffer_.min_points.add(min_point);
             entities_buffer_.max_points.add(max_point);
             entities_buffer_.mins.add(min_coord);
             entities_buffer_.maxes.add(max_coord);
-            entities_buffer_.entity_types.Add(entity_type);
             entities_buffer_.handles.Add({i, gens[i]});
 
             for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {

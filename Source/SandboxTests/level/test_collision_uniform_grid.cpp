@@ -317,10 +317,13 @@ void FCollisionUniformGridScenario::sample_grid() {
         }
 
         auto const registered_type{registry.get_entity_type(handle)};
-        auto const location{registry.get_location(handle)};
-        auto const half_extents{entity_aabbs.get_half_extents(std::to_underlying(registered_type))};
-        auto const min_coord{grid.to_min_cell_coord(location - half_extents)};
-        auto const max_coord{grid.to_max_cell_coord(location + half_extents)};
+        auto const aabb_index{std::to_underlying(registered_type)};
+        auto const entity_location{registry.get_location(handle)};
+        auto const local_aabb_centre{entity_aabbs.get_centre(aabb_index)};
+        auto const half_extents{entity_aabbs.get_half_extents(aabb_index)};
+        auto const world_aabb_centre{entity_location + local_aabb_centre};
+        auto const min_coord{grid.to_min_cell_coord(world_aabb_centre - half_extents)};
+        auto const max_coord{grid.to_max_cell_coord(world_aabb_centre + half_extents)};
 
         auto const is_in_bounds{grid.is_cell_coord_in_bounds(min_coord) &&
                                 grid.is_cell_coord_in_bounds(max_coord)};

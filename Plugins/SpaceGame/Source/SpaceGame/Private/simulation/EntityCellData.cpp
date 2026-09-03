@@ -19,12 +19,10 @@ auto FEntityCellDataConstView::get_view() const -> ConstView {
 
 auto FEntityCellDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        locations.get_const_view(offset, count),
         min_points.get_const_view(offset, count),
         max_points.get_const_view(offset, count),
         mins.get_const_view(offset, count),
         maxes.get_const_view(offset, count),
-        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
@@ -35,18 +33,16 @@ auto FEntityCellDataConstView::get_const_view() const -> ConstView {
 
 auto FEntityCellDataConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        locations.get_const_view(offset, count),
         min_points.get_const_view(offset, count),
         max_points.get_const_view(offset, count),
         mins.get_const_view(offset, count),
         maxes.get_const_view(offset, count),
-        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
 
 auto FEntityCellDataConstView::num() const noexcept -> int32 {
-    return ml::num(locations);
+    return ml::num(min_points);
 }
 
 auto FEntityCellDataConstView::is_empty() const noexcept -> bool {
@@ -55,12 +51,10 @@ auto FEntityCellDataConstView::is_empty() const noexcept -> bool {
 
 void FEntityCellDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(locations),
         ml::num(min_points),
         ml::num(max_points),
         ml::num(mins),
         ml::num(maxes),
-        ml::num(entity_types),
         ml::num(handles),
     });
 }
@@ -83,12 +77,10 @@ auto FEntityCellDataView::get_view() -> View {
 
 auto FEntityCellDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        locations.get_view(offset, count),
         min_points.get_view(offset, count),
         max_points.get_view(offset, count),
         mins.get_view(offset, count),
         maxes.get_view(offset, count),
-        TArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
@@ -99,12 +91,10 @@ auto FEntityCellDataView::get_view() const -> ConstView {
 
 auto FEntityCellDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        locations.get_const_view(offset, count),
         min_points.get_const_view(offset, count),
         max_points.get_const_view(offset, count),
         mins.get_const_view(offset, count),
         maxes.get_const_view(offset, count),
-        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
@@ -115,18 +105,16 @@ auto FEntityCellDataView::get_const_view() const -> ConstView {
 
 auto FEntityCellDataView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        locations.get_const_view(offset, count),
         min_points.get_const_view(offset, count),
         max_points.get_const_view(offset, count),
         mins.get_const_view(offset, count),
         maxes.get_const_view(offset, count),
-        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
 
 auto FEntityCellDataView::num() const noexcept -> int32 {
-    return ml::num(locations);
+    return ml::num(min_points);
 }
 
 auto FEntityCellDataView::is_empty() const noexcept -> bool {
@@ -135,12 +123,10 @@ auto FEntityCellDataView::is_empty() const noexcept -> bool {
 
 void FEntityCellDataView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(locations),
         ml::num(min_points),
         ml::num(max_points),
         ml::num(mins),
         ml::num(maxes),
-        ml::num(entity_types),
         ml::num(handles),
     });
 }
@@ -170,64 +156,52 @@ auto FEntityCellDataView::right(int32 const count) const -> ConstView {
 }
 
 void FEntityCellData::reset() {
-    ml::reset(locations);
     ml::reset(min_points);
     ml::reset(max_points);
     ml::reset(mins);
     ml::reset(maxes);
-    ml::reset(entity_types);
     ml::reset(handles);
 }
 
 void FEntityCellData::reserve(int32 const count) {
-    ml::reserve(locations, count);
     ml::reserve(min_points, count);
     ml::reserve(max_points, count);
     ml::reserve(mins, count);
     ml::reserve(maxes, count);
-    ml::reserve(entity_types, count);
     ml::reserve(handles, count);
 }
 
 void FEntityCellData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(locations, count);
     ml::add_uninitialised(min_points, count);
     ml::add_uninitialised(max_points, count);
     ml::add_uninitialised(mins, count);
     ml::add_uninitialised(maxes, count);
-    ml::add_uninitialised(entity_types, count);
     ml::add_uninitialised(handles, count);
 }
 
 void FEntityCellData::add_defaulted(int32 const count) {
-    ml::add_defaulted(locations, count);
     ml::add_defaulted(min_points, count);
     ml::add_defaulted(max_points, count);
     ml::add_defaulted(mins, count);
     ml::add_defaulted(maxes, count);
-    ml::add_defaulted(entity_types, count);
     ml::add_defaulted(handles, count);
 }
 
 void FEntityCellData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(locations, count, allow_shrinking);
     ml::set_num(min_points, count, allow_shrinking);
     ml::set_num(max_points, count, allow_shrinking);
     ml::set_num(mins, count, allow_shrinking);
     ml::set_num(maxes, count, allow_shrinking);
-    ml::set_num(entity_types, count, allow_shrinking);
     ml::set_num(handles, count, allow_shrinking);
 }
 
 void FEntityCellData::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(locations, indices);
     ml::apply_permutation(min_points, indices);
     ml::apply_permutation(max_points, indices);
     ml::apply_permutation(mins, indices);
     ml::apply_permutation(maxes, indices);
-    ml::apply_permutation(entity_types, indices);
     ml::apply_permutation(handles, indices);
 }
 
@@ -237,12 +211,10 @@ auto FEntityCellData::get_view() -> View {
 
 auto FEntityCellData::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        locations.get_view(offset, count),
         min_points.get_view(offset, count),
         max_points.get_view(offset, count),
         mins.get_view(offset, count),
         maxes.get_view(offset, count),
-        TArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
@@ -253,12 +225,10 @@ auto FEntityCellData::get_view() const -> ConstView {
 
 auto FEntityCellData::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        locations.get_const_view(offset, count),
         min_points.get_const_view(offset, count),
         max_points.get_const_view(offset, count),
         mins.get_const_view(offset, count),
         maxes.get_const_view(offset, count),
-        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
@@ -269,18 +239,16 @@ auto FEntityCellData::get_const_view() const -> ConstView {
 
 auto FEntityCellData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        locations.get_const_view(offset, count),
         min_points.get_const_view(offset, count),
         max_points.get_const_view(offset, count),
         mins.get_const_view(offset, count),
         maxes.get_const_view(offset, count),
-        TConstArrayView<ETestEntityType>{entity_types}.Slice(offset, count),
         TConstArrayView<FRegistryEntityHandle>{handles}.Slice(offset, count),
     };
 }
 
 auto FEntityCellData::num() const noexcept -> int32 {
-    return ml::num(locations);
+    return ml::num(min_points);
 }
 
 auto FEntityCellData::is_empty() const noexcept -> bool {
@@ -289,12 +257,10 @@ auto FEntityCellData::is_empty() const noexcept -> bool {
 
 void FEntityCellData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(locations),
         ml::num(min_points),
         ml::num(max_points),
         ml::num(mins),
         ml::num(maxes),
-        ml::num(entity_types),
         ml::num(handles),
     });
 }
