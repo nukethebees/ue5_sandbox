@@ -94,6 +94,8 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
                            ml::EOrchestratorSetupScenario::LevelTelemetry)
     SHARED_SIMULATION_TEST(Orchestrator_ResetForNewLevel, ml::FTestBatchOrchestratorResetScenario)
     SHARED_SIMULATION_TEST(LevelLoader_MaterialisesDefinition, ml::FLevelLoaderScenario)
+    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesPlayerlessCameraDefinition,
+                           ml::FLevelLoaderCameraScenario)
 
     SHARED_SIMULATION_TEST(CapitalShipProxy_HealthOverridesConfig,
                            ml::FTestCapitalShipProxyScenario)

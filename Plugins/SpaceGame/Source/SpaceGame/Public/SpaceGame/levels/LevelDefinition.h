@@ -31,9 +31,16 @@ struct SPACEGAME_API FEntitySpawnDefinition {
     FRotator rotation{FRotator::ZeroRotator};
 };
 
+struct SPACEGAME_API FLevelCameraDefinition {
+    TArray<FLevelEntityId> target_entity_ids{};
+    FVector offset_direction{FVector::ZeroVector};
+    double distance{0.0};
+};
+
 struct SPACEGAME_API FLevelDefinition {
     FLevelMetadata metadata{};
     FLevelEntityId player_entity_id{};
+    TOptional<FLevelCameraDefinition> camera{NullOpt};
     TArray<FLevelTeamId> teams{};
     FLevelEntityTable entities{};
 };
@@ -43,6 +50,7 @@ class SPACEGAME_API FLevelBuilder {
     void set_metadata(FLevelMetadata const& metadata);
     void set_player_entity(FLevelEntityId id);
     void set_player(FPlayerDefinition const& player);
+    void set_camera(FLevelCameraDefinition const& camera);
     auto add_team(FTeamDefinition const& team) -> FLevelTeamId;
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
     auto finish() -> FLevelDefinition;
@@ -53,7 +61,8 @@ class SPACEGAME_API FLevelBuilder {
 
 enum class ELevelValidationErrorCode : uint8 {
     MissingTitle,
-    MissingPlayer,
+    MissingViewpoint,
+    ConflictingViewpoints,
     PlayerEntityNotFound,
     MismatchedEntityColumns,
     EmptyTeamId,
@@ -65,6 +74,11 @@ enum class ELevelValidationErrorCode : uint8 {
     ArchetypeRoleMismatch,
     DuplicateEntityId,
     InvalidPlacement,
+    MissingCameraTarget,
+    DuplicateCameraTarget,
+    CameraTargetNotFound,
+    InvalidCameraDistance,
+    InvalidCameraOffsetDirection,
 };
 
 struct SPACEGAME_API FLevelValidationError {

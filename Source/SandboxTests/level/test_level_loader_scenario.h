@@ -5,6 +5,21 @@
 #include <SandboxCore/time_series_data.h>
 
 namespace ml {
+class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
+    inline static FTimespan const timeout{0, 0, 2};
+  public:
+    explicit FLevelLoaderCameraScenario(FSimulationTestContext& context);
+    void run() override;
+  private:
+    void load_fixture();
+    void sample_runtime(ATestBatchOrchestrator& orchestrator);
+    void check_runtime();
+    void on_tear_down() override;
+
+    TimeSeriesData<int32> entity_counts_;
+    TWeakObjectPtr<AActor> camera_;
+};
+
 class FLevelLoaderScenario final : public FSimulationTestScenario {
     struct FSample {
         int32 authored_entities{0};

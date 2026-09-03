@@ -8,8 +8,10 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
+#include <Camera/CameraActor.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
+#include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
 
 namespace ml {
@@ -99,7 +101,9 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     }
 
     auto const* const config{orchestrator_.get_level_config()};
-    if (!IsValid(config) || !config->is_valid() || !IsValid(config->classes.player_ship_class) ||
+    auto const has_player{definition.player_entity_id.is_set()};
+    if (!IsValid(config) || !config->is_valid() ||
+        (has_player && !IsValid(config->classes.player_ship_class)) ||
         !IsValid(config->classes.capital_ship_proxy_class)) {
         add_error(result,
                   ELevelLoadErrorCode::InvalidLevelConfig,
@@ -130,31 +134,36 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     TArray<AActor*> spawned_actors;
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
-    spawned_actors.Reserve(entity_count);
+    spawned_actors.Reserve(entity_count + (definition.camera.IsSet() ? 1 : 0));
 
-    auto const player_index{definition.entities.ids.IndexOfByKey(definition.player_entity_id)};
-    check(player_index != INDEX_NONE);
-    auto const player_team{resolve_team(entities.teams[player_index])};
-    check(player_team.IsSet());
-    auto const player_transform{entity_transform(entities, player_index)};
-    auto* const player{world->SpawnActorDeferred<ATestSpaceShip>(config->classes.player_ship_class,
-                                                                 player_transform)};
-    if (!IsValid(player)) {
-        add_error(result,
-                  ELevelLoadErrorCode::ActorSpawnFailed,
-                  TEXT("Failed to begin spawning the player"));
-        return result;
-    }
+    auto const player_index{has_player
+                                ? definition.entities.ids.IndexOfByKey(definition.player_entity_id)
+                                : INDEX_NONE};
+    ATestSpaceShip* player{nullptr};
+    if (has_player) {
+        check(player_index != INDEX_NONE);
+        auto const player_team{resolve_team(entities.teams[player_index])};
+        check(player_team.IsSet());
+        auto const player_transform{entity_transform(entities, player_index)};
+        player = world->SpawnActorDeferred<ATestSpaceShip>(config->classes.player_ship_class,
+                                                           player_transform);
+        if (!IsValid(player)) {
+            add_error(result,
+                      ELevelLoadErrorCode::ActorSpawnFailed,
+                      TEXT("Failed to begin spawning the player"));
+            return result;
+        }
 
-    spawned_actors.Add(player);
-    player->set_actor_config(&config->player_ship);
-    player->set_team(player_team.GetValue());
-    if (!finish_spawn(*player, player_transform)) {
-        destroy_spawned_actors(spawned_actors);
-        add_error(result,
-                  ELevelLoadErrorCode::ActorSpawnFailed,
-                  TEXT("Failed to finish spawning the player"));
-        return result;
+        spawned_actors.Add(player);
+        player->set_actor_config(&config->player_ship);
+        player->set_team(player_team.GetValue());
+        if (!finish_spawn(*player, player_transform)) {
+            destroy_spawned_actors(spawned_actors);
+            add_error(result,
+                      ELevelLoadErrorCode::ActorSpawnFailed,
+                      TEXT("Failed to finish spawning the player"));
+            return result;
+        }
     }
 
     for (int32 i{0}; i < entity_count; ++i) {
@@ -207,7 +216,52 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         }
     }
 
-    orchestrator_.set_player_ship(*player);
+    if (definition.camera.IsSet()) {
+        auto const& camera_definition{definition.camera.GetValue()};
+        FVector focus{FVector::ZeroVector};
+        for (auto const target_id : camera_definition.target_entity_ids) {
+            auto const target_index{definition.entities.ids.IndexOfByKey(target_id)};
+            check(target_index != INDEX_NONE);
+            focus += entities.positions[target_index];
+        }
+        focus /= camera_definition.target_entity_ids.Num();
+
+        auto const camera_position{focus + camera_definition.offset_direction.GetSafeNormal() *
+                                               camera_definition.distance};
+        auto const camera_transform{
+            FTransform{(focus - camera_position).Rotation(), camera_position}};
+        auto* const camera{
+            world->SpawnActorDeferred<ACameraActor>(ACameraActor::StaticClass(), camera_transform)};
+        if (!IsValid(camera)) {
+            destroy_spawned_actors(spawned_actors);
+            add_error(result,
+                      ELevelLoadErrorCode::ActorSpawnFailed,
+                      TEXT("Failed to begin spawning the initial camera"));
+            return result;
+        }
+
+        spawned_actors.Add(camera);
+        if (!finish_spawn(*camera, camera_transform)) {
+            destroy_spawned_actors(spawned_actors);
+            add_error(result,
+                      ELevelLoadErrorCode::ActorSpawnFailed,
+                      TEXT("Failed to finish spawning the initial camera"));
+            return result;
+        }
+
+        auto* const player_controller{UGameplayStatics::GetPlayerController(world, 0)};
+        if (!IsValid(player_controller)) {
+            destroy_spawned_actors(spawned_actors);
+            add_error(result,
+                      ELevelLoadErrorCode::MissingInfrastructure,
+                      TEXT("Initial camera requires a local player controller"));
+            return result;
+        }
+        player_controller->SetViewTarget(camera);
+    } else {
+        check(IsValid(player));
+        orchestrator_.set_player_ship(*player);
+    }
     return result;
 }
 }

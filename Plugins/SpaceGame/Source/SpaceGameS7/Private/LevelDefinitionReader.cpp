@@ -17,6 +17,11 @@ constexpr TCHAR level_prelude[]{LR"(
 (define (teams . values) (cons 'teams values))
 (define (team id) (list 'team id))
 (define (player id) (list 'player id))
+(define (camera targets camera-distance direction)
+  (list 'camera targets camera-distance direction))
+(define (look-at . ids) (cons 'look-at ids))
+(define (distance value) (list 'distance value))
+(define (offset-direction x y z) (list 'offset-direction x y z))
 (define (entities . values) (cons 'entities values))
 (define (entity id archetype team position rotation)
   (list 'entity id archetype team position rotation))
@@ -47,6 +52,7 @@ class FDefinitionDecoder final {
         bool has_description{false};
         bool has_teams{false};
         bool has_player{false};
+        bool has_camera{false};
         bool has_entities{false};
         for (int64 i{0}; i < clause_count; ++i) {
             auto const clause{list_value(root_, i + 1)};
@@ -95,6 +101,13 @@ class FDefinitionDecoder final {
                     read_symbol(list_value(clause, 1), path + TEXT(".id"), id)) {
                     builder.set_player_entity(FLevelEntityId{id});
                 }
+            } else if (tag_name == TEXT("camera")) {
+                if (has_camera) {
+                    add_error(path, TEXT("Duplicate camera clause"));
+                    continue;
+                }
+                has_camera = true;
+                read_camera(clause, path, builder);
             } else if (tag_name == TEXT("entities")) {
                 if (has_entities) {
                     add_error(path, TEXT("Duplicate entities clause"));
@@ -219,6 +232,57 @@ class FDefinitionDecoder final {
             if (read_symbol(list_value(value, 1), team_path + TEXT(".id"), id)) {
                 builder.add_team(FTeamDefinition{.id = FLevelTeamId{id}});
             }
+        }
+    }
+
+    void read_camera(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+        if (!expect_length(clause, 4, path)) {
+            return;
+        }
+
+        auto const targets{list_value(clause, 1)};
+        auto const targets_path{path + TEXT(".look-at")};
+        if (!expect_tagged_list(targets, TEXT("look-at"), targets_path)) {
+            return;
+        }
+
+        TArray<FLevelEntityId> target_ids;
+        auto const target_count{list_length(targets) - 1};
+        target_ids.Reserve(target_count);
+        bool valid{true};
+        for (int64 i{0}; i < target_count; ++i) {
+            FName id;
+            auto const target_path{FString::Printf(TEXT("%s[%lld]"), *targets_path, i)};
+            auto const target_valid{read_symbol(list_value(targets, i + 1), target_path, id)};
+            valid = target_valid && valid;
+            if (target_valid) {
+                target_ids.Add(FLevelEntityId{id});
+            }
+        }
+
+        auto const distance_value{list_value(clause, 2)};
+        auto const distance_path{path + TEXT(".distance")};
+        double camera_distance{0.0};
+        auto distance_valid{expect_tagged_list(distance_value, TEXT("distance"), distance_path)};
+        distance_valid = expect_length(distance_value, 2, distance_path) && distance_valid;
+        if (distance_valid) {
+            distance_valid = read_number(
+                list_value(distance_value, 1), distance_path + TEXT(".value"), camera_distance);
+        }
+        valid = distance_valid && valid;
+
+        double direction[3]{};
+        valid = read_vector(list_value(clause, 3),
+                            TEXT("offset-direction"),
+                            path + TEXT(".offset-direction"),
+                            direction) &&
+                valid;
+        if (valid) {
+            builder.set_camera(FLevelCameraDefinition{
+                .target_entity_ids = MoveTemp(target_ids),
+                .offset_direction = FVector{direction[0], direction[1], direction[2]},
+                .distance = camera_distance,
+            });
         }
     }
 

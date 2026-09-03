@@ -92,6 +92,10 @@ void FLevelBuilder::set_player(FPlayerDefinition const& player) {
                   player.rotation);
 }
 
+void FLevelBuilder::set_camera(FLevelCameraDefinition const& camera) {
+    definition_.camera = camera;
+}
+
 auto FLevelBuilder::add_team(FTeamDefinition const& team) -> FLevelTeamId {
     definition_.teams.Add(team.id);
     return team.id;
@@ -157,10 +161,16 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
         }
     }
 
-    if (!definition.player_entity_id.is_set()) {
+    auto const has_player{definition.player_entity_id.is_set()};
+    auto const has_camera{definition.camera.IsSet()};
+    if (!has_player && !has_camera) {
         add_error(result,
-                  ELevelValidationErrorCode::MissingPlayer,
-                  TEXT("Level definition has no player entity id"));
+                  ELevelValidationErrorCode::MissingViewpoint,
+                  TEXT("Level definition has neither a player nor an initial camera"));
+    } else if (has_player && has_camera) {
+        add_error(result,
+                  ELevelValidationErrorCode::ConflictingViewpoints,
+                  TEXT("Level definition cannot have both a player and an initial camera"));
     }
 
     TSet<FLevelEntityId> entity_ids;
@@ -173,7 +183,7 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
         auto const archetype{entities.archetypes[i]};
         auto const team{entities.teams[i]};
         auto const owner{entity_owner(id, i)};
-        auto const is_player{id == definition.player_entity_id};
+        auto const is_player{has_player && id == definition.player_entity_id};
 
         if (id.is_set()) {
             if (entity_ids.Contains(id)) {
@@ -236,11 +246,54 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
         }
     }
 
-    if (definition.player_entity_id.is_set() && !player_found) {
+    if (has_player && !player_found) {
         add_error(result,
                   ELevelValidationErrorCode::PlayerEntityNotFound,
                   FString::Printf(TEXT("Player entity '%s' is not declared"),
                                   *definition.player_entity_id.value.ToString()));
+    }
+
+    if (has_camera) {
+        auto const& camera{definition.camera.GetValue()};
+        if (camera.target_entity_ids.IsEmpty()) {
+            add_error(result,
+                      ELevelValidationErrorCode::MissingCameraTarget,
+                      TEXT("Initial camera has no target entities"));
+        }
+
+        TSet<FLevelEntityId> camera_target_ids;
+        auto const target_count{camera.target_entity_ids.Num()};
+        camera_target_ids.Reserve(target_count);
+        for (int32 i{0}; i < target_count; ++i) {
+            auto const id{camera.target_entity_ids[i]};
+            if (camera_target_ids.Contains(id)) {
+                add_error(result,
+                          ELevelValidationErrorCode::DuplicateCameraTarget,
+                          FString::Printf(TEXT("Initial camera target %d duplicates entity '%s'"),
+                                          i,
+                                          *id.value.ToString()));
+                continue;
+            }
+
+            camera_target_ids.Add(id);
+            if (!id.is_set() || !entity_ids.Contains(id)) {
+                add_error(result,
+                          ELevelValidationErrorCode::CameraTargetNotFound,
+                          FString::Printf(TEXT("Initial camera target '%s' is not declared"),
+                                          *id.value.ToString()));
+            }
+        }
+
+        if (!FMath::IsFinite(camera.distance) || camera.distance <= 0.0) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidCameraDistance,
+                      TEXT("Initial camera distance must be finite and greater than zero"));
+        }
+        if (camera.offset_direction.ContainsNaN() || camera.offset_direction.IsNearlyZero()) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidCameraOffsetDirection,
+                      TEXT("Initial camera offset direction must be finite and non-zero"));
+        }
     }
 
     return result;

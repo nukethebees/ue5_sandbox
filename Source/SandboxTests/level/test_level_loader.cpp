@@ -16,11 +16,119 @@
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
+#include <Camera/CameraActor.h>
+#include <Camera/PlayerCameraManager.h>
+#include <EngineUtils.h>
+#include <GameFramework/PlayerController.h>
+#include <Kismet/GameplayStatics.h>
 #include <Misc/Paths.h>
 
 #include <utility>
 
 namespace ml {
+FLevelLoaderCameraScenario::FLevelLoaderCameraScenario(FSimulationTestContext& context)
+    : FSimulationTestScenario{context} {}
+
+void FLevelLoaderCameraScenario::load_fixture() {
+    initialise_test_driver();
+
+    s7::FLevelDefinitionReader reader;
+    auto const script_path{
+        FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
+    auto const scripted_definition{reader.read_file(script_path)};
+    if (!checks.is_true(static_cast<bool>(scripted_definition),
+                        TEXT("Playerless Scheme level produces a valid native definition"))) {
+        return;
+    }
+
+    FLevelLoader loader{context_.orchestrator};
+    auto const load_result{loader.load(scripted_definition.definition.GetValue())};
+    if (!checks.is_true(static_cast<bool>(load_result), TEXT("Playerless definition loads"))) {
+        return;
+    }
+
+    checks.are_equal(
+        0, count_actors<ATestSpaceShip>(context_.world), TEXT("Loader spawns no player"));
+    checks.are_equal(2,
+                     count_actors<ATestCapitalShipProxy>(context_.world),
+                     TEXT("Loader spawns two capital proxies"));
+    checks.are_equal(2,
+                     count_actors<ATestStaticTurretsProxy>(context_.world),
+                     TEXT("Loader spawns two turret proxies"));
+    checks.is_true(!IsValid(context_.orchestrator.get_player_ship()),
+                   TEXT("Orchestrator has no player ship"));
+
+    auto* const player_controller{UGameplayStatics::GetPlayerController(&context_.world, 0)};
+    checks.is_valid(player_controller, TEXT("Test world has a player controller"));
+    auto const expected_camera_position{FVector{-1.0, -1.0, 0.6}.GetSafeNormal() * 180000.0};
+    ACameraActor* camera{nullptr};
+    for (TActorIterator<ACameraActor> it{&context_.world}; it; ++it) {
+        if (it->GetActorLocation().Equals(expected_camera_position, 0.1)) {
+            camera = *it;
+            break;
+        }
+    }
+    camera_ = camera;
+    if (checks.is_valid(camera, TEXT("Loader spawns the authored camera"))) {
+        auto const camera_position{camera->GetActorLocation()};
+        checks.is_true(FMath::IsNearlyEqual(camera_position.Size(), 180000.0, 0.1),
+                       TEXT("Camera uses the authored distance from the target midpoint"));
+        auto const direction_to_focus{(-camera_position).GetSafeNormal()};
+        checks.is_true(camera->GetActorForwardVector().Equals(direction_to_focus, 0.001),
+                       TEXT("Camera centres the target midpoint"));
+    }
+    if (IsValid(player_controller) && IsValid(player_controller->PlayerCameraManager) &&
+        IsValid(camera)) {
+        checks.is_true(player_controller->GetViewTarget() == camera,
+                       TEXT("Player controller uses the authored camera"));
+    }
+
+    reset_and_reserve_time_series(context_.orchestrator, 0.05, entity_counts_);
+    context_.orchestrator.set_end_tick_test_hook(
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
+    test_driver->timeline.finish_at(0.05);
+    context_.orchestrator.start_simulation();
+}
+
+void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) {
+    auto const counts{orchestrator.get_entity_registry().count_alive_per_team_and_type()};
+    auto const blue{std::to_underlying(ETestTeam::Blue)};
+    auto const red{std::to_underlying(ETestTeam::Red)};
+    auto const capital{std::to_underlying(ETestEntityType::CapitalShip)};
+    auto const turret{std::to_underlying(ETestEntityType::Turret)};
+    entity_counts_.add(test_driver->get_time(),
+                       counts[blue][capital] + counts[blue][turret] + counts[red][capital] +
+                           counts[red][turret]);
+    test_driver->advance_timeline();
+}
+
+void FLevelLoaderCameraScenario::check_runtime() {
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    checks.is_true(!entity_counts_.is_empty(), TEXT("Runtime state was sampled"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    checks.are_equal(4,
+                     entity_counts_.last_value(),
+                     TEXT("All playerless authored entities reach the registry"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+}
+
+void FLevelLoaderCameraScenario::on_tear_down() {
+    if (camera_.IsValid()) {
+        camera_->Destroy();
+    }
+}
+
+void FLevelLoaderCameraScenario::run() {
+    TestCommandBuilder.Do([this] { load_fixture(); })
+        .Until(
+            [this] {
+                return !checks.all_passed ||
+                       (test_driver.IsSet() && test_driver->timeline.is_finished());
+            },
+            timeout)
+        .Then([this] { check_runtime(); });
+}
+
 FLevelLoaderScenario::FLevelLoaderScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {}
 
