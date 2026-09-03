@@ -14,6 +14,13 @@ enum class ECollisionUniformGridTraceScenario : uint8 {
     HandlesZeroLengthTraces,
     IncludesNegativeEndpointBoundary,
     AppliesAABBCentre,
+    AxisParallelAndOrigin,
+    SurfaceContacts,
+    GridBoundaryTraversal,
+    ShortAndNearParallelSegments,
+    ClipsToGridBounds,
+    DegenerateAABBs,
+    CrossCellNearestHit,
 };
 
 class FCollisionUniformGridScenario final : public FSimulationTestScenario {
@@ -52,6 +59,13 @@ class FCollisionUniformGridTraceScenario final : public FSimulationTestScenario 
     void test_handles_zero_length_traces();
     void test_includes_negative_endpoint_boundary();
     void test_applies_aabb_centre();
+    void test_axis_parallel_and_origin();
+    void test_surface_contacts();
+    void test_grid_boundary_traversal();
+    void test_short_and_near_parallel_segments();
+    void test_clips_to_grid_bounds();
+    void test_degenerate_aabbs();
+    void test_cross_cell_nearest_hit();
 
     ECollisionUniformGridTraceScenario scenario_;
 };

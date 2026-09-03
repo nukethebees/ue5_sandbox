@@ -19,15 +19,6 @@ static_assert(FEntityAABBs::fighter_index ==
               std::to_underlying(ETestEntityType::CapitalShipFighter));
 static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntityType::TubeSpinner));
 static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
-
-void clear_aabb(FEntityAABBs& aabbs, int32 const index) {
-    aabbs.centre_xs[index] = 0.0f;
-    aabbs.centre_ys[index] = 0.0f;
-    aabbs.centre_zs[index] = 0.0f;
-    aabbs.half_extent_xs[index] = 0.0f;
-    aabbs.half_extent_ys[index] = 0.0f;
-    aabbs.half_extent_zs[index] = 0.0f;
-}
 }
 
 auto CollisionUniformGrid::get_grid_dims() const noexcept -> FIntVector3 {

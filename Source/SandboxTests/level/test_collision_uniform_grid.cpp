@@ -110,6 +110,54 @@ auto run_traces(FTraceFixture const& fixture,
     return hits;
 }
 
+struct FExpectedTrace {
+    TCHAR const* name;
+    FVector3f start;
+    FVector3f end;
+    uint8 expected_hit;
+    FVector3f expected_location{};
+    int32 expected_entity_index{};
+};
+
+void check_traces(FSoftTestAssertions& checks,
+                  FTraceFixture const& fixture,
+                  TConstArrayView<FExpectedTrace> const cases) {
+    TArray<FVector3f> starts;
+    TArray<FVector3f> ends;
+    starts.Reserve(cases.Num());
+    ends.Reserve(cases.Num());
+
+    for (auto const& trace_case : cases) {
+        starts.Add(trace_case.start);
+        ends.Add(trace_case.end);
+    }
+
+    auto const hits{run_traces(fixture, starts, ends)};
+    auto const count{cases.Num()};
+    for (int32 i{}; i < count; ++i) {
+        auto const& trace_case{cases[i]};
+        FString const hit_description{
+            FString::Printf(TEXT("%s has expected hit flag"), trace_case.name)};
+        checks.are_equal(trace_case.expected_hit, hits.hits[i], hit_description);
+        if (trace_case.expected_hit == 0 || hits.hits[i] == 0) {
+            continue;
+        }
+
+        FString const entity_description{
+            FString::Printf(TEXT("%s resolves expected entity"), trace_case.name)};
+        checks.are_equal(fixture.handles[trace_case.expected_entity_index],
+                         hits.entities[i],
+                         entity_description);
+
+        FString const location_description{
+            FString::Printf(TEXT("%s resolves expected hit location"), trace_case.name)};
+        checks.dist_zero(trace_case.expected_location,
+                         hits.locations[i],
+                         hit_location_tolerance,
+                         location_description);
+    }
+}
+
 auto count_handle(TConstArrayView<FRegistryEntityHandle> const handles,
                   FRegistryEntityHandle const expected) -> int32 {
     int32 count{};
@@ -524,6 +572,459 @@ void FCollisionUniformGridTraceScenario::test_applies_aabb_centre() {
                      TEXT("Trace applies local AABB centre to hit location"));
 }
 
+void FCollisionUniformGridTraceScenario::test_axis_parallel_and_origin() {
+    FVector3f const entity_centre{};
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float trace_extent{150.f};
+    constexpr float outside_slab{11.f};
+    constexpr float near_parallel_offset{9.f};
+    constexpr float near_parallel_delta{0.0001f};
+    auto const near_parallel_entry_y{near_parallel_offset +
+                                     near_parallel_delta *
+                                         ((trace_extent - 10.f) / (2.f * trace_extent))};
+
+    TArray<FVector3f> const entity_locations{entity_centre};
+    FTraceFixture const fixture{entity_locations, aabb_half_extents};
+    TArray<FExpectedTrace> const cases{
+        {TEXT("Positive X trace through origin"),
+         {-trace_extent, 0.f, 0.f},
+         {trace_extent, 0.f, 0.f},
+         1,
+         {-10.f, 0.f, 0.f}},
+        {TEXT("Negative X trace through origin"),
+         {trace_extent, 0.f, 0.f},
+         {-trace_extent, 0.f, 0.f},
+         1,
+         {10.f, 0.f, 0.f}},
+        {TEXT("Positive Y trace through origin"),
+         {0.f, -trace_extent, 0.f},
+         {0.f, trace_extent, 0.f},
+         1,
+         {0.f, -10.f, 0.f}},
+        {TEXT("Negative Y trace through origin"),
+         {0.f, trace_extent, 0.f},
+         {0.f, -trace_extent, 0.f},
+         1,
+         {0.f, 10.f, 0.f}},
+        {TEXT("Positive Z trace through origin"),
+         {0.f, 0.f, -trace_extent},
+         {0.f, 0.f, trace_extent},
+         1,
+         {0.f, 0.f, -10.f}},
+        {TEXT("Negative Z trace through origin"),
+         {0.f, 0.f, trace_extent},
+         {0.f, 0.f, -trace_extent},
+         1,
+         {0.f, 0.f, 10.f}},
+        {TEXT("X-parallel trace outside Y slab"),
+         {-trace_extent, outside_slab, 0.f},
+         {trace_extent, outside_slab, 0.f},
+         0},
+        {TEXT("Y-parallel trace outside X slab"),
+         {outside_slab, -trace_extent, 0.f},
+         {outside_slab, trace_extent, 0.f},
+         0},
+        {TEXT("Z-parallel trace outside X slab"),
+         {outside_slab, 0.f, -trace_extent},
+         {outside_slab, 0.f, trace_extent},
+         0},
+        {TEXT("Signed-zero components preserve axis-parallel hit"),
+         {-trace_extent, -0.0f, 0.f},
+         {trace_extent, 0.0f, -0.0f},
+         1,
+         {-10.f, 0.f, 0.f}},
+        {TEXT("Near-parallel trace inside slab"),
+         {-trace_extent, near_parallel_offset, 0.f},
+         {trace_extent, near_parallel_offset + near_parallel_delta, 0.f},
+         1,
+         {-10.f, near_parallel_entry_y, 0.f}},
+        {TEXT("Near-parallel trace outside slab"),
+         {-trace_extent, outside_slab, 0.f},
+         {trace_extent, outside_slab + near_parallel_delta, 0.f},
+         0},
+    };
+
+    check_traces(checks, fixture, cases);
+}
+
+void FCollisionUniformGridTraceScenario::test_surface_contacts() {
+    FVector3f const entity_centre{};
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float outside_face{20.f};
+    constexpr float face{10.f};
+    constexpr float just_outside_face{10.5f};
+
+    TArray<FVector3f> const entity_locations{entity_centre};
+    FTraceFixture const fixture{entity_locations, aabb_half_extents};
+    TArray<FExpectedTrace> const cases{
+        {TEXT("Segment ends on negative X face"),
+         {-outside_face, 0.f, 0.f},
+         {-face, 0.f, 0.f},
+         1,
+         {-face, 0.f, 0.f}},
+        {TEXT("Segment ends on positive X face"),
+         {outside_face, 0.f, 0.f},
+         {face, 0.f, 0.f},
+         1,
+         {face, 0.f, 0.f}},
+        {TEXT("Segment ends on negative Y face"),
+         {0.f, -outside_face, 0.f},
+         {0.f, -face, 0.f},
+         1,
+         {0.f, -face, 0.f}},
+        {TEXT("Segment ends on positive Y face"),
+         {0.f, outside_face, 0.f},
+         {0.f, face, 0.f},
+         1,
+         {0.f, face, 0.f}},
+        {TEXT("Segment ends on negative Z face"),
+         {0.f, 0.f, -outside_face},
+         {0.f, 0.f, -face},
+         1,
+         {0.f, 0.f, -face}},
+        {TEXT("Segment ends on positive Z face"),
+         {0.f, 0.f, outside_face},
+         {0.f, 0.f, face},
+         1,
+         {0.f, 0.f, face}},
+        {TEXT("Segment starts on face and points outward"),
+         {face, 0.f, 0.f},
+         {outside_face, 0.f, 0.f},
+         1,
+         {face, 0.f, 0.f}},
+        {TEXT("Segment starts on face and points inward"),
+         {-face, 0.f, 0.f},
+         {0.f, 0.f, 0.f},
+         1,
+         {-face, 0.f, 0.f}},
+        {TEXT("Segment lies on AABB face"),
+         {-outside_face, face, 0.f},
+         {outside_face, face, 0.f},
+         1,
+         {-face, face, 0.f}},
+        {TEXT("Segment lies on AABB edge"),
+         {-outside_face, face, face},
+         {outside_face, face, face},
+         1,
+         {-face, face, face}},
+        {TEXT("Segment grazes AABB corner"),
+         {-outside_face, 0.f, 0.f},
+         {0.f, outside_face, outside_face},
+         1,
+         {-face, face, face}},
+        {TEXT("Parallel segment just outside face"),
+         {-outside_face, just_outside_face, 0.f},
+         {outside_face, just_outside_face, 0.f},
+         0},
+        {TEXT("Stationary point on face"), {face, 0.f, 0.f}, {face, 0.f, 0.f}, 1, {face, 0.f, 0.f}},
+        {TEXT("Stationary point on corner"),
+         {face, face, face},
+         {face, face, face},
+         1,
+         {face, face, face}},
+        {TEXT("Stationary point just outside face"),
+         {just_outside_face, 0.f, 0.f},
+         {just_outside_face, 0.f, 0.f},
+         0},
+    };
+
+    check_traces(checks, fixture, cases);
+}
+
+void FCollisionUniformGridTraceScenario::test_grid_boundary_traversal() {
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float trace_extent{150.f};
+
+    {
+        TArray<FVector3f> const entity_locations{{-10.f, 0.f, 0.f}};
+        FTraceFixture const fixture{entity_locations, aabb_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Y trace lies on X cell plane"),
+             {0.f, -trace_extent, 0.f},
+             {0.f, trace_extent, 0.f},
+             1,
+             {0.f, -10.f, 0.f}},
+            {TEXT("Trace ends at origin from positive X cell"),
+             {trace_extent, 0.f, 0.f},
+             {0.f, 0.f, 0.f},
+             1,
+             {0.f, 0.f, 0.f}},
+            {TEXT("Trace starts at origin toward negative X cell"),
+             {0.f, 0.f, 0.f},
+             {-trace_extent, 0.f, 0.f},
+             1,
+             {0.f, 0.f, 0.f}},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        TArray<FVector3f> const entity_locations{{0.f, -10.f, 0.f}};
+        FTraceFixture const fixture{entity_locations, aabb_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("X trace lies on Y cell plane"),
+             {-trace_extent, 0.f, 0.f},
+             {trace_extent, 0.f, 0.f},
+             1,
+             {-10.f, 0.f, 0.f}},
+            {TEXT("Trace ends at origin from positive Y cell"),
+             {0.f, trace_extent, 0.f},
+             {0.f, 0.f, 0.f},
+             1,
+             {0.f, 0.f, 0.f}},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        TArray<FVector3f> const entity_locations{{0.f, 0.f, -10.f}};
+        FTraceFixture const fixture{entity_locations, aabb_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("X trace lies on Z cell plane"),
+             {-trace_extent, 0.f, 0.f},
+             {trace_extent, 0.f, 0.f},
+             1,
+             {-10.f, 0.f, 0.f}},
+            {TEXT("Trace ends at origin from positive Z cell"),
+             {0.f, 0.f, trace_extent},
+             {0.f, 0.f, 0.f},
+             1,
+             {0.f, 0.f, 0.f}},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        TArray<FVector3f> const entity_locations{{10.f, -10.f, 0.f}};
+        FTraceFixture const fixture{entity_locations, aabb_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Positive diagonal touches entity at cell edge"),
+             {-trace_extent, -trace_extent, 0.f},
+             {trace_extent, trace_extent, 0.f},
+             1,
+             {0.f, 0.f, 0.f}},
+            {TEXT("Negative diagonal touches entity at cell edge"),
+             {trace_extent, trace_extent, 0.f},
+             {-trace_extent, -trace_extent, 0.f},
+             1,
+             {0.f, 0.f, 0.f}},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        TArray<FVector3f> const entity_locations{{10.f, -10.f, -10.f}};
+        FTraceFixture const fixture{entity_locations, aabb_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Three-axis diagonal touches entity at cell corner"),
+             {-trace_extent, -trace_extent, -trace_extent},
+             {trace_extent, trace_extent, trace_extent},
+             1,
+             {0.f, 0.f, 0.f}},
+        };
+        check_traces(checks, fixture, cases);
+    }
+}
+
+void FCollisionUniformGridTraceScenario::test_short_and_near_parallel_segments() {
+    FVector3f const entity_centre{};
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float face{-10.f};
+
+    TArray<FVector3f> const entity_locations{entity_centre};
+    FTraceFixture const fixture{entity_locations, aabb_half_extents};
+    TArray<FExpectedTrace> const cases{
+        {TEXT("Short segment stops before face"), {-20.f, 0.f, 0.f}, {-10.5f, 0.f, 0.f}, 0},
+        {TEXT("Short segment stops on face"),
+         {-20.f, 0.f, 0.f},
+         {face, 0.f, 0.f},
+         1,
+         {face, 0.f, 0.f}},
+        {TEXT("Short segment crosses face"),
+         {-10.25f, 0.f, 0.f},
+         {-9.75f, 0.f, 0.f},
+         1,
+         {face, 0.f, 0.f}},
+        {TEXT("Very short segment remains inside"),
+         {0.f, 1.f, 2.f},
+         {0.001f, 1.f, 2.f},
+         1,
+         {0.f, 1.f, 2.f}},
+        {TEXT("Segment remains entirely inside"),
+         {-1.f, 2.f, 3.f},
+         {1.f, 2.f, 3.f},
+         1,
+         {-1.f, 2.f, 3.f}},
+        {TEXT("Very short segment remains outside"), {20.f, 0.f, 0.f}, {20.001f, 0.f, 0.f}, 0},
+        {TEXT("Segment points away from AABB"), {-20.f, 0.f, 0.f}, {-21.f, 0.f, 0.f}, 0},
+    };
+
+    check_traces(checks, fixture, cases);
+}
+
+void FCollisionUniformGridTraceScenario::test_clips_to_grid_bounds() {
+    FVector3f const entity_centre{};
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float grid_extent{400.f};
+    constexpr float outside_grid{500.f};
+
+    TArray<FVector3f> const entity_locations{entity_centre};
+    FTraceFixture const fixture{entity_locations, aabb_half_extents};
+    TArray<FExpectedTrace> const cases{
+        {TEXT("X segment crosses grid from outside"),
+         {-outside_grid, 0.f, 0.f},
+         {outside_grid, 0.f, 0.f},
+         1,
+         {-10.f, 0.f, 0.f}},
+        {TEXT("Reverse X segment crosses grid from outside"),
+         {outside_grid, 0.f, 0.f},
+         {-outside_grid, 0.f, 0.f},
+         1,
+         {10.f, 0.f, 0.f}},
+        {TEXT("Y segment crosses grid from outside"),
+         {0.f, -outside_grid, 0.f},
+         {0.f, outside_grid, 0.f},
+         1,
+         {0.f, -10.f, 0.f}},
+        {TEXT("Segment starts on negative grid boundary"),
+         {-grid_extent, 0.f, 0.f},
+         {0.f, 0.f, 0.f},
+         1,
+         {-10.f, 0.f, 0.f}},
+        {TEXT("Segment starts on positive grid boundary"),
+         {grid_extent, 0.f, 0.f},
+         {0.f, 0.f, 0.f},
+         1,
+         {10.f, 0.f, 0.f}},
+        {TEXT("Outside segment stops at grid before AABB"),
+         {-outside_grid, 0.f, 0.f},
+         {-grid_extent, 0.f, 0.f},
+         0},
+        {TEXT("Segment remains fully outside grid"),
+         {-outside_grid, 0.f, 0.f},
+         {-outside_grid - 25.f, 0.f, 0.f},
+         0},
+    };
+
+    check_traces(checks, fixture, cases);
+}
+
+void FCollisionUniformGridTraceScenario::test_degenerate_aabbs() {
+    FVector3f const cell_interior{25.f, 25.f, 25.f};
+    constexpr float trace_offset{25.f};
+
+    {
+        FVector3f const point_half_extents{};
+        TArray<FVector3f> const entity_locations{cell_interior};
+        FTraceFixture const fixture{entity_locations, point_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Trace crosses point AABB in cell interior"),
+             {cell_interior.X - trace_offset, cell_interior.Y, cell_interior.Z},
+             {cell_interior.X + trace_offset, cell_interior.Y, cell_interior.Z},
+             1,
+             cell_interior},
+            {TEXT("Stationary trace equals point AABB"),
+             cell_interior,
+             cell_interior,
+             1,
+             cell_interior},
+            {TEXT("Trace misses point AABB"),
+             {cell_interior.X - trace_offset, cell_interior.Y + 1.f, cell_interior.Z},
+             {cell_interior.X + trace_offset, cell_interior.Y + 1.f, cell_interior.Z},
+             0},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        FVector3f const plane_half_extents{0.f, 10.f, 10.f};
+        TArray<FVector3f> const entity_locations{cell_interior};
+        FTraceFixture const fixture{entity_locations, plane_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Trace crosses plane AABB"),
+             {cell_interior.X - trace_offset, cell_interior.Y, cell_interior.Z},
+             {cell_interior.X + trace_offset, cell_interior.Y, cell_interior.Z},
+             1,
+             cell_interior},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        FVector3f const line_half_extents{10.f, 0.f, 0.f};
+        TArray<FVector3f> const entity_locations{cell_interior};
+        FTraceFixture const fixture{entity_locations, line_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Trace crosses line AABB"),
+             {cell_interior.X, cell_interior.Y - trace_offset, cell_interior.Z},
+             {cell_interior.X, cell_interior.Y + trace_offset, cell_interior.Z},
+             1,
+             cell_interior},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        FVector3f const origin{};
+        FVector3f const point_half_extents{};
+        TArray<FVector3f> const entity_locations{origin};
+        FTraceFixture const fixture{entity_locations, point_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Trace crosses point AABB on grid corner"),
+             {-trace_offset, 0.f, 0.f},
+             {trace_offset, 0.f, 0.f},
+             1,
+             origin},
+            {TEXT("Stationary trace equals point AABB on grid corner"), origin, origin, 1, origin},
+        };
+        check_traces(checks, fixture, cases);
+    }
+}
+
+void FCollisionUniformGridTraceScenario::test_cross_cell_nearest_hit() {
+    FVector3f const positive_entity_centre{150.f, 0.f, 0.f};
+    FVector3f const negative_entity_centre{-150.f, 0.f, 0.f};
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float trace_extent{300.f};
+
+    {
+        TArray<FVector3f> const entity_locations{
+            positive_entity_centre,
+            negative_entity_centre,
+        };
+        FTraceFixture const fixture{entity_locations, aabb_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("Positive trace returns nearest entity in earlier cell"),
+             {-trace_extent, 0.f, 0.f},
+             {trace_extent, 0.f, 0.f},
+             1,
+             {-160.f, 0.f, 0.f},
+             1},
+            {TEXT("Negative trace returns nearest entity in earlier cell"),
+             {trace_extent, 0.f, 0.f},
+             {-trace_extent, 0.f, 0.f},
+             1,
+             {160.f, 0.f, 0.f},
+             0},
+        };
+        check_traces(checks, fixture, cases);
+    }
+
+    {
+        FVector3f const wide_aabb_half_extents{160.f, 10.f, 10.f};
+        TArray<FVector3f> const entity_locations{{0.f, 0.f, 0.f}};
+        FTraceFixture const fixture{entity_locations, wide_aabb_half_extents};
+        TArray<FExpectedTrace> const cases{
+            {TEXT("AABB repeated across cells returns one stable contact"),
+             {-trace_extent, 0.f, 0.f},
+             {trace_extent, 0.f, 0.f},
+             1,
+             {-160.f, 0.f, 0.f}},
+        };
+        check_traces(checks, fixture, cases);
+    }
+}
+
 void FCollisionUniformGridTraceScenario::run() {
     TestCommandBuilder.Do([this] {
         switch (scenario_) {
@@ -544,6 +1045,27 @@ void FCollisionUniformGridTraceScenario::run() {
                 break;
             case ECollisionUniformGridTraceScenario::AppliesAABBCentre:
                 test_applies_aabb_centre();
+                break;
+            case ECollisionUniformGridTraceScenario::AxisParallelAndOrigin:
+                test_axis_parallel_and_origin();
+                break;
+            case ECollisionUniformGridTraceScenario::SurfaceContacts:
+                test_surface_contacts();
+                break;
+            case ECollisionUniformGridTraceScenario::GridBoundaryTraversal:
+                test_grid_boundary_traversal();
+                break;
+            case ECollisionUniformGridTraceScenario::ShortAndNearParallelSegments:
+                test_short_and_near_parallel_segments();
+                break;
+            case ECollisionUniformGridTraceScenario::ClipsToGridBounds:
+                test_clips_to_grid_bounds();
+                break;
+            case ECollisionUniformGridTraceScenario::DegenerateAABBs:
+                test_degenerate_aabbs();
+                break;
+            case ECollisionUniformGridTraceScenario::CrossCellNearestHit:
+                test_cross_cell_nearest_hit();
                 break;
         }
 

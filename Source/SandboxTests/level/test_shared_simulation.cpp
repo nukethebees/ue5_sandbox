@@ -218,6 +218,27 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(Collision_UniformGridTraceAppliesAABBCentre,
                            ml::FCollisionUniformGridTraceScenario,
                            ml::ECollisionUniformGridTraceScenario::AppliesAABBCentre)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceAxisParallelAndOrigin,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::AxisParallelAndOrigin)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceSurfaceContacts,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::SurfaceContacts)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceGridBoundaryTraversal,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::GridBoundaryTraversal)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceShortAndNearParallelSegments,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::ShortAndNearParallelSegments)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceClipsToGridBounds,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::ClipsToGridBounds)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceDegenerateAABBs,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::DegenerateAABBs)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceCrossCellNearestHit,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::CrossCellNearestHit)
 
     SHARED_SIMULATION_TEST(Turrets_LineOfSightBlocking, ml::FTurretLineOfSightBlockingScenario)
     SHARED_SIMULATION_TEST(
