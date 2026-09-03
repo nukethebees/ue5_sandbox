@@ -21,6 +21,14 @@ enum class ECollisionUniformGridTraceScenario : uint8 {
     ClipsToGridBounds,
     DegenerateAABBs,
     CrossCellNearestHit,
+    VariedGridGeometry,
+    BoundaryPrecision,
+    RebuildLifecycle,
+    DeterministicReferenceSweep,
+    InvarianceProperties,
+    EmptyBatchesAndOutputReuse,
+    DenseAndWideAABBs,
+    ProductionScale,
 };
 
 class FCollisionUniformGridScenario final : public FSimulationTestScenario {
@@ -66,6 +74,14 @@ class FCollisionUniformGridTraceScenario final : public FSimulationTestScenario 
     void test_clips_to_grid_bounds();
     void test_degenerate_aabbs();
     void test_cross_cell_nearest_hit();
+    void test_varied_grid_geometry();
+    void test_boundary_precision();
+    void test_rebuild_lifecycle();
+    void test_deterministic_reference_sweep();
+    void test_invariance_properties();
+    void test_empty_batches_and_output_reuse();
+    void test_dense_and_wide_aabbs();
+    void test_production_scale();
 
     ECollisionUniformGridTraceScenario scenario_;
 };

@@ -239,6 +239,30 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(Collision_UniformGridTraceCrossCellNearestHit,
                            ml::FCollisionUniformGridTraceScenario,
                            ml::ECollisionUniformGridTraceScenario::CrossCellNearestHit)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceVariedGridGeometry,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::VariedGridGeometry)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceBoundaryPrecision,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::BoundaryPrecision)
+    SHARED_SIMULATION_TEST(Collision_UniformGridRebuildLifecycle,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::RebuildLifecycle)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceDeterministicReferenceSweep,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::DeterministicReferenceSweep)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceInvarianceProperties,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::InvarianceProperties)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceEmptyBatchesAndOutputReuse,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::EmptyBatchesAndOutputReuse)
+    SHARED_SIMULATION_TEST(Collision_UniformGridDenseAndWideAABBs,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::DenseAndWideAABBs)
+    SHARED_SIMULATION_TEST(Collision_UniformGridTraceProductionScale,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::ProductionScale)
 
     SHARED_SIMULATION_TEST(Turrets_LineOfSightBlocking, ml::FTurretLineOfSightBlockingScenario)
     SHARED_SIMULATION_TEST(

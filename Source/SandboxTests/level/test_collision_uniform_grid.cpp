@@ -24,6 +24,9 @@
 
 #include <SandboxCoreEngine/actor_utils.h>
 
+#include <cmath>
+#include <limits>
+
 namespace ml {
 namespace {
 FIntVector3 const grid_dims{400, 400, 5};
@@ -35,7 +38,9 @@ constexpr float hit_location_tolerance{0.001f};
 struct FTraceFixture {
     FTraceFixture(TConstArrayView<FVector3f> const locations,
                   FVector3f const half_extents,
-                  FVector3f const aabb_centre = FVector3f::ZeroVector) {
+                  FVector3f const aabb_centre = FVector3f::ZeroVector,
+                  FIntVector3 const fixture_grid_dims = trace_grid_dims,
+                  FVector3f const fixture_cell_dims = trace_cell_dims) {
         FVectors3f registry_locations;
         FVectors3f velocities;
         auto const count{locations.Num()};
@@ -71,7 +76,6 @@ struct FTraceFixture {
         handles = spawned.registry_handles.to_array();
 
         auto constexpr aabb_index{ioj::FEntityAABBs::capital_ship_index};
-        ioj::FEntityAABBs aabbs;
         aabbs.centre_xs[aabb_index] = aabb_centre.X;
         aabbs.centre_ys[aabb_index] = aabb_centre.Y;
         aabbs.centre_zs[aabb_index] = aabb_centre.Z;
@@ -79,16 +83,126 @@ struct FTraceFixture {
         aabbs.half_extent_ys[aabb_index] = half_extents.Y;
         aabbs.half_extent_zs[aabb_index] = half_extents.Z;
 
-        grid.set_grid_dims(trace_grid_dims);
-        grid.set_cell_dims(trace_cell_dims);
+        grid.set_grid_dims(fixture_grid_dims);
+        grid.set_cell_dims(fixture_cell_dims);
         grid.set_entity_registry(registry);
         grid.rebuild_grid(aabbs);
+    }
+
+    void update_entities(TConstArrayView<FVector3f> const locations,
+                         TConstArrayView<uint8> const alive) {
+        auto const count{handles.Num()};
+        check(locations.Num() == count);
+        check(alive.Num() == count);
+
+        FVectors3f registry_locations;
+        FVectors3f velocities;
+        registry_locations.reserve(count);
+        velocities.reserve(count);
+        for (auto const location : locations) {
+            registry_locations.add(location);
+            velocities.add(FVector3f::ZeroVector);
+        }
+
+        TArray<float> radii;
+        TArray<int32> healths;
+        TArray<ETestTeam> teams;
+        TArray<ETestEntityType> entity_types;
+        radii.Init(0.f, count);
+        healths.Init(1, count);
+        teams.Init(ETestTeam::Blue, count);
+        entity_types.Init(ETestEntityType::CapitalShip, count);
+
+        FTestEntityRegistry::EntityData::ConstView const entity_data{
+            .locations = registry_locations.get_const_view(),
+            .velocities = velocities.get_const_view(),
+            .radii = radii,
+            .healths = healths,
+            .teams = teams,
+            .entity_types = entity_types,
+            .alive = alive,
+        };
+        FTestEntityRegistry::ConstView const updates{
+            .indices = handles,
+            .data = entity_data,
+        };
+        EntityDeathInfo death_info;
+        for (int32 i{}; i < count; ++i) {
+            if (alive[i] == 0 && registry.get_alive(handles[i])) {
+                death_info.add(ETestDeathReason::Unknown, handles[i]);
+            }
+        }
+        registry.queue_entity_updates(updates, death_info);
+        registry.commit_updates();
+        registry.end_tick();
+        grid.rebuild_grid(aabbs);
+    }
+
+    auto add_entity(FVector3f const location) -> FRegistryEntityHandle {
+        FVectors3f registry_locations;
+        FVectors3f velocities;
+        registry_locations.add(location);
+        velocities.add(FVector3f::ZeroVector);
+
+        TArray<float> const radii{0.f};
+        TArray<int32> const healths{1};
+        TArray<ETestTeam> const teams{ETestTeam::Blue};
+        TArray<ETestEntityType> const entity_types{ETestEntityType::CapitalShip};
+        TArray<uint8> const alive{uint8{1}};
+        FTestEntityRegistry::EntityData::ConstView const entity_data{
+            .locations = registry_locations.get_const_view(),
+            .velocities = velocities.get_const_view(),
+            .radii = radii,
+            .healths = healths,
+            .teams = teams,
+            .entity_types = entity_types,
+            .alive = alive,
+        };
+
+        auto const spawned{registry.add_entities(entity_data)};
+        grid.rebuild_grid(aabbs);
+        return spawned.registry_handles[0];
     }
 
     FTestEntityRegistry registry;
     ioj::CollisionUniformGrid grid;
     TArray<FRegistryEntityHandle> handles;
+    ioj::FEntityAABBs aabbs;
 };
+
+auto reference_trace_aabb(FVector3f const start,
+                          FVector3f const end,
+                          FVector3f const aabb_min,
+                          FVector3f const aabb_max) -> float {
+    constexpr auto no_hit{std::numeric_limits<float>::infinity()};
+    auto const delta{end - start};
+    float t_min{};
+    float t_max{1.f};
+
+    for (int32 axis{}; axis < 3; ++axis) {
+        auto const axis_delta{delta[axis]};
+        if (axis_delta == 0.f) {
+            if (start[axis] < aabb_min[axis] || start[axis] > aabb_max[axis]) {
+                return no_hit;
+            }
+            continue;
+        }
+
+        auto t1{(aabb_min[axis] - start[axis]) / axis_delta};
+        auto t2{(aabb_max[axis] - start[axis]) / axis_delta};
+        if (t1 > t2) {
+            Swap(t1, t2);
+        }
+
+        t_min = FMath::Max(t_min, t1);
+        t_max = FMath::Min(t_max, t2);
+        if (t_min > t_max) {
+            return no_hit;
+        }
+    }
+
+    return t_min;
+}
 
 auto run_traces(FTraceFixture const& fixture,
                 TConstArrayView<FVector3f> const starts,
@@ -870,6 +984,7 @@ void FCollisionUniformGridTraceScenario::test_clips_to_grid_bounds() {
     FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
     constexpr float grid_extent{400.f};
     constexpr float outside_grid{500.f};
+    constexpr float distant_outside_grid{20000.f};
 
     TArray<FVector3f> const entity_locations{entity_centre};
     FTraceFixture const fixture{entity_locations, aabb_half_extents};
@@ -906,6 +1021,19 @@ void FCollisionUniformGridTraceScenario::test_clips_to_grid_bounds() {
         {TEXT("Segment remains fully outside grid"),
          {-outside_grid, 0.f, 0.f},
          {-outside_grid - 25.f, 0.f, 0.f},
+         0},
+        {TEXT("Distant X segment crosses grid"),
+         {-distant_outside_grid, 0.f, 0.f},
+         {distant_outside_grid, 0.f, 0.f},
+         1,
+         {-10.f, 0.f, 0.f}},
+        {TEXT("Distant segment remains outside negative grid boundary"),
+         {-distant_outside_grid, 0.f, 0.f},
+         {-distant_outside_grid + 1000.f, 0.f, 0.f},
+         0},
+        {TEXT("Distant segment remains outside positive grid boundary"),
+         {distant_outside_grid - 1000.f, 0.f, 0.f},
+         {distant_outside_grid, 0.f, 0.f},
          0},
     };
 
@@ -1028,6 +1156,535 @@ void FCollisionUniformGridTraceScenario::test_cross_cell_nearest_hit() {
     }
 }
 
+void FCollisionUniformGridTraceScenario::test_varied_grid_geometry() {
+    FIntVector3 const fixture_grid_dims{5, 7, 3};
+    FVector3f const fixture_cell_dims{80.f, 125.f, 250.f};
+    FVector3f const entity_centre{25.f, -30.f, 40.f};
+    FVector3f const aabb_half_extents{15.f, 20.f, 25.f};
+
+    TArray<FVector3f> const entity_locations{entity_centre};
+    FTraceFixture const fixture{entity_locations,
+                                aabb_half_extents,
+                                FVector3f::ZeroVector,
+                                fixture_grid_dims,
+                                fixture_cell_dims};
+    TArray<FExpectedTrace> const cases{
+        {TEXT("Positive X trace in nonuniform grid"),
+         {-190.f, -30.f, 40.f},
+         {190.f, -30.f, 40.f},
+         1,
+         {10.f, -30.f, 40.f}},
+        {TEXT("Negative Y trace in nonuniform grid"),
+         {25.f, 300.f, 40.f},
+         {25.f, -300.f, 40.f},
+         1,
+         {25.f, -10.f, 40.f}},
+        {TEXT("Positive Z trace in nonuniform grid"),
+         {25.f, -30.f, -300.f},
+         {25.f, -30.f, 300.f},
+         1,
+         {25.f, -30.f, 15.f}},
+        {TEXT("Nonuniform-grid trace outside AABB slab"),
+         {-190.f, -5.f, 40.f},
+         {190.f, -5.f, 40.f},
+         0},
+    };
+    check_traces(checks, fixture, cases);
+
+    FVector3f const boundary_entity_centre{-55.f, -30.f, 40.f};
+    TArray<FVector3f> const boundary_entity_locations{boundary_entity_centre};
+    FTraceFixture const boundary_fixture{boundary_entity_locations,
+                                         aabb_half_extents,
+                                         FVector3f::ZeroVector,
+                                         fixture_grid_dims,
+                                         fixture_cell_dims};
+    TArray<FExpectedTrace> const boundary_cases{
+        {TEXT("Trace follows cell boundary in odd nonuniform grid"),
+         {-40.f, -300.f, 40.f},
+         {-40.f, 300.f, 40.f},
+         1,
+         {-40.f, -50.f, 40.f}},
+    };
+    check_traces(checks, boundary_fixture, boundary_cases);
+}
+
+void FCollisionUniformGridTraceScenario::test_boundary_precision() {
+    FVector3f const entity_centre{};
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float face{10.f};
+    constexpr float negative_face{-face};
+    constexpr float trace_extent{20.f};
+    auto const inside_face{std::nextafter(face, 0.f)};
+    auto const outside_face{std::nextafter(face, std::numeric_limits<float>::infinity())};
+    auto const before_negative_face{
+        std::nextafter(negative_face, -std::numeric_limits<float>::infinity())};
+    auto const after_negative_face{std::nextafter(negative_face, 0.f)};
+
+    TArray<FVector3f> const entity_locations{entity_centre};
+    FTraceFixture const fixture{entity_locations, aabb_half_extents};
+    TArray<FExpectedTrace> const cases{
+        {TEXT("Parallel trace exactly on face"),
+         {-trace_extent, face, 0.f},
+         {trace_extent, face, 0.f},
+         1,
+         {negative_face, face, 0.f}},
+        {TEXT("Parallel trace one float inside face"),
+         {-trace_extent, inside_face, 0.f},
+         {trace_extent, inside_face, 0.f},
+         1,
+         {negative_face, inside_face, 0.f}},
+        {TEXT("Parallel trace one float outside face"),
+         {-trace_extent, outside_face, 0.f},
+         {trace_extent, outside_face, 0.f},
+         0},
+        {TEXT("Endpoint one float before face"),
+         {-trace_extent, 0.f, 0.f},
+         {before_negative_face, 0.f, 0.f},
+         0},
+        {TEXT("Endpoint exactly on face"),
+         {-trace_extent, 0.f, 0.f},
+         {negative_face, 0.f, 0.f},
+         1,
+         {negative_face, 0.f, 0.f}},
+        {TEXT("Endpoint one float beyond face"),
+         {-trace_extent, 0.f, 0.f},
+         {after_negative_face, 0.f, 0.f},
+         1,
+         {negative_face, 0.f, 0.f}},
+    };
+    check_traces(checks, fixture, cases);
+}
+
+void FCollisionUniformGridTraceScenario::test_rebuild_lifecycle() {
+    FVector3f const initial_location{-150.f, 0.f, 0.f};
+    FVector3f const moved_location{150.f, 0.f, 0.f};
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    constexpr float trace_offset{25.f};
+
+    TArray<FVector3f> const initial_locations{initial_location};
+    FTraceFixture fixture{initial_locations, aabb_half_extents};
+    for (int32 rebuild{}; rebuild < 4; ++rebuild) {
+        fixture.grid.rebuild_grid(fixture.aabbs);
+    }
+
+    TArray<FExpectedTrace> const initial_cases{
+        {TEXT("Repeated rebuild retains entity"),
+         {initial_location.X - trace_offset, 0.f, 0.f},
+         {initial_location.X + trace_offset, 0.f, 0.f},
+         1,
+         {initial_location.X - aabb_half_extents.X, 0.f, 0.f}},
+    };
+    check_traces(checks, fixture, initial_cases);
+
+    TArray<FVector3f> const moved_locations{moved_location};
+    TArray<uint8> const alive{uint8{1}};
+    fixture.update_entities(moved_locations, alive);
+    TArray<FExpectedTrace> const moved_cases{
+        {TEXT("Moved entity is removed from old cells"),
+         {initial_location.X - trace_offset, 0.f, 0.f},
+         {initial_location.X + trace_offset, 0.f, 0.f},
+         0},
+        {TEXT("Moved entity is added to new cells"),
+         {moved_location.X - trace_offset, 0.f, 0.f},
+         {moved_location.X + trace_offset, 0.f, 0.f},
+         1,
+         {moved_location.X - aabb_half_extents.X, 0.f, 0.f}},
+    };
+    check_traces(checks, fixture, moved_cases);
+
+    TArray<uint8> const dead{uint8{0}};
+    fixture.update_entities(moved_locations, dead);
+    TArray<FExpectedTrace> const dead_cases{
+        {TEXT("Dead entity is removed on rebuild"),
+         {moved_location.X - trace_offset, 0.f, 0.f},
+         {moved_location.X + trace_offset, 0.f, 0.f},
+         0},
+    };
+    check_traces(checks, fixture, dead_cases);
+
+    FVector3f const replacement_location{250.f, 0.f, 0.f};
+    auto const old_handle{fixture.handles[0]};
+    auto const replacement_handle{fixture.add_entity(replacement_location)};
+    checks.are_equal(old_handle.index,
+                     replacement_handle.index,
+                     TEXT("Replacement entity reuses dead registry slot"));
+    checks.is_true(old_handle.generation != replacement_handle.generation,
+                   TEXT("Replacement entity advances registry generation"));
+    checks.is_true(fixture.registry.is_stale(old_handle),
+                   TEXT("Reused collision handle becomes stale"));
+
+    TArray<FVector3f> const replacement_starts{
+        {replacement_location.X - trace_offset, 0.f, 0.f},
+    };
+    TArray<FVector3f> const replacement_ends{
+        {replacement_location.X + trace_offset, 0.f, 0.f},
+    };
+    auto const replacement_hits{run_traces(fixture, replacement_starts, replacement_ends)};
+    checks.are_equal(
+        uint8{1}, replacement_hits.hits[0], TEXT("Replacement entity is added on rebuild"));
+    if (replacement_hits.hits[0] != 0) {
+        checks.are_equal(replacement_handle,
+                         replacement_hits.entities[0],
+                         TEXT("Trace resolves replacement generation"));
+    }
+}
+
+void FCollisionUniformGridTraceScenario::test_deterministic_reference_sweep() {
+    TStaticArray<int32, 3> const seeds{0x51A8B3, 0x19C0DE, 0x7A11CE};
+    constexpr int32 entity_count{32};
+    constexpr int32 trace_count{512};
+    constexpr float entity_extent{320.f};
+    constexpr float trace_extent{390.f};
+    FVector3f const local_aabb_centre{3.f, -5.f, 7.f};
+    FVector3f const aabb_half_extents{7.f, 11.f, 13.f};
+
+    auto const run_sweep{[this, local_aabb_centre, aabb_half_extents](int32 const seed,
+                                                                      int32 const case_offset) {
+        FRandomStream random{seed};
+        auto const random_range{[&random](float const extent) {
+            return static_cast<float>(random.FRandRange(-extent, extent));
+        }};
+        TArray<FVector3f> entity_locations;
+        entity_locations.Reserve(entity_count);
+        for (int32 i{}; i < entity_count; ++i) {
+            entity_locations.Add({random_range(entity_extent),
+                                  random_range(entity_extent),
+                                  random_range(entity_extent)});
+        }
+
+        FTraceFixture const fixture{entity_locations, aabb_half_extents, local_aabb_centre};
+        TArray<FVector3f> starts;
+        TArray<FVector3f> ends;
+        starts.Reserve(trace_count);
+        ends.Reserve(trace_count);
+        for (auto const entity_location : entity_locations) {
+            auto const world_centre{entity_location + local_aabb_centre};
+            starts.Add(world_centre - FVector3f{50.f, 0.f, 0.f});
+            ends.Add(world_centre + FVector3f{50.f, 0.f, 0.f});
+        }
+        for (int32 i{entity_count}; i < trace_count; ++i) {
+            starts.Add({random_range(trace_extent),
+                        random_range(trace_extent),
+                        random_range(trace_extent)});
+            ends.Add({random_range(trace_extent),
+                      random_range(trace_extent),
+                      random_range(trace_extent)});
+        }
+
+        auto const hits{run_traces(fixture, starts, ends)};
+        int32 expected_hit_count{};
+        for (int32 i_trace{}; i_trace < trace_count; ++i_trace) {
+            auto nearest_t{std::numeric_limits<float>::infinity()};
+            int32 nearest_entity{-1};
+            for (int32 i_entity{}; i_entity < entity_count; ++i_entity) {
+                auto const world_centre{entity_locations[i_entity] + local_aabb_centre};
+                auto const hit_t{reference_trace_aabb(starts[i_trace],
+                                                      ends[i_trace],
+                                                      world_centre - aabb_half_extents,
+                                                      world_centre + aabb_half_extents)};
+                if (hit_t < nearest_t) {
+                    nearest_t = hit_t;
+                    nearest_entity = i_entity;
+                }
+            }
+
+            auto const expected_hit{uint8{FMath::IsFinite(nearest_t)}};
+            expected_hit_count += expected_hit;
+            auto const case_index{case_offset + i_trace};
+            checks.are_equal(expected_hit,
+                             hits.hits[i_trace],
+                             TEXT("Reference sweep trace has expected hit flag"),
+                             case_index);
+            if (expected_hit == 0 || hits.hits[i_trace] == 0) {
+                continue;
+            }
+
+            checks.are_equal(fixture.handles[nearest_entity],
+                             hits.entities[i_trace],
+                             TEXT("Reference sweep trace resolves nearest entity"),
+                             case_index);
+            auto const expected_location{FMath::Lerp(starts[i_trace], ends[i_trace], nearest_t)};
+            checks.dist_zero(expected_location,
+                             hits.locations[i_trace],
+                             hit_location_tolerance,
+                             TEXT("Reference sweep trace resolves nearest location"),
+                             case_index);
+        }
+
+        checks.is_true(expected_hit_count >= entity_count,
+                       TEXT("Reference sweep contains targeted hits"));
+        checks.is_true(expected_hit_count < trace_count, TEXT("Reference sweep contains misses"));
+    }};
+
+    auto const seed_count{seeds.Num()};
+    for (int32 i{}; i < seed_count; ++i) {
+        run_sweep(seeds[i], i * trace_count);
+    }
+}
+
+void FCollisionUniformGridTraceScenario::test_invariance_properties() {
+    FVector3f const aabb_half_extents{18.f, 22.f, 15.f};
+    FVector3f const local_aabb_centre{4.f, -3.f, 5.f};
+    TArray<FVector3f> const entity_locations{
+        {-220.f, -40.f, 10.f},
+        {35.f, 70.f, -20.f},
+        {210.f, -120.f, 80.f},
+    };
+    TArray<FVector3f> const starts{
+        {-280.f, -43.f, 15.f},
+        {-21.f, 67.f, -15.f},
+        {154.f, -123.f, 85.f},
+        {-280.f, 150.f, 15.f},
+        {35.f, -200.f, -15.f},
+        {-300.f, -300.f, -300.f},
+    };
+    TArray<FVector3f> const ends{
+        {-160.f, -43.f, 15.f},
+        {99.f, 67.f, -15.f},
+        {274.f, -123.f, 85.f},
+        {-160.f, 150.f, 15.f},
+        {35.f, -100.f, -15.f},
+        {-250.f, -250.f, -250.f},
+    };
+
+    FTraceFixture const baseline_fixture{entity_locations, aabb_half_extents, local_aabb_centre};
+    auto const baseline_hits{run_traces(baseline_fixture, starts, ends)};
+    auto const compare_same_entity_order{[this, &baseline_hits](FTraceHits const& candidate_hits,
+                                                                TCHAR const* const description) {
+        auto const count{baseline_hits.num()};
+        for (int32 i{}; i < count; ++i) {
+            checks.are_equal(baseline_hits.hits[i], candidate_hits.hits[i], description, i);
+            if (baseline_hits.hits[i] == 0 || candidate_hits.hits[i] == 0) {
+                continue;
+            }
+            checks.are_equal(
+                baseline_hits.entities[i].index, candidate_hits.entities[i].index, description, i);
+            checks.dist_zero(baseline_hits.locations[i],
+                             candidate_hits.locations[i],
+                             hit_location_tolerance,
+                             description,
+                             i);
+        }
+    }};
+
+    FTraceFixture const coarse_fixture{
+        entity_locations, aabb_half_extents, local_aabb_centre, {4, 4, 4}, {200.f, 200.f, 200.f}};
+    auto const coarse_hits{run_traces(coarse_fixture, starts, ends)};
+    compare_same_entity_order(coarse_hits, TEXT("Coarse grid preserves trace results"));
+
+    FTraceFixture const fine_fixture{
+        entity_locations, aabb_half_extents, local_aabb_centre, {16, 16, 16}, {50.f, 50.f, 50.f}};
+    auto const fine_hits{run_traces(fine_fixture, starts, ends)};
+    compare_same_entity_order(fine_hits, TEXT("Fine grid preserves trace results"));
+
+    TStaticArray<int32, 6> const permutation{4, 1, 5, 0, 3, 2};
+    TArray<FVector3f> permuted_starts;
+    TArray<FVector3f> permuted_ends;
+    for (auto const source_index : permutation) {
+        permuted_starts.Add(starts[source_index]);
+        permuted_ends.Add(ends[source_index]);
+    }
+    auto const permuted_hits{run_traces(baseline_fixture, permuted_starts, permuted_ends)};
+    auto const trace_count{permutation.Num()};
+    for (int32 i{}; i < trace_count; ++i) {
+        auto const source_index{permutation[i]};
+        checks.are_equal(baseline_hits.hits[source_index],
+                         permuted_hits.hits[i],
+                         TEXT("Trace permutation preserves hit flag"),
+                         i);
+        if (baseline_hits.hits[source_index] == 0 || permuted_hits.hits[i] == 0) {
+            continue;
+        }
+        checks.are_equal(baseline_hits.entities[source_index],
+                         permuted_hits.entities[i],
+                         TEXT("Trace permutation preserves entity"),
+                         i);
+        checks.dist_zero(baseline_hits.locations[source_index],
+                         permuted_hits.locations[i],
+                         hit_location_tolerance,
+                         TEXT("Trace permutation preserves location"),
+                         i);
+    }
+
+    TArray<FVector3f> const reversed_entity_locations{
+        entity_locations[2],
+        entity_locations[1],
+        entity_locations[0],
+    };
+    FTraceFixture const reversed_fixture{
+        reversed_entity_locations, aabb_half_extents, local_aabb_centre};
+    auto const reversed_hits{run_traces(reversed_fixture, starts, ends)};
+    for (int32 i{}; i < trace_count; ++i) {
+        checks.are_equal(baseline_hits.hits[i],
+                         reversed_hits.hits[i],
+                         TEXT("Entity insertion order preserves hit flag"),
+                         i);
+        if (baseline_hits.hits[i] != 0 && reversed_hits.hits[i] != 0) {
+            checks.dist_zero(baseline_hits.locations[i],
+                             reversed_hits.locations[i],
+                             hit_location_tolerance,
+                             TEXT("Entity insertion order preserves nearest location"),
+                             i);
+        }
+    }
+
+    FVector3f const translation{100.f, 0.f, 0.f};
+    TArray<FVector3f> translated_entity_locations;
+    TArray<FVector3f> translated_starts;
+    TArray<FVector3f> translated_ends;
+    for (auto const location : entity_locations) {
+        translated_entity_locations.Add(location + translation);
+    }
+    for (int32 i{}; i < trace_count; ++i) {
+        translated_starts.Add(starts[i] + translation);
+        translated_ends.Add(ends[i] + translation);
+    }
+    FTraceFixture const translated_fixture{
+        translated_entity_locations, aabb_half_extents, local_aabb_centre};
+    auto const translated_hits{run_traces(translated_fixture, translated_starts, translated_ends)};
+    for (int32 i{}; i < trace_count; ++i) {
+        checks.are_equal(baseline_hits.hits[i],
+                         translated_hits.hits[i],
+                         TEXT("Whole-cell translation preserves hit flag"),
+                         i);
+        if (baseline_hits.hits[i] != 0 && translated_hits.hits[i] != 0) {
+            checks.are_equal(baseline_hits.entities[i].index,
+                             translated_hits.entities[i].index,
+                             TEXT("Whole-cell translation preserves entity"),
+                             i);
+            checks.dist_zero(baseline_hits.locations[i] + translation,
+                             translated_hits.locations[i],
+                             hit_location_tolerance,
+                             TEXT("Whole-cell translation preserves location"),
+                             i);
+        }
+    }
+}
+
+void FCollisionUniformGridTraceScenario::test_empty_batches_and_output_reuse() {
+    FVector3f const aabb_half_extents{10.f, 10.f, 10.f};
+    TArray<FVector3f> const no_entities;
+    FTraceFixture const empty_fixture{no_entities, aabb_half_extents};
+    TArray<FVector3f> const no_traces;
+    auto const no_results{run_traces(empty_fixture, no_traces, no_traces)};
+    checks.are_equal(0, no_results.num(), TEXT("Empty grid accepts empty trace batch"));
+
+    TArray<FVector3f> const miss_starts{{-20.f, 0.f, 0.f}, {0.f, -20.f, 0.f}};
+    TArray<FVector3f> const miss_ends{{20.f, 0.f, 0.f}, {0.f, 20.f, 0.f}};
+    auto const empty_grid_hits{run_traces(empty_fixture, miss_starts, miss_ends)};
+    checks.are_equal(uint8{0}, empty_grid_hits.hits[0], TEXT("Empty grid misses first trace"));
+    checks.are_equal(uint8{0}, empty_grid_hits.hits[1], TEXT("Empty grid misses second trace"));
+
+    TArray<FVector3f> const entity_locations{FVector3f::ZeroVector};
+    FTraceFixture const populated_fixture{entity_locations, aabb_half_extents};
+    auto const empty_batch_hits{run_traces(populated_fixture, no_traces, no_traces)};
+    checks.are_equal(0, empty_batch_hits.num(), TEXT("Populated grid accepts empty trace batch"));
+
+    FTraceHits reused_hits;
+    reused_hits.add_defaulted(1);
+    FLineTraces hit_trace;
+    hit_trace.starts.add({-20.f, 0.f, 0.f});
+    hit_trace.ends.add({20.f, 0.f, 0.f});
+    populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
+    checks.are_equal(uint8{1}, reused_hits.hits[0], TEXT("Reused output initially records hit"));
+
+    FLineTraces miss_trace;
+    miss_trace.starts.add({-20.f, 20.f, 0.f});
+    miss_trace.ends.add({20.f, 20.f, 0.f});
+    populated_fixture.grid.trace_aabbs(miss_trace.get_const_view(), reused_hits.get_view());
+    checks.are_equal(uint8{0}, reused_hits.hits[0], TEXT("Reused output clears stale hit flag"));
+
+    populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
+    checks.are_equal(uint8{1}, reused_hits.hits[0], TEXT("Reused output records later hit"));
+    checks.are_equal(populated_fixture.handles[0],
+                     reused_hits.entities[0],
+                     TEXT("Reused output records later entity"));
+}
+
+void FCollisionUniformGridTraceScenario::test_dense_and_wide_aabbs() {
+    constexpr int32 dense_entity_count{2048};
+    FVector3f const dense_location{25.f, 25.f, 25.f};
+    FVector3f const dense_half_extents{1.f, 1.f, 1.f};
+    TArray<FVector3f> dense_locations;
+    dense_locations.Init(dense_location, dense_entity_count);
+    FTraceFixture const dense_fixture{dense_locations, dense_half_extents};
+    auto const dense_cell{dense_fixture.grid.to_cell_coord(dense_location)};
+    checks.are_equal(dense_entity_count,
+                     dense_fixture.grid.get_cell_entities(dense_cell).Num(),
+                     TEXT("Dense cell retains every entity"));
+
+    TArray<FExpectedTrace> const dense_cases{
+        {TEXT("Trace resolves dense cell"),
+         {20.f, 25.f, 25.f},
+         {30.f, 25.f, 25.f},
+         1,
+         {24.f, 25.f, 25.f}},
+    };
+    check_traces(checks, dense_fixture, dense_cases);
+
+    FVector3f const wide_half_extents{160.f, 160.f, 160.f};
+    TArray<FVector3f> const wide_locations{FVector3f::ZeroVector};
+    FTraceFixture const wide_fixture{wide_locations, wide_half_extents};
+    auto const min_coord{wide_fixture.grid.to_min_cell_coord(-wide_half_extents)};
+    auto const max_coord{wide_fixture.grid.to_max_cell_coord(wide_half_extents)};
+    int32 membership_count{};
+    for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+        for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+            for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                membership_count += count_handle(wide_fixture.grid.get_cell_entities({x, y, z}),
+                                                 wide_fixture.handles[0]);
+            }
+        }
+    }
+    checks.are_equal(64, membership_count, TEXT("Three-axis AABB occupies every covered cell"));
+
+    TArray<FExpectedTrace> const wide_cases{
+        {TEXT("Diagonal trace resolves three-axis multi-cell AABB"),
+         {-300.f, -300.f, -300.f},
+         {300.f, 300.f, 300.f},
+         1,
+         {-160.f, -160.f, -160.f}},
+    };
+    check_traces(checks, wide_fixture, wide_cases);
+}
+
+void FCollisionUniformGridTraceScenario::test_production_scale() {
+    constexpr float grid_boundary{1000000.f};
+    FVector3f const aabb_half_extents{1000.f, 1000.f, 1000.f};
+    FVector3f const negative_entity{-999000.f, 0.f, 0.f};
+    FVector3f const positive_entity{999000.f, 0.f, 0.f};
+    TArray<FVector3f> const entity_locations{negative_entity, positive_entity};
+    FTraceFixture const fixture{
+        entity_locations, aabb_half_extents, FVector3f::ZeroVector, grid_dims, cell_dims};
+    TArray<FExpectedTrace> const cases{
+        {TEXT("Trace starts on negative production grid boundary"),
+         {-grid_boundary, 0.f, 0.f},
+         {-990000.f, 0.f, 0.f},
+         1,
+         {-grid_boundary, 0.f, 0.f},
+         0},
+        {TEXT("Trace ends on positive production grid boundary"),
+         {990000.f, 0.f, 0.f},
+         {grid_boundary, 0.f, 0.f},
+         1,
+         {998000.f, 0.f, 0.f},
+         1},
+        {TEXT("Trace follows negative production grid boundary"),
+         {-grid_boundary, -5000.f, 0.f},
+         {-grid_boundary, 5000.f, 0.f},
+         1,
+         {-grid_boundary, -1000.f, 0.f},
+         0},
+        {TEXT("Trace follows positive production grid boundary"),
+         {grid_boundary, -5000.f, 0.f},
+         {grid_boundary, 5000.f, 0.f},
+         1,
+         {grid_boundary, -1000.f, 0.f},
+         1},
+    };
+    check_traces(checks, fixture, cases);
+}
+
 void FCollisionUniformGridTraceScenario::run() {
     TestCommandBuilder.Do([this] {
         switch (scenario_) {
@@ -1069,6 +1726,30 @@ void FCollisionUniformGridTraceScenario::run() {
                 break;
             case ECollisionUniformGridTraceScenario::CrossCellNearestHit:
                 test_cross_cell_nearest_hit();
+                break;
+            case ECollisionUniformGridTraceScenario::VariedGridGeometry:
+                test_varied_grid_geometry();
+                break;
+            case ECollisionUniformGridTraceScenario::BoundaryPrecision:
+                test_boundary_precision();
+                break;
+            case ECollisionUniformGridTraceScenario::RebuildLifecycle:
+                test_rebuild_lifecycle();
+                break;
+            case ECollisionUniformGridTraceScenario::DeterministicReferenceSweep:
+                test_deterministic_reference_sweep();
+                break;
+            case ECollisionUniformGridTraceScenario::InvarianceProperties:
+                test_invariance_properties();
+                break;
+            case ECollisionUniformGridTraceScenario::EmptyBatchesAndOutputReuse:
+                test_empty_batches_and_output_reuse();
+                break;
+            case ECollisionUniformGridTraceScenario::DenseAndWideAABBs:
+                test_dense_and_wide_aabbs();
+                break;
+            case ECollisionUniformGridTraceScenario::ProductionScale:
+                test_production_scale();
                 break;
         }
 
