@@ -125,6 +125,7 @@ auto generate_level_select_widget() -> bool {
     page->AddChildToVerticalBox(actions);
     make_labelled_button(tree, *actions, TEXT("refresh_button"), TEXT("Refresh"));
     make_labelled_button(tree, *actions, TEXT("launch_button"), TEXT("Launch"));
+    make_labelled_button(tree, *actions, TEXT("start_paused_button"), TEXT("Start Paused"));
     make_labelled_button(tree, *actions, TEXT("back_button"), TEXT("Back"));
 
     blueprint->WidgetVariableNameToGuidMap.Reset();

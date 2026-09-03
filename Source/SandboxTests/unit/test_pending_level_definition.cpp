@@ -16,7 +16,8 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
 
         subsystem->set_level_launch_error(TEXT("old error"));
         subsystem->set_pending_level(ml::example_levels::make_native_example(),
-                                     TEXT("LevelScripts/Example.scm"));
+                                     TEXT("LevelScripts/Example.scm"),
+                                     ml::ioj::ELevelLaunchMode::Paused);
 
         TestRunner->TestFalse(TEXT("Selecting a new level clears an old launch error"),
                               subsystem->has_level_launch_error());
@@ -31,6 +32,8 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Native definition is retained"),
                               pending->definition.metadata.title,
                               FString{TEXT("Native Example")});
+        TestRunner->TestTrue(TEXT("Launch mode is retained"),
+                             pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused);
         TestRunner->TestFalse(TEXT("Pending level is consumed exactly once"),
                               subsystem->take_pending_level().IsSet());
     }

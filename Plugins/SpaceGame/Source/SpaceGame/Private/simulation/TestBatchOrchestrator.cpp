@@ -509,6 +509,9 @@ void ATestBatchOrchestrator::load_authored_level() {
     }
 
     begin_play();
+    if (pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
+        pause_simulation();
+    }
 }
 
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {

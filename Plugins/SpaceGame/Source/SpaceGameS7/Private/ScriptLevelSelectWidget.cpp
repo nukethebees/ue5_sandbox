@@ -43,7 +43,7 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
 
     if (!IsValid(level_list) || !IsValid(selected_file_text) || !IsValid(title_text) ||
         !IsValid(description_text) || !IsValid(status_text) || !IsValid(refresh_button) ||
-        !IsValid(launch_button)) {
+        !IsValid(launch_button) || !IsValid(start_paused_button)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UScriptLevelSelectWidget::NativeOnInitialized: One or more bound widgets "
@@ -61,8 +61,10 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
 
     refresh_button->OnClicked.AddDynamic(this, &ThisClass::handle_refresh);
     launch_button->OnClicked.AddDynamic(this, &ThisClass::handle_launch);
+    start_paused_button->OnClicked.AddDynamic(this, &ThisClass::handle_start_paused);
     script_toggle_button_->OnClicked.AddDynamic(this, &ThisClass::handle_toggle_script);
     launch_button->SetIsEnabled(false);
+    start_paused_button->SetIsEnabled(false);
     script_toggle_button_->SetIsEnabled(false);
     set_script_preview_visible(false);
 }
@@ -121,9 +123,10 @@ void UScriptLevelSelectWidget::activate() {
 }
 
 void UScriptLevelSelectWidget::refresh_levels() {
-    if (!IsValid(level_list) || !IsValid(launch_button) || !IsValid(status_text) ||
-        !IsValid(selected_file_text) || !IsValid(title_text) || !IsValid(description_text) ||
-        !IsValid(script_toggle_button_) || !IsValid(script_preview_)) {
+    if (!IsValid(level_list) || !IsValid(launch_button) || !IsValid(start_paused_button) ||
+        !IsValid(status_text) || !IsValid(selected_file_text) || !IsValid(title_text) ||
+        !IsValid(description_text) || !IsValid(script_toggle_button_) ||
+        !IsValid(script_preview_)) {
         return;
     }
 
@@ -132,6 +135,7 @@ void UScriptLevelSelectWidget::refresh_levels() {
     level_buttons_.Reset();
     selected_index_ = INDEX_NONE;
     launch_button->SetIsEnabled(false);
+    start_paused_button->SetIsEnabled(false);
     script_toggle_button_->SetIsEnabled(false);
     script_preview_->SetText(FText::GetEmpty());
     set_script_preview_visible(false);
@@ -177,9 +181,9 @@ void UScriptLevelSelectWidget::refresh_levels() {
 }
 
 void UScriptLevelSelectWidget::select_level(int32 const index) {
-    if (!entries_.IsValidIndex(index) || !IsValid(launch_button) || !IsValid(selected_file_text) ||
-        !IsValid(title_text) || !IsValid(description_text) || !IsValid(status_text) ||
-        !IsValid(script_toggle_button_) || !IsValid(script_preview_)) {
+    if (!entries_.IsValidIndex(index) || !IsValid(launch_button) || !IsValid(start_paused_button) ||
+        !IsValid(selected_file_text) || !IsValid(title_text) || !IsValid(description_text) ||
+        !IsValid(status_text) || !IsValid(script_toggle_button_) || !IsValid(script_preview_)) {
         return;
     }
 
@@ -198,6 +202,7 @@ void UScriptLevelSelectWidget::select_level(int32 const index) {
     script_preview_->SetText(FText::FromString(entry.source_text));
     script_toggle_button_->SetIsEnabled(true);
     launch_button->SetIsEnabled(static_cast<bool>(entry));
+    start_paused_button->SetIsEnabled(static_cast<bool>(entry));
     if (entry) {
         launch_button->SetKeyboardFocus();
     }
@@ -220,8 +225,16 @@ void UScriptLevelSelectWidget::handle_refresh() {
 }
 
 void UScriptLevelSelectWidget::handle_launch() {
+    launch_selected_level(ml::ioj::ELevelLaunchMode::Running);
+}
+
+void UScriptLevelSelectWidget::handle_start_paused() {
+    launch_selected_level(ml::ioj::ELevelLaunchMode::Paused);
+}
+
+void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode const launch_mode) {
     if (!entries_.IsValidIndex(selected_index_) || !entries_[selected_index_] ||
-        !IsValid(status_text) || !IsValid(launch_button)) {
+        !IsValid(status_text) || !IsValid(launch_button) || !IsValid(start_paused_button)) {
         return;
     }
 
@@ -234,9 +247,12 @@ void UScriptLevelSelectWidget::handle_launch() {
     }
 
     auto const& entry{entries_[selected_index_]};
-    subsystem->set_pending_level(entry.definition.GetValue(), entry.path);
+    subsystem->set_pending_level(entry.definition.GetValue(), entry.path, launch_mode);
     launch_button->SetIsEnabled(false);
-    status_text->SetText(FText::FromString(TEXT("Loading level...")));
+    start_paused_button->SetIsEnabled(false);
+    status_text->SetText(FText::FromString(launch_mode == ml::ioj::ELevelLaunchMode::Paused
+                                               ? TEXT("Loading level paused...")
+                                               : TEXT("Loading level...")));
     UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/GameRuntime")});
 }
 

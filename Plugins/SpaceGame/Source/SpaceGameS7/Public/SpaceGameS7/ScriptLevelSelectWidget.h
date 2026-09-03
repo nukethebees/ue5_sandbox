@@ -12,6 +12,10 @@ class UVerticalBox;
 class UMultiLineEditableTextBox;
 class USizeBox;
 
+namespace ml::ioj {
+enum class ELevelLaunchMode : uint8;
+}
+
 namespace ml::s7 {
 DECLARE_MULTICAST_DELEGATE_OneParam(FLevelScriptSelected, int32);
 
@@ -40,6 +44,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void NativeOnInitialized() override;
   private:
     auto create_script_preview() -> bool;
+    void launch_selected_level(ml::ioj::ELevelLaunchMode launch_mode);
     void refresh_levels();
     void select_level(int32 index);
     void set_script_preview_visible(bool visible);
@@ -48,6 +53,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void handle_refresh();
     UFUNCTION()
     void handle_launch();
+    UFUNCTION()
+    void handle_start_paused();
     UFUNCTION()
     void handle_toggle_script();
 
@@ -65,6 +72,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     UButton* refresh_button{nullptr};
     UPROPERTY(meta = (BindWidget))
     UButton* launch_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UButton* start_paused_button{nullptr};
 
     TArray<FLevelScriptEntry> entries_{};
     UPROPERTY(Transient)

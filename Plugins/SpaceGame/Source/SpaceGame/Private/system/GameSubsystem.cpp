@@ -46,9 +46,12 @@ auto UGameSubsystem::get_save_game_browser() -> FSaveGameBrowser& {
     return save_game_browser_;
 }
 
-void UGameSubsystem::set_pending_level(FLevelDefinition definition, FString source_path) {
+void UGameSubsystem::set_pending_level(FLevelDefinition definition,
+                                       FString source_path,
+                                       ELevelLaunchMode const launch_mode) {
     pending_level_.Emplace(FPendingLevelDefinition{.definition = MoveTemp(definition),
-                                                   .source_path = MoveTemp(source_path)});
+                                                   .source_path = MoveTemp(source_path),
+                                                   .launch_mode = launch_mode});
     level_launch_error_.Reset();
 }
 

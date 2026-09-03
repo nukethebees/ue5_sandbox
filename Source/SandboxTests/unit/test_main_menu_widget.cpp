@@ -70,6 +70,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("status_text")))};
         auto* const launch_button{
             Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("launch_button")))};
+        auto* const start_paused_button{
+            Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("start_paused_button")))};
         auto* const video_button{
             Cast<UButton>(options_widget->GetWidgetFromName(TEXT("video_button")))};
         auto* const gameplay_button{
@@ -86,8 +88,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto const child_bindings_valid{
             IsValid(level_back_button) && IsValid(level_list) && IsValid(title_text) &&
             IsValid(description_text) && IsValid(status_text) && IsValid(launch_button) &&
-            IsValid(video_button) && IsValid(gameplay_button) && IsValid(audio_button) &&
-            IsValid(controls_button) && IsValid(accessibility_button) &&
+            IsValid(start_paused_button) && IsValid(video_button) && IsValid(gameplay_button) &&
+            IsValid(audio_button) && IsValid(controls_button) && IsValid(accessibility_button) &&
             IsValid(options_back_button)};
         if (!TestRunner->TestTrue(TEXT("All required child menu bindings are valid"),
                                   child_bindings_valid)) {
@@ -104,6 +106,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                              level_list->GetChildrenCount() > 0);
         TestRunner->TestFalse(TEXT("Launch is disabled until a level is selected"),
                               launch_button->GetIsEnabled());
+        TestRunner->TestFalse(TEXT("Start Paused is disabled until a level is selected"),
+                              start_paused_button->GetIsEnabled());
 
         auto* const level_button{Cast<ml::s7::ULevelScriptButton>(level_list->GetChildAt(0))};
         if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
@@ -118,6 +122,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             description_text->GetText().ToString().Contains(TEXT("two-team encounter")));
         TestRunner->TestTrue(TEXT("A valid selected level can be launched"),
                              launch_button->GetIsEnabled());
+        TestRunner->TestTrue(TEXT("A valid selected level can start paused"),
+                             start_paused_button->GetIsEnabled());
         TestRunner->TestEqual(TEXT("Selected level reports that it is ready"),
                               status_text->GetText().ToString(),
                               FString{TEXT("Ready to launch.")});
