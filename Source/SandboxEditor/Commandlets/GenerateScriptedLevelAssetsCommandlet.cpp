@@ -1,5 +1,6 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
+#include <SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
@@ -202,6 +203,12 @@ auto generate_runtime_map() -> bool {
     }
     orchestrator->set_level_config(*config);
     orchestrator->set_start_mode(EOrchestratorStartMode::AuthoredLevel);
+
+    auto* const starfield{world->SpawnActor<AGpuStarfieldExperimentActor>()};
+    if (!IsValid(starfield)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not spawn runtime GPU starfield"));
+        return false;
+    }
 
     auto const filename{FPackageName::LongPackageNameToFilename(
         runtime_map_package_name, FPackageName::GetMapPackageExtension())};

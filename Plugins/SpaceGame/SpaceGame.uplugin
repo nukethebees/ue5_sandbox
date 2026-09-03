@@ -27,6 +27,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxShaders",
+			"Enabled": true
+		},
+		{
 			"Name": "SandboxUI",
 			"Enabled": true
 		},
