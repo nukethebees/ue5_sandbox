@@ -21,6 +21,7 @@ auto FTraceHitsConstView::get_view(int32 const offset, int32 const count) const 
     return ConstView{
         locations.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TConstArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TConstArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -33,6 +34,7 @@ auto FTraceHitsConstView::get_const_view(int32 const offset, int32 const count) 
     return ConstView{
         locations.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TConstArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TConstArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -49,6 +51,7 @@ void FTraceHitsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
         ml::num(entities),
+        ml::num(static_geometry_indices),
         ml::num(hits),
     });
 }
@@ -73,6 +76,7 @@ auto FTraceHitsView::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
         TArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -85,6 +89,7 @@ auto FTraceHitsView::get_view(int32 const offset, int32 const count) const -> Co
     return ConstView{
         locations.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TConstArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TConstArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -97,6 +102,7 @@ auto FTraceHitsView::get_const_view(int32 const offset, int32 const count) const
     return ConstView{
         locations.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TConstArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TConstArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -113,6 +119,7 @@ void FTraceHitsView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
         ml::num(entities),
+        ml::num(static_geometry_indices),
         ml::num(hits),
     });
 }
@@ -144,30 +151,35 @@ auto FTraceHitsView::right(int32 const count) const -> ConstView {
 void FTraceHits::reset() {
     ml::reset(locations);
     ml::reset(entities);
+    ml::reset(static_geometry_indices);
     ml::reset(hits);
 }
 
 void FTraceHits::reserve(int32 const count) {
     ml::reserve(locations, count);
     ml::reserve(entities, count);
+    ml::reserve(static_geometry_indices, count);
     ml::reserve(hits, count);
 }
 
 void FTraceHits::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(entities, count);
+    ml::add_uninitialised(static_geometry_indices, count);
     ml::add_uninitialised(hits, count);
 }
 
 void FTraceHits::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
     ml::add_defaulted(entities, count);
+    ml::add_defaulted(static_geometry_indices, count);
     ml::add_defaulted(hits, count);
 }
 
 void FTraceHits::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(entities, count, allow_shrinking);
+    ml::set_num(static_geometry_indices, count, allow_shrinking);
     ml::set_num(hits, count, allow_shrinking);
 }
 
@@ -176,6 +188,7 @@ void FTraceHits::apply_permutation(TArrayView<int32> indices) {
     check(indices.Num() == num());
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(entities, indices);
+    ml::apply_permutation(static_geometry_indices, indices);
     ml::apply_permutation(hits, indices);
 }
 
@@ -187,6 +200,7 @@ auto FTraceHits::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
         TArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -199,6 +213,7 @@ auto FTraceHits::get_view(int32 const offset, int32 const count) const -> ConstV
     return ConstView{
         locations.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TConstArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TConstArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -211,6 +226,7 @@ auto FTraceHits::get_const_view(int32 const offset, int32 const count) const -> 
     return ConstView{
         locations.get_const_view(offset, count),
         TConstArrayView<FRegistryEntityHandle>{entities}.Slice(offset, count),
+        TConstArrayView<int32>{static_geometry_indices}.Slice(offset, count),
         TConstArrayView<uint8>{hits}.Slice(offset, count),
     };
 }
@@ -227,6 +243,7 @@ void FTraceHits::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
         ml::num(entities),
+        ml::num(static_geometry_indices),
         ml::num(hits),
     });
 }

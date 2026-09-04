@@ -78,6 +78,7 @@
           "members": [
             {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
             {"name": "entities", "kind": "array", "type": "@registry_handle"},
+            {"name": "static_geometry_indices", "kind": "array", "type": "int32"},
             {"name": "hits", "kind": "array", "type": "uint8"}
           ],
           "operations": ["all"]

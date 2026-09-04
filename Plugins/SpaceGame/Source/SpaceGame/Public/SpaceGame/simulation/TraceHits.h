@@ -31,6 +31,7 @@ struct SPACEGAME_API FTraceHitsConstView {
         return std::forward<TFunc>(func)(
             self.locations,
             self.entities,
+            self.static_geometry_indices,
             self.hits
         );
     }
@@ -48,6 +49,7 @@ struct SPACEGAME_API FTraceHitsConstView {
 
     FVectors3f::ConstView locations;
     TConstArrayView<FRegistryEntityHandle> entities;
+    TConstArrayView<int32> static_geometry_indices;
     TConstArrayView<uint8> hits;
 };
 
@@ -60,6 +62,7 @@ struct SPACEGAME_API FTraceHitsView {
         return std::forward<TFunc>(func)(
             self.locations,
             self.entities,
+            self.static_geometry_indices,
             self.hits
         );
     }
@@ -82,6 +85,7 @@ struct SPACEGAME_API FTraceHitsView {
 
     FVectors3f::View locations;
     TArrayView<FRegistryEntityHandle> entities;
+    TArrayView<int32> static_geometry_indices;
     TArrayView<uint8> hits;
 };
 
@@ -100,6 +104,7 @@ struct SPACEGAME_API FTraceHits {
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         locations.remove_at_swap(index, count, allow_shrinking);
         entities.RemoveAtSwap(index, count, allow_shrinking);
+        static_geometry_indices.RemoveAtSwap(index, count, allow_shrinking);
         hits.RemoveAtSwap(index, count, allow_shrinking);
     }
 
@@ -109,6 +114,7 @@ struct SPACEGAME_API FTraceHits {
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(entities, dst_i, other.entities, src_i);
+        ml::copy_element(static_geometry_indices, dst_i, other.static_geometry_indices, src_i);
         ml::copy_element(hits, dst_i, other.hits, src_i);
     }
 
@@ -116,6 +122,7 @@ struct SPACEGAME_API FTraceHits {
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(entities, dst_i, other.entities, src_i, count);
+        ml::copy_elements(static_geometry_indices, dst_i, other.static_geometry_indices, src_i, count);
         ml::copy_elements(hits, dst_i, other.hits, src_i, count);
     }
 
@@ -131,6 +138,7 @@ struct SPACEGAME_API FTraceHits {
         requires ml::SupportsApplyArrayPairsWith<FTraceHits, Other> {
         ml::append_from(locations, other.locations);
         ml::append_from(entities, other.entities);
+        ml::append_from(static_geometry_indices, other.static_geometry_indices);
         ml::append_from(hits, other.hits);
     }
 
@@ -167,6 +175,7 @@ struct SPACEGAME_API FTraceHits {
         return std::forward<TFunc>(func)(
             self.locations,
             self.entities,
+            self.static_geometry_indices,
             self.hits
         );
     }
@@ -177,6 +186,7 @@ struct SPACEGAME_API FTraceHits {
         return std::forward<TFunc>(func)(
             self.locations, other.locations,
             self.entities, other.entities,
+            self.static_geometry_indices, other.static_geometry_indices,
             self.hits, other.hits
         );
     }
@@ -199,6 +209,7 @@ struct SPACEGAME_API FTraceHits {
 
     FVectors3f locations;
     TArray<FRegistryEntityHandle> entities;
+    TArray<int32> static_geometry_indices;
     TArray<uint8> hits;
 };
 } // namespace ml
