@@ -29,6 +29,8 @@ the caller's source arrays and writes transforms through `FSandboxISMCInstanceCh
 conversion, final 64-byte GPU packing, and conservative bounds accumulation happen in one pass with
 no intermediate transform array. `Auto`, `Sequential`, and `Parallel` policies control whether the
 fixed 1,024-instance chunks are processed by `ParallelFor`; `Auto` switches at 4,096 instances.
+Callers that already have conservative component-local bounds can pass them to `set_instances()` to
+skip per-instance bounds accumulation.
 
 The component owns three persistent packed staging arrays through `ml::MultiBuffer`. Each call fills
 the next available array and retains its capacity for later updates. The render thread copies the
@@ -113,6 +115,8 @@ Valid modes are `paired`, `custom`, and `engine_ismc`. Visibility is `all`, `hal
 non-visible instances are placed behind the fixed camera while remaining in the component database.
 Use paired mode for same-frame CPU API comparison, then matching custom and engine-only runs for GPU
 comparison. Update percentage accepts 0 through 100. Shadows are disabled by default.
+The benchmark actor's `Use Supplied Bounds` property switches the custom component between calculating
+bounds during each snapshot and reusing conservative bounds calculated once during setup.
 
 Do not add `-nullrhi`; the Render Thread and GPU comparison require a real RHI.
 

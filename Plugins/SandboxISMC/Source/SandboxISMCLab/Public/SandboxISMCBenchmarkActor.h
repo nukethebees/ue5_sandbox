@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameFramework/Actor.h"
+#include "Math/Box.h"
 
 #include "SandboxISMCBenchmarkActor.generated.h"
 
@@ -67,6 +68,7 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     int32 get_update_count() const;
     FString get_mode_name() const;
     FString get_visibility_name() const;
+    FString get_bounds_name() const;
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Benchmark")
     TObjectPtr<USceneComponent> root_;
@@ -100,6 +102,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Rendering")
     bool cast_shadows_{false};
 
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Rendering")
+    bool use_supplied_bounds_{false};
+
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark")
     float grid_spacing_{150.0f};
 
@@ -129,6 +134,7 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
 
     TArray<FVector3f> base_positions_;
     TArray<FTransform> engine_update_transforms_;
+    FBox3f supplied_local_bounds_{ForceInit};
     TArray<double> frame_ms_;
     TArray<double> game_thread_ms_;
     TArray<double> render_thread_ms_;

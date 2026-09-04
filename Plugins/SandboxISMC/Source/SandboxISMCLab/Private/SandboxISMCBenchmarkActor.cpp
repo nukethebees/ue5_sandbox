@@ -88,6 +88,7 @@ void append_summary(FString& output,
                     TCHAR const* unit,
                     TCHAR const* mode,
                     TCHAR const* visibility,
+                    TCHAR const* bounds,
                     int32 const instance_count,
                     int32 const updated_instance_count,
                     double const update_percentage,
@@ -97,10 +98,11 @@ void append_summary(FString& output,
     }
 
     auto const summary{summarize(samples)};
-    output += FString::Printf(TEXT("%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
+    output += FString::Printf(TEXT("%s,%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
                               renderer,
                               mode,
                               visibility,
+                              bounds,
                               instance_count,
                               updated_instance_count,
                               update_percentage,
@@ -155,8 +157,9 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     configure_components();
     request_end_pie_on_completion_ =
         FParse::Param(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkEndPIE"));
-    output_base_name_ = FString::Printf(TEXT("SandboxISMC_%s_%dpct_%s_%s"),
+    output_base_name_ = FString::Printf(TEXT("SandboxISMC_%s_%s_bounds_%dpct_%s_%s"),
                                         *get_mode_name(),
+                                        *get_bounds_name(),
                                         FMath::RoundToInt(update_percentage_),
                                         *get_visibility_name(),
                                         *FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S")));
@@ -173,20 +176,23 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     TRACE_COUNTER_SET(BenchmarkInstanceCount, base_positions_.Num());
     TRACE_COUNTER_SET(BenchmarkUpdatedInstanceCount, get_update_count());
     TRACE_BOOKMARK(
-        TEXT("SandboxISMC benchmark start: mode=%s instances=%d updated=%d visibility=%s"),
+        TEXT("SandboxISMC benchmark start: mode=%s instances=%d updated=%d visibility=%s "
+             "bounds=%s"),
         *get_mode_name(),
         base_positions_.Num(),
         get_update_count(),
-        *get_visibility_name());
+        *get_visibility_name(),
+        *get_bounds_name());
     UE_LOG(LogSandboxISMCBenchmark,
            Display,
            TEXT("Continuous benchmark started: mode=%s, instances=%d, updated=%d (%.1f%%), "
-                "visibility=%s, shadows=%s"),
+                "visibility=%s, bounds=%s, shadows=%s"),
            *get_mode_name(),
            base_positions_.Num(),
            get_update_count(),
            update_percentage_,
            *get_visibility_name(),
+           *get_bounds_name(),
            cast_shadows_ ? TEXT("on") : TEXT("off"));
 }
 
@@ -362,6 +368,16 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
             FTransform{FQuat::Identity, FVector{position}, FVector::OneVector};
     }
 
+    supplied_local_bounds_ = FBox3f{ForceInit};
+    for (auto const& position : base_positions_) {
+        supplied_local_bounds_ += position;
+    }
+    auto const mesh_bounds{static_mesh_->GetBounds()};
+    auto const mesh_radius{
+        static_cast<float>(mesh_bounds.SphereRadius + mesh_bounds.Origin.Size())};
+    supplied_local_bounds_ = supplied_local_bounds_.ExpandBy(FVector3f{
+        mesh_radius, mesh_radius, mesh_radius + FMath::Abs(vertical_movement_amplitude_)});
+
     auto const separation{runs_custom() && runs_engine_ismc() ? grid_width + grid_gap_ : 0.0f};
     custom_ismc_->SetRelativeLocation(FVector{-separation * 0.5f, 0.0, 0.0});
     engine_ismc_->SetRelativeLocation(FVector{separation * 0.5f, 0.0, 0.0});
@@ -377,17 +393,22 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
         auto const custom_start{FPlatformTime::Cycles64()};
         {
             custom_ismc_->set_static_mesh(*static_mesh_);
-            custom_ismc_->set_instances(
-                count, ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                    auto const [first_index, chunk_count]{chunk.range()};
-                    for (auto local_index = 0; local_index < chunk_count; ++local_index) {
-                        auto const instance_index{first_index + local_index};
-                        chunk.set_transform(local_index,
-                                            base_positions_[instance_index],
-                                            FQuat4f::Identity,
-                                            FVector3f::OneVector);
-                    }
-                });
+            auto const fill{[&](FSandboxISMCInstanceChunkWriter& chunk) {
+                auto const [first_index, chunk_count]{chunk.range()};
+                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                    auto const instance_index{first_index + local_index};
+                    chunk.set_transform(local_index,
+                                        base_positions_[instance_index],
+                                        FQuat4f::Identity,
+                                        FVector3f::OneVector);
+                }
+            }};
+            if (use_supplied_bounds_) {
+                custom_ismc_->set_instances(
+                    count, supplied_local_bounds_, ESandboxISMCParallelism::Auto, fill);
+            } else {
+                custom_ismc_->set_instances(count, ESandboxISMCParallelism::Auto, fill);
+            }
         }
         custom_creation_ms_ =
             FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - custom_start);
@@ -425,20 +446,25 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
         auto const count{base_positions_.Num()};
         auto const updated_count{get_update_count()};
         auto const rotation{FQuat4f{FVector3f::UpVector, angle_radians}};
-        custom_ismc_->set_instances(
-            count, ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                auto const [first_index, chunk_count]{chunk.range()};
-                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
-                    auto const instance_index{first_index + local_index};
-                    auto const animated{instance_index < updated_count};
-                    auto const position{base_positions_[instance_index] +
-                                        FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
-                    chunk.set_transform(local_index,
-                                        position,
-                                        animated ? rotation : FQuat4f::Identity,
-                                        FVector3f::OneVector);
-                }
-            });
+        auto const fill{[&](FSandboxISMCInstanceChunkWriter& chunk) {
+            auto const [first_index, chunk_count]{chunk.range()};
+            for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                auto const instance_index{first_index + local_index};
+                auto const animated{instance_index < updated_count};
+                auto const position{base_positions_[instance_index] +
+                                    FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
+                chunk.set_transform(local_index,
+                                    position,
+                                    animated ? rotation : FQuat4f::Identity,
+                                    FVector3f::OneVector);
+            }
+        }};
+        if (use_supplied_bounds_) {
+            custom_ismc_->set_instances(
+                count, supplied_local_bounds_, ESandboxISMCParallelism::Auto, fill);
+        } else {
+            custom_ismc_->set_instances(count, ESandboxISMCParallelism::Auto, fill);
+        }
     }
     auto const api_cycles{FPlatformTime::Cycles64() - api_start};
     auto const total_cycles{FPlatformTime::Cycles64() - total_start};
@@ -537,6 +563,10 @@ FString ASandboxISMCBenchmarkActor::get_visibility_name() const {
             return TEXT("none_visible");
     }
     return TEXT("unknown");
+}
+
+FString ASandboxISMCBenchmarkActor::get_bounds_name() const {
+    return use_supplied_bounds_ ? TEXT("supplied") : TEXT("calculated");
 }
 
 void ASandboxISMCBenchmarkActor::finish_benchmark() {
@@ -651,10 +681,11 @@ void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
 
 void ASandboxISMCBenchmarkActor::save_report() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::save_report);
-    FString csv{TEXT("renderer,mode,visibility,instances,updated_instances,update_percent,metric,"
-                     "unit,samples,min,median,p95,max\n")};
+    FString csv{TEXT("renderer,mode,visibility,bounds,instances,updated_instances,update_percent,"
+                     "metric,unit,samples,min,median,p95,max\n")};
     auto const mode_name{get_mode_name()};
     auto const visibility_name{get_visibility_name()};
+    auto const bounds_name{get_bounds_name()};
     auto const instance_count{base_positions_.Num()};
     auto const updated_instance_count{get_update_count()};
     auto const append{[&](TCHAR const* renderer,
@@ -667,6 +698,7 @@ void ASandboxISMCBenchmarkActor::save_report() const {
                        unit,
                        *mode_name,
                        *visibility_name,
+                       *bounds_name,
                        instance_count,
                        updated_instance_count,
                        update_percentage_,

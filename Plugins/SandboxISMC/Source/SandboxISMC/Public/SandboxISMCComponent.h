@@ -40,44 +40,19 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     auto set_instances(int32 instance_count,
                        ESandboxISMCParallelism parallelism,
                        FillChunk&& fill_chunk) -> void {
-        checkf(instance_count >= 0, TEXT("SandboxISMC instance count must not be negative"));
-        TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_instances);
-        SCOPE_CYCLE_COUNTER(STAT_SandboxISMCBuild);
-        auto const start_cycles{FPlatformTime::Cycles64()};
+        set_instances_impl<true>(
+            instance_count, parallelism, FBox3f{ForceInit}, Forward<FillChunk>(fill_chunk));
+    }
 
-        auto instances{begin_instance_update(instance_count)};
-        auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};
-        chunk_bounds_.SetNum(chunk_count);
-
-        auto const build_chunk{[&](int32 chunk_index) {
-            auto const first_index{chunk_index * instance_chunk_size};
-            auto const count{FMath::Min(instance_chunk_size, instance_count - first_index)};
-            FSandboxISMCInstanceChunkWriter writer{instances.Slice(first_index, count),
-                                                   first_index,
-                                                   mesh_bounds_origin_,
-                                                   mesh_bounds_radius_,
-                                                   has_mesh_bounds_};
-            fill_chunk(writer);
-            chunk_bounds_[chunk_index] = writer.bounds();
-        }};
-
-        auto const run_parallel{parallelism == ESandboxISMCParallelism::Parallel ||
-                                (parallelism == ESandboxISMCParallelism::Auto &&
-                                 instance_count >= parallel_instance_threshold)};
-        if (run_parallel) {
-            ParallelFor(chunk_count, build_chunk);
-        } else {
-            for (auto chunk_index = 0; chunk_index < chunk_count; ++chunk_index) {
-                build_chunk(chunk_index);
-            }
-        }
-
-        FBox3f local_box{ForceInit};
-        for (auto const& bounds : chunk_bounds_) {
-            local_box += bounds;
-        }
-
-        finish_instance_update(instance_count, local_box, FPlatformTime::Cycles64() - start_cycles);
+    template <typename FillChunk>
+    auto set_instances(int32 instance_count,
+                       FBox3f local_bounds,
+                       ESandboxISMCParallelism parallelism,
+                       FillChunk&& fill_chunk) -> void {
+        checkf(instance_count <= 0 || local_bounds.IsValid != 0,
+               TEXT("SandboxISMC bounds must be valid when instances are submitted"));
+        set_instances_impl<false>(
+            instance_count, parallelism, local_bounds, Forward<FillChunk>(fill_chunk));
     }
 
     auto clear_instances() -> void;
@@ -92,6 +67,61 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
   private:
     static constexpr int32 instance_chunk_size{1024};
     static constexpr int32 parallel_instance_threshold{4096};
+
+    template <bool CalculateBounds, typename FillChunk>
+    auto set_instances_impl(int32 instance_count,
+                            ESandboxISMCParallelism parallelism,
+                            FBox3f local_bounds,
+                            FillChunk&& fill_chunk) -> void {
+        checkf(instance_count >= 0, TEXT("SandboxISMC instance count must not be negative"));
+        TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_instances);
+        SCOPE_CYCLE_COUNTER(STAT_SandboxISMCBuild);
+        auto const start_cycles{FPlatformTime::Cycles64()};
+
+        auto instances{begin_instance_update(instance_count)};
+        auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};
+        if constexpr (CalculateBounds) {
+            chunk_bounds_.SetNumUninitialized(chunk_count);
+        } else {
+            chunk_bounds_.Reset();
+        }
+
+        auto const build_chunk{[&](int32 chunk_index) {
+            auto const first_index{chunk_index * instance_chunk_size};
+            auto const count{FMath::Min(instance_chunk_size, instance_count - first_index)};
+            FSandboxISMCInstanceChunkWriter writer{instances.Slice(first_index, count),
+                                                   first_index,
+                                                   mesh_bounds_origin_,
+                                                   mesh_bounds_radius_,
+                                                   CalculateBounds && has_mesh_bounds_};
+            fill_chunk(writer);
+            if constexpr (CalculateBounds) {
+                chunk_bounds_[chunk_index] = writer.bounds();
+            }
+        }};
+
+        auto const run_parallel{parallelism == ESandboxISMCParallelism::Parallel ||
+                                (parallelism == ESandboxISMCParallelism::Auto &&
+                                 instance_count >= parallel_instance_threshold)};
+        if (run_parallel) {
+            ParallelFor(chunk_count, build_chunk);
+        } else {
+            for (auto chunk_index = 0; chunk_index < chunk_count; ++chunk_index) {
+                build_chunk(chunk_index);
+            }
+        }
+
+        if constexpr (CalculateBounds) {
+            for (auto const& bounds : chunk_bounds_) {
+                local_bounds += bounds;
+            }
+        } else if (instance_count == 0) {
+            local_bounds = FBox3f{ForceInit};
+        }
+
+        finish_instance_update(
+            instance_count, local_bounds, FPlatformTime::Cycles64() - start_cycles);
+    }
 
     auto begin_instance_update(int32 instance_count) -> TArrayView<FSandboxISMCRenderInstance>;
     auto finish_instance_update(int32 instance_count, FBox3f local_box, uint64 elapsed_cycles)

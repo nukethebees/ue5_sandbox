@@ -162,6 +162,42 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                               instance_count);
     }
 
+    TEST_METHOD(UsesCallerSuppliedBounds)
+    {
+        auto* component{NewObject<USandboxISMCComponent>()};
+        FBox3f const local_bounds{FVector3f{-10.0f, -20.0f, -30.0f},
+                                  FVector3f{40.0f, 50.0f, 60.0f}};
+
+        component->set_instances(
+            2,
+            local_bounds,
+            ESandboxISMCParallelism::Sequential,
+            [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                chunk.set_transform(
+                    0, {-1000.0f, 0.0f, 0.0f}, FQuat4f::Identity, FVector3f::OneVector);
+                chunk.set_transform(
+                    1, {1000.0f, 0.0f, 0.0f}, FQuat4f::Identity, FVector3f::OneVector);
+            });
+
+        auto const actual{component->CalcBounds(FTransform::Identity)};
+        auto const expected{FBoxSphereBounds{FBoxSphereBounds3f{local_bounds}}};
+        TestRunner->TestTrue(TEXT("The component uses the supplied bounds origin"),
+                             actual.Origin.Equals(expected.Origin));
+        TestRunner->TestTrue(TEXT("The component uses the supplied bounds extent"),
+                             actual.BoxExtent.Equals(expected.BoxExtent));
+        TestRunner->TestEqual(TEXT("The component uses the supplied sphere radius"),
+                              actual.SphereRadius,
+                              expected.SphereRadius);
+
+        component->set_instances(0,
+                                 local_bounds,
+                                 ESandboxISMCParallelism::Sequential,
+                                 [](FSandboxISMCInstanceChunkWriter&) {});
+        TestRunner->TestEqual(TEXT("An empty snapshot clears supplied bounds"),
+                              component->CalcBounds(FTransform::Identity).SphereRadius,
+                              0.0);
+    }
+
     TEST_METHOD(SupportsChunkAndParallelismBoundaries)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
