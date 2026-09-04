@@ -1,0 +1,41 @@
+{
+  "schema_version": 3,
+  "id": "accretion_disc",
+  "display_name": "Accretion Disc",
+  "default_asset_name": "NS_SandboxNiagaraAccretionDisc",
+  "configuration": {
+    "emission_mode": "continuous",
+    "spawn_rate": 3000.0,
+    "local_space": true,
+    "particle_lifetime": 24.0,
+    "sprite_size": 7.0,
+    "spawn_shape": "disc",
+    "spawn_radius": 550.0,
+    "fixed_bounds_extent": 900.0,
+    "particle_color": [1.0, 0.35, 0.04, 1.0],
+    "velocity_expression_file": "Hlsl/accretion_disc.hlsl",
+    "parameters": [
+      {
+        "name": "User.OrbitalSpeed",
+        "display_name": "Orbital Speed",
+        "default": 220.0,
+        "minimum": -1000.0,
+        "maximum": 1000.0
+      },
+      {
+        "name": "User.InwardSpeed",
+        "display_name": "Inward Speed",
+        "default": 18.0,
+        "minimum": -200.0,
+        "maximum": 200.0
+      },
+      {
+        "name": "User.DiscPull",
+        "display_name": "Disc Pull",
+        "default": 1.5,
+        "minimum": 0.0,
+        "maximum": 20.0
+      }
+    ]
+  }
+}
