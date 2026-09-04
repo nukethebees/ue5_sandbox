@@ -10,6 +10,8 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/SExperimentPanel.h"
 
+#include "generated/UHeatmapRDGShowcase.slate.generated.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogHeatmapRDGShowcase, Log, All);
 
 namespace {
@@ -27,73 +29,29 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
     heatmap_widget_ = NewObject<UHeatmapRDGWidget>(this);
     check(heatmap_widget_);
 
-    return SNew(SExperimentPanel)
-        .Title(NSLOCTEXT("HeatmapRDG", "Title", "RDG GPU Heatmap Showcase"))
-        .Description(NSLOCTEXT("HeatmapRDG",
-                               "Description",
-                               "Each update uploads one dense scalar grid and draws one Slate "
-                               "image."))
-        .Controls()
-            [SNew(SVerticalBox) +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 6.0f})
-                 [SNew(SLabeledRow)
-                      .Label(NSLOCTEXT("HeatmapRDG", "InputResolution", "Input grid resolution:"))
-                          [SNew(SHorizontalBox) +
-                           SandboxUI::Slate::hbox_auto_slot(
-                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
-                               FText::FromString(TEXT("32 x 32")),
-                               FOnClicked::CreateUObject(
-                                   this, &UHeatmapRDGShowcase::select_grid_size, 32))] +
-                           SandboxUI::Slate::hbox_auto_slot(
-                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
-                               FText::FromString(TEXT("64 x 64")),
-                               FOnClicked::CreateUObject(
-                                   this, &UHeatmapRDGShowcase::select_grid_size, 64))] +
-                           SandboxUI::Slate::hbox_auto_slot(
-                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
-                               FText::FromString(TEXT("128 x 128")),
-                               FOnClicked::CreateUObject(
-                                   this, &UHeatmapRDGShowcase::select_grid_size, 128))] +
-                           SandboxUI::Slate::hbox_auto_slot(
-                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
-                               FText::FromString(TEXT("256 x 256")),
-                               FOnClicked::CreateUObject(
-                                   this, &UHeatmapRDGShowcase::select_grid_size, 256))] +
-                           SandboxUI::Slate::hbox_auto_slot()[make_size_button(
-                               FText::FromString(TEXT("512 x 512")),
-                               FOnClicked::CreateUObject(
-                                   this, &UHeatmapRDGShowcase::select_grid_size, 512))]]] +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
-                 [SNew(SLabeledRow)
-                      .Label(NSLOCTEXT("HeatmapRDG", "Pattern", "Pattern:"))
-                          [SNew(SHorizontalBox) +
-                           SandboxUI::Slate::hbox_auto_slot(FMargin{0.0f, 0.0f, 4.0f, 0.0f})
-                               [SNew(SButton)
-                                    .Text(NSLOCTEXT("HeatmapRDG", "Hotspots", "Hotspots"))
-                                    .OnClicked_UObject(this, &UHeatmapRDGShowcase::show_hotspots)] +
-                           SandboxUI::Slate::hbox_auto_slot()
-                               [SNew(SButton)
-                                    .Text(NSLOCTEXT("HeatmapRDG", "Gradient", "Gradient + checker"))
-                                    .OnClicked_UObject(this,
-                                                       &UHeatmapRDGShowcase::show_gradient)]]] +
-             SandboxUI::Slate::vbox_auto_slot()
-                 [SNew(SExperimentBenchmark)
-                      .ButtonText(NSLOCTEXT(
-                          "HeatmapRDG", "RunBenchmark", "Benchmark RDG vs Slate custom vertices"))
-                      .ToolTipText(
-                          NSLOCTEXT("HeatmapRDG",
-                                    "RunBenchmarkTooltip",
-                                    "Runs a short CPU benchmark at 32x32 through 512x512."))
-                      .OnClicked_UObject(this, &UHeatmapRDGShowcase::run_benchmark)
-                      .OutputHeight(180.0f)
-                      .Output()[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
-                                    .IsReadOnly(true)
-                                    .Text(NSLOCTEXT("HeatmapRDG",
-                                                    "BenchmarkInstructions",
-                                                    "Results appear here. The CLI writes the same "
-                                                    "stages to CSV."))]]]
-        .Preview()[SNew(SBox).MinDesiredWidth(512.0f).MinDesiredHeight(
-            512.0f)[heatmap_widget_->TakeWidget()]];
+    auto const size_32_button{make_size_button(
+        FText::FromString(TEXT("32 x 32")),
+        FOnClicked::CreateUObject(this, &UHeatmapRDGShowcase::select_grid_size, 32))};
+    auto const size_64_button{make_size_button(
+        FText::FromString(TEXT("64 x 64")),
+        FOnClicked::CreateUObject(this, &UHeatmapRDGShowcase::select_grid_size, 64))};
+    auto const size_128_button{make_size_button(
+        FText::FromString(TEXT("128 x 128")),
+        FOnClicked::CreateUObject(this, &UHeatmapRDGShowcase::select_grid_size, 128))};
+    auto const size_256_button{make_size_button(
+        FText::FromString(TEXT("256 x 256")),
+        FOnClicked::CreateUObject(this, &UHeatmapRDGShowcase::select_grid_size, 256))};
+    auto const size_512_button{make_size_button(
+        FText::FromString(TEXT("512 x 512")),
+        FOnClicked::CreateUObject(this, &UHeatmapRDGShowcase::select_grid_size, 512))};
+    auto const heatmap_preview{heatmap_widget_->TakeWidget()};
+
+    return SlateGenerated::UHeatmapRDGShowcaseBuilder{*this}.RebuildWidget(size_32_button,
+                                                                           size_64_button,
+                                                                           size_128_button,
+                                                                           size_256_button,
+                                                                           size_512_button,
+                                                                           heatmap_preview);
 }
 
 auto UHeatmapRDGShowcase::select_grid_size(int32 const grid_size) -> FReply {

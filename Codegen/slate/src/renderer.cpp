@@ -118,8 +118,8 @@ class Renderer {
                 using T = std::decay_t<decltype(value)>;
                 if constexpr (std::is_same_v<T, Widget>) {
                     render_widget(value, indent);
-                } else if constexpr (std::is_same_v<T, VBox>) {
-                    render_vbox(value, indent);
+                } else if constexpr (std::is_same_v<T, Box>) {
+                    render_box(value, indent);
                 } else {
                     render_existing_widget(value, indent);
                 }
@@ -162,10 +162,11 @@ class Renderer {
                     "std::forward<decltype(" + widget.parameter + ")>(" + widget.parameter + ")");
     }
 
-    void render_vbox(VBox const& box, std::size_t const indent) {
-        append_line(indent, "SNew(SVerticalBox)");
+    void render_box(Box const& box, std::size_t const indent) {
+        auto const vertical{box.orientation == BoxOrientation::vertical};
+        append_line(indent, vertical ? "SNew(SVerticalBox)" : "SNew(SHorizontalBox)");
         for (auto const& slot : box.slots) {
-            append_line(indent + 4, "+ " + render_slot_helper(slot));
+            append_line(indent + 4, "+ " + render_slot_helper(slot, vertical));
             if (slot.horizontal_alignment) {
                 append_line(indent + 8,
                             ".HAlign(" + horizontal_alignment(*slot.horizontal_alignment) + ")");
@@ -208,20 +209,22 @@ class Renderer {
         return "." + argument.name + "(" + render_value(value) + ")";
     }
 
-    static auto render_slot_helper(BoxSlot const& slot) -> std::string {
+    static auto render_slot_helper(BoxSlot const& slot, bool const vertical) -> std::string {
+        std::string const helper_prefix{vertical ? "SandboxUI::Slate::vbox_"
+                                                 : "SandboxUI::Slate::hbox_"};
         auto const padding{render_padding(slot.padding)};
         if (!slot.fill) {
-            return padding.empty() ? "SandboxUI::Slate::vbox_auto_slot()"
-                                   : "SandboxUI::Slate::vbox_auto_slot(" + padding + ")";
+            return padding.empty() ? helper_prefix + "auto_slot()"
+                                   : helper_prefix + "auto_slot(" + padding + ")";
         }
         if (slot.weight) {
             auto const weight{float_literal(*slot.weight)};
-            return padding.empty() ? "SandboxUI::Slate::vbox_fill_slot(" + weight + ")"
-                                   : "SandboxUI::Slate::vbox_fill_slot(" + weight + ", " +
-                                         padding + ")";
+            return padding.empty() ? helper_prefix + "fill_slot(" + weight + ")"
+                                   : helper_prefix + "fill_slot(" + weight + ", " + padding +
+                                         ")";
         }
-        return padding.empty() ? "SandboxUI::Slate::vbox_fill_slot()"
-                               : "SandboxUI::Slate::vbox_fill_slot(1.0f, " + padding + ")";
+        return padding.empty() ? helper_prefix + "fill_slot()"
+                               : helper_prefix + "fill_slot(1.0f, " + padding + ")";
     }
 
     static auto render_padding(std::vector<std::string> const& values) -> std::string {

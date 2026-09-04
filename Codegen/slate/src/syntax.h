@@ -92,13 +92,16 @@ struct BoxSlot {
     SourceSpan span;
 };
 
-struct VBox {
+enum class BoxOrientation { horizontal, vertical };
+
+struct Box {
+    BoxOrientation orientation;
     std::vector<BoxSlot> slots;
     SourceSpan span;
 };
 
 struct Child {
-    std::variant<Widget, VBox, ExistingWidget> value;
+    std::variant<Widget, Box, ExistingWidget> value;
     SourceSpan span;
 };
 

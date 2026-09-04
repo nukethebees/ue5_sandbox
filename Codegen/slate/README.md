@@ -16,8 +16,10 @@ existing     := "(" "existing" identifier ")"
 widget_item  := argument | named_slot | child
 argument     := keyword value
 named_slot   := "(" "slot" atom child ")"
-child        := widget | assigned | existing | vbox
+child        := widget | assigned | existing | box
+box          := vbox | hbox
 vbox         := "(" "vbox" box_slot+ ")"
+hbox         := "(" "hbox" box_slot+ ")"
 box_slot     := "(" ("auto" | "fill") box_option* child ")"
 box_option   := ":weight" number
               | ":padding" margin
@@ -93,6 +95,6 @@ Output filenames are derived from the widget class declarations rather than list
 
 ## Pilot
 
-`Radar3DShowcase.sbxslate` is a production pilot. Its handwritten `RebuildWidget` constructs the
-stateful radar widget and callback, then passes both into the generated builder. The static layout,
-localized text, benchmark output assignment, and owner callback binding are generated.
+The production pilots keep stateful widgets, callbacks, and dynamically produced child widgets in
+handwritten `RebuildWidget` functions, then pass them into generated builders. Static layout,
+localized text, output assignment, and owner callback binding are generated.

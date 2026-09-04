@@ -152,8 +152,8 @@ class Parser {
 
     void validate_widget_type(Token const& type) const {
         if (type.text == "widget-class" || type.text == "function" || type.text == "vbox" ||
-            type.text == "slot" || type.text == "auto" || type.text == "fill" ||
-            type.text == "assign" || type.text == "existing") {
+            type.text == "hbox" || type.text == "slot" || type.text == "auto" ||
+            type.text == "fill" || type.text == "assign" || type.text == "existing") {
             fail(type.span, "expected widget type, found structural form '" + type.text + "'");
         }
     }
@@ -308,8 +308,8 @@ class Parser {
         if (!at(TokenKind::left_parenthesis)) {
             fail(current().span, "expected child list");
         }
-        if (list_head_is("vbox")) {
-            return parse_vbox();
+        if (list_head_is("vbox") || list_head_is("hbox")) {
+            return parse_box();
         }
         if (list_head_is("assign")) {
             return parse_assigned_widget();
@@ -319,37 +319,40 @@ class Parser {
         }
         if (list_head_is("widget-class") || list_head_is("function") || list_head_is("slot") ||
             list_head_is("auto") || list_head_is("fill")) {
-            fail(tokens_[index_ + 1].span, "expected widget, assigned widget, existing widget, or vbox child");
+            fail(tokens_[index_ + 1].span,
+                 "expected widget, assigned widget, existing widget, or box child");
         }
         return parse_widget();
     }
 
-    auto parse_vbox() -> Child {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before vbox")};
-        auto const& form{expect_atom("expected 'vbox'")};
-        if (form.text != "vbox") {
-            fail(form.span, "expected 'vbox'");
+    auto parse_box() -> Child {
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before box")};
+        auto const& form{expect_atom("expected 'vbox' or 'hbox'")};
+        if (form.text != "vbox" && form.text != "hbox") {
+            fail(form.span, "expected 'vbox' or 'hbox'");
         }
 
-        VBox box{.span = opening.span};
+        Box box{.orientation = form.text == "vbox" ? BoxOrientation::vertical
+                                                   : BoxOrientation::horizontal,
+                .span = opening.span};
         while (!at(TokenKind::right_parenthesis)) {
             if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after vbox body");
+                fail(current().span, "expected ')' after box body");
             }
             box.slots.push_back(parse_box_slot());
         }
-        expect(TokenKind::right_parenthesis, "expected ')' after vbox body");
+        expect(TokenKind::right_parenthesis, "expected ')' after box body");
         if (box.slots.empty()) {
-            fail(opening.span, "vbox must contain at least one slot");
+            fail(opening.span, "box must contain at least one slot");
         }
         return Child{std::move(box), opening.span};
     }
 
     auto parse_box_slot() -> BoxSlot {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected vbox slot list")};
-        auto const& mode{expect_atom("expected 'auto' or 'fill' vbox slot")};
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected box slot list")};
+        auto const& mode{expect_atom("expected 'auto' or 'fill' box slot")};
         if (mode.text != "auto" && mode.text != "fill") {
-            fail(mode.span, "expected 'auto' or 'fill' vbox slot");
+            fail(mode.span, "expected 'auto' or 'fill' box slot");
         }
 
         BoxSlot slot{.fill = mode.text == "fill", .span = opening.span};
@@ -358,7 +361,7 @@ class Parser {
         bool has_vertical_alignment{false};
 
         while (at(TokenKind::keyword)) {
-            auto const& option{expect(TokenKind::keyword, "expected vbox slot option")};
+            auto const& option{expect(TokenKind::keyword, "expected box slot option")};
             if (option.text == "weight") {
                 if (!slot.fill) {
                     fail(option.span, "weight is only valid on fill slots");

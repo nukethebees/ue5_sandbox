@@ -9,9 +9,15 @@
 class UHeatmapRDGWidget;
 class SMultiLineEditableTextBox;
 
+namespace SlateGenerated {
+struct UHeatmapRDGShowcaseBuilder;
+}
+
 UCLASS(Blueprintable)
 class SBXUIEXPERIMENTS_API UHeatmapRDGShowcase : public UEditorUtilityWidget {
     GENERATED_BODY()
+
+    friend struct SlateGenerated::UHeatmapRDGShowcaseBuilder;
   private:
     enum class EPattern : uint8 { Hotspots, GradientChecker };
   public:
