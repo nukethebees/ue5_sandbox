@@ -30,6 +30,7 @@ enum class ECollisionUniformGridTraceScenario : uint8 {
     DenseAndWideAABBs,
     ProductionScale,
     StaticGeometry,
+    StaticHarvesting,
 };
 
 class FCollisionUniformGridScenario final : public FSimulationTestScenario {
@@ -84,6 +85,7 @@ class FCollisionUniformGridTraceScenario final : public FSimulationTestScenario 
     void test_dense_and_wide_aabbs();
     void test_production_scale();
     void test_static_geometry();
+    void test_static_harvesting();
 
     ECollisionUniformGridTraceScenario scenario_;
 };

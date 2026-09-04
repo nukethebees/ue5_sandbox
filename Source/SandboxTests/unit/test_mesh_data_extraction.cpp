@@ -2,6 +2,8 @@
 
 #include <CQTest.h>
 #include <Engine/StaticMesh.h>
+#include <Math/Transform.h>
+#include <PhysicsEngine/AggregateGeom.h>
 #include <PhysicsEngine/BodySetup.h>
 
 TEST_CLASS(MeshDataExtraction, "Sandbox.UnitTests")
@@ -40,5 +42,23 @@ TEST_CLASS(MeshDataExtraction, "Sandbox.UnitTests")
         auto const aabb{ml::get_aabb(*mesh)};
 
         TestRunner->TestFalse(TEXT("AABB is invalid"), aabb.IsValid != 0);
+    }
+
+    TEST_METHOD(TransformsNonUniformlyScaledCollisionBox)
+    {
+        FKAggregateGeom geometry;
+        FKBoxElem box{2.0f, 4.0f, 6.0f};
+        box.Center = FVector{1.0, 0.0, 0.0};
+        geometry.BoxElems.Add(box);
+
+        FTransform const local_to_world{
+            FRotator{0.0, 90.0, 0.0}, FVector{10.0, 20.0, 30.0}, FVector{2.0, 3.0, 4.0}};
+        auto const aabb{ml::get_aabb(geometry, local_to_world)};
+
+        TestRunner->TestTrue(TEXT("Transformed AABB is valid"), aabb.IsValid != 0);
+        TestRunner->TestTrue(TEXT("Transformed AABB has the expected minimum"),
+                             aabb.Min.Equals(FVector{4.0, 20.0, 18.0}));
+        TestRunner->TestTrue(TEXT("Transformed AABB has the expected maximum"),
+                             aabb.Max.Equals(FVector{16.0, 24.0, 42.0}));
     }
 };

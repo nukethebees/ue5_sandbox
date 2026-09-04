@@ -4,6 +4,7 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestCollisionActor.h>
 
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -25,6 +26,9 @@
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <cmath>
+#include <Components/BoxComponent.h>
+#include <Components/InstancedStaticMeshComponent.h>
+#include <Engine/World.h>
 #include <limits>
 
 namespace ml {
@@ -1930,6 +1934,71 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
                      TEXT("Dynamic geometry wins exact-distance static tie"));
 }
 
+void FCollisionUniformGridTraceScenario::test_static_harvesting() {
+    auto* const harvested_actor{context_.world.SpawnActor<ASandboxTestDerivedCollisionActor>(
+        ASandboxTestDerivedCollisionActor::StaticClass(), FTransform{FVector::ZeroVector})};
+    auto* const omitted_actor{context_.world.SpawnActor<ASandboxTestOmittedCollisionActor>(
+        ASandboxTestOmittedCollisionActor::StaticClass(), FTransform{FVector{300.f, 0.f, 0.f}})};
+    if (!checks.is_valid(harvested_actor, TEXT("Harvest test actor is spawned")) ||
+        !checks.is_valid(omitted_actor, TEXT("Omitted test actor is spawned"))) {
+        return;
+    }
+
+    auto* const unsupported_component{NewObject<UInstancedStaticMeshComponent>(harvested_actor)};
+    unsupported_component->SetMobility(EComponentMobility::Static);
+    unsupported_component->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    harvested_actor->AddInstanceComponent(unsupported_component);
+    unsupported_component->RegisterComponent();
+
+    FCollisionGridConfig config;
+    config.grid_size = FVector3f{4000.f, 4000.f, 4000.f};
+    config.cell_size = FVector3f{100.f, 100.f, 100.f};
+    config.harvested_collision_actor_classes.Add(ASandboxTestCollisionActor::StaticClass());
+    config.omitted_collision_actor_classes.Add(ASandboxTestOmittedCollisionActor::StaticClass());
+
+    FTestEntityRegistry registry;
+    ioj::FCollisionSystem collision;
+    collision.set_entity_registry(registry);
+    auto& grid{collision.get_uniform_grid()};
+    grid.set_grid_dims(config.calculate_grid_dimensions());
+    grid.set_cell_dims(config.cell_size);
+    collision.initialise_static_geometry(context_.world, config);
+
+    auto const sources{collision.get_static_collision_sources()};
+    auto const source_index{sources.IndexOfByPredicate([harvested_actor](auto const& source) {
+        return source.actor.Get() == harvested_actor &&
+               source.component.Get() == harvested_actor->get_collision_component();
+    })};
+    int32 harvested_actor_source_count{};
+    for (auto const& source : sources) {
+        if (source.actor.Get() == harvested_actor) {
+            ++harvested_actor_source_count;
+        }
+    }
+    checks.is_true(source_index != INDEX_NONE,
+                   TEXT("Configured base class harvests subclass actor"));
+    checks.are_equal(1,
+                     harvested_actor_source_count,
+                     TEXT("Unsupported component is not added to static geometry"));
+    checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
+                       ECollisionEnabled::NoCollision,
+                   TEXT("Successful harvest disables Unreal collision"));
+    checks.is_true(omitted_actor->get_collision_component()->GetCollisionEnabled() ==
+                       ECollisionEnabled::QueryOnly,
+                   TEXT("Omitted actor keeps Unreal collision"));
+    checks.is_true(unsupported_component->GetCollisionEnabled() == ECollisionEnabled::QueryOnly,
+                   TEXT("Failed harvest leaves Unreal collision enabled"));
+
+    auto const source_count{sources.Num()};
+    collision.initialise_static_geometry(context_.world, config);
+    checks.are_equal(source_count,
+                     collision.get_static_collision_sources().Num(),
+                     TEXT("Reinitialization restores and reharvests static geometry"));
+    checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
+                       ECollisionEnabled::NoCollision,
+                   TEXT("Reharvested component remains owned by custom collision"));
+}
+
 void FCollisionUniformGridTraceScenario::run() {
     TestCommandBuilder.Do([this] {
         switch (scenario_) {
@@ -1998,6 +2067,9 @@ void FCollisionUniformGridTraceScenario::run() {
                 break;
             case ECollisionUniformGridTraceScenario::StaticGeometry:
                 test_static_geometry();
+                break;
+            case ECollisionUniformGridTraceScenario::StaticHarvesting:
+                test_static_harvesting();
                 break;
         }
 
