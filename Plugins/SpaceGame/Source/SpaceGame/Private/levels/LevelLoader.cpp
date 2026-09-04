@@ -9,6 +9,7 @@
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -314,7 +315,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
 
     orchestrator_.spawn_missing_actors();
     if (!IsValid(orchestrator_.get_lasers_actor()) || !IsValid(orchestrator_.get_capital_ships()) ||
-        !IsValid(orchestrator_.get_capital_ship_fighters()) ||
+        !IsValid(orchestrator_.get_capital_ship_fighters_actor()) ||
         !IsValid(orchestrator_.get_turrets()) || !IsValid(orchestrator_.get_spinners()) ||
         !IsValid(orchestrator_.get_niagara_spawner())) {
         add_error(result,

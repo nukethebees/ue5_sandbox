@@ -2,13 +2,13 @@
 
 #include <SandboxTests/SandboxTestLogCategories.h>
 
+#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SandboxGameShared/core/SandboxDeveloperSettings.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -48,10 +48,11 @@ auto TestSimulationDriver::get_capital_ships() const -> ATestCapitalShips const&
     check(IsValid(actor));
     return *actor;
 }
-auto TestSimulationDriver::get_capital_ship_fighters() const -> ATestCapitalShipFighters const& {
-    auto const actor{orchestrator.get_capital_ship_fighters()};
-    check(IsValid(actor));
-    return *actor;
+auto TestSimulationDriver::get_capital_ship_fighters() const
+    -> test_capital_ship_fighters::Simulation const& {
+    auto const simulation{orchestrator.get_capital_ship_fighters()};
+    check(simulation);
+    return *simulation;
 }
 
 void TestSimulationDriver::queue_damage(TConstArrayView<FRegistryEntityHandle> const targets,

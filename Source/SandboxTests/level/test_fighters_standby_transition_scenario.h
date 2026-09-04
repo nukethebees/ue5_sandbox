@@ -2,14 +2,14 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
 class FFightersStandbyTransitionScenario final : public FSimulationTestScenario {
-    using Task = ATestCapitalShipFighters::Task;
+    using Task = test_capital_ship_fighters::Simulation::Task;
 
     struct FSimulationSample {
         int32 capital_count{0};

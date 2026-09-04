@@ -10,6 +10,7 @@
 #include <SpaceGame/presentation/HUDManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShipPhaseInterface.h>
 #include <SpaceGame/ships/player/TestSpaceShipSimulation.h>
 #include <SpaceGame/simulation/LevelTelemetryManager.h>
@@ -98,7 +99,16 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return &lasers_simulation;
     }
     auto get_capital_ships() const -> auto const* { return capital_ships.Get(); }
-    auto get_capital_ship_fighters() const -> auto const* { return capital_ship_fighters.Get(); }
+    auto get_capital_ship_fighters_actor() const -> auto const* {
+        return capital_ship_fighters.Get();
+    }
+    auto get_capital_ship_fighters() noexcept -> ml::test_capital_ship_fighters::Simulation* {
+        return &capital_ship_fighters_simulation;
+    }
+    auto get_capital_ship_fighters() const noexcept
+        -> ml::test_capital_ship_fighters::Simulation const* {
+        return &capital_ship_fighters_simulation;
+    }
     auto get_turrets() const -> auto const* { return turrets.Get(); }
     auto get_spinners() const -> auto const* { return spinners.Get(); }
 
@@ -196,6 +206,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<ATestCapitalShips> capital_ships{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShipFighters> capital_ship_fighters{nullptr};
+    ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestStaticTurrets> turrets{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")

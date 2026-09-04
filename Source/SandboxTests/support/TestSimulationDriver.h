@@ -15,8 +15,11 @@ class ATestBatchOrchestrator;
 class ATestSpaceShip;
 class ATestLasers;
 class ATestCapitalShips;
-class ATestCapitalShipFighters;
 class ATestStaticTurrets;
+
+namespace ml::test_capital_ship_fighters {
+struct Simulation;
+}
 
 namespace ml {
 struct TestSimulationDriver {
@@ -31,7 +34,7 @@ struct TestSimulationDriver {
     auto get_world() const -> UWorld* { return &world; }
     auto get_player_ship() const -> ATestSpaceShip const&;
     auto get_capital_ships() const -> ATestCapitalShips const&;
-    auto get_capital_ship_fighters() const -> ATestCapitalShipFighters const&;
+    auto get_capital_ship_fighters() const -> test_capital_ship_fighters::Simulation const&;
 
     void queue_damage(TConstArrayView<FRegistryEntityHandle> targets,
                       int32 damage,

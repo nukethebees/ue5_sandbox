@@ -7,9 +7,9 @@
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsSoA.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersCommandInterface.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 #include <SpaceGame/support/IndexSpan.h>
@@ -79,7 +79,7 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
         spatial_query_manager = &manager;
     }
 
-    inline void bind_fighters(ATestCapitalShipFighters& fighters) {
+    inline void bind_fighters(ml::test_capital_ship_fighters::Simulation& fighters) {
         fighters_interface.bind(fighters);
     }
 

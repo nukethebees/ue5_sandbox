@@ -2,10 +2,11 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
+
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
-class ATestCapitalShipFighters;
 class ATestCapitalShips;
 
 namespace ml {
@@ -32,7 +33,7 @@ class FFightersInterceptCapitalScenario final : public FSimulationTestScenario {
     void export_data() const;
 
     ATestCapitalShips const* capitals{nullptr};
-    ATestCapitalShipFighters const* fighters{nullptr};
+    test_capital_ship_fighters::Simulation const* fighters{nullptr};
     TimeSeriesData<FSimulationSample> samples;
     int32 hero_capital_index{INDEX_NONE};
     FRegistryEntityHandle hero_capital;

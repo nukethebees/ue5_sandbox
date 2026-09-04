@@ -7,7 +7,7 @@
 #include "SpaceGame/entities/TestEntityRegistry.h"
 #include "SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h"
 #include "SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
-#include "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
+#include "SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h"
 
 #include "CoreMinimal.h"
 #include "SandboxNative/RegistryEntityHandle.h"
@@ -15,47 +15,47 @@
 namespace ml::test_capital_ship_fighters {
 class SPACEGAME_API CommandInterface {
     public:
-    void bind(ATestCapitalShipFighters& new_target) {
+    void bind(ml::test_capital_ship_fighters::Simulation& new_target) {
         fighters = &new_target;
     }
 
     void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) {
-        check(IsValid(fighters));
+        check(fighters);
         fighters->queue_spawns(queue);
     }
 
     void queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
-        check(IsValid(fighters));
+        check(fighters);
         fighters->queue_orders(queue);
     }
 
     void self_destruct_fighter(FRegistryEntityHandle const handle) {
-        check(IsValid(fighters));
+        check(fighters);
         fighters->self_destruct_fighter(handle);
     }
 
-    ATestCapitalShipFighters::RegistryEntityData const& get_new_spawn_entity_data() const {
-        check(IsValid(fighters));
+    ml::test_capital_ship_fighters::Simulation::RegistryEntityData const& get_new_spawn_entity_data() const {
+        check(fighters);
         return fighters->get_new_spawn_entity_data();
     }
 
     SpawnedEntityHandles const& get_new_spawn_entity_handles() const {
-        check(IsValid(fighters));
+        check(fighters);
         return fighters->get_new_spawn_entity_handles();
     }
 
     int32 get_num_instances() const noexcept {
-        check(IsValid(fighters));
+        check(fighters);
         return fighters->get_num_instances();
     }
 
     FRegistryEntityHandle get_target_handle(FRegistryEntityHandle const fighter_handle) const noexcept {
-        check(IsValid(fighters));
+        check(fighters);
         return fighters->get_target_handle(fighter_handle);
     }
 
     private:
-    ATestCapitalShipFighters* fighters{nullptr};
+    ml::test_capital_ship_fighters::Simulation* fighters{nullptr};
 };
 } // namespace ml::test_capital_ship_fighters
 // clang-format on

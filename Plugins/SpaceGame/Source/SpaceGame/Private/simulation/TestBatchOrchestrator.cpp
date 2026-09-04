@@ -420,6 +420,7 @@ void ATestBatchOrchestrator::begin_play() {
     lasers->clear_runtime_state_presentation();
     capital_ships_phase.clear_runtime_state();
     capital_ship_fighters_phase.clear_runtime_state();
+    capital_ship_fighters->clear_runtime_state_presentation();
     turrets_phase.clear_runtime_state();
     spinners_phase.clear_runtime_state();
 
@@ -430,6 +431,7 @@ void ATestBatchOrchestrator::begin_play() {
         player_ship_phase.begin_play();
     }
     capital_ships_phase.begin_play();
+    capital_ship_fighters->begin_play_presentation();
     capital_ship_fighters_phase.begin_play();
     turrets_phase.begin_play();
     spinners_phase.begin_play();
@@ -801,7 +803,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             }
 
             capital_ships_phase.update_visual_data();
-            capital_ship_fighters_phase.update_visual_data();
+            capital_ship_fighters->update_visual_data();
             turrets_phase.update_visual_data();
             spinners_phase.update_visual_data();
             lasers->update_visual_data();
@@ -819,6 +821,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
             capital_ships_phase.end_tick();
             capital_ship_fighters_phase.end_tick();
+            capital_ship_fighters->end_tick_presentation();
             turrets_phase.end_tick();
             spinners_phase.end_tick();
             lasers_phase.end_tick();
@@ -855,7 +858,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
 
         capital_ships_phase.commit_visual_data();
-        capital_ship_fighters_phase.commit_visual_data();
+        capital_ship_fighters->commit_visual_data();
         turrets_phase.commit_visual_data();
         spinners_phase.commit_visual_data();
         lasers->commit_visual_data();
@@ -899,19 +902,21 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     lasers->bind_simulation(lasers_simulation);
     lasers_phase.bind(lasers_simulation);
     capital_ships_phase.bind(*capital_ships);
-    capital_ship_fighters_phase.bind(*capital_ship_fighters);
+    capital_ship_fighters->bind_simulation(capital_ship_fighters_simulation);
+    capital_ship_fighters_phase.bind(capital_ship_fighters_simulation);
     turrets_phase.bind(*turrets);
     spinners_phase.bind(*spinners);
 
     capital_ships->set_niagara_spawner(*niagara_spawner);
-    capital_ships->bind_fighters(*capital_ship_fighters);
+    capital_ships->bind_fighters(capital_ship_fighters_simulation);
 
     auto const bind_simulation_clock{[this](auto actor) { actor->bind_simulation_clock(*this); }};
     if (player_ship_simulation.IsSet()) {
         player_ship_simulation->bind_simulation_clock(*this);
     }
     lasers_simulation.bind_simulation_clock(*this);
-    ml::invoke_on_all(bind_simulation_clock, capital_ship_fighters, turrets, spinners);
+    capital_ship_fighters_simulation.bind_simulation_clock(*this);
+    ml::invoke_on_all(bind_simulation_clock, turrets, spinners);
     mission_manager.bind_simulation_clock(*this);
 
     if (player_ship_simulation.IsSet()) {
@@ -922,21 +927,20 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
 
     ml::invoke_on_all([&](auto actor) { actor->set_entity_registry(entity_registry); },
                       capital_ships,
-                      capital_ship_fighters,
                       turrets,
                       spinners);
+    capital_ship_fighters_simulation.set_entity_registry(entity_registry);
     lasers_simulation.set_entity_registry(entity_registry);
     mission_manager.set_entity_registry(entity_registry);
 
     lasers_simulation.set_spatial_query_manager(query_manager);
     capital_ships->set_spatial_query_manager(query_manager);
-    capital_ship_fighters->set_spatial_query_manager(query_manager);
+    capital_ship_fighters_simulation.set_spatial_query_manager(query_manager);
     turrets->set_spatial_query_manager(query_manager);
 
-    ml::invoke_on_all([&](auto actor) { actor->set_laser_simulation(lasers_simulation); },
-                      capital_ship_fighters,
-                      turrets,
-                      spinners);
+    capital_ship_fighters_simulation.set_laser_simulation(lasers_simulation);
+    ml::invoke_on_all(
+        [&](auto actor) { actor->set_laser_simulation(lasers_simulation); }, turrets, spinners);
 }
 
 void ATestBatchOrchestrator::set_end_tick_test_hook(FOrchestratorEndTickTestHook hook) {

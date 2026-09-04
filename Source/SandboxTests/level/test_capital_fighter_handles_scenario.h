@@ -2,9 +2,9 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
@@ -15,7 +15,7 @@ namespace ml {
 enum class ECapitalFighterHandlesScenario : uint8 { KillFightersOnly, KillCapital, All };
 
 class FCapitalFighterHandlesScenario final : public FSimulationTestScenario {
-    using Task = ATestCapitalShipFighters::Task;
+    using Task = test_capital_ship_fighters::Simulation::Task;
 
     struct FCapitalSample {
         FRegistryEntityHandle handle;
@@ -81,7 +81,7 @@ class FCapitalFighterHandlesScenario final : public FSimulationTestScenario {
 
     ECapitalFighterHandlesScenario scenario_;
     ATestCapitalShips const* capitals{nullptr};
-    ATestCapitalShipFighters const* fighters{nullptr};
+    test_capital_ship_fighters::Simulation const* fighters{nullptr};
     TimeSeriesData<ATestBatchOrchestrator::tick_type> orchestrator_tick_samples;
     TimeSeriesData<int32> fighter_spawn_slots_samples;
     TimeSeriesData<int32> fighter_count_samples;

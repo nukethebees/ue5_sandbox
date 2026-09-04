@@ -394,7 +394,7 @@ void FCollisionUniformGridScenario::initialise_simulation() {
     auto const* const fighters{test_driver->orchestrator.get_capital_ship_fighters()};
     if (!checks.is_valid(player, TEXT("Collision-grid player ship is available")) ||
         !checks.is_valid(capitals, TEXT("Collision-grid capital ships are available")) ||
-        !checks.is_valid(fighters, TEXT("Collision-grid fighters are available"))) {
+        !checks.not_nullptr(fighters, TEXT("Collision-grid fighters are available"))) {
         return;
     }
 
@@ -422,7 +422,7 @@ void FCollisionUniformGridScenario::sample_grid() {
     auto const& entity_aabbs{collision.get_entity_aabbs()};
 
     auto const* const fighters{orchestrator.get_capital_ship_fighters()};
-    checks.is_valid(fighters, TEXT("Collision-grid fighters are available at sample time"));
+    checks.not_nullptr(fighters, TEXT("Collision-grid fighters are available at sample time"));
     checks.is_true(fighters && !fighters->get_handles().IsEmpty(),
                    TEXT("Collision-grid fighter is placed"));
     if (fighters && !fighters->get_handles().IsEmpty()) {

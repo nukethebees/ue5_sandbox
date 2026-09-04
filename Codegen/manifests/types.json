@@ -218,8 +218,8 @@
       }
     },
     "test_fighters": {
-      "spelling": "ATestCapitalShipFighters",
-      "header": "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
+      "spelling": "ml::test_capital_ship_fighters::Simulation",
+      "header": "SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h"
     },
     "spawned_entity_handles": {
       "spelling": "SpawnedEntityHandles",
