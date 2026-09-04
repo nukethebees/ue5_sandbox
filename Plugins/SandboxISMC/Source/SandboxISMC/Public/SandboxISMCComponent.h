@@ -1,5 +1,9 @@
 #pragma once
 
+#include "SandboxISMCDirtyRange.h"
+#include "SandboxISMCRemoveResult.h"
+#include "SandboxISMCUpdateMetrics.h"
+
 #include "Components/MeshComponent.h"
 #include "Containers/ArrayView.h"
 #include "Templates/SharedPointer.h"
@@ -10,28 +14,6 @@ class UStaticMesh;
 class UMaterialInterface;
 struct FSandboxISMCMetricsState;
 struct FSandboxISMCRenderUpdate;
-
-struct FSandboxISMCDirtyRange {
-    int32 first_index{0};
-    int32 count{0};
-};
-
-struct SANDBOXISMC_API FSandboxISMCRemoveResult {
-    bool removed{false};
-    int32 moved_from_index{INDEX_NONE};
-};
-
-struct SANDBOXISMC_API FSandboxISMCUpdateMetrics {
-    int32 instance_count{0};
-    double prepare_ms{0.0};
-    double pack_ms{0.0};
-    double bounds_ms{0.0};
-    double submit_ms{0.0};
-    double upload_ms{0.0};
-    uint64 upload_bytes{0};
-    int32 dirty_instance_count{0};
-    int32 dirty_range_count{0};
-};
 
 UCLASS(ClassGroup = (Rendering), meta = (DisplayName = "Sandbox ISMC"))
 class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
