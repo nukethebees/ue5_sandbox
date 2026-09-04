@@ -1,8 +1,8 @@
 #include "SandboxISMCComponent.h"
 
-#include "SandboxISMCRenderUpdate.h"
+#include "SandboxISMCStagingBuffer.h"
+#include "SandboxISMCStagingState.h"
 
-#include "Async/ParallelFor.h"
 #include "Engine/InstancedStaticMesh.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -19,6 +19,7 @@
 #include "ProfilingDebugging/CountersTrace.h"
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "Rendering/ColorVertexBuffer.h"
+#include "RenderingThread.h"
 #include "RenderResource.h"
 #include "RHICommandList.h"
 #include "SceneInterface.h"
@@ -30,10 +31,12 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogSandboxISMC, Log, All);
 
-DECLARE_STATS_GROUP(TEXT("SandboxISMC"), STATGROUP_SandboxISMC, STATCAT_Advanced);
-DECLARE_CYCLE_STAT(TEXT("Build instance snapshot"), STAT_SandboxISMCBuild, STATGROUP_SandboxISMC);
+DEFINE_STAT(STAT_SandboxISMCBuild);
 DECLARE_CYCLE_STAT(TEXT("Submit instance update"), STAT_SandboxISMCSubmit, STATGROUP_SandboxISMC);
 DECLARE_CYCLE_STAT(TEXT("Upload instance buffer"), STAT_SandboxISMCUpload, STATGROUP_SandboxISMC);
+DECLARE_DWORD_ACCUMULATOR_STAT(TEXT("Staging buffer waits"),
+                               STAT_SandboxISMCStagingBufferWaits,
+                               STATGROUP_SandboxISMC);
 DECLARE_DWORD_COUNTER_STAT(TEXT("Active instances"),
                            STAT_SandboxISMCInstances,
                            STATGROUP_SandboxISMC);
@@ -57,16 +60,17 @@ struct FSandboxISMCMetricsState {
 };
 
 namespace {
-constexpr int32 instance_chunk_size{1024};
-constexpr int32 parallel_instance_threshold{4096};
-
 class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
   public:
     FSandboxISMCInstanceBuffer(
-        TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> initial_update,
+        FSandboxISMCStagingBuffer* initial_buffer,
+        TSharedPtr<FSandboxISMCStagingState, ESPMode::ThreadSafe> staging_state,
         TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics)
-        : initial_update_{MoveTemp(initial_update)}
+        : initial_buffer_{initial_buffer}
+        , staging_state_{MoveTemp(staging_state)}
         , metrics_{MoveTemp(metrics)} {}
+
+    virtual ~FSandboxISMCInstanceBuffer() override { release_initial_buffer(); }
 
     virtual FString GetFriendlyName() const override {
         return TEXT("Sandbox ISMC instance buffer");
@@ -74,24 +78,24 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
 
     virtual void InitRHI(FRHICommandListBase& rhi_command_list) override {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::InitRHI);
-        auto const initial_count = initial_update_.IsValid() ? initial_update_->instances.Num() : 0;
+        auto const initial_count{initial_buffer_ != nullptr ? initial_buffer_->instances.Num() : 0};
         allocate(rhi_command_list, FMath::Max(initial_count, 1));
 
-        if (initial_update_.IsValid()) {
-            upload(rhi_command_list, *initial_update_);
-            initial_update_.Reset();
+        if (initial_buffer_ != nullptr) {
+            upload(rhi_command_list, *initial_buffer_);
+            release_initial_buffer();
         }
     }
 
     int32 get_initial_instance_count() const {
-        return initial_update_.IsValid() ? initial_update_->instances.Num() : 0;
+        return initial_buffer_ != nullptr ? initial_buffer_->instances.Num() : 0;
     }
 
-    void upload(FRHICommandListBase& rhi_command_list, FSandboxISMCRenderUpdate const& update) {
+    void upload(FRHICommandListBase& rhi_command_list, FSandboxISMCStagingBuffer const& buffer) {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::upload);
         SCOPE_CYCLE_COUNTER(STAT_SandboxISMCUpload);
         auto const start_cycles = FPlatformTime::Cycles64();
-        auto const instance_count = update.instances.Num();
+        auto const instance_count = buffer.instances.Num();
 
         if (instance_count > capacity_) {
             allocate(rhi_command_list, instance_count);
@@ -102,7 +106,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
         if (byte_count > 0) {
             auto* destination = rhi_command_list.LockBuffer(
                 VertexBufferRHI, 0, static_cast<uint32>(byte_count), RLM_WriteOnly);
-            FMemory::Memcpy(destination, update.instances.GetData(), byte_count);
+            FMemory::Memcpy(destination, buffer.instances.GetData(), byte_count);
             rhi_command_list.UnlockBuffer(VertexBufferRHI);
         }
 
@@ -117,6 +121,16 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
                        static_cast<uint32>(FMath::Min<uint64>(byte_count, MAX_uint32)));
     }
   private:
+    auto release_initial_buffer() -> void {
+        if (initial_buffer_ == nullptr) {
+            return;
+        }
+
+        initial_buffer_->in_flight.Store(false);
+        initial_buffer_ = nullptr;
+        staging_state_.Reset();
+    }
+
     void allocate(FRHICommandListBase& rhi_command_list, int32 required_capacity) {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::allocate);
         auto const requested_capacity = FMath::Max(required_capacity, 1);
@@ -131,7 +145,8 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
     }
 
     int32 capacity_{0};
-    TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> initial_update_;
+    FSandboxISMCStagingBuffer* initial_buffer_{nullptr};
+    TSharedPtr<FSandboxISMCStagingState, ESPMode::ThreadSafe> staging_state_;
     TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics_;
 };
 
@@ -258,12 +273,13 @@ IMPLEMENT_VERTEX_FACTORY_TYPE(FSandboxISMCVertexFactory,
 class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
   public:
     FSandboxISMCSceneProxy(USandboxISMCComponent const* component,
-                           TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> initial_update,
+                           FSandboxISMCStagingBuffer* initial_buffer,
+                           TSharedPtr<FSandboxISMCStagingState, ESPMode::ThreadSafe> staging_state,
                            TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics)
         : FPrimitiveSceneProxy{component}
         , static_mesh_{component->get_static_mesh()}
         , render_data_{static_mesh_->GetRenderData()}
-        , instance_buffer_{MoveTemp(initial_update), MoveTemp(metrics)}
+        , instance_buffer_{initial_buffer, MoveTemp(staging_state), MoveTemp(metrics)}
         , vertex_factory_{GetScene().GetFeatureLevel(), &instance_buffer_}
         , material_relevance_{component->GetMaterialRelevance(GetScene().GetShaderPlatform())} {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::FSandboxISMCSceneProxy);
@@ -343,13 +359,13 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
         FPrimitiveSceneProxy::DestroyRenderThreadResources();
     }
 
-    void update_instances_render_thread(
-        FRHICommandListBase& rhi_command_list,
-        TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> const& update) {
+    void update_instances_render_thread(FRHICommandListBase& rhi_command_list,
+                                        FSandboxISMCStagingBuffer& buffer) {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::update_instances_render_thread);
         check(IsInRenderingThread());
-        instance_count_ = update->instances.Num();
-        instance_buffer_.upload(rhi_command_list, *update);
+        instance_count_ = buffer.instances.Num();
+        instance_buffer_.upload(rhi_command_list, buffer);
+        buffer.in_flight.Store(false);
     }
 
     virtual void GetDynamicMeshElements(TArray<FSceneView const*> const& views,
@@ -444,7 +460,8 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
 }
 
 USandboxISMCComponent::USandboxISMCComponent()
-    : metrics_{MakeShared<FSandboxISMCMetricsState, ESPMode::ThreadSafe>()} {
+    : staging_state_{MakeShared<FSandboxISMCStagingState, ESPMode::ThreadSafe>()}
+    , metrics_{MakeShared<FSandboxISMCMetricsState, ESPMode::ThreadSafe>()} {
     PrimaryComponentTick.bCanEverTick = false;
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
     SetGenerateOverlapEvents(false);
@@ -487,63 +504,39 @@ auto USandboxISMCComponent::get_static_mesh() const -> UStaticMesh* {
 }
 
 auto USandboxISMCComponent::clear_instances() -> void {
-    set_instances_internal(
-        0, ESandboxISMCParallelism::Sequential, [](FSandboxISMCInstanceChunkWriter&) {});
+    set_instances(0, ESandboxISMCParallelism::Sequential, [](FSandboxISMCInstanceChunkWriter&) {});
 }
 
 auto USandboxISMCComponent::get_instance_count() const -> int32 {
     return instance_count_;
 }
 
-auto USandboxISMCComponent::set_instances_internal(
-    int32 instance_count,
-    ESandboxISMCParallelism parallelism,
-    TFunctionRef<void(FSandboxISMCInstanceChunkWriter&)> fill_chunk) -> void {
-    checkf(instance_count >= 0, TEXT("SandboxISMC instance count must not be negative"));
-    TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_instances_internal);
-    SCOPE_CYCLE_COUNTER(STAT_SandboxISMCBuild);
-    auto const start_cycles{FPlatformTime::Cycles64()};
+auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
+    -> TArrayView<FSandboxISMCRenderInstance> {
+    check(IsInGameThread());
 
-    auto update{MakeShared<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe>()};
-    update->instances.SetNumUninitialized(instance_count);
-
-    auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};
-    TArray<FBox3f> chunk_bounds;
-    chunk_bounds.SetNum(chunk_count);
-
-    auto const build_chunk{[&](int32 chunk_index) {
-        auto const first_index{chunk_index * instance_chunk_size};
-        auto const count{FMath::Min(instance_chunk_size, instance_count - first_index)};
-        auto instances{MakeArrayView(update->instances).Slice(first_index, count)};
-        FSandboxISMCInstanceChunkWriter writer{
-            instances, first_index, mesh_bounds_origin_, mesh_bounds_radius_, has_mesh_bounds_};
-        fill_chunk(writer);
-        chunk_bounds[chunk_index] = writer.bounds();
-    }};
-
-    auto const run_parallel{parallelism == ESandboxISMCParallelism::Parallel ||
-                            (parallelism == ESandboxISMCParallelism::Auto &&
-                             instance_count >= parallel_instance_threshold)};
-    if (run_parallel) {
-        ParallelFor(chunk_count, build_chunk);
-    } else {
-        for (auto chunk_index = 0; chunk_index < chunk_count; ++chunk_index) {
-            build_chunk(chunk_index);
-        }
+    auto& buffer{staging_state_->buffers.next()};
+    if (buffer.in_flight.Load()) {
+        INC_DWORD_STAT(STAT_SandboxISMCStagingBufferWaits);
+        FlushRenderingCommands();
+        check(!buffer.in_flight.Load());
     }
 
-    FBox3f local_box{ForceInit};
-    for (auto const& bounds : chunk_bounds) {
-        local_box += bounds;
-    }
+    buffer.instances.SetNumUninitialized(instance_count);
+    return buffer.instances;
+}
+
+auto USandboxISMCComponent::finish_instance_update(int32 instance_count,
+                                                   FBox3f local_box,
+                                                   uint64 elapsed_cycles) -> void {
+    staging_state_->buffers.cycle();
+    pending_staging_buffer_ = &staging_state_->buffers.current();
+
     local_bounds_ = local_box.IsValid != 0
                       ? FBoxSphereBounds{FBoxSphereBounds3f{local_box}}
                       : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
-
-    pending_render_update_ = MoveTemp(update);
     instance_count_ = instance_count;
 
-    auto const elapsed_cycles{FPlatformTime::Cycles64() - start_cycles};
     auto const upload_bytes{static_cast<uint64>(instance_count) *
                             sizeof(FSandboxISMCRenderInstance)};
     metrics_->instance_count = instance_count;
@@ -585,16 +578,18 @@ auto USandboxISMCComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
         return nullptr;
     }
 
-    if (!pending_render_update_.IsValid()) {
+    if (pending_staging_buffer_ == nullptr) {
         UE_LOG(LogSandboxISMC,
                Warning,
                TEXT("SandboxISMC has CPU instances but no committed render snapshot"));
         return nullptr;
     }
 
-    auto initial_update = pending_render_update_;
-    pending_render_update_.Reset();
-    return new FSandboxISMCSceneProxy{this, MoveTemp(initial_update), metrics_};
+    auto* initial_buffer{pending_staging_buffer_};
+    pending_staging_buffer_ = nullptr;
+    check(!initial_buffer->in_flight.Load());
+    initial_buffer->in_flight.Store(true);
+    return new FSandboxISMCSceneProxy{this, initial_buffer, staging_state_, metrics_};
 }
 
 auto USandboxISMCComponent::GetNumMaterials() const -> int32 {
@@ -618,7 +613,7 @@ auto USandboxISMCComponent::CalcBounds(FTransform const& local_to_world) const -
 auto USandboxISMCComponent::SendRenderDynamicData_Concurrent() -> void {
     Super::SendRenderDynamicData_Concurrent();
 
-    if (SceneProxy == nullptr || !pending_render_update_.IsValid()) {
+    if (SceneProxy == nullptr || pending_staging_buffer_ == nullptr) {
         return;
     }
 
@@ -626,12 +621,17 @@ auto USandboxISMCComponent::SendRenderDynamicData_Concurrent() -> void {
     SCOPE_CYCLE_COUNTER(STAT_SandboxISMCSubmit);
     auto const start_cycles = FPlatformTime::Cycles64();
     auto* proxy = static_cast<FSandboxISMCSceneProxy*>(SceneProxy);
-    auto update = pending_render_update_;
-    pending_render_update_.Reset();
+    auto* buffer{pending_staging_buffer_};
+    pending_staging_buffer_ = nullptr;
+    check(!buffer->in_flight.Load());
+    buffer->in_flight.Store(true);
+    auto staging_state{staging_state_};
 
     ENQUEUE_RENDER_COMMAND(FSandboxISMCUpdateInstances)(
-        [proxy, update = MoveTemp(update)](FRHICommandListImmediate& rhi_command_list) {
-            proxy->update_instances_render_thread(rhi_command_list, update);
+        [proxy, buffer, staging_state = MoveTemp(staging_state)](
+            FRHICommandListImmediate& rhi_command_list) {
+            static_cast<void>(staging_state);
+            proxy->update_instances_render_thread(rhi_command_list, *buffer);
         });
 
     metrics_->submit_cycles = FPlatformTime::Cycles64() - start_cycles;

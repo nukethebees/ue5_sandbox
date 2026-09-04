@@ -30,12 +30,15 @@ conversion, final 64-byte GPU packing, and conservative bounds accumulation happ
 no intermediate transform array. `Auto`, `Sequential`, and `Parallel` policies control whether the
 fixed 1,024-instance chunks are processed by `ParallelFor`; `Auto` switches at 4,096 instances.
 
-Each call replaces the pending immutable snapshot. The render thread copies its complete packed array
-through one offset-zero RHI buffer lock into a persistent vertex buffer. The buffer grows to a
-power-of-two capacity and is not reallocated while the active count remains within that capacity. A
-shared zero stream supplies the unused lightmap-bias attribute required by the engine shader layout.
-Changing the mesh or submitting zero instances clears the snapshot. Component bounds reduce the
-per-chunk conservative mesh-sphere bounds in chunk order.
+The component owns three persistent packed staging arrays through `ml::MultiBuffer`. Each call fills
+the next available array and retains its capacity for later updates. The render thread copies the
+completed array through one offset-zero RHI buffer lock into a persistent vertex buffer, then marks
+the staging array reusable. If all three arrays are exceptionally still in flight, the game thread
+records a staging-buffer wait and flushes outstanding rendering work before reusing one. The GPU
+buffer grows to a power-of-two capacity and is not reallocated while the active count remains within
+that capacity. A shared zero stream supplies the unused lightmap-bias attribute required by the
+engine shader layout. Changing the mesh or submitting zero instances clears the snapshot. Component
+bounds reduce the per-chunk conservative mesh-sphere bounds in chunk order.
 
 ## Current update cost
 
@@ -62,8 +65,8 @@ engine upgrade.
 
 The next rendering decision should be driven by the expanded benchmark: coarse spatial render chunks
 would provide useful frustum and shadow culling without immediately adopting the substantially more
-complex GPU Scene instance-culling path. Later upload experiments can compare a packed CPU mirror,
-double buffering, and asynchronous snapshot preparation.
+complex GPU Scene instance-culling path. Later upload experiments can compare asynchronous snapshot
+preparation and alternative RHI upload strategies.
 
 Preliminary verdict: the approach is viable enough at the architecture and build level to run the
 rendering experiment. Continuing to collision is justified if the editor lab confirms correct rendering
@@ -153,7 +156,7 @@ per-renderer split.
 
 Filter timers by `SandboxISMC` to follow the custom path across threads:
 
-- `USandboxISMCComponent::set_instances_internal` contains the complete conversion, packing, and
+- `USandboxISMCComponent::set_instances` contains the complete conversion, packing, and
   bounds pass.
 - `USandboxISMCComponent::SendRenderDynamicData_Concurrent` submits the snapshot.
 - `FSandboxISMCInstanceBuffer::upload` uploads the packed buffer on the Render Thread.
