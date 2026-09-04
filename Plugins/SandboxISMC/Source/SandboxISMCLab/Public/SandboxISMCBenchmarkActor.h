@@ -2,6 +2,7 @@
 
 #include "GameFramework/Actor.h"
 #include "Math/Box.h"
+#include "SandboxISMCUpdateMetrics.h"
 
 #include "SandboxISMCBenchmarkActor.generated.h"
 
@@ -61,11 +62,15 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         TArray<double> transform_upload_bytes;
         TArray<double> custom_data_upload_bytes;
         TArray<double> uploaded_bytes;
+        TArray<double> growing_update_ms;
+        TArray<double> shrinking_update_ms;
+        TArray<double> steady_update_ms;
     };
 
     void parse_command_line();
     void configure_components();
     bool create_instances();
+    auto advance_churn() -> void;
     FUpdateTiming update_custom(float vertical_offset, float angle_radians, float colour_alpha);
     FUpdateTiming
         update_engine_ismc(float vertical_offset, float angle_radians, float colour_alpha);
@@ -106,6 +111,28 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark", meta = (ClampMin = "1"))
     int32 instance_count_{40000};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Churn")
+    bool churn_enabled_{false};
+
+    // Instance Count is the maximum population in churn mode.
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox ISMC Benchmark|Churn",
+              meta = (ClampMin = "0", EditCondition = "churn_enabled_"))
+    int32 minimum_live_count_{1000};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox ISMC Benchmark|Churn",
+              meta = (ClampMin = "1", EditCondition = "churn_enabled_"))
+    int32 churn_half_cycle_updates_{120};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox ISMC Benchmark|Churn",
+              meta = (ClampMin = "0", ClampMax = "100", EditCondition = "churn_enabled_"))
+    float replacement_percentage_{5.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Timing", meta = (ClampMin = "0"))
+    int32 warmup_updates_{0};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark")
     ESandboxISMCBenchmarkMode mode_{ESandboxISMCBenchmarkMode::Paired};
@@ -158,6 +185,21 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     TArray<FVector3f> base_colours_;
     TArray<FTransform> engine_update_transforms_;
     TArray<float> engine_custom_data_;
+    TArray<int32> engine_removals_;
+    TArray<FTransform> engine_additions_;
+    int32 live_count_{0};
+    int32 previous_live_count_{0};
+    int32 retained_count_{0};
+    int64 update_index_{0};
+    double replacement_remainder_{0.0};
+    FSandboxISMCUpdateMetrics previous_metrics_;
+    TArray<double> live_counts_;
+    TArray<double> removed_counts_;
+    TArray<double> added_counts_;
+    TArray<double> staging_capacity_changes_;
+    TArray<double> gpu_buffer_allocations_;
+    TArray<double> staging_waits_;
+    TArray<double> staging_wait_ms_;
     FBox3f supplied_local_bounds_{ForceInit};
     TArray<double> frame_ms_;
     TArray<double> game_thread_ms_;

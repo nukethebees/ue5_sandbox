@@ -35,6 +35,15 @@ DEFINE_LOG_CATEGORY_STATIC(LogSandboxISMCBenchmark, Log, All);
 namespace {
 TRACE_DECLARE_INT_COUNTER(BenchmarkRunning, TEXT("SandboxISMCBenchmark/Running"));
 TRACE_DECLARE_INT_COUNTER(BenchmarkInstanceCount, TEXT("SandboxISMCBenchmark/InstanceCount"));
+TRACE_DECLARE_INT_COUNTER(BenchmarkRemovedCount, TEXT("SandboxISMCBenchmark/RemovedCount"));
+TRACE_DECLARE_INT_COUNTER(BenchmarkAddedCount, TEXT("SandboxISMCBenchmark/AddedCount"));
+TRACE_DECLARE_INT_COUNTER(BenchmarkStagingCapacityChanges,
+                          TEXT("SandboxISMCBenchmark/Custom/StagingCapacityChanges"));
+TRACE_DECLARE_INT_COUNTER(BenchmarkGpuBufferAllocations,
+                          TEXT("SandboxISMCBenchmark/Custom/GpuBufferAllocations"));
+TRACE_DECLARE_INT_COUNTER(BenchmarkStagingWaits, TEXT("SandboxISMCBenchmark/Custom/StagingWaits"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkStagingWaitMs,
+                            TEXT("SandboxISMCBenchmark/Custom/StagingWaitMs"));
 TRACE_DECLARE_INT_COUNTER(BenchmarkUpdatedInstanceCount,
                           TEXT("SandboxISMCBenchmark/UpdatedInstanceCount"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkFrameMs, TEXT("SandboxISMCBenchmark/FrameMs"));
@@ -95,6 +104,7 @@ void append_summary(FString& output,
                     TCHAR const* visibility,
                     TCHAR const* bounds,
                     TCHAR const* custom_data,
+                    TCHAR const* workload,
                     int32 const instance_count,
                     int32 const updated_instance_count,
                     double const update_percentage,
@@ -104,12 +114,13 @@ void append_summary(FString& output,
     }
 
     auto const summary{summarize(samples)};
-    output += FString::Printf(TEXT("%s,%s,%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
+    output += FString::Printf(TEXT("%s,%s,%s,%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
                               renderer,
                               mode,
                               visibility,
                               bounds,
                               custom_data,
+                              workload,
                               instance_count,
                               updated_instance_count,
                               update_percentage,
@@ -185,6 +196,17 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     }
 
     disable_frame_rate_limits();
+    previous_metrics_ = custom_ismc_->get_update_metrics();
+    UE_LOG(LogSandboxISMCBenchmark,
+           Display,
+           TEXT("Workload: churn=%s, min=%d, max=%d, half-cycle=%d updates, "
+                "replacements=%.1f%%/update, warmup=%d updates"),
+           churn_enabled_ ? TEXT("on") : TEXT("off"),
+           minimum_live_count_,
+           instance_count_,
+           churn_half_cycle_updates_,
+           replacement_percentage_,
+           warmup_updates_);
     running_ = true;
     TRACE_COUNTER_SET(BenchmarkRunning, 1);
     TRACE_COUNTER_SET(BenchmarkInstanceCount, base_positions_.Num());
@@ -230,6 +252,10 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     }
 
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::Tick);
+    advance_churn();
+    if (update_index_ == static_cast<int64>(warmup_updates_) + 1) {
+        TRACE_BOOKMARK(TEXT("SandboxISMC benchmark measured updates begin"));
+    }
     animation_elapsed_seconds_ += delta_seconds;
     auto const vertical_phase{
         FMath::DegreesToRadians(360.0f * movement_frequency_hz_ * animation_elapsed_seconds_)};
@@ -248,15 +274,41 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
         engine_timing = update_engine_ismc(vertical_offset, angle, colour_alpha);
         record_samples(engine_samples_, engine_timing);
     }
-    frame_ms_.Add(static_cast<double>(delta_seconds) * 1000.0);
     auto const game_thread_ms{FPlatformTime::ToMilliseconds(GGameThreadTime)};
     auto const render_thread_ms{FPlatformTime::ToMilliseconds(GRenderThreadTime)};
     auto const gpu_ms{FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles())};
-    game_thread_ms_.Add(game_thread_ms);
-    render_thread_ms_.Add(render_thread_ms);
-    if (gpu_ms > 0.0) {
-        gpu_ms_.Add(gpu_ms);
+    auto const metrics{custom_ismc_->get_update_metrics()};
+    auto const wait_ms{metrics.staging_wait_ms - previous_metrics_.staging_wait_ms};
+    if (update_index_ > warmup_updates_) {
+        frame_ms_.Add(static_cast<double>(delta_seconds) * 1000.0);
+        game_thread_ms_.Add(game_thread_ms);
+        render_thread_ms_.Add(render_thread_ms);
+        if (gpu_ms > 0.0) {
+            gpu_ms_.Add(gpu_ms);
+        }
+        live_counts_.Add(live_count_);
+        removed_counts_.Add(previous_live_count_ - retained_count_);
+        added_counts_.Add(live_count_ - retained_count_);
+        if (runs_custom()) {
+            staging_capacity_changes_.Add(static_cast<double>(
+                metrics.staging_capacity_changes - previous_metrics_.staging_capacity_changes));
+            gpu_buffer_allocations_.Add(static_cast<double>(
+                metrics.gpu_buffer_allocations - previous_metrics_.gpu_buffer_allocations));
+            staging_waits_.Add(
+                static_cast<double>(metrics.staging_waits - previous_metrics_.staging_waits));
+            staging_wait_ms_.Add(wait_ms);
+        }
     }
+    previous_metrics_ = metrics;
+
+    TRACE_COUNTER_SET(BenchmarkInstanceCount, live_count_);
+    TRACE_COUNTER_SET(BenchmarkUpdatedInstanceCount, get_update_count());
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkRemovedCount, previous_live_count_ - retained_count_);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkAddedCount, live_count_ - retained_count_);
+    TRACE_COUNTER_SET(BenchmarkStagingCapacityChanges, metrics.staging_capacity_changes);
+    TRACE_COUNTER_SET(BenchmarkGpuBufferAllocations, metrics.gpu_buffer_allocations);
+    TRACE_COUNTER_SET(BenchmarkStagingWaits, metrics.staging_waits);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkStagingWaitMs, wait_ms);
 
     TRACE_COUNTER_SET_ALWAYS(BenchmarkFrameMs, static_cast<double>(delta_seconds) * 1000.0);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkGameThreadMs, game_thread_ms);
@@ -291,6 +343,22 @@ void ASandboxISMCBenchmarkActor::parse_command_line() {
     automatic_stop_seconds_ = FMath::Max(automatic_stop_seconds_, 0.0f);
     FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkInstances="), instance_count_);
     instance_count_ = FMath::Max(instance_count_, 1);
+    int32 churn{churn_enabled_ ? 1 : 0};
+    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkChurn="), churn);
+    churn_enabled_ = churn != 0;
+    FParse::Value(
+        FCommandLine::Get(), TEXT("SandboxISMCBenchmarkMinInstances="), minimum_live_count_);
+    minimum_live_count_ = FMath::Clamp(minimum_live_count_, 0, instance_count_);
+    FParse::Value(FCommandLine::Get(),
+                  TEXT("SandboxISMCBenchmarkHalfCycleUpdates="),
+                  churn_half_cycle_updates_);
+    churn_half_cycle_updates_ = FMath::Max(churn_half_cycle_updates_, 1);
+    FParse::Value(FCommandLine::Get(),
+                  TEXT("SandboxISMCBenchmarkReplacementPercent="),
+                  replacement_percentage_);
+    replacement_percentage_ = FMath::Clamp(replacement_percentage_, 0.0f, 100.0f);
+    FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkWarmupUpdates="), warmup_updates_);
+    warmup_updates_ = FMath::Max(warmup_updates_, 0);
     FParse::Value(
         FCommandLine::Get(), TEXT("SandboxISMCBenchmarkUpdatePercent="), update_percentage_);
     update_percentage_ = FMath::Clamp(update_percentage_, 0.0f, 100.0f);
@@ -385,6 +453,9 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
 
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::create_instances);
     auto const count{FMath::Max(instance_count_, 1)};
+    live_count_ = count;
+    previous_live_count_ = count;
+    retained_count_ = count;
     auto const width{FMath::CeilToInt(FMath::Sqrt(static_cast<float>(count)))};
     auto const height{FMath::DivideAndRoundUp(count, width)};
     auto const grid_width{static_cast<float>(width - 1) * grid_spacing_};
@@ -509,6 +580,33 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
     return true;
 }
 
+auto ASandboxISMCBenchmarkActor::advance_churn() -> void {
+    ++update_index_;
+    previous_live_count_ = live_count_;
+    retained_count_ = live_count_;
+    if (!churn_enabled_) {
+        return;
+    }
+
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::advance_churn);
+    auto const half_cycle{static_cast<int64>(churn_half_cycle_updates_)};
+    auto const phase{update_index_ % (2 * half_cycle)};
+    auto const step{phase <= half_cycle ? phase : 2 * half_cycle - phase};
+    live_count_ = instance_count_ -
+                  static_cast<int32>((instance_count_ - minimum_live_count_) * step / half_cycle);
+    auto const survivors{FMath::Min(previous_live_count_, live_count_)};
+    replacement_remainder_ += static_cast<double>(survivors) * replacement_percentage_ / 100.0;
+    auto const replaced_count{FMath::FloorToInt(replacement_remainder_)};
+    replacement_remainder_ -= replaced_count;
+    retained_count_ = survivors - replaced_count;
+
+    // Replace a contiguous tail; survivors retain their indices in both renderers.
+    for (auto index = retained_count_; index < live_count_; ++index) {
+        auto const colour{base_colours_[index]};
+        base_colours_[index] = FVector3f{colour.Y, colour.Z, colour.X};
+    }
+}
+
 auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
                                                float const angle_radians,
                                                float const colour_alpha) -> FUpdateTiming {
@@ -516,7 +614,7 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
     auto const total_start{FPlatformTime::Cycles64()};
     auto const api_start{FPlatformTime::Cycles64()};
     {
-        auto const count{base_positions_.Num()};
+        auto const count{live_count_};
         auto const updated_count{get_update_count()};
         auto const rotation{FQuat4f{FVector3f::UpVector, angle_radians}};
         auto const fill{[&](FSandboxISMCInstanceChunkWriter& chunk) {
@@ -580,36 +678,59 @@ auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
     auto const prepare_start{FPlatformTime::Cycles64()};
     {
         auto const rotation{FQuat{FVector::UpVector, static_cast<double>(angle_radians)}};
-        auto const count{get_update_count()};
+        auto const updated_count{get_update_count()};
+        auto const count{churn_enabled_ ? live_count_ : updated_count};
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 ASandboxISMCBenchmarkActor::update_engine_ismc::PrepareTransforms);
             for (auto instance_index = 0; instance_index < count; ++instance_index) {
+                auto const animated{instance_index < updated_count};
                 auto const position{base_positions_[instance_index] +
-                                    FVector3f{0.0f, 0.0f, vertical_offset}};
-                engine_update_transforms_[instance_index] =
-                    FTransform{rotation, FVector{position}, FVector::OneVector};
+                                    FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
+                engine_update_transforms_[instance_index] = FTransform{
+                    animated ? rotation : FQuat::Identity, FVector{position}, FVector::OneVector};
             }
         }
-        if (animates_custom_data()) {
+        if (animates_custom_data() || (churn_enabled_ && uses_custom_data())) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 ASandboxISMCBenchmarkActor::update_engine_ismc::PrepareCustomData);
             for (auto instance_index = 0; instance_index < count; ++instance_index) {
                 auto const base_colour{base_colours_[instance_index]};
                 auto const rotated_colour{FVector3f{base_colour.Y, base_colour.Z, base_colour.X}};
-                auto const colour{FMath::Lerp(base_colour, rotated_colour, colour_alpha)};
+                auto const colour{animates_custom_data() && instance_index < updated_count
+                                      ? FMath::Lerp(base_colour, rotated_colour, colour_alpha)
+                                      : base_colour};
                 auto const custom_data_offset{instance_index * 3};
                 engine_custom_data_[custom_data_offset] = colour.X;
                 engine_custom_data_[custom_data_offset + 1] = colour.Y;
                 engine_custom_data_[custom_data_offset + 2] = colour.Z;
             }
         }
+        engine_removals_.Reset();
+        engine_additions_.Reset();
+        if (churn_enabled_) {
+            engine_removals_.Reserve(previous_live_count_ - retained_count_);
+            for (auto index = previous_live_count_; index > retained_count_; --index) {
+                engine_removals_.Add(index - 1);
+            }
+            engine_additions_.Append(engine_update_transforms_.GetData() + retained_count_,
+                                     live_count_ - retained_count_);
+        }
     }
     auto const prepare_cycles{FPlatformTime::Cycles64() - prepare_start};
 
     auto const api_start{FPlatformTime::Cycles64()};
     {
-        auto const update_count{get_update_count()};
+        if (churn_enabled_) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::update_engine_ismc::Churn);
+            if (!engine_removals_.IsEmpty()) {
+                engine_ismc_->RemoveInstances(engine_removals_, true);
+            }
+            if (!engine_additions_.IsEmpty()) {
+                engine_ismc_->AddInstances(engine_additions_, false, false, false);
+            }
+        }
+        auto const update_count{churn_enabled_ ? retained_count_ : get_update_count()};
         if (update_count > 0) {
             {
                 TRACE_CPUPROFILER_EVENT_SCOPE(
@@ -631,6 +752,17 @@ auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
                     true);
             }
         }
+        if (churn_enabled_ && uses_custom_data() && live_count_ > retained_count_) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                ASandboxISMCBenchmarkActor::update_engine_ismc::NewInstanceCustomData);
+            engine_ismc_->SetCustomData(
+                retained_count_,
+                live_count_ - 1,
+                MakeArrayView(engine_custom_data_)
+                    .Slice(retained_count_ * 3, (live_count_ - retained_count_) * 3),
+                true);
+        }
+        check(engine_ismc_->GetInstanceCount() == live_count_);
     }
     auto const api_cycles{FPlatformTime::Cycles64() - api_start};
     auto const total_cycles{FPlatformTime::Cycles64() - total_start};
@@ -643,6 +775,13 @@ auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
 
 void ASandboxISMCBenchmarkActor::record_samples(FRendererSamples& samples,
                                                 FUpdateTiming const& timing) {
+    if (update_index_ <= warmup_updates_) {
+        return;
+    }
+    auto& population_samples{live_count_ > previous_live_count_   ? samples.growing_update_ms
+                             : live_count_ < previous_live_count_ ? samples.shrinking_update_ms
+                                                                  : samples.steady_update_ms};
+    population_samples.Add(timing.total_ms);
     samples.total_update_ms.Add(timing.total_ms);
     if (timing.prepare_ms >= 0.0) {
         samples.prepare_ms.Add(timing.prepare_ms);
@@ -672,9 +811,9 @@ bool ASandboxISMCBenchmarkActor::runs_engine_ismc() const {
 
 int32 ASandboxISMCBenchmarkActor::get_update_count() const {
     return FMath::Clamp(
-        FMath::CeilToInt(static_cast<double>(base_positions_.Num()) * update_percentage_ / 100.0),
+        FMath::CeilToInt(static_cast<double>(live_count_) * update_percentage_ / 100.0),
         0,
-        base_positions_.Num());
+        live_count_);
 }
 
 FString ASandboxISMCBenchmarkActor::get_mode_name() const {
@@ -837,14 +976,26 @@ void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
 
 void ASandboxISMCBenchmarkActor::save_report() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::save_report);
-    FString csv{TEXT("renderer,mode,visibility,bounds,custom_data,instances,updated_instances,"
+    if (frame_ms_.IsEmpty()) {
+        UE_LOG(LogSandboxISMCBenchmark,
+               Warning,
+               TEXT("No measured updates: increase the run duration or reduce Warmup Updates"));
+    }
+    FString csv{TEXT("renderer,mode,visibility,bounds,custom_data,churn,min_instances,half_cycle_"
+                     "updates,replacement_percent,warmup_updates,instances,updated_instances,"
                      "update_percent,metric,unit,samples,min,median,p95,max\n")};
     auto const mode_name{get_mode_name()};
     auto const visibility_name{get_visibility_name()};
     auto const bounds_name{get_bounds_name()};
     auto const custom_data_name{get_custom_data_name()};
     auto const instance_count{base_positions_.Num()};
-    auto const updated_instance_count{get_update_count()};
+    auto const updated_instance_count{churn_enabled_ ? -1 : get_update_count()};
+    auto const workload{FString::Printf(TEXT("%d,%d,%d,%.3f,%d"),
+                                        churn_enabled_ ? 1 : 0,
+                                        minimum_live_count_,
+                                        churn_half_cycle_updates_,
+                                        replacement_percentage_,
+                                        warmup_updates_)};
     auto const append{[&](TCHAR const* renderer,
                           TCHAR const* metric,
                           TCHAR const* unit,
@@ -857,6 +1008,7 @@ void ASandboxISMCBenchmarkActor::save_report() const {
                        *visibility_name,
                        *bounds_name,
                        *custom_data_name,
+                       *workload,
                        instance_count,
                        updated_instance_count,
                        update_percentage_,
@@ -867,7 +1019,27 @@ void ASandboxISMCBenchmarkActor::save_report() const {
     append(TEXT("benchmark"), TEXT("game_thread"), TEXT("ms"), game_thread_ms_);
     append(TEXT("benchmark"), TEXT("render_thread"), TEXT("ms"), render_thread_ms_);
     append(TEXT("benchmark"), TEXT("gpu"), TEXT("ms"), gpu_ms_);
+    append(TEXT("benchmark"), TEXT("live_instances"), TEXT("count"), live_counts_);
+    append(TEXT("benchmark"), TEXT("removed_instances"), TEXT("count"), removed_counts_);
+    append(TEXT("benchmark"), TEXT("added_instances"), TEXT("count"), added_counts_);
+    auto const append_population_timings{
+        [&](TCHAR const* renderer, FRendererSamples const& samples) {
+            append(renderer, TEXT("growing_update"), TEXT("ms"), samples.growing_update_ms);
+            append(renderer, TEXT("shrinking_update"), TEXT("ms"), samples.shrinking_update_ms);
+            append(renderer, TEXT("steady_update"), TEXT("ms"), samples.steady_update_ms);
+        }};
     if (runs_custom()) {
+        append_population_timings(TEXT("custom"), custom_samples_);
+        append(TEXT("custom"),
+               TEXT("staging_capacity_changes"),
+               TEXT("count/update"),
+               staging_capacity_changes_);
+        append(TEXT("custom"),
+               TEXT("gpu_buffer_allocations"),
+               TEXT("count/update"),
+               gpu_buffer_allocations_);
+        append(TEXT("custom"), TEXT("staging_waits"), TEXT("count/update"), staging_waits_);
+        append(TEXT("custom"), TEXT("staging_wait"), TEXT("ms"), staging_wait_ms_);
         append(TEXT("custom"), TEXT("creation"), TEXT("ms"), {custom_creation_ms_});
         append(TEXT("custom"), TEXT("total_update"), TEXT("ms"), custom_samples_.total_update_ms);
         append(TEXT("custom"), TEXT("build"), TEXT("ms"), custom_samples_.build_ms);
@@ -883,6 +1055,7 @@ void ASandboxISMCBenchmarkActor::save_report() const {
         append(TEXT("custom"), TEXT("uploaded"), TEXT("bytes"), custom_samples_.uploaded_bytes);
     }
     if (runs_engine_ismc()) {
+        append_population_timings(TEXT("engine_ismc"), engine_samples_);
         append(TEXT("engine_ismc"), TEXT("creation"), TEXT("ms"), {engine_creation_ms_});
         append(
             TEXT("engine_ismc"), TEXT("total_update"), TEXT("ms"), engine_samples_.total_update_ms);

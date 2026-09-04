@@ -63,6 +63,10 @@ struct FSandboxISMCMetricsState {
     uint64 custom_data_upload_bytes{0};
     uint64 upload_bytes{0};
     TAtomic<uint64> upload_cycles{0};
+    uint64 staging_capacity_changes{0};
+    TAtomic<uint64> gpu_buffer_allocations{0};
+    uint64 staging_waits{0};
+    uint64 staging_wait_cycles{0};
 };
 
 namespace {
@@ -183,6 +187,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
 
     void allocate(FRHICommandListBase& rhi_command_list, int32 required_capacity) {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::allocate);
+        ++metrics_->gpu_buffer_allocations;
         auto const requested_capacity = FMath::Max(required_capacity, 1);
         capacity_ = FMath::RoundUpToPowerOfTwo(requested_capacity);
 
@@ -203,6 +208,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
 
     void allocate_custom_data(FRHICommandListBase& rhi_command_list, int32 required_capacity) {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::allocate_custom_data);
+        ++metrics_->gpu_buffer_allocations;
         auto const requested_capacity{FMath::Max(required_capacity, 1)};
         custom_data_capacity_ = FMath::RoundUpToPowerOfTwo(requested_capacity);
 
@@ -651,13 +657,21 @@ auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
 
     auto& buffer{staging_state_->buffers.next()};
     if (buffer.in_flight.Load()) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::begin_instance_update::WaitForBuffer);
+        auto const wait_start{FPlatformTime::Cycles64()};
         INC_DWORD_STAT(STAT_SandboxISMCStagingBufferWaits);
         FlushRenderingCommands();
+        ++metrics_->staging_waits;
+        metrics_->staging_wait_cycles += FPlatformTime::Cycles64() - wait_start;
         check(!buffer.in_flight.Load());
     }
 
+    auto const transform_capacity{buffer.instances.Max()};
+    auto const custom_data_capacity{buffer.custom_data.Max()};
     buffer.instances.SetNumUninitialized(instance_count);
     buffer.custom_data.SetNumUninitialized(instance_count * num_custom_data_floats_);
+    metrics_->staging_capacity_changes += buffer.instances.Max() != transform_capacity;
+    metrics_->staging_capacity_changes += buffer.custom_data.Max() != custom_data_capacity;
     buffer.num_custom_data_floats = num_custom_data_floats_;
     return buffer;
 }
@@ -704,6 +718,10 @@ auto USandboxISMCComponent::get_update_metrics() const -> FSandboxISMCUpdateMetr
         .transform_upload_bytes = metrics_->transform_upload_bytes,
         .custom_data_upload_bytes = metrics_->custom_data_upload_bytes,
         .upload_bytes = metrics_->upload_bytes,
+        .staging_capacity_changes = metrics_->staging_capacity_changes,
+        .gpu_buffer_allocations = metrics_->gpu_buffer_allocations.Load(),
+        .staging_waits = metrics_->staging_waits,
+        .staging_wait_ms = FPlatformTime::ToMilliseconds64(metrics_->staging_wait_cycles),
     };
 }
 
@@ -725,7 +743,11 @@ auto USandboxISMCComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
     auto* initial_buffer{pending_staging_buffer_ != nullptr ? pending_staging_buffer_
                                                             : &staging_state_->buffers.current()};
     if (initial_buffer->in_flight.Load()) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::CreateSceneProxy::WaitForBuffer);
+        auto const wait_start{FPlatformTime::Cycles64()};
         FlushRenderingCommands();
+        ++metrics_->staging_waits;
+        metrics_->staging_wait_cycles += FPlatformTime::Cycles64() - wait_start;
     }
     check(!initial_buffer->in_flight.Load());
     check(initial_buffer->instances.Num() == instance_count_);

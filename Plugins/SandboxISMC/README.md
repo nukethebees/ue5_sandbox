@@ -124,6 +124,48 @@ bounds during each snapshot and reusing conservative bounds calculated once duri
 instance and `/SandboxISMC/Lab/M_SandboxISMCCustomData`; animated mode changes the updated prefix
 each frame. The unattended option accepts `none`, `static`, or `animated`.
 
+#### Population churn
+
+Enable the actor's `Churn Enabled` property to cycle between `Instance Count` (the maximum)
+and `Minimum Live Count`, which may be zero. `Churn Half Cycle Updates` controls each grow/shrink
+leg. `Replacement Percentage` replaces that fraction of the surviving population every update;
+fractional replacements accumulate rather than rounding up each frame. The sequence depends on
+update number, not frame duration, so paired and isolated runs use the same count sequence.
+Movement and colour animation still use elapsed time.
+
+This is a contiguous-tail workload: retire a tail batch, keep survivor indices, then append new
+instances. Replacement colours rotate through RGB channels. The engine ISMC performs actual batch
+removals/additions; the custom component submits its new live snapshot. Churn mode refreshes all
+survivor transforms so changes to the animated prefix cannot leave old transforms behind.
+It does **not** measure scattered-removal/swap costs or represent full laser integration.
+
+`Warmup Updates` excludes initial updates from CSV timing and counter samples, but not Insights.
+Use at least one full churn cycle when looking for persistent allocation activity. Creation timing
+is still reported separately. For a short zero-to-19,000-instance run:
+
+```powershell
+cmake --preset sandbox-ismc-benchmark -DSANDBOX_ISMC_BENCHMARK_SECONDS=10 -DSANDBOX_ISMC_BENCHMARK_INSTANCES=19000 -DSANDBOX_ISMC_BENCHMARK_CHURN=1 -DSANDBOX_ISMC_BENCHMARK_MIN_INSTANCES=0 -DSANDBOX_ISMC_BENCHMARK_HALF_CYCLE_UPDATES=30 -DSANDBOX_ISMC_BENCHMARK_REPLACEMENT_PERCENT=5 -DSANDBOX_ISMC_BENCHMARK_WARMUP_UPDATES=60 -DSANDBOX_ISMC_BENCHMARK_MODE=paired -DSANDBOX_ISMC_BENCHMARK_CUSTOM_DATA=animated
+cmake --build --preset sandbox-ismc-benchmark
+ctest --preset sandbox-ismc-benchmark
+```
+
+Set `SANDBOX_ISMC_BENCHMARK_CHURN=0` and `SANDBOX_ISMC_BENCHMARK_WARMUP_UPDATES=0` to restore the
+fixed-population workload. These CMake options persist in the preset's cache.
+
+CSV metadata includes churn settings; `instances` is the maximum and `updated_instances` is `-1`
+when counts vary. `live_instances`, `removed_instances`, and `added_instances` describe measured
+populations. `growing_update`, `shrinking_update`, and `steady_update` split each renderer's total
+CPU update timings by population direction.
+
+The custom component reports `staging_capacity_changes`, `gpu_buffer_allocations`, `staging_waits`
+(per-update counts), and `staging_wait` (milliseconds). Capacity changes count both growing and
+shrinking of the two staging arrays, not allocator calls that leave capacity unchanged. GPU
+allocations count buffer creation, including scene-proxy recreation. They are read asynchronously
+and may appear in a later frame; they are not exact per-snapshot attribution. These counters do not
+measure all allocations inside Unreal's ISMC. Insights exposes the three counts as cumulative
+`SandboxISMCBenchmark/Custom/` counters and wait duration per update. Use the existing render-thread
+upload counters/scopes for exact upload timing rather than synchronizing the benchmark to read it.
+
 Do not add `-nullrhi`; the Render Thread and GPU comparison require a real RHI.
 
 The comparison uses the same mesh, default material, local transforms, mobility, movement, and view.
@@ -134,7 +176,7 @@ values when PIE ends.
 
 Results are written to `Saved/Benchmarks/SandboxISMC_*.csv` when PIE stops. The filename identifies
 mode, update percentage, and visibility. Each metric reports its unit plus minimum, median, p95, and
-maximum values over the complete run:
+maximum values after the configured warm-up:
 
 - `frame` is the PIE game-frame duration.
 - `game_thread`, `render_thread`, and `gpu` are Unreal's whole-frame thread/GPU timers. They are most

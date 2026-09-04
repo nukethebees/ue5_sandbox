@@ -63,6 +63,11 @@ set(CACHE{SANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT}
   HELP "Percentage of instances updated per frame in the offscreen SandboxISMC benchmark"
   VALUE 100
 )
+set(SANDBOX_ISMC_BENCHMARK_CHURN 0 CACHE STRING "Enable deterministic population churn (0 or 1)")
+set(SANDBOX_ISMC_BENCHMARK_MIN_INSTANCES 1000 CACHE STRING "Minimum live population during churn")
+set(SANDBOX_ISMC_BENCHMARK_HALF_CYCLE_UPDATES 120 CACHE STRING "Updates per grow/shrink half-cycle")
+set(SANDBOX_ISMC_BENCHMARK_REPLACEMENT_PERCENT 5 CACHE STRING "Percentage of survivors replaced per update")
+set(SANDBOX_ISMC_BENCHMARK_WARMUP_UPDATES 0 CACHE STRING "Initial updates excluded from benchmark samples")
 set(CACHE{SANDBOX_ISMC_BENCHMARK_MODE}
   TYPE STRING
   HELP "SandboxISMC benchmark renderer mode: paired, custom, or engine_ismc"
@@ -323,6 +328,11 @@ add_test(
     "-ExecCmds=Automation RunTests SandboxISMC.RemoteBenchmark; Quit"
     "-SandboxISMCBenchmarkSeconds=${SANDBOX_ISMC_BENCHMARK_SECONDS}"
     "-SandboxISMCBenchmarkInstances=${SANDBOX_ISMC_BENCHMARK_INSTANCES}"
+    "-SandboxISMCBenchmarkChurn=${SANDBOX_ISMC_BENCHMARK_CHURN}"
+    "-SandboxISMCBenchmarkMinInstances=${SANDBOX_ISMC_BENCHMARK_MIN_INSTANCES}"
+    "-SandboxISMCBenchmarkHalfCycleUpdates=${SANDBOX_ISMC_BENCHMARK_HALF_CYCLE_UPDATES}"
+    "-SandboxISMCBenchmarkReplacementPercent=${SANDBOX_ISMC_BENCHMARK_REPLACEMENT_PERCENT}"
+    "-SandboxISMCBenchmarkWarmupUpdates=${SANDBOX_ISMC_BENCHMARK_WARMUP_UPDATES}"
     "-SandboxISMCBenchmarkUpdatePercent=${SANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT}"
     "-SandboxISMCBenchmarkMode=${SANDBOX_ISMC_BENCHMARK_MODE}"
     "-SandboxISMCBenchmarkVisibility=${SANDBOX_ISMC_BENCHMARK_VISIBILITY}"
