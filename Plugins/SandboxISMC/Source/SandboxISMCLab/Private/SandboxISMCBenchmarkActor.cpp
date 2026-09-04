@@ -392,9 +392,7 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
             custom_ismc_->set_static_mesh(*static_mesh_);
             custom_ismc_->clear_instances();
             custom_ismc_->reserve_instances(count);
-            for (auto const position : base_positions_) {
-                custom_ismc_->add_instance(position);
-            }
+            custom_ismc_->add_instances(base_positions_);
             custom_ismc_->commit_instance_updates();
         }
         custom_creation_ms_ =
@@ -433,13 +431,12 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomPrepareTransforms);
         auto const count{get_update_count()};
-        auto positions{custom_ismc_->edit_positions(0, count)};
-        auto rotations{custom_ismc_->edit_rotations(0, count)};
+        auto instance_data{custom_ismc_->edit_instances(0, count)};
         auto const rotation{FQuat4f{FVector3f::UpVector, angle_radians}};
         for (auto range_index = 0; range_index < count; ++range_index) {
-            positions[range_index] =
+            instance_data.positions[range_index] =
                 base_positions_[range_index] + FVector3f{0.0f, 0.0f, vertical_offset};
-            rotations[range_index] = rotation;
+            instance_data.rotations[range_index] = rotation;
         }
     }
     auto const prepare_cycles{FPlatformTime::Cycles64() - prepare_start};

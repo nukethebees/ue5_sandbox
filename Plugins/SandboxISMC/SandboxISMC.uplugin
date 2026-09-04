@@ -9,6 +9,12 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": true,
 	"Installed": false,
+	"Plugins": [
+		{
+			"Name": "SandboxCore",
+			"Enabled": true
+		}
+	],
 	"Modules": [
 		{
 			"Name": "SandboxISMC",

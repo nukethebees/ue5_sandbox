@@ -13,6 +13,7 @@ public class SandboxISMC : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "SandboxCore",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]

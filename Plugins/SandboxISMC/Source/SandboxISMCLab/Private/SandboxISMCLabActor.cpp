@@ -39,13 +39,13 @@ void ASandboxISMCLabActor::Tick(float delta_seconds) {
     auto const instance_count = instances_->get_instance_count();
     if (animate_ && instance_count > 0 && animated_instance_count_ > 0) {
         auto const update_count = FMath::Min(animated_instance_count_, instance_count);
-        auto rotations = instances_->edit_rotations(0, update_count);
+        auto instance_data = instances_->edit_instances(0, update_count);
         auto const delta_rotation = FQuat4f{
             FVector3f::UpVector, FMath::DegreesToRadians(rotation_speed_degrees_ * delta_seconds)};
 
         for (auto instance_index = 0; instance_index < update_count; ++instance_index) {
-            rotations[instance_index] =
-                (delta_rotation * rotations[instance_index]).GetNormalized();
+            instance_data.rotations[instance_index] =
+                (delta_rotation * instance_data.rotations[instance_index]).GetNormalized();
         }
 
         instances_->commit_instance_updates();
@@ -91,6 +91,8 @@ void ASandboxISMCLabActor::regenerate_instances() {
         };
         auto const instance_count = dimensions.X * dimensions.Y * dimensions.Z;
         instances_->reserve_instances(instance_count);
+        TArray<FVector3f> positions;
+        positions.Reserve(instance_count);
 
         auto const grid_extent = FVector3f{
             static_cast<float>(dimensions.X - 1) * static_cast<float>(grid_spacing_.X),
@@ -108,13 +110,18 @@ void ASandboxISMCLabActor::regenerate_instances() {
                                      static_cast<float>(y) * static_cast<float>(grid_spacing_.Y),
                                      static_cast<float>(z) * static_cast<float>(grid_spacing_.Z),
                                  };
-                    instances_->add_instance(position);
+                    positions.Add(position);
                 }
             }
         }
+        instances_->add_instances(positions);
     } else {
         auto const instance_count = FMath::Max(cloud_instance_count_, 1);
         instances_->reserve_instances(instance_count);
+        TArray<FVector3f> positions;
+        TArray<FQuat4f> rotations;
+        positions.Reserve(instance_count);
+        rotations.Reserve(instance_count);
         FRandomStream random{random_seed_};
         auto const extent = FVector3f{cloud_extent_};
 
@@ -128,8 +135,10 @@ void ASandboxISMCLabActor::regenerate_instances() {
                 FVector3f::UpVector,
                 static_cast<float>(random.FRandRange(0.0f, 2.0f * UE_PI)),
             };
-            instances_->add_instance(position, rotation);
+            positions.Add(position);
+            rotations.Add(rotation);
         }
+        instances_->add_instances(positions, rotations);
     }
 
     instances_->commit_instance_updates();

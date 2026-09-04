@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SandboxISMCDirtyRange.h"
-#include "SandboxISMCRemoveResult.h"
+#include "SandboxISMCInstanceData.h"
 #include "SandboxISMCUpdateMetrics.h"
 
 #include "Components/MeshComponent.h"
@@ -26,26 +26,21 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     auto get_static_mesh() const -> UStaticMesh*;
 
     auto reserve_instances(int32 capacity) -> void;
-    auto add_instance(FVector3f position,
-                      FQuat4f rotation = FQuat4f::Identity,
-                      FVector3f scale = FVector3f::OneVector) -> int32;
-    auto set_instance_transform(int32 instance_index,
-                                FVector3f position,
-                                FQuat4f rotation,
-                                FVector3f scale) -> bool;
-    auto remove_instance_swap(int32 instance_index) -> FSandboxISMCRemoveResult;
+    auto add_instances(TConstArrayView<FVector3f> positions) -> int32;
+    auto add_instances(TConstArrayView<FVector3f> positions, TConstArrayView<FQuat4f> rotations)
+        -> int32;
+    auto add_instances(ml::sandbox_ismc::InstanceDataConstView instances) -> int32;
+    auto set_instance_transforms(int32 first_index,
+                                 ml::sandbox_ismc::InstanceDataConstView instances) -> void;
+    auto set_instance_transforms(TConstArrayView<int32> instance_indices,
+                                 ml::sandbox_ismc::InstanceDataConstView instances) -> void;
+    auto remove_instances_swap(TConstArrayView<int32> sorted_instance_indices) -> void;
     auto clear_instances() -> void;
 
     auto get_instance_count() const -> int32;
-    auto positions() -> TArrayView<FVector3f>;
-    auto positions() const -> TConstArrayView<FVector3f>;
-    auto rotations() -> TArrayView<FQuat4f>;
-    auto rotations() const -> TConstArrayView<FQuat4f>;
-    auto scales() -> TArrayView<FVector3f>;
-    auto scales() const -> TConstArrayView<FVector3f>;
-    auto edit_positions(int32 first_index, int32 count) -> TArrayView<FVector3f>;
-    auto edit_rotations(int32 first_index, int32 count) -> TArrayView<FQuat4f>;
-    auto edit_scales(int32 first_index, int32 count) -> TArrayView<FVector3f>;
+    auto instances() -> ml::sandbox_ismc::InstanceDataView;
+    auto instances() const -> ml::sandbox_ismc::InstanceDataConstView;
+    auto edit_instances(int32 first_index, int32 count) -> ml::sandbox_ismc::InstanceDataView;
     auto mark_instance_range_dirty(int32 first_index, int32 count) -> void;
     auto mark_all_instances_dirty() -> void;
 
@@ -66,9 +61,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     UPROPERTY(EditAnywhere, Category = "Mesh")
     TObjectPtr<UStaticMesh> static_mesh_;
 
-    TArray<FVector3f> positions_;
-    TArray<FQuat4f> rotations_;
-    TArray<FVector3f> scales_;
+    ml::sandbox_ismc::InstanceData instance_data_;
     TArray<FSandboxISMCDirtyRange> dirty_ranges_;
     TArray<FBox3f> bounds_tree_;
 

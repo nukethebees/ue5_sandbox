@@ -20,10 +20,10 @@ material.
 
 ## Data flow
 
-The canonical CPU database is three component-local arrays: `FVector3f` positions, `FQuat4f`
-rotations, and `FVector3f` scales. Dense integer indices provide direct access. Removal is an O(1)
-swap-removal, and the result identifies the previous last index when another data set needs to mirror
-that move.
+The canonical CPU database is a generated `InstanceData` SoA containing `FVector3f` positions,
+`FQuat4f` rotations, and `FVector3f` scales. Dense integer indices provide direct access. Batch
+removal uses swap-removal, so integer indices are unstable. Simulation arrays that mirror the
+component must apply the same descending removal indices to remain aligned.
 
 `commit_instance_updates()` converts dirty SoA ranges into immutable render update packets. Each GPU
 instance contains an origin and three scaled-rotation rows, for 64 bytes per instance. Packets cross
@@ -32,11 +32,13 @@ persistent vertex buffer. The buffer grows to a power-of-two capacity and is not
 the active count remains within that capacity. A shared zero stream supplies the unused lightmap-bias
 attribute required by the engine shader layout.
 
-`set_instance_transform()` marks its index automatically. Mutable whole-array accessors conservatively
-mark every instance dirty. Callers doing bulk partial work should use `edit_positions()`,
-`edit_rotations()`, and `edit_scales()` with the same range; adjacent and overlapping ranges are
-coalesced before packing. Additions dirty the appended instance. Creation, buffer growth,
-swap-removal/reordering, mesh changes, and multiple unsent commits fall back to a full snapshot.
+Mutation APIs operate on batches. Contiguous transform updates mark one dirty range, while scattered
+updates mark and coalesce their individual indices. The generated `InstanceData` SoA provides aligned
+position, rotation, and scale views. Mutable whole-instance access conservatively marks every instance
+dirty; callers doing zero-copy partial work should use `edit_instances()` for the relevant range.
+Additions dirty the appended range.
+Creation, buffer growth, swap-removal/reordering, mesh changes, and multiple unsent commits fall back
+to a full snapshot.
 
 Component bounds use a conservative transformed mesh sphere per instance. Sparse updates maintain a
 binary bounds tree from only the changed leaves and their ancestors. A full-range update uses a
