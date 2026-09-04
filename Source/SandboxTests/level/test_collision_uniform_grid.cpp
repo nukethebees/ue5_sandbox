@@ -1650,6 +1650,7 @@ void FCollisionUniformGridTraceScenario::test_dense_and_wide_aabbs() {
 
 void FCollisionUniformGridTraceScenario::test_production_scale() {
     constexpr float grid_boundary{1000000.f};
+    auto const inside_positive_grid_boundary{std::nextafter(grid_boundary, 0.f)};
     FVector3f const aabb_half_extents{1000.f, 1000.f, 1000.f};
     FVector3f const negative_entity{-999000.f, 0.f, 0.f};
     FVector3f const positive_entity{999000.f, 0.f, 0.f};
@@ -1678,9 +1679,17 @@ void FCollisionUniformGridTraceScenario::test_production_scale() {
         {TEXT("Trace follows positive production grid boundary"),
          {grid_boundary, -5000.f, 0.f},
          {grid_boundary, 5000.f, 0.f},
+         0},
+        {TEXT("Trace follows one float inside positive production grid boundary"),
+         {inside_positive_grid_boundary, -5000.f, 0.f},
+         {inside_positive_grid_boundary, 5000.f, 0.f},
          1,
-         {grid_boundary, -1000.f, 0.f},
+         {inside_positive_grid_boundary, -1000.f, 0.f},
          1},
+        {TEXT("Outside trace only touches positive production grid boundary"),
+         {grid_boundary + 10000.f, 0.f, 0.f},
+         {grid_boundary, 0.f, 0.f},
+         0},
     };
     check_traces(checks, fixture, cases);
 }

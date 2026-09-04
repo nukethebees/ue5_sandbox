@@ -7,6 +7,7 @@
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <utility>
 
@@ -27,6 +28,53 @@ auto to_closed_max_cell(float const value, float const cell_dim, int32 const gri
     }
 
     return FMath::FloorToInt((value + half_grid_extent) / cell_dim);
+}
+
+auto clip_segment_to_half_open_aabb(FVector3f const start,
+                                    FVector3f const end,
+                                    FVector3f const bounds_min,
+                                    FVector3f const bounds_max_inside,
+                                    FVector3f& clipped_start,
+                                    FVector3f& clipped_end) -> bool {
+    auto const delta{end - start};
+    float entry_t{};
+    float exit_t{1.f};
+
+    // Intersect the segment's t range with the grid slab on each axis.
+    for (int32 axis{}; axis < 3; ++axis) {
+        auto const axis_delta{delta[axis]};
+        if (axis_delta == 0.f) {
+            // A parallel segment overlaps this slab only when its fixed coordinate is inside it.
+            if (start[axis] < bounds_min[axis] || start[axis] > bounds_max_inside[axis]) {
+                return false;
+            }
+
+            continue;
+        }
+
+        auto axis_entry_t{(bounds_min[axis] - start[axis]) / axis_delta};
+        auto axis_exit_t{(bounds_max_inside[axis] - start[axis]) / axis_delta};
+        if (axis_entry_t > axis_exit_t) {
+            Swap(axis_entry_t, axis_exit_t);
+        }
+
+        entry_t = FMath::Max(entry_t, axis_entry_t);
+        exit_t = FMath::Min(exit_t, axis_exit_t);
+        if (entry_t > exit_t) {
+            return false;
+        }
+    }
+
+    clipped_start = start + (delta * entry_t);
+    clipped_end = start + (delta * exit_t);
+    for (int32 axis{}; axis < 3; ++axis) {
+        clipped_start[axis] =
+            FMath::Clamp(clipped_start[axis], bounds_min[axis], bounds_max_inside[axis]);
+        clipped_end[axis] =
+            FMath::Clamp(clipped_end[axis], bounds_min[axis], bounds_max_inside[axis]);
+    }
+
+    return true;
 }
 }
 
@@ -281,6 +329,24 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
     auto const n{traces.num()};
     check(n == hits.num());
 
+    FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
+                                    static_cast<float>(grid_dims_.Y),
+                                    static_cast<float>(grid_dims_.Z)};
+    auto const half_grid_size{grid_dimensions * cell_dims_ * 0.5f};
+    auto const grid_min{-half_grid_size};
+    auto const grid_max{half_grid_size};
+    auto grid_max_inside{grid_max};
+    for (int32 axis{}; axis < n_axes; ++axis) {
+        grid_max_inside[axis] = std::nextafter(grid_max[axis], grid_min[axis]);
+    }
+    auto const to_traversal_cell_coord{[this](FVector3f const position) {
+        auto cell_coord{to_cell_coord(position)};
+        for (int32 axis{}; axis < n_axes; ++axis) {
+            cell_coord[axis] = FMath::Clamp(cell_coord[axis], 0, grid_dims_[axis] - 1);
+        }
+        return cell_coord;
+    }};
+
     constexpr auto initialise_traversal_axis{[](float const cell_min,
                                                 float const cell_dim,
                                                 float const start,
@@ -366,9 +432,20 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
 
         auto const p0{traces.starts[i_test]};
         auto const p1{traces.ends[i_test]};
-        auto const coord0{to_cell_coord(p0)};
-        auto const coord1{to_cell_coord(p1)};
         auto const delta{p1 - p0};
+        FVector3f traversal_start;
+        FVector3f traversal_end;
+
+        // Restrict this trace to the grid before converting its endpoints to cell coordinates.
+        // This also rejects parallel traces on the excluded positive grid boundary.
+        if (!clip_segment_to_half_open_aabb(
+                p0, p1, grid_min, grid_max_inside, traversal_start, traversal_end)) {
+            continue;
+        }
+
+        auto const coord0{to_traversal_cell_coord(traversal_start)};
+        auto const coord1{to_traversal_cell_coord(traversal_end)};
+        auto const traversal_delta{traversal_end - traversal_start};
         auto current_cell{coord0};
 
         auto const cell_min{to_cell_min(current_cell)};
@@ -384,8 +461,8 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
         for (int32 axis{}; axis < n_axes; ++axis) {
             initialise_traversal_axis(cell_min[axis],
                                       cell_dims_[axis],
-                                      p0[axis],
-                                      delta[axis],
+                                      traversal_start[axis],
+                                      traversal_delta[axis],
                                       cell_steps[axis],
                                       t[axis],
                                       t_deltas[axis]);
