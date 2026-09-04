@@ -125,7 +125,7 @@ TEST(SlateCompiler, RejectsDuplicateOwnersAcrossInputs) {
             compile_manifest(CompileOptions{.manifest = project.path("manifest.json")}));
         FAIL() << "Expected duplicate owner to be rejected";
     } catch (detail::SourceError const& error) {
-        EXPECT_TRUE(std::string{error.what()}.contains("duplicate widget class declaration 'SPanel'"));
+        EXPECT_TRUE(std::string{error.what()}.contains("duplicate widget declaration 'SPanel'"));
     }
 }
 
@@ -286,6 +286,23 @@ TEST(SlateCompiler, RejectsInvalidIncludeDirectories) {
         project.write("manifest.json", std::string{"{\"entries\":[{\"input\":\"panel.sbxslate\"}],\"include_directories\":"} + directories + "}");
         EXPECT_FALSE(compile_error(project).empty());
     }
+}
+
+TEST(SlateCompiler, LibraryMigrationRemovesTheObsoleteOwnerHeader) {
+    TemporaryProject project{"library-migration"};
+    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("panel.sbxslate", "(widget-class FOwner (function Build (params) (SImage)))");
+    auto const options{CompileOptions{.manifest = project.path("manifest.json")}};
+    ASSERT_EQ(compile_manifest(options), 0);
+    project.write("Common.sbxslate", "(defmacro image () (SImage))");
+    project.write("panel.sbxslate", R"(
+(include "Common.sbxslate")
+(widget-library Example::Images (function Build (params) (image)))
+)");
+    ASSERT_EQ(compile_manifest(options), 0);
+    EXPECT_FALSE(std::filesystem::exists(project.path("generated/FOwner.slate.generated.h")));
+    EXPECT_TRUE(project.read("generated/Example/Images.slate.generated.h").contains("inline auto Build()"));
+    EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 0);
 }
 
 }

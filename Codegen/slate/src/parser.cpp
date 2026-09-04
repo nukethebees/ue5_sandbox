@@ -19,18 +19,18 @@ class Parser {
         Document document;
         std::set<std::string> owners;
         while (!at(TokenKind::end)) {
-            if (!list_head_is("widget-class")) {
-                fail(current().span, "expected 'widget-class' declaration");
+            if (!list_head_is("widget-class") && !list_head_is("widget-library")) {
+                fail(current().span, "expected 'widget-class' or 'widget-library' declaration");
             }
-            auto widget_class{parse_widget_class()};
-            if (!owners.insert(widget_class.owner).second) {
-                fail(widget_class.span,
-                     "duplicate widget class declaration '" + widget_class.owner + "'");
+            auto widget_declaration{parse_widget_declaration()};
+            if (!owners.insert(widget_declaration.name).second) {
+                fail(widget_declaration.span,
+                     "duplicate widget declaration '" + widget_declaration.name + "'");
             }
-            document.widget_classes.push_back(std::move(widget_class));
+            document.declarations.push_back(std::move(widget_declaration));
         }
-        if (document.widget_classes.empty()) {
-            fail(current().span, "document must contain at least one widget class");
+        if (document.declarations.empty()) {
+            fail(current().span, "document must contain at least one widget class or library");
         }
         return document;
     }
@@ -78,24 +78,26 @@ class Parser {
         throw SourceError{path_, span, std::string{message}};
     }
 
-    auto parse_widget_class() -> WidgetClass {
+    auto parse_widget_declaration() -> WidgetDeclaration {
         auto const& opening{
-            expect(TokenKind::left_parenthesis, "expected '(' before widget class")};
+            expect(TokenKind::left_parenthesis, "expected '(' before widget declaration")};
         auto const& form{expect_atom("expected 'widget-class'")};
-        if (form.text != "widget-class") {
-            fail(form.span, "expected 'widget-class'");
+        if (form.text != "widget-class" && form.text != "widget-library") {
+            fail(form.span, "expected 'widget-class' or 'widget-library'");
         }
+        library_ = form.text == "widget-library";
 
-        auto const& owner{expect_atom("expected widget class owner type")};
+        auto const& owner{expect_atom("expected qualified widget declaration name")};
         if (!is_qualified_identifier(owner.text)) {
-            fail(owner.span, "widget class owner must be a qualified C++ identifier");
+            fail(owner.span, "widget declaration name must be a qualified C++ identifier");
         }
 
-        WidgetClass result{.owner = owner.text, .span = opening.span};
+        WidgetDeclaration result{.name = owner.text, .span = opening.span};
+        result.kind = library_ ? DeclarationKind::widget_library : DeclarationKind::widget_class;
         std::set<std::string> function_names;
         while (!at(TokenKind::right_parenthesis)) {
             if (at(TokenKind::end)) {
-                fail(current().span, "expected ')' after widget class declaration");
+                fail(current().span, "expected ')' after widget declaration");
             }
             if (!list_head_is("function")) {
                 fail(current().span, "expected 'function' declaration");
@@ -106,9 +108,9 @@ class Parser {
             }
             result.functions.push_back(std::move(function));
         }
-        expect(TokenKind::right_parenthesis, "expected ')' after widget class declaration");
+        expect(TokenKind::right_parenthesis, "expected ')' after widget declaration");
         if (result.functions.empty()) {
-            fail(opening.span, "widget class must contain at least one function");
+            fail(opening.span, "widget declaration must contain at least one function");
         }
         return result;
     }
@@ -250,6 +252,9 @@ class Parser {
     }
 
     auto parse_assigned_widget() -> Child {
+        if (library_) {
+            fail(current().span, "assign requires a widget-class host; unavailable in widget-library");
+        }
         auto const& opening{
             expect(TokenKind::left_parenthesis, "expected '(' before assigned widget")};
         auto const& form{expect_atom("expected 'assign'")};
@@ -266,7 +271,7 @@ class Parser {
     }
 
     void validate_widget_type(Token const& type) const {
-        if (type.text == "widget-class" || type.text == "function" || type.text == "vbox" ||
+        if (type.text == "widget-class" || type.text == "widget-library" || type.text == "function" || type.text == "vbox" ||
             type.text == "hbox" || type.text == "slot" || type.text == "auto" ||
             type.text == "fill" || type.text == "assign" || type.text == "existing" ||
             type.text == "call" || type.text == "let" || type.text == "params") {
@@ -356,6 +361,9 @@ class Parser {
     auto parse_compound_value() -> Value {
         auto const& opening{expect(TokenKind::left_parenthesis, "expected compound value")};
         auto const& form{expect_atom("expected callback, method, uobject, or loc")};
+        if (library_ && (form.text == "method" || form.text == "uobject")) {
+            fail(form.span, form.text + " requires a widget-class host; unavailable in widget-library");
+        }
         if (form.text == "loc") {
             auto const& context{expect(TokenKind::string, "expected localization context")};
             auto const& key{expect(TokenKind::string, "expected localization key")};
@@ -496,7 +504,7 @@ class Parser {
         if (list_head_is("call")) {
             return parse_called_widget();
         }
-        if (list_head_is("widget-class") || list_head_is("function") || list_head_is("slot") ||
+        if (list_head_is("widget-class") || list_head_is("widget-library") || list_head_is("function") || list_head_is("slot") ||
             list_head_is("auto") || list_head_is("fill")) {
             fail(tokens_[index_ + 1].span,
                  "expected widget, assigned widget, existing widget, or box child");
@@ -698,6 +706,7 @@ class Parser {
     std::string_view path_;
     std::vector<Token> tokens_;
     std::size_t index_{};
+    bool library_{};
     std::map<std::string, ParameterState> parameter_states_;
     std::set<std::string> binding_names_;
 };

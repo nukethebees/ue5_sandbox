@@ -141,14 +141,17 @@ struct SlateFunction {
     SourceSpan span;
 };
 
-struct WidgetClass {
-    std::string owner;
+enum class DeclarationKind { widget_class, widget_library };
+
+struct WidgetDeclaration {
+    std::string name;
     std::vector<SlateFunction> functions;
     SourceSpan span;
+    DeclarationKind kind{DeclarationKind::widget_class};
 };
 
 struct Document {
-    std::vector<WidgetClass> widget_classes;
+    std::vector<WidgetDeclaration> declarations;
 };
 
 }

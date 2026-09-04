@@ -23,6 +23,40 @@ auto parse_error(std::string_view const source) -> std::string {
     return {};
 }
 
+TEST(SlateDsl, LibrariesRenderInlineFunctionsWithExplicitParameters) {
+    auto const document{parse_source(R"(
+(widget-library Example::Controls
+  (function Empty (params) (SBox))
+  (function Build
+    (params (value label) (callback clicked) (existing content) (factory make_child))
+    (let ((padding (0 4)))
+      (vbox
+        (auto :padding padding (SButton :Text label :OnClicked (callback clicked)))
+        (auto (existing content))
+        (auto (call make_child label))))))
+(widget-class SOwner
+  (function Build (params) (assign image_ SImage)))
+)")};
+    ASSERT_EQ(document.declarations.size(), 2);
+    auto const output{render("test.sbxslate", document.declarations.front())};
+    EXPECT_TRUE(output.contains("namespace SlateGenerated::Example::Controls {"));
+    EXPECT_TRUE(output.contains("inline auto Empty()"));
+    EXPECT_TRUE(output.contains("inline auto Build(auto&& label, auto&& clicked, auto&& content, auto&& make_child)"));
+    EXPECT_TRUE(output.contains(".OnClicked_Lambda(std::forward<decltype(clicked)>(clicked))"));
+    EXPECT_TRUE(output.contains("make_child(label)"));
+    EXPECT_FALSE(output.contains("ThisClass"));
+    EXPECT_FALSE(output.contains("self_"));
+    EXPECT_TRUE(render("test.sbxslate", document.declarations.back()).contains("SAssignNew(self_.image_"));
+}
+
+TEST(SlateDsl, LibrariesRejectHostDependentForms) {
+    for (auto const body : {"(assign image_ SImage)", "(SButton :OnClicked (uobject clicked))",
+                           "(SButton :Text (method label))"}) {
+        auto const source{std::string{"(widget-library Controls (function Build (params) "} + body + "))"};
+        EXPECT_TRUE(parse_error(source).contains("requires a widget-class host"));
+    }
+}
+
 TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
     auto const document{parse_source(R"(
 (widget-class FOwner
@@ -39,8 +73,8 @@ TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
       (auto (SButton :Text label :OnClicked (callback on_clicked))))))
 )")};
 
-    ASSERT_EQ(document.widget_classes.size(), 1);
-    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    ASSERT_EQ(document.declarations.size(), 1);
+    auto const output{render("test.sbxslate", document.declarations.front())};
     EXPECT_NE(output.find(
                   "auto Build(auto&& label, auto&& make_child, auto&& supplied_child, auto&& on_clicked)"),
               std::string::npos);
@@ -60,7 +94,7 @@ TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
           (SBox :WidthOverride width))))))
 )")};
 
-    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    auto const output{render("test.sbxslate", document.declarations.front())};
     EXPECT_NE(output.find("auto const gap{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};"),
               std::string::npos);
     EXPECT_NE(output.find("auto const width{512.0f};"), std::string::npos);
@@ -81,7 +115,7 @@ TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
           (SBox :WidthOverride box_width))))))
 )")};
 
-    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    auto const output{render("test.sbxslate", document.declarations.front())};
     EXPECT_NE(output.find("auto const box_width{width};"), std::string::npos);
     EXPECT_NE(output.find("vbox_auto_slot(FMargin{padding})"), std::string::npos);
     EXPECT_NE(output.find(".WidthOverride(box_width)"), std::string::npos);
@@ -127,7 +161,7 @@ TEST(SlateDsl, RendersSupportedTreeForms) {
         (assign child_ SBox)))))
 )")};
 
-    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    auto const output{render("test.sbxslate", document.declarations.front())};
     EXPECT_NE(output.find("NSLOCTEXT(\"Tests\", \"Description\", \"Description text\")"),
               std::string::npos);
     EXPECT_NE(output.find(".State(&self_, &ThisClass::current_state)"), std::string::npos);
@@ -151,7 +185,7 @@ TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
     (SImage)))
 )")};
 
-    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    auto const output{render("test.sbxslate", document.declarations.front())};
     EXPECT_NE(output.find("auto BuildControls()"), std::string::npos);
     EXPECT_NE(output.find("auto BuildPreview()"), std::string::npos);
     EXPECT_NE(output.find("vbox_fill_slot(2.0f, FMargin{1.0f, 2.0f})"), std::string::npos);
@@ -173,7 +207,7 @@ TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
 )
 )")};
 
-    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    auto const output{render("test.sbxslate", document.declarations.front())};
     EXPECT_NE(output.find("hbox_fill_slot(fill_width)"), std::string::npos);
     EXPECT_NE(output.find(".HAlign(horizontal_alignment)"), std::string::npos);
     EXPECT_NE(output.find(".VAlign(vertical_alignment)"), std::string::npos);

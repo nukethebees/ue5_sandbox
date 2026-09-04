@@ -7,10 +7,11 @@ checks that committed generated Slate headers are current before invoking Unreal
 ## Grammar
 
 ```text
-document     := (include | macro | widget_class)+ EOF
+document     := (include | macro | widget_class | widget_library)+ EOF
 include      := "(" "include" quoted_path ")"
 macro        := "(" "defmacro" name "(" name* ")" expression ")"
 widget_class := "(" "widget-class" qualified_name function+ ")"
+widget_library := "(" "widget-library" qualified_name function+ ")"
 function     := "(" "function" identifier params (child | let) ")"
 params       := "(" "params" parameter* ")"
 parameter    := "(" ("value" | "callback" | "factory" | "existing") identifier ")"
@@ -92,6 +93,34 @@ selects the `_UObject` lifetime-aware overload. A generated function can then be
 return SlateGenerated::URadar3DShowcaseBuilder{*this}.RebuildWidget(
     on_value_changed, radar_widget);
 ```
+
+## Libraries without a host class
+
+Use `widget-library` for construction functions that take everything they need as parameters:
+
+```lisp
+(widget-library HeatmapBenchmark
+  (function BuildHeatmap
+    (params (value style))
+    (SHeatmap2D :Style style)))
+```
+
+This produces `HeatmapBenchmark.slate.generated.h` with inline functions in
+`SlateGenerated::HeatmapBenchmark`. Include it after the required Slate widget headers, then call:
+
+```cpp
+auto widget{SlateGenerated::HeatmapBenchmark::BuildHeatmap(style)};
+```
+
+No handwritten host type, friend declaration, or builder instance is needed. Qualified library
+names work too: `Example::Controls` produces `Example/Controls.slate.generated.h` and namespace
+`SlateGenerated::Example::Controls`. Parameterless functions are also inline so headers can be
+included in multiple translation units.
+
+Libraries support values, callbacks, existing widgets, factories, `let`, and macros. `assign`,
+`method`, and `uobject` require a host and are rejected in libraries, including after macro
+expansion. Keep `widget-class` for those forms. Classes and libraries can share a source file or
+manifest, but their declaration names must be unique because those names determine output paths.
 
 ## Macros and includes
 

@@ -45,16 +45,16 @@ auto compile_manifest(CompileOptions const& options) -> int {
     for (auto const& entry : manifest.entries) {
         auto tokens{detail::preprocess(manifest_directory / entry.input, manifest.include_directories)};
         auto const document{detail::parse(entry.input.generic_string(), std::move(tokens))};
-        for (auto const& widget_class : document.widget_classes) {
-            if (!owners.insert(widget_class.owner).second) {
+        for (auto const& widget_declaration : document.declarations) {
+            if (!owners.insert(widget_declaration.name).second) {
                 throw detail::SourceError{
                     entry.input.generic_string(),
-                    widget_class.span,
-                    "duplicate widget class declaration '" + widget_class.owner + "'"};
+                    widget_declaration.span,
+                    "duplicate widget declaration '" + widget_declaration.name + "'"};
             }
             files.push_back(codegen::GeneratedFile{
-                output_path(widget_class.owner),
-                detail::render(entry.input.generic_string(), widget_class)});
+                output_path(widget_declaration.name),
+                detail::render(entry.input.generic_string(), widget_declaration)});
         }
     }
     return codegen::generate_files(files, output_root, output_root, options.check);

@@ -149,7 +149,7 @@ class Preprocessor {
         }
         auto const& name{form.children[1].token.text};
         static std::set<std::string> const reserved{
-            "include", "defmacro", "widget-class", "function", "params", "let", "vbox",
+            "include", "defmacro", "widget-class", "widget-library", "function", "params", "let", "vbox",
             "hbox", "auto", "fill", "assign", "existing", "call", "slot", "loc",
             "callback", "method", "uobject", "value", "factory"};
         if (!is_name(name) || reserved.contains(name)) {
