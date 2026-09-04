@@ -3,6 +3,7 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "Math/RandomStream.h"
+#include "ProfilingDebugging/CpuProfilerTrace.h"
 #include "SandboxISMCComponent.h"
 
 #include UE_INLINE_GENERATED_CPP_BY_NAME(SandboxISMCLabActor)
@@ -34,6 +35,7 @@ void ASandboxISMCLabActor::BeginPlay() {
 }
 
 void ASandboxISMCLabActor::Tick(float delta_seconds) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCLabActor::Tick);
     Super::Tick(delta_seconds);
 
     auto const instance_count{instance_data_.num()};
@@ -68,6 +70,7 @@ void ASandboxISMCLabActor::Tick(float delta_seconds) {
 }
 
 void ASandboxISMCLabActor::regenerate_instances() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCLabActor::regenerate_instances);
     if (static_mesh_ == nullptr) {
         UE_LOG(LogSandboxISMCLab,
                Warning,
@@ -149,6 +152,7 @@ void ASandboxISMCLabActor::clear_instances() {
 }
 
 void ASandboxISMCLabActor::submit_instances() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCLabActor::submit_instances);
     auto const source{instance_data_.get_const_view()};
     instances_->set_instances(
         source.num(), ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {

@@ -73,6 +73,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
     }
 
     virtual void InitRHI(FRHICommandListBase& rhi_command_list) override {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::InitRHI);
         auto const initial_count = initial_update_.IsValid() ? initial_update_->instances.Num() : 0;
         allocate(rhi_command_list, FMath::Max(initial_count, 1));
 
@@ -87,7 +88,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
     }
 
     void upload(FRHICommandListBase& rhi_command_list, FSandboxISMCRenderUpdate const& update) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_RenderThreadUpload);
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::upload);
         SCOPE_CYCLE_COUNTER(STAT_SandboxISMCUpload);
         auto const start_cycles = FPlatformTime::Cycles64();
         auto const instance_count = update.instances.Num();
@@ -117,6 +118,7 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
     }
   private:
     void allocate(FRHICommandListBase& rhi_command_list, int32 required_capacity) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::allocate);
         auto const requested_capacity = FMath::Max(required_capacity, 1);
         capacity_ = FMath::RoundUpToPowerOfTwo(requested_capacity);
 
@@ -162,6 +164,7 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
     }
 
     virtual void InitRHI(FRHICommandListBase& rhi_command_list) override {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCVertexFactory::InitRHI);
         check(HasValidFeatureLevel());
         check(instance_buffer_ != nullptr);
 
@@ -263,6 +266,7 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
         , instance_buffer_{MoveTemp(initial_update), MoveTemp(metrics)}
         , vertex_factory_{GetScene().GetFeatureLevel(), &instance_buffer_}
         , material_relevance_{component->GetMaterialRelevance(GetScene().GetShaderPlatform())} {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::FSandboxISMCSceneProxy);
         check(render_data_ != nullptr);
         check(!render_data_->LODResources.IsEmpty());
 
@@ -323,6 +327,7 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
     }
 
     virtual void CreateRenderThreadResources(FRHICommandListBase& rhi_command_list) override {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::CreateRenderThreadResources);
         FPrimitiveSceneProxy::CreateRenderThreadResources(rhi_command_list);
 
         FInstancedStaticMeshVFLooseUniformShaderParameters parameters;
@@ -341,6 +346,7 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
     void update_instances_render_thread(
         FRHICommandListBase& rhi_command_list,
         TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> const& update) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::update_instances_render_thread);
         check(IsInRenderingThread());
         instance_count_ = update->instances.Num();
         instance_buffer_.upload(rhi_command_list, *update);
@@ -350,6 +356,7 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
                                         FSceneViewFamily const& view_family,
                                         uint32 visibility_map,
                                         FMeshElementCollector& collector) const override {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::GetDynamicMeshElements);
         if (instance_count_ == 0 || !loose_uniform_buffer_.IsValid()) {
             return;
         }
@@ -447,6 +454,7 @@ USandboxISMCComponent::USandboxISMCComponent()
 }
 
 auto USandboxISMCComponent::set_static_mesh(UStaticMesh& mesh) -> void {
+    TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_static_mesh);
     if (static_mesh_ == &mesh) {
         return;
     }
@@ -461,6 +469,7 @@ auto USandboxISMCComponent::set_static_mesh(UStaticMesh& mesh) -> void {
 }
 
 auto USandboxISMCComponent::clear_static_mesh() -> void {
+    TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::clear_static_mesh);
     if (static_mesh_ == nullptr) {
         return;
     }
@@ -491,7 +500,7 @@ auto USandboxISMCComponent::set_instances_internal(
     ESandboxISMCParallelism parallelism,
     TFunctionRef<void(FSandboxISMCInstanceChunkWriter&)> fill_chunk) -> void {
     checkf(instance_count >= 0, TEXT("SandboxISMC instance count must not be negative"));
-    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_BuildSnapshot);
+    TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_instances_internal);
     SCOPE_CYCLE_COUNTER(STAT_SandboxISMCBuild);
     auto const start_cycles{FPlatformTime::Cycles64()};
 
@@ -562,6 +571,7 @@ auto USandboxISMCComponent::get_update_metrics() const -> FSandboxISMCUpdateMetr
 }
 
 auto USandboxISMCComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
+    TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::CreateSceneProxy);
     if (static_mesh_ == nullptr || instance_count_ == 0) {
         return nullptr;
     }
@@ -612,7 +622,7 @@ auto USandboxISMCComponent::SendRenderDynamicData_Concurrent() -> void {
         return;
     }
 
-    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_SubmitRenderUpdate);
+    TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::SendRenderDynamicData_Concurrent);
     SCOPE_CYCLE_COUNTER(STAT_SandboxISMCSubmit);
     auto const start_cycles = FPlatformTime::Cycles64();
     auto* proxy = static_cast<FSandboxISMCSceneProxy*>(SceneProxy);

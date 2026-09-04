@@ -140,6 +140,7 @@ ASandboxISMCBenchmarkActor::ASandboxISMCBenchmarkActor() {
 }
 
 void ASandboxISMCBenchmarkActor::BeginPlay() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::BeginPlay);
     Super::BeginPlay();
 
     if (auto* const player_controller{UGameplayStatics::GetPlayerController(this, 0)}) {
@@ -206,7 +207,7 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
         return;
     }
 
-    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_FrameUpdates);
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::Tick);
     animation_elapsed_seconds_ += delta_seconds;
     auto const vertical_phase{
         FMath::DegreesToRadians(360.0f * movement_frequency_hz_ * animation_elapsed_seconds_)};
@@ -329,7 +330,7 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
         return false;
     }
 
-    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CreateMatchingInstances);
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::create_instances);
     auto const count{FMath::Max(instance_count_, 1)};
     auto const width{FMath::CeilToInt(FMath::Sqrt(static_cast<float>(count)))};
     auto const height{FMath::DivideAndRoundUp(count, width)};
@@ -375,7 +376,6 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
     if (runs_custom()) {
         auto const custom_start{FPlatformTime::Cycles64()};
         {
-            TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomCreateInstances);
             custom_ismc_->set_static_mesh(*static_mesh_);
             custom_ismc_->set_instances(
                 count, ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
@@ -397,7 +397,6 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
     if (runs_engine_ismc()) {
         auto const engine_start{FPlatformTime::Cycles64()};
         {
-            TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_EngineISMCCreateInstances);
             engine_ismc_->ClearInstances();
             engine_ismc_->SetStaticMesh(static_mesh_);
             engine_ismc_->AddInstances(engine_update_transforms_, false, false, false);
@@ -420,11 +419,10 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
 
 auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
                                                float const angle_radians) -> FUpdateTiming {
-    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomUpdate);
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::update_custom);
     auto const total_start{FPlatformTime::Cycles64()};
     auto const api_start{FPlatformTime::Cycles64()};
     {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomSetInstances);
         auto const count{base_positions_.Num()};
         auto const updated_count{get_update_count()};
         auto const rotation{FQuat4f{FVector3f::UpVector, angle_radians}};
@@ -457,11 +455,10 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
 
 auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
                                                     float const angle_radians) -> FUpdateTiming {
-    TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_EngineISMCUpdate);
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::update_engine_ismc);
     auto const total_start{FPlatformTime::Cycles64()};
     auto const prepare_start{FPlatformTime::Cycles64()};
     {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_EngineISMCPrepareTransforms);
         auto const rotation{FQuat{FVector::UpVector, static_cast<double>(angle_radians)}};
         auto const count{get_update_count()};
         for (auto instance_index = 0; instance_index < count; ++instance_index) {
@@ -475,7 +472,6 @@ auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
 
     auto const api_start{FPlatformTime::Cycles64()};
     {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_EngineISMCBatchUpdate);
         auto const update_count{get_update_count()};
         if (update_count > 0) {
             engine_ismc_->BatchUpdateInstancesTransforms(
@@ -546,6 +542,7 @@ FString ASandboxISMCBenchmarkActor::get_visibility_name() const {
 }
 
 void ASandboxISMCBenchmarkActor::finish_benchmark() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::finish_benchmark);
     if (!running_) {
         return;
     }
@@ -655,6 +652,7 @@ void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
 }
 
 void ASandboxISMCBenchmarkActor::save_report() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::save_report);
     FString csv{TEXT("renderer,mode,visibility,instances,updated_instances,update_percent,metric,"
                      "unit,samples,min,median,p95,max\n")};
     auto const mode_name{get_mode_name()};

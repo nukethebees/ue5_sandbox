@@ -140,22 +140,23 @@ to connect to the store client` message does not invalidate a file trace when th
 
 ### Reading the Insights trace
 
-On the Game Thread, expand `SandboxISMCBenchmark_FrameUpdates`. In paired mode every frame contains
+On the Game Thread, expand `ASandboxISMCBenchmarkActor::Tick`. In paired mode every frame contains
 these two sibling scopes:
 
-- `SandboxISMCBenchmark_CustomUpdate`, containing the custom snapshot build.
-- `SandboxISMCBenchmark_EngineISMCUpdate`, containing transform preparation and
+- `ASandboxISMCBenchmarkActor::update_custom`, containing the custom snapshot build.
+- `ASandboxISMCBenchmarkActor::update_engine_ismc`, containing transform preparation and
   `BatchUpdateInstancesTransforms()`.
 
 The nested scopes separate caller-side preparation from component API cost. Creation is captured as
-`SandboxISMCBenchmark_CustomCreateInstances` and
-`SandboxISMCBenchmark_EngineISMCCreateInstances`.
+`ASandboxISMCBenchmarkActor::create_instances`; the custom and engine creation counters provide its
+per-renderer split.
 
-Filter timers by `SandboxISMC_Custom` to follow the custom path across threads:
+Filter timers by `SandboxISMC` to follow the custom path across threads:
 
-- `SandboxISMC_Custom_BuildSnapshot` contains the complete conversion, packing, and bounds pass.
-- `SandboxISMC_Custom_SubmitRenderUpdate` submits the snapshot.
-- `SandboxISMC_Custom_RenderThreadUpload` uploads the packed buffer on the Render Thread.
+- `USandboxISMCComponent::set_instances_internal` contains the complete conversion, packing, and
+  bounds pass.
+- `USandboxISMCComponent::SendRenderDynamicData_Concurrent` submits the snapshot.
+- `FSandboxISMCInstanceBuffer::upload` uploads the packed buffer on the Render Thread.
 
 The Render Thread also writes `SandboxISMC/RenderThreadUploadMs`,
 `SandboxISMC/RenderThreadUploadBytes`, and `SandboxISMC/RenderThreadUploadInstances` directly after
