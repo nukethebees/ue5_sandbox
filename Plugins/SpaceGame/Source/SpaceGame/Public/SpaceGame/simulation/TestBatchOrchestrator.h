@@ -10,6 +10,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h>
 #include <SpaceGame/ships/player/TestSpaceShipPhaseInterface.h>
+#include <SpaceGame/ships/player/TestSpaceShipSimulation.h>
 #include <SpaceGame/simulation/LevelTelemetryManager.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/SpatialQueryManager.h>
@@ -86,6 +87,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_tick_period() const noexcept -> time_type { return simulation_tick_loop.tick_period; }
 
     auto get_player_ship() const -> ATestSpaceShip const*;
+    auto get_player_ship_simulation() noexcept -> ml::test_space_ship::Simulation*;
+    auto get_player_ship_simulation() const noexcept -> ml::test_space_ship::Simulation const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
     auto get_lasers() const -> auto const* { return lasers.Get(); }
@@ -180,6 +183,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
+    TOptional<ml::test_space_ship::Simulation> player_ship_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> lasers{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")

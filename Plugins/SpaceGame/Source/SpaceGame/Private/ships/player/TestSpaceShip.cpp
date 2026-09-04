@@ -54,6 +54,45 @@ ATestSpaceShip::ATestSpaceShip()
     configure_ship_mesh();
 }
 
+auto ATestSpaceShip::make_simulation() const -> ml::test_space_ship::Simulation {
+    return {
+        .team = team,
+        .flight_mode = flight_mode,
+        .control_mode = control_mode,
+        .laser_mode = laser_mode,
+        .laser_fire_rate = laser_fire_rate,
+        .health = health,
+    };
+}
+
+void ATestSpaceShip::bind_simulation(ml::test_space_ship::Simulation& new_simulation) {
+    if (standalone_simulation.IsSet()) {
+        new_simulation = MoveTemp(standalone_simulation.GetValue());
+        standalone_simulation.Reset();
+    } else {
+        new_simulation = make_simulation();
+    }
+    bound_simulation = &new_simulation;
+}
+
+void ATestSpaceShip::unbind_simulation() {
+    bound_simulation = nullptr;
+}
+
+auto ATestSpaceShip::simulation() -> ml::test_space_ship::Simulation& {
+    if (bound_simulation) {
+        return *bound_simulation;
+    }
+    if (!standalone_simulation.IsSet()) {
+        standalone_simulation.Emplace(make_simulation());
+    }
+    return standalone_simulation.GetValue();
+}
+
+auto ATestSpaceShip::simulation() const -> ml::test_space_ship::Simulation const& {
+    return const_cast<ATestSpaceShip*>(this)->simulation();
+}
+
 void ATestSpaceShip::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_play);
     check(entity_registry);
@@ -73,8 +112,9 @@ void ATestSpaceShip::begin_play() {
         },
     });
 
-    velocity = GetActorForwardVector() * actor_config->cruise_speed;
-    thrust_energy = actor_config->thrust_energy_max;
+    auto& state{simulation()};
+    state.velocity = GetActorForwardVector() * actor_config->cruise_speed;
+    state.thrust_energy = actor_config->thrust_energy_max;
 
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
     RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
@@ -85,12 +125,11 @@ void ATestSpaceShip::begin_play() {
     }
 
     set_laser_mode(ELaserFiringState::idle);
-    set_laser_fire_rate(laser_fire_rate);
+    set_laser_fire_rate(state.laser_fire_rate);
 
     configure_speed_sampling();
 
-    thrust_change_rate = thrust_change_rate;
-    velocity = FVector3d::ZeroVector;
+    state.velocity = FVector3d::ZeroVector;
     set(EBoostBrakeState::None);
 
     configure_boost_pulse();
@@ -98,7 +137,7 @@ void ATestSpaceShip::begin_play() {
 
     register_with_entity_registry();
 
-    health.clamp_to_max();
+    state.health.clamp_to_max();
 }
 void ATestSpaceShip::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_tick);
@@ -108,35 +147,37 @@ void ATestSpaceShip::update_timers(float const dt) {
 
     log_config.tick(dt);
 
-    laser_shot_cooldown -= dt;
-    time_since_rotation_input += dt;
+    auto& state{simulation()};
+    state.laser_shot_cooldown -= dt;
+    state.time_since_rotation_input += dt;
 
 #if WITH_EDITOR
-    --speed_sample_ticks_remaining;
-    if (speed_sample_ticks_remaining <= 0) {
+    --state.speed_sample_ticks_remaining;
+    if (state.speed_sample_ticks_remaining <= 0) {
         sample_speed();
-        speed_sample_ticks_remaining = speed_sample_tick_period;
+        state.speed_sample_ticks_remaining = state.speed_sample_tick_period;
     }
 #endif
 }
 void ATestSpaceShip::move(float const dt) {
+    auto& state{simulation()};
     update_boost_brake(dt);
     update_actor_rotation(dt);
     update_visual_orientation(dt);
     integrate_velocity(dt);
 
-    auto const lateral_adjustment_speed{planar_movement_direction.X *
+    auto const lateral_adjustment_speed{state.planar_movement_direction.X *
                                         actor_config->lateral_adjustment_speed};
-    auto const vertical_adjustment_speed{planar_movement_direction.Y *
+    auto const vertical_adjustment_speed{state.planar_movement_direction.Y *
                                          actor_config->vertical_adjustment_speed};
     auto const adjustment_velocity{
         FVector{0.f, lateral_adjustment_speed, vertical_adjustment_speed}};
     auto const world_planar_velocity{
         GetActorTransform().TransformVectorNoScale(adjustment_velocity)};
 
-    velocity += world_planar_velocity;
+    state.velocity += world_planar_velocity;
 
-    auto const translation{velocity * dt};
+    auto const translation{state.velocity * dt};
     SetActorLocation(GetActorLocation() + translation, sweep_movement);
 }
 void ATestSpaceShip::queue_commands() {
@@ -145,13 +186,14 @@ void ATestSpaceShip::queue_commands() {
 void ATestSpaceShip::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::resolve_damage_events);
 
-    auto const original_health{health.health};
+    auto& state{simulation()};
+    auto const original_health{state.health.health};
     FRegistryEntityHandle killer{};
 
     auto const apply_damage{
         [this, &killer](int32 const damage, FRegistryEntityHandle const instigator) {
             auto const was_alive{is_alive()};
-            health.health -= damage;
+            simulation().health.health -= damage;
             if (was_alive && !is_alive()) {
                 killer = instigator;
             }
@@ -160,15 +202,15 @@ void ATestSpaceShip::resolve_damage_events() {
     auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
     auto const n_direct_damage{direct_damage.num()};
     for (int32 i{0}; i < n_direct_damage; ++i) {
-        if (direct_damage.damaged_entities[i] != registry_handle) {
+        if (direct_damage.damaged_entities[i] != state.registry_handle) {
             continue;
         }
 
         apply_damage(direct_damage.damage_amounts[i], direct_damage.instigators[i]);
     }
 
-    if (health.health != original_health) {
-        on_health_changed.ExecuteIfBound(health);
+    if (state.health.health != original_health) {
+        on_health_changed.ExecuteIfBound(state.health);
     }
     if ((original_health > 0) && !is_alive()) {
         die(killer);
@@ -187,7 +229,7 @@ void ATestSpaceShip::update_entity_registry() {
 void ATestSpaceShip::queue_entity_update(EntityDeathInfo const& death_info) {
     entity_registry->queue_entity_updates(
         FTestEntityRegistry::ConstView{
-            {&registry_handle, 1},
+            {&simulation().registry_handle, 1},
             get_entity_update_data().get_const_view(),
         },
         death_info);
@@ -200,7 +242,7 @@ void ATestSpaceShip::sync_from_registry() {
 }
 void ATestSpaceShip::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_visual_data);
-    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), velocity);
+    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), simulation().velocity);
 }
 void ATestSpaceShip::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::commit_visual_data);
@@ -217,94 +259,107 @@ void ATestSpaceShip::end_tick() {
 void ATestSpaceShip::register_with_entity_registry() {
     auto const new_entities{
         entity_registry->add_entities(get_entity_update_data().get_const_view())};
-    registry_handle = new_entities.registry_handles[0];
-    unique_entity_id = new_entities.first_id;
+    auto& state{simulation()};
+    state.registry_handle = new_entities.registry_handles[0];
+    state.unique_entity_id = new_entities.first_id;
 
-    check(entity_registry->is_valid_unique_id(unique_entity_id));
+    check(entity_registry->is_valid_unique_id(state.unique_entity_id));
 
     update_entity_registry();
 }
 auto ATestSpaceShip::get_entity_update_data() const -> RegistryEntityData {
+    auto const& state{simulation()};
     RegistryEntityData entity_data;
     ml::append(entity_data.locations, GetActorLocation());
 
-    entity_data.velocities.add(FVector3f{velocity});
+    entity_data.velocities.add(FVector3f{state.velocity});
 
     entity_data.radii.Add(ml::get_mesh_sphere_bounds(*ship_mesh));
-    entity_data.healths.Add(health.health);
-    entity_data.teams.Add(team);
+    entity_data.healths.Add(state.health.health);
+    entity_data.teams.Add(state.team);
     entity_data.alive.Add(static_cast<uint8>(is_alive()));
     entity_data.entity_types.Add(ETestEntityType::PlayerShip);
 
     return entity_data;
 }
 auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
-    return unique_entity_id;
+    return simulation().unique_entity_id;
 }
 auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle {
-    return registry_handle;
+    return simulation().registry_handle;
 }
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
-    return team;
+    return simulation().team;
+}
+void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
+    team = new_team;
+    if (bound_simulation) {
+        bound_simulation->team = new_team;
+    }
+    if (standalone_simulation.IsSet()) {
+        standalone_simulation->team = new_team;
+    }
 }
 auto ATestSpaceShip::get_kills() const -> int32 {
-    return entity_registry->get_kills(unique_entity_id);
+    return entity_registry->get_kills(simulation().unique_entity_id);
 }
 
 /* ------------------------------------------------------------------------------------------ */
 // Movement
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::integrate_velocity(float const dt) {
-    switch (flight_mode) {
+    auto& state{simulation()};
+    switch (state.flight_mode) {
         case ETestSpaceShipFlightMode::ForwardSpeed: {
             auto const fwd{GetActorForwardVector()};
-            auto const new_speed{forward_flight_model.update(dt)};
-            velocity = fwd * new_speed;
+            auto const new_speed{state.forward_flight_model.update(dt)};
+            state.velocity = fwd * new_speed;
             break;
         }
         case ETestSpaceShipFlightMode::PlanarVelocity: {
-            planar_velocity = planar_flight_model.update(dt);
-            velocity = planar_velocity;
+            state.planar_velocity = state.planar_flight_model.update(dt);
+            state.velocity = state.planar_velocity;
             break;
         }
     }
 
-    on_speed_changed.ExecuteIfBound(velocity.Size());
+    on_speed_changed.ExecuteIfBound(state.velocity.Size());
 }
 auto ATestSpaceShip::get_velocity() const -> FVector {
-    return velocity;
+    return simulation().velocity;
 }
 auto ATestSpaceShip::GetVelocity() const -> FVector {
     return get_velocity();
 }
 auto ATestSpaceShip::get_target_speed() const -> float {
-    return target_speed;
+    return simulation().target_speed;
 }
 auto ATestSpaceShip::get_speed() const -> float {
     return get_velocity().Size();
 }
 void ATestSpaceShip::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode) noexcept {
-    flight_mode = new_flight_mode;
+    simulation().flight_mode = new_flight_mode;
 }
 
 // Movement - turning
 void ATestSpaceShip::set_move_input(FVector2D const input) {
-    planar_movement_direction = input;
+    simulation().planar_movement_direction = input;
 }
 void ATestSpaceShip::set_lateral_move_input(float const input) {
-    planar_movement_direction.X = input;
+    simulation().planar_movement_direction.X = input;
 }
 void ATestSpaceShip::set_vertical_move_input(float const input) {
-    planar_movement_direction.Y = input;
+    simulation().planar_movement_direction.Y = input;
 }
 void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
-    if (!sampling) {
+    auto& state{simulation()};
+    if (!state.sampling) {
         return;
     }
 
-    switch (control_mode) {
+    switch (state.control_mode) {
         case ETestSpaceShipControlMode::Velocity: {
-            target_local_planar_velocity_scale = input;
+            state.target_local_planar_velocity_scale = input;
             break;
         }
         case ETestSpaceShipControlMode::Power: {
@@ -313,40 +368,43 @@ void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
     }
 }
 void ATestSpaceShip::set_ship_1d_control_x(float const input) {
-    auto control{target_local_planar_velocity_scale};
+    auto control{simulation().target_local_planar_velocity_scale};
     control.X = input;
     set_ship_2d_control(control);
 }
 void ATestSpaceShip::set_ship_1d_control_y(float const input) {
-    auto control{target_local_planar_velocity_scale};
+    auto control{simulation().target_local_planar_velocity_scale};
     control.Y = input;
     set_ship_2d_control(control);
 }
 void ATestSpaceShip::select_next_control_mode() {
-    control_mode = ml::get_next(control_mode);
+    auto& state{simulation()};
+    state.control_mode = ml::get_next(state.control_mode);
 }
 void ATestSpaceShip::select_previous_control_mode() {
-    control_mode = ml::get_previous(control_mode);
+    auto& state{simulation()};
+    state.control_mode = ml::get_previous(state.control_mode);
 }
 void ATestSpaceShip::start_sampling() {
-    sampling = true;
+    simulation().sampling = true;
 }
 void ATestSpaceShip::stop_sampling() {
-    sampling = false;
+    auto& state{simulation()};
+    state.sampling = false;
     auto const& speed_responses{actor_config->speed_responses};
 
-    switch (control_mode) {
+    switch (state.control_mode) {
         case ETestSpaceShipControlMode::Velocity: {
             auto const fwd{GetActorForwardVector()};
             auto const right{GetActorRightVector()};
-            FVector const world_direction{fwd * target_local_planar_velocity_scale.Y +
-                                          right * target_local_planar_velocity_scale.X};
+            FVector const world_direction{fwd * state.target_local_planar_velocity_scale.Y +
+                                          right * state.target_local_planar_velocity_scale.X};
 
-            target_local_planar_velocity = world_direction * actor_config->cruise_speed;
+            state.target_local_planar_velocity = world_direction * actor_config->cruise_speed;
 
-            planar_flight_model.set_new_impulse(speed_responses.accelerating_to_cruise,
-                                                planar_velocity,
-                                                target_local_planar_velocity);
+            state.planar_flight_model.set_new_impulse(speed_responses.accelerating_to_cruise,
+                                                      state.planar_velocity,
+                                                      state.target_local_planar_velocity);
             break;
         }
         case ETestSpaceShipControlMode::Power: {
@@ -361,31 +419,32 @@ void ATestSpaceShip::turn(FVector2D direction) {
     }
 #endif
 
-    rotation_input = direction;
+    simulation().rotation_input = direction;
 }
 void ATestSpaceShip::update_actor_rotation(float const dt) {
+    auto& state{simulation()};
     auto const rotation_speed{actor_config->rotation_speed};
     auto const d_rot{rotation_speed * dt};
 
-    if (rotation_input != FVector2D::ZeroVector || !FMath::IsNearlyZero(roll_input)) {
+    if (state.rotation_input != FVector2D::ZeroVector || !FMath::IsNearlyZero(state.roll_input)) {
         auto const drot_pitch{d_rot};
 
-        auto const abs_yaw_strength{FMath::Abs(rotation_input.X)};
+        auto const abs_yaw_strength{FMath::Abs(state.rotation_input.X)};
         auto const yaw_speed{actor_config->rotation_speed * abs_yaw_strength};
         auto const drot_yaw{yaw_speed * dt};
 
-        auto const d_pitch{rotation_input.Y * drot_pitch};
-        auto const d_yaw{rotation_input.X * drot_yaw};
-        auto const d_roll{roll_input * d_rot};
+        auto const d_pitch{state.rotation_input.Y * drot_pitch};
+        auto const d_yaw{state.rotation_input.X * drot_yaw};
+        auto const d_roll{state.roll_input * d_rot};
 
         FRotator const delta_rotation(d_pitch, d_yaw, d_roll);
         AddActorLocalRotation(delta_rotation);
 
-        time_since_rotation_input = 0.f;
+        state.time_since_rotation_input = 0.f;
         return;
     }
 
-    if (time_since_rotation_input >= actor_config->auto_level_roll_delay) {
+    if (state.time_since_rotation_input >= actor_config->auto_level_roll_delay) {
         auto const auto_level_speed{actor_config->auto_level_speed};
         auto const rot{GetActorRotation()};
 
@@ -397,14 +456,15 @@ void ATestSpaceShip::update_actor_rotation(float const dt) {
 
 // Movement - boost/brake
 void ATestSpaceShip::set(EBoostBrakeState s) {
+    auto& state{simulation()};
     auto const cur_speed{get_speed()};
     auto const& speed_responses{actor_config->speed_responses};
     FSpeedResponse response{speed_responses.accelerating_to_cruise};
 
     switch (s) {
         case EBoostBrakeState::Boost: {
-            target_speed = actor_config->boost_speed;
-            thrust_change_rate = -(1.f / actor_config->boost_depletion_time);
+            state.target_speed = actor_config->boost_speed;
+            state.thrust_change_rate = -(1.f / actor_config->boost_depletion_time);
             response = speed_responses.boost;
             boost_pulse->Activate();
 
@@ -412,8 +472,8 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
             break;
         }
         case EBoostBrakeState::Brake: {
-            target_speed = actor_config->brake_speed;
-            thrust_change_rate = -(1.f / actor_config->brake_depletion_time);
+            state.target_speed = actor_config->brake_speed;
+            state.thrust_change_rate = -(1.f / actor_config->brake_depletion_time);
             response = speed_responses.brake;
             break;
         }
@@ -421,9 +481,9 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
             UE_LOG(LogSandbox, Error, TEXT("Unhandled state."));
             [[fallthrough]];
         case EBoostBrakeState::None: {
-            target_speed = actor_config->cruise_speed;
-            thrust_change_rate = 1.f / actor_config->thrust_recharge_time;
-            if (target_speed < cur_speed) {
+            state.target_speed = actor_config->cruise_speed;
+            state.thrust_change_rate = 1.f / actor_config->thrust_recharge_time;
+            if (state.target_speed < cur_speed) {
                 response = speed_responses.slowing_to_cruise;
             }
 
@@ -433,79 +493,82 @@ void ATestSpaceShip::set(EBoostBrakeState s) {
         }
     }
 
-    on_target_speed_changed.ExecuteIfBound(target_speed);
-    forward_flight_model.set_new_impulse(response, cur_speed, target_speed);
-    boost_brake_state = s;
+    on_target_speed_changed.ExecuteIfBound(state.target_speed);
+    state.forward_flight_model.set_new_impulse(response, cur_speed, state.target_speed);
+    state.boost_brake_state = s;
 }
 
 void ATestSpaceShip::start_boost() {
-    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+    if (energy_is_full() && (simulation().boost_brake_state == EBoostBrakeState::None)) {
         set(EBoostBrakeState::Boost);
     }
 }
 void ATestSpaceShip::stop_boost() {
-    if (boost_brake_state == EBoostBrakeState::Boost) {
+    if (simulation().boost_brake_state == EBoostBrakeState::Boost) {
         set(EBoostBrakeState::None);
     }
 }
 void ATestSpaceShip::start_brake() {
-    if (energy_is_full() && (boost_brake_state == EBoostBrakeState::None)) {
+    if (energy_is_full() && (simulation().boost_brake_state == EBoostBrakeState::None)) {
         set(EBoostBrakeState::Brake);
     }
 }
 void ATestSpaceShip::stop_brake() {
-    if (boost_brake_state == EBoostBrakeState::Brake) {
+    if (simulation().boost_brake_state == EBoostBrakeState::Brake) {
         set(EBoostBrakeState::None);
     }
 }
 void ATestSpaceShip::update_boost_brake(float const dt) {
-    auto const starting_thrust_energy{thrust_energy};
+    auto& state{simulation()};
+    auto const starting_thrust_energy{state.thrust_energy};
 
     if (starting_thrust_energy <= 0.f) {
         set(EBoostBrakeState::None);
     }
 
-    thrust_energy += dt * thrust_change_rate;
-    thrust_energy = FMath::Clamp(thrust_energy, 0.f, actor_config->thrust_energy_max);
+    state.thrust_energy += dt * state.thrust_change_rate;
+    state.thrust_energy = FMath::Clamp(state.thrust_energy, 0.f, actor_config->thrust_energy_max);
 
-    if (starting_thrust_energy != thrust_energy) {
-        on_energy_changed.ExecuteIfBound(thrust_energy / actor_config->thrust_energy_max);
+    if (starting_thrust_energy != state.thrust_energy) {
+        on_energy_changed.ExecuteIfBound(state.thrust_energy / actor_config->thrust_energy_max);
     }
 }
 
 // Movement - rolling
 void ATestSpaceShip::roll(float direction) {
-    roll_input = FMath::Clamp(direction, -1.f, 1.f);
+    simulation().roll_input = FMath::Clamp(direction, -1.f, 1.f);
 }
 
 /* ------------------------------------------------------------------------------------------ */
 /* Combat */
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::set_lock_on_target(FRegistryEntityHandle const target) {
-    lock_on_target = target;
+    simulation().lock_on_target = target;
 }
 
 // Combat - laser
 void ATestSpaceShip::set_laser_mode(ELaserFiringState new_laser_mode) {
-    if (laser_firing_mode != new_laser_mode) {
+    auto& state{simulation()};
+    if (state.laser_firing_mode != new_laser_mode) {
         on_laser_mode_changed.ExecuteIfBound(new_laser_mode);
     }
-    laser_firing_mode = new_laser_mode;
+    state.laser_firing_mode = new_laser_mode;
 }
 void ATestSpaceShip::update_laser_firing() {
-    auto const cooldown_finished{laser_shot_cooldown <= 0.f};
+    auto& state{simulation()};
+    auto const cooldown_finished{state.laser_shot_cooldown <= 0.f};
 
-    switch (laser_firing_mode) {
+    switch (state.laser_firing_mode) {
         case ELaserFiringState::idle: {
             break;
         }
         case ELaserFiringState::burst: {
             if (cooldown_finished) {
                 fire_laser();
-                laser_shot_cooldown = actor_config->laser.fire_cooldown;
+                state.laser_shot_cooldown = actor_config->laser.fire_cooldown;
 
-                if (lasers_fired_this_burst >= lasers_per_burst) {
-                    laser_shot_cooldown = actor_config->laser_lock_on_transition_delay;
+                if (state.lasers_fired_this_burst >= state.lasers_per_burst) {
+                    state.laser_shot_cooldown = actor_config->laser_lock_on_transition_delay;
                     set_laser_mode(ELaserFiringState::lock_on_transition);
                 }
             }
@@ -527,7 +590,7 @@ void ATestSpaceShip::update_laser_firing() {
             auto const end{start + fwd * distance};
 
             auto const hit{spatial_query_manager->trace_closest(
-                FVector3f{start}, FVector3f{end}, registry_handle)};
+                FVector3f{start}, FVector3f{end}, state.registry_handle)};
             if (hit.hit && hit.entity.is_valid()) {
                 set_lock_on_target(hit.entity);
                 set_laser_mode(ELaserFiringState::lock_on_acquired);
@@ -549,19 +612,21 @@ void ATestSpaceShip::update_laser_firing() {
 }
 void ATestSpaceShip::start_fire_laser() {
     set_laser_mode(ELaserFiringState::burst);
-    lasers_fired_this_burst = 0;
-    laser_shot_cooldown = 0.f;
+    auto& state{simulation()};
+    state.lasers_fired_this_burst = 0;
+    state.laser_shot_cooldown = 0.f;
     set_lock_on_target({});
 }
 void ATestSpaceShip::stop_fire_laser() {
-    if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
+    if (simulation().laser_firing_mode == ELaserFiringState::lock_on_acquired) {
         set_lock_on_target({});
     }
 
     set_laser_mode(ELaserFiringState::idle);
 }
 void ATestSpaceShip::fire_laser() {
-    switch (laser_mode) {
+    auto& state{simulation()};
+    switch (state.laser_mode) {
         case EShipLaserMode::Single: {
             TStaticArray<FTransform, 1> fire_points{
                 get_middle_socket(),
@@ -591,8 +656,8 @@ void ATestSpaceShip::fire_laser() {
         }
     }
 
-    lasers_fired_this_burst++;
-    laser_shot_cooldown = actor_config->laser.fire_cooldown;
+    state.lasers_fired_this_burst++;
+    state.laser_shot_cooldown = actor_config->laser.fire_cooldown;
 }
 void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_points) {
     ml::test_lasers::SpawnRequests new_lasers;
@@ -613,60 +678,63 @@ void ATestSpaceShip::fire_lasers_from(TConstArrayView<FTransform> const fire_poi
     new_lasers.set_speeds(actor_config->laser.projectile_speed);
     new_lasers.set_max_distances(actor_config->laser.max_distance);
     new_lasers.set_colours(colour_cache[team]);
-    ml::fill(new_lasers.instigator_handles, registry_handle);
+    ml::fill(new_lasers.instigator_handles, simulation().registry_handle);
 
     laser_actor->queue_laser_spawns(new_lasers);
 }
 void ATestSpaceShip::upgrade_laser() {
-    if (laser_mode == EShipLaserMode::Single) {
-        laser_mode = EShipLaserMode::Double;
-    } else if (laser_mode == EShipLaserMode::Double) {
-        laser_mode = EShipLaserMode::Hyper;
+    auto& state{simulation()};
+    if (state.laser_mode == EShipLaserMode::Single) {
+        state.laser_mode = EShipLaserMode::Double;
+    } else if (state.laser_mode == EShipLaserMode::Double) {
+        state.laser_mode = EShipLaserMode::Hyper;
     }
 }
 
 void ATestSpaceShip::select_next_laser_fire_rate() noexcept {
-    set_laser_fire_rate(ml::get_next(laser_fire_rate));
+    set_laser_fire_rate(ml::get_next(simulation().laser_fire_rate));
 }
 void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
-    set_laser_fire_rate(ml::get_previous(laser_fire_rate));
+    set_laser_fire_rate(ml::get_previous(simulation().laser_fire_rate));
 }
 void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
-    laser_fire_rate = value;
+    auto& state{simulation()};
+    state.laser_fire_rate = value;
 
-    switch (laser_fire_rate) {
+    switch (state.laser_fire_rate) {
         case ETestShipFireRate::Single: {
-            lasers_per_burst = 1;
+            state.lasers_per_burst = 1;
             break;
         }
         case ETestShipFireRate::Burst3: {
-            lasers_per_burst = 3;
+            state.lasers_per_burst = 3;
             break;
         }
         case ETestShipFireRate::FullAuto: {
-            lasers_per_burst = std::numeric_limits<decltype(lasers_per_burst)>::max();
+            state.lasers_per_burst = std::numeric_limits<decltype(state.lasers_per_burst)>::max();
             break;
         }
     }
 
-    on_ship_fire_rate_changed.ExecuteIfBound(laser_fire_rate);
+    on_ship_fire_rate_changed.ExecuteIfBound(state.laser_fire_rate);
 }
 
 /* ------------------------------------------------------------------------------------------ */
 // Visuals
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::update_visual_orientation(float const dt) {
+    auto const& state{simulation()};
     auto const current_rotation{ship_mesh->GetRelativeRotation()};
 
-    auto const target_pitch{rotation_input.Y * actor_config->pitch_angle_max};
+    auto const target_pitch{state.rotation_input.Y * actor_config->pitch_angle_max};
     auto const new_pitch{
         FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, actor_config->pitch_speed)};
 
-    auto const target_yaw{rotation_input.X * actor_config->yaw_angle_max};
+    auto const target_yaw{state.rotation_input.X * actor_config->yaw_angle_max};
     auto const new_yaw{
         FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, actor_config->yaw_speed)};
 
-    auto const turn_intensity{rotation_input.X};
+    auto const turn_intensity{state.rotation_input.X};
     auto const turn_target{turn_intensity * actor_config->turn_bank_angle_max};
     auto const turn_speed{turn_intensity * actor_config->turn_bank_speed};
 
@@ -711,16 +779,17 @@ auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
 // Health
 /* ------------------------------------------------------------------------------------------ */
 void ATestSpaceShip::add_health(int32 added_health) {
-    set_health(health.health + added_health);
+    set_health(simulation().health.health + added_health);
 }
 void ATestSpaceShip::set_health(int32 new_health) {
-    if (new_health == health.health) {
+    auto& state{simulation()};
+    if (new_health == state.health.health) {
         return;
     }
 
     auto const was_alive{is_alive()};
-    health.health = FMath::Min(new_health, health.max_health);
-    on_health_changed.ExecuteIfBound(health);
+    state.health.health = FMath::Min(new_health, state.health.max_health);
+    on_health_changed.ExecuteIfBound(state.health);
 
     if (was_alive && !is_alive()) {
         die({});
@@ -729,7 +798,7 @@ void ATestSpaceShip::set_health(int32 new_health) {
 void ATestSpaceShip::die(FRegistryEntityHandle const killer) {
     EntityDeathInfo death_info;
     auto const reason{killer.is_null() ? ETestDeathReason::Unknown : ETestDeathReason::Combat};
-    death_info.add(reason, registry_handle, killer);
+    death_info.add(reason, simulation().registry_handle, killer);
     queue_entity_update(death_info);
 
     // The callback unpossesses and unbinds from this actor, so execute a local delegate.
@@ -742,12 +811,12 @@ void ATestSpaceShip::die(FRegistryEntityHandle const killer) {
 // Energy
 /* ------------------------------------------------------------------------------------------ */
 bool ATestSpaceShip::energy_is_full() const {
-    return thrust_energy == actor_config->thrust_energy_max;
+    return simulation().thrust_energy == actor_config->thrust_energy_max;
 }
 auto ATestSpaceShip::get_energy() const -> float {
     check(actor_config);
     check(actor_config->thrust_energy_max > 0.f);
-    return thrust_energy / actor_config->thrust_energy_max;
+    return simulation().thrust_energy / actor_config->thrust_energy_max;
 }
 
 /* ------------------------------------------------------------------------------------------ */
@@ -755,15 +824,17 @@ auto ATestSpaceShip::get_energy() const -> float {
 /* ------------------------------------------------------------------------------------------ */
 #if WITH_EDITOR
 void ATestSpaceShip::sample_speed() {
-    speed_samples[speed_sample_index] = {
+    auto& state{simulation()};
+    state.speed_samples[state.speed_sample_index] = {
         FMath::Clamp(simulation_clock.get_simulation_time(), 0.0, 1e9),
-        FMath::Clamp(velocity.Size(), 0.0, 100e3)};
-    speed_sample_index++;
-    if (speed_sample_index >= speed_sample_max) {
-        speed_sample_index = 0;
+        FMath::Clamp(state.velocity.Size(), 0.0, 100e3)};
+    state.speed_sample_index++;
+    if (state.speed_sample_index >= state.speed_sample_max) {
+        state.speed_sample_index = 0;
     }
 
-    on_speed_sampled.ExecuteIfBound(TConstArrayView<FVector2d>{speed_samples}, speed_sample_index);
+    on_speed_sampled.ExecuteIfBound(TConstArrayView<FVector2d>{state.speed_samples},
+                                    state.speed_sample_index);
 }
 #endif
 void ATestSpaceShip::draw_debug_shapes() {
@@ -787,6 +858,7 @@ void ATestSpaceShip::draw_debug_shapes() {
 }
 void ATestSpaceShip::configure_speed_sampling() {
 #if WITH_EDITOR
+    auto& state{simulation()};
     static constexpr double sample_rate_hz{60.0};
     static constexpr double sample_window_seconds{5.0};
     auto const sample_tick_period{simulation_clock.frequency_to_tick_period(sample_rate_hz)};
@@ -796,13 +868,13 @@ void ATestSpaceShip::configure_speed_sampling() {
     auto const sample_count{(sample_window_ticks + sample_tick_period - 1) / sample_tick_period};
     check(std::in_range<int32>(sample_count));
 
-    speed_sample_index = 0;
-    speed_sample_max = static_cast<int32>(sample_count);
-    speed_sample_tick_period = static_cast<int32>(sample_tick_period);
-    speed_sample_ticks_remaining = speed_sample_tick_period;
-    speed_samples.Reserve(speed_sample_max);
-    for (int32 i{0}; i < speed_sample_max; ++i) {
-        speed_samples.Add(FVector2d::ZeroVector);
+    state.speed_sample_index = 0;
+    state.speed_sample_max = static_cast<int32>(sample_count);
+    state.speed_sample_tick_period = static_cast<int32>(sample_tick_period);
+    state.speed_sample_ticks_remaining = state.speed_sample_tick_period;
+    state.speed_samples.Reserve(state.speed_sample_max);
+    for (int32 i{0}; i < state.speed_sample_max; ++i) {
+        state.speed_samples.Add(FVector2d::ZeroVector);
     }
 
 #endif

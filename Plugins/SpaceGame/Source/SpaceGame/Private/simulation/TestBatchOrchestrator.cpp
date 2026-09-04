@@ -344,10 +344,26 @@ void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
 }
+auto ATestBatchOrchestrator::get_player_ship_simulation() noexcept
+    -> ml::test_space_ship::Simulation* {
+    return player_ship_simulation.IsSet() ? &player_ship_simulation.GetValue() : nullptr;
+}
+auto ATestBatchOrchestrator::get_player_ship_simulation() const noexcept
+    -> ml::test_space_ship::Simulation const* {
+    return player_ship_simulation.IsSet() ? &player_ship_simulation.GetValue() : nullptr;
+}
 void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
+    if (IsValid(player_ship)) {
+        player_ship->unbind_simulation();
+    }
+    player_ship_simulation.Reset();
     player_ship = &new_player_ship;
 }
 void ATestBatchOrchestrator::clear_player_ship() {
+    if (IsValid(player_ship)) {
+        player_ship->unbind_simulation();
+    }
+    player_ship_simulation.Reset();
     player_ship = nullptr;
 }
 
@@ -857,7 +873,11 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator::bind_simulation_dependencies"));
 
     if (IsValid(player_ship)) {
+        player_ship_simulation.Emplace();
+        player_ship->bind_simulation(player_ship_simulation.GetValue());
         player_ship_phase.bind(*player_ship);
+    } else {
+        player_ship_simulation.Reset();
     }
     check(IsValid(lasers));
     check(IsValid(capital_ships));

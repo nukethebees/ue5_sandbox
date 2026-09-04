@@ -12,6 +12,7 @@
 #include <SpaceGame/ships/player/TestShipFireRate.h>
 #include <SpaceGame/ships/player/TestSpaceShipControlMode.h>
 #include <SpaceGame/ships/player/TestSpaceShipFlightMode.h>
+#include <SpaceGame/ships/player/TestSpaceShipSimulation.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
@@ -54,6 +55,7 @@ class SPACEGAME_API ATestSpaceShip
     , public ITestEntity {
     GENERATED_BODY()
     friend class ml::test_space_ship::PhaseInterface;
+    friend class ATestBatchOrchestrator;
   public:
     using RegistryEntityData = ml::entity_registry::EntityData;
 
@@ -69,7 +71,7 @@ class SPACEGAME_API ATestSpaceShip
 
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
-        return registry_handle;
+        return simulation().registry_handle;
     }
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
     /* ------------------------------------------------------------------------------------------ */
@@ -78,7 +80,7 @@ class SPACEGAME_API ATestSpaceShip
     auto get_unique_id() const -> TestEntityUniqueId;
     auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
-    void set_team(ETestTeam const new_team) noexcept { team = new_team; }
+    void set_team(ETestTeam new_team) noexcept;
 
     auto get_entity_registry() const { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry* er) { entity_registry = er; }
@@ -120,15 +122,17 @@ class SPACEGAME_API ATestSpaceShip
     auto get_speed() const -> float;
     void roll(float direction);
     auto get_target_speed() const -> float;
-    auto get_move_input() const { return planar_movement_direction; }
-    auto get_control_mode() const { return control_mode; }
-    auto get_flight_mode() const { return flight_mode; }
+    auto get_move_input() const { return simulation().planar_movement_direction; }
+    auto get_control_mode() const { return simulation().control_mode; }
+    auto get_flight_mode() const { return simulation().flight_mode; }
     void set_flight_mode(ETestSpaceShipFlightMode new_flight_mode) noexcept;
     auto get_target_local_planar_velocity_scale() const {
-        return target_local_planar_velocity_scale;
+        return simulation().target_local_planar_velocity_scale;
     }
-    auto get_target_local_planar_velocity() const { return target_local_planar_velocity; }
-    auto get_turn_input() const { return rotation_input; }
+    auto get_target_local_planar_velocity() const {
+        return simulation().target_local_planar_velocity;
+    }
+    auto get_turn_input() const { return simulation().rotation_input; }
 
     // Energy
     bool energy_is_full() const;
@@ -137,15 +141,19 @@ class SPACEGAME_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Combat
     /* ------------------------------------------------------------------------------------------ */
-    auto get_lock_on_target() const -> FRegistryEntityHandle { return lock_on_target; }
+    auto get_lock_on_target() const -> FRegistryEntityHandle { return simulation().lock_on_target; }
 
     // Combat - laser
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser();
 
-    auto get_laser_fire_rate() const noexcept -> ETestShipFireRate { return laser_fire_rate; }
-    auto get_laser_firing_mode() const noexcept -> ELaserFiringState { return laser_firing_mode; }
+    auto get_laser_fire_rate() const noexcept -> ETestShipFireRate {
+        return simulation().laser_fire_rate;
+    }
+    auto get_laser_firing_mode() const noexcept -> ELaserFiringState {
+        return simulation().laser_firing_mode;
+    }
     void select_next_laser_fire_rate() noexcept;
     void select_previous_laser_fire_rate() noexcept;
     void set_laser_fire_rate(ETestShipFireRate const value) noexcept;
@@ -154,8 +162,8 @@ class SPACEGAME_API ATestSpaceShip
     // Health
     /* ------------------------------------------------------------------------------------------ */
     void add_health(int32 added_health);
-    auto get_health_info() const -> FShipHealth { return health; }
-    bool is_alive() const noexcept { return health.is_alive(); }
+    auto get_health_info() const -> FShipHealth { return simulation().health; }
+    bool is_alive() const noexcept { return simulation().health.is_alive(); }
 
     static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
         return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
@@ -183,8 +191,12 @@ class SPACEGAME_API ATestSpaceShip
 #endif
 
 #if WITH_EDITOR
-    auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d> { return speed_samples; }
-    auto get_speed_sample_index() const noexcept -> int32 { return speed_sample_index; }
+    auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d> {
+        return simulation().speed_samples;
+    }
+    auto get_speed_sample_index() const noexcept -> int32 {
+        return simulation().speed_sample_index;
+    }
 #endif
   private:
     /* ------------------------------------------------------------------------------------------ */
@@ -208,6 +220,11 @@ class SPACEGAME_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     void register_with_entity_registry();
     auto get_entity_update_data() const -> RegistryEntityData;
+    auto make_simulation() const -> ml::test_space_ship::Simulation;
+    void bind_simulation(ml::test_space_ship::Simulation& new_simulation);
+    void unbind_simulation();
+    auto simulation() -> ml::test_space_ship::Simulation&;
+    auto simulation() const -> ml::test_space_ship::Simulation const&;
 
     /* ------------------------------------------------------------------------------------------ */
     // Movement
@@ -261,11 +278,8 @@ class SPACEGAME_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Entity data
     /* ------------------------------------------------------------------------------------------ */
-    TestEntityUniqueId unique_entity_id;
-
     FTestEntityRegistry* entity_registry{nullptr};
     ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
-    FRegistryEntityHandle registry_handle{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestTeam team{ETestTeam::White};
@@ -288,51 +302,12 @@ class SPACEGAME_API ATestSpaceShip
     UNiagaraComponent* boost_engine_effect{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
-    // Energy
+    // Simulation defaults
     /* ------------------------------------------------------------------------------------------ */
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy", meta = (AllowPrivateAccess))
-    float thrust_energy{1.f};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Energy", meta = (AllowPrivateAccess))
-    float thrust_change_rate{0.f};
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Movement
-    /* ------------------------------------------------------------------------------------------ */
-    // Movement - Speed
-    TSpaceShipFlightModel<float> forward_flight_model{};
-    TSpaceShipFlightModel<FVector> planar_flight_model{};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
-
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
-    FVector velocity;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
-    FVector planar_velocity{FVector::ZeroVector};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
-    float target_speed{0.f};
-
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
-    FVector2D target_local_planar_velocity_scale{FVector2D::ZeroVector};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
-    FVector target_local_planar_velocity{FVector::ZeroVector};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
-    FVector2D planar_movement_direction{FVector2D::ZeroVector};
-
-    // Movement - Cruising
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
-    EBoostBrakeState boost_brake_state{EBoostBrakeState::None};
-
-    // Movement - rotation
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering", meta = (AllowPrivateAccess))
-    FVector2D rotation_input{FVector2D::ZeroVector};
-
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Steering", meta = (AllowPrivateAccess))
-    float roll_input{0.f};
-
-    UPROPERTY(meta = (AllowPrivateAccess))
-    float time_since_rotation_input{100.f};
 
     /* ------------------------------------------------------------------------ */
     /* Combat */
@@ -342,15 +317,6 @@ class SPACEGAME_API ATestSpaceShip
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     EShipLaserMode laser_mode{EShipLaserMode::Single};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
-    float laser_shot_cooldown{0.f};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
-    int32 lasers_fired_this_burst{0};
-    int32 lasers_per_burst{3};
-
-    FRegistryEntityHandle lock_on_target;
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
-    ELaserFiringState laser_firing_mode{ELaserFiringState::idle};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
 
@@ -363,18 +329,11 @@ class SPACEGAME_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Misc
     /* ------------------------------------------------------------------------------------------ */
-    bool sampling{false};
-
     // Logging
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};
 
 #if WITH_EDITORONLY_DATA
-    int32 speed_sample_index{0};
-    int32 speed_sample_max{0};
-    int32 speed_sample_ticks_remaining{0};
-    int32 speed_sample_tick_period{1};
-    TArray<FVector2d> speed_samples;
     UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
     bool debug_forward_socket_direction{false};
     UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
@@ -386,4 +345,6 @@ class SPACEGAME_API ATestSpaceShip
 #endif
 
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
+    mutable TOptional<ml::test_space_ship::Simulation> standalone_simulation;
+    ml::test_space_ship::Simulation* bound_simulation{nullptr};
 };
