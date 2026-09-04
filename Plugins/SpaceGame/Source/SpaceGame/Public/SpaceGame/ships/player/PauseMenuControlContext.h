@@ -2,9 +2,9 @@
 
 #include <CoreMinimal.h>
 
-#include "MenuControlContext.generated.h"
+#include "PauseMenuControlContext.generated.h"
 
-class ATestSpaceShipController;
+class ASpaceGamePlayerController;
 class UTestBatchGameUiData;
 
 namespace ml::ioj {
@@ -12,10 +12,10 @@ class UPauseMenuWidget;
 }
 
 USTRUCT()
-struct SPACEGAME_API FMenuControlContext {
+struct SPACEGAME_API FPauseMenuControlContext {
     GENERATED_BODY()
   public:
-    auto initialise(ATestSpaceShipController& owner, UTestBatchGameUiData& ui_data) -> bool;
+    auto initialise(ASpaceGamePlayerController& owner, UTestBatchGameUiData& ui_data) -> bool;
     auto bind() -> bool;
     void unbind();
     void shutdown();
@@ -27,7 +27,7 @@ struct SPACEGAME_API FMenuControlContext {
         return pause_menu_widget;
     }
   private:
-    TWeakObjectPtr<ATestSpaceShipController> owner_;
+    TWeakObjectPtr<ASpaceGamePlayerController> owner_;
 
     UPROPERTY(Transient)
     TObjectPtr<ml::ioj::UPauseMenuWidget> pause_menu_widget{nullptr};

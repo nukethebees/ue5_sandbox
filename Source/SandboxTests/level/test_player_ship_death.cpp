@@ -9,8 +9,8 @@
 #include <SandboxCore/time_series_data.h>
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/ships/player/TestSpaceShipController.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 

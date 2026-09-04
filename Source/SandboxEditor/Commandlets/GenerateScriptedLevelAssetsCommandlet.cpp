@@ -1,6 +1,7 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
 #include <SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
@@ -18,6 +19,7 @@
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <Components/VerticalBoxSlot.h>
+#include <Engine/Blueprint.h>
 #include <FileHelpers.h>
 #include <GameFramework/GameModeBase.h>
 #include <GameFramework/WorldSettings.h>
@@ -34,12 +36,22 @@ constexpr TCHAR main_menu_widget_object_path[]{
     TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu.WBP_MainMenu")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
+constexpr TCHAR player_controller_object_path[]{
+    TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController.BP_SpaceGamePlayerController")};
+constexpr TCHAR player_controller_package_name[]{
+    TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController")};
+constexpr TCHAR player_controller_asset_name[]{TEXT("BP_SpaceGamePlayerController")};
+constexpr TCHAR source_player_controller_object_path[]{
+    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/BP_TestSpaceShipController."
+         "BP_TestSpaceShipController")};
 constexpr TCHAR source_config_object_path[]{
     TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/DA_FT_soa_entities_LevelConfig."
          "DA_FT_soa_entities_LevelConfig")};
 constexpr TCHAR runtime_map_package_name[]{TEXT("/SpaceGame/Levels/GameRuntime")};
 constexpr TCHAR runtime_game_mode_class_path[]{
     TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C")};
+constexpr TCHAR runtime_game_mode_object_path[]{
+    TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode")};
 
 template <typename T>
 auto make_widget(UWidgetTree& tree, FName const name) -> T* {
@@ -164,32 +176,89 @@ auto recompile_main_menu_widget() -> bool {
     return save_asset(*blueprint);
 }
 
-auto load_or_create_runtime_config() -> USpaceGameLevelConfig* {
+auto load_or_create_player_controller() -> UBlueprint* {
+    auto* blueprint{LoadObject<UBlueprint>(nullptr, player_controller_object_path)};
+    if (!IsValid(blueprint)) {
+        auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
+        if (!IsValid(source)) {
+            UE_LOG(LogTemp, Error, TEXT("Could not load source player controller Blueprint"));
+            return nullptr;
+        }
+
+        auto* const package{CreatePackage(player_controller_package_name)};
+        blueprint = Cast<UBlueprint>(StaticDuplicateObject(
+            source, package, player_controller_asset_name, RF_Public | RF_Standalone));
+        if (!IsValid(blueprint)) {
+            UE_LOG(LogTemp, Error, TEXT("Could not duplicate player controller Blueprint"));
+            return nullptr;
+        }
+        FAssetRegistryModule::AssetCreated(blueprint);
+    }
+
+    if (blueprint->ParentClass != ASpaceGamePlayerController::StaticClass()) {
+        UBlueprintEditorLibrary::ReparentBlueprint(blueprint,
+                                                   ASpaceGamePlayerController::StaticClass());
+    }
+    FKismetEditorUtilities::CompileBlueprint(blueprint);
+    if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
+        UE_LOG(LogTemp, Error, TEXT("BP_SpaceGamePlayerController failed to compile"));
+        return nullptr;
+    }
+    return save_asset(*blueprint) ? blueprint : nullptr;
+}
+
+auto configure_runtime_game_mode(UClass& player_controller_class) -> bool {
+    auto* const blueprint{LoadObject<UBlueprint>(nullptr, runtime_game_mode_object_path)};
+    if (!IsValid(blueprint) || !IsValid(blueprint->GeneratedClass)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load runtime game mode Blueprint"));
+        return false;
+    }
+
+    auto* const game_mode{Cast<AGameModeBase>(blueprint->GeneratedClass->GetDefaultObject())};
+    if (!IsValid(game_mode)) {
+        UE_LOG(LogTemp, Error, TEXT("Runtime game mode has an invalid default object"));
+        return false;
+    }
+    game_mode->Modify();
+    game_mode->PlayerControllerClass = &player_controller_class;
+    return save_asset(*blueprint);
+}
+
+auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGameLevelConfig* {
     auto const object_path{
         FString::Printf(TEXT("%s.%s"), runtime_config_package_name, runtime_config_asset_name)};
-    if (auto* const existing{LoadObject<USpaceGameLevelConfig>(nullptr, *object_path)}) {
-        return existing;
-    }
-
-    auto* const source{LoadObject<USpaceGameLevelConfig>(nullptr, source_config_object_path)};
-    if (!IsValid(source)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load source level config"));
-        return nullptr;
-    }
-
-    auto* const package{CreatePackage(runtime_config_package_name)};
-    auto* const config{Cast<USpaceGameLevelConfig>(StaticDuplicateObject(
-        source, package, runtime_config_asset_name, RF_Public | RF_Standalone))};
+    auto* config{LoadObject<USpaceGameLevelConfig>(nullptr, *object_path)};
     if (!IsValid(config)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not duplicate runtime level config"));
-        return nullptr;
+        auto* const source{LoadObject<USpaceGameLevelConfig>(nullptr, source_config_object_path)};
+        if (!IsValid(source)) {
+            UE_LOG(LogTemp, Error, TEXT("Could not load source level config"));
+            return nullptr;
+        }
+
+        auto* const package{CreatePackage(runtime_config_package_name)};
+        config = Cast<USpaceGameLevelConfig>(StaticDuplicateObject(
+            source, package, runtime_config_asset_name, RF_Public | RF_Standalone));
+        if (!IsValid(config)) {
+            UE_LOG(LogTemp, Error, TEXT("Could not duplicate runtime level config"));
+            return nullptr;
+        }
+        FAssetRegistryModule::AssetCreated(config);
     }
-    FAssetRegistryModule::AssetCreated(config);
+
+    config->Modify();
+    config->classes.player_controller_class = &player_controller_class;
     return save_asset(*config) ? config : nullptr;
 }
 
 auto generate_runtime_map() -> bool {
-    auto* const config{load_or_create_runtime_config()};
+    auto* const controller_blueprint{load_or_create_player_controller()};
+    auto* const controller_class{
+        IsValid(controller_blueprint) ? controller_blueprint->GeneratedClass.Get() : nullptr};
+    if (!IsValid(controller_class) || !configure_runtime_game_mode(*controller_class)) {
+        return false;
+    }
+
+    auto* const config{load_or_create_runtime_config(*controller_class)};
     if (!IsValid(config)) {
         return false;
     }

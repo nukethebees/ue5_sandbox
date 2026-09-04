@@ -1,16 +1,16 @@
-#include <SpaceGame/ships/player/MenuControlContext.h>
+#include <SpaceGame/ships/player/PauseMenuControlContext.h>
 
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/ships/player/TestSpaceShipController.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 
-auto FMenuControlContext::initialise(ATestSpaceShipController& owner, UTestBatchGameUiData& ui_data)
-    -> bool {
+auto FPauseMenuControlContext::initialise(ASpaceGamePlayerController& owner,
+                                          UTestBatchGameUiData& ui_data) -> bool {
     if (initialised_) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("FMenuControlContext::initialise: Context is already initialised."));
+               TEXT("FPauseMenuControlContext::initialise: Context is already initialised."));
         return false;
     }
 
@@ -18,7 +18,7 @@ auto FMenuControlContext::initialise(ATestSpaceShipController& owner, UTestBatch
     if (!widget_class) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("FMenuControlContext::initialise: Widget class is not configured."));
+               TEXT("FPauseMenuControlContext::initialise: Widget class is not configured."));
         return false;
     }
 
@@ -27,29 +27,29 @@ auto FMenuControlContext::initialise(ATestSpaceShipController& owner, UTestBatch
     if (!IsValid(created_widget)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("FMenuControlContext::initialise: Failed to create widget."));
+               TEXT("FPauseMenuControlContext::initialise: Failed to create widget."));
         return false;
     }
 
     owner_ = &owner;
     pause_menu_widget = created_widget;
-    created_widget->resume_requested.AddUObject(&owner, &ATestSpaceShipController::resume_game);
+    created_widget->resume_requested.AddUObject(&owner, &ASpaceGamePlayerController::resume_game);
     initialised_ = true;
     return true;
 }
 
-auto FMenuControlContext::can_bind() const -> bool {
+auto FPauseMenuControlContext::can_bind() const -> bool {
     return initialised_ && owner_.IsValid() && IsValid(pause_menu_widget);
 }
 
-auto FMenuControlContext::bind() -> bool {
+auto FPauseMenuControlContext::bind() -> bool {
     if (bound_) {
         return true;
     }
     if (!can_bind()) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("FMenuControlContext::bind: Context dependencies are invalid."));
+               TEXT("FPauseMenuControlContext::bind: Context dependencies are invalid."));
         return false;
     }
 
@@ -66,7 +66,7 @@ auto FMenuControlContext::bind() -> bool {
     return true;
 }
 
-void FMenuControlContext::unbind() {
+void FPauseMenuControlContext::unbind() {
     if (!bound_) {
         return;
     }
@@ -81,7 +81,7 @@ void FMenuControlContext::unbind() {
     }
 }
 
-void FMenuControlContext::shutdown() {
+void FPauseMenuControlContext::shutdown() {
     unbind();
     if (IsValid(pause_menu_widget)) {
         if (auto* const owner{owner_.Get()}) {

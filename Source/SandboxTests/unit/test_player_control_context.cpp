@@ -5,9 +5,10 @@
 
 #include <SpaceGame/ships/common/LaserFiringState.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/ships/player/TestSpaceShipController.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 
 #include <CQTest.h>
 #include <EnhancedInputComponent.h>
@@ -17,6 +18,44 @@
 
 TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 {
+    TEST_METHOD(ProductionModesUseCanonicalController)
+    {
+        auto* const config{
+            LoadObject<USpaceGameLevelConfig>(nullptr,
+                                              TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
+                                                   "DA_GameRuntimeLevelConfig"))};
+        if (!TestRunner->TestTrue(TEXT("Runtime level config loads"), IsValid(config)) ||
+            !TestRunner->TestTrue(TEXT("Runtime controller class is configured"),
+                                  config && IsValid(config->classes.player_controller_class))) {
+            return;
+        }
+
+        auto* const controller_class{config->classes.player_controller_class.Get()};
+        TestRunner->TestTrue(
+            TEXT("Runtime config uses the canonical controller type"),
+            controller_class->IsChildOf(ASpaceGamePlayerController::StaticClass()));
+        TestRunner->TestTrue(
+            TEXT("Runtime controller Blueprint belongs to SpaceGame"),
+            controller_class->GetOutermost()->GetName().StartsWith(TEXT("/SpaceGame/")));
+
+        auto* const runtime_mode_class{LoadClass<AGameModeBase>(
+            nullptr, TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C"))};
+        auto const* const runtime_mode{IsValid(runtime_mode_class)
+                                           ? runtime_mode_class->GetDefaultObject<AGameModeBase>()
+                                           : nullptr};
+        TestRunner->TestTrue(TEXT("Runtime game mode uses the canonical controller Blueprint"),
+                             IsValid(runtime_mode) &&
+                                 runtime_mode->PlayerControllerClass == controller_class);
+
+        auto const* const main_menu_mode{GetDefault<ml::ioj::AMainMenuGameMode>()};
+        TestRunner->TestTrue(TEXT("Main menu uses the canonical controller type"),
+                             IsValid(main_menu_mode->PlayerControllerClass) &&
+                                 main_menu_mode->PlayerControllerClass->IsChildOf(
+                                     ASpaceGamePlayerController::StaticClass()));
+        TestRunner->TestTrue(TEXT("Main menu uses the canonical controller Blueprint"),
+                             main_menu_mode->PlayerControllerClass == controller_class);
+    }
+
     TEST_METHOD(ConfiguredShipMappingsAreCompleteAndPluginOwned)
     {
         auto const* const config{ml::load_default_level_config()};
@@ -111,7 +150,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         }
 
         auto& world{*world_result.value()};
-        auto* const controller{world.SpawnActorDeferred<ATestSpaceShipController>(
+        auto* const controller{world.SpawnActorDeferred<ASpaceGamePlayerController>(
             config->classes.player_controller_class, FTransform::Identity)};
         auto* const ship{
             ml::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship)};

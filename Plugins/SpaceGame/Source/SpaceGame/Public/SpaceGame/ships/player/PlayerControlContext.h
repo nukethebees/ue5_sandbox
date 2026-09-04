@@ -4,6 +4,7 @@
 
 enum class EPlayerControlContext : uint8 {
     None,
+    MainMenu,
     Ship,
-    Menu,
+    PauseMenu,
 };
