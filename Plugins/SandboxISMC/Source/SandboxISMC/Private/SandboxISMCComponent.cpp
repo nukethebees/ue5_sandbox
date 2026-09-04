@@ -68,13 +68,14 @@ static_assert(sizeof(FSandboxISMCRenderInstance) == 64);
 
 struct FSandboxISMCRenderRange {
     int32 first_instance{0};
-    TArray<FSandboxISMCRenderInstance> instances;
+    int32 count{0};
 };
 
 struct FSandboxISMCRenderUpdate {
     int32 instance_count{0};
     bool full_upload{false};
     TArray<FSandboxISMCRenderRange> ranges;
+    TArray<FSandboxISMCRenderInstance> instances;
 };
 
 namespace {
@@ -117,8 +118,9 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
 
         uint64 byte_count{0};
         int32 uploaded_instance_count{0};
+        int32 source_instance_index{0};
         for (auto const& range : update.ranges) {
-            auto const range_instance_count{range.instances.Num()};
+            auto const range_instance_count{range.count};
             auto const range_byte_count{
                 static_cast<uint32>(range_instance_count * sizeof(FSandboxISMCRenderInstance))};
             if (range_byte_count == 0) {
@@ -129,13 +131,17 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
                 static_cast<uint32>(range.first_instance * sizeof(FSandboxISMCRenderInstance))};
             check(range.first_instance >= 0);
             check(range.first_instance + range_instance_count <= instance_count);
+            check(source_instance_index + range_instance_count <= update.instances.Num());
             auto* destination = rhi_command_list.LockBuffer(
                 VertexBufferRHI, byte_offset, range_byte_count, RLM_WriteOnly);
-            FMemory::Memcpy(destination, range.instances.GetData(), range_byte_count);
+            FMemory::Memcpy(
+                destination, update.instances.GetData() + source_instance_index, range_byte_count);
             rhi_command_list.UnlockBuffer(VertexBufferRHI);
             byte_count += range_byte_count;
             uploaded_instance_count += range_instance_count;
+            source_instance_index += range_instance_count;
         }
+        check(source_instance_index == update.instances.Num());
 
         auto const elapsed_cycles = FPlatformTime::Cycles64() - start_cycles;
         TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadMs,
@@ -503,8 +509,8 @@ auto USandboxISMCComponent::set_static_mesh(UStaticMesh& mesh) -> void {
 
     static_mesh_ = &mesh;
     auto const mesh_bounds{mesh.GetBounds()};
-        mesh_bounds_origin_ = FVector3f{mesh_bounds.Origin};
-        mesh_bounds_radius_ = static_cast<float>(mesh_bounds.SphereRadius);
+    mesh_bounds_origin_ = FVector3f{mesh_bounds.Origin};
+    mesh_bounds_radius_ = static_cast<float>(mesh_bounds.SphereRadius);
     force_full_upload_ = true;
     bounds_rebuild_required_ = true;
     mark_all_instances_dirty();
@@ -518,8 +524,8 @@ auto USandboxISMCComponent::clear_static_mesh() -> void {
     }
 
     static_mesh_ = nullptr;
-        mesh_bounds_origin_ = FVector3f::ZeroVector;
-        mesh_bounds_radius_ = 0.0f;
+    mesh_bounds_origin_ = FVector3f::ZeroVector;
+    mesh_bounds_radius_ = 0.0f;
     force_full_upload_ = true;
     bounds_rebuild_required_ = true;
     mark_all_instances_dirty();
@@ -844,25 +850,31 @@ auto USandboxISMCComponent::commit_instance_updates() -> void {
         upload_ranges = dirty_ranges_;
     }
 
+    int32 dirty_instance_count{0};
+    for (auto const& range : upload_ranges) {
+        dirty_instance_count += range.count;
+    }
+
     auto update = MakeShared<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe>();
     update->instance_count = instance_count;
     update->full_upload = full_upload;
     update->ranges.Reserve(upload_ranges.Num());
+    update->instances.SetNumUninitialized(dirty_instance_count);
 
     auto const pack_start_cycles = FPlatformTime::Cycles64();
     {
         TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_PackTransforms);
+        int32 packed_instance_index{0};
         for (auto const& dirty_range : upload_ranges) {
-            auto& render_range{update->ranges.AddDefaulted_GetRef()};
-            render_range.first_instance = dirty_range.first_index;
-            render_range.instances.SetNumUninitialized(dirty_range.count);
+            update->ranges.Add(
+                {.first_instance = dirty_range.first_index, .count = dirty_range.count});
             for (auto range_index = 0; range_index < dirty_range.count; ++range_index) {
                 auto const instance_index{dirty_range.first_index + range_index};
                 auto const transform{FTransform3f{rotations_[instance_index],
                                                   positions_[instance_index],
                                                   scales_[instance_index]}};
                 auto const matrix{transform.ToMatrixWithScale()};
-                auto& packed{render_range.instances[range_index]};
+                auto& packed{update->instances[packed_instance_index]};
                 packed.origin = FVector4f{positions_[instance_index], 0.0f};
                 packed.transform_row_0 =
                     FVector4f{matrix.M[0][0], matrix.M[0][1], matrix.M[0][2], 0.0f};
@@ -870,8 +882,10 @@ auto USandboxISMCComponent::commit_instance_updates() -> void {
                     FVector4f{matrix.M[1][0], matrix.M[1][1], matrix.M[1][2], 0.0f};
                 packed.transform_row_2 =
                     FVector4f{matrix.M[2][0], matrix.M[2][1], matrix.M[2][2], 0.0f};
+                ++packed_instance_index;
             }
         }
+        check(packed_instance_index == update->instances.Num());
     }
     auto const pack_cycles = FPlatformTime::Cycles64() - pack_start_cycles;
 
@@ -888,10 +902,6 @@ auto USandboxISMCComponent::commit_instance_updates() -> void {
     pending_render_update_ = MoveTemp(update);
 
     auto const elapsed_cycles = FPlatformTime::Cycles64() - start_cycles;
-    int32 dirty_instance_count{0};
-    for (auto const& range : upload_ranges) {
-        dirty_instance_count += range.count;
-    }
     auto const upload_bytes{static_cast<uint64>(dirty_instance_count) *
                             sizeof(FSandboxISMCRenderInstance)};
     metrics_->instance_count.Store(instance_count);
