@@ -234,8 +234,8 @@
       "header": "SpaceGame/combat/lasers/TestLasersSimulation.h"
     },
     "test_capital_ships": {
-      "spelling": "ATestCapitalShips",
-      "header": "SpaceGame/ships/capital/TestCapitalShips.h"
+      "spelling": "ml::test_capital_ships::Simulation",
+      "header": "SpaceGame/ships/capital/TestCapitalShipsSimulation.h"
     },
     "test_static_turrets": {
       "spelling": "ATestStaticTurrets",

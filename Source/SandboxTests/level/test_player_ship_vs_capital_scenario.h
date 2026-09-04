@@ -2,13 +2,13 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
-class ATestCapitalShips;
 class ATestSpaceShip;
 
 namespace ml {
@@ -33,7 +33,7 @@ class FPlayerShipVsCapitalScenario final : public FSimulationTestScenario {
     void export_failure_data() const;
 
     ATestSpaceShip const* player_ship{nullptr};
-    ATestCapitalShips const* capitals{nullptr};
+    test_capital_ships::Simulation const* capitals{nullptr};
     test_capital_ship_fighters::Simulation const* fighters{nullptr};
     FRegistryEntityHandle player_ship_handle;
     TimeSeriesData<FVector> player_ship_locations;

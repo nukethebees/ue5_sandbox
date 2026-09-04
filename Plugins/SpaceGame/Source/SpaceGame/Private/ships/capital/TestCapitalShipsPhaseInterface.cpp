@@ -4,55 +4,47 @@
 
 #include "SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h"
 
-#include "SpaceGame/ships/capital/TestCapitalShips.h"
+#include "SpaceGame/ships/capital/TestCapitalShipsSimulation.h"
 
 namespace ml::test_capital_ships {
-void PhaseInterface::bind(ATestCapitalShips& new_target) {
-    actor = &new_target;
+void PhaseInterface::bind(ml::test_capital_ships::Simulation& new_target) {
+    simulation = &new_target;
 }
 
 void PhaseInterface::clear_runtime_state() {
-    actor->clear_runtime_state();
+    simulation->clear_runtime_state();
 }
 
 void PhaseInterface::begin_play() {
-    actor->begin_play();
+    simulation->begin_play();
 }
 
 void PhaseInterface::begin_tick() {
-    actor->begin_tick();
+    simulation->begin_tick();
 }
 
 void PhaseInterface::update_timers(float const dt) {
-    actor->update_timers(dt);
+    simulation->update_timers(dt);
 }
 
 void PhaseInterface::make_decisions() {
-    actor->make_decisions();
+    simulation->make_decisions();
 }
 
 void PhaseInterface::resolve_damage_events() {
-    actor->resolve_damage_events();
+    simulation->resolve_damage_events();
 }
 
 void PhaseInterface::update_entity_registry() {
-    actor->update_entity_registry();
+    simulation->update_entity_registry();
 }
 
 void PhaseInterface::sync_from_registry() {
-    actor->sync_from_registry();
-}
-
-void PhaseInterface::update_visual_data() {
-    actor->update_visual_data();
-}
-
-void PhaseInterface::commit_visual_data() {
-    actor->commit_visual_data();
+    simulation->sync_from_registry();
 }
 
 void PhaseInterface::end_tick() {
-    actor->end_tick();
+    simulation->end_tick();
 }
 } // namespace ml::test_capital_ships
 // clang-format on

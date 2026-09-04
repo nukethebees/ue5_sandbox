@@ -44,7 +44,7 @@ FEntityRegistryScenario::FEntityRegistryScenario(FSimulationTestContext& context
 /* ------------------------------------------------------------------------------------------ */
 void FEntityRegistryScenario::spawn_fixture() {
     auto* const capital_actor{
-        const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships())};
+        const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships_actor())};
     if (!checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
         return;
     }

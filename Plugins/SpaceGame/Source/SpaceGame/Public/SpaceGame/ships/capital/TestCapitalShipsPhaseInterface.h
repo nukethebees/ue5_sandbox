@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "SpaceGame/ships/capital/TestCapitalShips.h"
+#include "SpaceGame/ships/capital/TestCapitalShipsSimulation.h"
 
 namespace ml::test_capital_ships {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ATestCapitalShips& new_target);
+    void bind(ml::test_capital_ships::Simulation& new_target);
 
     void clear_runtime_state();
 
@@ -27,15 +27,10 @@ class SPACEGAME_API PhaseInterface {
 
     void sync_from_registry();
 
-    void update_visual_data();
-
-    void commit_visual_data();
-
     void end_tick();
 
-    friend class ATestCapitalShips;
     friend class ATestBatchOrchestrator;
-    ATestCapitalShips* actor{nullptr};
+    ml::test_capital_ships::Simulation* simulation{nullptr};
 };
 } // namespace ml::test_capital_ships
 // clang-format on

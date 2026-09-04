@@ -393,7 +393,7 @@ void FCollisionUniformGridScenario::initialise_simulation() {
     auto const* const capitals{test_driver->orchestrator.get_capital_ships()};
     auto const* const fighters{test_driver->orchestrator.get_capital_ship_fighters()};
     if (!checks.is_valid(player, TEXT("Collision-grid player ship is available")) ||
-        !checks.is_valid(capitals, TEXT("Collision-grid capital ships are available")) ||
+        !checks.not_nullptr(capitals, TEXT("Collision-grid capital ships are available")) ||
         !checks.not_nullptr(fighters, TEXT("Collision-grid fighters are available"))) {
         return;
     }

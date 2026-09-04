@@ -9,6 +9,7 @@
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/HUDManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShipPhaseInterface.h>
@@ -98,7 +99,13 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_lasers() const noexcept -> ml::test_lasers::Simulation const* {
         return &lasers_simulation;
     }
-    auto get_capital_ships() const -> auto const* { return capital_ships.Get(); }
+    auto get_capital_ships_actor() const -> auto const* { return capital_ships.Get(); }
+    auto get_capital_ships() noexcept -> ml::test_capital_ships::Simulation* {
+        return &capital_ships_simulation;
+    }
+    auto get_capital_ships() const noexcept -> ml::test_capital_ships::Simulation const* {
+        return &capital_ships_simulation;
+    }
     auto get_capital_ship_fighters_actor() const -> auto const* {
         return capital_ship_fighters.Get();
     }
@@ -204,6 +211,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ml::test_lasers::Simulation lasers_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShips> capital_ships{nullptr};
+    ml::test_capital_ships::Simulation capital_ships_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShipFighters> capital_ship_fighters{nullptr};
     ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation;

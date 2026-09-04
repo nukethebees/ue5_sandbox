@@ -79,7 +79,7 @@ void FTestBatchOrchestratorResetScenario::save_old_owned_actors(
     ATestBatchOrchestrator const& orchestrator) {
     old_owned_actors[0] = const_cast<ATestSpaceShip*>(orchestrator.get_player_ship());
     old_owned_actors[1] = const_cast<ATestLasers*>(orchestrator.get_lasers_actor());
-    old_owned_actors[2] = const_cast<ATestCapitalShips*>(orchestrator.get_capital_ships());
+    old_owned_actors[2] = const_cast<ATestCapitalShips*>(orchestrator.get_capital_ships_actor());
     old_owned_actors[3] =
         const_cast<ATestCapitalShipFighters*>(orchestrator.get_capital_ship_fighters_actor());
     old_owned_actors[4] = const_cast<ATestStaticTurrets*>(orchestrator.get_turrets());
@@ -185,7 +185,7 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
     TStaticArray<AActor const*, owned_actor_count> const recreated_owned_actors{
         orchestrator.get_player_ship(),
         orchestrator.get_lasers_actor(),
-        orchestrator.get_capital_ships(),
+        orchestrator.get_capital_ships_actor(),
         orchestrator.get_capital_ship_fighters_actor(),
         orchestrator.get_turrets(),
         orchestrator.get_spinners(),

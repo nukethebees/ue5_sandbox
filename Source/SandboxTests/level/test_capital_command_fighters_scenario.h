@@ -2,12 +2,11 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
-
-class ATestCapitalShips;
 
 namespace ml {
 class FCapitalCommandFightersScenario final : public FSimulationTestScenario {
@@ -42,7 +41,7 @@ class FCapitalCommandFightersScenario final : public FSimulationTestScenario {
     void kill_all_not_on_main_team();
     void full_checks();
 
-    ATestCapitalShips const* capitals{nullptr};
+    test_capital_ships::Simulation const* capitals{nullptr};
     test_capital_ship_fighters::Simulation const* fighters{nullptr};
     FRegistryEntityHandle capital_first_target;
     FRegistryEntityHandle capital_second_target;

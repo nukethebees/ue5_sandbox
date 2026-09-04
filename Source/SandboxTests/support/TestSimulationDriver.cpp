@@ -5,7 +5,7 @@
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -43,10 +43,10 @@ auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
     check(IsValid(actor));
     return *actor;
 }
-auto TestSimulationDriver::get_capital_ships() const -> ATestCapitalShips const& {
-    auto const actor{orchestrator.get_capital_ships()};
-    check(IsValid(actor));
-    return *actor;
+auto TestSimulationDriver::get_capital_ships() const -> test_capital_ships::Simulation const& {
+    auto const simulation{orchestrator.get_capital_ships()};
+    check(simulation);
+    return *simulation;
 }
 auto TestSimulationDriver::get_capital_ship_fighters() const
     -> test_capital_ship_fighters::Simulation const& {

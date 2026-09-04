@@ -419,6 +419,7 @@ void ATestBatchOrchestrator::begin_play() {
     lasers_phase.clear_runtime_state();
     lasers->clear_runtime_state_presentation();
     capital_ships_phase.clear_runtime_state();
+    capital_ships->clear_runtime_state_presentation();
     capital_ship_fighters_phase.clear_runtime_state();
     capital_ship_fighters->clear_runtime_state_presentation();
     turrets_phase.clear_runtime_state();
@@ -430,6 +431,7 @@ void ATestBatchOrchestrator::begin_play() {
     if (player_ship_simulation.IsSet()) {
         player_ship_phase.begin_play();
     }
+    capital_ships->begin_play_presentation();
     capital_ships_phase.begin_play();
     capital_ship_fighters->begin_play_presentation();
     capital_ship_fighters_phase.begin_play();
@@ -620,8 +622,8 @@ void ATestBatchOrchestrator::validate_proxy_handles() {
             UE_LOG(LogSandbox, Fatal, TEXT("Player ship handle is invalid"));
         }
     }
-    ml::invoke_on_all(
-        [this](auto actor) { actor->validate_proxy_handles(); }, capital_ships, turrets);
+    capital_ships_simulation.validate_proxy_handles();
+    turrets->validate_proxy_handles();
 }
 
 void ATestBatchOrchestrator::Tick(float dt) {
@@ -802,7 +804,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
                 player_ship->update_visual_data(simulation_tick_loop.tick_period);
             }
 
-            capital_ships_phase.update_visual_data();
+            capital_ships->update_visual_data();
             capital_ship_fighters->update_visual_data();
             turrets_phase.update_visual_data();
             spinners_phase.update_visual_data();
@@ -820,6 +822,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             }
 
             capital_ships_phase.end_tick();
+            capital_ships->end_tick_presentation();
             capital_ship_fighters_phase.end_tick();
             capital_ship_fighters->end_tick_presentation();
             turrets_phase.end_tick();
@@ -857,7 +860,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             player_ship->commit_visual_data();
         }
 
-        capital_ships_phase.commit_visual_data();
+        capital_ships->commit_visual_data();
         capital_ship_fighters->commit_visual_data();
         turrets_phase.commit_visual_data();
         spinners_phase.commit_visual_data();
@@ -901,14 +904,15 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     check(IsValid(spinners));
     lasers->bind_simulation(lasers_simulation);
     lasers_phase.bind(lasers_simulation);
-    capital_ships_phase.bind(*capital_ships);
+    capital_ships->bind_simulation(capital_ships_simulation);
+    capital_ships_phase.bind(capital_ships_simulation);
     capital_ship_fighters->bind_simulation(capital_ship_fighters_simulation);
     capital_ship_fighters_phase.bind(capital_ship_fighters_simulation);
     turrets_phase.bind(*turrets);
     spinners_phase.bind(*spinners);
 
     capital_ships->set_niagara_spawner(*niagara_spawner);
-    capital_ships->bind_fighters(capital_ship_fighters_simulation);
+    capital_ships_simulation.bind_fighters(capital_ship_fighters_simulation);
 
     auto const bind_simulation_clock{[this](auto actor) { actor->bind_simulation_clock(*this); }};
     if (player_ship_simulation.IsSet()) {
@@ -925,16 +929,15 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
         player_ship_simulation->set_lasers(lasers_simulation);
     }
 
-    ml::invoke_on_all([&](auto actor) { actor->set_entity_registry(entity_registry); },
-                      capital_ships,
-                      turrets,
-                      spinners);
+    capital_ships_simulation.set_entity_registry(entity_registry);
+    ml::invoke_on_all(
+        [&](auto actor) { actor->set_entity_registry(entity_registry); }, turrets, spinners);
     capital_ship_fighters_simulation.set_entity_registry(entity_registry);
     lasers_simulation.set_entity_registry(entity_registry);
     mission_manager.set_entity_registry(entity_registry);
 
     lasers_simulation.set_spatial_query_manager(query_manager);
-    capital_ships->set_spatial_query_manager(query_manager);
+    capital_ships_simulation.set_spatial_query_manager(query_manager);
     capital_ship_fighters_simulation.set_spatial_query_manager(query_manager);
     turrets->set_spatial_query_manager(query_manager);
 
