@@ -70,18 +70,27 @@ bool ANebulaVolumeExperimentActor::ShouldTickIfViewportsOnly() const {
 }
 
 void ANebulaVolumeExperimentActor::set_low_quality() {
-    settings.step_count = 12;
+    settings.volume_resolution = 128;
+    settings.step_count = 24;
+    ensure_density_volume();
     apply_settings();
+    generate_density_if_needed();
 }
 
 void ANebulaVolumeExperimentActor::set_balanced_quality() {
-    settings.step_count = 24;
+    settings.volume_resolution = 256;
+    settings.step_count = 48;
+    ensure_density_volume();
     apply_settings();
+    generate_density_if_needed();
 }
 
 void ANebulaVolumeExperimentActor::set_high_quality() {
-    settings.step_count = 40;
+    settings.volume_resolution = 256;
+    settings.step_count = 96;
+    ensure_density_volume();
     apply_settings();
+    generate_density_if_needed();
 }
 
 void ANebulaVolumeExperimentActor::restart_animation() {
@@ -225,5 +234,5 @@ void ANebulaVolumeExperimentActor::apply_settings() {
     material_instance_->SetScalarParameterValue(TEXT("DriftSpeed"),
                                                 FMath::Max(settings.drift_speed, 0.0f));
     material_instance_->SetScalarParameterValue(
-        TEXT("StepCount"), static_cast<float>(FMath::Clamp(settings.step_count, 4, 48)));
+        TEXT("StepCount"), static_cast<float>(FMath::Clamp(settings.step_count, 8, 96)));
 }

@@ -61,7 +61,7 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaVolumeSettings {
               BlueprintReadWrite,
               Category = "Nebula Volume|Structure",
               meta = (ClampMin = "32", ClampMax = "256", UIMin = "64", UIMax = "256"))
-    int32 volume_resolution{128};
+    int32 volume_resolution{256};
 
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
@@ -75,8 +75,8 @@ struct SBXSHADERSEXPERIMENTS_API FNebulaVolumeSettings {
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "Nebula Volume",
-              meta = (ClampMin = "4", ClampMax = "48"))
-    int32 step_count{24};
+              meta = (ClampMin = "8", ClampMax = "96"))
+    int32 step_count{48};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Nebula Volume")
     bool animation_paused{false};

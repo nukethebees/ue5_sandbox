@@ -11,7 +11,7 @@
 DEFINE_LOG_CATEGORY_STATIC(LogNebulaDensityRenderer, Log, All);
 
 namespace {
-constexpr int32 thread_group_size{4};
+constexpr int32 nebula_density_thread_group_size{4};
 
 class FNebulaDensityCS final : public FGlobalShader {
   public:
@@ -68,7 +68,7 @@ void render_nebula_density(FRHICommandListImmediate& rhi_command_list,
 
     auto const shader{TShaderMapRef<FNebulaDensityCS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
     auto const group_count{
-        FComputeShaderUtils::GetGroupCount(parameters.output_size, thread_group_size)};
+        FComputeShaderUtils::GetGroupCount(parameters.output_size, nebula_density_thread_group_size)};
     FComputeShaderUtils::AddPass(graph_builder,
                                  RDG_EVENT_NAME("NebulaDensity.Generate %dx%dx%d",
                                                 parameters.output_size.X,

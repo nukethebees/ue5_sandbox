@@ -9,7 +9,7 @@ clips the march against opaque scene depth. Front-to-back accumulation exits onc
 `Feature Size` and `Detail Size` independently control the physical size of cloud structures, so
 making the volume larger generates more formations instead of stretching one formation. `Seed`
 selects a deterministic variation for each nebula instance. `Volume Resolution` controls the cubic
-density cache resolution and defaults to 128.
+density cache resolution and defaults to 256 so that large volumes retain useful small-scale detail.
 
 When structural settings change, a compute shader generates domain-warped, periodic 3D density
 directly into a transient single-channel R8 volume texture. The raymarch samples this true spatial
@@ -17,17 +17,18 @@ density once per step, avoiding the sheet-like layering caused by projected 2D t
 `nebula_flow` lookup per pixel offsets the volume coordinates for slow coherent motion. The flow
 texture lives in this plugin, so there is no runtime dependency on the Sandbox Image Lab.
 
-A 128-cubed R8 density volume uses approximately 2 MiB of VRAM per actor. Generation happens once
-after creation and again only when Extent, Feature Size, Detail Size, Seed, or Volume Resolution
-changes. The `Regenerate Density` editor action forces a refresh without changing settings.
+A 128-cubed R8 density volume uses approximately 2 MiB of VRAM per actor; the default 256-cubed
+volume uses approximately 16 MiB. Generation happens once after creation and again only when
+Extent, Feature Size, Detail Size, Seed, or Volume Resolution changes. The `Regenerate Density`
+editor action forces a refresh without changing settings.
 
 ## Quality
 
-- **Low:** 12 steps, suitable for larger screen coverage.
-- **Balanced:** 24 steps and the default showcase setting.
-- **High:** 40 steps for close inspection.
+- **Low:** 128-cubed density and 24 steps, suitable for larger screen coverage.
+- **Balanced:** 256-cubed density and 48 steps; this is the default for new actors.
+- **High:** 256-cubed density and 96 steps for close inspection.
 
-The shader has a hard 48-step ceiling. Recurring cost is one translucent draw, one volume-density
+The shader has a hard 96-step ceiling. Recurring cost is one translucent draw, one volume-density
 sample per executed step, and one flow sample per pixel. Screen coverage, overlap, resolution, and
 early opacity exit determine the actual GPU cost; avoid stacking several full-screen volumes.
 Stable per-pixel jitter hides most low-step banding, with temporal anti-aliasing providing the

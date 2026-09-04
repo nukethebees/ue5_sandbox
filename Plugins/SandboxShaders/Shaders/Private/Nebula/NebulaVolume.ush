@@ -67,7 +67,7 @@ float4 sbx_nebula_volume(float2 screen_uv,
         return 0.0;
     }
 
-    int const requested_steps = clamp((int)round(step_count), 4, 48);
+    int const requested_steps = clamp((int)round(step_count), 8, 96);
     float const segment_length = ray_end - ray_start;
     float const step_length = segment_length / float(requested_steps);
     float const jitter = sbx_hash21(screen_uv * 8192.0);
@@ -87,7 +87,7 @@ float4 sbx_nebula_volume(float2 screen_uv,
     float const optical_step = length(world_step) / max(feature_size, 100.0);
 
     [loop]
-    for (int step = 0; step < 48; ++step)
+    for (int step = 0; step < 96; ++step)
     {
         if (step >= requested_steps || accumulated.a >= 0.95 || travelled >= ray_end)
         {
