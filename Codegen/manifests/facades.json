@@ -86,10 +86,10 @@
       "source":"Plugins/SpaceGame/Source/SpaceGame/Private/defences/spinners/TestTubeSpinnersPhaseInterface.cpp",
       "header_include":"SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h", "namespace":"ml::test_tube_spinners",
       "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
-      "facade":{"name":"PhaseInterface","target_type":"@test_tube_spinners","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestTubeSpinners","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+      "facade":{"name":"PhaseInterface","target_type":"@test_tube_spinners","target_member_name":"simulation","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
         {"name":"clear_runtime_state","return_type":"void"},{"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},{"name":"update_timers","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},
         {"name":"move","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},{"name":"queue_commands","return_type":"void"},{"name":"update_entity_registry","return_type":"void"},
-        {"name":"update_visual_data","return_type":"void"},{"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+        {"name":"end_tick","return_type":"void"}
       ]}
     }
   ]

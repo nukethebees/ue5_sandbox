@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "SpaceGame/defences/spinners/TestTubeSpinners.h"
+#include "SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h"
 
 namespace ml::test_tube_spinners {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ATestTubeSpinners& new_target);
+    void bind(ml::test_tube_spinners::Simulation& new_target);
 
     void clear_runtime_state();
 
@@ -25,15 +25,10 @@ class SPACEGAME_API PhaseInterface {
 
     void update_entity_registry();
 
-    void update_visual_data();
-
-    void commit_visual_data();
-
     void end_tick();
 
-    friend class ATestTubeSpinners;
     friend class ATestBatchOrchestrator;
-    ATestTubeSpinners* actor{nullptr};
+    ml::test_tube_spinners::Simulation* simulation{nullptr};
 };
 } // namespace ml::test_tube_spinners
 // clang-format on

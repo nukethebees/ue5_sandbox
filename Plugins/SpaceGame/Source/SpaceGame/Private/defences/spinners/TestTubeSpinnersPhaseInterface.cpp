@@ -4,51 +4,43 @@
 
 #include "SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h"
 
-#include "SpaceGame/defences/spinners/TestTubeSpinners.h"
+#include "SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h"
 
 namespace ml::test_tube_spinners {
-void PhaseInterface::bind(ATestTubeSpinners& new_target) {
-    actor = &new_target;
+void PhaseInterface::bind(ml::test_tube_spinners::Simulation& new_target) {
+    simulation = &new_target;
 }
 
 void PhaseInterface::clear_runtime_state() {
-    actor->clear_runtime_state();
+    simulation->clear_runtime_state();
 }
 
 void PhaseInterface::begin_play() {
-    actor->begin_play();
+    simulation->begin_play();
 }
 
 void PhaseInterface::begin_tick() {
-    actor->begin_tick();
+    simulation->begin_tick();
 }
 
 void PhaseInterface::update_timers(float const dt) {
-    actor->update_timers(dt);
+    simulation->update_timers(dt);
 }
 
 void PhaseInterface::move(float const dt) {
-    actor->move(dt);
+    simulation->move(dt);
 }
 
 void PhaseInterface::queue_commands() {
-    actor->queue_commands();
+    simulation->queue_commands();
 }
 
 void PhaseInterface::update_entity_registry() {
-    actor->update_entity_registry();
-}
-
-void PhaseInterface::update_visual_data() {
-    actor->update_visual_data();
-}
-
-void PhaseInterface::commit_visual_data() {
-    actor->commit_visual_data();
+    simulation->update_entity_registry();
 }
 
 void PhaseInterface::end_tick() {
-    actor->end_tick();
+    simulation->end_tick();
 }
 } // namespace ml::test_tube_spinners
 // clang-format on

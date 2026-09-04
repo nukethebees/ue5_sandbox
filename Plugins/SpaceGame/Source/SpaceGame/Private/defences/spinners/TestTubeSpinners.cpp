@@ -3,21 +3,18 @@
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
 
 #include <SandboxCore/array_checks.h>
-#include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
-#include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
+#include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
-#include <EngineUtils.h>
 
 ATestTubeSpinners::ATestTubeSpinners()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -31,89 +28,71 @@ ATestTubeSpinners::ATestTubeSpinners()
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
-void ATestTubeSpinners::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
-    simulation_clock.bind(orchestrator);
+void ATestTubeSpinners::set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
+    actor_config = new_config;
+    if (bound_simulation && actor_config) {
+        bound_simulation->set_config(*actor_config);
+    }
 }
 
-// Actor life cycle
-void ATestTubeSpinners::clear_runtime_state() {
+void ATestTubeSpinners::bind_simulation(ml::test_tube_spinners::Simulation& new_simulation) {
+    bound_simulation = &new_simulation;
+    if (actor_config) {
+        bound_simulation->set_config(*actor_config);
+    }
+}
+
+auto ATestTubeSpinners::simulation() -> ml::test_tube_spinners::Simulation& {
+    check(bound_simulation);
+    return *bound_simulation;
+}
+
+auto ATestTubeSpinners::simulation() const -> ml::test_tube_spinners::Simulation const& {
+    return const_cast<ATestTubeSpinners*>(this)->simulation();
+}
+
+void ATestTubeSpinners::clear_runtime_state_presentation() {
     instances->ClearInstances();
-    ml::reset(entities, indices_ready_to_fire, new_lasers);
+    ismc_transforms.Reset();
 }
-void ATestTubeSpinners::begin_play() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_play);
-    check(entity_registry);
 
+void ATestTubeSpinners::begin_play_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("ATestTubeSpinners actor_config is nullptr."));
     }
-
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(instances),
+        SANDBOX_NAMED_UOBJECT_PTR(instances.Get()),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
     });
-    check(laser_simulation);
 
     configure_ismc();
-
-    auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(actor_config->laser.fire_cooldown)};
-    entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
-
+    simulation().entity_radius = ml::get_mesh_sphere_bounds(*instances);
     register_all_proxies_in_level();
+    validate_array_sizes();
+}
 
-    ml::fatal_if_uobject_ptrs_invalid({
-        {instances->GetStaticMesh().Get(), TEXT("ISMC Static Mesh")},
-    });
-}
-void ATestTubeSpinners::begin_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::begin_tick);
-}
-void ATestTubeSpinners::update_timers(float const) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_timers);
-
-    entities.laser_cooldowns.tick();
-}
-void ATestTubeSpinners::move(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::move);
-
-    rotate_instances(dt);
-}
-void ATestTubeSpinners::queue_commands() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::queue_commands);
-
-    fire_lasers();
-}
-void ATestTubeSpinners::update_entity_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_entity_registry);
-}
 void ATestTubeSpinners::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_visual_data);
     update_ismc();
 }
+
 void ATestTubeSpinners::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::commit_visual_data);
     instances->MarkRenderStateDirty();
 }
-void ATestTubeSpinners::end_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_tick);
 
-    ml::reset(indices_ready_to_fire, new_lasers);
+void ATestTubeSpinners::end_tick_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_tick_presentation);
+    validate_array_sizes();
 }
 
-// Accessors
-auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {
-    return entities.num();
-}
-
-// Spawning
 void ATestTubeSpinners::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::register_all_proxies_in_level);
 
     auto* world{GetWorld()};
 
-    if (!world) {
-        return;
-    }
+    check(world);
 
     TArray<Proxy*> proxies{};
     ml::append_actors(*world, proxies);
@@ -134,81 +113,37 @@ void ATestTubeSpinners::register_all_proxies_in_level() {
         new_fire_point_indices[i] = proxy->get_initial_active_fire_point();
     }
 
-    spawn_instances(new_locations.get_const_view(), new_yaws, new_fire_point_indices);
+    auto& spinner_simulation{simulation()};
+    auto const existing_total{spinner_simulation.get_num_instances()};
+    spinner_simulation.spawn_instances(
+        new_locations.get_const_view(), new_yaws, new_fire_point_indices);
+
+    update_ismc_transforms();
+    if (n_to_add > 0) {
+        instances->AddInstances(
+            TArray<FTransform>{ismc_transforms.GetData() + existing_total, n_to_add},
+            false,
+            is_world_space,
+            false);
+    }
+    auto const& entities{spinner_simulation.entities};
 
     auto const first_new_handle{entities.handles.Num() - n_to_add};
     for (int32 i{0}; i < n_to_add; ++i) {
         proxies[i]->set_entity_handle(entities.handles[first_new_handle + i]);
     }
 }
-void ATestTubeSpinners::spawn_instances(FVectors3f::ConstView const new_locations,
-                                        TConstArrayView<float> const new_yaws,
-                                        TConstArrayView<int32> const new_fire_point_indices) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::spawn_instances);
 
-    auto const n{new_locations.num()};
-    auto const existing_total{get_num_instances()};
-    auto const new_total{existing_total + n};
-
-    ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(new_locations),
-        SANDBOX_NAMED_NUM(new_yaws),
-        SANDBOX_NAMED_NUM(new_fire_point_indices),
-    });
-
-    entities.handles.AddDefaulted(n);
-    entities.locations.append_from(new_locations);
-    entities.yaws.Append(new_yaws);
-    entities.laser_cooldowns.add_zeroed(n);
-    entities.next_fire_point_indices.Append(new_fire_point_indices);
-
-    checkCode(entities.validate_array_sizes());
-
-    update_ismc_transforms();
-    instances->AddInstances(TArray<FTransform>{ismc_transforms.GetData() + existing_total, n},
-                            false,
-                            is_world_space,
-                            false);
-
-    ml::entity_registry::EntityData entity_data;
-    entity_data.add_uninitialised(n);
-    entity_data.locations = entities.locations;
-    ml::fill(entity_data.velocities, 0.f);
-    ml::fill(entity_data.radii, ml::get_mesh_sphere_bounds(*instances));
-    ml::fill(entity_data.healths, 1000000);
-    ml::fill(entity_data.teams, ETestTeam::White);
-    entity_data.set_all_entity_types(ETestEntityType::TubeSpinner);
-    entity_data.set_all_alive();
-    checkCode(entity_data.validate_array_sizes());
-
-    auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
-
-    for (int32 i{0}; i < n; ++i) {
-        entities.handles[i + existing_total] = new_entities.registry_handles[i];
-    }
-
-    checkCode(validate_array_sizes());
-}
-
-// Movement
-void ATestTubeSpinners::rotate_instances(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::rotate_instances);
-
-    auto const speed{actor_config->yaw_rotation_speed_degrees};
-    auto const delta_yaw_degrees{dt * speed};
-    auto const n{get_num_instances()};
-
-    ml::add_in_place(TArrayView<float>(entities.yaws), delta_yaw_degrees);
-}
-
-// Visuals
 void ATestTubeSpinners::configure_ismc() {
     ml::batch::configure_ismc(*instances, {.mesh = actor_config->mesh.Get()});
 }
+
 void ATestTubeSpinners::update_ismc_transforms() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_ismc_transforms);
 
-    auto const n{get_num_instances()};
+    auto const& spinner_simulation{simulation()};
+    auto const& entities{spinner_simulation.entities};
+    auto const n{spinner_simulation.get_num_instances()};
     ismc_transforms.Reset();
     ismc_transforms.AddUninitialized(n);
 
@@ -219,6 +154,7 @@ void ATestTubeSpinners::update_ismc_transforms() {
         };
     }
 }
+
 void ATestTubeSpinners::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::update_ismc);
 
@@ -229,72 +165,11 @@ void ATestTubeSpinners::update_ismc() {
         0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
 }
 
-// Firing
-void ATestTubeSpinners::fire_lasers() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::fire_lasers);
-
-    auto const n{get_num_instances()};
-    auto const& firing_point_offsets{actor_config->fire_point_offsets};
-    auto const n_firing_points{firing_point_offsets.Num()};
-    auto const laser_damage{actor_config->laser.damage};
-    auto const laser_speed{actor_config->laser.projectile_speed};
-    auto const laser_max_distance{actor_config->laser.max_distance};
-
-    if (n_firing_points < 1) {
-        return;
-    }
-
-    ml::reset(indices_ready_to_fire, new_lasers);
-
-    for (int32 i{0}; i < n; ++i) {
-        if (!entities.laser_cooldowns.is_ready(i)) {
-            continue;
-        }
-
-        indices_ready_to_fire.Add(i);
-        entities.laser_cooldowns.restart_counter(i);
-    }
-
-    auto const n_ready_to_fire{indices_ready_to_fire.Num()};
-    ml::reserve(n_ready_to_fire, new_lasers);
-    ml::add_uninitialised(n_ready_to_fire, new_lasers);
-
-    for (int32 i{0}; i < n_ready_to_fire; ++i) {
-        auto const index{indices_ready_to_fire[i]};
-
-        auto const fire_point_index{entities.next_fire_point_indices[index]};
-        auto const& offset{firing_point_offsets[fire_point_index]};
-
-        auto const fire_point_location{offset.GetLocation()};
-        ml::assign(new_lasers.locations,
-                   i,
-                   entities.locations.xs[index] + fire_point_location.X,
-                   entities.locations.ys[index] + fire_point_location.Y,
-                   entities.locations.zs[index] + fire_point_location.Z);
-
-        auto const fire_point_rotation{offset.Rotator()};
-        ml::assign(new_lasers.rotations,
-                   i,
-                   fire_point_rotation.Pitch,
-                   fire_point_rotation.Yaw + entities.yaws[index],
-                   fire_point_rotation.Roll);
-        ml::assign(new_lasers.base_velocities, i, FVector3f::ZeroVector);
-
-        new_lasers.damages[i] = laser_damage;
-        new_lasers.speeds[i] = laser_speed;
-        new_lasers.max_distances[i] = laser_max_distance;
-        new_lasers.instigator_handles[i] = entities.handles[index];
-
-        entities.next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
-    }
-
-    laser_simulation->queue_laser_spawns(new_lasers);
-}
-
-// Checks
 void ATestTubeSpinners::validate_array_sizes() const {
+    simulation().validate_array_sizes();
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entities),
+        SANDBOX_NAMED_NUM(simulation().get_num_instances()),
+        SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
 }

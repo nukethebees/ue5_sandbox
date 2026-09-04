@@ -242,8 +242,8 @@
       "header": "SpaceGame/defences/turrets/TestStaticTurretsSimulation.h"
     },
     "test_tube_spinners": {
-      "spelling": "ATestTubeSpinners",
-      "header": "SpaceGame/defences/spinners/TestTubeSpinners.h"
+      "spelling": "ml::test_tube_spinners::Simulation",
+      "header": "SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h"
     }
   }
 }

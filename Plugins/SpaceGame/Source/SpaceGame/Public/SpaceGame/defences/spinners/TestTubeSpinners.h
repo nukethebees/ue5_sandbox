@@ -1,113 +1,48 @@
 #pragma once
 
+#include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
-#include <SandboxNative/RegistryEntityHandle.h>
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnersSoA.h>
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/support/logging/ActorLoggingConfig.h>
-
-#include <SandboxCore/soa_array_mixin.h>
-#include <SandboxCore/soa_rotators.h>
-#include <SandboxCore/soa_vectors.h>
-#include <SandboxCore/tick_countdown.h>
-
-#include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
-
-#include <utility>
+#include <CoreMinimal.h>
+#include <GameFramework/Actor.h>
 
 #include "TestTubeSpinners.generated.h"
 
-class UInstancedStaticMeshComponent;
-
 class ATestTubeSpinnerProxy;
-struct FTestEntityRegistry;
-class ATestBatchOrchestrator;
-
-namespace ml::test_tube_spinners {
-class PhaseInterface;
-}
+class UInstancedStaticMeshComponent;
 
 UCLASS()
 class ATestTubeSpinners : public AActor {
     GENERATED_BODY()
-    friend class ml::test_tube_spinners::PhaseInterface;
+    friend class ATestBatchOrchestrator;
   public:
     using Proxy = ATestTubeSpinnerProxy;
-    using EntityData = ml::test_tube_spinners::EntityData;
-
     static constexpr bool is_world_space{false};
 
     ATestTubeSpinners();
-
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-    // Accessors
-    auto get_num_instances() const noexcept -> int32;
-
-    void set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
-        actor_config = new_config;
-    }
-
-    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
-    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
-
-    auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
-        return laser_simulation;
-    }
-    void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) {
-        laser_simulation = &new_simulation;
-    }
-
-    // Checks
-    void validate_array_sizes() const;
+    void set_actor_config(FTubeSpinnerConfig const* new_config) noexcept;
   private:
-    void clear_runtime_state();
-    void begin_play();
-    void begin_tick();
-    void update_timers(float const dt);
-    void move(float const dt);
-    void queue_commands();
-    void update_entity_registry();
+    void bind_simulation(ml::test_tube_spinners::Simulation& new_simulation);
+    auto simulation() -> ml::test_tube_spinners::Simulation&;
+    auto simulation() const -> ml::test_tube_spinners::Simulation const&;
+
+    void clear_runtime_state_presentation();
+    void begin_play_presentation();
     void update_visual_data();
     void commit_visual_data();
-    void end_tick();
+    void end_tick_presentation();
 
-    // Spawning
     void register_all_proxies_in_level();
-    void spawn_instances(FVectors3f::ConstView const new_locations,
-                         TConstArrayView<float> const new_yaws,
-                         TConstArrayView<int32> const new_fire_point_indices);
-
-    // Movement
-    void rotate_instances(float const dt);
-
-    // Visuals
     void configure_ismc();
     void update_ismc_transforms();
     void update_ismc();
+    void validate_array_sizes() const;
 
-    // Firing
-    void fire_lasers();
-
-    // Config
     FTubeSpinnerConfig const* actor_config{nullptr};
-    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
+    ml::test_tube_spinners::Simulation* bound_simulation{nullptr};
 
-    // Entity data
-    FTestEntityRegistry* entity_registry{nullptr};
-
-    EntityData entities{};
-
-    // Visuals
     UPROPERTY(meta = (AllowPrivateAccess))
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     UPROPERTY(meta = (AllowPrivateAccess))
     TArray<FTransform> ismc_transforms;
-
-    // Firing
-    ml::test_lasers::Simulation* laser_simulation{nullptr};
-    TArray<int32> indices_ready_to_fire;
-    ml::test_lasers::SpawnRequests new_lasers;
 };

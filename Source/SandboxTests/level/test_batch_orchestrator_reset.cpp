@@ -83,7 +83,7 @@ void FTestBatchOrchestratorResetScenario::save_old_owned_actors(
     old_owned_actors[3] =
         const_cast<ATestCapitalShipFighters*>(orchestrator.get_capital_ship_fighters_actor());
     old_owned_actors[4] = const_cast<ATestStaticTurrets*>(orchestrator.get_turrets_actor());
-    old_owned_actors[5] = const_cast<ATestTubeSpinners*>(orchestrator.get_spinners());
+    old_owned_actors[5] = const_cast<ATestTubeSpinners*>(orchestrator.get_spinners_actor());
     old_owned_actors[6] = const_cast<ADelayedNiagaraSpawner*>(orchestrator.get_niagara_spawner());
 }
 
@@ -188,7 +188,7 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
         orchestrator.get_capital_ships_actor(),
         orchestrator.get_capital_ship_fighters_actor(),
         orchestrator.get_turrets_actor(),
-        orchestrator.get_spinners(),
+        orchestrator.get_spinners_actor(),
         orchestrator.get_niagara_spawner(),
     };
     for (int32 i{0}; i < owned_actor_count; ++i) {

@@ -6,6 +6,7 @@
 #include "LevelEntityTableOperations.h"
 #include "LevelTeamResolution.h"
 
+#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
 #include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
@@ -319,7 +320,8 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     if (!IsValid(orchestrator_.get_lasers_actor()) ||
         !IsValid(orchestrator_.get_capital_ships_actor()) ||
         !IsValid(orchestrator_.get_capital_ship_fighters_actor()) ||
-        !IsValid(orchestrator_.get_turrets_actor()) || !IsValid(orchestrator_.get_spinners()) ||
+        !IsValid(orchestrator_.get_turrets_actor()) ||
+        !IsValid(orchestrator_.get_spinners_actor()) ||
         !IsValid(orchestrator_.get_niagara_spawner())) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,

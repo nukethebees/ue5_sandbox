@@ -425,6 +425,7 @@ void ATestBatchOrchestrator::begin_play() {
     turrets_phase.clear_runtime_state();
     turrets->clear_runtime_state_presentation();
     spinners_phase.clear_runtime_state();
+    spinners->clear_runtime_state_presentation();
 
     if (IsValid(player_ship)) {
         player_ship->begin_play_presentation();
@@ -438,6 +439,7 @@ void ATestBatchOrchestrator::begin_play() {
     capital_ship_fighters_phase.begin_play();
     turrets->begin_play_presentation();
     turrets_phase.begin_play();
+    spinners->begin_play_presentation();
     spinners_phase.begin_play();
     lasers->begin_play_presentation();
     lasers_phase.begin_play();
@@ -809,7 +811,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             capital_ships->update_visual_data();
             capital_ship_fighters->update_visual_data();
             turrets->update_visual_data();
-            spinners_phase.update_visual_data();
+            spinners->update_visual_data();
             lasers->update_visual_data();
         }
 
@@ -830,6 +832,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             turrets_phase.end_tick();
             turrets->end_tick_presentation();
             spinners_phase.end_tick();
+            spinners->end_tick_presentation();
             lasers_phase.end_tick();
             lasers->end_tick_presentation();
             entity_registry.end_tick();
@@ -866,7 +869,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         capital_ships->commit_visual_data();
         capital_ship_fighters->commit_visual_data();
         turrets->commit_visual_data();
-        spinners_phase.commit_visual_data();
+        spinners->commit_visual_data();
         lasers->commit_visual_data();
 
         niagara_spawner->update_spawns(dt);
@@ -913,7 +916,8 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     capital_ship_fighters_phase.bind(capital_ship_fighters_simulation);
     turrets->bind_simulation(turrets_simulation);
     turrets_phase.bind(turrets_simulation);
-    spinners_phase.bind(*spinners);
+    spinners->bind_simulation(spinners_simulation);
+    spinners_phase.bind(spinners_simulation);
 
     capital_ships->set_niagara_spawner(*niagara_spawner);
     capital_ships_simulation.bind_fighters(capital_ship_fighters_simulation);
@@ -924,7 +928,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     lasers_simulation.bind_simulation_clock(*this);
     capital_ship_fighters_simulation.bind_simulation_clock(*this);
     turrets_simulation.bind_simulation_clock(*this);
-    spinners->bind_simulation_clock(*this);
+    spinners_simulation.bind_simulation_clock(*this);
     mission_manager.bind_simulation_clock(*this);
 
     if (player_ship_simulation.IsSet()) {
@@ -935,7 +939,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
 
     capital_ships_simulation.set_entity_registry(entity_registry);
     turrets_simulation.set_entity_registry(entity_registry);
-    spinners->set_entity_registry(entity_registry);
+    spinners_simulation.set_entity_registry(entity_registry);
     capital_ship_fighters_simulation.set_entity_registry(entity_registry);
     lasers_simulation.set_entity_registry(entity_registry);
     mission_manager.set_entity_registry(entity_registry);
@@ -947,7 +951,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
 
     capital_ship_fighters_simulation.set_laser_simulation(lasers_simulation);
     turrets_simulation.set_laser_simulation(lasers_simulation);
-    spinners->set_laser_simulation(lasers_simulation);
+    spinners_simulation.set_laser_simulation(lasers_simulation);
 }
 
 void ATestBatchOrchestrator::set_end_tick_test_hook(FOrchestratorEndTickTestHook hook) {
