@@ -121,6 +121,7 @@ class Parser {
         }
         forwarded_parameter_names_.clear();
         forwarded_parameters_.clear();
+        called_parameter_names_.clear();
         binding_names_.clear();
         std::vector<Binding> bindings;
         auto root{list_head_is("let") ? parse_let(bindings) : parse_child()};
@@ -212,7 +213,7 @@ class Parser {
         if (type.text == "widget-class" || type.text == "function" || type.text == "vbox" ||
             type.text == "hbox" || type.text == "slot" || type.text == "auto" ||
             type.text == "fill" || type.text == "assign" || type.text == "existing" ||
-            type.text == "let") {
+            type.text == "call" || type.text == "let") {
             fail(type.span, "expected widget type, found structural form '" + type.text + "'");
         }
     }
@@ -344,13 +345,59 @@ class Parser {
         return Child{ExistingWidget{parameter.text, opening.span}, opening.span};
     }
 
+    auto parse_called_widget() -> Child {
+        auto const& opening{
+            expect(TokenKind::left_parenthesis, "expected '(' before child factory call")};
+        auto const& form{expect_atom("expected 'call'")};
+        if (form.text != "call") {
+            fail(form.span, "expected 'call'");
+        }
+        auto const& parameter{expect_atom("expected child factory parameter")};
+        if (!is_identifier(parameter.text)) {
+            fail(parameter.span, "child factory parameter must be a C++ identifier");
+        }
+
+        std::vector<Value> arguments;
+        while (!at(TokenKind::right_parenthesis)) {
+            if (at(TokenKind::end)) {
+                fail(current().span, "expected ')' after child factory call");
+            }
+            auto value{parse_value()};
+            if (value.kind == ValueKind::callback || value.kind == ValueKind::method ||
+                value.kind == ValueKind::uobject) {
+                fail(value.span, "callable forms cannot be child factory arguments");
+            }
+            arguments.push_back(std::move(value));
+        }
+        expect(TokenKind::right_parenthesis, "expected ')' after child factory call");
+        register_called_parameter(parameter.text, opening.span);
+        return Child{CalledWidget{parameter.text, std::move(arguments), opening.span}, opening.span};
+    }
+
     void register_forwarded_parameter(std::string const& name, SourceSpan const span) {
         if (binding_names_.contains(name)) {
             fail(span, "forwarded parameter '" + name + "' conflicts with let binding");
         }
+        if (called_parameter_names_.contains(name)) {
+            fail(span, "parameter '" + name + "' cannot be both called and forwarded");
+        }
         if (!forwarded_parameter_names_.insert(name).second) {
             fail(span, "forwarded parameter '" + name + "' may only be used once");
         }
+        forwarded_parameters_.push_back(name);
+    }
+
+    void register_called_parameter(std::string const& name, SourceSpan const span) {
+        if (binding_names_.contains(name)) {
+            fail(span, "child factory parameter '" + name + "' conflicts with let binding");
+        }
+        if (called_parameter_names_.contains(name)) {
+            return;
+        }
+        if (!forwarded_parameter_names_.insert(name).second) {
+            fail(span, "parameter '" + name + "' cannot be both called and forwarded");
+        }
+        called_parameter_names_.insert(name);
         forwarded_parameters_.push_back(name);
     }
 
@@ -378,6 +425,9 @@ class Parser {
         }
         if (list_head_is("existing")) {
             return parse_existing_widget();
+        }
+        if (list_head_is("call")) {
+            return parse_called_widget();
         }
         if (list_head_is("widget-class") || list_head_is("function") || list_head_is("slot") ||
             list_head_is("auto") || list_head_is("fill")) {
@@ -570,6 +620,7 @@ class Parser {
     std::size_t index_{};
     std::set<std::string> forwarded_parameter_names_;
     std::vector<std::string> forwarded_parameters_;
+    std::set<std::string> called_parameter_names_;
     std::set<std::string> binding_names_;
 };
 

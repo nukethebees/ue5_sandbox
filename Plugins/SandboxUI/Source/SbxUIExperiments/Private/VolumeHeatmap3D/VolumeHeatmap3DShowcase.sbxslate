@@ -1,0 +1,109 @@
+(widget-class UVolumeHeatmap3DShowcase
+  (function RebuildWidget
+    (let ((label_min_width 56.0f)
+          (control_padding (0 0 0 5))
+          (pattern_button_padding (0 0 6 0))
+          (grid_button_padding (0 0 3 0))
+          (paired_control_padding (14 0 0 0))
+          (rotation_padding (0 0 0 8))
+          (control_width 100)
+          (rotation_control_width 90)
+          (preview_size 512.0f))
+      (SExperimentPanel
+        :Title (loc "VolumeHeatmap3D" "Title" "RDG 3D Volume Heatmap")
+        :Description (loc "VolumeHeatmap3D" "Description" "A dense CPU volume is uploaded on change and composited as one instanced, view-aligned slice draw.")
+        (slot Controls
+          (vbox
+            (auto :padding control_padding
+              (hbox
+                (auto :padding pattern_button_padding
+                  (SButton
+                    :Text (loc "VolumeHeatmap3D" "Clouds" "Gaussian clouds")
+                    :OnClicked (callback show_clouds)))
+                (auto
+                  (SButton
+                    :Text (loc "VolumeHeatmap3D" "Shell" "Hollow shell")
+                    :OnClicked (callback show_shell)))))
+            (auto :padding control_padding
+              (SLabeledRow
+                :Label (loc "VolumeHeatmap3D" "Grid" "Grid")
+                :LabelMinWidth label_min_width
+                (hbox
+                  (auto :padding grid_button_padding (call grid_button 16))
+                  (auto :padding grid_button_padding (call grid_button 32))
+                  (auto :padding grid_button_padding (call grid_button 64))
+                  (auto (call grid_button 128)))))
+            (auto :padding control_padding
+              (hbox
+                (auto
+                  (SLabeledRow
+                    :Label (loc "VolumeHeatmap3D" "Slices" "Slices")
+                    :LabelMinWidth label_min_width
+                    :ContentHAlign HAlign_Left
+                    (SSpinBox<int32>
+                      :MinValue 8
+                      :MaxValue 256
+                      :MinSliderValue 8
+                      :MaxSliderValue 256
+                      :Delta 8
+                      :MinDesiredWidth control_width
+                      :Value 96
+                      :OnValueCommitted (callback set_slice_count))))
+                (auto :padding paired_control_padding
+                  (SLabeledRow
+                    :Label (loc "VolumeHeatmap3D" "Density" "Density")
+                    :LabelMinWidth label_min_width
+                    :ContentHAlign HAlign_Left
+                    (SSpinBox<float>
+                      :MinValue 0.25f
+                      :MaxValue 8.0f
+                      :MinSliderValue 0.25f
+                      :MaxSliderValue 8.0f
+                      :Delta 0.25f
+                      :MinDesiredWidth control_width
+                      :Value 3.0f
+                      :OnValueCommitted (callback set_density_scale))))))
+            (auto :padding rotation_padding
+              (hbox
+                (auto
+                  (SLabeledRow
+                    :Label (loc "VolumeHeatmap3D" "Yaw" "Yaw")
+                    :LabelMinWidth label_min_width
+                    :ContentHAlign HAlign_Left
+                    (SSpinBox<float>
+                      :MinValue -180
+                      :MaxValue 180
+                      :MinSliderValue -180
+                      :MaxSliderValue 180
+                      :Delta 1
+                      :MinDesiredWidth rotation_control_width
+                      :Value -51
+                      :OnValueCommitted (callback set_yaw))))
+                (auto :padding paired_control_padding
+                  (SLabeledRow
+                    :Label (loc "VolumeHeatmap3D" "Pitch" "Pitch")
+                    :LabelMinWidth label_min_width
+                    :ContentHAlign HAlign_Left
+                    (SSpinBox<float>
+                      :MinValue -85
+                      :MaxValue 85
+                      :MinSliderValue -85
+                      :MaxSliderValue 85
+                      :Delta 1
+                      :MinDesiredWidth rotation_control_width
+                      :Value 29
+                      :OnValueCommitted (callback set_pitch))))))
+            (auto
+              (SExperimentBenchmark
+                :ButtonText (loc "VolumeHeatmap3D" "RunBenchmark" "Benchmark grid and slice scaling")
+                :OnClicked (uobject run_benchmark)
+                :OutputHeight 105.0f
+                (slot Output
+                  (assign benchmark_output_ SMultiLineEditableTextBox
+                    :IsReadOnly true
+                    :Text (loc "VolumeHeatmap3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
+        (slot Preview
+          (SBox
+            :WidthOverride preview_size
+            :HeightOverride preview_size
+            (existing volume_widget)))))))

@@ -15,10 +15,11 @@ binding      := "(" identifier (value | margin) ")"
 widget       := "(" type_name widget_item* ")"
 assigned     := "(" "assign" identifier type_name widget_item* ")"
 existing     := "(" "existing" identifier ")"
+call         := "(" "call" identifier value* ")"
 widget_item  := argument | named_slot | child
 argument     := keyword value
 named_slot   := "(" "slot" atom child ")"
-child        := widget | assigned | existing | box
+child        := widget | assigned | existing | call | box
 box          := vbox | hbox
 vbox         := "(" "vbox" box_slot+ ")"
 hbox         := "(" "hbox" box_slot+ ")"
@@ -75,9 +76,10 @@ The generated header is included by the handwritten implementation after the own
 `callback` value becomes a forwarding-reference function parameter and an `_Lambda` attribute.
 `existing` similarly forwards a widget supplied by handwritten code into the generated tree, while
 `assign` generates `SAssignNew` against a member of the friend-held owner. Forwarded parameters may
-each be consumed once. `method` binds the owner through the ordinary Slate attribute overload,
-while `uobject` selects the `_UObject` lifetime-aware overload. A generated function can then be
-called normally:
+each be consumed once. `call` invokes a supplied child factory with DSL values and may reuse that
+factory within the same function; callable forms are not accepted as its arguments. `method` binds
+the owner through the ordinary Slate attribute overload, while `uobject` selects the `_UObject`
+lifetime-aware overload. A generated function can then be called normally:
 
 ```cpp
 return SlateGenerated::URadar3DShowcaseBuilder{*this}.RebuildWidget(

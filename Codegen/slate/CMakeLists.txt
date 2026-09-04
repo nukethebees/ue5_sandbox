@@ -44,12 +44,20 @@ set(SLATE_CODEGEN_SMOKE_DIR
 )
 set(SLATE_CODEGEN_SMOKE_MANIFEST "${SLATE_CODEGEN_SMOKE_DIR}/manifest.json")
 set(SLATE_CODEGEN_SMOKE_INPUT "${SLATE_CODEGEN_SMOKE_DIR}/SlateDslSmokeWidget.sbxslate")
+set(SLATE_CODEGEN_VOLUME_HEATMAP_DIR
+  "${PROJECT_SOURCE_DIR}/Plugins/SandboxUI/Source/SbxUIExperiments/Private/VolumeHeatmap3D"
+)
+set(SLATE_CODEGEN_VOLUME_HEATMAP_MANIFEST "${SLATE_CODEGEN_VOLUME_HEATMAP_DIR}/manifest.json")
+set(SLATE_CODEGEN_VOLUME_HEATMAP_INPUT
+  "${SLATE_CODEGEN_VOLUME_HEATMAP_DIR}/VolumeHeatmap3DShowcase.sbxslate"
+)
 
 add_custom_target(generate-slate-code
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_RADAR_MANIFEST}"
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_HEATMAP_MANIFEST}"
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SCATTER_MANIFEST}"
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}"
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_VOLUME_HEATMAP_MANIFEST}"
   DEPENDS
     sandbox-slatec
     "${SLATE_CODEGEN_RADAR_MANIFEST}"
@@ -60,6 +68,8 @@ add_custom_target(generate-slate-code
     "${SLATE_CODEGEN_SCATTER_INPUT}"
     "${SLATE_CODEGEN_SMOKE_MANIFEST}"
     "${SLATE_CODEGEN_SMOKE_INPUT}"
+    "${SLATE_CODEGEN_VOLUME_HEATMAP_MANIFEST}"
+    "${SLATE_CODEGEN_VOLUME_HEATMAP_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating experimental Slate DSL outputs"
   USES_TERMINAL
@@ -71,6 +81,7 @@ add_custom_target(check-generated-slate-code
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_HEATMAP_MANIFEST}" --check
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SCATTER_MANIFEST}" --check
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}" --check
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_VOLUME_HEATMAP_MANIFEST}" --check
   DEPENDS
     sandbox-slatec
     "${SLATE_CODEGEN_RADAR_MANIFEST}"
@@ -81,6 +92,8 @@ add_custom_target(check-generated-slate-code
     "${SLATE_CODEGEN_SCATTER_INPUT}"
     "${SLATE_CODEGEN_SMOKE_MANIFEST}"
     "${SLATE_CODEGEN_SMOKE_INPUT}"
+    "${SLATE_CODEGEN_VOLUME_HEATMAP_MANIFEST}"
+    "${SLATE_CODEGEN_VOLUME_HEATMAP_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking experimental Slate DSL outputs"
   USES_TERMINAL

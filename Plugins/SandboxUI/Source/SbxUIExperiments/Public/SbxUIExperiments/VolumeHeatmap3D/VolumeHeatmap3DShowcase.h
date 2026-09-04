@@ -7,9 +7,15 @@
 
 class SMultiLineEditableTextBox;
 
+namespace SlateGenerated {
+struct UVolumeHeatmap3DShowcaseBuilder;
+}
+
 UCLASS(Blueprintable)
 class SBXUIEXPERIMENTS_API UVolumeHeatmap3DShowcase : public UEditorUtilityWidget {
     GENERATED_BODY()
+
+    friend struct SlateGenerated::UVolumeHeatmap3DShowcaseBuilder;
   public:
     UVolumeHeatmap3DShowcase();
   protected:

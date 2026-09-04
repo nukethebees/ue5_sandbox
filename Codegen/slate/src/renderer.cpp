@@ -127,8 +127,10 @@ class Renderer {
                     render_widget(value, indent);
                 } else if constexpr (std::is_same_v<T, Box>) {
                     render_box(value, indent);
-                } else {
+                } else if constexpr (std::is_same_v<T, ExistingWidget>) {
                     render_existing_widget(value, indent);
+                } else {
+                    render_called_widget(value, indent);
                 }
             },
             child.value);
@@ -167,6 +169,18 @@ class Renderer {
     void render_existing_widget(ExistingWidget const& widget, std::size_t const indent) {
         append_line(indent,
                     "std::forward<decltype(" + widget.parameter + ")>(" + widget.parameter + ")");
+    }
+
+    void render_called_widget(CalledWidget const& widget, std::size_t const indent) {
+        std::string invocation{widget.parameter + "("};
+        for (std::size_t index{}; index < widget.arguments.size(); ++index) {
+            if (index != 0) {
+                invocation += ", ";
+            }
+            invocation += render_value(widget.arguments[index]);
+        }
+        invocation += ')';
+        append_line(indent, invocation);
     }
 
     void render_box(Box const& box, std::size_t const indent) {

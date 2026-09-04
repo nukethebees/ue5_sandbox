@@ -82,6 +82,12 @@ struct ExistingWidget {
     SourceSpan span;
 };
 
+struct CalledWidget {
+    std::string parameter;
+    std::vector<Value> arguments;
+    SourceSpan span;
+};
+
 struct Margin {
     std::vector<std::string> values;
     std::optional<std::string> binding;
@@ -112,7 +118,7 @@ struct Box {
 };
 
 struct Child {
-    std::variant<Widget, Box, ExistingWidget> value;
+    std::variant<Widget, Box, ExistingWidget, CalledWidget> value;
     SourceSpan span;
 };
 
