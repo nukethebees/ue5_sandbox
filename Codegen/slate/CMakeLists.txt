@@ -72,6 +72,14 @@ add_dependencies(slate-codegen-tests slate-generated-compile-tests)
 add_test(NAME SlateGeneratedCompileSmoke COMMAND slate-generated-compile-tests)
 set_tests_properties(SlateGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
 
+add_test(NAME SlateExpandCli
+  COMMAND "${CMAKE_COMMAND}"
+    "-DSLATEC=$<TARGET_FILE:sandbox-slatec>"
+    "-DFIXTURE=${SLATE_COMPILE_FIXTURE}"
+    -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/expand_cli.cmake"
+)
+set_tests_properties(SlateExpandCli PROPERTIES LABELS "unit;all;codegen")
+
 set(SLATE_CODEGEN_DOCUMENTS
   "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.sbxslate"
   "Plugins/SandboxUI/Source/SandboxUIExamples/Private/SandboxUIShowcase.sbxslate"

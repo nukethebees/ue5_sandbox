@@ -53,6 +53,51 @@ auto location(SourceSpan const& span) -> std::string {
     return span.path + ":" + std::to_string(span.line) + ":" + std::to_string(span.column);
 }
 
+auto format_token(Token const& token) -> std::string {
+    if (token.kind == TokenKind::keyword) {
+        return ":" + token.text;
+    }
+    if (token.kind != TokenKind::string) {
+        return token.text;
+    }
+    std::string result{"\""};
+    for (auto const character : token.text) {
+        switch (character) {
+        case '\\': result += "\\\\"; break;
+        case '"': result += "\\\""; break;
+        case '\n': result += "\\n"; break;
+        case '\r': result += "\\r"; break;
+        case '\t': result += "\\t"; break;
+        default: result += character; break;
+        }
+    }
+    return result + '"';
+}
+
+void format_form(Form const& form, std::size_t indent, std::string& output) {
+    if (!form.is_list()) {
+        output += format_token(form.token);
+        return;
+    }
+    output += '(';
+    auto const count{form.children.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const& child{form.children[index]};
+        if (index != 0) {
+            auto const& previous{form.children[index - 1]};
+            if (previous.token.kind != TokenKind::keyword &&
+                (child.is_list() || previous.is_list() || child.token.kind == TokenKind::keyword)) {
+                output += '\n';
+                output.append(indent + 2, ' ');
+            } else {
+                output += ' ';
+            }
+        }
+        format_form(child, indent + 2, output);
+    }
+    output += ')';
+}
+
 auto is_name(std::string const& name) -> bool {
     return !name.empty() && std::islower(static_cast<unsigned char>(name.front())) != 0 &&
            std::ranges::all_of(name, [](unsigned char c) {
@@ -270,6 +315,19 @@ auto preprocess(std::filesystem::path const& input,
                 std::vector<std::filesystem::path> const& include_directories)
     -> std::vector<Token> {
     return Preprocessor{include_directories}.run(input);
+}
+
+auto format_expansion(std::vector<Token> const& tokens) -> std::string {
+    std::string result;
+    std::size_t index{};
+    while (tokens[index].kind != TokenKind::end) {
+        if (!result.empty()) {
+            result += '\n';
+        }
+        format_form(read_form(tokens, index), 0, result);
+        result += '\n';
+    }
+    return result;
 }
 
 }

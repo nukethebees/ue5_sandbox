@@ -11,4 +11,6 @@ auto preprocess(std::filesystem::path const& input,
                 std::vector<std::filesystem::path> const& include_directories)
     -> std::vector<Token>;
 
+auto format_expansion(std::vector<Token> const& tokens) -> std::string;
+
 }

@@ -60,4 +60,19 @@ auto compile_manifest(CompileOptions const& options) -> int {
     return codegen::generate_files(files, output_root, output_root, options.check);
 }
 
+auto expand_manifest(std::filesystem::path const& manifest) -> std::string {
+    auto const path{std::filesystem::absolute(manifest).lexically_normal()};
+    auto const loaded{detail::load_manifest(path)};
+    std::string result;
+    for (auto const& entry : loaded.entries) {
+        auto const tokens{detail::preprocess(path.parent_path() / entry.input,
+                                             loaded.include_directories)};
+        if (!result.empty()) {
+            result += '\n';
+        }
+        result += detail::format_expansion(tokens);
+    }
+    return result;
+}
+
 }

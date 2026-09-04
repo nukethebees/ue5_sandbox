@@ -1,6 +1,7 @@
 #include <slate_codegen/compiler.h>
 
 #include "syntax.h"
+#include "lexer.h"
 
 #include <gtest/gtest.h>
 
@@ -303,6 +304,62 @@ TEST(SlateCompiler, LibraryMigrationRemovesTheObsoleteOwnerHeader) {
     EXPECT_FALSE(std::filesystem::exists(project.path("generated/FOwner.slate.generated.h")));
     EXPECT_TRUE(project.read("generated/Example/Images.slate.generated.h").contains("inline auto Build()"));
     EXPECT_EQ(compile_manifest(CompileOptions{.manifest = options.manifest, .check = true}), 0);
+}
+
+TEST(SlateCompiler, ExpansionResolvesIncludesAndNeverWritesGeneratedFiles) {
+    TemporaryProject project{"expand-read-only"};
+    project.write("manifest.json", R"({"include_directories":["shared"],"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("shared/Common.sbxslate", "(defmacro content () (SImage))");
+    project.write("panel.sbxslate", R"(
+(include "Common.sbxslate")
+(widget-library Images (function Build (params) (content)))
+)");
+    auto const manifest{project.path("manifest.json")};
+    auto const expanded{expand_manifest(manifest)};
+    EXPECT_EQ(expanded, "(widget-library Images\n  (function Build\n    (params)\n    (SImage)))\n");
+    EXPECT_FALSE(std::filesystem::exists(project.path("generated")));
+
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = manifest}), 0);
+    auto const header{project.read("generated/Images.slate.generated.h")};
+    auto const inventory{project.read("generated/.sandbox-codegen-outputs")};
+    project.write("shared/Common.sbxslate", "(defmacro content () (SButton))");
+    EXPECT_TRUE(expand_manifest(manifest).contains("(SButton)"));
+    EXPECT_EQ(project.read("generated/Images.slate.generated.h"), header);
+    EXPECT_EQ(project.read("generated/.sandbox-codegen-outputs"), inventory);
+}
+
+TEST(SlateCompiler, ExpansionPreservesStringsKeywordsAndManifestOrder) {
+    TemporaryProject project{"expand-roundtrip"};
+    project.write("manifest.json", R"({"entries":[{"input":"first.sbxslate"},{"input":"second.sbxslate"}]})");
+    std::string const first{R"(
+(widget-library First
+  (function Build (params)
+    (SButton :Text (loc "Context" "Key" "Quotes: \" Backslash: \\ Newline: \n Tab: \t Return: \r")
+      :Padding (0 0 0 10))))
+)"};
+    std::string const second{R"((widget-library Second (function Build (params) (SImage))))"};
+    project.write("first.sbxslate", first);
+    project.write("second.sbxslate", second);
+    auto const expanded{expand_manifest(project.path("manifest.json"))};
+    auto const expected{detail::lex("expected", first + second)};
+    auto const actual{detail::lex("expanded", expanded)};
+    ASSERT_EQ(actual.size(), expected.size());
+    auto const count{expected.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        EXPECT_EQ(actual[index].kind, expected[index].kind);
+        EXPECT_EQ(actual[index].text, expected[index].text);
+    }
+}
+
+TEST(SlateCompiler, ExpansionCanInspectSemanticallyInvalidTrees) {
+    TemporaryProject project{"expand-invalid-tree"};
+    project.write("manifest.json", R"({"entries":[{"input":"panel.sbxslate"}]})");
+    project.write("panel.sbxslate", R"(
+(defmacro bad () (assign image_ SImage))
+(widget-library Images (function Build (params) (bad)))
+)");
+    EXPECT_TRUE(expand_manifest(project.path("manifest.json")).contains("(assign image_ SImage)"));
+    EXPECT_TRUE(compile_error(project).contains("requires a widget-class host"));
 }
 
 }

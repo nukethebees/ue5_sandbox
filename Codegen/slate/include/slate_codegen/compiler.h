@@ -2,6 +2,7 @@
 
 #include <filesystem>
 #include <optional>
+#include <string>
 
 namespace slate_codegen {
 
@@ -12,5 +13,6 @@ struct CompileOptions {
 };
 
 auto compile_manifest(CompileOptions const& options) -> int;
+auto expand_manifest(std::filesystem::path const& manifest) -> std::string;
 
 }

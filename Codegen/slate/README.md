@@ -195,6 +195,24 @@ The compiler interface is:
 
 ```text
 slatec --manifest <path> [--output-root <directory>] [--check]
+slatec --manifest <path> --expand
+```
+
+`--expand` writes the DSL after include resolution and macro expansion to stdout, with two-space
+indentation and a blank line between declarations. Inputs are printed in manifest order. It emits
+only DSL text, so the output can be redirected to a `.sbxslate` file. Comments and original
+formatting are not preserved; string escapes and keyword values are preserved.
+
+Expansion performs preprocessing but skips widget validation and C++ generation. This lets you
+inspect a macro's result even if it produces an invalid widget tree. Include and macro errors still
+go to stderr with exit code 2, and no partial expansion is printed if a later input fails.
+It does not create or update generated headers or inventories and cannot be combined with `--check`
+or `--output-root`.
+
+For example, from the repository root:
+
+```text
+out/build/codegen/Codegen/slate/slatec.exe --manifest Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/manifest.json --expand
 ```
 
 Manifest input paths are relative to the manifest. Output defaults to a `generated` directory beside
