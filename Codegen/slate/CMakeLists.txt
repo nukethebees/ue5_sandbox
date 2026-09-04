@@ -3,6 +3,7 @@ add_library(slate-codegen-lib
   src/lexer.cpp
   src/manifest.cpp
   src/parser.cpp
+  src/preprocessor.cpp
   src/renderer.cpp
 )
 target_compile_features(slate-codegen-lib PUBLIC cxx_std_23)

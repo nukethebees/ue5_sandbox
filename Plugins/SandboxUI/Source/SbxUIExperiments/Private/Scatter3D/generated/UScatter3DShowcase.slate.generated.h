@@ -16,13 +16,13 @@ struct UScatter3DShowcaseBuilder {
 
     auto BuildScatterWidget() {
         return
-#line 4 "Scatter3DShowcase.sbxslate"
+#line 6 "Scatter3DShowcase.sbxslate"
             SNew(SScatter3DWidget);
     }
 
     auto RebuildWidget(auto&& on_value_committed, auto&& scatter_widget) {
         return
-#line 9 "Scatter3DShowcase.sbxslate"
+#line 11 "Scatter3DShowcase.sbxslate"
             SNew(SExperimentPanel)
                 .Title(NSLOCTEXT("Scatter3D", "Title", "RDG 3D Scatter Experiment"))
                 .Description(

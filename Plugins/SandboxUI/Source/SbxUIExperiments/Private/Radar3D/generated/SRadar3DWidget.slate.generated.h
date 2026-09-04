@@ -16,7 +16,7 @@ struct SRadar3DWidgetBuilder {
 
     auto BuildImage(auto&& brush) {
         return
-#line 45 "Radar3DShowcase.sbxslate"
+#line 4 "../Widgets/Experiments/Patterns.sbxslate"
             SAssignNew(self_.image_, SImage)
                 .Image(brush);
     }

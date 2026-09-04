@@ -1,6 +1,6 @@
 #include <slate_codegen/compiler.h>
 
-#include "lexer.h"
+#include "preprocessor.h"
 #include "manifest.h"
 #include "parser.h"
 #include "renderer.h"
@@ -39,12 +39,11 @@ auto compile_manifest(CompileOptions const& options) -> int {
     auto const output_root{options.output_root
                                ? std::filesystem::absolute(*options.output_root).lexically_normal()
                                : manifest_directory / "generated"};
-    auto const entries{detail::load_manifest(manifest_path)};
+    auto const manifest{detail::load_manifest(manifest_path)};
     std::vector<codegen::GeneratedFile> files;
     std::set<std::string> owners;
-    for (auto const& entry : entries) {
-        auto const source{detail::read_file(manifest_directory / entry.input)};
-        auto tokens{detail::lex(entry.input.generic_string(), source)};
+    for (auto const& entry : manifest.entries) {
+        auto tokens{detail::preprocess(manifest_directory / entry.input, manifest.include_directories)};
         auto const document{detail::parse(entry.input.generic_string(), std::move(tokens))};
         for (auto const& widget_class : document.widget_classes) {
             if (!owners.insert(widget_class.owner).second) {

@@ -1,3 +1,5 @@
+(include "Experiments/Patterns.sbxslate")
+
 (widget-class UHeatmapRDGShowcase
   (function BuildSizeButton
     (params
@@ -61,6 +63,4 @@
           (existing heatmap_preview)))))))
 
 (widget-class UHeatmapRDGWidget
-  (function BuildImage
-    (params (value brush))
-    (assign image_ SImage :Image brush)))
+  (image-builder image_))

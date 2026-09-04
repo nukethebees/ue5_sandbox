@@ -14,13 +14,16 @@ namespace slate_codegen::detail {
 struct SourceSpan {
     std::size_t line{1};
     std::size_t column{1};
+    std::string path;
+    std::string expansion;
 };
 
 class SourceError final : public std::runtime_error {
   public:
     SourceError(std::string_view const path, SourceSpan const span, std::string const& message)
-        : std::runtime_error{std::string{path} + ":" + std::to_string(span.line) + ":" +
-                             std::to_string(span.column) + ": error: " + message} {}
+        : std::runtime_error{(span.path.empty() ? std::string{path} : span.path) + ":" +
+                             std::to_string(span.line) + ":" + std::to_string(span.column) +
+                             ": error: " + message + span.expansion} {}
 };
 
 enum class TokenKind {

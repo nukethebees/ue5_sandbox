@@ -1,0 +1,11 @@
+(defmacro image-builder (member)
+  (function BuildImage
+    (params (value brush))
+    (assign $member SImage :Image brush)))
+
+(defmacro square-preview (widget size)
+  (slot Preview
+    (SBox
+      :WidthOverride $size
+      :HeightOverride $size
+      (existing $widget))))

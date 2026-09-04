@@ -1,3 +1,5 @@
+(include "Experiments/Patterns.sbxslate")
+
 (widget-class UVolumeHeatmap3DShowcase
   (function BuildVolumeWidget
     (params)
@@ -121,13 +123,7 @@
                   (assign benchmark_output_ SMultiLineEditableTextBox
                     :IsReadOnly true
                     :Text (loc "VolumeHeatmap3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
-        (slot Preview
-          (SBox
-            :WidthOverride preview_size
-            :HeightOverride preview_size
-            (existing volume_widget)))))))
+        (square-preview volume_widget preview_size)))))
 
 (widget-class SVolumeHeatmap3DWidget
-  (function BuildImage
-    (params (value brush))
-    (assign image_ SImage :Image brush)))
+  (image-builder image_))

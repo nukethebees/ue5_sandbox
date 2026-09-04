@@ -1,3 +1,5 @@
+(include "Experiments/Patterns.sbxslate")
+
 (widget-class UScatter3DShowcase
   (function BuildScatterWidget
     (params)
@@ -34,13 +36,7 @@
                 (assign benchmark_output_ SMultiLineEditableTextBox
                   :IsReadOnly true
                   :Text (loc "Scatter3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
-      (slot Preview
-        (SBox
-          :WidthOverride 512.0f
-          :HeightOverride 512.0f
-          (existing scatter_widget))))))
+      (square-preview scatter_widget 512.0f))))
 
 (widget-class SScatter3DWidget
-  (function BuildImage
-    (params (value brush))
-    (assign image_ SImage :Image brush)))
+  (image-builder image_))

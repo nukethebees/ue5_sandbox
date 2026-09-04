@@ -34,7 +34,7 @@ auto read_file(std::filesystem::path const& path) -> std::string {
     return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
 }
 
-auto load_manifest(std::filesystem::path const& path) -> std::vector<ManifestEntry> {
+auto load_manifest(std::filesystem::path const& path) -> Manifest {
     auto const document = nlohmann::json::parse(read_file(path));
     if (!document.is_object()) {
         throw std::invalid_argument{"Slate manifest root must be an object"};
@@ -46,7 +46,20 @@ auto load_manifest(std::filesystem::path const& path) -> std::vector<ManifestEnt
         throw std::invalid_argument{"Slate manifest entries field must be an array"};
     }
 
-    std::vector<ManifestEntry> result;
+    Manifest result;
+    if (document.contains("include_directories")) {
+        auto const& directories{document.at("include_directories")};
+        if (!directories.is_array()) {
+            throw std::invalid_argument{"Slate manifest include_directories must be an array"};
+        }
+        for (auto const& directory : directories) {
+            if (!directory.is_string() || directory.get<std::string>().empty()) {
+                throw std::invalid_argument{"Slate include directories must be nonempty strings"};
+            }
+            result.include_directories.push_back(
+                (path.parent_path() / directory.get<std::string>()).lexically_normal());
+        }
+    }
     std::set<std::string> inputs;
     for (auto const& item : document.at("entries")) {
         if (!item.is_object() || !item.contains("input") || !item.at("input").is_string()) {
@@ -61,9 +74,9 @@ auto load_manifest(std::filesystem::path const& path) -> std::vector<ManifestEnt
             throw std::invalid_argument{"Duplicate Slate manifest input: " +
                                         entry.input.generic_string()};
         }
-        result.push_back(std::move(entry));
+        result.entries.push_back(std::move(entry));
     }
-    if (result.empty()) {
+    if (result.entries.empty()) {
         throw std::invalid_argument{"Slate manifest entries must not be empty"};
     }
     return result;

@@ -16,7 +16,7 @@ struct UHeatmapRDGWidgetBuilder {
 
     auto BuildImage(auto&& brush) {
         return
-#line 66 "HeatmapRDGShowcase.sbxslate"
+#line 4 "../Widgets/Experiments/Patterns.sbxslate"
             SAssignNew(self_.image_, SImage)
                 .Image(brush);
     }

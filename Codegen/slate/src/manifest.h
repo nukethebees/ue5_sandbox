@@ -10,7 +10,12 @@ struct ManifestEntry {
     std::filesystem::path input;
 };
 
+struct Manifest {
+    std::vector<ManifestEntry> entries;
+    std::vector<std::filesystem::path> include_directories;
+};
+
 auto read_file(std::filesystem::path const& path) -> std::string;
-auto load_manifest(std::filesystem::path const& path) -> std::vector<ManifestEntry>;
+auto load_manifest(std::filesystem::path const& path) -> Manifest;
 
 }

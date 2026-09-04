@@ -91,7 +91,7 @@ class Renderer {
     void append_source_line(SourceSpan const span) {
         append_line(0,
                     "#line " + std::to_string(span.line) + " \"" +
-                        escape_cpp_string(source_path_) + "\"");
+                        escape_cpp_string(span.path.empty() ? source_path_ : span.path) + "\"");
     }
 
     void render_function(SlateFunction const& function) {
