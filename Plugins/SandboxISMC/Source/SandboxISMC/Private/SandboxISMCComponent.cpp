@@ -213,38 +213,20 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
                           ColorStreamIndex);
 
         auto const instance_stride = sizeof(FSandboxISMCRenderInstance);
-        elements.Add(AccessStreamComponent(
-            FVertexStreamComponent{instance_buffer_,
-                                   offsetof(FSandboxISMCRenderInstance, origin),
-                                   instance_stride,
-                                   VET_Float4,
-                                   EVertexStreamUsage::Instancing},
-            8,
-            Streams));
-        elements.Add(AccessStreamComponent(
-            FVertexStreamComponent{instance_buffer_,
-                                   offsetof(FSandboxISMCRenderInstance, transform_row_0),
-                                   instance_stride,
-                                   VET_Float4,
-                                   EVertexStreamUsage::Instancing},
-            9,
-            Streams));
-        elements.Add(AccessStreamComponent(
-            FVertexStreamComponent{instance_buffer_,
-                                   offsetof(FSandboxISMCRenderInstance, transform_row_1),
-                                   instance_stride,
-                                   VET_Float4,
-                                   EVertexStreamUsage::Instancing},
-            10,
-            Streams));
-        elements.Add(AccessStreamComponent(
-            FVertexStreamComponent{instance_buffer_,
-                                   offsetof(FSandboxISMCRenderInstance, transform_row_2),
-                                   instance_stride,
-                                   VET_Float4,
-                                   EVertexStreamUsage::Instancing},
-            11,
-            Streams));
+        auto const add_instance_element = [&](uint32 const offset, uint8 const attribute_index) {
+            elements.Add(
+                AccessStreamComponent(FVertexStreamComponent{instance_buffer_,
+                                                             offset,
+                                                             instance_stride,
+                                                             VET_Float4,
+                                                             EVertexStreamUsage::Instancing},
+                                      attribute_index,
+                                      Streams));
+        };
+        add_instance_element(offsetof(FSandboxISMCRenderInstance, origin), 8);
+        add_instance_element(offsetof(FSandboxISMCRenderInstance, transform_row_0), 9);
+        add_instance_element(offsetof(FSandboxISMCRenderInstance, transform_row_1), 10);
+        add_instance_element(offsetof(FSandboxISMCRenderInstance, transform_row_2), 11);
 
         FVertexStreamComponent const null_lightmap{
             &GNullVertexBuffer, 0, 0, VET_Float4, EVertexStreamUsage::Instancing};
