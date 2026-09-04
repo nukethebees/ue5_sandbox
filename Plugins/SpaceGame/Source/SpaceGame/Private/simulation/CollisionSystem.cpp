@@ -6,6 +6,9 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
+#include <SandboxCore/container_ops.h>
+#include <SandboxCoreEngine/actor_utils.h>
+
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/PrimitiveComponent.h>
 #include <Engine/StaticMesh.h>
@@ -68,20 +71,12 @@ void set_mesh_aabb(FEntityAABBs& aabbs,
     aabbs.half_extent_zs[index] = half_extents.Z;
 }
 
-auto matches_any_class(AActor const& actor, TConstArrayView<TSubclassOf<AActor>> const classes)
-    -> bool {
-    for (auto const actor_class : classes) {
-        if (actor.IsA(actor_class)) {
-            return true;
-        }
-    }
-    return false;
-}
-
 auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
-    return !geometry.TaperedCapsuleElems.IsEmpty() || !geometry.LevelSetElems.IsEmpty() ||
-           !geometry.SkinnedLevelSetElems.IsEmpty() || !geometry.MLLevelSetElems.IsEmpty() ||
-           !geometry.SkinnedTriangleMeshElems.IsEmpty();
+    return ml::any_non_empty(geometry.TaperedCapsuleElems,
+                             geometry.LevelSetElems,
+                             geometry.SkinnedLevelSetElems,
+                             geometry.MLLevelSetElems,
+                             geometry.SkinnedTriangleMeshElems);
 }
 }
 
@@ -97,12 +92,15 @@ void FCollisionSystem::initialise_static_geometry(UWorld& world,
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::initialise_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
 
-    for (auto const& source : static_collision_sources_) {
-        if (auto* const component{source.component.Get()}; IsValid(component)) {
-            component->SetCollisionEnabled(source.original_collision_enabled);
+    auto const previous_sources{static_collision_sources_.get_const_view()};
+    auto const previous_source_count{previous_sources.num()};
+    for (int32 source_index{}; source_index < previous_source_count; ++source_index) {
+        if (auto* const component{previous_sources.components[source_index].Get()};
+            IsValid(component)) {
+            component->SetCollisionEnabled(previous_sources.original_collision_modes[source_index]);
         }
     }
-    static_collision_sources_.Reset();
+    static_collision_sources_.reset();
     uniform_grid_.set_static_aabbs({});
 
     WorldAABBs static_aabbs;
@@ -126,10 +124,10 @@ void FCollisionSystem::initialise_static_geometry(UWorld& world,
             continue;
         }
 
-        if (matches_any_class(*actor, config.omitted_collision_actor_classes)) {
+        if (ml::actor_is_any(*actor, config.omitted_collision_actor_classes)) {
             continue;
         }
-        if (!matches_any_class(*actor, config.harvested_collision_actor_classes)) {
+        if (!ml::actor_is_any(*actor, config.harvested_collision_actor_classes)) {
             ++unexpected_actor_count;
             UE_LOG(LogSandbox,
                    Warning,
@@ -194,27 +192,28 @@ void FCollisionSystem::initialise_static_geometry(UWorld& world,
 
             FVector3f const min_point{aabb.Min};
             FVector3f const max_point{aabb.Max};
-            auto const min_coord{uniform_grid_.to_min_cell_coord(min_point)};
-            auto const max_coord{uniform_grid_.to_max_cell_coord(max_point)};
+            auto const [min_coord,
+                        max_coord]{uniform_grid_.to_cell_coord_bounds(min_point, max_point)};
             if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
-                !uniform_grid_.is_cell_coord_in_bounds(min_coord) ||
-                !uniform_grid_.is_cell_coord_in_bounds(max_coord)) {
+                !uniform_grid_.is_cell_coord_in_bounds(min_coord, max_coord)) {
                 reject_component(TEXT("world AABB is invalid or outside the collision grid"));
                 continue;
             }
 
             static_aabbs.mins.add(min_point);
             static_aabbs.maxes.add(max_point);
-            static_collision_sources_.Add({actor,
-                                           component,
-                                           component->GetComponentTransform(),
-                                           component->GetCollisionEnabled()});
+            static_collision_sources_.add(actor,
+                                          component,
+                                          component->GetComponentTransform(),
+                                          component->GetCollisionEnabled());
         }
     }
 
     uniform_grid_.set_static_aabbs(MoveTemp(static_aabbs));
-    for (auto const& source : static_collision_sources_) {
-        if (auto* const component{source.component.Get()}; IsValid(component)) {
+    auto const sources{static_collision_sources_.get_const_view()};
+    auto const source_count{sources.num()};
+    for (int32 source_index{}; source_index < source_count; ++source_index) {
+        if (auto* const component{sources.components[source_index].Get()}; IsValid(component)) {
             component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         }
     }
@@ -223,7 +222,7 @@ void FCollisionSystem::initialise_static_geometry(UWorld& world,
            Display,
            TEXT("Harvested %d static collision components; reported %d unsupported components and "
                 "%d unexpected actors"),
-           static_collision_sources_.Num(),
+           static_collision_sources_.num(),
            unsupported_component_count,
            unexpected_actor_count);
 }

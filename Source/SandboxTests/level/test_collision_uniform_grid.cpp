@@ -1964,14 +1964,16 @@ void FCollisionUniformGridTraceScenario::test_static_harvesting() {
     collision.initialise_static_geometry(context_.world, config);
 
     auto const sources{collision.get_static_collision_sources()};
-    auto const source_index{sources.IndexOfByPredicate([harvested_actor](auto const& source) {
-        return source.actor.Get() == harvested_actor &&
-               source.component.Get() == harvested_actor->get_collision_component();
-    })};
+    auto const source_count{sources.num()};
+    int32 source_index{INDEX_NONE};
     int32 harvested_actor_source_count{};
-    for (auto const& source : sources) {
-        if (source.actor.Get() == harvested_actor) {
+    for (int32 i{}; i < source_count; ++i) {
+        if (sources.actors[i].Get() == harvested_actor) {
             ++harvested_actor_source_count;
+        }
+        if (sources.actors[i].Get() == harvested_actor &&
+            sources.components[i].Get() == harvested_actor->get_collision_component()) {
+            source_index = i;
         }
     }
     checks.is_true(source_index != INDEX_NONE,
@@ -1988,10 +1990,9 @@ void FCollisionUniformGridTraceScenario::test_static_harvesting() {
     checks.is_true(unsupported_component->GetCollisionEnabled() == ECollisionEnabled::QueryOnly,
                    TEXT("Failed harvest leaves Unreal collision enabled"));
 
-    auto const source_count{sources.Num()};
     collision.initialise_static_geometry(context_.world, config);
     checks.are_equal(source_count,
-                     collision.get_static_collision_sources().Num(),
+                     collision.get_static_collision_sources().num(),
                      TEXT("Reinitialization restores and reharvests static geometry"));
     checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
                        ECollisionEnabled::NoCollision,
