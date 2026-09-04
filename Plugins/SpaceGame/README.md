@@ -15,7 +15,15 @@ Entity AABBs and line segments are closed during the narrow-phase intersection t
 an AABB face, edge, endpoint, or degenerate AABB therefore counts as a hit. Broad-phase insertion is
 conservative: an AABB on an internal cell boundary may be present in both adjacent cells.
 
-Zero-length traces test their single point. The nearest hit along each segment is returned. When two
-hits have the same distance, callers must not depend on which entity is selected. On a miss, only the
-hit flag is meaningful; the corresponding location and entity values are unspecified. Inputs must
-be finite, and entity AABBs must fit within the configured grid.
+Zero-length traces test their single point. The nearest hit along each segment is returned. Dynamic
+and harvested static AABBs participate in the same closest-hit calculation; dynamic geometry wins
+an exact-distance tie. Static hits have an invalid entity handle and identify their source through
+`static_geometry_indices`. On a miss, only the hit flag is meaningful; the corresponding location
+and identity values are unspecified. Inputs must be finite, and all AABBs must fit within the
+configured grid. Queries may supply one ignored dynamic entity handle per trace; static geometry is
+still tested normally.
+
+Static collision is harvested once during level initialization from query-enabled simple aggregate
+geometry on configured actor classes. Each supported primitive component becomes one combined
+world-space AABB, and its Unreal collision is disabled only after the static grid is built. Harvested
+components must remain static afterward; moving one requires rebuilding the harvested geometry.
