@@ -1,4 +1,5 @@
 (level
+  (id 'border-skirmish)
   (title "Border Skirmish")
   (description "A two-team encounter demonstrating scripted level construction.")
 

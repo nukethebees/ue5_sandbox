@@ -31,6 +31,11 @@ auto entity_owner(FLevelEntityId const id, int32 const index) -> FString {
 }
 
 void validate_metadata(FLevelDefinition const& definition, FLevelValidationResult& result) {
+    if (!definition.metadata.id.is_set()) {
+        add_error(result,
+                  ELevelValidationErrorCode::MissingLevelId,
+                  TEXT("Level definition has no stable id"));
+    }
     if (definition.metadata.title.TrimStartAndEnd().IsEmpty()) {
         add_error(
             result, ELevelValidationErrorCode::MissingTitle, TEXT("Level definition has no title"));

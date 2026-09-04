@@ -7,6 +7,7 @@
 
 namespace ml {
 struct SPACEGAME_API FLevelMetadata {
+    FLevelId id{};
     FString title{};
     FString description{};
 };
@@ -64,6 +65,7 @@ class SPACEGAME_API FLevelBuilder {
 };
 
 enum class ELevelValidationErrorCode : uint8 {
+    MissingLevelId,
     MissingTitle,
     MissingViewpoint,
     ConflictingViewpoints,

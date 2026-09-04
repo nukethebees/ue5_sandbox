@@ -18,11 +18,13 @@ struct FTemporaryScriptDirectory {
     ~FTemporaryScriptDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
 };
 
-auto valid_level_script(FStringView const title) -> FString {
-    return FString::Printf(TEXT("(level (title \"%s\") (description \"Catalog test\") "
+auto valid_level_script(FStringView const id, FStringView const title) -> FString {
+    return FString::Printf(TEXT("(level (id '%s) (title \"%s\") "
+                                "(description \"Catalog test\") "
                                 "(teams (team 'blue)) (player 'player) "
                                 "(entities (entity 'player 'player-fighter 'blue "
                                 "(position 0 0 0) (rotation 0 0 0))))"),
+                           *FString{id},
                            *FString{title});
 }
 }
@@ -40,11 +42,13 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         IFileManager::Get().MakeDirectory(*nested_directory, true);
 
         auto const files_written{
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("Alpha Level")), *alpha_path) &&
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("Bravo Level")), *bravo_path) &&
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha Level")),
+                                          *alpha_path) &&
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("bravo"), TEXT("Bravo Level")),
+                                          *bravo_path) &&
             FFileHelper::SaveStringToFile(TEXT("(level (title \"Broken\"))"), *invalid_path) &&
             FFileHelper::SaveStringToFile(TEXT("not a level"), *ignored_path) &&
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("Nested Level")),
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("nested"), TEXT("Nested Level")),
                                           *FPaths::Combine(nested_directory, TEXT("nested.scm")))};
         if (!TestRunner->TestTrue(TEXT("Test scripts are written"), files_written)) {
             return;

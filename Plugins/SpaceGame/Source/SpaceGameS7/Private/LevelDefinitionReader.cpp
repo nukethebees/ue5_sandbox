@@ -15,6 +15,7 @@ namespace s7_native = S7Lab::native;
 
 constexpr TCHAR level_prelude[]{LR"(
 (define (level . clauses) (cons 'level clauses))
+(define (id value) (list 'id value))
 (define (title value) (list 'title value))
 (define (description value) (list 'description value))
 (define (teams . values) (cons 'teams values))
@@ -58,6 +59,7 @@ class FDefinitionDecoder final {
         FLevelBuilder builder;
         FLevelMetadata metadata;
         auto const clause_count{list_length(root_) - 1};
+        bool has_id{false};
         bool has_title{false};
         bool has_description{false};
         bool has_teams{false};
@@ -80,7 +82,18 @@ class FDefinitionDecoder final {
             }
 
             auto const tag_name{to_fstring(s7_native::symbol_name(tag))};
-            if (tag_name == TEXT("title")) {
+            if (tag_name == TEXT("id")) {
+                if (has_id) {
+                    add_error(path, TEXT("Duplicate id clause"));
+                    continue;
+                }
+                has_id = true;
+                FName id;
+                if (expect_length(clause, 2, path) &&
+                    read_symbol(list_value(clause, 1), path + TEXT(".value"), id)) {
+                    metadata.id = FLevelId{id};
+                }
+            } else if (tag_name == TEXT("title")) {
                 if (has_title) {
                     add_error(path, TEXT("Duplicate title clause"));
                     continue;

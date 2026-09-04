@@ -5,6 +5,7 @@
 namespace {
 constexpr TCHAR valid_level[]{LR"(
 (level
+  (id 'scripted-example)
   (title "Scripted Example")
   (description "Built as ordinary Scheme data.")
   (teams (team 'blue) (team 'red))
@@ -27,6 +28,7 @@ constexpr TCHAR valid_level[]{LR"(
 
 constexpr TCHAR valid_camera_level[]{LR"(
 (level
+  (id 'camera-example)
   (title "Camera Example")
   (teams (team 'blue) (team 'red))
   (camera
@@ -63,6 +65,9 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         auto const& definition{result.definition.GetValue()};
         TestRunner->TestEqual(TEXT("Definition has two teams"), definition.teams.Num(), 2);
         TestRunner->TestEqual(TEXT("Definition has four entities"), definition.entities.num(), 4);
+        TestRunner->TestTrue(TEXT("Stable level id is decoded"),
+                             definition.metadata.id ==
+                                 ml::FLevelId{FName{TEXT("scripted-example")}});
         TestRunner->TestEqual(
             TEXT("Title is decoded"), definition.metadata.title, FString{TEXT("Scripted Example")});
         TestRunner->TestTrue(TEXT("Player id is decoded"),
@@ -148,6 +153,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ml::s7::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
+  (id 'complex-position)
   (title "Complex Position")
   (teams (team 'blue))
   (player 'player)
@@ -169,6 +175,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ml::s7::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
+  (id 'duplicate-teams)
   (title "Duplicate Teams")
   (teams (team 'blue))
   (teams (team 'red))
@@ -186,11 +193,35 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         }
     }
 
+    TEST_METHOD(RejectsDuplicateIdClauses)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const result{reader.read_source(LR"(
+(level
+  (id 'first-id)
+  (id 'second-id)
+  (title "Duplicate Id")
+  (teams (team 'blue))
+  (player 'player)
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+
+        TestRunner->TestFalse(TEXT("Duplicate id is rejected"), static_cast<bool>(result));
+        TestRunner->TestFalse(TEXT("Decode error is reported"), result.decode_errors.IsEmpty());
+        if (!result.decode_errors.IsEmpty()) {
+            TestRunner->TestTrue(TEXT("Duplicate id clause is identified"),
+                                 result.decode_errors[0].message.Contains(TEXT("Duplicate id")));
+        }
+    }
+
     TEST_METHOD(ReportsNativeValidationErrorsAfterDecoding)
     {
         ml::s7::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
+  (id 'invalid-team)
   (title "Invalid Team")
   (teams (team 'blue))
   (player 'player)
@@ -211,6 +242,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ml::s7::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
+  (id 'malformed-camera)
   (title "Malformed Camera")
   (teams (team 'blue))
   (camera
@@ -232,6 +264,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ml::s7::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
+  (id 'duplicate-camera)
   (title "Duplicate Camera")
   (teams (team 'blue))
   (camera (look-at 'capital) (distance 1000) (offset-direction -1 0 0))
@@ -251,6 +284,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ml::s7::FLevelDefinitionReader reader;
         auto const empty_targets{reader.read_source(LR"(
 (level
+  (id 'empty-targets)
   (title "Empty Targets")
   (teams (team 'blue))
   (camera (look-at) (distance 1000) (offset-direction -1 0 0))
@@ -264,6 +298,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         auto const unknown_target{reader.read_source(LR"(
 (level
+  (id 'unknown-target)
   (title "Unknown Target")
   (teams (team 'blue))
   (camera (look-at 'missing) (distance 1000) (offset-direction -1 0 0))
@@ -281,6 +316,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ml::s7::FLevelDefinitionReader reader;
         auto const result{reader.read_source(LR"(
 (level
+  (id 'timed-mission)
   (title "Timed Mission")
   (teams (team 'blue) (team 'red))
   (player 'player)
@@ -316,6 +352,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         ml::s7::FLevelDefinitionReader reader;
         auto const duplicate_clause{reader.read_source(LR"(
 (level
+  (id 'duplicate-mission-clause)
   (title "Duplicate Mission Clause")
   (teams (team 'blue))
   (player 'player)
@@ -331,6 +368,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         auto const unknown_reference{reader.read_source(LR"(
 (level
+  (id 'unknown-mission-entity)
   (title "Unknown Mission Entity")
   (teams (team 'blue))
   (player 'player)
@@ -345,6 +383,7 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 
         auto const fractional_count{reader.read_source(LR"(
 (level
+  (id 'fractional-count)
   (title "Fractional Count")
   (teams (team 'blue))
   (player 'player)

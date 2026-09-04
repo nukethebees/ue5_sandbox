@@ -3,6 +3,17 @@
 #include <CoreMinimal.h>
 
 namespace ml {
+struct SPACEGAME_API FLevelId {
+    FName value{NAME_None};
+
+    auto operator==(FLevelId const&) const -> bool = default;
+    auto is_set() const noexcept -> bool { return !value.IsNone(); }
+};
+
+inline auto GetTypeHash(FLevelId const& id) -> uint32 {
+    return GetTypeHash(id.value);
+}
+
 struct SPACEGAME_API FLevelTeamId {
     FName value{NAME_None};
 

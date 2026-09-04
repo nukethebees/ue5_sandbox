@@ -4,6 +4,7 @@ namespace ml::example_levels {
 auto make_native_example() -> FLevelDefinition {
     FLevelBuilder builder;
     builder.set_metadata(FLevelMetadata{
+        .id = FLevelId{FName{TEXT("native-example")}},
         .title = TEXT("Native Example"),
         .description = TEXT("A two-team level used by native tests."),
     });

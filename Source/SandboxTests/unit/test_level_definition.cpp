@@ -13,7 +13,8 @@ auto contains_error(ml::FLevelValidationResult const& result,
 
 auto make_camera_level() -> ml::FLevelDefinition {
     ml::FLevelBuilder builder;
-    builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Camera Level")});
+    builder.set_metadata(ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("camera-level")}},
+                                            .title = TEXT("Camera Level")});
     builder.add_team(ml::level_teams::blue);
     builder.add_team(ml::level_teams::red);
     builder.add_entity(ml::FEntitySpawnDefinition{
@@ -51,6 +52,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             TEXT("Definition has four entity rows"), definition.entities.num(), 4);
         TestRunner->TestEqual(
             TEXT("Title is preserved"), definition.metadata.title, FString{TEXT("Native Example")});
+        TestRunner->TestTrue(TEXT("Stable level id is preserved"),
+                             definition.metadata.id == ml::FLevelId{FName{TEXT("native-example")}});
         TestRunner->TestTrue(TEXT("Player id is preserved"),
                              definition.player_entity_id ==
                                  ml::FLevelEntityId{FName{TEXT("player")}});
@@ -122,7 +125,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(BuilderCanBeReused)
     {
         ml::FLevelBuilder builder;
-        builder.set_metadata(ml::FLevelMetadata{.title = TEXT("First")});
+        builder.set_metadata(
+            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("first")}}, .title = TEXT("First")});
         builder.add_team(ml::level_teams::blue);
         auto const first_player{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("first-player")}},
@@ -142,7 +146,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             TEXT("Player entity position is preserved"),
             first.entities.positions.get_const_view()[0].Equals(FVector{10.0, 20.0, 30.0}));
 
-        builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Second")});
+        builder.set_metadata(
+            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("second")}}, .title = TEXT("Second")});
         builder.add_team(ml::level_teams::red);
         auto const second_player{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("second-player")}},
@@ -176,7 +181,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
     TEST_METHOD(BuilderReuseClearsCameraState)
     {
         ml::FLevelBuilder builder;
-        builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Camera")});
+        builder.set_metadata(
+            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("camera")}}, .title = TEXT("Camera")});
         builder.add_team(ml::level_teams::blue);
         builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("capital")}},
@@ -197,7 +203,8 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("First definition has a camera"), camera_level.camera.IsSet());
         TestRunner->TestTrue(TEXT("First definition has a mission"), camera_level.mission.IsSet());
 
-        builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Player")});
+        builder.set_metadata(
+            ml::FLevelMetadata{.id = ml::FLevelId{FName{TEXT("player")}}, .title = TEXT("Player")});
         builder.add_team(ml::level_teams::blue);
         auto const player_id{builder.add_entity(ml::FEntitySpawnDefinition{
             .id = ml::FLevelEntityId{FName{TEXT("player")}},
@@ -309,6 +316,13 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
     TEST_METHOD(MalformedDefinitionsReportStructuredErrors)
     {
+        auto missing_id{ml::example_levels::make_native_example()};
+        missing_id.metadata.id = {};
+        auto const missing_id_validation{ml::validate_level(missing_id)};
+        TestRunner->TestTrue(
+            TEXT("Missing stable id is reported"),
+            contains_error(missing_id_validation, ml::ELevelValidationErrorCode::MissingLevelId));
+
         auto missing_player{ml::example_levels::make_native_example()};
         missing_player.player_entity_id = {};
         auto const missing_player_validation{ml::validate_level(missing_player)};
