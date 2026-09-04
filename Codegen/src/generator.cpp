@@ -343,7 +343,7 @@ auto generate_files(std::vector<GeneratedFile> const& files,
         }
     }
     if (stale) {
-        std::cout << "Generated files are stale. Run the generate-code CMake workflow.\n";
+        std::cout << "Generated files are stale.\n";
         return 1;
     }
     return 0;

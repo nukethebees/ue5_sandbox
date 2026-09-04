@@ -75,7 +75,7 @@
     {
       "name": "codegen",
       "configurePreset": "codegen",
-      "targets": ["sandbox-codegen", "codegen-tests"]
+      "targets": ["sandbox-codegen", "sandbox-slatec", "codegen-tests"]
     },
     {
       "name": "generate-code",

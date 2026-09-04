@@ -191,3 +191,5 @@ add_custom_target(check-generated-code
   USES_TERMINAL
   VERBATIM
 )
+
+add_subdirectory(slate)

@@ -61,7 +61,12 @@ auto main(int argc, char const* const* argv) -> int {
         auto const output_root{arguments.output_root.value_or(arguments.project_root)};
         auto const manifest{codegen::load_manifest(manifest_path)};
         auto const files{codegen::render_modules(codegen::lower_modules(manifest))};
-        return codegen::generate_files(files, arguments.project_root, output_root, arguments.check);
+        auto const result{
+            codegen::generate_files(files, arguments.project_root, output_root, arguments.check)};
+        if (result == 1) {
+            std::cout << "Run the generate-code CMake workflow.\n";
+        }
+        return result;
     } catch (std::exception const& error) {
         std::cerr << "codegen: " << error.what() << '\n';
         return 2;
