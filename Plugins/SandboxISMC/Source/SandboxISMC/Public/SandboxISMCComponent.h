@@ -21,46 +21,46 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
   public:
     USandboxISMCComponent();
 
-    void set_static_mesh(UStaticMesh* mesh);
-    UStaticMesh* get_static_mesh() const;
+    auto set_static_mesh(UStaticMesh* mesh) -> void;
+    auto get_static_mesh() const -> UStaticMesh*;
 
-    void reserve_instances(int32 capacity);
-    int32 add_instance(FVector3f position,
-                       FQuat4f rotation = FQuat4f::Identity,
-                       FVector3f scale = FVector3f::OneVector);
-    bool set_instance_transform(int32 instance_index,
+    auto reserve_instances(int32 capacity) -> void;
+    auto add_instance(FVector3f position,
+                      FQuat4f rotation = FQuat4f::Identity,
+                      FVector3f scale = FVector3f::OneVector) -> int32;
+    auto set_instance_transform(int32 instance_index,
                                 FVector3f position,
                                 FQuat4f rotation,
-                                FVector3f scale);
-    FSandboxISMCRemoveResult remove_instance_swap(int32 instance_index);
-    void clear_instances();
+                                FVector3f scale) -> bool;
+    auto remove_instance_swap(int32 instance_index) -> FSandboxISMCRemoveResult;
+    auto clear_instances() -> void;
 
-    int32 get_instance_count() const;
-    TArrayView<FVector3f> positions();
-    TConstArrayView<FVector3f> positions() const;
-    TArrayView<FQuat4f> rotations();
-    TConstArrayView<FQuat4f> rotations() const;
-    TArrayView<FVector3f> scales();
-    TConstArrayView<FVector3f> scales() const;
-    TArrayView<FVector3f> edit_positions(int32 first_index, int32 count);
-    TArrayView<FQuat4f> edit_rotations(int32 first_index, int32 count);
-    TArrayView<FVector3f> edit_scales(int32 first_index, int32 count);
-    void mark_instance_range_dirty(int32 first_index, int32 count);
-    void mark_all_instances_dirty();
+    auto get_instance_count() const -> int32;
+    auto positions() -> TArrayView<FVector3f>;
+    auto positions() const -> TConstArrayView<FVector3f>;
+    auto rotations() -> TArrayView<FQuat4f>;
+    auto rotations() const -> TConstArrayView<FQuat4f>;
+    auto scales() -> TArrayView<FVector3f>;
+    auto scales() const -> TConstArrayView<FVector3f>;
+    auto edit_positions(int32 first_index, int32 count) -> TArrayView<FVector3f>;
+    auto edit_rotations(int32 first_index, int32 count) -> TArrayView<FQuat4f>;
+    auto edit_scales(int32 first_index, int32 count) -> TArrayView<FVector3f>;
+    auto mark_instance_range_dirty(int32 first_index, int32 count) -> void;
+    auto mark_all_instances_dirty() -> void;
 
-    void commit_instance_updates();
-    FSandboxISMCUpdateMetrics get_update_metrics() const;
+    auto commit_instance_updates() -> void;
+    auto get_update_metrics() const -> FSandboxISMCUpdateMetrics;
 
-    virtual FPrimitiveSceneProxy* CreateSceneProxy() override;
-    virtual int32 GetNumMaterials() const override;
-    virtual UMaterialInterface* GetMaterial(int32 element_index) const override;
-    virtual FBoxSphereBounds CalcBounds(FTransform const& local_to_world) const override;
-    virtual void SendRenderDynamicData_Concurrent() override;
+    virtual auto CreateSceneProxy() -> FPrimitiveSceneProxy* override;
+    virtual auto GetNumMaterials() const -> int32 override;
+    virtual auto GetMaterial(int32 element_index) const -> UMaterialInterface* override;
+    virtual auto CalcBounds(FTransform const& local_to_world) const -> FBoxSphereBounds override;
+    virtual auto SendRenderDynamicData_Concurrent() -> void override;
   private:
-    FBox3f calculate_instance_bounds(int32 instance_index) const;
-    void rebuild_bounds_tree();
-    void update_bounds_tree(TConstArrayView<FSandboxISMCDirtyRange> dirty_ranges);
-    void update_local_bounds_from_tree();
+    auto calculate_instance_bounds(int32 instance_index) const -> FBox3f;
+    auto rebuild_bounds_tree() -> void;
+    auto update_bounds_tree(TConstArrayView<FSandboxISMCDirtyRange> dirty_ranges) -> void;
+    auto update_local_bounds_from_tree() -> void;
 
     UPROPERTY(EditAnywhere, Category = "Mesh")
     TObjectPtr<UStaticMesh> static_mesh_;
