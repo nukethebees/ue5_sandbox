@@ -47,7 +47,9 @@ class SBXMESHGENLAB_API USbxMeshAssemblySessionState final : public UObject {
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSbxMeshSessionChanged, bool);
 
 UCLASS(Transient)
-class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidgetEdMode {
+class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
+    : public UBaseLegacyWidgetEdMode
+    , public ILegacyEdModeSelectInterface {
     GENERATED_BODY()
   public:
     static FEditorModeID const mode_id;
@@ -72,6 +74,11 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     auto HandleClick(FEditorViewportClient* viewport_client,
                      HHitProxy* hit_proxy,
                      FViewportClick const& click) -> bool override;
+    auto BoxSelect(FBox& box, bool select = true) -> bool override;
+    auto FrustumSelect(FConvexVolume const& frustum,
+                       FEditorViewportClient* viewport_client,
+                       bool select = true) -> bool override;
+    void SelectNone() override;
     auto IsSelectionAllowed(AActor* actor, bool selecting) const -> bool override;
     void ActorSelectionChangeNotify() override;
 
@@ -130,6 +137,8 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     void notify_session_changed(bool refresh_controls = true);
     [[nodiscard]] auto find_preview_part(UInstancedStaticMeshComponent const* component,
                                          int32 instance_index) const -> int32;
+    [[nodiscard]] auto get_preview_part_bounds(int32 part_index) const -> FBox;
+    void apply_marquee_selection(TArray<int32> const& matching_part_indices, bool select);
     [[nodiscard]] auto make_part_world_transform(FSbxMeshAssemblyPart const& part) const
         -> FTransform;
 

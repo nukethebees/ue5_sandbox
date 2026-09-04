@@ -34,8 +34,9 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                           .Text(
                               LOCTEXT("Instructions",
                                       "Select parts here or Ctrl/Shift-click them in the viewport. "
-                                      "Select a group to transform all its descendants. Use W/E/R "
-                                      "for transforms; properties edit the primary selection."))
+                                      "Ctrl+Alt+left-drag box-selects parts. Select a group to "
+                                      "transform all its descendants. Use W/E/R for transforms; "
+                                      "properties edit the primary selection."))
                           .AutoWrapText(true)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +

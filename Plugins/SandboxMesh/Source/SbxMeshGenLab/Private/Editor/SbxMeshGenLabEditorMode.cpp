@@ -11,12 +11,14 @@
 #include "Editor.h"
 #include "EditorViewportClient.h"
 #include "Engine/Selection.h"
+#include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
 #include "GameFramework/Actor.h"
 #include "HitProxies.h"
 #include "LevelEditorViewport.h"
 #include "ScopedTransaction.h"
+#include "Settings/LevelEditorViewportSettings.h"
 #include "Styling/AppStyle.h"
 
 #define LOCTEXT_NAMESPACE "USbxMeshGenLabEditorMode"
@@ -242,6 +244,58 @@ auto USbxMeshGenLabEditorMode::HandleClick(FEditorViewportClient* const viewport
     }
 
     return Super::HandleClick(viewport_client, hit_proxy, click);
+}
+
+auto USbxMeshGenLabEditorMode::BoxSelect(FBox& box, bool const select) -> bool {
+    TArray<int32> matching_part_indices;
+    auto const strict_selection{GetDefault<ULevelEditorViewportSettings>()->bStrictBoxSelection};
+    auto const part_count{parts_.Num()};
+    for (int32 part_index{}; part_index < part_count; ++part_index) {
+        auto const bounds{get_preview_part_bounds(part_index)};
+        if (!bounds.IsValid) {
+            continue;
+        }
+        auto const matches{strict_selection ? box.IsInsideOrOn(bounds) : box.Intersect(bounds)};
+        if (matches) {
+            matching_part_indices.Add(part_index);
+        }
+    }
+    apply_marquee_selection(matching_part_indices, select);
+    return true;
+}
+
+auto USbxMeshGenLabEditorMode::FrustumSelect(FConvexVolume const& frustum,
+                                             FEditorViewportClient*,
+                                             bool const select) -> bool {
+    TArray<int32> matching_part_indices;
+    auto const strict_selection{GetDefault<ULevelEditorViewportSettings>()->bStrictBoxSelection};
+    auto const part_count{parts_.Num()};
+    for (int32 part_index{}; part_index < part_count; ++part_index) {
+        auto const bounds{get_preview_part_bounds(part_index)};
+        if (!bounds.IsValid) {
+            continue;
+        }
+        bool fully_contained{};
+        auto const intersects{
+            frustum.IntersectBox(bounds.GetCenter(), bounds.GetExtent(), fully_contained)};
+        if (intersects && (!strict_selection || fully_contained)) {
+            matching_part_indices.Add(part_index);
+        }
+    }
+    apply_marquee_selection(matching_part_indices, select);
+    return true;
+}
+
+void USbxMeshGenLabEditorMode::SelectNone() {
+    if (selected_part_indices_.IsEmpty() && selected_group_index_ == INDEX_NONE) {
+        return;
+    }
+    selected_part_indices_.Reset();
+    selected_part_index_ = INDEX_NONE;
+    selected_group_index_ = INDEX_NONE;
+    select_preview_instances();
+    status_ = LOCTEXT("SelectionCleared", "Cleared the mesh assembly selection.");
+    notify_session_changed();
 }
 
 auto USbxMeshGenLabEditorMode::IsSelectionAllowed(AActor* const actor, bool const selecting) const
@@ -1418,6 +1472,48 @@ auto USbxMeshGenLabEditorMode::find_preview_part(
     auto const part_id{preview_buckets_[bucket_index].instance_part_ids[instance_index]};
     auto const* const part_index{part_index_by_id_.Find(part_id)};
     return part_index == nullptr ? INDEX_NONE : *part_index;
+}
+
+auto USbxMeshGenLabEditorMode::get_preview_part_bounds(int32 const part_index) const -> FBox {
+    if (!parts_.IsValidIndex(part_index) || !part_ids_.IsValidIndex(part_index)) {
+        return FBox{ForceInit};
+    }
+    auto const* const location{preview_location_by_part_id_.Find(part_ids_[part_index])};
+    if (location == nullptr || !preview_buckets_.IsValidIndex(location->bucket_index)) {
+        return FBox{ForceInit};
+    }
+    auto const* const component{preview_buckets_[location->bucket_index].component.Get()};
+    UStaticMesh const* const static_mesh{component == nullptr ? nullptr
+                                                              : component->GetStaticMesh().Get()};
+    if (static_mesh == nullptr) {
+        return FBox{ForceInit};
+    }
+    return static_mesh->GetBounds()
+        .TransformBy(make_part_world_transform(parts_[part_index]))
+        .GetBox();
+}
+
+void USbxMeshGenLabEditorMode::apply_marquee_selection(TArray<int32> const& matching_part_indices,
+                                                       bool const select) {
+    auto selected_part_indices{selected_part_indices_};
+    if (select) {
+        for (int32 const part_index : matching_part_indices) {
+            selected_part_indices.AddUnique(part_index);
+        }
+    } else {
+        for (int32 const part_index : matching_part_indices) {
+            selected_part_indices.Remove(part_index);
+        }
+    }
+
+    if (selected_part_indices.IsEmpty()) {
+        SelectNone();
+        return;
+    }
+    auto const primary_part_index{select && !matching_part_indices.IsEmpty()
+                                      ? matching_part_indices.Last()
+                                      : selected_part_indices.Last()};
+    select_parts(selected_part_indices, primary_part_index);
 }
 
 auto USbxMeshGenLabEditorMode::make_part_world_transform(FSbxMeshAssemblyPart const& part) const
