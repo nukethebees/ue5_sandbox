@@ -5,7 +5,6 @@
 #include <SpaceGame/entities/TestTeamVisualData.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/logging/SandboxVisualLoggerStyle.h>
-#include <SpaceGame/support/mesh.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
@@ -44,18 +43,12 @@ ATestCapitalShipFighters::ATestCapitalShipFighters()
 
 void ATestCapitalShipFighters::set_actor_config(FFighterConfig const* const new_config) noexcept {
     actor_config = new_config;
-    if (bound_simulation && actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 void ATestCapitalShipFighters::bind_simulation(
     ml::test_capital_ship_fighters::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
     bound_simulation->fire_dot_product_threshold = fire_dot_product_threshold;
-    if (actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 auto ATestCapitalShipFighters::simulation() -> ml::test_capital_ship_fighters::Simulation& {
@@ -87,12 +80,6 @@ void ATestCapitalShipFighters::begin_play_presentation() {
     });
 
     configure_ismc();
-    auto& fighter_simulation{simulation()};
-    fighter_simulation.collision_radius = ml::get_mesh_sphere_bounds(*instances);
-    static FName const socket_name{TEXT("Gun")};
-    fighter_simulation.fire_point_distance = static_cast<float>(
-        instances->GetSocketTransform(socket_name, RTS_Component).GetLocation().Size());
-    fighter_simulation.fire_dot_product_threshold = fire_dot_product_threshold;
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();

@@ -1,6 +1,5 @@
 #pragma once
 
-#include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
@@ -11,7 +10,6 @@
 #include "TestCapitalShips.generated.h"
 
 class ADelayedNiagaraSpawner;
-class ATestCapitalShipProxy;
 class UInstancedStaticMeshComponent;
 
 UCLASS()
@@ -19,9 +17,6 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
     GENERATED_BODY()
     friend class ATestBatchOrchestrator;
   public:
-    using SpawnData = ml::test_capital_ships::SpawnData;
-    using Proxy = ATestCapitalShipProxy;
-
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};
 
@@ -40,10 +35,8 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
     void commit_visual_data();
     void end_tick_presentation();
 
-    void register_all_proxies_in_level();
-    void bind_proxy_entities(FProxyEntityMap const& proxy_entities);
     void configure_ismc();
-    void add_initial_visual_instances(SpawnData const& spawn_data);
+    void add_initial_visual_instances();
     void trigger_death_effects();
     void draw_debugging_shapes() const;
     void visual_log_state() const;

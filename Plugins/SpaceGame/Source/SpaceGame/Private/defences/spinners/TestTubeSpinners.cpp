@@ -1,15 +1,12 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinners.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/support/mesh.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
-#include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -30,16 +27,10 @@ ATestTubeSpinners::ATestTubeSpinners()
 
 void ATestTubeSpinners::set_actor_config(FTubeSpinnerConfig const* const new_config) noexcept {
     actor_config = new_config;
-    if (bound_simulation && actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 void ATestTubeSpinners::bind_simulation(ml::test_tube_spinners::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
-    if (actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 auto ATestTubeSpinners::simulation() -> ml::test_tube_spinners::Simulation& {
@@ -67,8 +58,10 @@ void ATestTubeSpinners::begin_play_presentation() {
     });
 
     configure_ismc();
-    simulation().entity_radius = ml::get_mesh_sphere_bounds(*instances);
-    register_all_proxies_in_level();
+    update_ismc_transforms();
+    if (!ismc_transforms.IsEmpty()) {
+        instances->AddInstances(ismc_transforms, false, is_world_space, false);
+    }
     validate_array_sizes();
 }
 
@@ -85,53 +78,6 @@ void ATestTubeSpinners::commit_visual_data() {
 void ATestTubeSpinners::end_tick_presentation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::end_tick_presentation);
     validate_array_sizes();
-}
-
-void ATestTubeSpinners::register_all_proxies_in_level() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::register_all_proxies_in_level);
-
-    auto* world{GetWorld()};
-
-    check(world);
-
-    TArray<Proxy*> proxies{};
-    ml::append_actors(*world, proxies);
-    auto const n_to_add{proxies.Num()};
-
-    FVectors3f new_locations;
-    TArray<float> new_yaws;
-    TArray<int32> new_fire_point_indices;
-
-    ml::add_uninitialised(n_to_add, new_locations, new_yaws, new_fire_point_indices);
-
-    for (int32 i{0}; i < n_to_add; ++i) {
-        auto* proxy{proxies[i]};
-        auto const& transform{proxy->GetActorTransform()};
-
-        ml::assign(new_locations, i, transform.GetLocation());
-        new_yaws[i] = transform.Rotator().Yaw;
-        new_fire_point_indices[i] = proxy->get_initial_active_fire_point();
-    }
-
-    auto& spinner_simulation{simulation()};
-    auto const existing_total{spinner_simulation.get_num_instances()};
-    spinner_simulation.spawn_instances(
-        new_locations.get_const_view(), new_yaws, new_fire_point_indices);
-
-    update_ismc_transforms();
-    if (n_to_add > 0) {
-        instances->AddInstances(
-            TArray<FTransform>{ismc_transforms.GetData() + existing_total, n_to_add},
-            false,
-            is_world_space,
-            false);
-    }
-    auto const& entities{spinner_simulation.entities};
-
-    auto const first_new_handle{entities.handles.Num() - n_to_add};
-    for (int32 i{0}; i < n_to_add; ++i) {
-        proxies[i]->set_entity_handle(entities.handles[first_new_handle + i]);
-    }
 }
 
 void ATestTubeSpinners::configure_ismc() {

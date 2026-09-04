@@ -3,14 +3,10 @@
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
-#include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/logging/SandboxVisualLoggerStyle.h>
-#include <SpaceGame/support/mesh.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
@@ -22,7 +18,6 @@
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
-#include <EngineUtils.h>
 #include <NiagaraSystem.h>
 #include <VisualLogger/VisualLogger.h>
 
@@ -39,16 +34,10 @@ ATestCapitalShips::ATestCapitalShips()
 
 void ATestCapitalShips::set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
     actor_config = new_config;
-    if (bound_simulation && actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 void ATestCapitalShips::bind_simulation(ml::test_capital_ships::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
-    if (actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 auto ATestCapitalShips::simulation() -> ml::test_capital_ships::Simulation& {
@@ -85,13 +74,8 @@ void ATestCapitalShips::begin_play_presentation() {
     debug_drawer.world = world;
 
     configure_ismc();
-    simulation().entity_radius = ml::get_mesh_sphere_bounds(*instances);
-
-    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-    ATestBatchOrchestrator::on_proxy_entities_bound.AddUObject(this,
-                                                               &ThisClass::bind_proxy_entities);
-
-    register_all_proxies_in_level();
+    add_initial_visual_instances();
+    validate_array_sizes();
 }
 
 void ATestCapitalShips::update_visual_data() {
@@ -120,70 +104,6 @@ void ATestCapitalShips::end_tick_presentation() {
     visual_log_state();
 }
 
-void ATestCapitalShips::register_all_proxies_in_level() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::register_all_proxies_in_level);
-
-    auto* const world{GetWorld()};
-    check(world);
-
-    auto const proxies{ml::get_actors<Proxy>(*world)};
-    auto const n_to_add{proxies.Num()};
-    auto const default_spawn_cooldown{actor_config->spawn_delay};
-
-    SpawnData spawn_data;
-    ml::add_uninitialised(n_to_add, spawn_data);
-    for (int32 i{0}; i < n_to_add; ++i) {
-        auto const& proxy_transform{proxies[i]->GetActorTransform()};
-        ml::assign(spawn_data.locations, i, proxy_transform.GetLocation());
-        ml::assign(spawn_data.rotations, i, proxy_transform.Rotator());
-        spawn_data.teams[i] = proxies[i]->get_team();
-        spawn_data.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
-        spawn_data.initial_spawn_delays[i] = proxies[i]->get_initial_spawn_delay().Get(0.f);
-        spawn_data.spawn_cooldowns[i] =
-            proxies[i]->get_spawn_cooldown().Get(default_spawn_cooldown);
-    }
-
-    simulation().register_ships(spawn_data);
-    add_initial_visual_instances(spawn_data);
-
-    for (int32 i{0}; i < n_to_add; ++i) {
-        proxies[i]->set_entity_handle(simulation().get_handle(i));
-    }
-}
-
-void ATestCapitalShips::bind_proxy_entities(FProxyEntityMap const& proxy_entities) {
-    ATestBatchOrchestrator::on_proxy_entities_bound.RemoveAll(this);
-
-    auto* const world{GetWorld()};
-    check(world);
-    auto const* const entity_registry{simulation().get_entity_registry()};
-    check(entity_registry);
-
-    for (TActorIterator<Proxy> it{world}; it; ++it) {
-        auto const& proxy{**it};
-        auto const* const identifiers{proxy_entities.Find(&proxy)};
-        check(identifiers);
-        check(entity_registry->is_valid_handle(identifiers->handle));
-
-        auto const* const target{proxy.get_target_ship().Get()};
-        if (!target) {
-            continue;
-        }
-
-        auto const target_handle{[&] {
-            if (auto const* const proxy_target{proxy_entities.Find(target)}) {
-                return proxy_target->handle;
-            }
-
-            auto const* const target_entity{Cast<ITestEntity>(target)};
-            check(target_entity);
-            return target_entity->get_entity_handle();
-        }()};
-
-        simulation().bind_proxy_target(identifiers->handle, target_handle);
-    }
-}
-
 void ATestCapitalShips::configure_ismc() {
     ml::batch::configure_ismc(*instances,
                               {
@@ -193,8 +113,9 @@ void ATestCapitalShips::configure_ismc() {
                               });
 }
 
-void ATestCapitalShips::add_initial_visual_instances(SpawnData const& spawn_data) {
-    auto const n_to_add{spawn_data.num()};
+void ATestCapitalShips::add_initial_visual_instances() {
+    auto const& entities{simulation().entities};
+    auto const n_to_add{entities.num()};
     if (n_to_add == 0) {
         return;
     }
@@ -205,13 +126,13 @@ void ATestCapitalShips::add_initial_visual_instances(SpawnData const& spawn_data
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[spawn_data.teams[i]]};
+        auto const& colour{colour_cache[entities.teams[i]]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
     }
 
-    auto const transforms{ml::make_transforms(spawn_data.locations, spawn_data.rotations)};
+    auto const transforms{ml::make_transforms(entities.locations, entities.rotations)};
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};
     instances->AddInstances(transforms, return_indices, is_world_space, update_navigation);

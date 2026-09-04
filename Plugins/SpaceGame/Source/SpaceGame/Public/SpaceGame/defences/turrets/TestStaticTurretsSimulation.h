@@ -67,6 +67,7 @@ struct SPACEGAME_API Simulation {
     void clear_tick_buffers();
 
     friend class PhaseInterface;
+    friend class ::ATestBatchOrchestrator;
     friend class ::ATestStaticTurrets;
 
     FTurretConfig const* config{nullptr};

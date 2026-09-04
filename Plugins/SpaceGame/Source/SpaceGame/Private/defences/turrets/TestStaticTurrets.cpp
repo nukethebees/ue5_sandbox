@@ -1,17 +1,14 @@
 #include "SpaceGame/defences/turrets/TestStaticTurrets.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/support/mesh.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
-#include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
@@ -36,17 +33,11 @@ ATestStaticTurrets::ATestStaticTurrets()
 
 void ATestStaticTurrets::set_actor_config(FTurretConfig const* const new_config) noexcept {
     actor_config = new_config;
-    if (bound_simulation && actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 void ATestStaticTurrets::bind_simulation(ml::test_static_turrets::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
     bound_simulation->search_slice_size = search_slice_size;
-    if (actor_config) {
-        bound_simulation->set_config(*actor_config);
-    }
 }
 
 auto ATestStaticTurrets::simulation() -> ml::test_static_turrets::Simulation& {
@@ -63,7 +54,7 @@ void ATestStaticTurrets::clear_runtime_state_presentation() {
     ismc_transforms.Reset();
 }
 
-void ATestStaticTurrets::begin_play_presentation() {
+void ATestStaticTurrets::begin_play_presentation(TArray<FTransform> initial_transforms) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("ATestStaticTurrets actor_config is nullptr."));
@@ -77,8 +68,9 @@ void ATestStaticTurrets::begin_play_presentation() {
     debug_drawer.world = GetWorld();
 
     configure_ismc();
-    simulation().entity_radius = ml::get_mesh_sphere_bounds(*instances);
-    register_all_proxies_in_level();
+    ismc_transforms = MoveTemp(initial_transforms);
+    add_initial_visual_instances();
+    validate_array_sizes();
 }
 
 void ATestStaticTurrets::update_visual_data() {
@@ -120,30 +112,12 @@ void ATestStaticTurrets::configure_ismc() {
                               });
 }
 
-void ATestStaticTurrets::register_all_proxies_in_level() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::register_all_proxies_in_level);
-    auto* const world{GetWorld()};
-    check(world);
-    auto const proxies{ml::get_actors<Proxy>(*world)};
-    auto const n_to_add{proxies.Num()};
+void ATestStaticTurrets::add_initial_visual_instances() {
+    auto const& entities{simulation().entities};
+    auto const n_to_add{entities.num()};
     if (n_to_add == 0) {
         return;
     }
-
-    ml::test_static_turrets::SpawnData spawn_data;
-    spawn_data.add_uninitialised(n_to_add);
-    ismc_transforms.SetNumUninitialized(n_to_add, EAllowShrinking::No);
-    for (int32 i{0}; i < n_to_add; ++i) {
-        auto const transform{proxies[i]->GetActorTransform()};
-        ismc_transforms[i] = transform;
-        ml::assign(spawn_data.locations, i, transform.GetLocation());
-        spawn_data.teams[i] = proxies[i]->get_team();
-        spawn_data.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
-        spawn_data.laser_damages[i] =
-            proxies[i]->get_laser_damage().Get(actor_config->laser.damage);
-    }
-    auto& turret_simulation{simulation()};
-    turret_simulation.register_turrets(spawn_data);
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
@@ -151,11 +125,10 @@ void ATestStaticTurrets::register_all_proxies_in_level() {
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[spawn_data.teams[i]]};
+        auto const& colour{colour_cache[entities.teams[i]]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
-        proxies[i]->set_entity_handle(turret_simulation.entities.handles[i]);
     }
 
     instances->AddInstances(ismc_transforms, false);

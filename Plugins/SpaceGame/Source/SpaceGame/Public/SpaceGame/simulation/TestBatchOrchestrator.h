@@ -183,6 +183,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void validate_proxy_handles();
     void bind_simulation_dependencies();
+    void initialise_batch_geometry();
+    void register_capital_ship_proxies();
+    auto register_turret_proxies() -> TArray<FTransform>;
+    void register_spinner_proxies();
+    void bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities);
+    void bind_and_destroy_proxies();
     void start_visual_logging();
     void stop_visual_logging();
     void refresh_collision_grid_visualization();

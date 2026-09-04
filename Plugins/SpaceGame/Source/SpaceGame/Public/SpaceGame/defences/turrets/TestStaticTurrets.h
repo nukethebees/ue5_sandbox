@@ -9,7 +9,6 @@
 
 #include "TestStaticTurrets.generated.h"
 
-class ATestStaticTurretsProxy;
 class UInstancedStaticMeshComponent;
 
 UCLASS()
@@ -17,8 +16,6 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     GENERATED_BODY()
     friend class ATestBatchOrchestrator;
   public:
-    using Proxy = ATestStaticTurretsProxy;
-
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};
 
@@ -29,12 +26,12 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     auto simulation() -> ml::test_static_turrets::Simulation&;
     auto simulation() const -> ml::test_static_turrets::Simulation const&;
     void clear_runtime_state_presentation();
-    void begin_play_presentation();
+    void begin_play_presentation(TArray<FTransform> initial_transforms);
     void update_visual_data();
     void commit_visual_data();
     void end_tick_presentation();
 
-    void register_all_proxies_in_level();
+    void add_initial_visual_instances();
     void configure_ismc();
     void trigger_death_effects();
     void draw_debugging_shapes() const;

@@ -16,6 +16,7 @@
 #include <optional>
 
 class ATestCapitalShips;
+class ATestBatchOrchestrator;
 struct FCapitalShipConfig;
 struct FTestEntityRegistry;
 
@@ -104,6 +105,7 @@ struct SPACEGAME_API Simulation {
     void clear_presentation_events();
 
     friend class PhaseInterface;
+    friend class ::ATestBatchOrchestrator;
     friend class ::ATestCapitalShips;
 
     FCapitalShipConfig const* config{nullptr};

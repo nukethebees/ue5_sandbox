@@ -59,53 +59,6 @@ void set_actor_config_on_all(UWorld& world, TConfig* const config) {
     }
 }
 
-template <typename TProxy>
-void add_proxy_handles(UWorld& world,
-                       FTestEntityRegistry const& entity_registry,
-                       FProxyEntityMap& proxy_entities) {
-    for (TActorIterator<TProxy> it{&world}; it; ++it) {
-        auto* const proxy{*it};
-        check(IsValid(proxy));
-
-        auto const* const entity{Cast<ITestEntity>(proxy)};
-        check(entity);
-
-        auto const handle{entity->get_entity_handle()};
-        check(entity_registry.is_valid_handle(handle));
-        auto const unique_id{entity_registry.find_unique_id(handle)};
-        check(entity_registry.is_valid_unique_id(unique_id));
-        check(!proxy_entities.Contains(proxy));
-        proxy_entities.Add(proxy,
-                           FRegistryEntityIdentifiers{
-                               .handle = handle,
-                               .unique_id = unique_id,
-                           });
-    }
-}
-
-template <typename TProxy>
-void destroy_proxy_actors(UWorld& world) {
-    for (TActorIterator<TProxy> it{&world}; it;) {
-        auto* const proxy{*it};
-        ++it;
-
-        check(IsValid(proxy));
-        check(proxy->Destroy());
-    }
-}
-
-template <typename... TProxies>
-void bind_and_destroy_proxy_actors(UWorld& world,
-                                   FTestEntityRegistry const& entity_registry,
-                                   FTestMissionManager& mission_manager) {
-    FProxyEntityMap proxy_entities;
-    (add_proxy_handles<TProxies>(world, entity_registry, proxy_entities), ...);
-
-    mission_manager.on_proxy_entities_bound(proxy_entities);
-    ATestBatchOrchestrator::on_proxy_entities_bound.Broadcast(proxy_entities);
-
-    (destroy_proxy_actors<TProxies>(world), ...);
-}
 }
 
 FOnProxyEntitiesBound ATestBatchOrchestrator::on_proxy_entities_bound;
@@ -304,6 +257,10 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
 #endif
 
     level_config = &config;
+    capital_ships_simulation.set_config(config.capital_ships);
+    capital_ship_fighters_simulation.set_config(config.fighters);
+    turrets_simulation.set_config(config.turrets);
+    spinners_simulation.set_config(config.tube_spinners);
     refresh_collision_grid_visualization();
     if (IsValid(player_ship)) {
         apply_actor_config(*player_ship, &config.player_ship);
@@ -433,12 +390,16 @@ void ATestBatchOrchestrator::begin_play() {
     if (player_ship_simulation.IsSet()) {
         player_ship_phase.begin_play();
     }
+    initialise_batch_geometry();
+    register_capital_ship_proxies();
     capital_ships->begin_play_presentation();
     capital_ships_phase.begin_play();
     capital_ship_fighters->begin_play_presentation();
     capital_ship_fighters_phase.begin_play();
-    turrets->begin_play_presentation();
+    auto turret_transforms{register_turret_proxies()};
+    turrets->begin_play_presentation(MoveTemp(turret_transforms));
     turrets_phase.begin_play();
+    register_spinner_proxies();
     spinners->begin_play_presentation();
     spinners_phase.begin_play();
     lasers->begin_play_presentation();
@@ -457,9 +418,7 @@ void ATestBatchOrchestrator::begin_play() {
 
     validate_proxy_handles();
 
-    bind_and_destroy_proxy_actors<ATestCapitalShipProxy,
-                                  ATestStaticTurretsProxy,
-                                  ATestTubeSpinnerProxy>(*world, entity_registry, mission_manager);
+    bind_and_destroy_proxies();
 
     query_manager.initialise_static_geometry(*world, level_config->collision_grid);
 

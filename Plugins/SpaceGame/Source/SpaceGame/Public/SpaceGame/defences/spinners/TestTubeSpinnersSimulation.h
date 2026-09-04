@@ -47,6 +47,7 @@ struct SPACEGAME_API Simulation {
     void fire_lasers();
 
     friend class PhaseInterface;
+    friend class ::ATestBatchOrchestrator;
     friend class ::ATestTubeSpinners;
 
     FTubeSpinnerConfig const* config{nullptr};

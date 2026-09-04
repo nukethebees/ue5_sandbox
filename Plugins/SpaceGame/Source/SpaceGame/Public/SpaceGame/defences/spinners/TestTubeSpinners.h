@@ -8,7 +8,6 @@
 
 #include "TestTubeSpinners.generated.h"
 
-class ATestTubeSpinnerProxy;
 class UInstancedStaticMeshComponent;
 
 UCLASS()
@@ -16,7 +15,6 @@ class ATestTubeSpinners : public AActor {
     GENERATED_BODY()
     friend class ATestBatchOrchestrator;
   public:
-    using Proxy = ATestTubeSpinnerProxy;
     static constexpr bool is_world_space{false};
 
     ATestTubeSpinners();
@@ -32,7 +30,6 @@ class ATestTubeSpinners : public AActor {
     void commit_visual_data();
     void end_tick_presentation();
 
-    void register_all_proxies_in_level();
     void configure_ismc();
     void update_ismc_transforms();
     void update_ismc();
