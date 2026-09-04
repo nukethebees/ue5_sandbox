@@ -27,9 +27,9 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
             writer.set_transform(index, positions[index], rotations[index], scales[index]);
         }
 
-        TestRunner->TestEqual(
-            TEXT("The writer exposes its source offset"), writer.first_index(), 1024);
-        TestRunner->TestEqual(TEXT("The writer exposes its range length"), writer.num(), 2);
+        auto const [offset, count]{writer.range()};
+        TestRunner->TestEqual(TEXT("The writer exposes its source offset"), offset, 1024);
+        TestRunner->TestEqual(TEXT("The writer exposes its range length"), count, 2);
         TestRunner->TestEqual(TEXT("Render rows remain 64 bytes"),
                               static_cast<int32>(sizeof(FSandboxISMCRenderInstance)),
                               64);

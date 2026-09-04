@@ -29,10 +29,10 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         component->set_instances(instance_count,
                                  ESandboxISMCParallelism::Sequential,
                                  [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                                     chunk_offsets.Add(chunk.first_index());
-                                     chunk_counts.Add(chunk.num());
-                                     auto const first_index{chunk.first_index()};
-                                     for (auto local_index = 0; local_index < chunk.num();
+                                     auto const [first_index, chunk_count]{chunk.range()};
+                                     chunk_offsets.Add(first_index);
+                                     chunk_counts.Add(chunk_count);
+                                     for (auto local_index = 0; local_index < chunk_count;
                                           ++local_index) {
                                          chunk.set_transform(local_index,
                                                              positions[first_index + local_index],
@@ -138,8 +138,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
         auto const submit{[&](USandboxISMCComponent& target, ESandboxISMCParallelism parallelism) {
             target.set_instances(
                 instance_count, parallelism, [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                    auto const first_index{chunk.first_index()};
-                    for (auto local_index = 0; local_index < chunk.num(); ++local_index) {
+                    auto const [first_index, chunk_count]{chunk.range()};
+                    for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                         auto const source_index{first_index + local_index};
                         chunk.set_transform(local_index,
                                             positions[source_index],
@@ -178,8 +178,8 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                 visited.SetNumZeroed(count);
                 component->set_instances(
                     count, policy, [&](FSandboxISMCInstanceChunkWriter& chunk) {
-                        auto const first_index{chunk.first_index()};
-                        for (auto local_index = 0; local_index < chunk.num(); ++local_index) {
+                        auto const [first_index, chunk_count]{chunk.range()};
+                        for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                             auto const source_index{first_index + local_index};
                             ++visited[source_index];
                             chunk.set_transform(local_index,

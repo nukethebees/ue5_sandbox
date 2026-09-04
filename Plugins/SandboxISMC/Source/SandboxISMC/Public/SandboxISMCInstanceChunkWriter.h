@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SandboxISMCInstanceRange.h"
 #include "SandboxISMCRenderInstance.h"
 
 #include "Containers/ArrayView.h"
@@ -23,6 +24,7 @@ class SANDBOXISMC_API FSandboxISMCInstanceChunkWriter final {
 
     auto first_index() const -> int32 { return first_index_; }
     auto num() const -> int32 { return instances_.Num(); }
+    auto range() const -> FSandboxISMCInstanceRange { return {first_index_, instances_.Num()}; }
 
     auto set_transform(int32 local_index, FVector3f position, FQuat4f rotation, FVector3f scale)
         -> void {

@@ -156,8 +156,7 @@ void ASandboxISMCLabActor::submit_instances() {
     auto const source{instance_data_.get_const_view()};
     instances_->set_instances(
         source.num(), ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
-            auto const chunk_count{chunk.num()};
-            auto const first_index{chunk.first_index()};
+            auto const [first_index, chunk_count]{chunk.range()};
             for (auto local_index = 0; local_index < chunk_count; ++local_index) {
                 auto const instance_index{first_index + local_index};
                 chunk.set_transform(local_index,
