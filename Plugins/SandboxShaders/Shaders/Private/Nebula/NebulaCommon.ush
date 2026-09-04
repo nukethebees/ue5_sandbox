@@ -1,0 +1,17 @@
+#ifndef SANDBOX_SHADERS_NEBULA_COMMON
+#define SANDBOX_SHADERS_NEBULA_COMMON
+
+#include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+
+float2 sbx_nebula_decode_flow(float2 const encoded_flow)
+{
+    return encoded_flow * 2.0 - 1.0;
+}
+
+float sbx_nebula_edge_fade(float2 const uv, float const softness)
+{
+    float2 const distance_to_edge = min(uv, 1.0 - uv);
+    return smoothstep(0.0, max(softness, 0.001), min(distance_to_edge.x, distance_to_edge.y));
+}
+
+#endif

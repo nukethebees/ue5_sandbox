@@ -1,0 +1,52 @@
+#ifndef SANDBOX_SHADERS_NEBULA_BACKDROP
+#define SANDBOX_SHADERS_NEBULA_BACKDROP
+
+#include "/Plugin/SandboxShaders/Private/Nebula/NebulaCommon.ush"
+
+float4 sbx_nebula_backdrop(float2 uv,
+                           float3 camera_position_local,
+                           Texture2D density_texture,
+                           SamplerState density_sampler,
+                           Texture2D flow_texture,
+                           SamplerState flow_sampler,
+                           float animation_time,
+                           float density,
+                           float brightness,
+                           float texture_scale,
+                           float2 texture_offset,
+                           float parallax_strength,
+                           float edge_softness,
+                           float drift_speed,
+                           float3 shadow_colour,
+                           float3 emission_colour)
+{
+    float const time = animation_time * drift_speed;
+    float2 const base_uv = uv * texture_scale + texture_offset;
+    float2 const flow = sbx_nebula_decode_flow(
+        flow_texture.Sample(flow_sampler, base_uv * 0.43 + time * float2(0.13, -0.09)).rg);
+    float2 const camera_parallax = camera_position_local.xy * parallax_strength * 0.01;
+
+    float cloud = 0.0;
+    [unroll]
+    for (int layer = 0; layer < 4; ++layer)
+    {
+        float const layer_depth = (float(layer) + 1.0) * 0.25;
+        float2 const layer_uv = base_uv * (1.0 + layer_depth * 0.37) +
+                                camera_parallax * layer_depth +
+                                flow * (0.035 + layer_depth * 0.025) +
+                                time * float2(0.21 - layer_depth * 0.08,
+                                              -0.12 + layer_depth * 0.06);
+        float const sample_value = density_texture.Sample(density_sampler, layer_uv).r;
+        cloud += sample_value * (0.42 - layer_depth * 0.055);
+    }
+
+    cloud = saturate((cloud - 0.34) * max(density, 0.0));
+    float const filaments = smoothstep(0.42, 0.86, cloud);
+    float const edge = sbx_nebula_edge_fade(uv, edge_softness);
+    float const alpha = saturate(cloud * edge * 0.68);
+    float3 const colour = lerp(shadow_colour, emission_colour, filaments) *
+                          (0.28 + filaments * brightness);
+    return float4(colour, alpha);
+}
+
+#endif

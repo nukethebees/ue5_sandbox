@@ -28,3 +28,5 @@ See the experiment-specific documentation:
 - [Construction / Spawn](Experiments/ConstructionSpawn/README.md)
 - [Energy Beam](Experiments/EnergyBeam/README.md)
 - [GPU Starfield](Experiments/GpuStarfield/README.md)
+- [Procedural Nebula Backdrop](Experiments/NebulaBackdrop/README.md)
+- [Bounded Nebula Volume](Experiments/NebulaVolume/README.md)
