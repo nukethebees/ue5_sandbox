@@ -238,7 +238,8 @@ void configure_mission(FLevelDefinition const& definition,
         mission.mode == ELevelMissionMode::KillEnemiesWithinTime) {
         manager.set_kill_target(mission.kill_count.IsSet() ? mission.kill_count.GetValue() : 0);
     }
-    manager.set_save_mission_results(false);
+    manager.set_level_name(definition.metadata.id.value);
+    manager.set_save_mission_results(true);
 
     auto const resolve_actor{[&spawned_entities](FLevelEntityId const id) -> AActor& {
         auto* const* const actor{spawned_entities.Find(id)};

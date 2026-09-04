@@ -35,6 +35,7 @@ class FLevelLoaderScenario final : public FSimulationTestScenario {
         int32 mission_heroes{0};
         int32 mission_survivors{0};
         int32 mission_required_kills{0};
+        FName mission_level_name{NAME_None};
         bool saves_mission_results{true};
         FVector3f blue_capital_position{FVector3f::ZeroVector};
         FVector3f red_capital_position{FVector3f::ZeroVector};

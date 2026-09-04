@@ -228,6 +228,7 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .mission_heroes = mission.get_hero_entity_handles().Num(),
         .mission_survivors = mission.get_entity_handles_that_must_survive().Num(),
         .mission_required_kills = mission.get_entity_handles_required_to_kill().Num(),
+        .mission_level_name = mission.get_level_name(),
         .saves_mission_results = mission.should_save_mission_results(),
     };
     auto const& entity_data{registry.get_entity_data()};
@@ -272,8 +273,10 @@ void FLevelLoaderScenario::check_runtime() {
     checks.are_equal(1, sample.mission_survivors, TEXT("Loader resolves the protected entity"));
     checks.are_equal(
         1, sample.mission_required_kills, TEXT("Loader resolves the required kill entity"));
-    checks.is_true(!sample.saves_mission_results,
-                   TEXT("Authored missions do not save under the runtime map name"));
+    checks.is_true(sample.saves_mission_results,
+                   TEXT("Authored missions save against their authored level id"));
+    checks.is_true(sample.mission_level_name == FName{TEXT("border-skirmish")},
+                   TEXT("Mission results use the authored level id"));
     checks.dist_zero(FVector3f{-40000.f, 0.f, 0.f},
                      sample.blue_capital_position,
                      0.01f,
