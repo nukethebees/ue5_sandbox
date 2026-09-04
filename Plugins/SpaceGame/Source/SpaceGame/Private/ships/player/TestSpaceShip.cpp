@@ -284,6 +284,9 @@ auto ATestSpaceShip::get_target_speed() const -> float {
 auto ATestSpaceShip::get_speed() const -> float {
     return get_velocity().Size();
 }
+void ATestSpaceShip::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode) noexcept {
+    flight_mode = new_flight_mode;
+}
 
 // Movement - turning
 void ATestSpaceShip::set_move_input(FVector2D const input) {

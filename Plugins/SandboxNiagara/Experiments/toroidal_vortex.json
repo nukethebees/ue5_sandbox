@@ -1,0 +1,42 @@
+{
+  "schema_version": 3,
+  "id": "toroidal_vortex",
+  "display_name": "Toroidal Vortex",
+  "default_asset_name": "NS_SandboxNiagaraToroidalVortex",
+  "configuration": {
+    "emission_mode": "continuous",
+    "spawn_rate": 2600.0,
+    "local_space": true,
+    "particle_lifetime": 30.0,
+    "sprite_size": 7.0,
+    "spawn_shape": "ring",
+    "spawn_radius": 300.0,
+    "spawn_inner_radius": 240.0,
+    "fixed_bounds_extent": 380.0,
+    "particle_color": [0.15, 1.0, 0.55, 1.0],
+    "velocity_expression_file": "Hlsl/toroidal_vortex.hlsl",
+    "parameters": [
+      {
+        "name": "User.MajorRadius",
+        "display_name": "Major Radius",
+        "default": 270.0,
+        "minimum": 1.0,
+        "maximum": 1000.0
+      },
+      {
+        "name": "User.PoloidalSpeed",
+        "display_name": "Poloidal Speed",
+        "default": 2.0,
+        "minimum": -10.0,
+        "maximum": 10.0
+      },
+      {
+        "name": "User.ToroidalSpeed",
+        "display_name": "Toroidal Speed",
+        "default": 120.0,
+        "minimum": -1000.0,
+        "maximum": 1000.0
+      }
+    ]
+  }
+}

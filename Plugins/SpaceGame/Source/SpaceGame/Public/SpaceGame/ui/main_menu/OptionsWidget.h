@@ -26,6 +26,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     [[nodiscard]] auto get_active_tab() const noexcept -> EOptionsTab { return active_tab_; }
 
     void focus_active_tab();
+    [[nodiscard]] auto get_focus_target() const -> UWidget*;
 
     FBackRequested back_requested;
   protected:

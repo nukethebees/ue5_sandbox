@@ -62,6 +62,10 @@ void USaveGameRowWidget::focus_row() {
     row_button->SetKeyboardFocus();
 }
 
+auto USaveGameRowWidget::get_focus_target() const -> UWidget* {
+    return row_button;
+}
+
 void USaveGameRowWidget::handle_clicked() {
     selected.Broadcast(profile_id_);
 }

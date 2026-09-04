@@ -1,0 +1,34 @@
+{
+  "schema_version": 3,
+  "id": "curl_field",
+  "display_name": "Analytic Curl Field",
+  "default_asset_name": "NS_SandboxNiagaraCurlField",
+  "configuration": {
+    "emission_mode": "continuous",
+    "spawn_rate": 2500.0,
+    "local_space": true,
+    "particle_lifetime": 18.0,
+    "sprite_size": 8.0,
+    "spawn_shape": "sphere",
+    "spawn_radius": 300.0,
+    "fixed_bounds_extent": 1200.0,
+    "particle_color": [0.05, 0.8, 1.0, 1.0],
+    "velocity_expression_file": "Hlsl/curl_field.hlsl",
+    "parameters": [
+      {
+        "name": "User.Frequency",
+        "display_name": "Field Frequency",
+        "default": 0.01,
+        "minimum": 0.0001,
+        "maximum": 0.1
+      },
+      {
+        "name": "User.Strength",
+        "display_name": "Field Strength",
+        "default": 180.0,
+        "minimum": 0.0,
+        "maximum": 1000.0
+      }
+    ]
+  }
+}

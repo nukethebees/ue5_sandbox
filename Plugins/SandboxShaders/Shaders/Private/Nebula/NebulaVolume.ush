@@ -1,0 +1,120 @@
+#ifndef SANDBOX_SHADERS_NEBULA_VOLUME
+#define SANDBOX_SHADERS_NEBULA_VOLUME
+
+#include "/Plugin/SandboxShaders/Private/Nebula/NebulaCommon.ush"
+
+float2 sbx_nebula_ray_box(float3 const ray_origin, float3 const ray_direction)
+{
+    float3 const safe_direction = float3(ray_direction.x < 0.0 ? min(ray_direction.x, -0.00001)
+                                                               : max(ray_direction.x, 0.00001),
+                                        ray_direction.y < 0.0 ? min(ray_direction.y, -0.00001)
+                                                               : max(ray_direction.y, 0.00001),
+                                        ray_direction.z < 0.0 ? min(ray_direction.z, -0.00001)
+                                                               : max(ray_direction.z, 0.00001));
+    float3 const inverse_direction = 1.0 / safe_direction;
+    float3 const first = (-50.0 - ray_origin) * inverse_direction;
+    float3 const second = (50.0 - ray_origin) * inverse_direction;
+    float3 const near_values = min(first, second);
+    float3 const far_values = max(first, second);
+    return float2(max(max(near_values.x, near_values.y), near_values.z),
+                  min(min(far_values.x, far_values.y), far_values.z));
+}
+
+float3 sbx_nebula_seed_offset(float const seed)
+{
+    return float3(sbx_hash21(float2(seed, seed + 17.0)),
+                  sbx_hash21(float2(seed + 41.0, seed + 73.0)),
+                  sbx_hash21(float2(seed + 101.0, seed + 149.0))) *
+           127.0;
+}
+
+float4 sbx_nebula_volume(float2 screen_uv,
+                         float3 surface_position_local,
+                         float3 camera_position_local,
+                         float pixel_depth,
+                         float scene_depth,
+                         Texture3D density_volume,
+                         SamplerState density_volume_sampler,
+                         Texture2D flow_texture,
+                         SamplerState flow_sampler,
+                         float animation_time,
+                         float density,
+                         float extinction,
+                         float emissive_strength,
+                         float3 volume_extent,
+                         float feature_size,
+                         float seed,
+                         float flow_strength,
+                         float drift_speed,
+                         float step_count,
+                         float3 shadow_colour,
+                         float3 emission_colour)
+{
+    float3 const surface_delta = surface_position_local - camera_position_local;
+    float const surface_distance = max(length(surface_delta), 0.00001);
+    float3 const ray_direction = surface_delta / surface_distance;
+    float2 const intersection = sbx_nebula_ray_box(camera_position_local, ray_direction);
+    float ray_start = max(intersection.x, 0.0);
+    float ray_end = intersection.y;
+
+    if (scene_depth > 0.0 && pixel_depth > 0.00001)
+    {
+        float const opaque_distance_local = surface_distance * scene_depth / pixel_depth;
+        ray_end = min(ray_end, opaque_distance_local);
+    }
+    if (ray_end <= ray_start)
+    {
+        return 0.0;
+    }
+
+    int const requested_steps = clamp((int)round(step_count), 8, 96);
+    float const segment_length = ray_end - ray_start;
+    float const step_length = segment_length / float(requested_steps);
+    float travelled = ray_start + step_length * 0.5;
+    float4 accumulated = 0.0;
+    float const time = animation_time * drift_speed;
+    float3 const seed_offset = sbx_nebula_seed_offset(seed);
+    float2 const flow_uv = frac(seed_offset.xy) + time * float2(0.07, -0.05);
+    float2 const flow =
+        sbx_nebula_decode_flow(flow_texture.SampleLevel(flow_sampler, flow_uv, 0.0).rg);
+    float3 const drift_direction =
+        normalize(seed_offset / 127.0 * 2.0 - 1.0 + float3(0.001, 0.002, 0.003));
+    float3 const flow_offset = float3(flow.x, flow.y, (flow.x - flow.y) * 0.5) * 0.06;
+    float3 const density_motion =
+        (drift_direction * time * 0.025 + flow_offset) * flow_strength;
+    float3 const world_step = ray_direction * step_length * volume_extent * 0.01;
+    float const optical_step = length(world_step) / max(feature_size, 100.0);
+
+    [loop]
+    for (int step = 0; step < 96; ++step)
+    {
+        if (step >= requested_steps || accumulated.a >= 0.95 || travelled >= ray_end)
+        {
+            break;
+        }
+
+        float3 const position_local = camera_position_local + ray_direction * travelled;
+        float3 const position_normalized = position_local * 0.01;
+        float const boundary = smoothstep(0.5,
+                                          0.34,
+                                          max(abs(position_normalized.x),
+                                              max(abs(position_normalized.y),
+                                                  abs(position_normalized.z))));
+        float3 const volume_uv = frac(position_normalized + 0.5 + density_motion);
+        float const raw_density =
+            density_volume.SampleLevel(density_volume_sampler, volume_uv, 0.0).r;
+        float const sample_density = saturate((raw_density - 0.16) * density) * boundary;
+        float const sample_alpha = 1.0 - exp(-sample_density * extinction * optical_step * 1.5);
+        float const emission = smoothstep(0.28, 0.78, raw_density);
+        float3 const sample_colour = lerp(shadow_colour, emission_colour, emission) *
+                                     (0.32 + emission * emissive_strength);
+        float const contribution = (1.0 - accumulated.a) * sample_alpha;
+        accumulated.rgb += sample_colour * contribution;
+        accumulated.a += contribution;
+        travelled += step_length;
+    }
+
+    return accumulated;
+}
+
+#endif

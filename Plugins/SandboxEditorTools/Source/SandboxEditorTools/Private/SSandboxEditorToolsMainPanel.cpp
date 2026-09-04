@@ -7,77 +7,31 @@
 #include "LayoutSettings.h"
 #include "SandboxEditorToolsLogCategories.h"
 #include "SandboxEditorToolsSubsystem.h"
+#include "SandboxUI/slate/SlateSlots.h"
+#include "SandboxUI/widgets/SSectionPanel.h"
 
 #include "Engine/Engine.h"
 #include "Layout/Margin.h"
 #include "Selection.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SVectorInputBox.h"
-#include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
-void SSandboxEditorToolsSection::Construct(FArguments const& in_args) {
-    auto const border_image{FAppStyle::Get().GetBrush("WhiteBrush")};
-    auto const border_bg_colour{FLinearColor(0.1f, 0.1f, 0.1f)};
-    auto const border_padding{8.f};
+#define LOCTEXT_NAMESPACE "SandboxEditorToolsMainPanel"
 
-    // clang-format off
-    ChildSlot
-    [
-        SNew(SBorder)
-        .Padding(border_padding)
-        .BorderImage(border_image)
-        .BorderBackgroundColor(border_bg_colour)
-        .Content()
-        [
-            in_args._Content.Widget
-        ]
-    ];
-    // clang-format on
-}
-
-void SSandboxEditorToolsMainPanel::Construct(FArguments const& in_args) {
-    construct_children(in_args);
+void SSandboxEditorToolsMainPanel::Construct(FArguments const&) {
+    construct_children();
     update_cursor_name();
 }
-void SSandboxEditorToolsMainPanel::construct_children(FArguments const& in_args) {
-    FMargin const heading_padding{0.f, 4.f};
-
-    constexpr auto add_vlist_item{[]() -> SVerticalBox::FSlot::FSlotArguments {
-        auto const p{4.f};
-        FMargin const section_padding{0.f, p, 0.f, p};
-
-        // clang-format off
-        return MoveTemp(SVerticalBox::Slot()
-        .AutoHeight()
-        .HAlign(HAlign_Fill)
-        .VAlign(EVerticalAlignment::VAlign_Center)
-        .Padding(section_padding));
-        // clang-format on
-    }};
-
-    auto add_hlist_item{[&](float const fill_width = 1.f) -> SHorizontalBox::FSlot::FSlotArguments {
-        // clang-format off
-        return MoveTemp(SHorizontalBox::Slot() 
-        .FillWidth(fill_width)
-        .VAlign(VAlign_Fill)
-        .HAlign(EHorizontalAlignment::HAlign_Center));
-        // clang-format on
-    }};
-
-    auto add_heading{[&](TCHAR const* text) -> auto {
+void SSandboxEditorToolsMainPanel::construct_children() {
+    FMargin const section_padding{0.0f, 4.0f};
+    auto const section_border{FAppStyle::Get().GetBrush("WhiteBrush")};
+    FLinearColor const section_background{0.1f, 0.1f, 0.1f};
+    auto const make_centered_text{[](FText const& text) -> TSharedRef<SWidget> {
         // clang-format off
         return SNew(STextBlock)
-        .Text(FText::FromString(text))
-        .Justification(ETextJustify::Center);
-        // clang-format on
-    }};
-
-    auto add_button_text{[&](TCHAR const* text) -> auto {
-        // clang-format off
-        return SNew(STextBlock)
-        .Text(FText::FromString(text))
+        .Text(text)
         .Justification(ETextJustify::Center);
         // clang-format on
     }};
@@ -89,53 +43,49 @@ void SSandboxEditorToolsMainPanel::construct_children(FArguments const& in_args)
         // Cursor
         //------------------------------------------------------------------------------------------
         SNew(SVerticalBox)
-        +add_vlist_item()
+        +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
         [
-            SNew(SSandboxEditorToolsSection)
+            SNew(SSectionPanel)
+            .Title(LOCTEXT("CursorHeading", "Cursor"))
+            .TitleJustification(ETextJustify::Center)
+            .TitlePadding(section_padding)
+            .BorderImage(section_border)
+            .BorderBackgroundColor(section_background)
+            .Padding(8.0f)
             [
                 SNew(SVerticalBox)
-                +add_vlist_item()
-                [
-                    add_heading(TEXT("Cursor"))
-                ]
-                +add_vlist_item()
+                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SHorizontalBox)
-                    +SHorizontalBox::Slot() 
+                    +SandboxUI::Slate::hbox_fill_slot()
                     .VAlign(VAlign_Fill)
-                    .HAlign(EHorizontalAlignment::HAlign_Fill)
+                    .HAlign(HAlign_Fill)
                     [
                         SAssignNew(cursor_name, STextBlock)
-                        .Text(FText::FromString(TEXT("Cursor name: (no cursor)")))
+                        .Text(LOCTEXT("NoCursor", "Cursor name: (no cursor)"))
                         .Justification(ETextJustify::Left)
                     ]
                 ]
-                +add_vlist_item()
+                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SHorizontalBox)
-                    +add_hlist_item()
+                    +SandboxUI::Slate::hbox_fill_slot().HAlign(HAlign_Center)
                     [
                          SNew(SButton)
                         .OnClicked(this, &ThisClass::on_spawn_cursor_button_clicked)
-                        [
-                            add_button_text(TEXT("Spawn"))
-                        ]
+                        .Text(LOCTEXT("Spawn", "Spawn"))
                     ]
-                    +add_hlist_item()
+                    +SandboxUI::Slate::hbox_fill_slot().HAlign(HAlign_Center)
                     [
                         SNew(SButton)
                         .OnClicked(this, &ThisClass::on_destroy_cursor_button_clicked)
-                        [
-                            add_button_text(TEXT("Destroy"))
-                        ]
+                        .Text(LOCTEXT("Destroy", "Destroy"))
                     ]
-                    +add_hlist_item()
+                    +SandboxUI::Slate::hbox_fill_slot().HAlign(HAlign_Center)
                     [
                         SNew(SButton)
                         .OnClicked(this, &ThisClass::on_move_cursor_to_button_clicked)
-                        [
-                            add_button_text(TEXT("Move to actor"))
-                        ]
+                        .Text(LOCTEXT("MoveToActor", "Move to actor"))
                     ]
                 ]
             ]
@@ -143,59 +93,57 @@ void SSandboxEditorToolsMainPanel::construct_children(FArguments const& in_args)
         //------------------------------------------------------------------------------------------
         // Alignment
         //------------------------------------------------------------------------------------------
-        +add_vlist_item()
+        +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
         [
-            SNew(SSandboxEditorToolsSection)
+            SNew(SSectionPanel)
+            .Title(LOCTEXT("AlignmentHeading", "Alignment"))
+            .TitleJustification(ETextJustify::Center)
+            .TitlePadding(section_padding)
+            .BorderImage(section_border)
+            .BorderBackgroundColor(section_background)
+            .Padding(8.0f)
             [
                 SNew(SVerticalBox)
-                +add_vlist_item()
-                [
-                    add_heading(TEXT("Alignment"))
-                ]
-                +add_vlist_item()
+                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SButton)
                     .OnClicked(this, &ThisClass::on_look_at_cursor_button_clicked)
-                    [
-                        add_button_text(TEXT("Look at cursor"))
-                    ]
+                    .Text(LOCTEXT("LookAtCursor", "Look at cursor"))
                 ]
-                +add_vlist_item()
+                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SButton)
                     .OnClicked(this, &ThisClass::on_look_away_from_cursor_button_clicked)
-                    [
-                        add_button_text(TEXT("Look away from cursor"))
-                    ]
+                    .Text(LOCTEXT("LookAwayFromCursor", "Look away from cursor"))
                 ]
-                +add_vlist_item()
+                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SHorizontalBox)
-                    +add_hlist_item()
+                    +SandboxUI::Slate::hbox_fill_slot().HAlign(HAlign_Center)
                     [
                          SNew(SCheckBox)
                         .IsChecked(this, &ThisClass::get_align_roll_state)
                         .OnCheckStateChanged(this, &ThisClass::set_align_roll_state)
                         [
-                            add_button_text(TEXT("Roll"))
+                            make_centered_text(LOCTEXT("Roll", "Roll"))
                         ]
                     ]
-                    +add_hlist_item()
+                    +SandboxUI::Slate::hbox_fill_slot().HAlign(HAlign_Center)
                     [
                         SNew(SCheckBox)
                         .IsChecked(this, &ThisClass::get_align_pitch_state)
                         .OnCheckStateChanged(this, &ThisClass::set_align_pitch_state)
                         [
-                            add_button_text(TEXT("Pitch"))
+                            make_centered_text(LOCTEXT("Pitch", "Pitch"))
                         ]
                     ]
-                    +add_hlist_item()
+                    +SandboxUI::Slate::hbox_fill_slot().HAlign(HAlign_Center)
                     [
                         SNew(SCheckBox)
                         .IsChecked(this, &ThisClass::get_align_yaw_state)
                         .OnCheckStateChanged(this, &ThisClass::set_align_yaw_state)
                         [
-                            add_button_text(TEXT("Yaw"))
+                            make_centered_text(LOCTEXT("Yaw", "Yaw"))
                         ]
                     ]
                 ]
@@ -204,16 +152,18 @@ void SSandboxEditorToolsMainPanel::construct_children(FArguments const& in_args)
         //------------------------------------------------------------------------------------------
         // Layout
         //------------------------------------------------------------------------------------------
-        +add_vlist_item()
+        +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
         [
-            SNew(SSandboxEditorToolsSection)
+            SNew(SSectionPanel)
+            .Title(LOCTEXT("LayoutHeading", "Layout"))
+            .TitleJustification(ETextJustify::Center)
+            .TitlePadding(section_padding)
+            .BorderImage(section_border)
+            .BorderBackgroundColor(section_background)
+            .Padding(8.0f)
             [
                 SNew(SVerticalBox)
-                +add_vlist_item()
-                [
-                    add_heading(TEXT("Layout"))
-                ]
-                +add_vlist_item()
+                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SNumericVectorInputBox<double>)
                     .X_Lambda([&]() { return layout_offset.X; })
@@ -223,13 +173,11 @@ void SSandboxEditorToolsMainPanel::construct_children(FArguments const& in_args)
                     .OnYChanged_Lambda([&](double v){ layout_offset.Y = v; })
                     .OnZChanged_Lambda([&](double v){ layout_offset.Z = v; })
                 ]
-                +add_vlist_item()
+                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SButton)
                     .OnClicked(this, &ThisClass::on_align_cube_button_clicked)
-                    [
-                        add_button_text(TEXT("Align (Cube)"))
-                    ]
+                    .Text(LOCTEXT("AlignCube", "Align (Cube)"))
                 ]
             ]
         ]
@@ -333,7 +281,8 @@ void SSandboxEditorToolsMainPanel::set_cursor_name(FString const& name) {
         UE_LOG(LogSandboxEditorTools, Error, TEXT("cursor_name is nullptr. Cannot set name."));
         return;
     }
-    cursor_name->SetText(FText::FromString(FString::Printf(TEXT("Cursor name: %s"), *name)));
+    cursor_name->SetText(
+        FText::Format(LOCTEXT("CursorNameFormat", "Cursor name: {0}"), FText::FromString(name)));
 }
 void SSandboxEditorToolsMainPanel::update_cursor_name() {
     auto* ss{get_subsystem()};
@@ -344,3 +293,5 @@ void SSandboxEditorToolsMainPanel::update_cursor_name() {
 
     set_cursor_name(ss->get_cursor_name());
 }
+
+#undef LOCTEXT_NAMESPACE

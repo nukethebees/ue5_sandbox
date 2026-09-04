@@ -29,6 +29,7 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
 
     void set_browser(FSaveGameBrowser& browser);
     void focus_primary_action();
+    [[nodiscard]] auto get_focus_target() const -> UWidget*;
   protected:
     void NativeOnInitialized() override;
     void NativeConstruct() override;

@@ -1,0 +1,55 @@
+{
+  "schema_version": 3,
+  "id": "lorenz",
+  "display_name": "Lorenz Attractor",
+  "default_asset_name": "NS_SandboxNiagaraLorenz",
+  "configuration": {
+    "emission_mode": "continuous",
+    "spawn_rate": 1500.0,
+    "local_space": true,
+    "particle_lifetime": 30.0,
+    "sprite_size": 10.0,
+    "spawn_shape": "sphere",
+    "spawn_radius": 25.0,
+    "fixed_bounds_extent": 750.0,
+    "particle_color": [1.0, 0.2, 0.03, 1.0],
+    "velocity_expression_file": "Hlsl/lorenz.hlsl",
+    "parameters": [
+      {
+        "name": "User.Sigma",
+        "display_name": "Sigma",
+        "default": 10.0,
+        "minimum": 0.001,
+        "maximum": 100.0
+      },
+      {
+        "name": "User.Rho",
+        "display_name": "Rho",
+        "default": 28.0,
+        "minimum": 0.001,
+        "maximum": 100.0
+      },
+      {
+        "name": "User.Beta",
+        "display_name": "Beta",
+        "default": 2.6666667,
+        "minimum": 0.001,
+        "maximum": 20.0
+      },
+      {
+        "name": "User.Speed",
+        "display_name": "Speed",
+        "default": 1.0,
+        "minimum": 0.001,
+        "maximum": 10.0
+      },
+      {
+        "name": "User.Scale",
+        "display_name": "Scale",
+        "default": 10.0,
+        "minimum": 0.001,
+        "maximum": 100.0
+      }
+    ]
+  }
+}

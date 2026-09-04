@@ -131,6 +131,11 @@
       "name": "benchmark",
       "configurePreset": "benchmark",
       "targets": ["benchmarks"]
+    },
+    {
+      "name": "gpu-starfield-benchmark",
+      "configurePreset": "development",
+      "targets": ["editor"]
     }
   ],
   "testPresets": [
@@ -173,6 +178,36 @@
       "filter": {
         "include": {
           "label": "benchmark"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "gpu-starfield-benchmark-tests",
+      "configurePreset": "development",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "gpu-benchmark"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "gpu-starfield-matrix-tests",
+      "configurePreset": "development",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "gpu-starfield-matrix"
         }
       },
       "execution": {
@@ -303,6 +338,22 @@
         { "type": "configure", "name": "benchmark" },
         { "type": "build", "name": "benchmark" },
         { "type": "test", "name": "benchmark-tests" }
+      ]
+    },
+    {
+      "name": "gpu-starfield-benchmark",
+      "steps": [
+        { "type": "configure", "name": "development" },
+        { "type": "build", "name": "gpu-starfield-benchmark" },
+        { "type": "test", "name": "gpu-starfield-benchmark-tests" }
+      ]
+    },
+    {
+      "name": "gpu-starfield-matrix",
+      "steps": [
+        { "type": "configure", "name": "development" },
+        { "type": "build", "name": "gpu-starfield-benchmark" },
+        { "type": "test", "name": "gpu-starfield-matrix-tests" }
       ]
     },
     {

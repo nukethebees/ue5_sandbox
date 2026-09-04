@@ -19,6 +19,7 @@ enum class EMissionManagerScenario : uint8 {
     RequiredKillsTimeElapsed,
     AutomaticKillTarget,
     SuccessIsTerminal,
+    ExplicitCompletionIsLatched,
 };
 
 class FTestMissionManagerScenario final : public FSimulationTestScenario {
@@ -59,5 +60,7 @@ class FTestMissionManagerScenario final : public FSimulationTestScenario {
 
     EScenario scenario;
     TimeSeriesData<FSimulationSample> samples;
+    bool first_completion_result_{false};
+    bool duplicate_completion_result_{true};
 };
 }

@@ -103,6 +103,9 @@ Content/Fab
 /Content/CQTestMapTemp
 /Content/SandboxReusableTestLevels
 
+# Disposable Niagara experiment output
+/Plugins/SandboxNiagara/Content/Generated/
+
 # Assets
 Content/Purchased
 Content/Purchased/Derived

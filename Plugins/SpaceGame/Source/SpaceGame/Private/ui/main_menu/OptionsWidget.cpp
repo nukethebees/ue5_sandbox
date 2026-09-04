@@ -36,14 +36,36 @@ void UOptionsWidget::NativeConstruct() {
 }
 
 void UOptionsWidget::focus_active_tab() {
-    if (!IsValid(video_button)) {
+    auto* const focus_target{get_focus_target()};
+    if (!IsValid(focus_target)) {
         UE_LOG(LogSandboxUI,
                Warning,
-               TEXT("UOptionsWidget::focus_active_tab: Video button is invalid."));
+               TEXT("UOptionsWidget::focus_active_tab: Active tab button is invalid."));
         return;
     }
 
-    video_button->SetKeyboardFocus();
+    focus_target->SetKeyboardFocus();
+}
+
+auto UOptionsWidget::get_focus_target() const -> UWidget* {
+    switch (active_tab_) {
+        case EOptionsTab::Video: {
+            return video_button;
+        }
+        case EOptionsTab::Gameplay: {
+            return gameplay_button;
+        }
+        case EOptionsTab::Audio: {
+            return audio_button;
+        }
+        case EOptionsTab::Controls: {
+            return controls_button;
+        }
+        case EOptionsTab::Accessibility: {
+            return accessibility_button;
+        }
+    }
+    return nullptr;
 }
 
 void UOptionsWidget::handle_video() {

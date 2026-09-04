@@ -41,6 +41,7 @@ enum class EOrchestratorStartMode : uint8 {
     Paused,
     PausedInTest,
     Automatic,
+    AuthoredLevel,
 };
 
 UENUM(BlueprintType)
@@ -139,6 +140,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 #endif
   private:
     void begin_play();
+    void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void validate_proxy_handles();
     void bind_simulation_dependencies();

@@ -1,22 +1,16 @@
 #include "Lessons/Lesson03/SLesson03.h"
 
+#include "SandboxUI/slate/SlateSlots.h"
+#include "SandboxUI/widgets/SLabeledRow.h"
+#include "SandboxUI/widgets/SValueSlider.h"
+
 #include "Materials/MaterialInstanceDynamic.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SCheckBox.h"
-#include "Widgets/Input/SSlider.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
-
-namespace ml::gpu_tutorials::lesson_03 {
-auto make_control(TCHAR const* const label, TSharedRef<SWidget> control) -> TSharedRef<SWidget> {
-    return SNew(SHorizontalBox) +
-           SHorizontalBox::Slot().FillWidth(0.35f).VAlign(
-               VAlign_Center)[SNew(STextBlock).Text(FText::FromString(label))] +
-           SHorizontalBox::Slot().FillWidth(0.65f).VAlign(VAlign_Center)[control];
-}
-}
 
 void SLesson03::Construct(FArguments const&) {
     FVector2D const lesson_preview_size{520.0f, 520.0f};
@@ -37,92 +31,77 @@ void SLesson03::Construct(FArguments const&) {
 
     auto const color_buttons{
         SNew(SHorizontalBox) +
-        SHorizontalBox::Slot().AutoWidth().Padding(
-            2.0f)[SNew(SButton).OnClicked(
+        SandboxUI::Slate::hbox_auto_slot(2.0f)[SNew(SButton).OnClicked(
             this, &ThisClass::set_color, FLinearColor{0.10f, 0.85f, 1.0f})
                       [SNew(STextBlock).Text(FText::FromString(TEXT("Cyan")))]] +
-        SHorizontalBox::Slot().AutoWidth().Padding(
-            2.0f)[SNew(SButton).OnClicked(
+        SandboxUI::Slate::hbox_auto_slot(2.0f)[SNew(SButton).OnClicked(
             this, &ThisClass::set_color, FLinearColor{1.0f, 0.55f, 0.08f})
                       [SNew(STextBlock).Text(FText::FromString(TEXT("Amber")))]] +
-        SHorizontalBox::Slot().AutoWidth().Padding(
-            2.0f)[SNew(SButton).OnClicked(
+        SandboxUI::Slate::hbox_auto_slot(2.0f)[SNew(SButton).OnClicked(
             this, &ThisClass::set_color, FLinearColor{0.95f, 0.16f, 0.80f})
                       [SNew(STextBlock).Text(FText::FromString(TEXT("Magenta")))]]};
 
     ChildSlot
         [SNew(SVerticalBox) +
-         SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
+         SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 12.0f})
              [SNew(STextBlock)
                   .Text(FText::FromString(TEXT("Lesson 03 — Parameters and Animation")))] +
-         SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 16.0f)
+         SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 16.0f})
              [SNew(STextBlock)
                   .AutoWrapText(true)
                   .Text(FText::FromString(
                       TEXT("The CPU changes a handful of material parameters. Slate keeps "
                            "submitting the same quad; no shape vertices are regenerated.")))] +
-         SVerticalBox::Slot().AutoHeight()
+         SandboxUI::Slate::vbox_auto_slot()
              [SNew(SHorizontalBox) +
-              SHorizontalBox::Slot().AutoWidth().Padding(
-                  4.0f)[SNew(SBox)
+              SandboxUI::Slate::hbox_auto_slot(4.0f)[SNew(SBox)
                             .WidthOverride(lesson_preview_size.X)
                             .HeightOverride(lesson_preview_size.Y)[preview]] +
-              SHorizontalBox::Slot().FillWidth(1.0f).Padding(20.0f, 4.0f)
+              SandboxUI::Slate::hbox_fill_slot(1.0f, FMargin{20.0f, 4.0f})
                   [SNew(SVerticalBox) +
-                   SVerticalBox::Slot().AutoHeight().Padding(
-                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
-                       TEXT("Animate"),
-                       SNew(SCheckBox)
-                           .IsChecked_Lambda([this]() {
-                               return state_.animation_enabled ? ECheckBoxState::Checked
-                                                               : ECheckBoxState::Unchecked;
-                           })
-                           .OnCheckStateChanged(this, &ThisClass::on_animation_enabled_changed))] +
-                   SVerticalBox::Slot().AutoHeight().Padding(
-                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
-                       TEXT("Ring thickness"),
-                       SNew(SHorizontalBox) +
-                           SHorizontalBox::Slot().FillWidth(1.0f)
-                               [SNew(SSlider)
-                                    .Value_Lambda(
-                                        [this]() { return state_.ring_thickness_slider_value(); })
-                                    .OnValueChanged(this, &ThisClass::on_ring_thickness_changed)] +
-                           SHorizontalBox::Slot().AutoWidth().Padding(
-                               8.0f, 0.0f)[SNew(STextBlock).Text_Lambda([this]() {
-                               return FText::FromString(
-                                   FString::Printf(TEXT("%.3f"), state_.ring_thickness));
-                           })])] +
-                   SVerticalBox::Slot().AutoHeight().Padding(
-                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
-                       TEXT("Animation speed"),
-                       SNew(SHorizontalBox) +
-                           SHorizontalBox::Slot().FillWidth(1.0f)
-                               [SNew(SSlider)
-                                    .Value_Lambda(
-                                        [this]() { return state_.animation_speed_slider_value(); })
-                                    .OnValueChanged(this, &ThisClass::on_animation_speed_changed)] +
-                           SHorizontalBox::Slot().AutoWidth().Padding(
-                               8.0f, 0.0f)[SNew(STextBlock).Text_Lambda([this]() {
-                               return FText::FromString(
-                                   FString::Printf(TEXT("%.2f"), state_.animation_speed));
-                           })])] +
-                   SVerticalBox::Slot().AutoHeight().Padding(
-                       0.0f, 5.0f)[ml::gpu_tutorials::lesson_03::make_control(
-                       TEXT("Pulse amount"),
-                       SNew(SHorizontalBox) +
-                           SHorizontalBox::Slot().FillWidth(1.0f)
-                               [SNew(SSlider)
-                                    .Value_Lambda(
-                                        [this]() { return state_.pulse_amount_slider_value(); })
-                                    .OnValueChanged(this, &ThisClass::on_pulse_amount_changed)] +
-                           SHorizontalBox::Slot().AutoWidth().Padding(
-                               8.0f, 0.0f)[SNew(STextBlock).Text_Lambda([this]() {
-                               return FText::FromString(
-                                   FString::Printf(TEXT("%.3f"), state_.pulse_amount));
-                           })])] +
-                   SVerticalBox::Slot().AutoHeight().Padding(0.0f, 12.0f, 0.0f, 4.0f)
+                   SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 5.0f})[SNew(SLabeledRow)
+                                        .Label(FText::FromString(TEXT("Animate")))
+                                        .LabelFillWidth(0.35f)
+                                        .ContentFillWidth(0.65f)
+                                            [SNew(SCheckBox)
+                                                 .IsChecked_Lambda([this]() {
+                                                     return state_.animation_enabled
+                                                                ? ECheckBoxState::Checked
+                                                                : ECheckBoxState::Unchecked;
+                                                 })
+                                                 .OnCheckStateChanged(
+                                                     this,
+                                                     &ThisClass::on_animation_enabled_changed)]] +
+                   SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 5.0f})[SNew(SValueSlider)
+                                        .Label(FText::FromString(TEXT("Ring thickness")))
+                                        .Value_Lambda(
+                                            [this]() { return state_.ring_thickness_slider_value(); })
+                                        .ValueText_Lambda([this]() {
+                                            return FText::FromString(
+                                                FString::Printf(TEXT("%.3f"), state_.ring_thickness));
+                                        })
+                                        .OnValueChanged(this, &ThisClass::on_ring_thickness_changed)] +
+                   SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 5.0f})[SNew(SValueSlider)
+                                        .Label(FText::FromString(TEXT("Animation speed")))
+                                        .Value_Lambda(
+                                            [this]() { return state_.animation_speed_slider_value(); })
+                                        .ValueText_Lambda([this]() {
+                                            return FText::FromString(
+                                                FString::Printf(TEXT("%.2f"), state_.animation_speed));
+                                        })
+                                        .OnValueChanged(this, &ThisClass::on_animation_speed_changed)] +
+                   SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 5.0f})[SNew(SValueSlider)
+                                        .Label(FText::FromString(TEXT("Pulse amount")))
+                                        .Value_Lambda(
+                                            [this]() { return state_.pulse_amount_slider_value(); })
+                                        .ValueText_Lambda([this]() {
+                                            return FText::FromString(
+                                                FString::Printf(TEXT("%.3f"), state_.pulse_amount));
+                                        })
+                                        .OnValueChanged(this, &ThisClass::on_pulse_amount_changed)] +
+                   SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 12.0f, 0.0f, 4.0f})
                        [SNew(STextBlock).Text(FText::FromString(TEXT("Primary colour")))] +
-                   SVerticalBox::Slot().AutoHeight()[color_buttons]]]];
+                   SandboxUI::Slate::vbox_auto_slot()[color_buttons]]]];
 }
 
 void SLesson03::Tick(FGeometry const& allotted_geometry,

@@ -1,10 +1,10 @@
 #include "SpaceGame/missions/TestMissionManager.h"
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
@@ -136,6 +136,11 @@ void FTestMissionManager::set_kill_target(int32 const new_kill_target) {
 void FTestMissionManager::set_save_mission_results(bool const should_save) noexcept {
     check(mission_state == ETestMissionState::NotStarted);
     save_mission_results = should_save;
+}
+void FTestMissionManager::set_level_identity(FName const new_level_id, FString display_name) {
+    check(mission_state == ETestMissionState::NotStarted);
+    level_id = new_level_id;
+    level_display_name = MoveTemp(display_name);
 }
 
 void FTestMissionManager::add_hero_entity(AActor& actor) {
@@ -287,6 +292,16 @@ void FTestMissionManager::mission_tick() {
         }
     }
 }
+
+auto FTestMissionManager::complete_mission() -> bool {
+    if (mission_state != ETestMissionState::Running) {
+        return false;
+    }
+
+    set_mission_state(ETestMissionState::Succeeded);
+    return true;
+}
+
 auto FTestMissionManager::is_ready() const noexcept -> bool {
     return mission_state != ETestMissionState::NotStarted;
 }
@@ -327,7 +342,7 @@ void FTestMissionManager::set_mission_state(ETestMissionState const new_state,
 void FTestMissionManager::mission_tick_survive_seconds() {
     if (mission_elapsed_seconds >= target_time) {
         if (entities_required_to_kill_are_dead()) {
-            set_mission_state(ETestMissionState::Succeeded);
+            complete_mission();
         } else {
             set_mission_state(ETestMissionState::Failed, ETestMissionFailReason::TimeElapsed);
         }
@@ -337,14 +352,14 @@ void FTestMissionManager::mission_tick_kill_enemies() {
     update_mission_kills();
 
     if (mission_kills >= resolved_kill_target && entities_required_to_kill_are_dead()) {
-        set_mission_state(ETestMissionState::Succeeded);
+        complete_mission();
     }
 }
 void FTestMissionManager::mission_tick_kill_enemies_within_time() {
     update_mission_kills();
 
     if (mission_kills >= resolved_kill_target && entities_required_to_kill_are_dead()) {
-        set_mission_state(ETestMissionState::Succeeded);
+        complete_mission();
         return;
     }
 
@@ -431,20 +446,32 @@ auto FTestMissionManager::entities_required_to_kill_are_dead() const -> bool {
     return true;
 }
 
-void FTestMissionManager::handle_mission_ended(ETestMissionFailReason const fail_reason) {
+auto FTestMissionManager::handle_mission_ended(ETestMissionFailReason const fail_reason) -> bool {
     if (!save_mission_results) {
-        return;
+        return false;
     }
 
-    check(IsValid(world));
+    if (!IsValid(world)) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("FTestMissionManager::handle_mission_ended: World is invalid."));
+        return false;
+    }
     auto* const game_instance{world->GetGameInstance()};
-    auto* save_manager{game_instance->GetSubsystem<USpaceSaveSubsystem>()};
+    auto* const save_manager{
+        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
+    if (!IsValid(save_manager)) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("FTestMissionManager::handle_mission_ended: Save subsystem is invalid."));
+        return false;
+    }
 
-    auto const level_name{UGameplayStatics::GetCurrentLevelName(world)};
+    auto const result_level_id{resolve_level_id()};
 
     FScoreRecord const record{
         .date = FDateTime::Now(),
-        .level_name = *level_name,
+        .level_name = result_level_id,
         .mission_mode = mission_mode,
         .end_state = mission_state,
         .fail_reason = fail_reason,
@@ -454,15 +481,38 @@ void FTestMissionManager::handle_mission_ended(ETestMissionFailReason const fail
         .target_completion_time = target_time,
     };
 
-    save_manager->save_score_record(record);
+    return save_manager->save_score_record(record);
 }
 void FTestMissionManager::handle_mission_success() {
     UE_LOG(LogSandbox, Display, TEXT("Mission succeeded!"));
 
-    handle_mission_ended(ETestMissionFailReason::None);
+    auto const persisted{handle_mission_ended(ETestMissionFailReason::None)};
+    auto const result_level_id{resolve_level_id()};
+    on_mission_completed.Broadcast(FTestMissionCompletion{
+        .level_id = result_level_id,
+        .level_display_name = resolve_level_display_name(result_level_id),
+        .persisted = persisted,
+    });
 }
 void FTestMissionManager::handle_mission_failure(ETestMissionFailReason const fail_reason) {
     UE_LOG(LogSandbox, Display, TEXT("Fission mailed."));
 
     handle_mission_ended(fail_reason);
+}
+
+auto FTestMissionManager::resolve_level_id() const -> FName {
+    if (!level_id.IsNone()) {
+        return level_id;
+    }
+    return IsValid(world) ? FName{UGameplayStatics::GetCurrentLevelName(world)} : NAME_None;
+}
+
+auto FTestMissionManager::resolve_level_display_name(FName const resolved_level_id) const
+    -> FString {
+    if (!level_display_name.IsEmpty()) {
+        return level_display_name;
+    }
+    return resolved_level_id.IsNone()
+             ? FString{TEXT("Unknown Level")}
+             : FName::NameToDisplayString(resolved_level_id.ToString(), false);
 }

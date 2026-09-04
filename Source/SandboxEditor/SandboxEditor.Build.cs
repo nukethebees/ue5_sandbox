@@ -27,9 +27,11 @@ public class SandboxEditor : ModuleRules
             "AssetRegistry", // For scanning data assets
             "BlueprintEditorLibrary",
             "BlueprintGraph", // Required by UnrealEd
-            "EditorWidgets",
+            "CommonUI",
             "EditorSubsystem",
             "EditorStyle",
+            "EditorWidgets",
+            "EnhancedInput",
             "EngineSettings", // Engine configuration access
             "GraphEditor",
             "MaterialEditor",
@@ -37,7 +39,9 @@ public class SandboxEditor : ModuleRules
             "RenderCore", // Often needed for material nodes
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
+            "SbxShadersExperiments",
             "SpaceGame",
+            "SpaceGameS7",
             "Slate",
             "SlateCore",
             "InputCore", // For SNumericVectorInputBox 

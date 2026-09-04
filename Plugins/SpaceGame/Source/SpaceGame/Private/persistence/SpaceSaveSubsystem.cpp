@@ -45,6 +45,35 @@ FAutoConsoleCommandWithWorldAndArgs reset_test_profile_console_command{
 #endif
 }
 
+auto ml::ioj::summarize_level_progress(FName const level_name,
+                                       TConstArrayView<FScoreRecord> const records)
+    -> FLevelProgressSummary {
+    FLevelProgressSummary summary;
+    for (auto const& record : records) {
+        if (record.level_name != level_name) {
+            continue;
+        }
+
+        ++summary.attempt_count;
+        summary.best_kills = FMath::Max(summary.best_kills, record.kills);
+        summary.last_played_at = FMath::Max(summary.last_played_at, record.date);
+        if (record.end_state != ETestMissionState::Succeeded) {
+            continue;
+        }
+
+        ++summary.completion_count;
+        if (summary.best_completion_time_seconds < 0.0f ||
+            record.time_seconds < summary.best_completion_time_seconds) {
+            summary.best_completion_time_seconds = record.time_seconds;
+        }
+    }
+
+    summary.state = summary.completion_count > 0 ? ELevelProgressState::Completed
+                  : summary.attempt_count > 0    ? ELevelProgressState::Attempted
+                                                 : ELevelProgressState::NotAttempted;
+    return summary;
+}
+
 void USpaceSaveSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     UE_LOG(LogSandboxSubsystem, Display, TEXT("USpaceSaveSubsystem::Initialize."));
@@ -74,6 +103,11 @@ auto USpaceSaveSubsystem::get_active_profile_id() const -> FString const& {
     return profile_manager_.get_active_profile_id();
 }
 
+auto USpaceSaveSubsystem::get_level_progress(FName const level_name) const
+    -> ml::ioj::FLevelProgressSummary {
+    return ml::ioj::summarize_level_progress(level_name, profile_manager_.get_active_records());
+}
+
 bool USpaceSaveSubsystem::load_profile_records(FString const& profile_id,
                                                TArray<FScoreRecord>& records) const {
     return profile_manager_.load_profile_records(profile_id, records);
@@ -96,12 +130,14 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #endif
 }
 
-void USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) {
+auto USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) -> bool {
     if (!profile_manager_.append_score_record(record)) {
         UE_LOG(LogSandboxSubsystem,
                Error,
                TEXT("USpaceSaveSubsystem::save_score_record: Failed to save mission result."));
+        return false;
     }
+    return true;
 }
 
 void USpaceSaveSubsystem::log_save_data() const {

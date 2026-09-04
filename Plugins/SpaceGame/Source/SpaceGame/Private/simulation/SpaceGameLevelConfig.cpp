@@ -6,8 +6,8 @@
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 #include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/ships/player/TestSpaceShipController.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
 
 #include <Engine/StaticMeshActor.h>

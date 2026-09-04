@@ -1,0 +1,28 @@
+{
+  "schema_version": 3,
+  "id": "orbit",
+  "display_name": "Orbit",
+  "default_asset_name": "NS_SandboxNiagaraOrbit",
+  "configuration": {
+    "emission_mode": "continuous",
+    "spawn_rate": 2000.0,
+    "local_space": true,
+    "particle_lifetime": 20.0,
+    "sprite_size": 10.0,
+    "spawn_shape": "ring",
+    "spawn_radius": 250.0,
+    "spawn_inner_radius": 200.0,
+    "fixed_bounds_extent": 750.0,
+    "particle_color": [0.1, 0.55, 1.0, 1.0],
+    "velocity_expression_file": "Hlsl/orbit.hlsl",
+    "parameters": [
+      {
+        "name": "User.AngularSpeed",
+        "display_name": "Angular Speed",
+        "default": 0.35,
+        "minimum": -5.0,
+        "maximum": 5.0
+      }
+    ]
+  }
+}

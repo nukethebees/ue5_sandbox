@@ -225,6 +225,9 @@ void test_enums() {
     reflected_values[EReflectedFixture::Visible] = 42;
     check(reflected_values[EReflectedFixture::Visible] == 42);
 
+    auto const& const_radii{radii};
+    check(const_radii[EPlainFixture::First] == 100.0f);
+
     check(std::string_view{LexToString(EPlainFixture::First)} == "First");
     check(to_string_view(EPlainFixture::ReadableName) == "ReadableName");
     check(to_string(EPlainFixture::ReadableName) == "ReadableName");

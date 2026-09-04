@@ -1,7 +1,7 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/ships/player/TestSpaceShipController.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <EnhancedInputComponent.h>
@@ -11,7 +11,7 @@
 #include <InputActionValue.h>
 #include <InputMappingContext.h>
 
-auto FShipControlContext::initialise(ATestSpaceShipController& owner,
+auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
                                      UEnhancedInputComponent& input_component,
                                      IEnhancedInputSubsystemInterface& input_subsystem,
                                      FSpaceShipControllerInputs const& input) -> bool {

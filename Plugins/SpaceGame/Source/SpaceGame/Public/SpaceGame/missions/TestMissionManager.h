@@ -1,14 +1,14 @@
 #pragma once
 
+#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/missions/TestMissionFailReason.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGame/ships/common/ShipHealth.h>
-#include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -18,6 +18,14 @@
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 class UWorld;
+
+struct SPACEGAME_API FTestMissionCompletion {
+    FName level_id{NAME_None};
+    FString level_display_name{};
+    bool persisted{false};
+};
+
+DECLARE_MULTICAST_DELEGATE_OneParam(FOnTestMissionCompleted, FTestMissionCompletion const&);
 
 USTRUCT()
 struct FTestMissionStartupData {
@@ -44,12 +52,14 @@ struct SPACEGAME_API FTestMissionManager {
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
     void set_world(UWorld& new_world) noexcept;
     void mission_tick();
+    auto complete_mission() -> bool;
     void replace_startup_actor(AActor const* old_actor, AActor& new_actor);
 
     void set_mission_mode(ETestMissionMode new_mode);
     void set_target_time(float new_target_time);
     void set_kill_target(int32 new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
+    void set_level_identity(FName level_id, FString display_name);
     void add_hero_entity(AActor& actor);
     void add_entity_that_must_survive(AActor& actor);
     void add_entity_required_to_kill(AActor& actor);
@@ -73,6 +83,8 @@ struct SPACEGAME_API FTestMissionManager {
     auto get_mission_fail_reason() const noexcept -> ETestMissionFailReason {
         return mission_fail_reason;
     }
+    auto get_level_id() const noexcept -> FName { return level_id; }
+    auto get_level_display_name() const noexcept -> FString const& { return level_display_name; }
     auto should_save_mission_results() const noexcept -> bool { return save_mission_results; }
     auto get_hero_entity_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
         return hero_entity_handles;
@@ -113,6 +125,8 @@ struct SPACEGAME_API FTestMissionManager {
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     auto get_entity_registry() -> FTestEntityRegistry* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
+
+    FOnTestMissionCompleted on_mission_completed;
   private:
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);
@@ -128,9 +142,11 @@ struct SPACEGAME_API FTestMissionManager {
     void update_entity_health_required_to_kill();
     auto entities_required_to_kill_are_dead() const -> bool;
 
-    void handle_mission_ended(ETestMissionFailReason const fail_reason);
+    auto handle_mission_ended(ETestMissionFailReason fail_reason) -> bool;
     void handle_mission_success();
     void handle_mission_failure(ETestMissionFailReason fail_reason);
+    auto resolve_level_id() const -> FName;
+    auto resolve_level_display_name(FName resolved_level_id) const -> FString;
 
     FTestEntityRegistry* entity_registry{nullptr};
     UWorld* world{nullptr};
@@ -168,6 +184,9 @@ struct SPACEGAME_API FTestMissionManager {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool save_mission_results{true};
+
+    FName level_id{NAME_None};
+    FString level_display_name{};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     int32 mission_kills{0};

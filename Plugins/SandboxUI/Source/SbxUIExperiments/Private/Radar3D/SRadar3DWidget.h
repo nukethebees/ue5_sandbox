@@ -12,6 +12,9 @@
 class SImage;
 class SRadar3DWidget final : public SCompoundWidget {
   public:
+    static constexpr int32 radar_3d_output_texture_dimension{512};
+    static constexpr int32 initial_contact_count{5};
+
     SLATE_BEGIN_ARGS(SRadar3DWidget) {}
     SLATE_END_ARGS()
 

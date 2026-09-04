@@ -10,19 +10,6 @@ class STextBlock;
 
 class USandboxEditorToolsSubsystem;
 
-class SSandboxEditorToolsSection : public SCompoundWidget {
-  public:
-    using ThisClass = SSandboxEditorToolsSection;
-
-    // clang-format off
-    SLATE_BEGIN_ARGS(class SSandboxEditorToolsSection) {}
-        SLATE_DEFAULT_SLOT(FArguments, Content)
-    SLATE_END_ARGS()
-    // clang-format on
-
-    void Construct(FArguments const& args);
-};
-
 class SSandboxEditorToolsMainPanel : public SCompoundWidget {
   public:
     using ThisClass = SSandboxEditorToolsMainPanel;
@@ -32,7 +19,7 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
 
     void Construct(FArguments const& args);
   protected:
-    void construct_children(FArguments const& args);
+    void construct_children();
     auto get_subsystem() -> USandboxEditorToolsSubsystem*;
 
     auto on_move_cursor_to_button_clicked() -> FReply;

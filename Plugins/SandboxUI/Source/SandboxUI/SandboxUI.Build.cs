@@ -13,6 +13,7 @@ public class SandboxUI : ModuleRules
             "Core",
             "CoreUObject",
             "SandboxCore",
+            "Slate",
             "SlateCore",
         });
     }

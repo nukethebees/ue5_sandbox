@@ -11,6 +11,11 @@
 #include "SpaceGame/presentation/widgets/TeamEntityTableWidget.h"
 #include "SpaceGame/presentation/widgets/TopKillersWidget.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/ui/common/GameUiRootLayout.h"
+#include "SpaceGame/ui/common/MenuButtonWidget.h"
+#include "SpaceGame/ui/LevelCompletionWidget.h"
+#include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
+#include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 #include "SpaceGame/ui/PauseMenuWidget.h"
 
 #include <Misc/PackageName.h>
@@ -45,7 +50,12 @@ auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass
         UTopKillersWidget::StaticClass(),
         UDebugGraphWidget::StaticClass(),
         UValueWidget::StaticClass(),
+        ml::ioj::UGameUiRootLayout::StaticClass(),
+        ml::ioj::UMenuButtonWidget::StaticClass(),
+        ml::ioj::UMainMenuWidget::StaticClass(),
+        ml::ioj::ULevelSelectWidget::StaticClass(),
         ml::ioj::UPauseMenuWidget::StaticClass(),
+        ml::ioj::ULevelCompletionWidget::StaticClass(),
     };
     return classes;
 }

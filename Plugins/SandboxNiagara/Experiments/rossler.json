@@ -1,0 +1,55 @@
+{
+  "schema_version": 3,
+  "id": "rossler",
+  "display_name": "Rossler Attractor",
+  "default_asset_name": "NS_SandboxNiagaraRossler",
+  "configuration": {
+    "emission_mode": "continuous",
+    "spawn_rate": 1600.0,
+    "local_space": true,
+    "particle_lifetime": 40.0,
+    "sprite_size": 9.0,
+    "spawn_shape": "sphere",
+    "spawn_radius": 12.0,
+    "fixed_bounds_extent": 650.0,
+    "particle_color": [0.8, 0.12, 1.0, 1.0],
+    "velocity_expression_file": "Hlsl/rossler.hlsl",
+    "parameters": [
+      {
+        "name": "User.A",
+        "display_name": "A",
+        "default": 0.2,
+        "minimum": 0.001,
+        "maximum": 2.0
+      },
+      {
+        "name": "User.B",
+        "display_name": "B",
+        "default": 0.2,
+        "minimum": 0.001,
+        "maximum": 2.0
+      },
+      {
+        "name": "User.C",
+        "display_name": "C",
+        "default": 5.7,
+        "minimum": 0.001,
+        "maximum": 20.0
+      },
+      {
+        "name": "User.Speed",
+        "display_name": "Speed",
+        "default": 1.0,
+        "minimum": 0.001,
+        "maximum": 10.0
+      },
+      {
+        "name": "User.Scale",
+        "display_name": "Scale",
+        "default": 25.0,
+        "minimum": 0.001,
+        "maximum": 100.0
+      }
+    ]
+  }
+}

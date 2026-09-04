@@ -5,5 +5,4 @@
 enum class EPlayerControlContext : uint8 {
     None,
     Ship,
-    Menu,
 };

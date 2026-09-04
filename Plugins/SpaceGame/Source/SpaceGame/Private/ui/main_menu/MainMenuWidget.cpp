@@ -1,7 +1,7 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
+#include "SpaceGame/ui/common/MenuButtonWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 
@@ -15,9 +15,8 @@ void UMainMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     if (!IsValid(play_button) || !IsValid(save_games_button) || !IsValid(options_button) ||
-        !IsValid(quit_button) || !IsValid(level_select_widget) || !IsValid(save_games_page) ||
-        !IsValid(save_game_viewer) || !IsValid(save_games_back_button) ||
-        !IsValid(options_widget)) {
+        !IsValid(quit_button) || !IsValid(save_games_page) || !IsValid(save_game_viewer) ||
+        !IsValid(save_games_back_button) || !IsValid(options_widget)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UMainMenuWidget::NativeOnInitialized: One or more bound widgets are "
@@ -25,68 +24,77 @@ void UMainMenuWidget::NativeOnInitialized() {
         return;
     }
 
-    play_button->OnClicked.AddDynamic(this, &ThisClass::handle_play);
-    save_games_button->OnClicked.AddDynamic(this, &ThisClass::handle_save_games);
-    options_button->OnClicked.AddDynamic(this, &ThisClass::handle_options);
-    quit_button->OnClicked.AddDynamic(this, &ThisClass::handle_quit);
+    play_button->OnClicked().AddUObject(this, &ThisClass::handle_play);
+    save_games_button->OnClicked().AddUObject(this, &ThisClass::handle_save_games);
+    options_button->OnClicked().AddUObject(this, &ThisClass::handle_options);
+    quit_button->OnClicked().AddUObject(this, &ThisClass::handle_quit);
     save_games_back_button->OnClicked.AddDynamic(this, &ThisClass::return_from_save_games);
-    level_select_widget->back_requested.AddUObject(this, &ThisClass::return_from_level_select);
     options_widget->back_requested.AddUObject(this, &ThisClass::return_from_options);
+    main_focus_target_ = play_button;
 }
 
-void UMainMenuWidget::NativeConstruct() {
-    Super::NativeConstruct();
-    set_active_page(EMainMenuPage::Main);
-}
-
-void UMainMenuWidget::focus_primary_action() {
-    if (!IsValid(play_button)) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("UMainMenuWidget::focus_primary_action: Play button is invalid."));
-        return;
+auto UMainMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
+    switch (active_page_) {
+        case EMainMenuPage::Main: {
+            return IsValid(main_focus_target_) ? main_focus_target_.Get() : play_button;
+        }
+        case EMainMenuPage::SaveGames: {
+            return IsValid(save_game_viewer) ? save_game_viewer->get_focus_target() : nullptr;
+        }
+        case EMainMenuPage::Options: {
+            return IsValid(options_widget) ? options_widget->get_focus_target() : nullptr;
+        }
     }
+    return nullptr;
+}
 
-    play_button->SetKeyboardFocus();
+auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
+    switch (active_page_) {
+        case EMainMenuPage::SaveGames: {
+            return_from_save_games();
+            break;
+        }
+        case EMainMenuPage::Options: {
+            return_from_options();
+            break;
+        }
+        case EMainMenuPage::Main: {
+            break;
+        }
+    }
+    return true;
 }
 
 void UMainMenuWidget::handle_play() {
-    set_active_page(EMainMenuPage::LevelSelect);
-    level_select_widget->focus_back_button();
+    main_focus_target_ = play_button;
+    level_select_requested.Broadcast();
 }
 
 void UMainMenuWidget::handle_save_games() {
     set_active_page(EMainMenuPage::SaveGames);
-    save_game_viewer->focus_primary_action();
 }
 
 void UMainMenuWidget::handle_options() {
     set_active_page(EMainMenuPage::Options);
-    options_widget->focus_active_tab();
 }
 
 void UMainMenuWidget::handle_quit() {
     UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
 }
 
-void UMainMenuWidget::return_from_level_select() {
-    set_active_page(EMainMenuPage::Main);
-    play_button->SetKeyboardFocus();
-}
-
 void UMainMenuWidget::return_from_save_games() {
+    main_focus_target_ = save_games_button;
     set_active_page(EMainMenuPage::Main);
-    save_games_button->SetKeyboardFocus();
 }
 
 void UMainMenuWidget::return_from_options() {
+    main_focus_target_ = options_button;
     set_active_page(EMainMenuPage::Main);
-    options_button->SetKeyboardFocus();
 }
 
 void UMainMenuWidget::set_active_page(EMainMenuPage const page) {
-    if (!IsValid(page_switcher) || !IsValid(main_page) || !IsValid(level_select_widget) ||
-        !IsValid(save_games_page) || !IsValid(options_widget)) {
+    if (!IsValid(page_switcher) || !IsValid(main_page) || !IsValid(save_games_page) ||
+        !IsValid(options_widget)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UMainMenuWidget::set_active_page: One or more bound widgets are invalid."));
@@ -97,10 +105,6 @@ void UMainMenuWidget::set_active_page(EMainMenuPage const page) {
     switch (page) {
         case EMainMenuPage::Main: {
             active_widget = main_page;
-            break;
-        }
-        case EMainMenuPage::LevelSelect: {
-            active_widget = level_select_widget;
             break;
         }
         case EMainMenuPage::SaveGames: {
@@ -122,5 +126,6 @@ void UMainMenuWidget::set_active_page(EMainMenuPage const page) {
 
     active_page_ = page;
     page_switcher->SetActiveWidget(active_widget);
+    RequestRefreshFocus();
 }
 }

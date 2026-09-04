@@ -171,6 +171,24 @@ add_custom_target(generate-s7lab-assets
   VERBATIM
 )
 
+add_custom_target(generate-scripted-level-assets
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=GenerateScriptedLevelAssets
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+    -ddc=NoZenLocalFallback
+    -unattended
+    -nop4
+    -nosplash
+    -nullrhi
+    -nosound
+    -stdout
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Generating scripted-level runtime and menu assets"
+  USES_TERMINAL
+  VERBATIM
+)
+
 add_custom_target(generate-lualab-assets
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=GenerateLuaLabAssets
@@ -282,6 +300,38 @@ add_test(
 set_tests_properties(SandboxShaders.ShaderSmoke PROPERTIES
   LABELS all
   TIMEOUT 900
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
+  NAME SandboxShaders.GpuStarfieldBenchmark
+  COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
+    "--editor=${UE_EDITOR_CMD_EXE}"
+    "--project=${SANDBOX_UPROJECT}"
+    "--output=${CMAKE_CURRENT_SOURCE_DIR}/Saved/Benchmarks/GpuStarfield"
+)
+set_tests_properties(SandboxShaders.GpuStarfieldBenchmark PROPERTIES
+  LABELS gpu-benchmark
+  TIMEOUT 2400
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
+  NAME SandboxShaders.GpuStarfieldMatrix
+  COMMAND "${Python3_EXECUTABLE}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
+    "--editor=${UE_EDITOR_CMD_EXE}"
+    "--project=${SANDBOX_UPROJECT}"
+    "--output=${CMAKE_CURRENT_SOURCE_DIR}/Saved/Benchmarks/GpuStarfield"
+    "--counts=100000,1000000"
+    "--resolutions=1920x1080,3840x2160"
+    "--size-multipliers=1,4"
+    "--camera-modes=stationary"
+)
+set_tests_properties(SandboxShaders.GpuStarfieldMatrix PROPERTIES
+  LABELS gpu-starfield-matrix
+  TIMEOUT 3600
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
 

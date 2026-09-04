@@ -1,5 +1,8 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 
+#include "SpaceGame/levels/LevelLoader.h"
+#include "SpaceGame/system/GameSubsystem.h"
+
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
@@ -23,6 +26,7 @@
 #include <SandboxCoreEngine/uobject_utils.h>
 
 #include <CoreGlobals.h>
+#include <Engine/GameInstance.h>
 #include <Engine/LevelScriptActor.h>
 #include <EngineUtils.h>
 #include <GameFramework/GameModeBase.h>
@@ -127,7 +131,9 @@ void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
     state = EOrchestratorState::Uninitialised;
-    if (should_initialise_in_begin_play()) {
+    if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
+        load_authored_level();
+    } else if (should_initialise_in_begin_play()) {
         begin_play();
     } else {
         SetActorTickEnabled(false);
@@ -469,12 +475,76 @@ void ATestBatchOrchestrator::begin_play() {
             SetActorTickEnabled(true);
             break;
         }
+        case EOrchestratorStartMode::AuthoredLevel: {
+            state = EOrchestratorState::Running;
+            SetActorTickEnabled(true);
+            break;
+        }
     }
 
     if (state == EOrchestratorState::Running) {
         start_visual_logging();
     }
 }
+
+void ATestBatchOrchestrator::load_authored_level() {
+    auto* const world{GetWorld()};
+    auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
+    auto* const subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    if (!IsValid(subsystem)) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("ATestBatchOrchestrator::load_authored_level: Game subsystem is invalid"));
+        UGameplayStatics::OpenLevel(this, ml::ioj::UGameSubsystem::get_main_menu_level_name());
+        return;
+    }
+
+    auto pending{subsystem->take_pending_level()};
+    if (!pending.IsSet()) {
+        auto const error{TEXT("No pending authored level was provided to GameRuntime.")};
+        UE_LOG(LogSandbox, Error, TEXT("%s"), error);
+        subsystem->set_level_launch_error(error);
+        if (!subsystem->return_to_level_select()) {
+            UE_LOG(LogSandbox,
+                   Error,
+                   TEXT("ATestBatchOrchestrator::load_authored_level: Failed to return to level "
+                        "select."));
+        }
+        return;
+    }
+
+    ml::FLevelLoader loader{*this};
+    auto const result{loader.load(pending->definition)};
+    if (!result) {
+        TArray<FString> messages;
+        messages.Reserve(result.validation_errors.Num() + result.errors.Num());
+        for (auto const& error : result.validation_errors) {
+            messages.Add(error.message);
+        }
+        for (auto const& error : result.errors) {
+            messages.Add(error.message);
+        }
+        auto const message{FString::Printf(TEXT("Failed to load '%s':\n%s"),
+                                           *pending->source_path,
+                                           *FString::Join(messages, TEXT("\n")))};
+        UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
+        subsystem->set_level_launch_error(message);
+        if (!subsystem->return_to_level_select()) {
+            UE_LOG(LogSandbox,
+                   Error,
+                   TEXT("ATestBatchOrchestrator::load_authored_level: Failed to return to level "
+                        "select."));
+        }
+        return;
+    }
+
+    begin_play();
+    if (pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
+        pause_simulation();
+    }
+}
+
 auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept -> bool {
     return start_mode == EOrchestratorStartMode::Automatic ||
            (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting);

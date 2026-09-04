@@ -12,6 +12,7 @@
 #include "test_fighters_standby_transition_scenario.h"
 #include "test_hud_manager_scenario.h"
 #include "test_laser_lifecycle_scenario.h"
+#include "test_level_loader_scenario.h"
 #include "test_mission_manager_scenario.h"
 #include "test_player_ship_death_scenario.h"
 #include "test_player_ship_vs_capital_scenario.h"
@@ -92,6 +93,9 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
                            ml::FTestBatchOrchestratorSetupScenario,
                            ml::EOrchestratorSetupScenario::LevelTelemetry)
     SHARED_SIMULATION_TEST(Orchestrator_ResetForNewLevel, ml::FTestBatchOrchestratorResetScenario)
+    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesDefinition, ml::FLevelLoaderScenario)
+    SHARED_SIMULATION_TEST(LevelLoader_MaterialisesPlayerlessCameraDefinition,
+                           ml::FLevelLoaderCameraScenario)
 
     SHARED_SIMULATION_TEST(CapitalShipProxy_HealthOverridesConfig,
                            ml::FTestCapitalShipProxyScenario)
@@ -173,6 +177,9 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(Mission_SuccessIsTerminal,
                            ml::FTestMissionManagerScenario,
                            ml::EMissionManagerScenario::SuccessIsTerminal)
+    SHARED_SIMULATION_TEST(Mission_ExplicitCompletionIsLatched,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::ExplicitCompletionIsLatched)
 
     SHARED_SIMULATION_TEST(PlayerShip_LethalDamageDestroysPlayerShip,
                            ml::FTestPlayerShipDeathScenario)

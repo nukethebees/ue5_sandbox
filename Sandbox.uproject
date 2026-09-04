@@ -430,7 +430,15 @@
 			"Enabled": true
 		},
 		{
+			"Name": "CommonUI",
+			"Enabled": true
+		},
+		{
 			"Name": "Niagara",
+			"Enabled": true
+		},
+		{
+			"Name": "SandboxNiagara",
 			"Enabled": true
 		},
 		{
