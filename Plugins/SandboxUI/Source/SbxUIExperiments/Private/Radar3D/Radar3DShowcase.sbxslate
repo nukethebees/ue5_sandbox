@@ -1,0 +1,34 @@
+(widget-class URadar3DShowcase
+  (function RebuildWidget
+    (SExperimentPanel
+      :Title (loc "Radar3D" "Title" "RDG 3D Radar Experiment")
+      :Description (loc "Radar3D" "Description" "Synthetic CPU contacts are rendered by RDG into one offscreen texture and displayed by Slate.")
+      (slot Controls
+        (vbox
+          (auto :padding (0 0 0 10)
+            (SLabeledRow
+              :Label (loc "Radar3D" "ContactCount" "Contacts")
+              :ContentHAlign HAlign_Left
+              (SSpinBox<int32>
+                :MinValue 1
+                :MaxValue 256
+                :MinSliderValue 1
+                :MaxSliderValue 256
+                :Delta 1
+                :MinDesiredWidth 120.0f
+                :Value 5
+                :OnValueChanged (callback on_value_changed))))
+          (auto
+            (SExperimentBenchmark
+              :ButtonText (loc "Radar3D" "RunBenchmark" "Benchmark RDG contact scaling")
+              :ToolTipText (loc "Radar3D" "RunBenchmarkTooltip" "Runs a short 512x512 benchmark from 1 to 256 contacts.")
+              :OnClicked (uobject run_benchmark)
+              (slot Output
+                (assign benchmark_output_ SMultiLineEditableTextBox
+                  :IsReadOnly true
+                  :Text (loc "Radar3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
+      (slot Preview
+        (SBox
+          :WidthOverride 512.0f
+          :HeightOverride 512.0f
+          (existing radar_widget))))))

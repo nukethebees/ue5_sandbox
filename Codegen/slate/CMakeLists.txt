@@ -24,9 +24,11 @@ else()
   target_compile_options(sandbox-slatec PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
 endif()
 
-set(SLATE_CODEGEN_SAMPLE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/samples")
-set(SLATE_CODEGEN_SAMPLE_MANIFEST "${SLATE_CODEGEN_SAMPLE_DIR}/manifest.json")
-set(SLATE_CODEGEN_SAMPLE_INPUT "${SLATE_CODEGEN_SAMPLE_DIR}/Radar3DShowcase.sbxslate")
+set(SLATE_CODEGEN_RADAR_DIR
+  "${PROJECT_SOURCE_DIR}/Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D"
+)
+set(SLATE_CODEGEN_RADAR_MANIFEST "${SLATE_CODEGEN_RADAR_DIR}/manifest.json")
+set(SLATE_CODEGEN_RADAR_INPUT "${SLATE_CODEGEN_RADAR_DIR}/Radar3DShowcase.sbxslate")
 set(SLATE_CODEGEN_SMOKE_DIR
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke"
 )
@@ -34,12 +36,12 @@ set(SLATE_CODEGEN_SMOKE_MANIFEST "${SLATE_CODEGEN_SMOKE_DIR}/manifest.json")
 set(SLATE_CODEGEN_SMOKE_INPUT "${SLATE_CODEGEN_SMOKE_DIR}/SlateDslSmokeWidget.sbxslate")
 
 add_custom_target(generate-slate-code
-  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SAMPLE_MANIFEST}"
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_RADAR_MANIFEST}"
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}"
   DEPENDS
     sandbox-slatec
-    "${SLATE_CODEGEN_SAMPLE_MANIFEST}"
-    "${SLATE_CODEGEN_SAMPLE_INPUT}"
+    "${SLATE_CODEGEN_RADAR_MANIFEST}"
+    "${SLATE_CODEGEN_RADAR_INPUT}"
     "${SLATE_CODEGEN_SMOKE_MANIFEST}"
     "${SLATE_CODEGEN_SMOKE_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -49,12 +51,12 @@ add_custom_target(generate-slate-code
 )
 
 add_custom_target(check-generated-slate-code
-  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SAMPLE_MANIFEST}" --check
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_RADAR_MANIFEST}" --check
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}" --check
   DEPENDS
     sandbox-slatec
-    "${SLATE_CODEGEN_SAMPLE_MANIFEST}"
-    "${SLATE_CODEGEN_SAMPLE_INPUT}"
+    "${SLATE_CODEGEN_RADAR_MANIFEST}"
+    "${SLATE_CODEGEN_RADAR_INPUT}"
     "${SLATE_CODEGEN_SMOKE_MANIFEST}"
     "${SLATE_CODEGEN_SMOKE_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

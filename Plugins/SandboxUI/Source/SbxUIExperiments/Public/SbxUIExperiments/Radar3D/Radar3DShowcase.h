@@ -7,9 +7,15 @@
 
 class SMultiLineEditableTextBox;
 
+namespace SlateGenerated {
+struct URadar3DShowcaseBuilder;
+}
+
 UCLASS(Blueprintable)
 class SBXUIEXPERIMENTS_API URadar3DShowcase : public UEditorUtilityWidget {
     GENERATED_BODY()
+
+    friend struct SlateGenerated::URadar3DShowcaseBuilder;
   public:
     URadar3DShowcase();
   protected:

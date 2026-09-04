@@ -132,7 +132,7 @@ include(cmake/catch2.cmake)
 
 add_unreal_target(editor SandboxEditor)
 add_unreal_target(game Sandbox)
-add_dependencies(editor check-generated-code)
+add_dependencies(editor check-generated-code check-generated-slate-code)
 add_dependencies(game check-generated-code)
 
 add_custom_target(generate-lab-images

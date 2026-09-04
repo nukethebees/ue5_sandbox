@@ -1,8 +1,8 @@
 # Slate DSL vertical slice
 
 This directory contains a deliberately narrow experiment that generates ordinary Slate C++ from
-a static widget-tree description. It does not parse expressions, own state, or participate in the
-normal Unreal build freshness check.
+a static widget-tree description. It does not parse expressions or own state. The editor target
+checks that committed generated Slate headers are current before invoking UnrealBuildTool.
 
 ## Grammar
 
@@ -11,10 +11,12 @@ document     := widget_class+ EOF
 widget_class := "(" "widget-class" qualified_name function+ ")"
 function     := "(" "function" identifier child ")"
 widget       := "(" type_name widget_item* ")"
+assigned     := "(" "assign" identifier type_name widget_item* ")"
+existing     := "(" "existing" identifier ")"
 widget_item  := argument | named_slot | child
 argument     := keyword value
 named_slot   := "(" "slot" atom child ")"
-child        := widget | vbox
+child        := widget | assigned | existing | vbox
 vbox         := "(" "vbox" box_slot+ ")"
 box_slot     := "(" ("auto" | "fill") box_option* child ")"
 box_option   := ":weight" number
@@ -24,7 +26,8 @@ box_option   := ":weight" number
 margin       := number
               | "(" number number ")"
               | "(" number number number number ")"
-value        := number | boolean | quoted_text | atom | callable
+value        := number | boolean | quoted_text | localized_text | atom | callable
+localized_text := "(" "loc" quoted_text quoted_text quoted_text ")"
 callable     := "(" "callback" identifier ")"
               | "(" "method" identifier ")"
               | "(" "uobject" identifier ")"
@@ -33,9 +36,9 @@ qualified_name := identifier ("::" identifier)*
 ```
 
 `;` introduces a line comment. Atoms remain opaque, allowing types such as `SSpinBox<int32>` and
-constants such as `HAlign_Left`. Quoted text generates `FText::FromString(TEXT(...))`; it is only
-for this non-production sample. Calls, operators, member access, assignment, raw C++, localization,
-and existing widgets are intentionally unsupported.
+constants such as `HAlign_Left`. Quoted text generates `FText::FromString(TEXT(...))`. A `loc`
+form generates `NSLOCTEXT(context, key, text)`. Calls, operators, member access, and raw C++ remain
+intentionally unsupported.
 
 Slate DSL source uses two-space indentation to keep deeply nested trees compact. Generated C++
 continues to use the project's ordinary four-space indentation.
@@ -59,13 +62,16 @@ class URadar3DShowcase {
 ```
 
 The generated header is included by the handwritten implementation after the owner is complete. A
-`callback` value becomes a forwarding-reference function parameter and an `_Lambda` attribute. It
-may be consumed once. `method` binds the friend-held owner through the ordinary Slate attribute
-overload, while `uobject` selects the `_UObject` lifetime-aware overload. A generated function can
-then be called normally:
+`callback` value becomes a forwarding-reference function parameter and an `_Lambda` attribute.
+`existing` similarly forwards a widget supplied by handwritten code into the generated tree, while
+`assign` generates `SAssignNew` against a member of the friend-held owner. Forwarded parameters may
+each be consumed once. `method` binds the owner through the ordinary Slate attribute overload,
+while `uobject` selects the `_UObject` lifetime-aware overload. A generated function can then be
+called normally:
 
 ```cpp
-return SlateGenerated::URadar3DShowcaseBuilder{*this}.RebuildWidget(on_value_changed);
+return SlateGenerated::URadar3DShowcaseBuilder{*this}.RebuildWidget(
+    on_value_changed, radar_widget);
 ```
 
 ## Commands
@@ -85,9 +91,8 @@ Manifest input paths are relative to the manifest. Output defaults to a `generat
 the manifest, keeping its generated-file inventory isolated from the production schema generator.
 Output filenames are derived from the widget class declarations rather than listed in the manifest.
 
-## Pilot baseline
+## Pilot
 
-The production `Radar3DShowcase` remains unchanged. Its current `RebuildWidget` layout expression
-occupies 40 physical lines (lines 22 through 61) and contains an experiment panel with Controls and
-Preview slots, two auto-height control rows, a benchmark output assignment, and a local radar
-preview widget. The sample approximates only its static structure for generated-code review.
+`Radar3DShowcase.sbxslate` is a production pilot. Its handwritten `RebuildWidget` constructs the
+stateful radar widget and callback, then passes both into the generated builder. The static layout,
+localized text, benchmark output assignment, and owner callback binding are generated.

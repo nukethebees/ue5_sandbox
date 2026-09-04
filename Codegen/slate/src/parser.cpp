@@ -119,22 +119,51 @@ class Parser {
         if (!is_identifier(name.text)) {
             fail(name.span, "generated function name must be a C++ identifier");
         }
-        callback_names_.clear();
-        callbacks_.clear();
+        forwarded_parameter_names_.clear();
+        forwarded_parameters_.clear();
         auto root{parse_child()};
         expect(TokenKind::right_parenthesis, "expected ')' after generated function");
-        return SlateFunction{name.text, std::move(callbacks_), std::move(root), opening.span};
+        return SlateFunction{
+            name.text, std::move(forwarded_parameters_), std::move(root), opening.span};
     }
 
     auto parse_widget() -> Child {
         auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before widget")};
         auto const& type{expect_atom("expected widget type")};
+        validate_widget_type(type);
+        return parse_widget_body(opening.span, type.text, std::nullopt);
+    }
+
+    auto parse_assigned_widget() -> Child {
+        auto const& opening{
+            expect(TokenKind::left_parenthesis, "expected '(' before assigned widget")};
+        auto const& form{expect_atom("expected 'assign'")};
+        if (form.text != "assign") {
+            fail(form.span, "expected 'assign'");
+        }
+        auto const& member{expect_atom("expected assigned widget member")};
+        if (!is_identifier(member.text)) {
+            fail(member.span, "assigned widget member must be a C++ identifier");
+        }
+        auto const& type{expect_atom("expected assigned widget type")};
+        validate_widget_type(type);
+        return parse_widget_body(opening.span, type.text, member.text);
+    }
+
+    void validate_widget_type(Token const& type) const {
         if (type.text == "widget-class" || type.text == "function" || type.text == "vbox" ||
-            type.text == "slot" || type.text == "auto" || type.text == "fill") {
+            type.text == "slot" || type.text == "auto" || type.text == "fill" ||
+            type.text == "assign" || type.text == "existing") {
             fail(type.span, "expected widget type, found structural form '" + type.text + "'");
         }
+    }
 
-        Widget widget{.type = type.text, .span = opening.span};
+    auto parse_widget_body(SourceSpan const span,
+                           std::string type,
+                           std::optional<std::string> assigned_member) -> Child {
+        Widget widget{.type = std::move(type),
+                      .assigned_member = std::move(assigned_member),
+                      .span = span};
         std::set<std::string> argument_names;
         std::set<std::string> slot_names;
         bool saw_child{false};
@@ -175,7 +204,7 @@ class Parser {
         }
 
         expect(TokenKind::right_parenthesis, "expected ')' after widget body");
-        return Child{std::move(widget), opening.span};
+        return Child{std::move(widget), span};
     }
 
     auto parse_argument() -> Argument {
@@ -189,7 +218,7 @@ class Parser {
             return Value{ValueKind::text, previous().text, span};
         }
         if (at(TokenKind::left_parenthesis)) {
-            return parse_callable_value();
+            return parse_compound_value();
         }
         if (!consume(TokenKind::atom)) {
             fail(span, "expected number, boolean, text, or symbol");
@@ -205,9 +234,19 @@ class Parser {
         return Value{ValueKind::symbol, token.text, span};
     }
 
-    auto parse_callable_value() -> Value {
-        auto const& opening{expect(TokenKind::left_parenthesis, "expected callable value")};
-        auto const& form{expect_atom("expected callback, method, or uobject")};
+    auto parse_compound_value() -> Value {
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected compound value")};
+        auto const& form{expect_atom("expected callback, method, uobject, or loc")};
+        if (form.text == "loc") {
+            auto const& context{expect(TokenKind::string, "expected localization context")};
+            auto const& key{expect(TokenKind::string, "expected localization key")};
+            auto const& text{expect(TokenKind::string, "expected localized text")};
+            expect(TokenKind::right_parenthesis, "expected ')' after localized text");
+            return Value{.kind = ValueKind::localized_text,
+                         .span = opening.span,
+                         .localized_text = LocalizedText{context.text, key.text, text.text}};
+        }
+
         auto kind{ValueKind::symbol};
         if (form.text == "callback") {
             kind = ValueKind::callback;
@@ -216,7 +255,7 @@ class Parser {
         } else if (form.text == "uobject") {
             kind = ValueKind::uobject;
         } else {
-            fail(form.span, "expected callback, method, or uobject value form");
+            fail(form.span, "expected callback, method, uobject, or loc value form");
         }
 
         auto const& name{expect_atom("expected callable name")};
@@ -225,12 +264,32 @@ class Parser {
         }
         expect(TokenKind::right_parenthesis, "expected ')' after callable value");
         if (kind == ValueKind::callback) {
-            if (!callback_names_.insert(name.text).second) {
-                fail(opening.span, "callback parameter '" + name.text + "' may only be used once");
-            }
-            callbacks_.push_back(name.text);
+            register_forwarded_parameter(name.text, opening.span);
         }
         return Value{kind, name.text, opening.span};
+    }
+
+    auto parse_existing_widget() -> Child {
+        auto const& opening{
+            expect(TokenKind::left_parenthesis, "expected '(' before existing widget")};
+        auto const& form{expect_atom("expected 'existing'")};
+        if (form.text != "existing") {
+            fail(form.span, "expected 'existing'");
+        }
+        auto const& parameter{expect_atom("expected existing widget parameter")};
+        if (!is_identifier(parameter.text)) {
+            fail(parameter.span, "existing widget parameter must be a C++ identifier");
+        }
+        expect(TokenKind::right_parenthesis, "expected ')' after existing widget");
+        register_forwarded_parameter(parameter.text, opening.span);
+        return Child{ExistingWidget{parameter.text, opening.span}, opening.span};
+    }
+
+    void register_forwarded_parameter(std::string const& name, SourceSpan const span) {
+        if (!forwarded_parameter_names_.insert(name).second) {
+            fail(span, "forwarded parameter '" + name + "' may only be used once");
+        }
+        forwarded_parameters_.push_back(name);
     }
 
     auto parse_named_slot() -> WidgetSlot {
@@ -252,9 +311,15 @@ class Parser {
         if (list_head_is("vbox")) {
             return parse_vbox();
         }
+        if (list_head_is("assign")) {
+            return parse_assigned_widget();
+        }
+        if (list_head_is("existing")) {
+            return parse_existing_widget();
+        }
         if (list_head_is("widget-class") || list_head_is("function") || list_head_is("slot") ||
             list_head_is("auto") || list_head_is("fill")) {
-            fail(tokens_[index_ + 1].span, "expected widget or vbox child");
+            fail(tokens_[index_ + 1].span, "expected widget, assigned widget, existing widget, or vbox child");
         }
         return parse_widget();
     }
@@ -431,8 +496,8 @@ class Parser {
     std::string_view path_;
     std::vector<Token> tokens_;
     std::size_t index_{};
-    std::set<std::string> callback_names_;
-    std::vector<std::string> callbacks_;
+    std::set<std::string> forwarded_parameter_names_;
+    std::vector<std::string> forwarded_parameters_;
 };
 
 }

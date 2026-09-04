@@ -38,12 +38,19 @@ struct Token {
     SourceSpan span;
 };
 
-enum class ValueKind { number, boolean, text, symbol, callback, method, uobject };
+enum class ValueKind { number, boolean, text, localized_text, symbol, callback, method, uobject };
+
+struct LocalizedText {
+    std::string context;
+    std::string key;
+    std::string text;
+};
 
 struct Value {
     ValueKind kind;
     std::string text;
     SourceSpan span;
+    std::optional<LocalizedText> localized_text;
 };
 
 struct Argument {
@@ -62,10 +69,16 @@ struct WidgetSlot {
 
 struct Widget {
     std::string type;
+    std::optional<std::string> assigned_member;
     std::vector<Argument> arguments;
     std::shared_ptr<Child> content;
     SourceSpan content_span;
     std::vector<WidgetSlot> named_slots;
+    SourceSpan span;
+};
+
+struct ExistingWidget {
+    std::string parameter;
     SourceSpan span;
 };
 
@@ -85,13 +98,13 @@ struct VBox {
 };
 
 struct Child {
-    std::variant<Widget, VBox> value;
+    std::variant<Widget, VBox, ExistingWidget> value;
     SourceSpan span;
 };
 
 struct SlateFunction {
     std::string name;
-    std::vector<std::string> callbacks;
+    std::vector<std::string> forwarded_parameters;
     Child root;
     SourceSpan span;
 };
