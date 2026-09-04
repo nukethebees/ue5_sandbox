@@ -9,7 +9,6 @@
 #include <SpaceGame/entities/TestEntityRegistryData.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
@@ -27,13 +26,11 @@
 #include "TestStaticTurrets.generated.h"
 
 class UInstancedStaticMeshComponent;
-class UPrimitiveComponent;
 
 class ATestStaticTurretsProxy;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
-struct FTestStaticTurretsSpatialQueryAccess;
 
 namespace ml {
 struct FSpatialQueryManager;
@@ -123,10 +120,6 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     // Debugging
     void draw_debugging_shapes() const;
 
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
-
     FTurretConfig const* actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
@@ -172,19 +165,4 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     bool draw_target_arrows_enabled{false};
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool draw_debug_entity_info_enabled{false};
-
-    friend struct FTestStaticTurretsSpatialQueryAccess;
-};
-
-struct FTestStaticTurretsSpatialQueryAccess {
-    ATestStaticTurrets const* actor{nullptr};
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
-        return actor->get_spatial_query_component();
-    }
-
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
-                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-        actor->resolve_hits(hits, out_entity_handles);
-    }
 };

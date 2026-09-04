@@ -544,17 +544,6 @@ auto ATestCapitalShipFighters::get_num_instances() const noexcept -> int32 {
     return ml::num(entity_buffers.current().num());
 }
 
-auto ATestCapitalShipFighters::get_spatial_query_component() const -> UPrimitiveComponent const* {
-    return instances.Get();
-}
-
-void ATestCapitalShipFighters::resolve_hits(
-    TConstArrayView<ml::FSpatialQueryHit> const hits,
-    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-    auto const& data{entity_buffers.current()};
-    ml::batch::resolve_ismc_hits(hits, out_entity_handles, *instances, data.entity_handles);
-}
-
 auto ATestCapitalShipFighters::get_task_spans() const -> TaskSpans {
     check_fighter_tasks();
     return task_spans;

@@ -176,21 +176,10 @@ void ATestSpaceShip::resolve_damage_events() {
     }
 }
 
-auto ATestSpaceShip::get_spatial_query_component() const -> UPrimitiveComponent const* {
-    return ship_mesh;
+auto ATestSpaceShip::get_collision_mesh() const -> UStaticMesh const* {
+    return ship_mesh ? ship_mesh->GetStaticMesh() : nullptr;
 }
 
-void
-    ATestSpaceShip::resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
-                                 TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-    check(hits.Num() == out_entity_handles.Num());
-
-    auto const n{hits.Num()};
-    for (int32 i{}; i < n; ++i) {
-        check(hits[i].component == ship_mesh);
-        out_entity_handles[i] = registry_handle;
-    }
-}
 void ATestSpaceShip::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_entity_registry);
 

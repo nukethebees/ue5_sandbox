@@ -11,7 +11,6 @@
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersCommandInterface.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 #include <SpaceGame/support/IndexSpan.h>
 
@@ -31,13 +30,11 @@
 
 class UInstancedStaticMeshComponent;
 class UBoxComponent;
-class UPrimitiveComponent;
 
 class ATestCapitalShipProxy;
 struct FTestEntityRegistry;
 class ADelayedNiagaraSpawner;
 class UTestTeamVisualData;
-struct FTestCapitalShipsSpatialQueryAccess;
 
 namespace ml {
 struct FSpatialQueryManager;
@@ -175,9 +172,6 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
     // Misc
     void clear_tick_buffers();
 
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
     void visual_log_state() const;
 
     // Config / context
@@ -219,19 +213,4 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
     FDrawDebugConfig debug_drawer;
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool debugging_shapes_enabled{false};
-
-    friend struct FTestCapitalShipsSpatialQueryAccess;
-};
-
-struct FTestCapitalShipsSpatialQueryAccess {
-    ATestCapitalShips const* actor{nullptr};
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
-        return actor->get_spatial_query_component();
-    }
-
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
-                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-        actor->resolve_hits(hits, out_entity_handles);
-    }
 };

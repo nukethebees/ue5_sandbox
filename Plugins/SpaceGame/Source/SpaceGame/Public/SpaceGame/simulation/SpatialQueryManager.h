@@ -1,13 +1,8 @@
 #pragma once
 
 #include <SandboxNative/RegistryEntityHandle.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/CollisionSystem.h>
 #include <SpaceGame/simulation/LineTraces.h>
 #include <SpaceGame/simulation/TraceHits.h>
@@ -66,15 +61,11 @@ struct SPACEGAME_API FSpatialQueryManager {
 
     void initialise(FTestEntityRegistry const& entity_registry,
                     FCollisionGridConfig const& collision_grid_config,
-                    UWorld& world,
-                    ATestSpaceShip const* player_ship,
-                    ATestCapitalShips const& capital_ships,
-                    ATestCapitalShipFighters const& capital_ship_fighters,
-                    ATestStaticTurrets const& static_turrets,
-                    ATestTubeSpinners const& tube_spinners);
+                    ioj::FCollisionSystem::EntityMeshes const& entity_meshes);
 
     void reserve_thread_buffers(int32 count);
-    void initialise_static_geometry(FCollisionGridConfig const& collision_grid_config);
+    void initialise_static_geometry(UWorld& world,
+                                    FCollisionGridConfig const& collision_grid_config);
     auto add_static_geometry(UPrimitiveComponent& component) -> bool;
 
     void trace_line_of_sight(FVectors3f::ConstView start_locations,
@@ -117,7 +108,6 @@ struct SPACEGAME_API FSpatialQueryManager {
     void release_thread_buffer(int32 index) const;
 
     FTestEntityRegistry const* entity_registry{nullptr};
-    UWorld* world{nullptr};
 
     mutable std::mutex thread_buffers_mutex;
     mutable TArray<FThreadBuffers> thread_buffers;

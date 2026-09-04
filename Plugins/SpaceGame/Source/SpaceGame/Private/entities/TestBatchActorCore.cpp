@@ -108,21 +108,6 @@ void resolve_damage_events(FTestEntityRegistry const& registry,
     }
 }
 
-void resolve_ismc_hits(TConstArrayView<FSpatialQueryHit> const hits,
-                       TArrayView<FRegistryEntityHandle> const out_entity_handles,
-                       UPrimitiveComponent const& expected_component,
-                       TConstArrayView<FRegistryEntityHandle> const entity_handles) {
-    check(hits.Num() == out_entity_handles.Num());
-
-    auto const n{hits.Num()};
-    for (int32 i{}; i < n; ++i) {
-        auto const& hit{hits[i]};
-        check(hit.component == &expected_component);
-        check(entity_handles.IsValidIndex(hit.item));
-        out_entity_handles[i] = entity_handles[hit.item];
-    }
-}
-
 void refresh_targets(FTestEntityRegistry const& registry,
                      FSpatialQueryManager const& spatial_query_manager,
                      TArray<FRegistryEntityHandle>& target_handles,

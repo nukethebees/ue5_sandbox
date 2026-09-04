@@ -6,7 +6,6 @@
 #include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersSoA.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
 #include <SandboxCore/soa_array_mixin.h>
@@ -22,13 +21,11 @@
 #include "TestTubeSpinners.generated.h"
 
 class UInstancedStaticMeshComponent;
-class UPrimitiveComponent;
 
 class ATestTubeSpinnerProxy;
 class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
-struct FTestTubeSpinnersSpatialQueryAccess;
 
 namespace ml::test_tube_spinners {
 class PhaseInterface;
@@ -91,10 +88,6 @@ class ATestTubeSpinners : public AActor {
     // Firing
     void fire_lasers();
 
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
-
     // Config
     FTubeSpinnerConfig const* actor_config{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
@@ -115,19 +108,4 @@ class ATestTubeSpinners : public AActor {
     TObjectPtr<ATestLasers> laser_actor{nullptr};
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;
-
-    friend struct FTestTubeSpinnersSpatialQueryAccess;
-};
-
-struct FTestTubeSpinnersSpatialQueryAccess {
-    ATestTubeSpinners const* actor{nullptr};
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
-        return actor->get_spatial_query_component();
-    }
-
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
-                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-        actor->resolve_hits(hits, out_entity_handles);
-    }
 };

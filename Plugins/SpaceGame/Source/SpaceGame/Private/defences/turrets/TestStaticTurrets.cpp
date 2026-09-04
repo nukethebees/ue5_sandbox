@@ -203,16 +203,6 @@ auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
     return entities.handles.Num();
 }
 
-auto ATestStaticTurrets::get_spatial_query_component() const -> UPrimitiveComponent const* {
-    return instances.Get();
-}
-
-void ATestStaticTurrets::resolve_hits(
-    TConstArrayView<ml::FSpatialQueryHit> const hits,
-    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-    ml::batch::resolve_ismc_hits(hits, out_entity_handles, *instances, entities.handles);
-}
-
 auto ATestStaticTurrets::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {
     return entities.target_handles;
 }

@@ -106,16 +106,6 @@ auto ATestTubeSpinners::get_num_instances() const noexcept -> int32 {
     return entities.num();
 }
 
-auto ATestTubeSpinners::get_spatial_query_component() const -> UPrimitiveComponent const* {
-    return instances.Get();
-}
-
-void ATestTubeSpinners::resolve_hits(
-    TConstArrayView<ml::FSpatialQueryHit> const hits,
-    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-    ml::batch::resolve_ismc_hits(hits, out_entity_handles, *instances, entities.handles);
-}
-
 // Spawning
 void ATestTubeSpinners::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestTubeSpinners::register_all_proxies_in_level);

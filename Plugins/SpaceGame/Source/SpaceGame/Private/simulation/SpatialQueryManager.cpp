@@ -3,15 +3,11 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/support/mesh.h>
 
+#include <HAL/PlatformMisc.h>
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
-#include <SandboxCoreEngine/uobject_utils.h>
-
-#include <Engine/World.h>
-#include <HAL/PlatformMisc.h>
 
 #include <mutex>
 #include <utility>
@@ -58,9 +54,8 @@ void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
 }
 
 void FSpatialQueryManager::initialise_static_geometry(
-    FCollisionGridConfig const& collision_grid_config) {
-    check(IsValid(world));
-    collision.initialise_static_geometry(*world, collision_grid_config);
+    UWorld& world, FCollisionGridConfig const& collision_grid_config) {
+    collision.initialise_static_geometry(world, collision_grid_config);
 }
 auto FSpatialQueryManager::add_static_geometry(UPrimitiveComponent& component) -> bool {
     return collision.add_static_geometry(component);
@@ -90,56 +85,16 @@ void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
 
 void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_registry,
                                       FCollisionGridConfig const& collision_grid_config,
-                                      UWorld& in_world,
-                                      ATestSpaceShip const* const player_ship,
-                                      ATestCapitalShips const& capital_ships,
-                                      ATestCapitalShipFighters const& capital_ship_fighters,
-                                      ATestStaticTurrets const& static_turrets,
-                                      ATestTubeSpinners const& tube_spinners) {
+                                      ioj::FCollisionSystem::EntityMeshes const& entity_meshes) {
     reserve_thread_buffers(1);
 
     entity_registry = &in_entity_registry;
-    world = &in_world;
     collision.set_entity_registry(in_entity_registry);
     auto& uniform_grid{collision.get_uniform_grid()};
     uniform_grid.set_grid_dims(collision_grid_config.calculate_grid_dimensions());
     uniform_grid.set_cell_dims(collision_grid_config.cell_size);
 
-    auto const* const capital_ship_instances{
-        FTestCapitalShipsSpatialQueryAccess{&capital_ships}.get_spatial_query_component()};
-    auto const* const capital_ship_fighter_instances{
-        FTestCapitalShipFightersSpatialQueryAccess{&capital_ship_fighters}
-            .get_spatial_query_component()};
-    auto const* const static_turret_instances{
-        FTestStaticTurretsSpatialQueryAccess{&static_turrets}.get_spatial_query_component()};
-    auto const* const tube_spinner_instances{
-        FTestTubeSpinnersSpatialQueryAccess{&tube_spinners}.get_spatial_query_component()};
-    auto const* const player_ship_mesh{
-        player_ship ? FTestSpaceShipSpatialQueryAccess{player_ship}.get_spatial_query_component()
-                    : nullptr};
-
-    fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(capital_ship_instances),
-        SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighter_instances),
-        SANDBOX_NAMED_UOBJECT_PTR(static_turret_instances),
-        SANDBOX_NAMED_UOBJECT_PTR(tube_spinner_instances),
-    });
-
-    if (player_ship) {
-        fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(player_ship_mesh)});
-    }
-
-    ioj::FCollisionSystem::EntityMeshes meshes{};
-    meshes[std::to_underlying(ETestEntityType::PlayerShip)] = ml::get_static_mesh(player_ship_mesh);
-    meshes[std::to_underlying(ETestEntityType::Turret)] =
-        ml::get_static_mesh(static_turret_instances);
-    meshes[std::to_underlying(ETestEntityType::CapitalShip)] =
-        ml::get_static_mesh(capital_ship_instances);
-    meshes[std::to_underlying(ETestEntityType::CapitalShipFighter)] =
-        ml::get_static_mesh(capital_ship_fighter_instances);
-    meshes[std::to_underlying(ETestEntityType::TubeSpinner)] =
-        ml::get_static_mesh(tube_spinner_instances);
-    collision.initialise(meshes);
+    collision.initialise(entity_meshes);
 }
 
 void FSpatialQueryManager::trace_line_of_sight(

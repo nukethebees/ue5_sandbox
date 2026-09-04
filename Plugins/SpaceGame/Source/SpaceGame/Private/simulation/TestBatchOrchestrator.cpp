@@ -409,14 +409,17 @@ void ATestBatchOrchestrator::begin_play() {
     spinners_phase.begin_play();
     lasers_phase.begin_play();
 
-    query_manager.initialise(entity_registry,
-                             level_config->collision_grid,
-                             *world,
-                             player_ship.Get(),
-                             *capital_ships,
-                             *capital_ship_fighters,
-                             *turrets,
-                             *spinners);
+    ml::ioj::FCollisionSystem::EntityMeshes entity_meshes{};
+    entity_meshes[std::to_underlying(ETestEntityType::PlayerShip)] =
+        IsValid(player_ship) ? player_ship->get_collision_mesh() : nullptr;
+    entity_meshes[std::to_underlying(ETestEntityType::Turret)] = level_config->turrets.mesh;
+    entity_meshes[std::to_underlying(ETestEntityType::CapitalShip)] =
+        level_config->capital_ships.mesh;
+    entity_meshes[std::to_underlying(ETestEntityType::CapitalShipFighter)] =
+        level_config->fighters.mesh;
+    entity_meshes[std::to_underlying(ETestEntityType::TubeSpinner)] =
+        level_config->tube_spinners.mesh;
+    query_manager.initialise(entity_registry, level_config->collision_grid, entity_meshes);
     query_manager.reserve_thread_buffers(
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads()));
 
@@ -426,7 +429,7 @@ void ATestBatchOrchestrator::begin_play() {
                                   ATestStaticTurretsProxy,
                                   ATestTubeSpinnerProxy>(*world, entity_registry, mission_manager);
 
-    query_manager.initialise_static_geometry(level_config->collision_grid);
+    query_manager.initialise_static_geometry(*world, level_config->collision_grid);
 
     entity_registry.commit_updates();
     entity_registry.end_tick();

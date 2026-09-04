@@ -14,7 +14,6 @@
 #include <SpaceGame/ships/player/TestSpaceShipFlightMode.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
 #include "CoreMinimal.h"
@@ -23,9 +22,9 @@
 #include "TestSpaceShip.generated.h"
 
 class UCameraComponent;
+class UStaticMesh;
 class UStaticMeshComponent;
 class UBoxComponent;
-class UPrimitiveComponent;
 class UNiagaraSystem;
 class UNiagaraComponent;
 
@@ -37,7 +36,6 @@ class UTestSpaceShipData;
 struct FTestEntityRegistry;
 class ATestLasers;
 struct EntityDeathInfo;
-struct FTestSpaceShipSpatialQueryAccess;
 
 namespace ml {
 struct FSpatialQueryManager;
@@ -168,6 +166,7 @@ class SPACEGAME_API ATestSpaceShip
     }
 
     // Mesh
+    auto get_collision_mesh() const -> UStaticMesh const*;
     auto get_ship_forward_vector() const -> FVector;
     auto get_middle_socket() const -> FTransform;
 
@@ -257,10 +256,6 @@ class SPACEGAME_API ATestSpaceShip
     void sample_speed();
 #endif
     void configure_speed_sampling();
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const*;
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
 
     /* ------------------------------------------------------------------------------------------ */
     // Config
@@ -395,19 +390,4 @@ class SPACEGAME_API ATestSpaceShip
 #endif
 
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
-
-    friend struct FTestSpaceShipSpatialQueryAccess;
-};
-
-struct FTestSpaceShipSpatialQueryAccess {
-    ATestSpaceShip const* actor{nullptr};
-
-    auto get_spatial_query_component() const -> UPrimitiveComponent const* {
-        return actor->get_spatial_query_component();
-    }
-
-    void resolve_hits(TConstArrayView<ml::FSpatialQueryHit> const hits,
-                      TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-        actor->resolve_hits(hits, out_entity_handles);
-    }
 };

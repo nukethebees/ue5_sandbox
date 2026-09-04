@@ -2,7 +2,6 @@
 
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Containers/Array.h>
@@ -13,7 +12,6 @@
 struct FTestEntityRegistry;
 struct FRegistryEntityHandle;
 struct EntityDeathInfo;
-class UPrimitiveComponent;
 
 namespace ml {
 struct FSpatialQueryManager;
@@ -41,11 +39,6 @@ void resolve_damage_events(FTestEntityRegistry const& registry,
                            TArray<int32>& healths,
                            TArray<int32>& local_indices_to_remove,
                            EntityDeathInfo& entity_death_info);
-
-void resolve_ismc_hits(TConstArrayView<FSpatialQueryHit> hits,
-                       TArrayView<FRegistryEntityHandle> out_entity_handles,
-                       UPrimitiveComponent const& expected_component,
-                       TConstArrayView<FRegistryEntityHandle> entity_handles);
 
 void refresh_targets(FTestEntityRegistry const& registry,
                      FSpatialQueryManager const& spatial_query_manager,
