@@ -4,13 +4,11 @@
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SLabeledRow.h"
 #include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
-#include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
-#include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
-#include "Widgets/Text/STextBlock.h"
+#include "Widgets/SExperimentPanel.h"
 
 DEFINE_LOG_CATEGORY_STATIC(LogHeatmapRDGShowcase, Log, All);
 
@@ -29,20 +27,14 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
     heatmap_widget_ = NewObject<UHeatmapRDGWidget>(this);
     check(heatmap_widget_);
 
-    return SNew(SBorder)
-        .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
-        .Padding(12.0f)
+    return SNew(SExperimentPanel)
+        .Title(NSLOCTEXT("HeatmapRDG", "Title", "RDG GPU Heatmap Showcase"))
+        .Description(NSLOCTEXT("HeatmapRDG",
+                               "Description",
+                               "Each update uploads one dense scalar grid and draws one Slate "
+                               "image."))
+        .Controls()
             [SNew(SVerticalBox) +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 4.0f})
-                 [SNew(STextBlock)
-                      .Text(NSLOCTEXT("HeatmapRDG", "Title", "RDG GPU Heatmap Showcase"))
-                      .Font(FAppStyle::Get().GetFontStyle("HeadingExtraSmall"))] +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
-                 [SNew(STextBlock)
-                      .Text(NSLOCTEXT("HeatmapRDG",
-                                      "Description",
-                                      "Each update uploads one dense scalar grid and draws one "
-                                      "Slate image."))] +
              SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 6.0f})
                  [SNew(SLabeledRow)
                       .Label(NSLOCTEXT("HeatmapRDG", "InputResolution", "Input grid resolution:"))
@@ -84,28 +76,24 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
                                     .Text(NSLOCTEXT("HeatmapRDG", "Gradient", "Gradient + checker"))
                                     .OnClicked_UObject(this,
                                                        &UHeatmapRDGShowcase::show_gradient)]]] +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
-                 [SNew(SVerticalBox) +
-                  SandboxUI::Slate::vbox_auto_slot()
-                      [SNew(SButton)
-                           .Text(NSLOCTEXT("HeatmapRDG",
-                                           "RunBenchmark",
-                                           "Benchmark RDG vs Slate custom vertices"))
-                           .ToolTipText(
-                               NSLOCTEXT("HeatmapRDG",
-                                         "RunBenchmarkTooltip",
-                                         "Runs a short CPU benchmark at 32x32 through 512x512."))
-                           .OnClicked_UObject(this, &UHeatmapRDGShowcase::run_benchmark)] +
-                  SandboxUI::Slate::vbox_auto_slot(
-                      FMargin{0.0f, 4.0f, 0.0f, 0.0f})[SNew(SBox).HeightOverride(
-                      180.0f)[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
-                                  .IsReadOnly(true)
-                                  .Text(NSLOCTEXT("HeatmapRDG",
-                                                  "BenchmarkInstructions",
-                                                  "Results appear here. The CLI writes the same "
-                                                  "stages to CSV."))]]] +
-             SandboxUI::Slate::vbox_fill_slot()[SNew(SBox).MinDesiredWidth(512.0f).MinDesiredHeight(
-                 512.0f)[heatmap_widget_->TakeWidget()]]];
+             SandboxUI::Slate::vbox_auto_slot()
+                 [SNew(SExperimentBenchmark)
+                      .ButtonText(NSLOCTEXT(
+                          "HeatmapRDG", "RunBenchmark", "Benchmark RDG vs Slate custom vertices"))
+                      .ToolTipText(
+                          NSLOCTEXT("HeatmapRDG",
+                                    "RunBenchmarkTooltip",
+                                    "Runs a short CPU benchmark at 32x32 through 512x512."))
+                      .OnClicked_UObject(this, &UHeatmapRDGShowcase::run_benchmark)
+                      .OutputHeight(180.0f)
+                      .Output()[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
+                                    .IsReadOnly(true)
+                                    .Text(NSLOCTEXT("HeatmapRDG",
+                                                    "BenchmarkInstructions",
+                                                    "Results appear here. The CLI writes the same "
+                                                    "stages to CSV."))]]]
+        .Preview()[SNew(SBox).MinDesiredWidth(512.0f).MinDesiredHeight(
+            512.0f)[heatmap_widget_->TakeWidget()]];
 }
 
 auto UHeatmapRDGShowcase::select_grid_size(int32 const grid_size) -> FReply {

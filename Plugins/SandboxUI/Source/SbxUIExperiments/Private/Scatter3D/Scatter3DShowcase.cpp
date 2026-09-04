@@ -4,15 +4,12 @@
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SLabeledRow.h"
 #include "SScatter3DWidget.h"
+#include "Widgets/SExperimentPanel.h"
 
-#include "Styling/AppStyle.h"
-#include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
 #include "Widgets/Input/SSpinBox.h"
-#include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
-#include "Widgets/Text/STextBlock.h"
 
 UScatter3DShowcase::UScatter3DShowcase() {
     TabDisplayName = NSLOCTEXT("Scatter3D", "ShowcaseTabName", "RDG 3D Scatter Experiment");
@@ -22,20 +19,14 @@ UScatter3DShowcase::UScatter3DShowcase() {
 TSharedRef<SWidget> UScatter3DShowcase::RebuildWidget() {
     auto const scatter_widget{SNew(SScatter3DWidget)};
 
-    return SNew(SBorder)
-        .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
-        .Padding(12.0f)
+    return SNew(SExperimentPanel)
+        .Title(NSLOCTEXT("Scatter3D", "Title", "RDG 3D Scatter Experiment"))
+        .Description(NSLOCTEXT("Scatter3D",
+                               "Description",
+                               "Deterministic CPU clusters are uploaded only when changed, "
+                               "rasterized by RDG, and displayed as one Slate image."))
+        .Controls()
             [SNew(SVerticalBox) +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 4.0f})
-                 [SNew(STextBlock)
-                      .Text(NSLOCTEXT("Scatter3D", "Title", "RDG 3D Scatter Experiment"))
-                      .Font(FAppStyle::Get().GetFontStyle("HeadingExtraSmall"))] +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
-                 [SNew(STextBlock)
-                      .Text(NSLOCTEXT("Scatter3D",
-                                      "Description",
-                                      "Deterministic CPU clusters are uploaded only when changed, "
-                                      "rasterized by RDG, and displayed as one Slate image."))] +
              SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
                  [SNew(SLabeledRow)
                       .Label(NSLOCTEXT("Scatter3D", "PointCount", "Points"))
@@ -54,30 +45,22 @@ TSharedRef<SWidget> UScatter3DShowcase::RebuildWidget() {
                                                               scatter_widget->set_point_count(
                                                                   point_count);
                                                           })]] +
-             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
-                 [SNew(SVerticalBox) +
-                  SandboxUI::Slate::vbox_auto_slot()
-                      [SNew(SButton)
-                           .Text(NSLOCTEXT(
-                               "Scatter3D", "RunBenchmark", "Benchmark RDG point scaling"))
-                           .ToolTipText(
-                               NSLOCTEXT("Scatter3D",
-                                         "RunBenchmarkTooltip",
-                                         "Runs a short 512x512 benchmark from 1 to 65,536 points."))
-                           .OnClicked_UObject(this, &UScatter3DShowcase::run_benchmark)] +
-                  SandboxUI::Slate::vbox_auto_slot(
-                      FMargin{0.0f, 4.0f, 0.0f, 0.0f})[SNew(SBox).HeightOverride(
-                      150.0f)[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
-                                  .IsReadOnly(true)
-                                  .Text(NSLOCTEXT(
-                                      "Scatter3D",
-                                      "BenchmarkInstructions",
-                                      "Results appear here. The CLI writes the same stages "
-                                      "to CSV."))]]] +
-             SandboxUI::Slate::vbox_fill_slot()
-                 .HAlign(HAlign_Center)
-                 .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(512.0f).HeightOverride(
-                     512.0f)[scatter_widget]]];
+             SandboxUI::Slate::vbox_auto_slot()
+                 [SNew(SExperimentBenchmark)
+                      .ButtonText(
+                          NSLOCTEXT("Scatter3D", "RunBenchmark", "Benchmark RDG point scaling"))
+                      .ToolTipText(
+                          NSLOCTEXT("Scatter3D",
+                                    "RunBenchmarkTooltip",
+                                    "Runs a short 512x512 benchmark from 1 to 65,536 points."))
+                      .OnClicked_UObject(this, &UScatter3DShowcase::run_benchmark)
+                      .Output()[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
+                                    .IsReadOnly(true)
+                                    .Text(NSLOCTEXT("Scatter3D",
+                                                    "BenchmarkInstructions",
+                                                    "Results appear here. The CLI writes the same "
+                                                    "stages to CSV."))]]]
+        .Preview()[SNew(SBox).WidthOverride(512.0f).HeightOverride(512.0f)[scatter_widget]];
 }
 
 auto UScatter3DShowcase::run_benchmark() -> FReply {
