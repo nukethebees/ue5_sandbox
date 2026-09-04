@@ -21,6 +21,19 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogSbxMeshGenLabEditorMode, Log, All);
 
+namespace {
+constexpr double max_safe_preview_coordinate{1'000'000.0};
+
+auto is_safe_preview_transform(FTransform const& transform) -> bool {
+    auto const location{transform.GetLocation()};
+    auto const scale{transform.GetScale3D()};
+    auto const rotation{transform.GetRotation()};
+    return !location.ContainsNaN() && !scale.ContainsNaN() && !rotation.ContainsNaN() &&
+           location.GetAbsMax() <= max_safe_preview_coordinate && scale.GetMin() >= 0.001 &&
+           scale.GetAbsMax() <= max_safe_preview_coordinate && rotation.IsNormalized();
+}
+}
+
 FEditorModeID const USbxMeshGenLabEditorMode::mode_id{TEXT("EM_SandboxMesh")};
 
 USbxMeshGenLabEditorMode::USbxMeshGenLabEditorMode() {
@@ -322,9 +335,9 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
     auto const translation_step{settings->duplicate_translation_step};
     auto const rotation_step{settings->duplicate_rotation_step};
     auto const repeat_count{FMath::Clamp(settings->duplicate_repeat_count, 1, 64)};
-    TArray<int32> duplicate_indices;
-    duplicate_indices.Reserve(original_indices.Num() * repeat_count);
-    int32 duplicate_primary_index{INDEX_NONE};
+    TArray<FSbxMeshAssemblyPart> duplicate_parts;
+    duplicate_parts.Reserve(original_indices.Num() * repeat_count);
+    int32 duplicate_primary_offset{INDEX_NONE};
     for (int32 repeat_index{1}; repeat_index <= repeat_count; ++repeat_index) {
         auto const rotation_delta{FRotator{rotation_step.Pitch * repeat_index,
                                            rotation_step.Yaw * repeat_index,
@@ -345,15 +358,43 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
                                   translation_step * repeat_index);
             transform.ConcatenateRotation(rotation_delta);
             transform.NormalizeRotation();
+            FTransform const world_transform{transform.GetRotation(),
+                                             preview_origin_ + transform.GetLocation(),
+                                             transform.GetScale3D()};
+            if (!is_safe_preview_transform(world_transform)) {
+                UE_LOG(LogSbxMeshGenLabEditorMode,
+                       Error,
+                       TEXT("Refused duplicate %d of part %d with unsafe transform: %s"),
+                       repeat_index,
+                       part_index + 1,
+                       *world_transform.ToHumanReadableString());
+                status_ = LOCTEXT(
+                    "UnsafeDuplicateTransform",
+                    "Duplicate / Repeat would create an invalid or excessively distant preview "
+                    "transform. Reduce the translation, rotation, or repeat count.");
+                notify_session_changed(false);
+                return;
+            }
+
             part.transform.translation = FVector3f{transform.GetLocation()};
             part.transform.rotation = FRotator3f{transform.Rotator()};
-
-            auto const duplicate_index{parts_.Add(part)};
-            create_preview_actor(duplicate_index);
-            duplicate_indices.Add(duplicate_index);
             if (part_index == selected_part_index_ && repeat_index == repeat_count) {
-                duplicate_primary_index = duplicate_index;
+                duplicate_primary_offset = duplicate_parts.Num();
             }
+            duplicate_parts.Add(MoveTemp(part));
+        }
+    }
+
+    TArray<int32> duplicate_indices;
+    duplicate_indices.Reserve(duplicate_parts.Num());
+    int32 duplicate_primary_index{INDEX_NONE};
+    auto const duplicate_count{duplicate_parts.Num()};
+    for (int32 duplicate_offset{}; duplicate_offset < duplicate_count; ++duplicate_offset) {
+        auto const duplicate_index{parts_.Add(MoveTemp(duplicate_parts[duplicate_offset]))};
+        create_preview_actor(duplicate_index);
+        duplicate_indices.Add(duplicate_index);
+        if (duplicate_offset == duplicate_primary_offset) {
+            duplicate_primary_index = duplicate_index;
         }
     }
 
