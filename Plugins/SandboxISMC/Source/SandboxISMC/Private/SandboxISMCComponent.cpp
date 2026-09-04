@@ -496,20 +496,30 @@ USandboxISMCComponent::USandboxISMCComponent()
     bVisibleInRayTracing = false;
 }
 
-auto USandboxISMCComponent::set_static_mesh(UStaticMesh* mesh) -> void {
-    if (static_mesh_ == mesh) {
+auto USandboxISMCComponent::set_static_mesh(UStaticMesh& mesh) -> void {
+    if (static_mesh_ == &mesh) {
         return;
     }
 
-    static_mesh_ = mesh;
-    if (static_mesh_ != nullptr) {
-        auto const mesh_bounds{static_mesh_->GetBounds()};
+    static_mesh_ = &mesh;
+    auto const mesh_bounds{mesh.GetBounds()};
         mesh_bounds_origin_ = FVector3f{mesh_bounds.Origin};
         mesh_bounds_radius_ = static_cast<float>(mesh_bounds.SphereRadius);
-    } else {
+    force_full_upload_ = true;
+    bounds_rebuild_required_ = true;
+    mark_all_instances_dirty();
+    commit_instance_updates();
+    MarkRenderStateDirty();
+}
+
+auto USandboxISMCComponent::clear_static_mesh() -> void {
+    if (static_mesh_ == nullptr) {
+        return;
+    }
+
+    static_mesh_ = nullptr;
         mesh_bounds_origin_ = FVector3f::ZeroVector;
         mesh_bounds_radius_ = 0.0f;
-    }
     force_full_upload_ = true;
     bounds_rebuild_required_ = true;
     mark_all_instances_dirty();

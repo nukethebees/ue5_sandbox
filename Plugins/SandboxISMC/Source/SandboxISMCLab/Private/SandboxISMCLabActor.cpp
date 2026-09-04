@@ -80,7 +80,7 @@ void ASandboxISMCLabActor::regenerate_instances() {
         return;
     }
 
-    instances_->set_static_mesh(static_mesh_);
+    instances_->set_static_mesh(*static_mesh_);
     instances_->clear_instances();
 
     if (distribution_ == ESandboxISMCLabDistribution::Grid) {

@@ -389,7 +389,7 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
         auto const custom_start{FPlatformTime::Cycles64()};
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomCreateInstances);
-            custom_ismc_->set_static_mesh(static_mesh_);
+            custom_ismc_->set_static_mesh(*static_mesh_);
             custom_ismc_->clear_instances();
             custom_ismc_->reserve_instances(count);
             for (auto const position : base_positions_) {

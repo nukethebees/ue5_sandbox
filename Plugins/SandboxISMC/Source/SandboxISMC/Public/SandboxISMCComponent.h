@@ -21,7 +21,8 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
   public:
     USandboxISMCComponent();
 
-    auto set_static_mesh(UStaticMesh* mesh) -> void;
+    auto set_static_mesh(UStaticMesh& mesh) -> void;
+    auto clear_static_mesh() -> void;
     auto get_static_mesh() const -> UStaticMesh*;
 
     auto reserve_instances(int32 capacity) -> void;
