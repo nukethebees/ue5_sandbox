@@ -14,6 +14,7 @@ public class SandboxISMCTests : ModuleRules
             "CoreUObject",
             "CQTest",
             "Engine",
+            "RenderCore",
             "SandboxISMC",
         });
     }

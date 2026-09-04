@@ -101,6 +101,44 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                               transform_bytes + custom_data_bytes);
     }
 
+    TEST_METHOD(BuildsParallelCustomDataAcrossChunkBoundaries)
+    {
+        auto* component{NewObject<USandboxISMCComponent>()};
+        component->set_num_custom_data_floats(3);
+
+        constexpr int32 instance_count{4097};
+        TArray<uint8> visited;
+        visited.SetNumZeroed(instance_count);
+        component->set_instances(
+            instance_count,
+            ESandboxISMCParallelism::Parallel,
+            [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                auto const [first_index, chunk_count]{chunk.range()};
+                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                    auto const instance_index{first_index + local_index};
+                    ++visited[instance_index];
+                    chunk.set_transform(local_index,
+                                        {static_cast<float>(instance_index), 0.0f, 0.0f},
+                                        FQuat4f::Identity,
+                                        FVector3f::OneVector);
+                    auto custom_data{chunk.custom_data(local_index)};
+                    custom_data[0] = static_cast<float>(instance_index);
+                    custom_data[1] = static_cast<float>(first_index);
+                    custom_data[2] = static_cast<float>(local_index);
+                }
+            });
+
+        auto every_instance_visited_once{true};
+        for (auto const visit_count : visited) {
+            every_instance_visited_once &= visit_count == 1;
+        }
+        TestRunner->TestTrue(TEXT("Parallel custom-data chunks cover every instance exactly once"),
+                             every_instance_visited_once);
+        TestRunner->TestEqual(TEXT("Parallel custom data retains the complete snapshot"),
+                              component->get_instance_count(),
+                              instance_count);
+    }
+
     TEST_METHOD(ReplacesSnapshotsAndClearsImmediately)
     {
         auto* component{NewObject<USandboxISMCComponent>()};
