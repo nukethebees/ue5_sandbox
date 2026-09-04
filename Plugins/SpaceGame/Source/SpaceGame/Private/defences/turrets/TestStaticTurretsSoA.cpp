@@ -13,6 +13,265 @@
 #include "CoreMinimal.h"
 
 namespace ml::test_static_turrets {
+auto SpawnDataConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto SpawnDataConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnDataConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto SpawnDataConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnDataConstView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+auto SpawnDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void SpawnDataConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(laser_damages),
+    });
+}
+
+auto SpawnDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto SpawnDataConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto SpawnDataConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto SpawnDataView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto SpawnDataView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnDataView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto SpawnDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnDataView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto SpawnDataView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnDataView::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+auto SpawnDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void SpawnDataView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(laser_damages),
+    });
+}
+
+auto SpawnDataView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto SpawnDataView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto SpawnDataView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto SpawnDataView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto SpawnDataView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto SpawnDataView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void SpawnData::reset() {
+    ml::reset(locations);
+    ml::reset(teams);
+    ml::reset(healths);
+    ml::reset(laser_damages);
+}
+
+void SpawnData::reserve(int32 const count) {
+    ml::reserve(locations, count);
+    ml::reserve(teams, count);
+    ml::reserve(healths, count);
+    ml::reserve(laser_damages, count);
+}
+
+void SpawnData::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(locations, count);
+    ml::add_uninitialised(teams, count);
+    ml::add_uninitialised(healths, count);
+    ml::add_uninitialised(laser_damages, count);
+}
+
+void SpawnData::add_defaulted(int32 const count) {
+    ml::add_defaulted(locations, count);
+    ml::add_defaulted(teams, count);
+    ml::add_defaulted(healths, count);
+    ml::add_defaulted(laser_damages, count);
+}
+
+void SpawnData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(locations, count, allow_shrinking);
+    ml::set_num(teams, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
+    ml::set_num(laser_damages, count, allow_shrinking);
+}
+
+void SpawnData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(healths, indices);
+    ml::apply_permutation(laser_damages, indices);
+}
+
+auto SpawnData::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto SpawnData::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        locations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnData::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto SpawnData::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnData::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto SpawnData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        locations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto SpawnData::num() const noexcept -> int32 {
+    return ml::num(locations);
+}
+
+auto SpawnData::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void SpawnData::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(locations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(laser_damages),
+    });
+}
+
+auto SpawnData::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto SpawnData::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto SpawnData::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto SpawnData::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto SpawnData::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto SpawnData::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 auto EntityDataConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }

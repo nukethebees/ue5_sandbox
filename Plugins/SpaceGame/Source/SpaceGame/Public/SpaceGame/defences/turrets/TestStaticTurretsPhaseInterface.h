@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "SpaceGame/defences/turrets/TestStaticTurrets.h"
+#include "SpaceGame/defences/turrets/TestStaticTurretsSimulation.h"
 
 namespace ml::test_static_turrets {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ATestStaticTurrets& new_target);
+    void bind(ml::test_static_turrets::Simulation& new_target);
 
     void clear_runtime_state();
 
@@ -29,15 +29,10 @@ class SPACEGAME_API PhaseInterface {
 
     void sync_from_registry();
 
-    void update_visual_data();
-
-    void commit_visual_data();
-
     void end_tick();
 
-    friend class ATestStaticTurrets;
     friend class ATestBatchOrchestrator;
-    ATestStaticTurrets* actor{nullptr};
+    ml::test_static_turrets::Simulation* simulation{nullptr};
 };
 } // namespace ml::test_static_turrets
 // clang-format on

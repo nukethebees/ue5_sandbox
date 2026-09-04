@@ -73,11 +73,11 @@
       "source":"Plugins/SpaceGame/Source/SpaceGame/Private/defences/turrets/TestStaticTurretsPhaseInterface.cpp",
       "header_include":"SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h", "namespace":"ml::test_static_turrets",
       "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
-      "facade":{"name":"PhaseInterface","target_type":"@test_static_turrets","target_member_name":"actor","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestStaticTurrets","ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
+      "facade":{"name":"PhaseInterface","target_type":"@test_static_turrets","target_member_name":"simulation","export_specifier":"SPACEGAME_API","bind_access":"private","method_access":"private","friends":["ATestBatchOrchestrator"],"definitions_in_source":true,"methods":[
         {"name":"clear_runtime_state","return_type":"void"},{"name":"begin_play","return_type":"void"},{"name":"begin_tick","return_type":"void"},{"name":"update_timers","return_type":"void","parameters":[{"type":"float const","name":"dt"}]},
         {"name":"make_decisions","return_type":"void"},{"name":"queue_commands","return_type":"void"},{"name":"resolve_damage_events","return_type":"void"},
-        {"name":"update_entity_registry","return_type":"void"},{"name":"sync_from_registry","return_type":"void"},{"name":"update_visual_data","return_type":"void"},
-        {"name":"commit_visual_data","return_type":"void"},{"name":"end_tick","return_type":"void"}
+        {"name":"update_entity_registry","return_type":"void"},{"name":"sync_from_registry","return_type":"void"},
+        {"name":"end_tick","return_type":"void"}
       ]}
     },
     {

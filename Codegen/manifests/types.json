@@ -238,8 +238,8 @@
       "header": "SpaceGame/ships/capital/TestCapitalShipsSimulation.h"
     },
     "test_static_turrets": {
-      "spelling": "ATestStaticTurrets",
-      "header": "SpaceGame/defences/turrets/TestStaticTurrets.h"
+      "spelling": "ml::test_static_turrets::Simulation",
+      "header": "SpaceGame/defences/turrets/TestStaticTurretsSimulation.h"
     },
     "test_tube_spinners": {
       "spelling": "ATestTubeSpinners",

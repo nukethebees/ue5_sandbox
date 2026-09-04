@@ -22,6 +22,200 @@
 #include <utility>
 
 namespace ml::test_static_turrets {
+struct SpawnDataView;
+struct SpawnDataConstView;
+
+struct SPACEGAME_API SpawnDataConstView {
+    using View = SpawnDataView;
+    using ConstView = SpawnDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.teams,
+            self.healths,
+            self.laser_damages
+        );
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    FVectors3f::ConstView locations;
+    TConstArrayView<ETestTeam> teams;
+    TConstArrayView<int32> healths;
+    TConstArrayView<int32> laser_damages;
+};
+
+struct SPACEGAME_API SpawnDataView {
+    using View = SpawnDataView;
+    using ConstView = SpawnDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.teams,
+            self.healths,
+            self.laser_damages
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    FVectors3f::View locations;
+    TArrayView<ETestTeam> teams;
+    TArrayView<int32> healths;
+    TArrayView<int32> laser_damages;
+};
+
+struct SPACEGAME_API SpawnData {
+    using View = SpawnDataView;
+    using ConstView = SpawnDataConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        locations.remove_at_swap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        laser_damages.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(laser_damages, dst_i, other.laser_damages, src_i);
+    }
+
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(laser_damages, dst_i, other.laser_damages, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<SpawnData, Other> {
+        ml::append_from(locations, other.locations);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(laser_damages, other.laser_damages);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {
+            return Compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations,
+            self.teams,
+            self.healths,
+            self.laser_damages
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.locations, other.locations,
+            self.teams, other.teams,
+            self.healths, other.healths,
+            self.laser_damages, other.laser_damages
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    FVectors3f locations;
+    TArray<ETestTeam> teams;
+    TArray<int32> healths;
+    TArray<int32> laser_damages;
+};
+
 struct EntityDataView;
 struct EntityDataConstView;
 

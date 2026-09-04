@@ -4,6 +4,7 @@
 #include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/missions/TestMissionManager.h>
@@ -116,7 +117,13 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         -> ml::test_capital_ship_fighters::Simulation const* {
         return &capital_ship_fighters_simulation;
     }
-    auto get_turrets() const -> auto const* { return turrets.Get(); }
+    auto get_turrets_actor() const -> auto const* { return turrets.Get(); }
+    auto get_turrets() noexcept -> ml::test_static_turrets::Simulation* {
+        return &turrets_simulation;
+    }
+    auto get_turrets() const noexcept -> ml::test_static_turrets::Simulation const* {
+        return &turrets_simulation;
+    }
     auto get_spinners() const -> auto const* { return spinners.Get(); }
 
     auto get_entity_registry() noexcept -> FTestEntityRegistry& { return entity_registry; }
@@ -217,6 +224,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestStaticTurrets> turrets{nullptr};
+    ml::test_static_turrets::Simulation turrets_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestTubeSpinners> spinners{nullptr};
 

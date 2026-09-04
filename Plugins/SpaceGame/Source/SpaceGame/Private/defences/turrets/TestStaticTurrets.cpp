@@ -4,33 +4,21 @@
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestEntityRegistryData.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_utils.h>
-#include <SandboxCore/fixed_array.h>
-#include <SandboxCore/loop_bounds.h>
-#include <SandboxCore/projectile_intercept.h>
-#include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
-#include <SandboxNative/deterministic_bias.h>
 
-#include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <Engine/StaticMesh.h>
-#include <HAL/PlatformMisc.h>
 #include <NiagaraFunctionLibrary.h>
-#include <ProfilingDebugging/CountersTrace.h>
-#include <Templates/Greater.h>
-
-TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStaticTurretCount"));
+#include <NiagaraSystem.h>
 
 ATestStaticTurrets::ATestStaticTurrets()
     : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
@@ -46,105 +34,61 @@ ATestStaticTurrets::ATestStaticTurrets()
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
 
-void
-    ATestStaticTurrets::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
-    simulation_clock.bind(orchestrator);
+void ATestStaticTurrets::set_actor_config(FTurretConfig const* const new_config) noexcept {
+    actor_config = new_config;
+    if (bound_simulation && actor_config) {
+        bound_simulation->set_config(*actor_config);
+    }
 }
 
-// Actor life cycle
-void ATestStaticTurrets::begin_play() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_play);
+void ATestStaticTurrets::bind_simulation(ml::test_static_turrets::Simulation& new_simulation) {
+    bound_simulation = &new_simulation;
+    bound_simulation->search_slice_size = search_slice_size;
+    if (actor_config) {
+        bound_simulation->set_config(*actor_config);
+    }
+}
 
-    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
-    check(entity_registry);
-    check(spatial_query_manager);
+auto ATestStaticTurrets::simulation() -> ml::test_static_turrets::Simulation& {
+    check(bound_simulation);
+    return *bound_simulation;
+}
 
+auto ATestStaticTurrets::simulation() const -> ml::test_static_turrets::Simulation const& {
+    return const_cast<ATestStaticTurrets*>(this)->simulation();
+}
+
+void ATestStaticTurrets::clear_runtime_state_presentation() {
+    instances->ClearInstances();
+    ismc_transforms.Reset();
+}
+
+void ATestStaticTurrets::begin_play_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_play_presentation);
     if (!actor_config) {
         UE_LOG(LogSandbox, Fatal, TEXT("ATestStaticTurrets actor_config is nullptr."));
     }
-
     ml::fatal_if_uobject_ptrs_invalid({
-        {
-            SANDBOX_NAMED_UOBJECT_PTR(instances),
-        },
-        {
-            {actor_config->mesh.Get(), TEXT("ISMC Static Mesh")},
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
-        },
+        SANDBOX_NAMED_UOBJECT_PTR(instances.Get()),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data.Get()),
     });
-    check(laser_simulation);
-
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();
 
-    auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(actor_config->laser.fire_cooldown)};
-    entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
-
-    target_refresh_next_offset = 0;
-
     configure_ismc();
+    simulation().entity_radius = ml::get_mesh_sphere_bounds(*instances);
     register_all_proxies_in_level();
 }
 
-void ATestStaticTurrets::begin_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::begin_tick);
-    clear_tick_buffers();
-}
-void ATestStaticTurrets::update_timers(float const) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_timers);
-
-    entities.laser_cooldowns.tick();
-    entities.target_refresh_countdowns.tick();
-}
-void ATestStaticTurrets::make_decisions() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::make_decisions);
-    perform_search();
-}
-void ATestStaticTurrets::queue_commands() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::queue_commands);
-
-    fire_at_enemies();
-}
-void ATestStaticTurrets::resolve_damage_events() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::resolve_damage_events);
-
-    ml::batch::resolve_damage_events(*entity_registry,
-                                     entities.handles,
-                                     entities.healths,
-                                     local_indices_to_remove,
-                                     entity_death_info);
-    validate_array_sizes();
-}
-void ATestStaticTurrets::update_entity_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_entity_registry);
-
-    prepare_entity_update_data();
-
-    entity_registry->queue_entity_updates(
-        {
-            .indices = entities.handles,
-            .data = entity_update_data.get_const_view(),
-        },
-        entity_death_info);
-}
-void ATestStaticTurrets::sync_from_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::sync_from_registry);
-
-    entity_registry->refresh_entity_data(entities.target_handles,
-                                         entities.target_locations.get_view(),
-                                         entities.target_velocities.get_view(),
-                                         {});
-
-    handle_dead_entities();
-}
 void ATestStaticTurrets::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::update_visual_data);
-    // Clear old instances
-    if (local_indices_to_remove.Num()) {
-        constexpr bool is_reverse_sorted{true};
-        instances->RemoveInstances(local_indices_to_remove, is_reverse_sorted);
+    auto const& indices_to_remove{simulation().presentation_indices_to_remove};
+    if (!indices_to_remove.IsEmpty()) {
+        trigger_death_effects();
+        ml::remove_at_swap_many_sorted_desc(indices_to_remove, ismc_transforms);
+        constexpr bool reverse_sorted{true};
+        instances->RemoveInstances(indices_to_remove, reverse_sorted);
 
         constexpr bool mark_render_state_dirty{false};
         constexpr bool teleport{true};
@@ -152,6 +96,7 @@ void ATestStaticTurrets::update_visual_data() {
             0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
     }
 }
+
 void ATestStaticTurrets::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::commit_visual_data);
 
@@ -160,14 +105,12 @@ void ATestStaticTurrets::commit_visual_data() {
         draw_debugging_shapes();
     }
 }
-void ATestStaticTurrets::end_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_tick);
-    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
 
+void ATestStaticTurrets::end_tick_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::end_tick_presentation);
     validate_array_sizes();
 }
 
-// Visuals
 void ATestStaticTurrets::configure_ismc() {
     RootComponent->SetMobility(EComponentMobility::Static);
     ml::batch::configure_ismc(*instances,
@@ -177,310 +120,52 @@ void ATestStaticTurrets::configure_ismc() {
                               });
 }
 
-// Entity data
-void ATestStaticTurrets::prepare_entity_update_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::prepare_entity_update_data);
-    check(entity_update_data.num() == 0);
-
-    auto const n{get_num_instances()};
-
-    ml::add_uninitialised(entity_update_data, n);
-
-    entity_update_data.locations = entities.locations;
-    ml::fill(entity_update_data.velocities, 0.f);
-    ml::fill(entity_update_data.radii, ml::get_mesh_sphere_bounds(*instances));
-    entity_update_data.healths = entities.healths;
-    entity_update_data.teams = entities.teams;
-    entity_update_data.set_all_entity_types(ETestEntityType::Turret);
-
-    for (int32 i{0}; i < n; ++i) {
-        entity_update_data.alive[i] = static_cast<uint8>(entities.healths[i] > 0);
-    }
-}
-
-// Accessors
-auto ATestStaticTurrets::get_num_instances() const noexcept -> int32 {
-    return entities.handles.Num();
-}
-
-auto ATestStaticTurrets::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {
-    return entities.target_handles;
-}
-
-// Searching
-void ATestStaticTurrets::perform_search() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::perform_search);
-
-    auto const n_turrets{get_num_instances()};
-    if (n_turrets == 0) {
-        return;
-    }
-
-    auto const radius{actor_config->detection_radius};
-
-    auto const hardware_thread_count{
-        FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads())};
-    auto const max_jobs_for_grain_size{FMath::Max(1, n_turrets / search_slice_size)};
-    auto const n_jobs{FMath::Min(hardware_thread_count, max_jobs_for_grain_size)};
-    auto const turrets_per_job{FMath::DivideAndRoundUp(n_turrets, n_jobs)};
-
-    ParallelFor(n_jobs, [=, this](int32 const i) {
-        perform_search_on_slice(i, n_turrets, turrets_per_job, radius);
-    });
-}
-void ATestStaticTurrets::perform_search_on_slice(int32 const job_index,
-                                                 int32 const n_turrets,
-                                                 int32 const turrets_per_job,
-                                                 float const radius) {
-    auto const begin{job_index * turrets_per_job};
-    auto const end{FMath::Min(begin + turrets_per_job, n_turrets)};
-    TFixedVectors3f<128> candidate_locations;
-    ml::TFixedArray<uint8, 128> has_line_of_sight;
-
-    for (int32 i{begin}; i < end; ++i) {
-        if (!entities.target_refresh_countdowns.try_consume(i)) {
-            continue;
-        }
-
-        if (entities.target_handles[i].is_null()) {
-            auto const turret_location{ml::get_vector3f(entities.locations, i)};
-            auto const this_team{entities.teams[i]};
-
-            ml::TFixedArray<FRegistryEntityHandle, 128> target_handles;
-            target_handles.set_num_uninitialised(
-                spatial_query_manager->collect_non_team_entities_in_range(
-                    turret_location, this_team, radius, target_handles.capacity_view()));
-
-            entities.target_handles[i] = FRegistryEntityHandle{};
-
-            auto const target_count{target_handles.num()};
-            candidate_locations.set_num_uninitialised(target_count);
-            has_line_of_sight.set_num_uninitialised(target_count);
-            auto candidate_locations_view{candidate_locations.get_view()};
-            for (int32 target_index{}; target_index < target_count; ++target_index) {
-                ml::assign(candidate_locations_view,
-                           target_index,
-                           entity_registry->get_location(target_handles[target_index]));
-            }
-
-            spatial_query_manager->has_line_of_sight_to_targets(
-                ml::get_vector3f(entities.fire_point_locations, i),
-                candidate_locations.get_const_view(),
-                target_handles,
-                has_line_of_sight);
-
-            auto const target_offset{target_count == 0
-                                         ? 0
-                                         : static_cast<int32>(entities.integral_biases[i] %
-                                                              static_cast<uint32>(target_count))};
-            auto const loop_bounds{ml::make_rotated_loop_bounds(0, target_count, target_offset)};
-            for (auto const bounds : loop_bounds) {
-                for (int32 target_index{bounds.begin}; target_index < bounds.end; ++target_index) {
-                    auto const target_handle{target_handles[target_index]};
-                    if (has_line_of_sight[target_index] == 0) {
-                        continue;
-                    }
-                    if (this_team == entity_registry->get_team(target_handle)) {
-                        continue;
-                    }
-
-                    entities.target_handles[i] = target_handle;
-                    goto target_found;
-                }
-            }
-        }
-
-    target_found:;
-    }
-}
-
-// Attacking
-void ATestStaticTurrets::fire_at_enemies() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::fire_at_enemies);
-
-    auto const n{get_num_instances()};
-    auto const laser_speed{actor_config->laser.projectile_speed};
-    auto const laser_max_distance{actor_config->laser.max_distance};
-
-    auto const disengage_radius{get_disengage_radius()};
-    auto const disengage_radius_sq{disengage_radius * disengage_radius};
-
-    auto const colour_cache{
-        UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-
-    auto& candidate_indices{scratch_int_buffer};
-    auto& start_locations{line_of_sight_start_locations};
-    auto& end_locations{line_of_sight_end_locations};
-    auto& hit_entity_handles{line_of_sight_hit_entity_handles};
-
-    for (int32 i{0}; i < n; ++i) {
-        auto const target_handle{entities.target_handles[i]};
-
-        if (target_handle.is_null()) {
-            continue;
-        }
-
-        if (!entity_registry->is_valid_alive(target_handle)) {
-            entities.target_handles[i].reset();
-            continue;
-        }
-
-        if (!entities.laser_cooldowns.is_ready(i)) {
-            continue;
-        }
-
-        auto const turret_location{ml::get_vector3f(entities.locations, i)};
-        auto const target_location{ml::get_vector3f(entities.target_locations, i)};
-
-        auto const distance_sq{FVector3f::DistSquared(turret_location, target_location)};
-        if (distance_sq >= disengage_radius_sq) {
-            entities.target_handles[i].reset();
-            continue;
-        }
-
-        candidate_indices.Add(i);
-        ml::append(start_locations,
-                   entities.fire_point_locations.xs[i],
-                   entities.fire_point_locations.ys[i],
-                   entities.fire_point_locations.zs[i]);
-        ml::append(end_locations, target_location);
-
-        entities.laser_cooldowns.restart_counter(i);
-    }
-
-    auto const n_candidates{candidate_indices.Num()};
-    if (n_candidates == 0) {
-        return;
-    }
-
-    hit_entity_handles.SetNumUninitialized(n_candidates, EAllowShrinking::No);
-    spatial_query_manager->trace_line_of_sight(
-        start_locations.get_const_view(), end_locations.get_const_view(), hit_entity_handles);
-
-    for (int32 candidate_index{0}; candidate_index < n_candidates; ++candidate_index) {
-        auto const i{candidate_indices[candidate_index]};
-        if (hit_entity_handles[candidate_index] != entities.target_handles[i]) {
-            continue;
-        }
-
-        auto const target_location{ml::get_vector3f(entities.target_locations, i)};
-        auto const loc_x{entities.fire_point_locations.xs[i]};
-        auto const loc_y{entities.fire_point_locations.ys[i]};
-        auto const loc_z{entities.fire_point_locations.zs[i]};
-        FVector3f const laser_location{
-            loc_x,
-            loc_y,
-            loc_z,
-        };
-
-        auto const target_velocity{ml::get_vector3f(entities.target_velocities, i)};
-        auto const intercept_time{ml::solve_intercept_time(
-            laser_location, target_location, target_velocity, laser_speed)};
-
-        FVector3f const intercept_pos{target_location + target_velocity * intercept_time};
-        FVector3f const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
-
-        ml::append(new_lasers.locations, loc_x, loc_y, loc_z);
-        ml::append(new_lasers.rotations, fire_dir);
-        ml::append(new_lasers.base_velocities, 0.f, 0.f, 0.f);
-        new_lasers.damages.Add(entities.laser_damages[i]);
-        new_lasers.speeds.Add(laser_speed);
-        new_lasers.max_distances.Add(laser_max_distance);
-        new_lasers.instigator_handles.Add(entities.handles[i]);
-        new_lasers.colours.Add(colour_cache[entities.teams[i]]);
-    }
-
-    laser_simulation->queue_laser_spawns(new_lasers);
-}
-auto ATestStaticTurrets::get_disengage_radius() const -> float {
-    return actor_config->detection_radius * 1.2f;
-}
-
-// Spawning
 void ATestStaticTurrets::register_all_proxies_in_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::register_all_proxies_in_level);
-
-    auto* world{GetWorld()};
+    auto* const world{GetWorld()};
+    check(world);
     auto const proxies{ml::get_actors<Proxy>(*world)};
     auto const n_to_add{proxies.Num()};
     if (n_to_add == 0) {
         return;
     }
 
-    check(actor_config->target_refresh_frequency > 0.f);
-    auto const target_refresh_tick_period_unsigned{
-        simulation_clock.frequency_to_tick_period(actor_config->target_refresh_frequency)};
-    check(FPeriodicTickCountdown16::valid_period(target_refresh_tick_period_unsigned));
-    auto const target_refresh_tick_period{
-        static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_tick_period_unsigned)};
+    ml::test_static_turrets::SpawnData spawn_data;
+    spawn_data.add_uninitialised(n_to_add);
+    ismc_transforms.SetNumUninitialized(n_to_add, EAllowShrinking::No);
+    for (int32 i{0}; i < n_to_add; ++i) {
+        auto const transform{proxies[i]->GetActorTransform()};
+        ismc_transforms[i] = transform;
+        ml::assign(spawn_data.locations, i, transform.GetLocation());
+        spawn_data.teams[i] = proxies[i]->get_team();
+        spawn_data.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
+        spawn_data.laser_damages[i] =
+            proxies[i]->get_laser_damage().Get(actor_config->laser.damage);
+    }
+    auto& turret_simulation{simulation()};
+    turret_simulation.register_turrets(spawn_data);
 
     auto const colour_cache{
         UTestTeamVisualData::build_team_colour_cache(actor_config->team_visual_data)};
-    FVector3f const fire_point_offset{actor_config->fire_point_offset.GetLocation()};
-
-    TArray<float> custom_data_spawn_buffer;
-    custom_data_spawn_buffer.SetNumUninitialized(n_to_add * n_custom_ismc_floats,
-                                                 EAllowShrinking::No);
-
-    // Set entity data
-    ml::add_uninitialised(n_to_add, ismc_transforms, entities);
-    entities.target_refresh_countdowns.initialise_last(target_refresh_tick_period, n_to_add);
-
-    ml::fill_last(entities.target_handles, FRegistryEntityHandle{}, n_to_add);
-    entities.laser_cooldowns.zero_last(n_to_add);
-
+    TArray<float> custom_data;
+    custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     for (int32 i{0}; i < n_to_add; ++i) {
-        auto const transform{proxies[i]->GetActorTransform()};
-
-        ismc_transforms[i] = transform;
-        ml::assign(entities.locations, i, transform.GetLocation());
-        ml::assign(entities.fire_point_locations,
-                   i,
-                   entities.locations.xs[i] + fire_point_offset.X,
-                   entities.locations.ys[i] + fire_point_offset.Y,
-                   entities.locations.zs[i] + fire_point_offset.Z);
-
-        auto const team{proxies[i]->get_team()};
-        entities.teams[i] = team;
-        entities.healths[i] = proxies[i]->get_health().Get(actor_config->max_health);
-        entities.laser_damages[i] = proxies[i]->get_laser_damage().Get(actor_config->laser.damage);
-
-        entities.target_refresh_countdowns.remaining_ticks[i] =
-            static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_next_offset);
-        ++target_refresh_next_offset;
-        if (target_refresh_next_offset == target_refresh_tick_period) {
-            target_refresh_next_offset = 0;
-        }
-
-        // Custom ISMC data
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[team]};
-        custom_data_spawn_buffer[base + 0] = colour.R;
-        custom_data_spawn_buffer[base + 1] = colour.G;
-        custom_data_spawn_buffer[base + 2] = colour.B;
+        auto const& colour{colour_cache[spawn_data.teams[i]]};
+        custom_data[base + 0] = colour.R;
+        custom_data[base + 1] = colour.G;
+        custom_data[base + 2] = colour.B;
+        proxies[i]->set_entity_handle(turret_simulation.entities.handles[i]);
     }
 
     instances->AddInstances(ismc_transforms, false);
-    instances->SetCustomData(0, n_to_add - 1, custom_data_spawn_buffer, false);
-
-    prepare_entity_update_data();
-    auto new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
-    entities.handles = new_entities.registry_handles.to_array();
-    ml::make_deterministic_biases(TConstArrayView<FRegistryEntityHandle>{entities.handles},
-                                  TArrayView<uint32>{entities.integral_biases});
-
-    // Map the proxies to the new handles
-    for (int32 i{0}; i < n_to_add; ++i) {
-        proxies[i]->set_entity_handle(entities.handles[i]);
-        entities.target_handles[i].reset();
-    }
-
+    instances->SetCustomData(0, n_to_add - 1, custom_data, false);
     validate_array_sizes();
 }
 
-// Death handling
 void ATestStaticTurrets::trigger_death_effects() {
-    auto const n{ml::num(local_indices_to_remove)};
+    auto const& death_locations{simulation().presentation_death_locations};
+    auto const n{death_locations.Num()};
     auto* world{GetWorld()};
     auto* explosion_system{actor_config->death_effect.Get()};
 
@@ -495,73 +180,39 @@ void ATestStaticTurrets::trigger_death_effects() {
     FVector const location_offset{actor_config->death_effect_offset};
 
     for (int32 i{0}; i < n; ++i) {
-        auto const entity_index{local_indices_to_remove[i]};
 
         constexpr bool auto_destroy{true};
         constexpr bool auto_activate{true};
 
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            world,
-            explosion_system,
-            ml::get_vector3d(entities.locations, entity_index) + location_offset,
-            FRotator::ZeroRotator,
-            scale,
-            auto_destroy,
-            auto_activate,
-            ENCPoolMethod::AutoRelease);
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
+                                                       explosion_system,
+                                                       FVector{death_locations[i]} +
+                                                           location_offset,
+                                                       FRotator::ZeroRotator,
+                                                       scale,
+                                                       auto_destroy,
+                                                       auto_activate,
+                                                       ENCPoolMethod::AutoRelease);
     }
 }
-void ATestStaticTurrets::handle_dead_entities() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::handle_dead_entities);
 
-    if (local_indices_to_remove.IsEmpty()) {
-        return;
-    }
-
-    ml::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
-
-    trigger_death_effects();
-
-    ml::remove_at_swap_many_sorted_desc(local_indices_to_remove, ismc_transforms, entities);
-}
-
-// Misc
-void ATestStaticTurrets::clear_runtime_state() {
-    instances->ClearInstances();
-    ml::reset(entities, ismc_transforms);
-    target_refresh_next_offset = 0;
-    clear_tick_buffers();
-}
-void ATestStaticTurrets::clear_tick_buffers() {
-    ml::reset(entity_death_info,
-              entity_update_data,
-              local_indices_to_remove,
-              scratch_int_buffer,
-              line_of_sight_start_locations,
-              line_of_sight_end_locations,
-              line_of_sight_hit_entity_handles,
-              new_lasers);
-}
-
-// Checks
 void ATestStaticTurrets::validate_array_sizes() const {
+    simulation().validate_array_sizes();
     ml::fatal_if_nums_not_equal({
-        SANDBOX_NAMED_NUM(entities),
+        SANDBOX_NAMED_NUM(simulation().get_num_instances()),
         SANDBOX_NAMED_NUM(ismc_transforms),
         SANDBOX_NAMED_NUM(instances->GetNumInstances()),
     });
-
-    entities.validate_array_sizes();
-}
-void ATestStaticTurrets::validate_proxy_handles() const {
-    entity_registry->validate_handles(entities.handles);
 }
 
-// Debugging
 void ATestStaticTurrets::draw_debugging_shapes() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestStaticTurrets::draw_debugging_shapes);
 
-    auto const n{get_num_instances()};
+    auto const& turret_simulation{simulation()};
+    auto const& entities{turret_simulation.entities};
+    auto const* const entity_registry{turret_simulation.entity_registry};
+    check(entity_registry);
+    auto const n{turret_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
 
     auto& drawer{debug_drawer};
