@@ -1,8 +1,16 @@
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
+#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
+#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/ships/player/TestSpaceShipController.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
+
+#include <Engine/StaticMeshActor.h>
 
 #include <limits>
 
@@ -24,7 +32,50 @@ auto calculate_dimension(float const grid_size, float const cell_size) noexcept 
 
     return static_cast<int32>(dimension);
 }
+
+auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool {
+    for (auto const actor_class : config.harvested_collision_actor_classes) {
+        if (!actor_class) {
+            return false;
+        }
+    }
+    for (auto const actor_class : config.omitted_collision_actor_classes) {
+        if (!actor_class) {
+            return false;
+        }
+    }
+
+    for (auto const harvested_class : config.harvested_collision_actor_classes) {
+        for (auto const omitted_class : config.omitted_collision_actor_classes) {
+            if (harvested_class->IsChildOf(omitted_class) ||
+                omitted_class->IsChildOf(harvested_class)) {
+                return false;
+            }
+        }
+    }
+
+    return true;
 }
+
+auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> bool {
+    auto const dimensions{config.calculate_grid_dimensions()};
+    if (dimensions.X <= 0 || dimensions.Y <= 0 || dimensions.Z <= 0) {
+        return false;
+    }
+
+    auto const xy_cell_count{static_cast<int64>(dimensions.X) * dimensions.Y};
+    return xy_cell_count <= (std::numeric_limits<int32>::max() / dimensions.Z);
+}
+}
+
+FCollisionGridConfig::FCollisionGridConfig()
+    : harvested_collision_actor_classes{AStaticMeshActor::StaticClass()}
+    , omitted_collision_actor_classes{ATestLasers::StaticClass(),
+                                      ATestSpaceShip::StaticClass(),
+                                      ATestCapitalShips::StaticClass(),
+                                      ATestCapitalShipFighters::StaticClass(),
+                                      ATestStaticTurrets::StaticClass(),
+                                      ATestTubeSpinners::StaticClass()} {}
 
 auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
     return {
@@ -35,13 +86,7 @@ auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVec
 }
 
 auto FCollisionGridConfig::is_valid() const noexcept -> bool {
-    auto const dimensions{calculate_grid_dimensions()};
-    if (dimensions.X <= 0 || dimensions.Y <= 0 || dimensions.Z <= 0) {
-        return false;
-    }
-
-    auto const xy_cell_count{static_cast<int64>(dimensions.X) * dimensions.Y};
-    return xy_cell_count <= (std::numeric_limits<int32>::max() / dimensions.Z);
+    return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }
 
 auto USpaceGameLevelConfig::is_valid() const noexcept -> bool {
@@ -96,8 +141,10 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors) const
     REQUIRE_CONFIG(FMath::IsFinite(collision_grid.line_thickness) &&
                        collision_grid.line_thickness > 0.f,
                    "collision_grid.line_thickness must be finite and positive");
-    REQUIRE_CONFIG(collision_grid.is_valid(),
+    REQUIRE_CONFIG(collision_grid_dimensions_are_valid(collision_grid),
                    "collision_grid calculated dimensions and cell count must fit in int32");
+    REQUIRE_CONFIG(collision_class_lists_are_valid(collision_grid),
+                   "collision_grid static collision actor class lists are invalid or overlap");
 
 #undef REQUIRE_CONFIG
 }

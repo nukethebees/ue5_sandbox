@@ -14,6 +14,7 @@
 #include "SpaceGameLevelConfig.generated.h"
 
 class ADelayedNiagaraSpawner;
+class AActor;
 class AShipBomb;
 class ATestCapitalShipFighters;
 class ATestCapitalShipProxy;
@@ -389,6 +390,8 @@ USTRUCT(BlueprintType)
 struct SPACEGAME_API FCollisionGridConfig {
     GENERATED_BODY()
 
+    FCollisionGridConfig();
+
     [[nodiscard]] auto calculate_grid_dimensions() const noexcept -> FIntVector3;
     [[nodiscard]] auto is_valid() const noexcept -> bool;
 
@@ -398,12 +401,16 @@ struct SPACEGAME_API FCollisionGridConfig {
     UPROPERTY(EditAnywhere, Category = "Collision", meta = (Units = "cm"))
     FVector3f cell_size{5000.f, 5000.f, 20000.f};
 
+    UPROPERTY(EditAnywhere, Category = "Collision|Static Geometry")
+    TArray<TSubclassOf<AActor>> harvested_collision_actor_classes;
+
+    UPROPERTY(EditAnywhere, Category = "Collision|Static Geometry")
+    TArray<TSubclassOf<AActor>> omitted_collision_actor_classes;
+
     UPROPERTY(EditAnywhere, Category = "Collision|Visualization")
     bool show_grid{false};
 
-    UPROPERTY(EditAnywhere,
-              Category = "Collision|Visualization",
-              meta = (ClampMin = "0.1"))
+    UPROPERTY(EditAnywhere, Category = "Collision|Visualization", meta = (ClampMin = "0.1"))
     float line_thickness{1.f};
 
     UPROPERTY(EditAnywhere, Category = "Collision|Visualization")

@@ -11,6 +11,8 @@
 #include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <CQTest.h>
+#include <Engine/StaticMeshActor.h>
+#include <GameFramework/Actor.h>
 #include <UObject/Package.h>
 #include <UObject/SoftObjectPtr.h>
 
@@ -97,6 +99,34 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                              copy->collision_grid.grid_size == source->collision_grid.grid_size);
         TestRunner->TestTrue(TEXT("Collision-grid cell size is preserved"),
                              copy->collision_grid.cell_size == source->collision_grid.cell_size);
+    }
+
+    TEST_METHOD(RejectsOverlappingStaticCollisionClassLists)
+    {
+        auto const* const source{ml::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
+            return;
+        }
+
+        auto* const copy{DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
+            return;
+        }
+
+        copy->collision_grid.harvested_collision_actor_classes = {AStaticMeshActor::StaticClass()};
+        copy->collision_grid.omitted_collision_actor_classes = {AActor::StaticClass()};
+
+        TArray<FString> errors;
+        copy->get_validation_errors(errors);
+        TestRunner->TestFalse(TEXT("Inherited class-list overlap is invalid"), copy->is_valid());
+        TestRunner->TestTrue(
+            TEXT("Class-list overlap has a validation diagnostic"),
+            errors.Contains(
+                TEXT("collision_grid static collision actor class lists are invalid or overlap")));
+        TestRunner->TestFalse(
+            TEXT("Class-list overlap does not report a grid-dimensions error"),
+            errors.Contains(
+                TEXT("collision_grid calculated dimensions and cell count must fit in int32")));
     }
 
     TEST_METHOD(LegacyDefaultValuesWerePreserved)
