@@ -8,35 +8,34 @@ normal Unreal build freshness check.
 
 ```text
 document     := widget EOF
-widget       := "widget" type_name "{" widget_item* "}"
-widget_item  := argument | content | named_slot
-argument     := identifier "=" value
-content      := "content" child_block
-named_slot   := "slot" identifier child_block
-child_block  := "{" child "}"
+widget       := "(" type_name widget_item* ")"
+widget_item  := argument | named_slot | child
+argument     := keyword value
+named_slot   := "(" "slot" atom child ")"
 child        := widget | vbox
-vbox         := "vbox" "{" box_slot+ "}"
-box_slot     := ("auto" | "fill" ["weight" "=" number]) box_option* child_block
-box_option   := "padding" "=" margin
-              | "halign" "=" ("left" | "center" | "right" | "fill")
-              | "valign" "=" ("top" | "center" | "bottom" | "fill")
+vbox         := "(" "vbox" box_slot+ ")"
+box_slot     := "(" ("auto" | "fill") box_option* child ")"
+box_option   := ":weight" number
+              | ":padding" margin
+              | ":halign" ("left" | "center" | "right" | "fill")
+              | ":valign" ("top" | "center" | "bottom" | "fill")
 margin       := number
-              | "(" number "," number ")"
-              | "(" number "," number "," number "," number ")"
-value        := number | boolean | quoted_text | qualified_identifier
-type_name    := qualified_identifier ["<" type_name ("," type_name)* ">"]
+              | "(" number number ")"
+              | "(" number number number number ")"
+value        := number | boolean | quoted_text | atom
+type_name    := atom
 ```
 
-`//` introduces a line comment. Quoted text generates `FText::FromString(TEXT(...))`; it is only
-for this non-production sample. Qualified identifiers allow constants such as `HAlign_Left`, but
-calls, operators, member access, bindings, events, assignment, raw C++, localization, and existing
-widgets are intentionally unsupported.
+`;` introduces a line comment. Atoms remain opaque, allowing types such as `SSpinBox<int32>` and
+constants such as `HAlign_Left`. Quoted text generates `FText::FromString(TEXT(...))`; it is only
+for this non-production sample. Calls, operators, member access, bindings, events, assignment, raw
+C++, localization, and existing widgets are intentionally unsupported.
 
 Slate DSL source uses two-space indentation to keep deeply nested trees compact. Generated C++
 continues to use the project's ordinary four-space indentation.
 
-Arguments must precede child slots. Each widget may have one `content` child and uniquely named
-`slot` children. A child block contains exactly one widget or vertical box.
+Keyword arguments must precede children. Each widget may have one direct default child and uniquely
+named `(slot Name child)` forms. Box slot options are keywords and must precede their one child.
 
 ## Commands
 

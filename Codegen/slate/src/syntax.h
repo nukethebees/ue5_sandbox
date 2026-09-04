@@ -24,18 +24,11 @@ class SourceError final : public std::runtime_error {
 };
 
 enum class TokenKind {
-    identifier,
-    number,
+    atom,
+    keyword,
     string,
-    left_brace,
-    right_brace,
     left_parenthesis,
     right_parenthesis,
-    comma,
-    equal,
-    less,
-    greater,
-    scope,
     end,
 };
 

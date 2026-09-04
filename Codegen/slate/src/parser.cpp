@@ -1,5 +1,6 @@
 #include "parser.h"
 
+#include <cctype>
 #include <memory>
 #include <set>
 #include <string>
@@ -26,20 +27,8 @@ class Parser {
 
     auto at(TokenKind const kind) const -> bool { return current().kind == kind; }
 
-    auto at_keyword(std::string_view const keyword) const -> bool {
-        return at(TokenKind::identifier) && current().text == keyword;
-    }
-
     auto consume(TokenKind const kind) -> bool {
         if (!at(kind)) {
-            return false;
-        }
-        ++index_;
-        return true;
-    }
-
-    auto consume_keyword(std::string_view const keyword) -> bool {
-        if (!at_keyword(keyword)) {
             return false;
         }
         ++index_;
@@ -53,14 +42,16 @@ class Parser {
         return previous();
     }
 
-    auto expect_identifier(std::string_view const message) -> Token const& {
-        return expect(TokenKind::identifier, message);
+    auto expect_atom(std::string_view const message) -> Token const& {
+        return expect(TokenKind::atom, message);
     }
 
-    void expect_keyword(std::string_view const keyword) {
-        if (!consume_keyword(keyword)) {
-            fail(current().span, "expected '" + std::string{keyword} + "'");
+    auto list_head_is(std::string_view const head) const -> bool {
+        if (!at(TokenKind::left_parenthesis) || index_ + 1 >= tokens_.size()) {
+            return false;
         }
+        auto const& head_token{tokens_[index_ + 1]};
+        return head_token.kind == TokenKind::atom && head_token.text == head;
     }
 
     [[noreturn]] void fail(SourceSpan const span, std::string_view const message) const {
@@ -68,156 +59,142 @@ class Parser {
     }
 
     auto parse_widget() -> Child {
-        expect_keyword("widget");
-        auto const span{previous().span};
-        Widget widget{.type = parse_type_name(), .span = span};
-        expect(TokenKind::left_brace, "expected '{' after widget type");
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before widget")};
+        auto const& type{expect_atom("expected widget type")};
+        if (type.text == "vbox" || type.text == "slot" || type.text == "auto" ||
+            type.text == "fill") {
+            fail(type.span, "expected widget type, found structural form '" + type.text + "'");
+        }
 
+        Widget widget{.type = type.text, .span = opening.span};
         std::set<std::string> argument_names;
         std::set<std::string> slot_names;
         bool saw_child{false};
-        while (!at(TokenKind::right_brace)) {
+
+        while (!at(TokenKind::right_parenthesis)) {
             if (at(TokenKind::end)) {
-                fail(current().span, "expected '}' after widget body");
+                fail(current().span, "expected ')' after widget body");
             }
-            if (consume_keyword("content")) {
-                auto const content_span{previous().span};
-                saw_child = true;
-                if (widget.content) {
-                    fail(content_span, "duplicate default content");
+            if (at(TokenKind::keyword)) {
+                if (saw_child) {
+                    fail(current().span, "widget arguments must appear before children");
                 }
-                widget.content_span = content_span;
-                widget.content = parse_child_block();
+                auto argument{parse_argument()};
+                if (!argument_names.insert(argument.name).second) {
+                    fail(argument.span, "duplicate widget argument ':" + argument.name + "'");
+                }
+                widget.arguments.push_back(std::move(argument));
                 continue;
             }
-            if (consume_keyword("slot")) {
-                auto const slot_span{previous().span};
-                saw_child = true;
-                auto const& name{expect_identifier("expected named slot name")};
-                if (!slot_names.insert(name.text).second) {
-                    fail(name.span, "duplicate named slot '" + name.text + "'");
+            if (!at(TokenKind::left_parenthesis)) {
+                fail(current().span, "expected widget argument or child list");
+            }
+
+            saw_child = true;
+            if (list_head_is("slot")) {
+                auto slot{parse_named_slot()};
+                if (!slot_names.insert(slot.name).second) {
+                    fail(slot.span, "duplicate named slot '" + slot.name + "'");
                 }
-                widget.named_slots.push_back(
-                    WidgetSlot{name.text, parse_child_block(), slot_span});
+                widget.named_slots.push_back(std::move(slot));
                 continue;
             }
-            if (saw_child) {
-                fail(current().span, "widget arguments must appear before child slots");
+            if (widget.content) {
+                fail(current().span, "widget may contain only one default child");
             }
-            auto argument{parse_argument()};
-            if (!argument_names.insert(argument.name).second) {
-                fail(argument.span, "duplicate widget argument '" + argument.name + "'");
-            }
-            widget.arguments.push_back(std::move(argument));
+            widget.content_span = current().span;
+            widget.content = std::make_shared<Child>(parse_child());
         }
-        expect(TokenKind::right_brace, "expected '}' after widget body");
-        return Child{std::move(widget), span};
-    }
 
-    auto parse_type_name() -> std::string {
-        std::string result{parse_qualified_identifier("expected widget type")};
-        if (!consume(TokenKind::less)) {
-            return result;
-        }
-        result += '<';
-        result += parse_type_name();
-        while (consume(TokenKind::comma)) {
-            result += ", ";
-            result += parse_type_name();
-        }
-        expect(TokenKind::greater, "expected '>' after template arguments");
-        result += '>';
-        return result;
-    }
-
-    auto parse_qualified_identifier(std::string_view const message) -> std::string {
-        std::string result{expect_identifier(message).text};
-        while (consume(TokenKind::scope)) {
-            result += "::";
-            result += expect_identifier("expected identifier after '::'").text;
-        }
-        return result;
+        expect(TokenKind::right_parenthesis, "expected ')' after widget body");
+        return Child{std::move(widget), opening.span};
     }
 
     auto parse_argument() -> Argument {
-        auto const& name{expect_identifier("expected widget argument or child slot")};
-        auto const span{name.span};
-        auto const name_text{name.text};
-        expect(TokenKind::equal, "expected '=' after widget argument name");
-        return Argument{name_text, parse_value(), span};
+        auto const& name{expect(TokenKind::keyword, "expected widget argument")};
+        return Argument{name.text, parse_value(), name.span};
     }
 
     auto parse_value() -> Value {
         auto const span{current().span};
-        if (consume(TokenKind::number)) {
-            return Value{ValueKind::number, previous().text, span};
-        }
         if (consume(TokenKind::string)) {
             return Value{ValueKind::text, previous().text, span};
         }
-        if (at_keyword("true") || at_keyword("false")) {
-            ++index_;
-            return Value{ValueKind::boolean, previous().text, span};
+        if (!consume(TokenKind::atom)) {
+            fail(span, "expected number, boolean, text, or symbol");
         }
-        if (at(TokenKind::identifier)) {
-            return Value{ValueKind::symbol,
-                         parse_qualified_identifier("expected literal value"),
-                         span};
+
+        auto const& token{previous()};
+        if (token.text == "true" || token.text == "false") {
+            return Value{ValueKind::boolean, token.text, span};
         }
-        fail(span, "expected number, boolean, text, or qualified identifier");
+        if (is_number(token.text)) {
+            return Value{ValueKind::number, token.text, span};
+        }
+        return Value{ValueKind::symbol, token.text, span};
     }
 
-    auto parse_child_block() -> std::shared_ptr<Child> {
-        expect(TokenKind::left_brace, "expected '{' before child widget");
+    auto parse_named_slot() -> WidgetSlot {
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before named slot")};
+        auto const& form{expect_atom("expected 'slot'")};
+        if (form.text != "slot") {
+            fail(form.span, "expected 'slot'");
+        }
+        auto const& name{expect_atom("expected named slot name")};
         auto child{std::make_shared<Child>(parse_child())};
-        expect(TokenKind::right_brace, "expected '}' after child widget");
-        return child;
+        expect(TokenKind::right_parenthesis, "expected ')' after named slot");
+        return WidgetSlot{name.text, std::move(child), opening.span};
     }
 
     auto parse_child() -> Child {
-        if (at_keyword("widget")) {
-            return parse_widget();
+        if (!at(TokenKind::left_parenthesis)) {
+            fail(current().span, "expected child list");
         }
-        if (at_keyword("vbox")) {
+        if (list_head_is("vbox")) {
             return parse_vbox();
         }
-        fail(current().span, "expected 'widget' or 'vbox'");
+        if (list_head_is("slot") || list_head_is("auto") || list_head_is("fill")) {
+            fail(tokens_[index_ + 1].span, "expected widget or vbox child");
+        }
+        return parse_widget();
     }
 
     auto parse_vbox() -> Child {
-        expect_keyword("vbox");
-        auto const span{previous().span};
-        expect(TokenKind::left_brace, "expected '{' after vbox");
-        VBox box{.span = span};
-        while (!at(TokenKind::right_brace)) {
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before vbox")};
+        auto const& form{expect_atom("expected 'vbox'")};
+        if (form.text != "vbox") {
+            fail(form.span, "expected 'vbox'");
+        }
+
+        VBox box{.span = opening.span};
+        while (!at(TokenKind::right_parenthesis)) {
             if (at(TokenKind::end)) {
-                fail(current().span, "expected '}' after vbox body");
+                fail(current().span, "expected ')' after vbox body");
             }
             box.slots.push_back(parse_box_slot());
         }
-        expect(TokenKind::right_brace, "expected '}' after vbox body");
+        expect(TokenKind::right_parenthesis, "expected ')' after vbox body");
         if (box.slots.empty()) {
-            fail(span, "vbox must contain at least one slot");
+            fail(opening.span, "vbox must contain at least one slot");
         }
-        return Child{std::move(box), span};
+        return Child{std::move(box), opening.span};
     }
 
     auto parse_box_slot() -> BoxSlot {
-        if (!at_keyword("auto") && !at_keyword("fill")) {
-            fail(current().span, "expected 'auto' or 'fill' vbox slot");
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected vbox slot list")};
+        auto const& mode{expect_atom("expected 'auto' or 'fill' vbox slot")};
+        if (mode.text != "auto" && mode.text != "fill") {
+            fail(mode.span, "expected 'auto' or 'fill' vbox slot");
         }
-        auto const mode{current()};
-        ++index_;
-        BoxSlot slot{.fill = mode.text == "fill", .span = mode.span};
+
+        BoxSlot slot{.fill = mode.text == "fill", .span = opening.span};
         bool has_padding{false};
         bool has_horizontal_alignment{false};
         bool has_vertical_alignment{false};
 
-        while (!at(TokenKind::left_brace)) {
-            auto const& option{expect_identifier("expected vbox slot option or '{'")};
-            auto const option_text{option.text};
-            expect(TokenKind::equal, "expected '=' after vbox slot option");
-            if (option_text == "weight") {
+        while (at(TokenKind::keyword)) {
+            auto const& option{expect(TokenKind::keyword, "expected vbox slot option")};
+            if (option.text == "weight") {
                 if (!slot.fill) {
                     fail(option.span, "weight is only valid on fill slots");
                 }
@@ -225,54 +202,63 @@ class Parser {
                     fail(option.span, "duplicate fill weight");
                 }
                 slot.weight = parse_number("expected fill weight");
-            } else if (option_text == "padding") {
+            } else if (option.text == "padding") {
                 if (has_padding) {
                     fail(option.span, "duplicate slot padding");
                 }
                 has_padding = true;
                 slot.padding = parse_margin();
-            } else if (option_text == "halign") {
+            } else if (option.text == "halign") {
                 if (has_horizontal_alignment) {
                     fail(option.span, "duplicate horizontal alignment");
                 }
                 has_horizontal_alignment = true;
                 slot.horizontal_alignment = parse_alignment(true);
-            } else if (option_text == "valign") {
+            } else if (option.text == "valign") {
                 if (has_vertical_alignment) {
                     fail(option.span, "duplicate vertical alignment");
                 }
                 has_vertical_alignment = true;
                 slot.vertical_alignment = parse_alignment(false);
             } else {
-                fail(option.span, "unsupported vbox slot option '" + option_text + "'");
+                fail(option.span, "unsupported vbox slot option ':" + option.text + "'");
             }
         }
-        slot.child = parse_child_block();
+
+        slot.child = std::make_shared<Child>(parse_child());
+        expect(TokenKind::right_parenthesis, "expected ')' after vbox slot");
         return slot;
     }
 
     auto parse_number(std::string_view const message) -> std::string {
-        return expect(TokenKind::number, message).text;
+        auto const& value{expect_atom(message)};
+        if (!is_number(value.text)) {
+            fail(value.span, message);
+        }
+        return value.text;
     }
 
     auto parse_margin() -> std::vector<std::string> {
         if (!consume(TokenKind::left_parenthesis)) {
             return {parse_number("expected padding value")};
         }
+
         std::vector<std::string> values;
-        values.push_back(parse_number("expected padding value"));
-        while (consume(TokenKind::comma)) {
-            values.push_back(parse_number("expected padding value after ','"));
+        while (!at(TokenKind::right_parenthesis)) {
+            if (at(TokenKind::end)) {
+                fail(current().span, "expected ')' after padding");
+            }
+            values.push_back(parse_number("expected padding value"));
         }
-        expect(TokenKind::right_parenthesis, "expected ')' after padding");
+        auto const& closing{expect(TokenKind::right_parenthesis, "expected ')' after padding")};
         if (values.size() != 2 && values.size() != 4) {
-            fail(previous().span, "padding tuple must contain two or four values");
+            fail(closing.span, "padding tuple must contain two or four values");
         }
         return values;
     }
 
     auto parse_alignment(bool const horizontal) -> std::string {
-        auto const& value{expect_identifier("expected alignment value")};
+        auto const& value{expect_atom("expected alignment value")};
         auto const valid{horizontal ? value.text == "left" || value.text == "center" ||
                                           value.text == "right" || value.text == "fill"
                                     : value.text == "top" || value.text == "center" ||
@@ -283,6 +269,36 @@ class Parser {
                             : "expected top, center, bottom, or fill");
         }
         return value.text;
+    }
+
+    static auto is_number(std::string_view const text) -> bool {
+        if (text.empty()) {
+            return false;
+        }
+
+        std::size_t index{};
+        if (text[index] == '-') {
+            ++index;
+        }
+        if (index == text.size() || std::isdigit(static_cast<unsigned char>(text[index])) == 0) {
+            return false;
+        }
+        while (index < text.size() &&
+               std::isdigit(static_cast<unsigned char>(text[index])) != 0) {
+            ++index;
+        }
+        if (index < text.size() && text[index] == '.') {
+            ++index;
+            if (index == text.size() ||
+                std::isdigit(static_cast<unsigned char>(text[index])) == 0) {
+                return false;
+            }
+            while (index < text.size() &&
+                   std::isdigit(static_cast<unsigned char>(text[index])) != 0) {
+                ++index;
+            }
+        }
+        return index == text.size();
     }
 
     std::string_view path_;

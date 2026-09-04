@@ -22,17 +22,18 @@ class Lexer {
                 return result;
             }
 
-            auto const value{peek()};
-            if (is_identifier_start(value)) {
-                result.push_back(lex_identifier());
-            } else if (std::isdigit(static_cast<unsigned char>(value)) != 0 ||
-                       (value == '-' &&
-                        std::isdigit(static_cast<unsigned char>(peek_next())) != 0)) {
-                result.push_back(lex_number());
-            } else if (value == '"') {
+            if (peek() == '(') {
+                advance();
+                result.push_back(Token{TokenKind::left_parenthesis, "(", span});
+            } else if (peek() == ')') {
+                advance();
+                result.push_back(Token{TokenKind::right_parenthesis, ")", span});
+            } else if (peek() == '"') {
                 result.push_back(lex_string());
+            } else if (peek() == ':' && peek_next() != ':') {
+                result.push_back(lex_keyword());
             } else {
-                result.push_back(lex_punctuation());
+                result.push_back(lex_atom());
             }
         }
     }
@@ -59,12 +60,9 @@ class Lexer {
         return value;
     }
 
-    static auto is_identifier_start(char const value) -> bool {
-        return std::isalpha(static_cast<unsigned char>(value)) != 0 || value == '_';
-    }
-
-    static auto is_identifier_continue(char const value) -> bool {
-        return std::isalnum(static_cast<unsigned char>(value)) != 0 || value == '_';
+    static auto is_delimiter(char const value) -> bool {
+        return value == '\0' || value == '(' || value == ')' || value == '"' || value == ';' ||
+               std::isspace(static_cast<unsigned char>(value)) != 0;
     }
 
     void skip_trivia() {
@@ -73,7 +71,7 @@ class Lexer {
                 advance();
                 continue;
             }
-            if (peek() == '/' && peek_next() == '/') {
+            if (peek() == ';') {
                 while (!at_end() && peek() != '\n') {
                     advance();
                 }
@@ -83,34 +81,25 @@ class Lexer {
         }
     }
 
-    auto lex_identifier() -> Token {
+    auto lex_atom() -> Token {
         auto const span{current_span()};
         std::string text;
-        while (!at_end() && is_identifier_continue(peek())) {
+        while (!is_delimiter(peek())) {
             text.push_back(advance());
         }
-        return Token{TokenKind::identifier, std::move(text), span};
+        if (text.empty()) {
+            throw SourceError{path_, span, "unexpected character '" + std::string{peek()} + "'"};
+        }
+        return Token{TokenKind::atom, std::move(text), span};
     }
 
-    auto lex_number() -> Token {
+    auto lex_keyword() -> Token {
         auto const span{current_span()};
-        std::string text;
-        if (peek() == '-') {
-            text.push_back(advance());
-        }
-        while (std::isdigit(static_cast<unsigned char>(peek())) != 0) {
-            text.push_back(advance());
-        }
-        if (peek() == '.') {
-            text.push_back(advance());
-            if (std::isdigit(static_cast<unsigned char>(peek())) == 0) {
-                throw SourceError{path_, current_span(), "expected a digit after decimal point"};
-            }
-            while (std::isdigit(static_cast<unsigned char>(peek())) != 0) {
-                text.push_back(advance());
-            }
-        }
-        return Token{TokenKind::number, std::move(text), span};
+        advance();
+        auto token{lex_atom()};
+        token.kind = TokenKind::keyword;
+        token.span = span;
+        return token;
     }
 
     auto lex_string() -> Token {
@@ -153,38 +142,6 @@ class Lexer {
         }
         advance();
         return Token{TokenKind::string, std::move(text), span};
-    }
-
-    auto lex_punctuation() -> Token {
-        auto const span{current_span()};
-        auto const value{advance()};
-        switch (value) {
-        case '{':
-            return Token{TokenKind::left_brace, "{", span};
-        case '}':
-            return Token{TokenKind::right_brace, "}", span};
-        case '(':
-            return Token{TokenKind::left_parenthesis, "(", span};
-        case ')':
-            return Token{TokenKind::right_parenthesis, ")", span};
-        case ',':
-            return Token{TokenKind::comma, ",", span};
-        case '=':
-            return Token{TokenKind::equal, "=", span};
-        case '<':
-            return Token{TokenKind::less, "<", span};
-        case '>':
-            return Token{TokenKind::greater, ">", span};
-        case ':':
-            if (peek() == ':') {
-                advance();
-                return Token{TokenKind::scope, "::", span};
-            }
-            break;
-        default:
-            break;
-        }
-        throw SourceError{path_, span, "unexpected character '" + std::string{value} + "'"};
     }
 
     std::string_view path_;

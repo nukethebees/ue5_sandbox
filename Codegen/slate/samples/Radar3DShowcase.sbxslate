@@ -1,54 +1,37 @@
-widget SExperimentPanel {
-  Title = "RDG 3D Radar Experiment"
-  Description = "Synthetic contacts rendered into an offscreen texture"
+(SExperimentPanel
+  :Title "RDG 3D Radar Experiment"
+  :Description "Synthetic contacts rendered into an offscreen texture"
 
-  slot Controls {
-    vbox {
-      auto padding=(0, 0, 0, 10) {
-        widget SLabeledRow {
-          Label = "Contacts"
-          ContentHAlign = HAlign_Left
+  (slot Controls
+    (vbox
+      (auto :padding (0 0 0 10)
+        (SLabeledRow
+          :Label "Contacts"
+          :ContentHAlign HAlign_Left
 
-          content {
-            widget SSpinBox<int32> {
-              MinValue = 1
-              MaxValue = 256
-              MinSliderValue = 1
-              MaxSliderValue = 256
-              Delta = 1
-              MinDesiredWidth = 120
-              Value = 5
-            }
-          }
-        }
-      }
+          (SSpinBox<int32>
+            :MinValue 1
+            :MaxValue 256
+            :MinSliderValue 1
+            :MaxSliderValue 256
+            :Delta 1
+            :MinDesiredWidth 120
+            :Value 5)))
 
-      auto {
-        widget SExperimentBenchmark {
-          ButtonText = "Benchmark RDG contact scaling"
-          ToolTipText = "Benchmarks 1 to 256 contacts"
+      (auto
+        (SExperimentBenchmark
+          :ButtonText "Benchmark RDG contact scaling"
+          :ToolTipText "Benchmarks 1 to 256 contacts"
 
-          slot Output {
-            widget SMultiLineEditableTextBox {
-              IsReadOnly = true
-              Text = "Results appear here"
-            }
-          }
-        }
-      }
-    }
-  }
+          (slot Output
+            (SMultiLineEditableTextBox
+              :IsReadOnly true
+              :Text "Results appear here"))))))
 
-  slot Preview {
-    widget SBox {
-      WidthOverride = 512
-      HeightOverride = 512
+  (slot Preview
+    (SBox
+      :WidthOverride 512
+      :HeightOverride 512
 
-      content {
-        widget STextBlock {
-          Text = "Radar preview supplied by C++ in milestone 2"
-        }
-      }
-    }
-  }
-}
+      (STextBlock
+        :Text "Radar preview supplied by C++ in milestone 2"))))
