@@ -90,14 +90,16 @@ void USaveGameViewerWidget::set_browser(FSaveGameBrowser& browser) {
 }
 
 void USaveGameViewerWidget::focus_primary_action() {
-    if (!profile_rows_.IsEmpty() && IsValid(profile_rows_[0])) {
-        profile_rows_[0]->focus_row();
-        return;
+    if (auto* const focus_target{get_focus_target()}; IsValid(focus_target)) {
+        focus_target->SetKeyboardFocus();
     }
+}
 
-    if (IsValid(refresh_button)) {
-        refresh_button->SetKeyboardFocus();
+auto USaveGameViewerWidget::get_focus_target() const -> UWidget* {
+    if (!profile_rows_.IsEmpty() && IsValid(profile_rows_[0])) {
+        return profile_rows_[0]->get_focus_target();
     }
+    return refresh_button;
 }
 
 void USaveGameViewerWidget::handle_refresh() {

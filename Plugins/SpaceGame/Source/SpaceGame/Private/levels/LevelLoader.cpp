@@ -205,6 +205,7 @@ void configure_mission(FLevelDefinition const& definition,
                        TMap<FLevelEntityId, AActor*> const& spawned_entities,
                        ATestBatchOrchestrator& orchestrator) {
     auto& manager{orchestrator.get_mission_manager()};
+    manager.set_level_identity(definition.metadata.id.value, definition.metadata.title);
     if (!definition.mission.IsSet()) {
         manager.set_mission_mode(ETestMissionMode::None);
         return;
@@ -238,7 +239,6 @@ void configure_mission(FLevelDefinition const& definition,
         mission.mode == ELevelMissionMode::KillEnemiesWithinTime) {
         manager.set_kill_target(mission.kill_count.IsSet() ? mission.kill_count.GetValue() : 0);
     }
-    manager.set_level_name(definition.metadata.id.value);
     manager.set_save_mission_results(true);
 
     auto const resolve_actor{[&spawned_entities](FLevelEntityId const id) -> AActor& {

@@ -38,6 +38,8 @@ public class SandboxTests : ModuleRules
             "RenderCore",
             "UnrealEd",
             "LevelEditor",
+            "CommonInput",
+            "CommonUI",
             "CQTest",
             "EnhancedInput",
             "UMG",

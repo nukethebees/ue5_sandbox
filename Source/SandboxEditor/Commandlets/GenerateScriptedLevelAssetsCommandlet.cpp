@@ -1,14 +1,23 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
 #include <SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h>
+#include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ui/common/GameUiRootLayout.h>
+#include <SpaceGame/ui/common/MenuButtonWidget.h>
+#include <SpaceGame/ui/LevelCompletionWidget.h>
+#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+#include <SpaceGame/ui/main_menu/OptionsWidget.h>
+#include <SpaceGame/ui/PauseMenuWidget.h>
+#include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include <AssetRegistry/AssetRegistryModule.h>
 #include <Blueprint/WidgetTree.h>
 #include <BlueprintEditorLibrary.h>
+#include <CommonTextBlock.h>
 #include <Components/Button.h>
 #include <Components/ButtonSlot.h>
 #include <Components/HorizontalBox.h>
@@ -19,21 +28,52 @@
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <Components/VerticalBoxSlot.h>
+#include <Components/WidgetSwitcher.h>
 #include <Engine/Blueprint.h>
 #include <FileHelpers.h>
 #include <GameFramework/GameModeBase.h>
 #include <GameFramework/WorldSettings.h>
+#include <InputAction.h>
+#include <InputCoreTypes.h>
+#include <InputMappingContext.h>
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Misc/PackageName.h>
 #include <UObject/Package.h>
 #include <UObject/SavePackage.h>
 #include <WidgetBlueprint.h>
+#include <WidgetBlueprintOperationUtils.h>
+#include <Widgets/CommonActivatableWidgetContainer.h>
 
 namespace {
 constexpr TCHAR widget_object_path[]{
     TEXT("/SpaceGame/UI/MainMenu/WBP_LevelSelect.WBP_LevelSelect")};
 constexpr TCHAR main_menu_widget_object_path[]{
     TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu.WBP_MainMenu")};
+constexpr TCHAR main_menu_widget_package_name[]{TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu")};
+constexpr TCHAR pause_menu_widget_object_path[]{
+    TEXT("/Game/UI/pause_menu/WBP_PauseMenu.WBP_PauseMenu")};
+constexpr TCHAR pause_menu_widget_package_name[]{TEXT("/Game/UI/pause_menu/WBP_PauseMenu")};
+constexpr TCHAR completion_widget_object_path[]{
+    TEXT("/SpaceGame/UI/InGame/WBP_LevelCompletion.WBP_LevelCompletion")};
+constexpr TCHAR completion_widget_package_name[]{TEXT("/SpaceGame/UI/InGame/WBP_LevelCompletion")};
+constexpr TCHAR menu_button_package_name[]{TEXT("/SpaceGame/UI/Common/WBP_MenuButton")};
+constexpr TCHAR menu_button_object_path[]{
+    TEXT("/SpaceGame/UI/Common/WBP_MenuButton.WBP_MenuButton")};
+constexpr TCHAR root_layout_package_name[]{TEXT("/SpaceGame/UI/Common/WBP_GameUiRoot")};
+constexpr TCHAR root_layout_object_path[]{
+    TEXT("/SpaceGame/UI/Common/WBP_GameUiRoot.WBP_GameUiRoot")};
+constexpr TCHAR options_widget_class_path[]{
+    TEXT("/SpaceGame/UI/MainMenu/WBP_Options.WBP_Options_C")};
+constexpr TCHAR save_game_viewer_class_path[]{
+    TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameViewer.WBP_SaveGameViewer_C")};
+constexpr TCHAR back_action_package_name[]{TEXT("/SpaceGame/Input/UI/IA_menu_back")};
+constexpr TCHAR back_action_object_path[]{TEXT("/SpaceGame/Input/UI/IA_menu_back.IA_menu_back")};
+constexpr TCHAR menu_mapping_package_name[]{TEXT("/SpaceGame/Input/UI/IMC_menu")};
+constexpr TCHAR menu_mapping_object_path[]{TEXT("/SpaceGame/Input/UI/IMC_menu.IMC_menu")};
+constexpr TCHAR global_mapping_object_path[]{
+    TEXT("/SpaceGame/Input/Player/IMC_Player_Global.IMC_Player_Global")};
+constexpr TCHAR pause_action_object_path[]{TEXT("/SpaceGame/Input/SpaceShip/IA_pause.IA_pause")};
+FName const generation_context{TEXT("GenerateScriptedLevelAssets")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
 constexpr TCHAR player_controller_object_path[]{
@@ -85,11 +125,329 @@ auto save_asset(UObject& asset) -> bool {
     return UPackage::SavePackage(package, &asset, *filename, args);
 }
 
-auto generate_level_select_widget() -> bool {
+auto load_or_create_widget_blueprint(TCHAR const* const object_path,
+                                     TCHAR const* const package_name,
+                                     FName const asset_name,
+                                     UClass& parent_class) -> UWidgetBlueprint* {
+    auto* blueprint{LoadObject<UWidgetBlueprint>(nullptr, object_path)};
+    if (!IsValid(blueprint)) {
+        auto* const package{CreatePackage(package_name)};
+        blueprint =
+            FWidgetBlueprintOperationUtils::CreateWidgetBlueprint(package,
+                                                                  asset_name,
+                                                                  BPTYPE_Normal,
+                                                                  UUserWidget::StaticClass(),
+                                                                  nullptr,
+                                                                  generation_context,
+                                                                  false);
+        if (!IsValid(blueprint)) {
+            UE_LOG(LogTemp, Error, TEXT("Could not create %s"), object_path);
+            return nullptr;
+        }
+        FAssetRegistryModule::AssetCreated(blueprint);
+    }
+
+    if (blueprint->ParentClass != &parent_class) {
+        UBlueprintEditorLibrary::ReparentBlueprint(blueprint, &parent_class);
+    }
+    blueprint->Modify();
+    if (IsValid(blueprint->WidgetTree)) {
+        blueprint->WidgetTree->Rename(
+            nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_NonTransactional);
+    }
+    blueprint->WidgetTree = NewObject<UWidgetTree>(blueprint, TEXT("WidgetTree"), RF_Transactional);
+    blueprint->WidgetVariableNameToGuidMap.Reset();
+    return blueprint;
+}
+
+auto compile_and_save(UWidgetBlueprint& blueprint) -> bool {
+    blueprint.WidgetTree->ForEachWidget(
+        [&blueprint](UWidget* const widget) { blueprint.OnVariableAdded(widget->GetFName()); });
+    FKismetEditorUtilities::CompileBlueprint(&blueprint);
+    if (blueprint.Status == BS_Error) {
+        UE_LOG(LogTemp, Error, TEXT("%s failed to compile"), *blueprint.GetName());
+        return false;
+    }
+    return save_asset(blueprint);
+}
+
+auto make_menu_button(UWidgetTree& tree,
+                      UVerticalBox& parent,
+                      UClass& button_class,
+                      FName const name,
+                      TCHAR const* const label) -> ml::ioj::UMenuButtonWidget* {
+    auto* const button{tree.ConstructWidget<ml::ioj::UMenuButtonWidget>(&button_class, name)};
+    button->bIsVariable = true;
+    button->set_text(FText::FromString(label));
+    auto* const slot{parent.AddChildToVerticalBox(button)};
+    slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
+    return button;
+}
+
+auto generate_menu_button_widget() -> UClass* {
+    auto* const blueprint{
+        load_or_create_widget_blueprint(menu_button_object_path,
+                                        menu_button_package_name,
+                                        TEXT("WBP_MenuButton"),
+                                        *ml::ioj::UMenuButtonWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+    auto* const label{make_widget<UCommonTextBlock>(*blueprint->WidgetTree, TEXT("label_text"))};
+    label->SetJustification(ETextJustify::Center);
+    label->SetVisibility(ESlateVisibility::HitTestInvisible);
+    blueprint->WidgetTree->RootWidget = label;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
+auto generate_root_layout_widget() -> UClass* {
+    auto* const blueprint{
+        load_or_create_widget_blueprint(root_layout_object_path,
+                                        root_layout_package_name,
+                                        TEXT("WBP_GameUiRoot"),
+                                        *ml::ioj::UGameUiRootLayout::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+    auto& tree{*blueprint->WidgetTree};
+    auto* const root{tree.ConstructWidget<UOverlay>()};
+    auto* const screen_stack{
+        make_widget<UCommonActivatableWidgetStack>(tree, TEXT("screen_stack"))};
+    auto* const modal_stack{make_widget<UCommonActivatableWidgetStack>(tree, TEXT("modal_stack"))};
+    for (auto* const stack : {screen_stack, modal_stack}) {
+        stack->SetTransitionDuration(0.0f);
+        auto* const slot{root->AddChildToOverlay(stack)};
+        slot->SetHorizontalAlignment(HAlign_Fill);
+        slot->SetVerticalAlignment(VAlign_Fill);
+    }
+    tree.RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
+auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
+    auto* const blueprint{
+        load_or_create_widget_blueprint(pause_menu_widget_object_path,
+                                        pause_menu_widget_package_name,
+                                        TEXT("WBP_PauseMenu"),
+                                        *ml::ioj::UPauseMenuWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+    auto& tree{*blueprint->WidgetTree};
+    auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
+    auto* const panel{tree.ConstructWidget<UHorizontalBox>()};
+    auto* const panel_slot{root->AddChildToOverlay(panel)};
+    panel_slot->SetPadding(FMargin{80.0f});
+    panel_slot->SetHorizontalAlignment(HAlign_Fill);
+    panel_slot->SetVerticalAlignment(VAlign_Fill);
+
+    auto* const actions{tree.ConstructWidget<UVerticalBox>()};
+    auto* const actions_slot{panel->AddChildToHorizontalBox(actions)};
+    actions_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+    actions_slot->SetPadding(FMargin{0.0f, 0.0f, 40.0f, 0.0f});
+    auto* const paused{tree.ConstructWidget<UTextBlock>()};
+    paused->SetText(FText::FromString(TEXT("Paused")));
+    auto paused_font{paused->GetFont()};
+    paused_font.Size = 32;
+    paused->SetFont(paused_font);
+    actions->AddChildToVerticalBox(paused)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 18.0f});
+    make_menu_button(tree, *actions, button_class, TEXT("resume_button"), TEXT("Resume"));
+    make_menu_button(tree, *actions, button_class, TEXT("overview_button"), TEXT("Overview"));
+    make_menu_button(tree, *actions, button_class, TEXT("stats_button"), TEXT("Stats"));
+    make_menu_button(tree, *actions, button_class, TEXT("options_button"), TEXT("Options"));
+    make_menu_button(tree,
+                     *actions,
+                     button_class,
+                     TEXT("return_to_level_select_button"),
+                     TEXT("Return to Level Select"));
+    make_menu_button(tree, *actions, button_class, TEXT("quit_button"), TEXT("Quit Game"));
+
+    auto* const page{tree.ConstructWidget<UVerticalBox>()};
+    panel->AddChildToHorizontalBox(page)->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+    auto* const heading{make_widget<UTextBlock>(tree, TEXT("page_heading"))};
+    auto heading_font{heading->GetFont()};
+    heading_font.Size = 28;
+    heading->SetFont(heading_font);
+    page->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 16.0f});
+    auto* const placeholder{make_widget<UTextBlock>(tree, TEXT("page_placeholder"))};
+    placeholder->SetAutoWrapText(true);
+    page->AddChildToVerticalBox(placeholder);
+    tree.RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
+auto generate_level_completion_widget(UClass& button_class) -> UClass* {
+    auto* const blueprint{
+        load_or_create_widget_blueprint(completion_widget_object_path,
+                                        completion_widget_package_name,
+                                        TEXT("WBP_LevelCompletion"),
+                                        *ml::ioj::ULevelCompletionWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+
+    auto& tree{*blueprint->WidgetTree};
+    auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
+    auto* const panel{tree.ConstructWidget<UVerticalBox>()};
+    auto* const panel_slot{root->AddChildToOverlay(panel)};
+    panel_slot->SetPadding(FMargin{80.0f});
+    panel_slot->SetHorizontalAlignment(HAlign_Center);
+    panel_slot->SetVerticalAlignment(VAlign_Center);
+
+    auto* const heading{make_widget<UTextBlock>(tree, TEXT("mission_complete_text"))};
+    heading->SetText(FText::FromString(TEXT("Mission Complete")));
+    auto heading_font{heading->GetFont()};
+    heading_font.Size = 38;
+    heading->SetFont(heading_font);
+    panel->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
+
+    auto* const level_name{make_widget<UTextBlock>(tree, TEXT("level_name_text"))};
+    auto level_name_font{level_name->GetFont()};
+    level_name_font.Size = 28;
+    level_name->SetFont(level_name_font);
+    panel->AddChildToVerticalBox(level_name)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 24.0f});
+
+    auto* const statistics{make_widget<UVerticalBox>(tree, TEXT("statistics_container"))};
+    panel->AddChildToVerticalBox(statistics)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 24.0f});
+    make_menu_button(tree,
+                     *panel,
+                     button_class,
+                     TEXT("return_to_level_select_button"),
+                     TEXT("Return to Level Select"));
+    make_menu_button(tree, *panel, button_class, TEXT("keep_playing_button"), TEXT("Keep Playing"));
+
+    tree.RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
+auto generate_main_menu_widget(UClass& button_class) -> UClass* {
+    auto* const options_class{
+        LoadClass<ml::ioj::UOptionsWidget>(nullptr, options_widget_class_path)};
+    auto* const save_viewer_class{
+        LoadClass<ml::ioj::USaveGameViewerWidget>(nullptr, save_game_viewer_class_path)};
+    if (!IsValid(options_class) || !IsValid(save_viewer_class)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load nested main-menu widget classes"));
+        return nullptr;
+    }
+    auto* const blueprint{
+        load_or_create_widget_blueprint(main_menu_widget_object_path,
+                                        main_menu_widget_package_name,
+                                        TEXT("WBP_MainMenu"),
+                                        *ml::ioj::UMainMenuWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+    auto& tree{*blueprint->WidgetTree};
+    auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
+    auto* const switcher{make_widget<UWidgetSwitcher>(tree, TEXT("page_switcher"))};
+    auto* const switcher_slot{root->AddChildToOverlay(switcher)};
+    switcher_slot->SetPadding(FMargin{80.0f});
+    switcher_slot->SetHorizontalAlignment(HAlign_Fill);
+    switcher_slot->SetVerticalAlignment(VAlign_Fill);
+
+    auto* const main_page{make_widget<UVerticalBox>(tree, TEXT("main_page"))};
+    auto* const heading{tree.ConstructWidget<UTextBlock>()};
+    heading->SetText(FText::FromString(TEXT("Nuke the Bees")));
+    auto heading_font{heading->GetFont()};
+    heading_font.Size = 38;
+    heading->SetFont(heading_font);
+    main_page->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
+    make_menu_button(tree, *main_page, button_class, TEXT("play_button"), TEXT("Play"));
+    make_menu_button(tree, *main_page, button_class, TEXT("save_games_button"), TEXT("Save Games"));
+    make_menu_button(tree, *main_page, button_class, TEXT("options_button"), TEXT("Options"));
+    make_menu_button(tree, *main_page, button_class, TEXT("quit_button"), TEXT("Quit"));
+    switcher->AddChild(main_page);
+
+    auto* const save_page{make_widget<UVerticalBox>(tree, TEXT("save_games_page"))};
+    auto* const save_viewer{tree.ConstructWidget<ml::ioj::USaveGameViewerWidget>(
+        save_viewer_class, TEXT("save_game_viewer"))};
+    save_viewer->bIsVariable = true;
+    save_page->AddChildToVerticalBox(save_viewer)->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+    make_labelled_button(tree, *save_page, TEXT("save_games_back_button"), TEXT("Back"));
+    switcher->AddChild(save_page);
+
+    auto* const options{
+        tree.ConstructWidget<ml::ioj::UOptionsWidget>(options_class, TEXT("options_widget"))};
+    options->bIsVariable = true;
+    switcher->AddChild(options);
+    tree.RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
+template <typename T>
+auto load_or_create_asset(TCHAR const* const object_path,
+                          TCHAR const* const package_name,
+                          FName const asset_name) -> T* {
+    auto* asset{LoadObject<T>(nullptr, object_path)};
+    if (!IsValid(asset)) {
+        auto* const package{CreatePackage(package_name)};
+        asset = NewObject<T>(package, asset_name, RF_Public | RF_Standalone);
+        if (IsValid(asset)) {
+            FAssetRegistryModule::AssetCreated(asset);
+        }
+    }
+    return asset;
+}
+
+auto generate_menu_input_assets() -> bool {
+    auto* const back_action{load_or_create_asset<UInputAction>(
+        back_action_object_path, back_action_package_name, TEXT("IA_menu_back"))};
+    auto* const menu_mapping{load_or_create_asset<UInputMappingContext>(
+        menu_mapping_object_path, menu_mapping_package_name, TEXT("IMC_menu"))};
+    auto* const global_mapping{
+        LoadObject<UInputMappingContext>(nullptr, global_mapping_object_path)};
+    auto* const pause_action{LoadObject<UInputAction>(nullptr, pause_action_object_path)};
+    if (!IsValid(back_action) || !IsValid(menu_mapping) || !IsValid(global_mapping) ||
+        !IsValid(pause_action)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load or create menu input assets"));
+        return false;
+    }
+
+    back_action->Modify();
+    back_action->ValueType = EInputActionValueType::Boolean;
+    menu_mapping->Modify();
+    menu_mapping->UnmapAll();
+    menu_mapping->MapKey(back_action, EKeys::Escape);
+    menu_mapping->MapKey(back_action, EKeys::Gamepad_FaceButton_Right);
+
+    bool pause_gamepad_mapping_exists{false};
+    global_mapping->ForEachKeyMapping([&](FEnhancedActionKeyMapping const& mapping) {
+        pause_gamepad_mapping_exists |=
+            mapping.Action == pause_action && mapping.Key == EKeys::Gamepad_Special_Right;
+    });
+    if (!pause_gamepad_mapping_exists) {
+        global_mapping->Modify();
+        global_mapping->MapKey(pause_action, EKeys::Gamepad_Special_Right);
+    }
+    return save_asset(*back_action) && save_asset(*menu_mapping) && save_asset(*global_mapping);
+}
+
+auto configure_ui_data(UClass& root_class,
+                       UClass& button_class,
+                       UClass& main_class,
+                       UClass& level_class,
+                       UClass& pause_class,
+                       UClass& completion_class) -> bool {
+    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+    if (!IsValid(ui_data)) {
+        return false;
+    }
+    ui_data->Modify();
+    ui_data->widget_classes.classes.Add(ml::ioj::UGameUiRootLayout::StaticClass(), &root_class);
+    ui_data->widget_classes.classes.Add(ml::ioj::UMenuButtonWidget::StaticClass(), &button_class);
+    ui_data->widget_classes.classes.Add(ml::ioj::UMainMenuWidget::StaticClass(), &main_class);
+    ui_data->widget_classes.classes.Add(ml::ioj::ULevelSelectWidget::StaticClass(), &level_class);
+    ui_data->widget_classes.classes.Add(ml::ioj::UPauseMenuWidget::StaticClass(), &pause_class);
+    ui_data->widget_classes.classes.Add(ml::ioj::ULevelCompletionWidget::StaticClass(),
+                                        &completion_class);
+    return save_asset(*ui_data);
+}
+
+auto generate_level_select_widget(UClass& button_class) -> UClass* {
     auto* const blueprint{LoadObject<UWidgetBlueprint>(nullptr, widget_object_path)};
     if (!IsValid(blueprint) || !IsValid(blueprint->WidgetTree)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load %s"), widget_object_path);
-        return false;
+        return nullptr;
     }
 
     blueprint->Modify();
@@ -132,10 +490,11 @@ auto generate_level_select_widget() -> bool {
     auto* const controls_heading_slot{controls->AddChildToVerticalBox(controls_heading)};
     controls_heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
 
-    make_labelled_button(tree, *controls, TEXT("launch_button"), TEXT("Launch"));
-    make_labelled_button(tree, *controls, TEXT("start_paused_button"), TEXT("Start Paused"));
-    make_labelled_button(tree, *controls, TEXT("refresh_button"), TEXT("Refresh"));
-    make_labelled_button(tree, *controls, TEXT("back_button"), TEXT("Back"));
+    make_menu_button(tree, *controls, button_class, TEXT("launch_button"), TEXT("Launch"));
+    make_menu_button(
+        tree, *controls, button_class, TEXT("start_paused_button"), TEXT("Start Paused"));
+    make_menu_button(tree, *controls, button_class, TEXT("refresh_button"), TEXT("Refresh"));
+    make_menu_button(tree, *controls, button_class, TEXT("back_button"), TEXT("Back"));
 
     auto* const levels{tree.ConstructWidget<UVerticalBox>()};
     auto* const levels_slot{body->AddChildToHorizontalBox(levels)};
@@ -200,24 +559,9 @@ auto generate_level_select_widget() -> bool {
     FKismetEditorUtilities::CompileBlueprint(blueprint);
     if (blueprint->Status == BS_Error) {
         UE_LOG(LogTemp, Error, TEXT("WBP_LevelSelect failed to compile"));
-        return false;
+        return nullptr;
     }
-    return save_asset(*blueprint);
-}
-
-auto recompile_main_menu_widget() -> bool {
-    auto* const blueprint{LoadObject<UWidgetBlueprint>(nullptr, main_menu_widget_object_path)};
-    if (!IsValid(blueprint)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load %s"), main_menu_widget_object_path);
-        return false;
-    }
-
-    FKismetEditorUtilities::CompileBlueprint(blueprint);
-    if (blueprint->Status == BS_Error) {
-        UE_LOG(LogTemp, Error, TEXT("WBP_MainMenu failed to compile"));
-        return false;
-    }
-    return save_asset(*blueprint);
+    return save_asset(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
 auto load_or_create_player_controller() -> UBlueprint* {
@@ -349,8 +693,26 @@ UGenerateScriptedLevelAssetsCommandlet::UGenerateScriptedLevelAssetsCommandlet()
 }
 
 int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
-    auto const widget_generated{generate_level_select_widget()};
-    auto const main_menu_generated{widget_generated && recompile_main_menu_widget()};
+    auto const input_generated{generate_menu_input_assets()};
+    auto* const button_class{generate_menu_button_widget()};
+    auto* const root_class{generate_root_layout_widget()};
+    auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
+                                                  : nullptr};
+    auto* const completion_class{
+        IsValid(button_class) ? generate_level_completion_widget(*button_class) : nullptr};
+    auto* const main_class{IsValid(button_class) ? generate_main_menu_widget(*button_class)
+                                                 : nullptr};
+    auto* const level_class{IsValid(button_class) ? generate_level_select_widget(*button_class)
+                                                  : nullptr};
+    auto const ui_generated{IsValid(root_class) && IsValid(button_class) && IsValid(main_class) &&
+                            IsValid(level_class) && IsValid(pause_class) &&
+                            IsValid(completion_class) &&
+                            configure_ui_data(*root_class,
+                                              *button_class,
+                                              *main_class,
+                                              *level_class,
+                                              *pause_class,
+                                              *completion_class)};
     auto const map_generated{generate_runtime_map()};
-    return main_menu_generated && map_generated ? 0 : 1;
+    return input_generated && ui_generated && map_generated ? 0 : 1;
 }

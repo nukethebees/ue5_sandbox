@@ -27,9 +27,11 @@ public class SandboxEditor : ModuleRules
             "AssetRegistry", // For scanning data assets
             "BlueprintEditorLibrary",
             "BlueprintGraph", // Required by UnrealEd
-            "EditorWidgets",
+            "CommonUI",
             "EditorSubsystem",
             "EditorStyle",
+            "EditorWidgets",
+            "EnhancedInput",
             "EngineSettings", // Engine configuration access
             "GraphEditor",
             "MaterialEditor",

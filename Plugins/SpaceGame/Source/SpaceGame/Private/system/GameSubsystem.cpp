@@ -6,6 +6,8 @@
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <Engine/GameInstance.h>
+#include <Engine/World.h>
+#include <Kismet/GameplayStatics.h>
 #include <Subsystems/SubsystemCollection.h>
 
 #if PLATFORM_WINDOWS
@@ -59,6 +61,38 @@ auto UGameSubsystem::take_pending_level() -> TOptional<FPendingLevelDefinition> 
     auto pending{MoveTemp(pending_level_)};
     pending_level_.Reset();
     return pending;
+}
+
+auto UGameSubsystem::return_to_level_select(FName const preferred_level_id) -> bool {
+    if (level_transition_in_progress_) {
+        return false;
+    }
+
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        UE_LOG(LogSandboxSubsystem,
+               Error,
+               TEXT("UGameSubsystem::return_to_level_select: World is invalid."));
+        return false;
+    }
+
+    pending_level_.Reset();
+    level_select_request_.Emplace(FLevelSelectRequest{.preferred_level_id = preferred_level_id});
+    level_transition_in_progress_ = true;
+    UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
+    return true;
+}
+
+auto UGameSubsystem::take_level_select_request() -> TOptional<FLevelSelectRequest> {
+    auto request{MoveTemp(level_select_request_)};
+    level_select_request_.Reset();
+    level_transition_in_progress_ = false;
+    return request;
+}
+
+auto UGameSubsystem::get_main_menu_level_name() -> FName {
+    static FName const level_name{TEXT("/SpaceGame/Levels/MainMenu")};
+    return level_name;
 }
 
 void UGameSubsystem::set_level_launch_error(FString error) {

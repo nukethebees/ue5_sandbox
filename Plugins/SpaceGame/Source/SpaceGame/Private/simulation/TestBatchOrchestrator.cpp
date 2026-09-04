@@ -475,7 +475,7 @@ void ATestBatchOrchestrator::load_authored_level() {
         UE_LOG(LogSandbox,
                Error,
                TEXT("ATestBatchOrchestrator::load_authored_level: Game subsystem is invalid"));
-        UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/MainMenu")});
+        UGameplayStatics::OpenLevel(this, ml::ioj::UGameSubsystem::get_main_menu_level_name());
         return;
     }
 
@@ -484,7 +484,12 @@ void ATestBatchOrchestrator::load_authored_level() {
         auto const error{TEXT("No pending authored level was provided to GameRuntime.")};
         UE_LOG(LogSandbox, Error, TEXT("%s"), error);
         subsystem->set_level_launch_error(error);
-        UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/MainMenu")});
+        if (!subsystem->return_to_level_select()) {
+            UE_LOG(LogSandbox,
+                   Error,
+                   TEXT("ATestBatchOrchestrator::load_authored_level: Failed to return to level "
+                        "select."));
+        }
         return;
     }
 
@@ -504,7 +509,12 @@ void ATestBatchOrchestrator::load_authored_level() {
                                            *FString::Join(messages, TEXT("\n")))};
         UE_LOG(LogSandbox, Error, TEXT("%s"), *message);
         subsystem->set_level_launch_error(message);
-        UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/MainMenu")});
+        if (!subsystem->return_to_level_select()) {
+            UE_LOG(LogSandbox,
+                   Error,
+                   TEXT("ATestBatchOrchestrator::load_authored_level: Failed to return to level "
+                        "select."));
+        }
         return;
     }
 

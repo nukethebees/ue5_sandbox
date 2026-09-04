@@ -97,6 +97,9 @@ void FTestMissionManagerScenario::configure_level(UWorld& world,
         case EScenario::SuccessIsTerminal: {
             break;
         }
+        case EScenario::ExplicitCompletionIsLatched: {
+            break;
+        }
         default: {
             checkNoEntry();
             break;
@@ -175,6 +178,12 @@ void FTestMissionManagerScenario::configure_mission_manager(UWorld& world,
             manager.add_entity_that_must_survive(*first_capital);
             break;
         }
+        case EScenario::ExplicitCompletionIsLatched: {
+            manager.set_mission_mode(ETestMissionMode::SurviveTime);
+            manager.set_target_time(long_mission_time);
+            manager.add_entity_that_must_survive(*first_capital);
+            break;
+        }
         default: {
             checkNoEntry();
             break;
@@ -225,6 +234,11 @@ void FTestMissionManagerScenario::start_scenario() {
     } else if (scenario == EScenario::SuccessIsTerminal) {
         test_driver->timeline.at(0.15, [this, manager] { queue_defended_entity_kill(*manager); })
             .finish_at(0.25);
+    } else if (scenario == EScenario::ExplicitCompletionIsLatched) {
+        test_driver->timeline.then_after(0.01, [this, manager] {
+            first_completion_result_ = manager->complete_mission();
+            duplicate_completion_result_ = manager->complete_mission();
+        });
     }
     test_driver->orchestrator.start_simulation();
 
@@ -458,6 +472,16 @@ void FTestMissionManagerScenario::check_scenario_result() {
                                   ETestMissionFailReason::None);
             TestRunner->TestFalse(TEXT("Defended entity is destroyed after success"),
                                   sample.surviving_entity_alive);
+            break;
+        }
+        case EScenario::ExplicitCompletionIsLatched: {
+            TestRunner->TestTrue(TEXT("Explicit completion performs the state transition"),
+                                 first_completion_result_);
+            TestRunner->TestFalse(TEXT("Duplicate completion is ignored"),
+                                  duplicate_completion_result_);
+            TestRunner->TestEqual(TEXT("Explicit completion leaves the mission succeeded"),
+                                  sample.mission_state,
+                                  ETestMissionState::Succeeded);
             break;
         }
         default: {

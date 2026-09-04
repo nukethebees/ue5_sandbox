@@ -23,6 +23,10 @@ struct SPACEGAME_API FPendingLevelDefinition {
     ELevelLaunchMode launch_mode{ELevelLaunchMode::Running};
 };
 
+struct SPACEGAME_API FLevelSelectRequest {
+    FName preferred_level_id{NAME_None};
+};
+
 UCLASS()
 class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     GENERATED_BODY()
@@ -37,6 +41,10 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
                            ELevelLaunchMode launch_mode = ELevelLaunchMode::Running);
     auto take_pending_level() -> TOptional<FPendingLevelDefinition>;
 
+    [[nodiscard]] auto return_to_level_select(FName preferred_level_id = NAME_None) -> bool;
+    auto take_level_select_request() -> TOptional<FLevelSelectRequest>;
+    static auto get_main_menu_level_name() -> FName;
+
     void set_level_launch_error(FString error);
     auto has_level_launch_error() const noexcept -> bool;
     auto take_level_launch_error() -> FString;
@@ -44,6 +52,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     FGameCapabilities platform_capabilities_;
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};
+    TOptional<FLevelSelectRequest> level_select_request_{NullOpt};
     FString level_launch_error_{};
+    bool level_transition_in_progress_{false};
 };
 }

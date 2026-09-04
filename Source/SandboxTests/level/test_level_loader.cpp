@@ -228,7 +228,8 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .mission_heroes = mission.get_hero_entity_handles().Num(),
         .mission_survivors = mission.get_entity_handles_that_must_survive().Num(),
         .mission_required_kills = mission.get_entity_handles_required_to_kill().Num(),
-        .mission_level_name = mission.get_level_name(),
+        .mission_level_name = mission.get_level_id(),
+        .mission_level_display_name = mission.get_level_display_name(),
         .saves_mission_results = mission.should_save_mission_results(),
     };
     auto const& entity_data{registry.get_entity_data()};
@@ -277,6 +278,9 @@ void FLevelLoaderScenario::check_runtime() {
                    TEXT("Authored missions save against their authored level id"));
     checks.is_true(sample.mission_level_name == FName{TEXT("border-skirmish")},
                    TEXT("Mission results use the authored level id"));
+    checks.are_equal(FString{TEXT("Border Skirmish")},
+                     sample.mission_level_display_name,
+                     TEXT("Mission UI uses the authored display title"));
     checks.dist_zero(FVector3f{-40000.f, 0.f, 0.f},
                      sample.blue_capital_position,
                      0.01f,
