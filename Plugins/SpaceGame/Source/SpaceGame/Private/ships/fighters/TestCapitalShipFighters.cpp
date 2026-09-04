@@ -44,8 +44,7 @@ inline auto get_span(FVectors3f const& vec, FIndexSpan const span) {
     return vec.get_view().slice(span.offset, span.count);
 }
 
-auto find_appropriate_fire_point(UWorld& world,
-                                 FCollisionQueryParams const& params,
+auto find_appropriate_fire_point(ml::FSpatialQueryManager const& spatial_query_manager,
                                  FVector3f const target_location,
                                  FVector3f const reference_location,
                                  float const fire_point_distance,
@@ -105,10 +104,7 @@ auto find_appropriate_fire_point(UWorld& world,
         auto const trace_direction{(trace_target - trace_start).GetSafeNormal()};
         auto const trace_end{trace_target - trace_direction * trace_end_offset};
 
-        FHitResult hit{};
-        auto const did_hit{
-            world.LineTraceSingleByChannel(hit, trace_start, trace_end, ECC_Visibility, params)};
-        if (!did_hit) {
+        if (spatial_query_manager.has_clear_line(FVector3f{trace_start}, FVector3f{trace_end})) {
             return candidate_location;
         }
     }
@@ -960,29 +956,34 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     // Perform LOS checks to see if we can fire
     [&] {
         auto const n_can_fire{can_fire.Num()};
-        FHitResult hit{};
-        FCollisionQueryParams params{};
-
-        auto* world{GetWorld()};
         auto const los_check_buffer{actor_config->los_check_buffer};
+
+        line_of_sight_starts.set_num(n_can_fire, EAllowShrinking::No);
+        line_of_sight_ends.set_num(n_can_fire, EAllowShrinking::No);
+        line_of_sight_results.SetNumUninitialized(n_can_fire, EAllowShrinking::No);
+
+        for (int32 i{}; i < n_can_fire; ++i) {
+            auto const ship_index{can_fire[i]};
+            auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
+            auto const direction{ml::get_vector3f(data.aim_directions, ship_index)};
+            auto const start{ship_location + direction * fire_point_distance};
+            auto const trace_end_offset{los_check_buffer + data.target_radii[ship_index]};
+            auto const end_offset{direction * trace_end_offset};
+            auto const end{ml::get_vector3f(data.target_locations, ship_index) - end_offset};
+
+            line_of_sight_starts.set(i, start);
+            line_of_sight_ends.set(i, end);
+        }
+
+        spatial_query_manager->have_clear_lines(line_of_sight_starts.get_const_view(),
+                                                line_of_sight_ends.get_const_view(),
+                                                line_of_sight_results);
 
         for (int32 i{n_can_fire - 1}; i >= 0; --i) {
             auto const ship_index{can_fire[i]};
-
-            auto const ship_location{ml::get_vector3d(data.locations, ship_index)};
-            auto const direction{ml::get_vector3d(data.aim_directions, ship_index)};
-
-            auto const start{ship_location + direction * fire_point_distance};
-
-            // Trace to near the outside of the enemy
             auto const trace_end_offset{los_check_buffer + data.target_radii[ship_index]};
-            auto const end_offset{direction * trace_end_offset};
-            auto const end{ml::get_vector3d(data.target_locations, ship_index) - end_offset};
 
-            auto const did_hit{
-                world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
-
-            if (did_hit) {
+            if (line_of_sight_results[i] == 0) {
                 can_fire.RemoveAtSwap(i, EAllowShrinking::No);
                 data.attack_cooldowns.set_counter(ship_index, attack_retry_cooldown_tick_value);
 
@@ -997,8 +998,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
                 }
 
                 auto const candidate{
-                    find_appropriate_fire_point(*world,
-                                                params,
+                    find_appropriate_fire_point(*spatial_query_manager,
                                                 ml::get_vector3f(data.target_locations, ship_index),
                                                 desired_move_location,
                                                 fire_point_distance,

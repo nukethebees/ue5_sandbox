@@ -270,6 +270,9 @@ class SPACEGAME_API ATestCapitalShipFighters : public AActor {
 
     // Misc buffers
     TArray<int32> scratch_int_buffer;
+    FVectors3f line_of_sight_starts;
+    FVectors3f line_of_sight_ends;
+    TArray<uint8> line_of_sight_results;
 
     // Debugging
     UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess))
