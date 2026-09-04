@@ -230,9 +230,9 @@ void FLevelBuilder::set_camera(FLevelCameraDefinition const& camera) {
     definition_.camera = camera;
 }
 
-auto FLevelBuilder::add_team(FTeamDefinition const& team) -> FLevelTeamId {
-    definition_.teams.Add(team.id);
-    return team.id;
+auto FLevelBuilder::add_team(FLevelTeamId const team) -> FLevelTeamId {
+    definition_.teams.Add(team);
+    return team;
 }
 
 auto FLevelBuilder::add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId {

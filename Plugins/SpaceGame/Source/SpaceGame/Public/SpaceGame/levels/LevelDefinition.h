@@ -11,10 +11,6 @@ struct SPACEGAME_API FLevelMetadata {
     FString description{};
 };
 
-struct SPACEGAME_API FTeamDefinition {
-    FLevelTeamId id{};
-};
-
 struct SPACEGAME_API FEntitySpawnDefinition {
     FLevelEntityId id{};
     FEntityArchetypeId archetype{};
@@ -42,7 +38,7 @@ class SPACEGAME_API FLevelBuilder {
     void set_metadata(FLevelMetadata const& metadata);
     void set_player_entity(FLevelEntityId id);
     void set_camera(FLevelCameraDefinition const& camera);
-    auto add_team(FTeamDefinition const& team) -> FLevelTeamId;
+    auto add_team(FLevelTeamId team) -> FLevelTeamId;
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
     auto finish() -> FLevelDefinition;
   private:

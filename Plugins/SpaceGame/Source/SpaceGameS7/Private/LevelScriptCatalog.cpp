@@ -51,13 +51,18 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
     result.entries.Reserve(filenames.Num());
     for (auto const& filename : filenames) {
         auto const path{FPaths::Combine(result.directory, filename)};
-        auto read_result{reader.read_file(path)};
         FLevelScriptEntry entry{
             .filename = filename,
             .path = path,
             .display_title = FPaths::GetBaseFilename(filename),
         };
-        FFileHelper::LoadFileToString(entry.source_text, *path);
+        if (!FFileHelper::LoadFileToString(entry.source_text, *path)) {
+            entry.error = FString::Printf(TEXT("Could not read level script '%s'."), *path);
+            result.entries.Add(MoveTemp(entry));
+            continue;
+        }
+
+        auto read_result{reader.read_source(entry.source_text)};
         if (read_result) {
             entry.display_title = read_result.definition->metadata.title;
             entry.description = read_result.definition->metadata.description;

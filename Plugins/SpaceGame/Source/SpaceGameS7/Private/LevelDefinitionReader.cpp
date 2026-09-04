@@ -230,7 +230,7 @@ class FDefinitionDecoder final {
 
             FName id;
             if (read_symbol(list_value(value, 1), team_path + TEXT(".id"), id)) {
-                builder.add_team(FTeamDefinition{.id = FLevelTeamId{id}});
+                builder.add_team(FLevelTeamId{id});
             }
         }
     }

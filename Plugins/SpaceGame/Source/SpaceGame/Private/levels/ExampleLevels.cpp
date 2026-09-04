@@ -7,8 +7,8 @@ auto make_native_example() -> FLevelDefinition {
         .title = TEXT("Native Example"),
         .description = TEXT("A two-team level used by native tests."),
     });
-    builder.add_team(FTeamDefinition{.id = level_teams::blue});
-    builder.add_team(FTeamDefinition{.id = level_teams::red});
+    builder.add_team(level_teams::blue);
+    builder.add_team(level_teams::red);
     auto const player_id{builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("player")}},
         .archetype = level_archetypes::player_fighter,

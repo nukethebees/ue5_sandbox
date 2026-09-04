@@ -246,8 +246,10 @@ void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode c
         return;
     }
 
-    auto const& entry{entries_[selected_index_]};
-    subsystem->set_pending_level(entry.definition.GetValue(), entry.path, launch_mode);
+    auto& entry{entries_[selected_index_]};
+    auto definition{MoveTemp(entry.definition.GetValue())};
+    entry.definition.Reset();
+    subsystem->set_pending_level(MoveTemp(definition), entry.path, launch_mode);
     launch_button->SetIsEnabled(false);
     start_paused_button->SetIsEnabled(false);
     status_text->SetText(FText::FromString(launch_mode == ml::ioj::ELevelLaunchMode::Paused
