@@ -262,6 +262,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxImages.UnitTests
   LuaLab.UnitTests
   S7Lab.UnitTests
+  SandboxISMC.UnitTests
   SandboxUI.UnitTests
 )
 set(SANDBOX_LEVEL_AUTOMATION_FILTERS
