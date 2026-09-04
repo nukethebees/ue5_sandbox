@@ -83,6 +83,16 @@ set_property(CACHE SANDBOX_ISMC_BENCHMARK_VISIBILITY PROPERTY STRINGS
   half
   none
 )
+set(CACHE{SANDBOX_ISMC_BENCHMARK_CUSTOM_DATA}
+  TYPE STRING
+  HELP "SandboxISMC benchmark custom data: none, static, or animated"
+  VALUE none
+)
+set_property(CACHE SANDBOX_ISMC_BENCHMARK_CUSTOM_DATA PROPERTY STRINGS
+  none
+  static
+  animated
+)
 set(CACHE{SANDBOX_ISMC_BENCHMARK_SHADOWS}
   TYPE STRING
   HELP "Whether the offscreen SandboxISMC benchmark casts shadows (0 or 1)"
@@ -297,6 +307,7 @@ add_test(
     "-SandboxISMCBenchmarkUpdatePercent=${SANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT}"
     "-SandboxISMCBenchmarkMode=${SANDBOX_ISMC_BENCHMARK_MODE}"
     "-SandboxISMCBenchmarkVisibility=${SANDBOX_ISMC_BENCHMARK_VISIBILITY}"
+    "-SandboxISMCBenchmarkCustomData=${SANDBOX_ISMC_BENCHMARK_CUSTOM_DATA}"
     "-SandboxISMCBenchmarkShadows=${SANDBOX_ISMC_BENCHMARK_SHADOWS}"
     -SandboxISMCBenchmarkEndPIE
     -RenderOffscreen

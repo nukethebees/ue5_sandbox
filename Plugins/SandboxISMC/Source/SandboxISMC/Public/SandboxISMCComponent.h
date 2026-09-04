@@ -2,6 +2,7 @@
 
 #include "SandboxISMCInstanceChunkWriter.h"
 #include "SandboxISMCParallelism.h"
+#include "SandboxISMCStagingBuffer.h"
 #include "SandboxISMCUpdateMetrics.h"
 
 #include "Async/ParallelFor.h"
@@ -17,7 +18,6 @@
 class UStaticMesh;
 class UMaterialInterface;
 struct FSandboxISMCMetricsState;
-struct FSandboxISMCStagingBuffer;
 struct FSandboxISMCStagingState;
 
 DECLARE_STATS_GROUP(TEXT("SandboxISMC"), STATGROUP_SandboxISMC, STATCAT_Advanced);
@@ -35,6 +35,9 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     auto set_static_mesh(UStaticMesh& mesh) -> void;
     auto clear_static_mesh() -> void;
     auto get_static_mesh() const -> UStaticMesh*;
+
+    auto set_num_custom_data_floats(int32 count) -> void;
+    auto get_num_custom_data_floats() const -> int32;
 
     template <typename FillChunk>
     auto set_instances(int32 instance_count,
@@ -78,7 +81,9 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
         SCOPE_CYCLE_COUNTER(STAT_SandboxISMCBuild);
         auto const start_cycles{FPlatformTime::Cycles64()};
 
-        auto instances{begin_instance_update(instance_count)};
+        auto& buffer{begin_instance_update(instance_count)};
+        auto instances{MakeArrayView(buffer.instances)};
+        auto custom_data{MakeArrayView(buffer.custom_data)};
         auto const chunk_count{FMath::DivideAndRoundUp(instance_count, instance_chunk_size)};
         if constexpr (CalculateBounds) {
             chunk_bounds_.SetNumUninitialized(chunk_count);
@@ -89,11 +94,15 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
         auto const build_chunk{[&](int32 chunk_index) {
             auto const first_index{chunk_index * instance_chunk_size};
             auto const count{FMath::Min(instance_chunk_size, instance_count - first_index)};
-            FSandboxISMCInstanceChunkWriter writer{instances.Slice(first_index, count),
-                                                   first_index,
-                                                   mesh_bounds_origin_,
-                                                   mesh_bounds_radius_,
-                                                   CalculateBounds && has_mesh_bounds_};
+            FSandboxISMCInstanceChunkWriter writer{
+                instances.Slice(first_index, count),
+                custom_data.Slice(first_index * num_custom_data_floats_,
+                                  count * num_custom_data_floats_),
+                num_custom_data_floats_,
+                first_index,
+                mesh_bounds_origin_,
+                mesh_bounds_radius_,
+                CalculateBounds && has_mesh_bounds_};
             fill_chunk(writer);
             if constexpr (CalculateBounds) {
                 chunk_bounds_[chunk_index] = writer.bounds();
@@ -123,7 +132,7 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
             instance_count, local_bounds, FPlatformTime::Cycles64() - start_cycles);
     }
 
-    auto begin_instance_update(int32 instance_count) -> TArrayView<FSandboxISMCRenderInstance>;
+    auto begin_instance_update(int32 instance_count) -> FSandboxISMCStagingBuffer&;
     auto finish_instance_update(int32 instance_count, FBox3f local_box, uint64 elapsed_cycles)
         -> void;
 
@@ -138,5 +147,6 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
     float mesh_bounds_radius_{0.0f};
     int32 instance_count_{0};
+    int32 num_custom_data_floats_{0};
     bool has_mesh_bounds_{false};
 };

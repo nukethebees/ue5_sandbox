@@ -59,6 +59,48 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                              component->CalcBounds(FTransform::Identity).SphereRadius > 0.0);
     }
 
+    TEST_METHOD(BuildsCustomDataAlongsideTransforms)
+    {
+        auto* component{NewObject<USandboxISMCComponent>()};
+        component->set_num_custom_data_floats(3);
+
+        constexpr int32 instance_count{2050};
+        component->set_instances(
+            instance_count,
+            ESandboxISMCParallelism::Sequential,
+            [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                auto const [first_index, chunk_count]{chunk.range()};
+                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                    auto const instance_index{first_index + local_index};
+                    chunk.set_transform(local_index,
+                                        {static_cast<float>(instance_index), 0.0f, 0.0f},
+                                        FQuat4f::Identity,
+                                        FVector3f::OneVector);
+                    auto custom_data{chunk.custom_data(local_index)};
+                    custom_data[0] = static_cast<float>(instance_index);
+                    custom_data[1] = 0.5f;
+                    custom_data[2] = 1.0f;
+                }
+            });
+
+        auto const metrics{component->get_update_metrics()};
+        auto const transform_bytes{static_cast<uint64>(instance_count) *
+                                   sizeof(FSandboxISMCRenderInstance)};
+        auto const custom_data_bytes{static_cast<uint64>(instance_count) * 3 * sizeof(float)};
+        TestRunner->TestEqual(TEXT("The component retains the custom-data stride"),
+                              component->get_num_custom_data_floats(),
+                              3);
+        TestRunner->TestEqual(TEXT("Metrics split transform upload bytes"),
+                              metrics.transform_upload_bytes,
+                              transform_bytes);
+        TestRunner->TestEqual(TEXT("Metrics split custom-data upload bytes"),
+                              metrics.custom_data_upload_bytes,
+                              custom_data_bytes);
+        TestRunner->TestEqual(TEXT("Metrics report the combined upload size"),
+                              metrics.upload_bytes,
+                              transform_bytes + custom_data_bytes);
+    }
+
     TEST_METHOD(ReplacesSnapshotsAndClearsImmediately)
     {
         auto* component{NewObject<USandboxISMCComponent>()};

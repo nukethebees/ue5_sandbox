@@ -11,6 +11,7 @@
 #include "Kismet/GameplayStatics.h"
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
+#include "Materials/MaterialInterface.h"
 #include "Misc/CommandLine.h"
 #include "Misc/DateTime.h"
 #include "Misc/FileHelper.h"
@@ -48,6 +49,10 @@ TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomApiMs,
                             TEXT("SandboxISMCBenchmark/Custom/SetInstancesApiMs"));
 TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomUploadBytes,
                              TEXT("SandboxISMCBenchmark/Custom/UploadBytes"));
+TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomTransformUploadBytes,
+                             TEXT("SandboxISMCBenchmark/Custom/TransformUploadBytes"));
+TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomDataUploadBytes,
+                             TEXT("SandboxISMCBenchmark/Custom/CustomDataUploadBytes"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEngineTotalMs,
                             TEXT("SandboxISMCBenchmark/EngineISMC/TotalUpdateMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEnginePrepareMs,
@@ -89,6 +94,7 @@ void append_summary(FString& output,
                     TCHAR const* mode,
                     TCHAR const* visibility,
                     TCHAR const* bounds,
+                    TCHAR const* custom_data,
                     int32 const instance_count,
                     int32 const updated_instance_count,
                     double const update_percentage,
@@ -98,11 +104,12 @@ void append_summary(FString& output,
     }
 
     auto const summary{summarize(samples)};
-    output += FString::Printf(TEXT("%s,%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
+    output += FString::Printf(TEXT("%s,%s,%s,%s,%s,%d,%d,%.3f,%s,%s,%d,%.6f,%.6f,%.6f,%.6f\n"),
                               renderer,
                               mode,
                               visibility,
                               bounds,
+                              custom_data,
                               instance_count,
                               updated_instance_count,
                               update_percentage,
@@ -138,6 +145,12 @@ ASandboxISMCBenchmarkActor::ASandboxISMCBenchmarkActor() {
         static_mesh_ = cube.Object;
     }
 
+    ConstructorHelpers::FObjectFinderOptional<UMaterialInterface> custom_data_material{
+        TEXT("/SandboxISMC/Lab/M_SandboxISMCCustomData.M_SandboxISMCCustomData")};
+    if (custom_data_material.Succeeded()) {
+        custom_data_material_ = custom_data_material.Get();
+    }
+
     configure_components();
 }
 
@@ -157,9 +170,10 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     configure_components();
     request_end_pie_on_completion_ =
         FParse::Param(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkEndPIE"));
-    output_base_name_ = FString::Printf(TEXT("SandboxISMC_%s_%s_bounds_%dpct_%s_%s"),
+    output_base_name_ = FString::Printf(TEXT("SandboxISMC_%s_%s_bounds_%s_%dpct_%s_%s"),
                                         *get_mode_name(),
                                         *get_bounds_name(),
+                                        *get_custom_data_name(),
                                         FMath::RoundToInt(update_percentage_),
                                         *get_visibility_name(),
                                         *FDateTime::Now().ToString(TEXT("%Y-%m-%d_%H-%M-%S")));
@@ -177,22 +191,24 @@ void ASandboxISMCBenchmarkActor::BeginPlay() {
     TRACE_COUNTER_SET(BenchmarkUpdatedInstanceCount, get_update_count());
     TRACE_BOOKMARK(
         TEXT("SandboxISMC benchmark start: mode=%s instances=%d updated=%d visibility=%s "
-             "bounds=%s"),
+             "bounds=%s custom_data=%s"),
         *get_mode_name(),
         base_positions_.Num(),
         get_update_count(),
         *get_visibility_name(),
-        *get_bounds_name());
+        *get_bounds_name(),
+        *get_custom_data_name());
     UE_LOG(LogSandboxISMCBenchmark,
            Display,
            TEXT("Continuous benchmark started: mode=%s, instances=%d, updated=%d (%.1f%%), "
-                "visibility=%s, bounds=%s, shadows=%s"),
+                "visibility=%s, bounds=%s, custom_data=%s, shadows=%s"),
            *get_mode_name(),
            base_positions_.Num(),
            get_update_count(),
            update_percentage_,
            *get_visibility_name(),
            *get_bounds_name(),
+           *get_custom_data_name(),
            cast_shadows_ ? TEXT("on") : TEXT("off"));
 }
 
@@ -219,15 +235,17 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
         FMath::DegreesToRadians(360.0f * movement_frequency_hz_ * animation_elapsed_seconds_)};
     auto const vertical_offset{vertical_movement_amplitude_ * FMath::Sin(vertical_phase)};
     auto const angle{FMath::DegreesToRadians(rotation_speed_degrees_ * animation_elapsed_seconds_)};
+    auto const colour_alpha{0.5f +
+                            0.5f * FMath::Sin(animation_elapsed_seconds_ * UE_TWO_PI * 0.25f)};
 
     FUpdateTiming custom_timing;
     FUpdateTiming engine_timing;
     if (runs_custom()) {
-        custom_timing = update_custom(vertical_offset, angle);
+        custom_timing = update_custom(vertical_offset, angle, colour_alpha);
         record_samples(custom_samples_, custom_timing);
     }
     if (runs_engine_ismc()) {
-        engine_timing = update_engine_ismc(vertical_offset, angle);
+        engine_timing = update_engine_ismc(vertical_offset, angle, colour_alpha);
         record_samples(engine_samples_, engine_timing);
     }
     frame_ms_.Add(static_cast<double>(delta_seconds) * 1000.0);
@@ -249,6 +267,12 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomApiMs, custom_timing.api_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomUploadBytes,
                              static_cast<int64>(FMath::Max(custom_timing.uploaded_bytes, 0.0)));
+    TRACE_COUNTER_SET_ALWAYS(
+        BenchmarkCustomTransformUploadBytes,
+        static_cast<int64>(FMath::Max(custom_timing.transform_upload_bytes, 0.0)));
+    TRACE_COUNTER_SET_ALWAYS(
+        BenchmarkCustomDataUploadBytes,
+        static_cast<int64>(FMath::Max(custom_timing.custom_data_upload_bytes, 0.0)));
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineTotalMs, engine_timing.total_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEnginePrepareMs, engine_timing.prepare_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineApiMs, engine_timing.api_ms);
@@ -309,6 +333,25 @@ void ASandboxISMCBenchmarkActor::parse_command_line() {
             visibility_ = ESandboxISMCBenchmarkVisibility::All;
         }
     }
+
+    FString custom_data;
+    if (FParse::Value(FCommandLine::Get(), TEXT("SandboxISMCBenchmarkCustomData="), custom_data)) {
+        if (custom_data.Equals(TEXT("none"), ESearchCase::IgnoreCase)) {
+            custom_data_ = ESandboxISMCBenchmarkCustomData::None;
+        } else if (custom_data.Equals(TEXT("static"), ESearchCase::IgnoreCase) ||
+                   custom_data.Equals(TEXT("static_rgb"), ESearchCase::IgnoreCase)) {
+            custom_data_ = ESandboxISMCBenchmarkCustomData::StaticRgb;
+        } else if (custom_data.Equals(TEXT("animated"), ESearchCase::IgnoreCase) ||
+                   custom_data.Equals(TEXT("animated_rgb"), ESearchCase::IgnoreCase)) {
+            custom_data_ = ESandboxISMCBenchmarkCustomData::AnimatedRgb;
+        } else {
+            UE_LOG(LogSandboxISMCBenchmark,
+                   Warning,
+                   TEXT("Unknown SandboxISMC custom-data mode '%s'; using none"),
+                   *custom_data);
+            custom_data_ = ESandboxISMCBenchmarkCustomData::None;
+        }
+    }
 }
 
 void ASandboxISMCBenchmarkActor::configure_components() {
@@ -335,6 +378,10 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
         UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Benchmark static mesh is null"));
         return false;
     }
+    if (uses_custom_data() && custom_data_material_ == nullptr) {
+        UE_LOG(LogSandboxISMCBenchmark, Error, TEXT("Custom-data benchmark material is null"));
+        return false;
+    }
 
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::create_instances);
     auto const count{FMath::Max(instance_count_, 1)};
@@ -353,7 +400,9 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
     auto const hidden_offset{FVector3f{0.0f, -view_extent * 4.0f, 0.0f}};
 
     base_positions_.SetNumUninitialized(count);
+    base_colours_.SetNumUninitialized(count);
     engine_update_transforms_.SetNumUninitialized(count);
+    engine_custom_data_.SetNumUninitialized(uses_custom_data() ? count * 3 : 0);
     for (auto instance_index = 0; instance_index < count; ++instance_index) {
         auto const x{instance_index % width};
         auto const y{instance_index / width};
@@ -364,8 +413,19 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
             position += hidden_offset;
         }
         base_positions_[instance_index] = position;
+        auto const red{width > 1 ? static_cast<float>(x) / static_cast<float>(width - 1) : 0.5f};
+        auto const green{height > 1 ? static_cast<float>(y) / static_cast<float>(height - 1)
+                                    : 0.5f};
+        auto const colour{FVector3f{red, green, 1.0f - red * 0.75f}};
+        base_colours_[instance_index] = colour;
         engine_update_transforms_[instance_index] =
             FTransform{FQuat::Identity, FVector{position}, FVector::OneVector};
+        if (uses_custom_data()) {
+            auto const custom_data_offset{instance_index * 3};
+            engine_custom_data_[custom_data_offset] = colour.X;
+            engine_custom_data_[custom_data_offset + 1] = colour.Y;
+            engine_custom_data_[custom_data_offset + 2] = colour.Z;
+        }
     }
 
     supplied_local_bounds_ = FBox3f{ForceInit};
@@ -385,13 +445,15 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
     camera_->SetRelativeLocation(camera_location);
     camera_->SetRelativeRotation((FVector::ZeroVector - camera_location).Rotation());
 
-    auto* const material{UMaterial::GetDefaultMaterial(MD_Surface)};
+    auto* const material{uses_custom_data() ? custom_data_material_.Get()
+                                            : UMaterial::GetDefaultMaterial(MD_Surface)};
     custom_ismc_->SetMaterial(0, material);
     engine_ismc_->SetMaterial(0, material);
 
     if (runs_custom()) {
         auto const custom_start{FPlatformTime::Cycles64()};
         {
+            custom_ismc_->set_num_custom_data_floats(uses_custom_data() ? 3 : 0);
             custom_ismc_->set_static_mesh(*static_mesh_);
             auto const fill{[&](FSandboxISMCInstanceChunkWriter& chunk) {
                 auto const [first_index, chunk_count]{chunk.range()};
@@ -401,6 +463,12 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
                                         base_positions_[instance_index],
                                         FQuat4f::Identity,
                                         FVector3f::OneVector);
+                    if (uses_custom_data()) {
+                        auto custom_data{chunk.custom_data(local_index)};
+                        custom_data[0] = base_colours_[instance_index].X;
+                        custom_data[1] = base_colours_[instance_index].Y;
+                        custom_data[2] = base_colours_[instance_index].Z;
+                    }
                 }
             }};
             if (use_supplied_bounds_) {
@@ -418,8 +486,12 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
         auto const engine_start{FPlatformTime::Cycles64()};
         {
             engine_ismc_->ClearInstances();
+            engine_ismc_->SetNumCustomDataFloats(uses_custom_data() ? 3 : 0);
             engine_ismc_->SetStaticMesh(static_mesh_);
             engine_ismc_->AddInstances(engine_update_transforms_, false, false, false);
+            if (uses_custom_data()) {
+                engine_ismc_->SetCustomData(0, count - 1, engine_custom_data_, true);
+            }
         }
         engine_creation_ms_ =
             FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - engine_start);
@@ -438,7 +510,8 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
 }
 
 auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
-                                               float const angle_radians) -> FUpdateTiming {
+                                               float const angle_radians,
+                                               float const colour_alpha) -> FUpdateTiming {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::update_custom);
     auto const total_start{FPlatformTime::Cycles64()};
     auto const api_start{FPlatformTime::Cycles64()};
@@ -448,15 +521,35 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
         auto const rotation{FQuat4f{FVector3f::UpVector, angle_radians}};
         auto const fill{[&](FSandboxISMCInstanceChunkWriter& chunk) {
             auto const [first_index, chunk_count]{chunk.range()};
-            for (auto local_index = 0; local_index < chunk_count; ++local_index) {
-                auto const instance_index{first_index + local_index};
-                auto const animated{instance_index < updated_count};
-                auto const position{base_positions_[instance_index] +
-                                    FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
-                chunk.set_transform(local_index,
-                                    position,
-                                    animated ? rotation : FQuat4f::Identity,
-                                    FVector3f::OneVector);
+            {
+                TRACE_CPUPROFILER_EVENT_SCOPE(
+                    ASandboxISMCBenchmarkActor::update_custom::FillTransforms);
+                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                    auto const instance_index{first_index + local_index};
+                    auto const animated{instance_index < updated_count};
+                    auto const position{base_positions_[instance_index] +
+                                        FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
+                    chunk.set_transform(local_index,
+                                        position,
+                                        animated ? rotation : FQuat4f::Identity,
+                                        FVector3f::OneVector);
+                }
+            }
+            if (uses_custom_data()) {
+                TRACE_CPUPROFILER_EVENT_SCOPE(
+                    ASandboxISMCBenchmarkActor::update_custom::FillCustomData);
+                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                    auto const instance_index{first_index + local_index};
+                    auto colour{base_colours_[instance_index]};
+                    if (instance_index < updated_count && animates_custom_data()) {
+                        auto const rotated_colour{FVector3f{colour.Y, colour.Z, colour.X}};
+                        colour = FMath::Lerp(colour, rotated_colour, colour_alpha);
+                    }
+                    auto custom_data{chunk.custom_data(local_index)};
+                    custom_data[0] = colour.X;
+                    custom_data[1] = colour.Y;
+                    custom_data[2] = colour.Z;
+                }
             }
         }};
         if (use_supplied_bounds_) {
@@ -473,23 +566,43 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
         .total_ms = FPlatformTime::ToMilliseconds64(total_cycles),
         .build_ms = metrics.build_ms,
         .api_ms = FPlatformTime::ToMilliseconds64(api_cycles),
+        .transform_upload_bytes = static_cast<double>(metrics.transform_upload_bytes),
+        .custom_data_upload_bytes = static_cast<double>(metrics.custom_data_upload_bytes),
         .uploaded_bytes = static_cast<double>(metrics.upload_bytes),
     };
 }
 
 auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
-                                                    float const angle_radians) -> FUpdateTiming {
+                                                    float const angle_radians,
+                                                    float const colour_alpha) -> FUpdateTiming {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::update_engine_ismc);
     auto const total_start{FPlatformTime::Cycles64()};
     auto const prepare_start{FPlatformTime::Cycles64()};
     {
         auto const rotation{FQuat{FVector::UpVector, static_cast<double>(angle_radians)}};
         auto const count{get_update_count()};
-        for (auto instance_index = 0; instance_index < count; ++instance_index) {
-            auto const position{base_positions_[instance_index] +
-                                FVector3f{0.0f, 0.0f, vertical_offset}};
-            engine_update_transforms_[instance_index] =
-                FTransform{rotation, FVector{position}, FVector::OneVector};
+        {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                ASandboxISMCBenchmarkActor::update_engine_ismc::PrepareTransforms);
+            for (auto instance_index = 0; instance_index < count; ++instance_index) {
+                auto const position{base_positions_[instance_index] +
+                                    FVector3f{0.0f, 0.0f, vertical_offset}};
+                engine_update_transforms_[instance_index] =
+                    FTransform{rotation, FVector{position}, FVector::OneVector};
+            }
+        }
+        if (animates_custom_data()) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                ASandboxISMCBenchmarkActor::update_engine_ismc::PrepareCustomData);
+            for (auto instance_index = 0; instance_index < count; ++instance_index) {
+                auto const base_colour{base_colours_[instance_index]};
+                auto const rotated_colour{FVector3f{base_colour.Y, base_colour.Z, base_colour.X}};
+                auto const colour{FMath::Lerp(base_colour, rotated_colour, colour_alpha)};
+                auto const custom_data_offset{instance_index * 3};
+                engine_custom_data_[custom_data_offset] = colour.X;
+                engine_custom_data_[custom_data_offset + 1] = colour.Y;
+                engine_custom_data_[custom_data_offset + 2] = colour.Z;
+            }
         }
     }
     auto const prepare_cycles{FPlatformTime::Cycles64() - prepare_start};
@@ -498,8 +611,25 @@ auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
     {
         auto const update_count{get_update_count()};
         if (update_count > 0) {
-            engine_ismc_->BatchUpdateInstancesTransforms(
-                0, MakeArrayView(engine_update_transforms_).Left(update_count), false, true, true);
+            {
+                TRACE_CPUPROFILER_EVENT_SCOPE(
+                    ASandboxISMCBenchmarkActor::update_engine_ismc::SubmitTransforms);
+                engine_ismc_->BatchUpdateInstancesTransforms(
+                    0,
+                    MakeArrayView(engine_update_transforms_).Left(update_count),
+                    false,
+                    !animates_custom_data(),
+                    true);
+            }
+            if (animates_custom_data()) {
+                TRACE_CPUPROFILER_EVENT_SCOPE(
+                    ASandboxISMCBenchmarkActor::update_engine_ismc::SubmitCustomData);
+                engine_ismc_->SetCustomData(
+                    0,
+                    update_count - 1,
+                    MakeArrayView(engine_custom_data_).Left(update_count * 3),
+                    true);
+            }
         }
     }
     auto const api_cycles{FPlatformTime::Cycles64() - api_start};
@@ -521,6 +651,12 @@ void ASandboxISMCBenchmarkActor::record_samples(FRendererSamples& samples,
         samples.build_ms.Add(timing.build_ms);
     }
     samples.api_ms.Add(timing.api_ms);
+    if (timing.transform_upload_bytes >= 0.0) {
+        samples.transform_upload_bytes.Add(timing.transform_upload_bytes);
+    }
+    if (timing.custom_data_upload_bytes >= 0.0) {
+        samples.custom_data_upload_bytes.Add(timing.custom_data_upload_bytes);
+    }
     if (timing.uploaded_bytes >= 0.0) {
         samples.uploaded_bytes.Add(timing.uploaded_bytes);
     }
@@ -567,6 +703,26 @@ FString ASandboxISMCBenchmarkActor::get_visibility_name() const {
 
 FString ASandboxISMCBenchmarkActor::get_bounds_name() const {
     return use_supplied_bounds_ ? TEXT("supplied") : TEXT("calculated");
+}
+
+FString ASandboxISMCBenchmarkActor::get_custom_data_name() const {
+    switch (custom_data_) {
+        case ESandboxISMCBenchmarkCustomData::None:
+            return TEXT("no_custom_data");
+        case ESandboxISMCBenchmarkCustomData::StaticRgb:
+            return TEXT("static_rgb");
+        case ESandboxISMCBenchmarkCustomData::AnimatedRgb:
+            return TEXT("animated_rgb");
+    }
+    return TEXT("unknown");
+}
+
+bool ASandboxISMCBenchmarkActor::uses_custom_data() const {
+    return custom_data_ != ESandboxISMCBenchmarkCustomData::None;
+}
+
+bool ASandboxISMCBenchmarkActor::animates_custom_data() const {
+    return custom_data_ == ESandboxISMCBenchmarkCustomData::AnimatedRgb;
 }
 
 void ASandboxISMCBenchmarkActor::finish_benchmark() {
@@ -681,11 +837,12 @@ void ASandboxISMCBenchmarkActor::restore_frame_rate_limits() {
 
 void ASandboxISMCBenchmarkActor::save_report() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(ASandboxISMCBenchmarkActor::save_report);
-    FString csv{TEXT("renderer,mode,visibility,bounds,instances,updated_instances,update_percent,"
-                     "metric,unit,samples,min,median,p95,max\n")};
+    FString csv{TEXT("renderer,mode,visibility,bounds,custom_data,instances,updated_instances,"
+                     "update_percent,metric,unit,samples,min,median,p95,max\n")};
     auto const mode_name{get_mode_name()};
     auto const visibility_name{get_visibility_name()};
     auto const bounds_name{get_bounds_name()};
+    auto const custom_data_name{get_custom_data_name()};
     auto const instance_count{base_positions_.Num()};
     auto const updated_instance_count{get_update_count()};
     auto const append{[&](TCHAR const* renderer,
@@ -699,6 +856,7 @@ void ASandboxISMCBenchmarkActor::save_report() const {
                        *mode_name,
                        *visibility_name,
                        *bounds_name,
+                       *custom_data_name,
                        instance_count,
                        updated_instance_count,
                        update_percentage_,
@@ -714,6 +872,14 @@ void ASandboxISMCBenchmarkActor::save_report() const {
         append(TEXT("custom"), TEXT("total_update"), TEXT("ms"), custom_samples_.total_update_ms);
         append(TEXT("custom"), TEXT("build"), TEXT("ms"), custom_samples_.build_ms);
         append(TEXT("custom"), TEXT("api"), TEXT("ms"), custom_samples_.api_ms);
+        append(TEXT("custom"),
+               TEXT("transform_uploaded"),
+               TEXT("bytes"),
+               custom_samples_.transform_upload_bytes);
+        append(TEXT("custom"),
+               TEXT("custom_data_uploaded"),
+               TEXT("bytes"),
+               custom_samples_.custom_data_upload_bytes);
         append(TEXT("custom"), TEXT("uploaded"), TEXT("bytes"), custom_samples_.uploaded_bytes);
     }
     if (runs_engine_ismc()) {

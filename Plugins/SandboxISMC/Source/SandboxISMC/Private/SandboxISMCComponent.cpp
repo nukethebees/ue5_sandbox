@@ -48,6 +48,10 @@ TRACE_DECLARE_FLOAT_COUNTER(SandboxISMCRenderThreadUploadMs,
                             TEXT("SandboxISMC/RenderThreadUploadMs"));
 TRACE_DECLARE_MEMORY_COUNTER(SandboxISMCRenderThreadUploadBytes,
                              TEXT("SandboxISMC/RenderThreadUploadBytes"));
+TRACE_DECLARE_MEMORY_COUNTER(SandboxISMCRenderThreadTransformUploadBytes,
+                             TEXT("SandboxISMC/RenderThreadTransformUploadBytes"));
+TRACE_DECLARE_MEMORY_COUNTER(SandboxISMCRenderThreadCustomDataUploadBytes,
+                             TEXT("SandboxISMC/RenderThreadCustomDataUploadBytes"));
 TRACE_DECLARE_INT_COUNTER(SandboxISMCRenderThreadUploadInstances,
                           TEXT("SandboxISMC/RenderThreadUploadInstances"));
 
@@ -55,6 +59,8 @@ struct FSandboxISMCMetricsState {
     int32 instance_count{0};
     uint64 build_cycles{0};
     uint64 submit_cycles{0};
+    uint64 transform_upload_bytes{0};
+    uint64 custom_data_upload_bytes{0};
     uint64 upload_bytes{0};
     TAtomic<uint64> upload_cycles{0};
 };
@@ -80,46 +86,90 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::InitRHI);
         auto const initial_count{initial_buffer_ != nullptr ? initial_buffer_->instances.Num() : 0};
         allocate(rhi_command_list, FMath::Max(initial_count, 1));
+        auto const initial_custom_data_count{
+            initial_buffer_ != nullptr ? initial_buffer_->custom_data.Num() : 0};
+        allocate_custom_data(rhi_command_list, FMath::Max(initial_custom_data_count, 1));
 
         if (initial_buffer_ != nullptr) {
-            upload(rhi_command_list, *initial_buffer_);
+            static_cast<void>(upload(rhi_command_list, *initial_buffer_));
             release_initial_buffer();
         }
+    }
+
+    virtual void ReleaseRHI() override {
+        instance_srv_.SafeRelease();
+        custom_data_srv_.SafeRelease();
+        custom_data_buffer_.SafeRelease();
+        FVertexBuffer::ReleaseRHI();
     }
 
     int32 get_initial_instance_count() const {
         return initial_buffer_ != nullptr ? initial_buffer_->instances.Num() : 0;
     }
 
-    void upload(FRHICommandListBase& rhi_command_list, FSandboxISMCStagingBuffer const& buffer) {
+    auto upload(FRHICommandListBase& rhi_command_list, FSandboxISMCStagingBuffer const& buffer)
+        -> bool {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::upload);
         SCOPE_CYCLE_COUNTER(STAT_SandboxISMCUpload);
         auto const start_cycles = FPlatformTime::Cycles64();
         auto const instance_count = buffer.instances.Num();
+        auto resources_changed{false};
 
         if (instance_count > capacity_) {
             allocate(rhi_command_list, instance_count);
+            resources_changed = true;
         }
 
-        auto const byte_count{static_cast<uint64>(instance_count) *
-                              sizeof(FSandboxISMCRenderInstance)};
-        if (byte_count > 0) {
+        auto const custom_data_count{buffer.custom_data.Num()};
+        if (custom_data_count > custom_data_capacity_) {
+            allocate_custom_data(rhi_command_list, custom_data_count);
+            resources_changed = true;
+        }
+        if (num_custom_data_floats_ != buffer.num_custom_data_floats) {
+            num_custom_data_floats_ = buffer.num_custom_data_floats;
+            resources_changed = true;
+        }
+
+        auto const transform_byte_count{static_cast<uint64>(instance_count) *
+                                        sizeof(FSandboxISMCRenderInstance)};
+        if (transform_byte_count > 0) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::upload::TransformBuffer);
             auto* destination = rhi_command_list.LockBuffer(
-                VertexBufferRHI, 0, static_cast<uint32>(byte_count), RLM_WriteOnly);
-            FMemory::Memcpy(destination, buffer.instances.GetData(), byte_count);
+                VertexBufferRHI, 0, static_cast<uint32>(transform_byte_count), RLM_WriteOnly);
+            FMemory::Memcpy(destination, buffer.instances.GetData(), transform_byte_count);
             rhi_command_list.UnlockBuffer(VertexBufferRHI);
         }
+
+        auto const custom_data_byte_count{static_cast<uint64>(custom_data_count) * sizeof(float)};
+        if (custom_data_byte_count > 0) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::upload::CustomDataBuffer);
+            auto* destination = rhi_command_list.LockBuffer(
+                custom_data_buffer_, 0, static_cast<uint32>(custom_data_byte_count), RLM_WriteOnly);
+            FMemory::Memcpy(destination, buffer.custom_data.GetData(), custom_data_byte_count);
+            rhi_command_list.UnlockBuffer(custom_data_buffer_);
+        }
+
+        auto const byte_count{transform_byte_count + custom_data_byte_count};
 
         auto const elapsed_cycles = FPlatformTime::Cycles64() - start_cycles;
         TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadMs,
                                  FPlatformTime::ToMilliseconds64(elapsed_cycles));
         TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadBytes,
                                  static_cast<int64>(byte_count));
+        TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadTransformUploadBytes,
+                                 static_cast<int64>(transform_byte_count));
+        TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadCustomDataUploadBytes,
+                                 static_cast<int64>(custom_data_byte_count));
         TRACE_COUNTER_SET_ALWAYS(SandboxISMCRenderThreadUploadInstances, instance_count);
         metrics_->upload_cycles.Store(elapsed_cycles);
         SET_DWORD_STAT(STAT_SandboxISMCUploadBytes,
                        static_cast<uint32>(FMath::Min<uint64>(byte_count, MAX_uint32)));
+        return resources_changed;
     }
+
+    auto get_instance_srv() const -> FRHIShaderResourceView* { return instance_srv_; }
+    auto get_custom_data_srv() const -> FRHIShaderResourceView* { return custom_data_srv_; }
+    auto get_num_custom_data_floats() const -> int32 { return num_custom_data_floats_; }
   private:
     auto release_initial_buffer() -> void {
         if (initial_buffer_ == nullptr) {
@@ -136,15 +186,47 @@ class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
         auto const requested_capacity = FMath::Max(required_capacity, 1);
         capacity_ = FMath::RoundUpToPowerOfTwo(requested_capacity);
 
+        instance_srv_.SafeRelease();
         VertexBufferRHI.SafeRelease();
         auto const create_description =
             FRHIBufferCreateDesc::CreateVertex<FSandboxISMCRenderInstance>(
                 TEXT("SandboxISMC.InstanceBuffer"), capacity_)
+                .AddUsage(EBufferUsageFlags::ShaderResource)
                 .DetermineInitialState();
         VertexBufferRHI = rhi_command_list.CreateBuffer(create_description);
+        instance_srv_ =
+            rhi_command_list.CreateShaderResourceView(VertexBufferRHI,
+                                                      FRHIViewDesc::CreateBufferSRV()
+                                                          .SetType(FRHIViewDesc::EBufferType::Typed)
+                                                          .SetFormat(PF_A32B32G32R32F));
+    }
+
+    void allocate_custom_data(FRHICommandListBase& rhi_command_list, int32 required_capacity) {
+        TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCInstanceBuffer::allocate_custom_data);
+        auto const requested_capacity{FMath::Max(required_capacity, 1)};
+        custom_data_capacity_ = FMath::RoundUpToPowerOfTwo(requested_capacity);
+
+        custom_data_srv_.SafeRelease();
+        custom_data_buffer_.SafeRelease();
+        auto const create_description =
+            FRHIBufferCreateDesc::CreateVertex<float>(TEXT("SandboxISMC.CustomDataBuffer"),
+                                                      custom_data_capacity_)
+                .AddUsage(EBufferUsageFlags::ShaderResource)
+                .DetermineInitialState();
+        custom_data_buffer_ = rhi_command_list.CreateBuffer(create_description);
+        custom_data_srv_ =
+            rhi_command_list.CreateShaderResourceView(custom_data_buffer_,
+                                                      FRHIViewDesc::CreateBufferSRV()
+                                                          .SetType(FRHIViewDesc::EBufferType::Typed)
+                                                          .SetFormat(PF_R32_FLOAT));
     }
 
     int32 capacity_{0};
+    int32 custom_data_capacity_{0};
+    int32 num_custom_data_floats_{0};
+    FShaderResourceViewRHIRef instance_srv_;
+    FBufferRHIRef custom_data_buffer_;
+    FShaderResourceViewRHIRef custom_data_srv_;
     FSandboxISMCStagingBuffer* initial_buffer_{nullptr};
     TSharedPtr<FSandboxISMCStagingState, ESPMode::ThreadSafe> staging_state_;
     TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics_;
@@ -159,6 +241,23 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
         , instance_buffer_{instance_buffer} {}
 
     void set_static_mesh_data(FDataType const& data) { Data = data; }
+
+    auto get_instance_uniform_buffer() const -> FRHIUniformBuffer* {
+        return instance_uniform_buffer_.GetReference();
+    }
+
+    void update_instance_uniform_buffer() {
+        FInstancedStaticMeshVertexFactoryUniformShaderParameters parameters;
+        parameters.VertexFetch_InstanceOriginBuffer = instance_buffer_->get_instance_srv();
+        parameters.VertexFetch_InstanceTransformBuffer = instance_buffer_->get_instance_srv();
+        parameters.VertexFetch_InstanceLightmapBuffer = instance_buffer_->get_instance_srv();
+        parameters.InstanceCustomDataBuffer = instance_buffer_->get_custom_data_srv();
+        parameters.NumCustomDataFloats = instance_buffer_->get_num_custom_data_floats();
+        instance_uniform_buffer_ =
+            TUniformBufferRef<FInstancedStaticMeshVertexFactoryUniformShaderParameters>::
+                CreateUniformBufferImmediate(
+                    parameters, UniformBuffer_MultiFrame, EUniformBufferValidation::None);
+    }
 
     static bool
         ShouldCompilePermutation(FVertexFactoryShaderPermutationParameters const& parameters) {
@@ -214,9 +313,17 @@ class FSandboxISMCVertexFactory final : public FLocalVertexFactory {
 
         InitDeclaration(elements);
         UniformBuffer = CreateLocalVFUniformBuffer(this, Data.LODLightmapDataIndex, nullptr, 0, 0);
+        update_instance_uniform_buffer();
+    }
+
+    virtual void ReleaseRHI() override {
+        instance_uniform_buffer_.SafeRelease();
+        FLocalVertexFactory::ReleaseRHI();
     }
   private:
     FSandboxISMCInstanceBuffer const* instance_buffer_{nullptr};
+    TUniformBufferRef<FInstancedStaticMeshVertexFactoryUniformShaderParameters>
+        instance_uniform_buffer_;
 };
 
 class FSandboxISMCVertexFactoryShaderParameters final
@@ -253,6 +360,12 @@ class FSandboxISMCVertexFactoryShaderParameters final
 
         shader_bindings.Add(instancing_offset_, FVector4f::Zero());
         shader_bindings.Add(instance_offset_, batch_element.UserIndex);
+        shader_bindings.Add(shader->GetUniformBufferParameter<
+                                FInstancedStaticMeshVertexFactoryUniformShaderParameters>(),
+                            local_vertex_factory->get_instance_uniform_buffer());
+        shader_bindings.Add(
+            shader->GetUniformBufferParameter<FInstancedStaticMeshVFLooseUniformShaderParameters>(),
+            batch_element.LooseParametersUniformBuffer);
     }
   private:
     LAYOUT_FIELD(FShaderParameter, instancing_offset_);
@@ -262,6 +375,9 @@ class FSandboxISMCVertexFactoryShaderParameters final
 IMPLEMENT_TYPE_LAYOUT(FSandboxISMCVertexFactoryShaderParameters);
 IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FSandboxISMCVertexFactory,
                                         SF_Vertex,
+                                        FSandboxISMCVertexFactoryShaderParameters);
+IMPLEMENT_VERTEX_FACTORY_PARAMETER_TYPE(FSandboxISMCVertexFactory,
+                                        SF_Pixel,
                                         FSandboxISMCVertexFactoryShaderParameters);
 
 IMPLEMENT_VERTEX_FACTORY_TYPE(FSandboxISMCVertexFactory,
@@ -364,7 +480,9 @@ class FSandboxISMCSceneProxy final : public FPrimitiveSceneProxy {
         TRACE_CPUPROFILER_EVENT_SCOPE(FSandboxISMCSceneProxy::update_instances_render_thread);
         check(IsInRenderingThread());
         instance_count_ = buffer.instances.Num();
-        instance_buffer_.upload(rhi_command_list, buffer);
+        if (instance_buffer_.upload(rhi_command_list, buffer)) {
+            vertex_factory_.update_instance_uniform_buffer();
+        }
         buffer.in_flight.Store(false);
     }
 
@@ -503,6 +621,21 @@ auto USandboxISMCComponent::get_static_mesh() const -> UStaticMesh* {
     return static_mesh_;
 }
 
+auto USandboxISMCComponent::set_num_custom_data_floats(int32 count) -> void {
+    TRACE_CPUPROFILER_EVENT_SCOPE(USandboxISMCComponent::set_num_custom_data_floats);
+    checkf(count >= 0, TEXT("SandboxISMC custom data float count must not be negative"));
+    if (num_custom_data_floats_ == count) {
+        return;
+    }
+
+    num_custom_data_floats_ = count;
+    clear_instances();
+}
+
+auto USandboxISMCComponent::get_num_custom_data_floats() const -> int32 {
+    return num_custom_data_floats_;
+}
+
 auto USandboxISMCComponent::clear_instances() -> void {
     set_instances(0, ESandboxISMCParallelism::Sequential, [](FSandboxISMCInstanceChunkWriter&) {});
 }
@@ -512,8 +645,9 @@ auto USandboxISMCComponent::get_instance_count() const -> int32 {
 }
 
 auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
-    -> TArrayView<FSandboxISMCRenderInstance> {
+    -> FSandboxISMCStagingBuffer& {
     check(IsInGameThread());
+    check(instance_count == 0 || num_custom_data_floats_ <= MAX_int32 / instance_count);
 
     auto& buffer{staging_state_->buffers.next()};
     if (buffer.in_flight.Load()) {
@@ -523,7 +657,9 @@ auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
     }
 
     buffer.instances.SetNumUninitialized(instance_count);
-    return buffer.instances;
+    buffer.custom_data.SetNumUninitialized(instance_count * num_custom_data_floats_);
+    buffer.num_custom_data_floats = num_custom_data_floats_;
+    return buffer;
 }
 
 auto USandboxISMCComponent::finish_instance_update(int32 instance_count,
@@ -537,10 +673,16 @@ auto USandboxISMCComponent::finish_instance_update(int32 instance_count,
                       : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
     instance_count_ = instance_count;
 
-    auto const upload_bytes{static_cast<uint64>(instance_count) *
-                            sizeof(FSandboxISMCRenderInstance)};
+    auto const transform_upload_bytes{static_cast<uint64>(instance_count) *
+                                      sizeof(FSandboxISMCRenderInstance)};
+    auto const custom_data_upload_bytes{static_cast<uint64>(instance_count) *
+                                        static_cast<uint64>(num_custom_data_floats_) *
+                                        sizeof(float)};
+    auto const upload_bytes{transform_upload_bytes + custom_data_upload_bytes};
     metrics_->instance_count = instance_count;
     metrics_->build_cycles = elapsed_cycles;
+    metrics_->transform_upload_bytes = transform_upload_bytes;
+    metrics_->custom_data_upload_bytes = custom_data_upload_bytes;
     metrics_->upload_bytes = upload_bytes;
     SET_DWORD_STAT(STAT_SandboxISMCInstances, instance_count);
     SET_DWORD_STAT(STAT_SandboxISMCUploadBytes,
@@ -559,6 +701,8 @@ auto USandboxISMCComponent::get_update_metrics() const -> FSandboxISMCUpdateMetr
         .build_ms = FPlatformTime::ToMilliseconds64(metrics_->build_cycles),
         .submit_ms = FPlatformTime::ToMilliseconds64(metrics_->submit_cycles),
         .upload_ms = FPlatformTime::ToMilliseconds64(metrics_->upload_cycles.Load()),
+        .transform_upload_bytes = metrics_->transform_upload_bytes,
+        .custom_data_upload_bytes = metrics_->custom_data_upload_bytes,
         .upload_bytes = metrics_->upload_bytes,
     };
 }
@@ -578,16 +722,16 @@ auto USandboxISMCComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
         return nullptr;
     }
 
-    if (pending_staging_buffer_ == nullptr) {
-        UE_LOG(LogSandboxISMC,
-               Warning,
-               TEXT("SandboxISMC has CPU instances but no committed render snapshot"));
-        return nullptr;
+    auto* initial_buffer{pending_staging_buffer_ != nullptr ? pending_staging_buffer_
+                                                            : &staging_state_->buffers.current()};
+    if (initial_buffer->in_flight.Load()) {
+        FlushRenderingCommands();
     }
-
-    auto* initial_buffer{pending_staging_buffer_};
-    pending_staging_buffer_ = nullptr;
     check(!initial_buffer->in_flight.Load());
+    check(initial_buffer->instances.Num() == instance_count_);
+    if (pending_staging_buffer_ == initial_buffer) {
+        pending_staging_buffer_ = nullptr;
+    }
     initial_buffer->in_flight.Store(true);
     return new FSandboxISMCSceneProxy{this, initial_buffer, staging_state_, metrics_};
 }

@@ -17,7 +17,8 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
     {
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(2);
-        FSandboxISMCInstanceChunkWriter writer{packed, 1024, FVector3f::ZeroVector, 0.0f, false};
+        FSandboxISMCInstanceChunkWriter writer{
+            packed, {}, 0, 1024, FVector3f::ZeroVector, 0.0f, false};
 
         auto const positions{TArray<FVector3f>{{4.0f, 5.0f, 6.0f}, {7.0f, 8.0f, 9.0f}}};
         auto const rotations{
@@ -55,7 +56,7 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
     {
         TArray<FSandboxISMCRenderInstance> packed;
         packed.SetNumUninitialized(1);
-        FSandboxISMCInstanceChunkWriter writer{packed, 0, {1.0f, 0.0f, 0.0f}, 2.0f, true};
+        FSandboxISMCInstanceChunkWriter writer{packed, {}, 0, 0, {1.0f, 0.0f, 0.0f}, 2.0f, true};
         writer.set_transform(
             0, {10.0f, 0.0f, 0.0f}, FQuat4f{FVector3f::UpVector, UE_HALF_PI}, {-2.0f, 1.0f, 1.0f});
 
@@ -68,5 +69,32 @@ TEST_CLASS(SandboxISMCInstanceChunkWriter, "SandboxISMC.UnitTests")
                     TEXT("The largest absolute scale controls conservative extent"),
                     bounds.GetExtent(),
                     {4.0f, 4.0f, 4.0f});
+    }
+
+    TEST_METHOD(ExposesPerInstanceCustomDataSlices)
+    {
+        TArray<FSandboxISMCRenderInstance> packed;
+        packed.SetNumUninitialized(2);
+        TArray<float> custom_data;
+        custom_data.SetNumUninitialized(6);
+        FSandboxISMCInstanceChunkWriter writer{
+            packed, custom_data, 3, 50, FVector3f::ZeroVector, 0.0f, false};
+
+        auto first{writer.custom_data(0)};
+        first[0] = 0.1f;
+        first[1] = 0.2f;
+        first[2] = 0.3f;
+        auto second{writer.custom_data(1)};
+        second[0] = 0.4f;
+        second[1] = 0.5f;
+        second[2] = 0.6f;
+
+        TestRunner->TestEqual(
+            TEXT("The writer exposes the custom-data stride"), writer.num_custom_data_floats(), 3);
+        TestRunner->TestEqual(
+            TEXT("The first row begins at the first float"), custom_data[0], 0.1f);
+        TestRunner->TestEqual(
+            TEXT("The second row follows the first row contiguously"), custom_data[3], 0.4f);
+        TestRunner->TestEqual(TEXT("The final channel is retained"), custom_data[5], 0.6f);
     }
 };

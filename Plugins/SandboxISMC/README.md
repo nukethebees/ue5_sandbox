@@ -25,20 +25,23 @@ generated `InstanceData` SoA remains available as an optional container, but the
 depend on it.
 
 `set_instances()` accepts the complete live instance count and a chunk callback. The callback reads
-the caller's source arrays and writes transforms through `FSandboxISMCInstanceChunkWriter`, so source
-conversion, final 64-byte GPU packing, and conservative bounds accumulation happen in one pass with
-no intermediate transform array. `Auto`, `Sequential`, and `Parallel` policies control whether the
+the caller's source arrays and writes transforms and optional per-instance floats through
+`FSandboxISMCInstanceChunkWriter`, so source conversion, final 64-byte GPU packing, custom-data
+packing, and conservative bounds accumulation happen in one pass with no intermediate transform
+array. Set the custom-data stride before submitting instances; each writer exposes the current
+instance's contiguous float view. `Auto`, `Sequential`, and `Parallel` policies control whether the
 fixed 1,024-instance chunks are processed by `ParallelFor`; `Auto` switches at 4,096 instances.
 Callers that already have conservative component-local bounds can pass them to `set_instances()` to
 skip per-instance bounds accumulation.
 
-The component owns three persistent packed staging arrays through `ml::MultiBuffer`. Each call fills
-the next available array and retains its capacity for later updates. The render thread copies the
-completed array through one offset-zero RHI buffer lock into a persistent vertex buffer, then marks
+The component owns three persistent transform and custom-data staging arrays through
+`ml::MultiBuffer`. Each call fills the next available arrays and retains their capacity for later
+updates. The render thread copies the completed arrays through offset-zero RHI buffer locks into
+persistent vertex and custom-data buffers, then marks
 the staging array reusable. If all three arrays are exceptionally still in flight, the game thread
 records a staging-buffer wait and flushes outstanding rendering work before reusing one. The GPU
-buffer grows to a power-of-two capacity and is not reallocated while the active count remains within
-that capacity. A shared zero stream supplies the unused lightmap-bias attribute required by the
+buffers grow to power-of-two capacities and are not reallocated while the active counts remain within
+those capacities. A shared zero stream supplies the unused lightmap-bias attribute required by the
 engine shader layout. Changing the mesh or submitting zero instances clears the snapshot. Component
 bounds reduce the per-chunk conservative mesh-sphere bounds in chunk order.
 
@@ -48,7 +51,7 @@ An update now:
 
 1. converts, packs, and accumulates bounds for the complete snapshot, optionally in parallel;
 2. reduces the chunk bounds; and
-3. uploads one contiguous packed array.
+3. uploads the contiguous transform and optional custom-data arrays.
 
 At 40,000 instances the payload is approximately 2.44 MiB. `stat SandboxISMC` shows snapshot build,
 submission, and render-thread upload CPU scopes. The lab actor also logs the most recent timings,
@@ -103,10 +106,10 @@ cmake --workflow --preset sandbox-ismc-benchmark
 
 The remote workflow builds a Development editor, starts PIE for ten seconds with 40,000 instances per
 renderer, flushes final render work, saves the CSV and Insights trace, ends PIE, and exits. Configure a
-different duration or instance count before running its build and test presets:
+different duration, instance count, or custom-data mode before running its build and test presets:
 
 ```text
-cmake --preset sandbox-ismc-benchmark -DSANDBOX_ISMC_BENCHMARK_SECONDS=30 -DSANDBOX_ISMC_BENCHMARK_INSTANCES=100000 -DSANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT=10 -DSANDBOX_ISMC_BENCHMARK_MODE=custom -DSANDBOX_ISMC_BENCHMARK_VISIBILITY=half -DSANDBOX_ISMC_BENCHMARK_SHADOWS=1
+cmake --preset sandbox-ismc-benchmark -DSANDBOX_ISMC_BENCHMARK_SECONDS=30 -DSANDBOX_ISMC_BENCHMARK_INSTANCES=100000 -DSANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT=10 -DSANDBOX_ISMC_BENCHMARK_MODE=custom -DSANDBOX_ISMC_BENCHMARK_VISIBILITY=half -DSANDBOX_ISMC_BENCHMARK_CUSTOM_DATA=animated -DSANDBOX_ISMC_BENCHMARK_SHADOWS=1
 cmake --build --preset sandbox-ismc-benchmark
 ctest --preset sandbox-ismc-benchmark
 ```
@@ -117,6 +120,9 @@ Use paired mode for same-frame CPU API comparison, then matching custom and engi
 comparison. Update percentage accepts 0 through 100. Shadows are disabled by default.
 The benchmark actor's `Use Supplied Bounds` property switches the custom component between calculating
 bounds during each snapshot and reusing conservative bounds calculated once during setup.
+`Custom Data` can be `None`, `Static RGB`, or `Animated RGB`. The RGB modes use three floats per
+instance and `/SandboxISMC/Lab/M_SandboxISMCCustomData`; animated mode changes the updated prefix
+each frame. The unattended option accepts `none`, `static`, or `animated`.
 
 Do not add `-nullrhi`; the Render Thread and GPU comparison require a real RHI.
 
@@ -138,7 +144,8 @@ maximum values over the complete run:
 - `build` is the custom component's complete conversion, packing, and bounds pass.
 - `prepare` is benchmark-side construction of the changed engine ISMC transforms.
 - `api` is `set_instances()` or `BatchUpdateInstancesTransforms()`.
-- `uploaded` is the custom snapshot payload size.
+- `transform_uploaded`, `custom_data_uploaded`, and `uploaded` report the custom snapshot's split and
+  total payload sizes.
 
 When tracing is enabled, the actor records `Saved/Profiling/SandboxISMC_Paired_*.utrace`, including
 CPU, GPU, frame, bookmark, counter, stats, render-command, and RHI-command channels. An editor `Failed
@@ -166,8 +173,9 @@ Filter timers by `SandboxISMC` to follow the custom path across threads:
 - `FSandboxISMCInstanceBuffer::upload` uploads the packed buffer on the Render Thread.
 
 The Render Thread also writes `SandboxISMC/RenderThreadUploadMs`,
-`SandboxISMC/RenderThreadUploadBytes`, and `SandboxISMC/RenderThreadUploadInstances` directly after
-every upload. Use these counters when inspecting upload cost because they are written on the Render
+`SandboxISMC/RenderThreadUploadBytes`, `SandboxISMC/RenderThreadTransformUploadBytes`,
+`SandboxISMC/RenderThreadCustomDataUploadBytes`, and `SandboxISMC/RenderThreadUploadInstances`
+directly after every upload. Use these counters when inspecting upload cost because they are written on the Render
 Thread without asynchronous Game Thread readback. The custom component commits every tick, so these
 counters receive a new sample every frame.
 

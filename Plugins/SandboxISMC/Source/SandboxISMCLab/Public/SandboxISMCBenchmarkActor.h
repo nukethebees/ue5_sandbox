@@ -7,6 +7,7 @@
 
 class UCameraComponent;
 class UInstancedStaticMeshComponent;
+class UMaterialInterface;
 class USandboxISMCComponent;
 class USceneComponent;
 class UStaticMesh;
@@ -25,6 +26,13 @@ enum class ESandboxISMCBenchmarkVisibility : uint8 {
     None,
 };
 
+UENUM()
+enum class ESandboxISMCBenchmarkCustomData : uint8 {
+    None,
+    StaticRgb,
+    AnimatedRgb,
+};
+
 UCLASS()
 class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     GENERATED_BODY()
@@ -40,6 +48,8 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         double prepare_ms{-1.0};
         double build_ms{-1.0};
         double api_ms{0.0};
+        double transform_upload_bytes{-1.0};
+        double custom_data_upload_bytes{-1.0};
         double uploaded_bytes{-1.0};
     };
 
@@ -48,14 +58,17 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
         TArray<double> prepare_ms;
         TArray<double> build_ms;
         TArray<double> api_ms;
+        TArray<double> transform_upload_bytes;
+        TArray<double> custom_data_upload_bytes;
         TArray<double> uploaded_bytes;
     };
 
     void parse_command_line();
     void configure_components();
     bool create_instances();
-    FUpdateTiming update_custom(float vertical_offset, float angle_radians);
-    FUpdateTiming update_engine_ismc(float vertical_offset, float angle_radians);
+    FUpdateTiming update_custom(float vertical_offset, float angle_radians, float colour_alpha);
+    FUpdateTiming
+        update_engine_ismc(float vertical_offset, float angle_radians, float colour_alpha);
     void record_samples(FRendererSamples& samples, FUpdateTiming const& timing);
     void finish_benchmark();
     void start_insights_trace();
@@ -69,6 +82,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     FString get_mode_name() const;
     FString get_visibility_name() const;
     FString get_bounds_name() const;
+    FString get_custom_data_name() const;
+    bool uses_custom_data() const;
+    bool animates_custom_data() const;
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Benchmark")
     TObjectPtr<USceneComponent> root_;
@@ -84,6 +100,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark")
     TObjectPtr<UStaticMesh> static_mesh_;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Rendering")
+    TObjectPtr<UMaterialInterface> custom_data_material_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark", meta = (ClampMin = "1"))
     int32 instance_count_{40000};
@@ -104,6 +123,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Rendering")
     bool use_supplied_bounds_{false};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark|Rendering")
+    ESandboxISMCBenchmarkCustomData custom_data_{ESandboxISMCBenchmarkCustomData::None};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox ISMC Benchmark")
     float grid_spacing_{150.0f};
@@ -133,7 +155,9 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
     float automatic_stop_seconds_{0.0f};
 
     TArray<FVector3f> base_positions_;
+    TArray<FVector3f> base_colours_;
     TArray<FTransform> engine_update_transforms_;
+    TArray<float> engine_custom_data_;
     FBox3f supplied_local_bounds_{ForceInit};
     TArray<double> frame_ms_;
     TArray<double> game_thread_ms_;
