@@ -122,9 +122,17 @@ struct Child {
     SourceSpan span;
 };
 
+enum class ParameterKind { callback, factory, existing };
+
+struct FunctionParameter {
+    ParameterKind kind;
+    std::string name;
+    SourceSpan span;
+};
+
 struct SlateFunction {
     std::string name;
-    std::vector<std::string> forwarded_parameters;
+    std::vector<FunctionParameter> parameters;
     std::vector<Binding> bindings;
     Child root;
     SourceSpan span;

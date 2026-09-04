@@ -1,5 +1,8 @@
 (widget-class UScatter3DShowcase
   (function RebuildWidget
+    (params
+      (callback on_value_committed)
+      (existing scatter_widget))
     (SExperimentPanel
       :Title (loc "Scatter3D" "Title" "RDG 3D Scatter Experiment")
       :Description (loc "Scatter3D" "Description" "Deterministic CPU clusters are uploaded only when changed, rasterized by RDG, and displayed as one Slate image.")

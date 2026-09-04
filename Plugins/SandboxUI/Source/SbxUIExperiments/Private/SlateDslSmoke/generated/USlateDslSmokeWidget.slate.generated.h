@@ -16,7 +16,7 @@ struct USlateDslSmokeWidgetBuilder {
 
     auto RebuildWidget(auto&& on_value_changed) {
         return
-#line 3 "SlateDslSmokeWidget.sbxslate"
+#line 5 "SlateDslSmokeWidget.sbxslate"
             SNew(SVerticalBox)
                 + SandboxUI::Slate::vbox_auto_slot(FMargin{8.0f, 8.0f, 8.0f, 4.0f})
                     [

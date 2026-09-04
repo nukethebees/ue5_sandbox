@@ -1,6 +1,7 @@
 #include "parser.h"
 
 #include <cctype>
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -35,6 +36,11 @@ class Parser {
     }
 
   private:
+    struct ParameterState {
+        ParameterKind kind;
+        std::size_t uses{};
+    };
+
     auto current() const -> Token const& { return tokens_[index_]; }
 
     auto previous() const -> Token const& { return tokens_[index_ - 1]; }
@@ -119,18 +125,62 @@ class Parser {
         if (!is_identifier(name.text)) {
             fail(name.span, "generated function name must be a C++ identifier");
         }
-        forwarded_parameter_names_.clear();
-        forwarded_parameters_.clear();
-        called_parameter_names_.clear();
+        parameter_states_.clear();
         binding_names_.clear();
+        auto parameters{parse_parameters()};
         std::vector<Binding> bindings;
         auto root{list_head_is("let") ? parse_let(bindings) : parse_child()};
         expect(TokenKind::right_parenthesis, "expected ')' after generated function");
+        for (auto const& parameter : parameters) {
+            if (parameter_states_.at(parameter.name).uses == 0) {
+                fail(parameter.span, "unused " + parameter_kind_name(parameter.kind) +
+                                         " parameter '" + parameter.name + "'");
+            }
+        }
         return SlateFunction{name.text,
-                             std::move(forwarded_parameters_),
+                             std::move(parameters),
                              std::move(bindings),
                              std::move(root),
                              opening.span};
+    }
+
+    auto parse_parameters() -> std::vector<FunctionParameter> {
+        if (!list_head_is("params")) {
+            fail(current().span, "expected 'params' declaration after function name");
+        }
+        expect(TokenKind::left_parenthesis, "expected '(' before params");
+        expect_atom("expected 'params'");
+
+        std::vector<FunctionParameter> parameters;
+        while (!at(TokenKind::right_parenthesis)) {
+            if (at(TokenKind::end)) {
+                fail(current().span, "expected ')' after params declaration");
+            }
+            auto const& opening{expect(TokenKind::left_parenthesis, "expected parameter declaration")};
+            auto const& role{expect_atom("expected callback, factory, or existing parameter role")};
+            auto kind{ParameterKind::callback};
+            if (role.text == "factory") {
+                kind = ParameterKind::factory;
+            } else if (role.text == "existing") {
+                kind = ParameterKind::existing;
+            } else if (role.text != "callback") {
+                fail(role.span, "expected callback, factory, or existing parameter role");
+            }
+            auto const& name{expect_atom("expected parameter name")};
+            if (!is_identifier(name.text)) {
+                fail(name.span, "parameter name must be a C++ identifier");
+            }
+            expect(TokenKind::right_parenthesis, "expected ')' after parameter declaration");
+            if (name.text == "self_" || name.text == "ThisClass") {
+                fail(name.span, "reserved generated name cannot be used as a parameter");
+            }
+            if (!parameter_states_.emplace(name.text, ParameterState{kind}).second) {
+                fail(name.span, "duplicate parameter declaration '" + name.text + "'");
+            }
+            parameters.push_back(FunctionParameter{kind, name.text, opening.span});
+        }
+        expect(TokenKind::right_parenthesis, "expected ')' after params declaration");
+        return parameters;
     }
 
     auto parse_let(std::vector<Binding>& bindings) -> Child {
@@ -167,6 +217,9 @@ class Parser {
         }
         if (binding_names_.contains(name.text)) {
             fail(name.span, "duplicate let binding '" + name.text + "'");
+        }
+        if (parameter_states_.contains(name.text)) {
+            fail(name.span, "let binding '" + name.text + "' conflicts with parameter");
         }
 
         std::variant<Value, Margin> initializer;
@@ -213,7 +266,7 @@ class Parser {
         if (type.text == "widget-class" || type.text == "function" || type.text == "vbox" ||
             type.text == "hbox" || type.text == "slot" || type.text == "auto" ||
             type.text == "fill" || type.text == "assign" || type.text == "existing" ||
-            type.text == "call" || type.text == "let") {
+            type.text == "call" || type.text == "let" || type.text == "params") {
             fail(type.span, "expected widget type, found structural form '" + type.text + "'");
         }
     }
@@ -324,7 +377,7 @@ class Parser {
         }
         expect(TokenKind::right_parenthesis, "expected ')' after callable value");
         if (kind == ValueKind::callback) {
-            register_forwarded_parameter(name.text, opening.span);
+            use_parameter(name.text, ParameterKind::callback, opening.span, false);
         }
         return Value{kind, name.text, opening.span};
     }
@@ -341,7 +394,7 @@ class Parser {
             fail(parameter.span, "existing widget parameter must be a C++ identifier");
         }
         expect(TokenKind::right_parenthesis, "expected ')' after existing widget");
-        register_forwarded_parameter(parameter.text, opening.span);
+        use_parameter(parameter.text, ParameterKind::existing, opening.span, false);
         return Child{ExistingWidget{parameter.text, opening.span}, opening.span};
     }
 
@@ -370,35 +423,40 @@ class Parser {
             arguments.push_back(std::move(value));
         }
         expect(TokenKind::right_parenthesis, "expected ')' after child factory call");
-        register_called_parameter(parameter.text, opening.span);
+        use_parameter(parameter.text, ParameterKind::factory, opening.span, true);
         return Child{CalledWidget{parameter.text, std::move(arguments), opening.span}, opening.span};
     }
 
-    void register_forwarded_parameter(std::string const& name, SourceSpan const span) {
-        if (binding_names_.contains(name)) {
-            fail(span, "forwarded parameter '" + name + "' conflicts with let binding");
+    void use_parameter(std::string const& name,
+                       ParameterKind const expected_kind,
+                       SourceSpan const span,
+                       bool const allow_multiple_uses) {
+        auto const found{parameter_states_.find(name)};
+        if (found == parameter_states_.end()) {
+            fail(span, "undeclared " + parameter_kind_name(expected_kind) + " parameter '" + name +
+                           "'");
         }
-        if (called_parameter_names_.contains(name)) {
-            fail(span, "parameter '" + name + "' cannot be both called and forwarded");
+        auto& state{found->second};
+        if (state.kind != expected_kind) {
+            fail(span, "parameter '" + name + "' is declared as " +
+                           parameter_kind_name(state.kind) + ", not " +
+                           parameter_kind_name(expected_kind));
         }
-        if (!forwarded_parameter_names_.insert(name).second) {
-            fail(span, "forwarded parameter '" + name + "' may only be used once");
+        if (!allow_multiple_uses && state.uses != 0) {
+            fail(span, parameter_kind_name(expected_kind) + " parameter '" + name +
+                           "' may only be used once");
         }
-        forwarded_parameters_.push_back(name);
+        ++state.uses;
     }
 
-    void register_called_parameter(std::string const& name, SourceSpan const span) {
-        if (binding_names_.contains(name)) {
-            fail(span, "child factory parameter '" + name + "' conflicts with let binding");
+    static auto parameter_kind_name(ParameterKind const kind) -> std::string {
+        if (kind == ParameterKind::callback) {
+            return "callback";
         }
-        if (called_parameter_names_.contains(name)) {
-            return;
+        if (kind == ParameterKind::factory) {
+            return "factory";
         }
-        if (!forwarded_parameter_names_.insert(name).second) {
-            fail(span, "parameter '" + name + "' cannot be both called and forwarded");
-        }
-        called_parameter_names_.insert(name);
-        forwarded_parameters_.push_back(name);
+        return "existing";
     }
 
     auto parse_named_slot() -> WidgetSlot {
@@ -618,9 +676,7 @@ class Parser {
     std::string_view path_;
     std::vector<Token> tokens_;
     std::size_t index_{};
-    std::set<std::string> forwarded_parameter_names_;
-    std::vector<std::string> forwarded_parameters_;
-    std::set<std::string> called_parameter_names_;
+    std::map<std::string, ParameterState> parameter_states_;
     std::set<std::string> binding_names_;
 };
 

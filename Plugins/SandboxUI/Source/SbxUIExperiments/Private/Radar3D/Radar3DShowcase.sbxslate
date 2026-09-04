@@ -1,5 +1,8 @@
 (widget-class URadar3DShowcase
   (function RebuildWidget
+    (params
+      (callback on_value_changed)
+      (existing radar_widget))
     (SExperimentPanel
       :Title (loc "Radar3D" "Title" "RDG 3D Radar Experiment")
       :Description (loc "Radar3D" "Description" "Synthetic CPU contacts are rendered by RDG into one offscreen texture and displayed by Slate.")

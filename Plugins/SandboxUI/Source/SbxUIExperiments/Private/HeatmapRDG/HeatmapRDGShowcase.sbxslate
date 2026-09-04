@@ -1,5 +1,12 @@
 (widget-class UHeatmapRDGShowcase
   (function RebuildWidget
+    (params
+      (existing size_32_button)
+      (existing size_64_button)
+      (existing size_128_button)
+      (existing size_256_button)
+      (existing size_512_button)
+      (existing heatmap_preview))
     (let ((controls_padding (0 0 0 6))
           (section_padding (0 0 0 10))
           (button_padding (0 0 4 0))

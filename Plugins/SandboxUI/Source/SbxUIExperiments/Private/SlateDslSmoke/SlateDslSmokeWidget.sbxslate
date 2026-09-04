@@ -1,5 +1,7 @@
 (widget-class USlateDslSmokeWidget
   (function RebuildWidget
+    (params
+      (callback on_value_changed))
     (vbox
       (auto :padding (8 8 8 4)
         (STextBlock

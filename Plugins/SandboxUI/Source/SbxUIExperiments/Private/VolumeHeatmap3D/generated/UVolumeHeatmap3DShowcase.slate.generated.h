@@ -15,27 +15,27 @@ struct UVolumeHeatmap3DShowcaseBuilder {
     explicit UVolumeHeatmap3DShowcaseBuilder(ThisClass& self) : self_{self} {}
 
     auto RebuildWidget(auto&& show_clouds, auto&& show_shell, auto&& grid_button, auto&& set_slice_count, auto&& set_density_scale, auto&& set_yaw, auto&& set_pitch, auto&& volume_widget) {
-#line 3 "VolumeHeatmap3DShowcase.sbxslate"
+#line 12 "VolumeHeatmap3DShowcase.sbxslate"
         auto const label_min_width{56.0f};
-#line 4 "VolumeHeatmap3DShowcase.sbxslate"
+#line 13 "VolumeHeatmap3DShowcase.sbxslate"
         auto const control_padding{FMargin{0.0f, 0.0f, 0.0f, 5.0f}};
-#line 5 "VolumeHeatmap3DShowcase.sbxslate"
+#line 14 "VolumeHeatmap3DShowcase.sbxslate"
         auto const pattern_button_padding{FMargin{0.0f, 0.0f, 6.0f, 0.0f}};
-#line 6 "VolumeHeatmap3DShowcase.sbxslate"
+#line 15 "VolumeHeatmap3DShowcase.sbxslate"
         auto const grid_button_padding{FMargin{0.0f, 0.0f, 3.0f, 0.0f}};
-#line 7 "VolumeHeatmap3DShowcase.sbxslate"
+#line 16 "VolumeHeatmap3DShowcase.sbxslate"
         auto const paired_control_padding{FMargin{14.0f, 0.0f, 0.0f, 0.0f}};
-#line 8 "VolumeHeatmap3DShowcase.sbxslate"
+#line 17 "VolumeHeatmap3DShowcase.sbxslate"
         auto const rotation_padding{FMargin{0.0f, 0.0f, 0.0f, 8.0f}};
-#line 9 "VolumeHeatmap3DShowcase.sbxslate"
+#line 18 "VolumeHeatmap3DShowcase.sbxslate"
         auto const control_width{100};
-#line 10 "VolumeHeatmap3DShowcase.sbxslate"
+#line 19 "VolumeHeatmap3DShowcase.sbxslate"
         auto const rotation_control_width{90};
-#line 11 "VolumeHeatmap3DShowcase.sbxslate"
+#line 20 "VolumeHeatmap3DShowcase.sbxslate"
         auto const preview_size{512.0f};
 
         return
-#line 12 "VolumeHeatmap3DShowcase.sbxslate"
+#line 21 "VolumeHeatmap3DShowcase.sbxslate"
             SNew(SExperimentPanel)
                 .Title(NSLOCTEXT("VolumeHeatmap3D", "Title", "RDG 3D Volume Heatmap"))
                 .Description(

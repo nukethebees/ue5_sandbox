@@ -1,5 +1,14 @@
 (widget-class UVolumeHeatmap3DShowcase
   (function RebuildWidget
+    (params
+      (callback show_clouds)
+      (callback show_shell)
+      (factory grid_button)
+      (callback set_slice_count)
+      (callback set_density_scale)
+      (callback set_yaw)
+      (callback set_pitch)
+      (existing volume_widget))
     (let ((label_min_width 56.0f)
           (control_padding (0 0 0 5))
           (pattern_button_padding (0 0 6 0))

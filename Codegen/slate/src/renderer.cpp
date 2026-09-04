@@ -34,7 +34,7 @@ class Renderer {
         append_line(0, "// clang-format off");
         append_line(0, {});
         append_line(0, "#pragma once");
-        if (has_forwarded_parameters(widget_class)) {
+        if (has_parameters(widget_class)) {
             append_line(0, {});
             append_line(0, "#include <utility>");
         }
@@ -64,9 +64,9 @@ class Renderer {
     }
 
   private:
-    static auto has_forwarded_parameters(WidgetClass const& widget_class) -> bool {
+    static auto has_parameters(WidgetClass const& widget_class) -> bool {
         for (auto const& function : widget_class.functions) {
-            if (!function.forwarded_parameters.empty()) {
+            if (!function.parameters.empty()) {
                 return true;
             }
         }
@@ -96,11 +96,11 @@ class Renderer {
 
     void render_function(SlateFunction const& function) {
         std::string declaration{"auto " + function.name + "("};
-        for (std::size_t index{}; index < function.forwarded_parameters.size(); ++index) {
+        for (std::size_t index{}; index < function.parameters.size(); ++index) {
             if (index != 0) {
                 declaration += ", ";
             }
-            declaration += "auto&& " + function.forwarded_parameters[index];
+            declaration += "auto&& " + function.parameters[index].name;
         }
         declaration += ") {";
         append_line(4, declaration);
