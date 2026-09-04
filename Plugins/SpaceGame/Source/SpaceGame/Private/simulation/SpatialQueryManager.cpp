@@ -69,6 +69,12 @@ void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
     }
 }
 
+void FSpatialQueryManager::initialise_static_geometry(
+    FCollisionGridConfig const& collision_grid_config) {
+    check(IsValid(world));
+    collision.initialise_static_geometry(*world, collision_grid_config);
+}
+
 auto FSpatialQueryManager::acquire_thread_buffer() const -> int32 {
     std::lock_guard const lock{thread_buffers_mutex};
     if (free_thread_buffer_indices.IsEmpty()) {

@@ -84,6 +84,7 @@ struct SPACEGAME_API FSpatialQueryManager {
                     ATestTubeSpinners const& tube_spinners);
 
     void reserve_thread_buffers(int32 count);
+    void initialise_static_geometry(FCollisionGridConfig const& collision_grid_config);
 
     void resolve_hits(TConstArrayView<FSpatialQueryHit> hits,
                       TArrayView<FRegistryEntityHandle> out_entity_handles) const;

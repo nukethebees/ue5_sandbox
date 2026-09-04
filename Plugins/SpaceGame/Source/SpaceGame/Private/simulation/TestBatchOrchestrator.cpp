@@ -426,6 +426,8 @@ void ATestBatchOrchestrator::begin_play() {
                                   ATestStaticTurretsProxy,
                                   ATestTubeSpinnerProxy>(*world, entity_registry, mission_manager);
 
+    query_manager.initialise_static_geometry(level_config->collision_grid);
+
     entity_registry.commit_updates();
     entity_registry.end_tick();
     query_manager.update();
