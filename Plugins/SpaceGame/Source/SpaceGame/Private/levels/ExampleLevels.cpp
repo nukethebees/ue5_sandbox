@@ -17,24 +17,30 @@ auto make_native_example() -> FLevelDefinition {
         .rotation = FRotator{0.0, 90.0, 0.0},
     })};
     builder.set_player_entity(player_id);
-    builder.add_entity(FEntitySpawnDefinition{
+    auto const blue_capital_id{builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("blue-capital")}},
         .archetype = level_archetypes::capital_ship,
         .team = level_teams::blue,
         .position = FVector{-40000.0, 0.0, 0.0},
-    });
-    builder.add_entity(FEntitySpawnDefinition{
+    })};
+    auto const red_capital_id{builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("red-capital")}},
         .archetype = level_archetypes::capital_ship,
         .team = level_teams::red,
         .position = FVector{40000.0, 0.0, 0.0},
-    });
+    })};
     builder.add_entity(FEntitySpawnDefinition{
         .id = FLevelEntityId{FName{TEXT("red-turret")}},
         .archetype = level_archetypes::static_turret,
         .team = level_teams::red,
         .position = FVector{30000.0, 15000.0, 0.0},
         .rotation = FRotator{0.0, 180.0, 0.0},
+    });
+    builder.set_mission(FLevelMissionDefinition{
+        .mode = ELevelMissionMode::KillEnemies,
+        .hero_entity_ids = {player_id, blue_capital_id},
+        .must_survive_entity_ids = {blue_capital_id},
+        .required_kill_entity_ids = {red_capital_id},
     });
     return builder.finish();
 }

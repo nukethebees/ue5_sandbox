@@ -65,6 +65,18 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Turret archetype is preserved"),
                              definition.entities.archetypes[3] ==
                                  ml::level_archetypes::static_turret);
+        if (TestRunner->TestTrue(TEXT("Mission is preserved"), definition.mission.IsSet())) {
+            auto const& mission{definition.mission.GetValue()};
+            TestRunner->TestTrue(TEXT("Mission mode is preserved"),
+                                 mission.mode == ml::ELevelMissionMode::KillEnemies);
+            TestRunner->TestFalse(TEXT("Omitted kill count is preserved"),
+                                  mission.kill_count.IsSet());
+            TestRunner->TestEqual(TEXT("Mission has two heroes"), mission.hero_entity_ids.Num(), 2);
+            TestRunner->TestEqual(
+                TEXT("Mission has one protected entity"), mission.must_survive_entity_ids.Num(), 1);
+            TestRunner->TestEqual(
+                TEXT("Mission has one required kill"), mission.required_kill_entity_ids.Num(), 1);
+        }
     }
 
     TEST_METHOD(UnknownTeamReferenceFailsValidation)
@@ -176,8 +188,14 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
             .offset_direction = FVector{-1.0, 0.0, 0.0},
             .distance = 1000.0,
         });
+        builder.set_mission(ml::FLevelMissionDefinition{
+            .mode = ml::ELevelMissionMode::SurviveTime,
+            .time_limit_seconds = 10.0f,
+            .must_survive_entity_ids = {ml::FLevelEntityId{FName{TEXT("capital")}}},
+        });
         auto const camera_level{builder.finish()};
         TestRunner->TestTrue(TEXT("First definition has a camera"), camera_level.camera.IsSet());
+        TestRunner->TestTrue(TEXT("First definition has a mission"), camera_level.mission.IsSet());
 
         builder.set_metadata(ml::FLevelMetadata{.title = TEXT("Player")});
         builder.add_team(ml::level_teams::blue);
@@ -191,8 +209,102 @@ TEST_CLASS(LevelDefinition, "Sandbox.UnitTests")
 
         TestRunner->TestFalse(TEXT("Reused builder clears the camera"),
                               player_level.camera.IsSet());
+        TestRunner->TestFalse(TEXT("Reused builder clears the mission"),
+                              player_level.mission.IsSet());
         TestRunner->TestTrue(TEXT("Reused builder definition is valid"),
                              static_cast<bool>(ml::validate_level(player_level)));
+    }
+
+    TEST_METHOD(MissionModeRequirementsAreValidated)
+    {
+        auto missing_mode{ml::example_levels::make_native_example()};
+        missing_mode.mission->mode = ml::ELevelMissionMode::Unspecified;
+        auto const missing_mode_validation{ml::validate_level(missing_mode)};
+        TestRunner->TestTrue(TEXT("Missing mission mode is reported"),
+                             contains_error(missing_mode_validation,
+                                            ml::ELevelValidationErrorCode::MissingMissionMode));
+
+        auto missing_time{ml::example_levels::make_native_example()};
+        missing_time.mission->mode = ml::ELevelMissionMode::KillEnemiesWithinTime;
+        auto const missing_time_validation{ml::validate_level(missing_time)};
+        TestRunner->TestTrue(
+            TEXT("Missing timed mission limit is reported"),
+            contains_error(missing_time_validation,
+                           ml::ELevelValidationErrorCode::InvalidMissionTimeLimit));
+
+        auto missing_heroes{ml::example_levels::make_native_example()};
+        missing_heroes.mission->hero_entity_ids.Reset();
+        auto const missing_heroes_validation{ml::validate_level(missing_heroes)};
+        TestRunner->TestTrue(TEXT("Missing kill mission heroes are reported"),
+                             contains_error(missing_heroes_validation,
+                                            ml::ELevelValidationErrorCode::MissingMissionHeroes));
+
+        auto invalid_count{ml::example_levels::make_native_example()};
+        invalid_count.mission->kill_count = 0;
+        auto const invalid_count_validation{ml::validate_level(invalid_count)};
+        TestRunner->TestTrue(
+            TEXT("Non-positive explicit kill count is reported"),
+            contains_error(invalid_count_validation,
+                           ml::ELevelValidationErrorCode::InvalidMissionKillCount));
+
+        auto unexpected_time{ml::example_levels::make_native_example()};
+        unexpected_time.mission->time_limit_seconds = 10.0f;
+        auto const unexpected_time_validation{ml::validate_level(unexpected_time)};
+        TestRunner->TestTrue(
+            TEXT("Untimed mission rejects a time limit"),
+            contains_error(unexpected_time_validation,
+                           ml::ELevelValidationErrorCode::UnexpectedMissionTimeLimit));
+
+        auto survive{ml::example_levels::make_native_example()};
+        survive.mission = ml::FLevelMissionDefinition{
+            .mode = ml::ELevelMissionMode::SurviveTime,
+            .time_limit_seconds = 10.0f,
+            .kill_count = 1,
+        };
+        auto const survive_validation{ml::validate_level(survive)};
+        TestRunner->TestTrue(
+            TEXT("Survive mission requires a protected entity"),
+            contains_error(survive_validation,
+                           ml::ELevelValidationErrorCode::MissingMissionSurvivors));
+        TestRunner->TestTrue(
+            TEXT("Survive mission rejects a kill count"),
+            contains_error(survive_validation,
+                           ml::ELevelValidationErrorCode::UnexpectedMissionKillCount));
+    }
+
+    TEST_METHOD(MissionEntityReferencesAreValidated)
+    {
+        auto unknown{ml::example_levels::make_native_example()};
+        unknown.mission->must_survive_entity_ids[0] = ml::FLevelEntityId{FName{TEXT("missing")}};
+        auto const unknown_validation{ml::validate_level(unknown)};
+        TestRunner->TestTrue(TEXT("Unknown mission entity is reported"),
+                             contains_error(unknown_validation,
+                                            ml::ELevelValidationErrorCode::MissionEntityNotFound));
+
+        auto duplicate{ml::example_levels::make_native_example()};
+        auto const duplicate_hero{duplicate.mission->hero_entity_ids[0]};
+        duplicate.mission->hero_entity_ids.Add(duplicate_hero);
+        auto const duplicate_validation{ml::validate_level(duplicate)};
+        TestRunner->TestTrue(
+            TEXT("Duplicate mission entity is reported"),
+            contains_error(duplicate_validation,
+                           ml::ELevelValidationErrorCode::DuplicateMissionEntityReference));
+
+        auto conflicting{ml::example_levels::make_native_example()};
+        conflicting.mission->hero_entity_ids.Add(conflicting.mission->required_kill_entity_ids[0]);
+        auto const conflicting_validation{ml::validate_level(conflicting)};
+        TestRunner->TestTrue(
+            TEXT("Conflicting mission roles are reported"),
+            contains_error(conflicting_validation,
+                           ml::ELevelValidationErrorCode::ConflictingMissionEntityRoles));
+
+        auto ambiguous_teams{ml::example_levels::make_native_example()};
+        ambiguous_teams.mission->hero_entity_ids.Add(ml::FLevelEntityId{FName{TEXT("red-turret")}});
+        auto const ambiguous_teams_validation{ml::validate_level(ambiguous_teams)};
+        TestRunner->TestTrue(
+            TEXT("Automatic count requires one hero team"),
+            contains_error(ambiguous_teams_validation,
+                           ml::ELevelValidationErrorCode::AmbiguousAutomaticKillTeams));
     }
 
     TEST_METHOD(MalformedDefinitionsReportStructuredErrors)

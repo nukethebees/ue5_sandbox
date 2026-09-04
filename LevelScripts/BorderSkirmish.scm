@@ -8,6 +8,12 @@
 
   (player 'player)
 
+  (mission
+    (mode 'kill-enemies)
+    (heroes 'player 'blue-capital)
+    (must-survive 'blue-capital)
+    (required-kills 'red-capital))
+
   (entities
     (entity 'player 'player-fighter 'blue
       (position 0 -25000 1000)

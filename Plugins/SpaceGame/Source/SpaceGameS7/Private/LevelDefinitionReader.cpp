@@ -6,6 +6,9 @@
 #include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
 
+#include <cmath>
+#include <limits>
+
 namespace ml::s7 {
 namespace {
 namespace s7_native = S7Lab::native;
@@ -22,6 +25,13 @@ constexpr TCHAR level_prelude[]{LR"(
 (define (look-at . ids) (cons 'look-at ids))
 (define (distance value) (list 'distance value))
 (define (offset-direction x y z) (list 'offset-direction x y z))
+(define (mission . clauses) (cons 'mission clauses))
+(define (mode value) (list 'mode value))
+(define (time-limit seconds) (list 'time-limit seconds))
+(define (kill-count value) (list 'kill-count value))
+(define (heroes . ids) (cons 'heroes ids))
+(define (must-survive . ids) (cons 'must-survive ids))
+(define (required-kills . ids) (cons 'required-kills ids))
 (define (entities . values) (cons 'entities values))
 (define (entity id archetype team position rotation)
   (list 'entity id archetype team position rotation))
@@ -53,6 +63,7 @@ class FDefinitionDecoder final {
         bool has_teams{false};
         bool has_player{false};
         bool has_camera{false};
+        bool has_mission{false};
         bool has_entities{false};
         for (int64 i{0}; i < clause_count; ++i) {
             auto const clause{list_value(root_, i + 1)};
@@ -108,6 +119,13 @@ class FDefinitionDecoder final {
                 }
                 has_camera = true;
                 read_camera(clause, path, builder);
+            } else if (tag_name == TEXT("mission")) {
+                if (has_mission) {
+                    add_error(path, TEXT("Duplicate mission clause"));
+                    continue;
+                }
+                has_mission = true;
+                read_mission(clause, path, builder);
             } else if (tag_name == TEXT("entities")) {
                 if (has_entities) {
                     add_error(path, TEXT("Duplicate entities clause"));
@@ -212,6 +230,21 @@ class FDefinitionDecoder final {
         return true;
     }
 
+    auto read_int32(s7_native::FValue const value, FString const& path, int32& output) -> bool {
+        double number{0.0};
+        if (!read_number(value, path, number)) {
+            return false;
+        }
+        if (!FMath::IsFinite(number) || std::trunc(number) != number ||
+            number < std::numeric_limits<int32>::min() ||
+            number > std::numeric_limits<int32>::max()) {
+            add_error(path, TEXT("Expected a 32-bit integer"));
+            return false;
+        }
+        output = static_cast<int32>(number);
+        return true;
+    }
+
     void read_text_clause(s7_native::FValue const clause, FString const& path, FString& output) {
         if (expect_length(clause, 2, path)) {
             read_string(list_value(clause, 1), path + TEXT(".value"), output);
@@ -284,6 +317,133 @@ class FDefinitionDecoder final {
                 .distance = camera_distance,
             });
         }
+    }
+
+    auto read_mission_mode(s7_native::FValue const value,
+                           FString const& path,
+                           ELevelMissionMode& output) -> bool {
+        FName mode;
+        if (!read_symbol(value, path, mode)) {
+            return false;
+        }
+        if (mode == FName{TEXT("survive-time")}) {
+            output = ELevelMissionMode::SurviveTime;
+        } else if (mode == FName{TEXT("kill-enemies")}) {
+            output = ELevelMissionMode::KillEnemies;
+        } else if (mode == FName{TEXT("kill-enemies-within-time")}) {
+            output = ELevelMissionMode::KillEnemiesWithinTime;
+        } else {
+            add_error(path, FString::Printf(TEXT("Unknown mission mode '%s'"), *mode.ToString()));
+            return false;
+        }
+        return true;
+    }
+
+    void read_entity_id_list(s7_native::FValue const value,
+                             FString const& tag,
+                             FString const& path,
+                             TArray<FLevelEntityId>& output) {
+        if (!expect_tagged_list(value, tag, path)) {
+            return;
+        }
+
+        auto const count{list_length(value) - 1};
+        output.Reserve(count);
+        for (int64 i{0}; i < count; ++i) {
+            FName id;
+            auto const id_valid{read_symbol(
+                list_value(value, i + 1), FString::Printf(TEXT("%s[%lld]"), *path, i), id)};
+            if (id_valid) {
+                output.Add(FLevelEntityId{id});
+            }
+        }
+    }
+
+    void read_mission(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+        FLevelMissionDefinition mission;
+        bool has_mode{false};
+        bool has_time_limit{false};
+        bool has_kill_count{false};
+        bool has_heroes{false};
+        bool has_must_survive{false};
+        bool has_required_kills{false};
+        auto const clause_count{list_length(clause) - 1};
+        for (int64 i{0}; i < clause_count; ++i) {
+            auto const value{list_value(clause, i + 1)};
+            auto const clause_path{FString::Printf(TEXT("%s[%lld]"), *path, i)};
+            if (!is_non_empty_list(value)) {
+                add_error(clause_path, TEXT("Expected a mission clause"));
+                continue;
+            }
+
+            auto const tag_value{list_value(value, 0)};
+            if (!s7_native::is_symbol(tag_value)) {
+                add_error(clause_path, TEXT("Mission clause tag must be a symbol"));
+                continue;
+            }
+
+            auto const tag{to_fstring(s7_native::symbol_name(tag_value))};
+            if (tag == TEXT("mode")) {
+                if (has_mode) {
+                    add_error(clause_path, TEXT("Duplicate mission mode clause"));
+                    continue;
+                }
+                has_mode = true;
+                if (expect_length(value, 2, clause_path)) {
+                    read_mission_mode(
+                        list_value(value, 1), clause_path + TEXT(".value"), mission.mode);
+                }
+            } else if (tag == TEXT("time-limit")) {
+                if (has_time_limit) {
+                    add_error(clause_path, TEXT("Duplicate mission time-limit clause"));
+                    continue;
+                }
+                has_time_limit = true;
+                double seconds{0.0};
+                if (expect_length(value, 2, clause_path) &&
+                    read_number(list_value(value, 1), clause_path + TEXT(".seconds"), seconds)) {
+                    mission.time_limit_seconds = static_cast<float>(seconds);
+                }
+            } else if (tag == TEXT("kill-count")) {
+                if (has_kill_count) {
+                    add_error(clause_path, TEXT("Duplicate mission kill-count clause"));
+                    continue;
+                }
+                has_kill_count = true;
+                int32 count{0};
+                if (expect_length(value, 2, clause_path) &&
+                    read_int32(list_value(value, 1), clause_path + TEXT(".value"), count)) {
+                    mission.kill_count = count;
+                }
+            } else if (tag == TEXT("heroes")) {
+                if (has_heroes) {
+                    add_error(clause_path, TEXT("Duplicate mission heroes clause"));
+                    continue;
+                }
+                has_heroes = true;
+                read_entity_id_list(value, TEXT("heroes"), clause_path, mission.hero_entity_ids);
+            } else if (tag == TEXT("must-survive")) {
+                if (has_must_survive) {
+                    add_error(clause_path, TEXT("Duplicate mission must-survive clause"));
+                    continue;
+                }
+                has_must_survive = true;
+                read_entity_id_list(
+                    value, TEXT("must-survive"), clause_path, mission.must_survive_entity_ids);
+            } else if (tag == TEXT("required-kills")) {
+                if (has_required_kills) {
+                    add_error(clause_path, TEXT("Duplicate mission required-kills clause"));
+                    continue;
+                }
+                has_required_kills = true;
+                read_entity_id_list(
+                    value, TEXT("required-kills"), clause_path, mission.required_kill_entity_ids);
+            } else {
+                add_error(clause_path, FString::Printf(TEXT("Unknown mission clause '%s'"), *tag));
+            }
+        }
+
+        builder.set_mission(mission);
     }
 
     auto read_vector(s7_native::FValue const value,

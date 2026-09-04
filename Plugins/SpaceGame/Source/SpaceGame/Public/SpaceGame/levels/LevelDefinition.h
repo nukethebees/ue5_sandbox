@@ -25,10 +25,27 @@ struct SPACEGAME_API FLevelCameraDefinition {
     double distance{0.0};
 };
 
+enum class ELevelMissionMode : uint8 {
+    Unspecified,
+    SurviveTime,
+    KillEnemies,
+    KillEnemiesWithinTime,
+};
+
+struct SPACEGAME_API FLevelMissionDefinition {
+    ELevelMissionMode mode{ELevelMissionMode::Unspecified};
+    TOptional<float> time_limit_seconds{NullOpt};
+    TOptional<int32> kill_count{NullOpt};
+    TArray<FLevelEntityId> hero_entity_ids{};
+    TArray<FLevelEntityId> must_survive_entity_ids{};
+    TArray<FLevelEntityId> required_kill_entity_ids{};
+};
+
 struct SPACEGAME_API FLevelDefinition {
     FLevelMetadata metadata{};
     FLevelEntityId player_entity_id{};
     TOptional<FLevelCameraDefinition> camera{NullOpt};
+    TOptional<FLevelMissionDefinition> mission{NullOpt};
     TArray<FLevelTeamId> teams{};
     FLevelEntityTable entities{};
 };
@@ -38,6 +55,7 @@ class SPACEGAME_API FLevelBuilder {
     void set_metadata(FLevelMetadata const& metadata);
     void set_player_entity(FLevelEntityId id);
     void set_camera(FLevelCameraDefinition const& camera);
+    void set_mission(FLevelMissionDefinition const& mission);
     auto add_team(FLevelTeamId team) -> FLevelTeamId;
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
     auto finish() -> FLevelDefinition;
@@ -65,6 +83,18 @@ enum class ELevelValidationErrorCode : uint8 {
     CameraTargetNotFound,
     InvalidCameraDistance,
     InvalidCameraOffsetDirection,
+    MissingMissionMode,
+    UnsupportedMissionMode,
+    InvalidMissionTimeLimit,
+    UnexpectedMissionTimeLimit,
+    InvalidMissionKillCount,
+    UnexpectedMissionKillCount,
+    MissingMissionHeroes,
+    MissingMissionSurvivors,
+    MissionEntityNotFound,
+    DuplicateMissionEntityReference,
+    ConflictingMissionEntityRoles,
+    AmbiguousAutomaticKillTeams,
 };
 
 struct SPACEGAME_API FLevelValidationError {

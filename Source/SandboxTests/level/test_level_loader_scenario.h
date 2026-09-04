@@ -3,6 +3,8 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 #include <SandboxCore/time_series_data.h>
+#include <SpaceGame/missions/TestMissionMode.h>
+#include <SpaceGame/missions/TestMissionState.h>
 
 namespace ml {
 class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
@@ -27,6 +29,13 @@ class FLevelLoaderScenario final : public FSimulationTestScenario {
         int32 blue_capitals{0};
         int32 red_capitals{0};
         int32 red_turrets{0};
+        ETestMissionMode mission_mode{ETestMissionMode::None};
+        ETestMissionState mission_state{ETestMissionState::NotStarted};
+        int32 mission_kill_target{0};
+        int32 mission_heroes{0};
+        int32 mission_survivors{0};
+        int32 mission_required_kills{0};
+        bool saves_mission_results{true};
         FVector3f blue_capital_position{FVector3f::ZeroVector};
         FVector3f red_capital_position{FVector3f::ZeroVector};
         FVector3f red_turret_position{FVector3f::ZeroVector};

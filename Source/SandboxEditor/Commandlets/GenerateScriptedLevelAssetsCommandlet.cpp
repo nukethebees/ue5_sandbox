@@ -19,6 +19,8 @@
 #include <Components/VerticalBox.h>
 #include <Components/VerticalBoxSlot.h>
 #include <FileHelpers.h>
+#include <GameFramework/GameModeBase.h>
+#include <GameFramework/WorldSettings.h>
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Misc/PackageName.h>
 #include <UObject/Package.h>
@@ -36,6 +38,8 @@ constexpr TCHAR source_config_object_path[]{
     TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/DA_FT_soa_entities_LevelConfig."
          "DA_FT_soa_entities_LevelConfig")};
 constexpr TCHAR runtime_map_package_name[]{TEXT("/SpaceGame/Levels/GameRuntime")};
+constexpr TCHAR runtime_game_mode_class_path[]{
+    TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C")};
 
 template <typename T>
 auto make_widget(UWidgetTree& tree, FName const name) -> T* {
@@ -195,6 +199,14 @@ auto generate_runtime_map() -> bool {
         UE_LOG(LogTemp, Error, TEXT("Could not create blank runtime map"));
         return false;
     }
+
+    auto* const game_mode_class{LoadClass<AGameModeBase>(nullptr, runtime_game_mode_class_path)};
+    auto* const world_settings{world->GetWorldSettings()};
+    if (!IsValid(game_mode_class) || !IsValid(world_settings)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not configure the runtime game mode"));
+        return false;
+    }
+    world_settings->DefaultGameMode = game_mode_class;
 
     auto* const orchestrator{world->SpawnActor<ATestBatchOrchestrator>()};
     if (!IsValid(orchestrator)) {

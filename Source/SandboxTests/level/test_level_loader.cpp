@@ -185,6 +185,11 @@ void FLevelLoaderScenario::load_fixture() {
 
     auto const* const player{context_.orchestrator.get_player_ship()};
     if (checks.is_valid(player, TEXT("Loader binds the player to the orchestrator"))) {
+        auto* const player_controller{context_.world.GetFirstPlayerController()};
+        if (checks.is_valid(player_controller, TEXT("Test world has a player controller"))) {
+            checks.is_true(player_controller->GetPawn() == player,
+                           TEXT("Player controller possesses the authored player ship"));
+        }
         checks.are_equal(
             ETestTeam::Blue, player->get_team(), TEXT("Loader resolves the player team"));
         checks.dist_zero(FVector{0.0, -25000.0, 1000.0},
@@ -202,6 +207,7 @@ void FLevelLoaderScenario::load_fixture() {
 
 void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) {
     auto const& registry{orchestrator.get_entity_registry()};
+    auto const& mission{orchestrator.get_mission_manager()};
     auto const counts{registry.count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
@@ -216,6 +222,13 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
         .blue_capitals = counts[blue][capital_type],
         .red_capitals = counts[red][capital_type],
         .red_turrets = counts[red][turret_type],
+        .mission_mode = mission.get_mission_mode(),
+        .mission_state = mission.get_mission_state(),
+        .mission_kill_target = mission.get_kill_target(),
+        .mission_heroes = mission.get_hero_entity_handles().Num(),
+        .mission_survivors = mission.get_entity_handles_that_must_survive().Num(),
+        .mission_required_kills = mission.get_entity_handles_required_to_kill().Num(),
+        .saves_mission_results = mission.should_save_mission_results(),
     };
     auto const& entity_data{registry.get_entity_data()};
     auto const entity_count{entity_data.teams.Num()};
@@ -247,6 +260,20 @@ void FLevelLoaderScenario::check_runtime() {
     checks.are_equal(1, sample.blue_capitals, TEXT("Registry contains the blue capital"));
     checks.are_equal(1, sample.red_capitals, TEXT("Registry contains the red capital"));
     checks.are_equal(1, sample.red_turrets, TEXT("Registry contains the red turret"));
+    checks.are_equal(ETestMissionMode::KillEnemies,
+                     sample.mission_mode,
+                     TEXT("Loader configures the authored mission mode"));
+    checks.are_equal(
+        ETestMissionState::Running, sample.mission_state, TEXT("Authored mission starts running"));
+    checks.are_equal(2,
+                     sample.mission_kill_target,
+                     TEXT("Omitted kill count resolves to the initial enemy population"));
+    checks.are_equal(2, sample.mission_heroes, TEXT("Loader resolves authored hero entities"));
+    checks.are_equal(1, sample.mission_survivors, TEXT("Loader resolves the protected entity"));
+    checks.are_equal(
+        1, sample.mission_required_kills, TEXT("Loader resolves the required kill entity"));
+    checks.is_true(!sample.saves_mission_results,
+                   TEXT("Authored missions do not save under the runtime map name"));
     checks.dist_zero(FVector3f{-40000.f, 0.f, 0.f},
                      sample.blue_capital_position,
                      0.01f,

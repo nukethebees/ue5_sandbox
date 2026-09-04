@@ -9,6 +9,11 @@ constexpr TCHAR valid_level[]{LR"(
   (description "Built as ordinary Scheme data.")
   (teams (team 'blue) (team 'red))
   (player 'player)
+  (mission
+    (mode 'kill-enemies)
+    (heroes 'player 'blue-capital)
+    (must-survive 'blue-capital)
+    (required-kills 'red-capital))
   (entities
     (entity 'player 'player-fighter 'blue
       (position 100 200 300) (rotation 0 45 0))
@@ -71,6 +76,21 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
                                       definition.entities.rotations.yaws[3],
                                       definition.entities.rotations.rolls[3]}
                                  .Equals(FRotator{0.0, 90.0, 0.0}));
+        if (TestRunner->TestTrue(TEXT("Mission is decoded"), definition.mission.IsSet())) {
+            auto const& mission{definition.mission.GetValue()};
+            TestRunner->TestTrue(TEXT("Mission mode is decoded"),
+                                 mission.mode == ml::ELevelMissionMode::KillEnemies);
+            TestRunner->TestFalse(TEXT("Omitted kill count selects automatic targeting"),
+                                  mission.kill_count.IsSet());
+            TestRunner->TestEqual(
+                TEXT("Mission heroes are decoded"), mission.hero_entity_ids.Num(), 2);
+            TestRunner->TestEqual(TEXT("Mission survivor is decoded"),
+                                  mission.must_survive_entity_ids[0].value,
+                                  FName{TEXT("blue-capital")});
+            TestRunner->TestEqual(TEXT("Mission required kill is decoded"),
+                                  mission.required_kill_entity_ids[0].value,
+                                  FName{TEXT("red-capital")});
+        }
     }
 
     TEST_METHOD(ReportsSchemeErrorsWithoutDecoding)
@@ -254,5 +274,88 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Unknown camera target is reported by native validation"),
             contains_error(unknown_target, ml::ELevelValidationErrorCode::CameraTargetNotFound));
+    }
+
+    TEST_METHOD(DecodesTimedMissionValues)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const result{reader.read_source(LR"(
+(level
+  (title "Timed Mission")
+  (teams (team 'blue) (team 'red))
+  (player 'player)
+  (mission
+    (mode 'kill-enemies-within-time)
+    (time-limit 45.5)
+    (kill-count 3)
+    (heroes 'player))
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))
+    (entity 'enemy 'capital-ship 'red
+      (position 1000 0 0) (rotation 0 180 0))))
+)")};
+
+        if (!TestRunner->TestTrue(TEXT("Timed mission is valid"), static_cast<bool>(result))) {
+            return;
+        }
+        if (!TestRunner->TestTrue(TEXT("Timed mission is decoded"),
+                                  result.definition->mission.IsSet())) {
+            return;
+        }
+        auto const& mission{result.definition->mission.GetValue()};
+        TestRunner->TestTrue(TEXT("Timed mode is decoded"),
+                             mission.mode == ml::ELevelMissionMode::KillEnemiesWithinTime);
+        TestRunner->TestEqual(
+            TEXT("Time limit is decoded"), mission.time_limit_seconds.GetValue(), 45.5f);
+        TestRunner->TestEqual(TEXT("Kill count is decoded"), mission.kill_count.GetValue(), 3);
+    }
+
+    TEST_METHOD(ReportsInvalidMissionData)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const duplicate_clause{reader.read_source(LR"(
+(level
+  (title "Duplicate Mission Clause")
+  (teams (team 'blue))
+  (player 'player)
+  (mission (mode 'kill-enemies) (mode 'survive-time) (heroes 'player))
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+        TestRunner->TestFalse(TEXT("Duplicate mission clause is rejected"),
+                              static_cast<bool>(duplicate_clause));
+        TestRunner->TestFalse(TEXT("Duplicate mission clause reports a decode error"),
+                              duplicate_clause.decode_errors.IsEmpty());
+
+        auto const unknown_reference{reader.read_source(LR"(
+(level
+  (title "Unknown Mission Entity")
+  (teams (team 'blue))
+  (player 'player)
+  (mission (mode 'kill-enemies) (heroes 'missing))
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+        TestRunner->TestTrue(TEXT("Unknown mission entity uses native validation"),
+                             contains_error(unknown_reference,
+                                            ml::ELevelValidationErrorCode::MissionEntityNotFound));
+
+        auto const fractional_count{reader.read_source(LR"(
+(level
+  (title "Fractional Count")
+  (teams (team 'blue))
+  (player 'player)
+  (mission (mode 'kill-enemies) (kill-count 1.5) (heroes 'player))
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+        TestRunner->TestFalse(TEXT("Fractional kill count is rejected"),
+                              static_cast<bool>(fractional_count));
+        TestRunner->TestFalse(TEXT("Fractional kill count reports a decode error"),
+                              fractional_count.decode_errors.IsEmpty());
     }
 };

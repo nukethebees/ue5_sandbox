@@ -4,6 +4,7 @@
 #include "LevelEntityTableOperations.h"
 #include "LevelTeamResolution.h"
 
+#include <Containers/Map.h>
 #include <Containers/Set.h>
 
 namespace ml {
@@ -118,6 +119,7 @@ void validate_archetype(FEntityArchetypeId const archetype,
 
 struct FEntityValidationState {
     TSet<FLevelEntityId> ids{};
+    TMap<FLevelEntityId, FLevelTeamId> teams_by_id{};
     bool player_found{false};
 };
 
@@ -129,6 +131,7 @@ auto validate_entities(FLevelDefinition const& definition,
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     state.ids.Reserve(entity_count);
+    state.teams_by_id.Reserve(entity_count);
     for (int32 i{0}; i < entity_count; ++i) {
         auto const entity{level_entity_table_detail::get(entities, i)};
         auto const owner{entity_owner(entity.id, i)};
@@ -143,6 +146,7 @@ auto validate_entities(FLevelDefinition const& definition,
                                           *entity.id.value.ToString()));
             } else {
                 state.ids.Add(entity.id);
+                state.teams_by_id.Add(entity.id, entity.team);
             }
         }
 
@@ -216,6 +220,143 @@ void validate_camera(FLevelCameraDefinition const& camera,
                   TEXT("Initial camera offset direction must be finite and non-zero"));
     }
 }
+
+auto validate_mission_references(TConstArrayView<FLevelEntityId> const references,
+                                 FStringView const role,
+                                 TSet<FLevelEntityId> const& entity_ids,
+                                 FLevelValidationResult& result) -> TSet<FLevelEntityId> {
+    TSet<FLevelEntityId> validated_ids;
+    validated_ids.Reserve(references.Num());
+    auto const reference_count{references.Num()};
+    for (int32 i{0}; i < reference_count; ++i) {
+        auto const id{references[i]};
+        if (!id.is_set() || !entity_ids.Contains(id)) {
+            add_error(result,
+                      ELevelValidationErrorCode::MissionEntityNotFound,
+                      FString::Printf(TEXT("Mission %.*s entity '%s' is not declared"),
+                                      role.Len(),
+                                      role.GetData(),
+                                      *id.value.ToString()));
+            continue;
+        }
+        if (validated_ids.Contains(id)) {
+            add_error(result,
+                      ELevelValidationErrorCode::DuplicateMissionEntityReference,
+                      FString::Printf(TEXT("Mission %.*s entity '%s' is duplicated"),
+                                      role.Len(),
+                                      role.GetData(),
+                                      *id.value.ToString()));
+            continue;
+        }
+        validated_ids.Add(id);
+    }
+    return validated_ids;
+}
+
+void validate_mission(FLevelMissionDefinition const& mission,
+                      FEntityValidationState const& entities,
+                      FLevelValidationResult& result) {
+    auto requires_time_limit{false};
+    auto uses_kill_count{false};
+    switch (mission.mode) {
+        case ELevelMissionMode::Unspecified: {
+            add_error(result,
+                      ELevelValidationErrorCode::MissingMissionMode,
+                      TEXT("Mission definition has no mode"));
+            break;
+        }
+        case ELevelMissionMode::SurviveTime: {
+            requires_time_limit = true;
+            if (mission.must_survive_entity_ids.IsEmpty()) {
+                add_error(result,
+                          ELevelValidationErrorCode::MissingMissionSurvivors,
+                          TEXT("Survive-time mission has no entities that must survive"));
+            }
+            break;
+        }
+        case ELevelMissionMode::KillEnemies: {
+            uses_kill_count = true;
+            break;
+        }
+        case ELevelMissionMode::KillEnemiesWithinTime: {
+            requires_time_limit = true;
+            uses_kill_count = true;
+            break;
+        }
+        default: {
+            add_error(result,
+                      ELevelValidationErrorCode::UnsupportedMissionMode,
+                      TEXT("Mission definition uses an unsupported mode"));
+            break;
+        }
+    }
+
+    if (requires_time_limit) {
+        if (!mission.time_limit_seconds.IsSet() ||
+            !FMath::IsFinite(mission.time_limit_seconds.GetValue()) ||
+            mission.time_limit_seconds.GetValue() <= 0.0f) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidMissionTimeLimit,
+                      TEXT("Mission time limit must be finite and greater than zero"));
+        }
+    } else if (mission.time_limit_seconds.IsSet()) {
+        add_error(result,
+                  ELevelValidationErrorCode::UnexpectedMissionTimeLimit,
+                  TEXT("Untimed mission cannot define a time limit"));
+    }
+
+    if (uses_kill_count) {
+        if (mission.hero_entity_ids.IsEmpty()) {
+            add_error(result,
+                      ELevelValidationErrorCode::MissingMissionHeroes,
+                      TEXT("Kill mission has no hero entities"));
+        }
+        if (mission.kill_count.IsSet() && mission.kill_count.GetValue() <= 0) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidMissionKillCount,
+                      TEXT("Mission kill count must be greater than zero when specified"));
+        }
+    } else if (mission.kill_count.IsSet()) {
+        add_error(result,
+                  ELevelValidationErrorCode::UnexpectedMissionKillCount,
+                  TEXT("Survive-time mission cannot define a kill count"));
+    }
+
+    auto const heroes{validate_mission_references(
+        mission.hero_entity_ids, TEXTVIEW("hero"), entities.ids, result)};
+    auto const survivors{validate_mission_references(
+        mission.must_survive_entity_ids, TEXTVIEW("must-survive"), entities.ids, result)};
+    auto const required_kills{validate_mission_references(
+        mission.required_kill_entity_ids, TEXTVIEW("required-kill"), entities.ids, result)};
+
+    for (auto const id : required_kills) {
+        if (heroes.Contains(id) || survivors.Contains(id)) {
+            add_error(result,
+                      ELevelValidationErrorCode::ConflictingMissionEntityRoles,
+                      FString::Printf(TEXT("Mission entity '%s' cannot be both required to kill "
+                                           "and a hero or must-survive entity"),
+                                      *id.value.ToString()));
+        }
+    }
+
+    if (uses_kill_count && !mission.kill_count.IsSet() && !heroes.IsEmpty()) {
+        TOptional<FLevelTeamId> hero_team;
+        for (auto const id : heroes) {
+            auto const* const team{entities.teams_by_id.Find(id)};
+            if (!team) {
+                continue;
+            }
+            if (!hero_team.IsSet()) {
+                hero_team = *team;
+            } else if (hero_team.GetValue() != *team) {
+                add_error(result,
+                          ELevelValidationErrorCode::AmbiguousAutomaticKillTeams,
+                          TEXT("Automatic kill count requires all hero entities to share a team"));
+                break;
+            }
+        }
+    }
+}
 }
 
 void FLevelBuilder::set_metadata(FLevelMetadata const& metadata) {
@@ -228,6 +369,10 @@ void FLevelBuilder::set_player_entity(FLevelEntityId const id) {
 
 void FLevelBuilder::set_camera(FLevelCameraDefinition const& camera) {
     definition_.camera = camera;
+}
+
+void FLevelBuilder::set_mission(FLevelMissionDefinition const& mission) {
+    definition_.mission = mission;
 }
 
 auto FLevelBuilder::add_team(FLevelTeamId const team) -> FLevelTeamId {
@@ -262,6 +407,9 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
     auto const entities{validate_entities(definition, declared_teams, result)};
     if (definition.camera.IsSet()) {
         validate_camera(definition.camera.GetValue(), entities.ids, result);
+    }
+    if (definition.mission.IsSet()) {
+        validate_mission(definition.mission.GetValue(), entities, result);
     }
 
     return result;

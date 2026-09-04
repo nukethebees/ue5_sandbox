@@ -12,6 +12,7 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <Camera/CameraActor.h>
+#include <Containers/Map.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
 #include <GameFramework/PlayerController.h>
@@ -103,7 +104,7 @@ auto spawn_entity(UWorld& world,
                   FLevelEntityTableConstView const& entities,
                   int32 const index,
                   FSpawnedActorTransaction& transaction,
-                  FLevelLoadResult& result) -> bool {
+                  FLevelLoadResult& result) -> AActor* {
     auto const entity{level_entity_table_detail::get(entities, index)};
     auto const team{level_team_detail::resolve(entity.team)};
     auto const archetype{level_archetype_detail::resolve(entity.archetype)};
@@ -135,7 +136,7 @@ auto spawn_entity(UWorld& world,
         }
         case level_archetype_detail::EResolvedArchetype::PlayerFighter:
             checkNoEntry();
-            return false;
+            return nullptr;
     }
 
     if (!IsValid(spawned_actor)) {
@@ -143,7 +144,7 @@ auto spawn_entity(UWorld& world,
                   ELevelLoadErrorCode::ActorSpawnFailed,
                   FString::Printf(TEXT("Failed to begin spawning entity %s"),
                                   *entity_label(entity, index)));
-        return false;
+        return nullptr;
     }
 
     transaction.add(*spawned_actor);
@@ -152,9 +153,9 @@ auto spawn_entity(UWorld& world,
                   ELevelLoadErrorCode::ActorSpawnFailed,
                   FString::Printf(TEXT("Failed to finish spawning entity %s"),
                                   *entity_label(entity, index)));
-        return false;
+        return nullptr;
     }
-    return true;
+    return spawned_actor;
 }
 
 auto initial_camera_transform(FLevelDefinition const& definition,
@@ -198,6 +199,61 @@ auto spawn_initial_camera(UWorld& world,
 
     player_controller.SetViewTarget(camera);
     return true;
+}
+
+void configure_mission(FLevelDefinition const& definition,
+                       TMap<FLevelEntityId, AActor*> const& spawned_entities,
+                       ATestBatchOrchestrator& orchestrator) {
+    auto& manager{orchestrator.get_mission_manager()};
+    if (!definition.mission.IsSet()) {
+        manager.set_mission_mode(ETestMissionMode::None);
+        return;
+    }
+
+    auto const& mission{definition.mission.GetValue()};
+    switch (mission.mode) {
+        case ELevelMissionMode::SurviveTime: {
+            manager.set_mission_mode(ETestMissionMode::SurviveTime);
+            break;
+        }
+        case ELevelMissionMode::KillEnemies: {
+            manager.set_mission_mode(ETestMissionMode::KillEnemies);
+            break;
+        }
+        case ELevelMissionMode::KillEnemiesWithinTime: {
+            manager.set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
+            break;
+        }
+        case ELevelMissionMode::Unspecified:
+        default: {
+            checkNoEntry();
+            return;
+        }
+    }
+
+    if (mission.time_limit_seconds.IsSet()) {
+        manager.set_target_time(mission.time_limit_seconds.GetValue());
+    }
+    if (mission.mode == ELevelMissionMode::KillEnemies ||
+        mission.mode == ELevelMissionMode::KillEnemiesWithinTime) {
+        manager.set_kill_target(mission.kill_count.IsSet() ? mission.kill_count.GetValue() : 0);
+    }
+    manager.set_save_mission_results(false);
+
+    auto const resolve_actor{[&spawned_entities](FLevelEntityId const id) -> AActor& {
+        auto* const* const actor{spawned_entities.Find(id)};
+        check(actor && IsValid(*actor));
+        return **actor;
+    }};
+    for (auto const id : mission.hero_entity_ids) {
+        manager.add_hero_entity(resolve_actor(id));
+    }
+    for (auto const id : mission.must_survive_entity_ids) {
+        manager.add_entity_that_must_survive(resolve_actor(id));
+    }
+    for (auto const id : mission.required_kill_entity_ids) {
+        manager.add_entity_required_to_kill(resolve_actor(id));
+    }
 }
 }
 
@@ -245,12 +301,11 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         return result;
     }
 
-    auto* const player_controller{
-        definition.camera.IsSet() ? UGameplayStatics::GetPlayerController(world, 0) : nullptr};
-    if (definition.camera.IsSet() && !IsValid(player_controller)) {
+    auto* const player_controller{UGameplayStatics::GetPlayerController(world, 0)};
+    if (!IsValid(player_controller)) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,
-                  TEXT("Initial camera requires a local player controller"));
+                  TEXT("Authored level requires a local player controller"));
         return result;
     }
 
@@ -268,6 +323,8 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     FSpawnedActorTransaction transaction{entity_count + (definition.camera.IsSet() ? 1 : 0)};
+    TMap<FLevelEntityId, AActor*> spawned_entities;
+    spawned_entities.Reserve(entity_count);
 
     auto const player_index{
         has_player ? level_entity_table_detail::find_index(entities, definition.player_entity_id)
@@ -279,6 +336,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         if (!IsValid(player)) {
             return result;
         }
+        spawned_entities.Add(definition.player_entity_id, player);
     }
 
     for (int32 i{0}; i < entity_count; ++i) {
@@ -286,13 +344,16 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
             continue;
         }
 
-        if (!spawn_entity(*world, *config, entities, i, transaction, result)) {
+        auto* const actor{spawn_entity(*world, *config, entities, i, transaction, result)};
+        if (!IsValid(actor)) {
             return result;
+        }
+        if (entities.ids[i].is_set()) {
+            spawned_entities.Add(entities.ids[i], actor);
         }
     }
 
     if (definition.camera.IsSet()) {
-        check(IsValid(player_controller));
         if (!spawn_initial_camera(
                 *world, *player_controller, definition, entities, transaction, result)) {
             return result;
@@ -300,8 +361,10 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     } else {
         check(IsValid(player));
         orchestrator_.set_player_ship(*player);
+        player_controller->Possess(player);
     }
 
+    configure_mission(definition, spawned_entities, orchestrator_);
     transaction.commit();
     return result;
 }
