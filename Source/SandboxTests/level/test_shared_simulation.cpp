@@ -263,6 +263,9 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(Collision_UniformGridTraceProductionScale,
                            ml::FCollisionUniformGridTraceScenario,
                            ml::ECollisionUniformGridTraceScenario::ProductionScale)
+    SHARED_SIMULATION_TEST(Collision_UniformGridStaticGeometry,
+                           ml::FCollisionUniformGridTraceScenario,
+                           ml::ECollisionUniformGridTraceScenario::StaticGeometry)
 
     SHARED_SIMULATION_TEST(Turrets_LineOfSightBlocking, ml::FTurretLineOfSightBlockingScenario)
     SHARED_SIMULATION_TEST(

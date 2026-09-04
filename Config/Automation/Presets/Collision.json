@@ -20,6 +20,7 @@
 		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceInvarianceProperties",
 		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceProductionScale",
 		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceReturnsNearestHit",
+		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridStaticGeometry",
 		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceShortAndNearParallelSegments",
 		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceStopsAtEndpoint",
 		"Sandbox.LevelTests.SharedSimulation.Collision_UniformGridTraceSurfaceContacts",

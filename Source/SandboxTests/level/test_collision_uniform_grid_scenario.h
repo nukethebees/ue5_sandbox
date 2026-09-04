@@ -29,6 +29,7 @@ enum class ECollisionUniformGridTraceScenario : uint8 {
     EmptyBatchesAndOutputReuse,
     DenseAndWideAABBs,
     ProductionScale,
+    StaticGeometry,
 };
 
 class FCollisionUniformGridScenario final : public FSimulationTestScenario {
@@ -82,6 +83,7 @@ class FCollisionUniformGridTraceScenario final : public FSimulationTestScenario 
     void test_empty_batches_and_output_reuse();
     void test_dense_and_wide_aabbs();
     void test_production_scale();
+    void test_static_geometry();
 
     ECollisionUniformGridTraceScenario scenario_;
 };

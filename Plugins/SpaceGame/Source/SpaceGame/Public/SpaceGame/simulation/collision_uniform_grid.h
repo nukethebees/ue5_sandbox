@@ -53,9 +53,14 @@ struct SPACEGAME_API CollisionUniformGrid {
     static auto to_string(FIntVector3 value) -> FString;
 
     void reset();
+    void set_static_aabbs(WorldAABBs static_aabbs);
     void rebuild_grid(FEntityAABBs const& entity_aabbs);
 
-    void trace_aabbs(FLineTracesConstView const& traces, FTraceHitsView const& hits) const;
+    auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_aabbs_; }
+
+    void trace_aabbs(FLineTracesConstView const& traces,
+                     FTraceHitsView const& hits,
+                     TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
   private:
     auto to_cell_x(float value) const -> int32;
     auto to_cell_y(float value) const -> int32;
@@ -77,5 +82,15 @@ struct SPACEGAME_API CollisionUniformGrid {
     WorldAABBs aabbs_;
 
     FEntityCellData entities_buffer_;
+
+    struct FStaticCellRange {
+        int32 offset{};
+        int32 count{};
+    };
+
+    WorldAABBs static_aabbs_;
+    TArray<int32> cell_static_range_indices_;
+    TArray<FStaticCellRange> static_cell_ranges_;
+    TArray<int32> static_aabb_indices_;
 };
 }

@@ -140,6 +140,85 @@ void CollisionUniformGrid::reset() {
     entities_.Reset();
     aabbs_.reset();
     entities_buffer_.reset();
+    static_aabbs_.reset();
+    cell_static_range_indices_.Reset();
+    static_cell_ranges_.Reset();
+    static_aabb_indices_.Reset();
+}
+
+void CollisionUniformGrid::set_static_aabbs(WorldAABBs static_aabbs) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::set_static_aabbs);
+
+    if (!is_configured()) {
+        UE_LOG(LogSandbox, Fatal, TEXT("Cannot build static geometry for an unconfigured grid"));
+    }
+
+    static_aabbs.validate_array_sizes();
+    static_aabbs_ = MoveTemp(static_aabbs);
+    static_cell_ranges_.Reset();
+    static_aabb_indices_.Reset();
+
+    auto const n_cells{num_cells()};
+    cell_static_range_indices_.Init(INDEX_NONE, n_cells);
+
+    TArray<int32> cell_counts;
+    cell_counts.AddZeroed(n_cells);
+
+    auto const static_count{static_aabbs_.num()};
+    for (int32 static_index{}; static_index < static_count; ++static_index) {
+        auto const min_coord{to_min_cell_coord(static_aabbs_.mins[static_index])};
+        auto const max_coord{to_max_cell_coord(static_aabbs_.maxes[static_index])};
+        checkf(is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord),
+               TEXT("Static collision AABB %d is outside the collision grid"),
+               static_index);
+
+        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                    ++cell_counts[to_index(x, y, z)];
+                }
+            }
+        }
+    }
+
+    int32 membership_count{};
+    for (int32 cell_index{}; cell_index < n_cells; ++cell_index) {
+        auto const count{cell_counts[cell_index]};
+        if (count == 0) {
+            continue;
+        }
+
+        cell_static_range_indices_[cell_index] = static_cell_ranges_.Num();
+        static_cell_ranges_.Add({membership_count, count});
+        membership_count += count;
+    }
+
+    static_aabb_indices_.AddUninitialized(membership_count);
+    TArray<int32> write_indices;
+    write_indices.Reserve(static_cell_ranges_.Num());
+    for (auto const& range : static_cell_ranges_) {
+        write_indices.Add(range.offset);
+    }
+
+    for (int32 static_index{}; static_index < static_count; ++static_index) {
+        auto const min_coord{to_min_cell_coord(static_aabbs_.mins[static_index])};
+        auto const max_coord{to_max_cell_coord(static_aabbs_.maxes[static_index])};
+
+        for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
+            for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
+                for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
+                    auto const range_index{cell_static_range_indices_[to_index(x, y, z)]};
+                    static_aabb_indices_[write_indices[range_index]++] = static_index;
+                }
+            }
+        }
+    }
+
+    auto const range_count{static_cell_ranges_.Num()};
+    for (int32 range_index{}; range_index < range_count; ++range_index) {
+        auto const& range{static_cell_ranges_[range_index]};
+        check(write_indices[range_index] == range.offset + range.count);
+    }
 }
 
 void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
@@ -322,12 +401,15 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     }
 }
 
-void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
-                                       FTraceHitsView const& hits) const {
+void CollisionUniformGrid::trace_aabbs(
+    FLineTracesConstView const& traces,
+    FTraceHitsView const& hits,
+    TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
     constexpr int32 n_axes{3};
 
     auto const n{traces.num()};
     check(n == hits.num());
+    check(ignored_entities.IsEmpty() || ignored_entities.Num() == n);
 
     FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
                                     static_cast<float>(grid_dims_.Y),
@@ -429,6 +511,8 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
 
     for (int32 i_test{0}; i_test < n; ++i_test) {
         hits.hits[i_test] = 0;
+        hits.entities[i_test] = FRegistryEntityHandle{};
+        hits.static_geometry_indices[i_test] = INDEX_NONE;
 
         auto const p0{traces.starts[i_test]};
         auto const p1{traces.ends[i_test]};
@@ -474,6 +558,9 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
 
         auto nearest_t{std::numeric_limits<float>::infinity()};
         FRegistryEntityHandle nearest_entity;
+        int32 nearest_static_index{INDEX_NONE};
+        auto const ignored_entity{ignored_entities.IsEmpty() ? FRegistryEntityHandle{}
+                                                             : ignored_entities[i_test]};
 
         while (true) {
             auto const cell_index{to_index(current_cell)};
@@ -487,10 +574,35 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                 auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
 
                 for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
+                    if (entities[i_entity] == ignored_entity) {
+                        continue;
+                    }
+
                     auto const hit_t{trace_entity(aabbs, i_entity, p0, inv_delta, delta)};
                     if (hit_t < nearest_t) {
                         nearest_t = hit_t;
                         nearest_entity = entities[i_entity];
+                        nearest_static_index = INDEX_NONE;
+                    }
+                }
+            }
+
+            auto const static_range_index{cell_static_range_indices_.IsValidIndex(cell_index)
+                                              ? cell_static_range_indices_[cell_index]
+                                              : INDEX_NONE};
+            if (static_range_index != INDEX_NONE) {
+                auto const& range{static_cell_ranges_[static_range_index]};
+                auto const static_indices{
+                    TConstArrayView<int32>{static_aabb_indices_}.Slice(range.offset, range.count)};
+                auto const static_aabbs{static_aabbs_.get_const_view()};
+
+                for (auto const static_index : static_indices) {
+                    auto const hit_t{
+                        trace_entity(static_aabbs, static_index, p0, inv_delta, delta)};
+                    if (hit_t < nearest_t) {
+                        nearest_t = hit_t;
+                        nearest_entity = FRegistryEntityHandle{};
+                        nearest_static_index = static_index;
                     }
                 }
             }
@@ -505,6 +617,7 @@ void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
         if (FMath::IsFinite(nearest_t)) {
             hits.locations.set(i_test, p0 + delta * nearest_t);
             hits.entities[i_test] = nearest_entity;
+            hits.static_geometry_indices[i_test] = nearest_static_index;
             hits.hits[i_test] = uint8{1};
         }
     }

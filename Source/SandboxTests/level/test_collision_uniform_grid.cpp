@@ -218,7 +218,8 @@ auto reference_trace_aabb(FVector3f const start,
 
 auto run_traces(FTraceFixture const& fixture,
                 TConstArrayView<FVector3f> const starts,
-                TConstArrayView<FVector3f> const ends) -> FTraceHits {
+                TConstArrayView<FVector3f> const ends,
+                TConstArrayView<FRegistryEntityHandle> const ignored_entities = {}) -> FTraceHits {
     check(starts.Num() == ends.Num());
 
     FLineTraces traces;
@@ -232,7 +233,7 @@ auto run_traces(FTraceFixture const& fixture,
 
     FTraceHits hits;
     hits.add_defaulted(count);
-    fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view());
+    fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view(), ignored_entities);
     return hits;
 }
 
@@ -1872,6 +1873,63 @@ void FCollisionUniformGridTraceScenario::test_production_scale() {
     check_traces(checks, fixture, cases);
 }
 
+void FCollisionUniformGridTraceScenario::test_static_geometry() {
+    FVector3f const dynamic_location{100.f, 0.f, 0.f};
+    FVector3f const half_extents{10.f, 10.f, 10.f};
+    TArray<FVector3f> const dynamic_locations{dynamic_location};
+    FTraceFixture fixture{dynamic_locations, half_extents};
+
+    auto set_static_aabb{[&fixture](FVector3f const min_point, FVector3f const max_point) {
+        WorldAABBs static_aabbs;
+        static_aabbs.mins.add(min_point);
+        static_aabbs.maxes.add(max_point);
+        fixture.grid.set_static_aabbs(MoveTemp(static_aabbs));
+    }};
+    TArray<FVector3f> const starts{{-200.f, 0.f, 0.f}};
+    TArray<FVector3f> const ends{{200.f, 0.f, 0.f}};
+
+    set_static_aabb({-60.f, -10.f, -10.f}, {-40.f, 10.f, 10.f});
+    auto static_hits{run_traces(fixture, starts, ends)};
+    checks.are_equal(uint8{1}, static_hits.hits[0], TEXT("Static AABB is traceable"));
+    checks.is_true(!static_hits.entities[0].is_valid(), TEXT("Static hit has no dynamic entity"));
+    checks.are_equal(0,
+                     static_hits.static_geometry_indices[0],
+                     TEXT("Static hit identifies canonical static geometry"));
+    checks.dist_zero(FVector3f{-60.f, 0.f, 0.f},
+                     static_hits.locations[0],
+                     hit_location_tolerance,
+                     TEXT("Static hit reports nearest entry point"));
+
+    fixture.grid.rebuild_grid(fixture.aabbs);
+    auto const rebuilt_static_hits{run_traces(fixture, starts, ends)};
+    checks.are_equal(0,
+                     rebuilt_static_hits.static_geometry_indices[0],
+                     TEXT("Static geometry survives dynamic rebuild"));
+
+    set_static_aabb({140.f, -10.f, -10.f}, {160.f, 10.f, 10.f});
+    auto const dynamic_hits{run_traces(fixture, starts, ends)};
+    checks.are_equal(fixture.handles[0],
+                     dynamic_hits.entities[0],
+                     TEXT("Closer dynamic geometry wins over static geometry"));
+    checks.are_equal(int32{INDEX_NONE},
+                     dynamic_hits.static_geometry_indices[0],
+                     TEXT("Dynamic hit clears static identity"));
+
+    TArray<FRegistryEntityHandle> const ignored_entities{fixture.handles[0]};
+    auto const ignored_dynamic_hits{run_traces(fixture, starts, ends, ignored_entities)};
+    checks.is_true(!ignored_dynamic_hits.entities[0].is_valid(),
+                   TEXT("Ignored dynamic entity is not returned"));
+    checks.are_equal(0,
+                     ignored_dynamic_hits.static_geometry_indices[0],
+                     TEXT("Static geometry behind ignored entity remains traceable"));
+
+    set_static_aabb({90.f, -10.f, -10.f}, {110.f, 10.f, 10.f});
+    auto const tied_hits{run_traces(fixture, starts, ends)};
+    checks.are_equal(fixture.handles[0],
+                     tied_hits.entities[0],
+                     TEXT("Dynamic geometry wins exact-distance static tie"));
+}
+
 void FCollisionUniformGridTraceScenario::run() {
     TestCommandBuilder.Do([this] {
         switch (scenario_) {
@@ -1937,6 +1995,9 @@ void FCollisionUniformGridTraceScenario::run() {
                 break;
             case ECollisionUniformGridTraceScenario::ProductionScale:
                 test_production_scale();
+                break;
+            case ECollisionUniformGridTraceScenario::StaticGeometry:
+                test_static_geometry();
                 break;
         }
 
