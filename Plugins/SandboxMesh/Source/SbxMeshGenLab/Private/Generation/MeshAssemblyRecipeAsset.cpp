@@ -39,7 +39,8 @@ auto ensure_recipe_content_directory() -> bool {
 
 auto write_mesh_assembly_recipe_asset(FName const recipe_name,
                                       FName const output_asset_name,
-                                      TArray<FSbxMeshAssemblyPart> const& parts)
+                                      TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                      TArray<FSbxMeshAssemblyRecipeGroup> const& groups)
     -> USbxMeshAssemblyRecipe* {
     auto const recipe_name_string{recipe_name.ToString()};
     auto const package_name{
@@ -80,7 +81,7 @@ auto write_mesh_assembly_recipe_asset(FName const recipe_name,
     }
 
     recipe->Modify();
-    recipe->set_assembly(output_asset_name, parts);
+    recipe->set_hierarchy(output_asset_name, parts, groups);
     recipe->MarkPackageDirty();
     if (is_new_asset) {
         FAssetRegistryModule::AssetCreated(recipe);

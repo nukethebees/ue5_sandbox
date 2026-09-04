@@ -21,10 +21,13 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
     void on_property_changed(FPropertyChangedEvent const& event);
     void refresh_part_items();
     void select_parts_from_list(TSharedPtr<int32> primary_item);
+    void select_group_from_list(TSharedPtr<int32> item);
     auto add_part() -> FReply;
     auto select_all_parts() -> FReply;
     auto duplicate_part() -> FReply;
     auto remove_part() -> FReply;
+    auto create_group() -> FReply;
+    auto ungroup() -> FReply;
     auto new_assembly() -> FReply;
     auto save_recipe() -> FReply;
     auto save_recipe_as() -> FReply;
@@ -33,7 +36,9 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
 
     TWeakObjectPtr<USbxMeshGenLabEditorMode> mode_;
     TArray<TSharedPtr<int32>> part_items_;
+    TArray<TSharedPtr<int32>> group_items_;
     TSharedPtr<SListView<TSharedPtr<int32>>> parts_list_;
+    TSharedPtr<SListView<TSharedPtr<int32>>> groups_list_;
     TSharedPtr<STextBlock> recipe_document_text_;
     TSharedPtr<STextBlock> status_text_;
     bool refreshing_{};

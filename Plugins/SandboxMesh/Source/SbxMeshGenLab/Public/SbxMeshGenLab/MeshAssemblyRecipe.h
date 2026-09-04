@@ -9,6 +9,12 @@ USTRUCT()
 struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     GENERATED_BODY()
 
+    UPROPERTY(VisibleAnywhere, Category = "Part")
+    FGuid id;
+
+    UPROPERTY(VisibleAnywhere, Category = "Part")
+    FGuid parent_id;
+
     UPROPERTY(EditAnywhere, Category = "Part")
     ESbxMeshShape shape{ESbxMeshShape::Box};
 
@@ -93,17 +99,60 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     UPROPERTY(EditAnywhere, Category = "Honeycomb Panel")
     bool honeycomb_pointy_top{};
 
-    [[nodiscard]] static auto from_part(FSbxMeshAssemblyPart const& part)
-        -> FSbxMeshAssemblyRecipePart;
+    [[nodiscard]] static auto from_part(FSbxMeshAssemblyPart const& part,
+                                        FGuid id = FGuid::NewGuid(),
+                                        FGuid parent_id = {}) -> FSbxMeshAssemblyRecipePart;
     [[nodiscard]] auto to_part(FName output_asset_name) const -> FSbxMeshAssemblyPart;
 };
+
+USTRUCT()
+struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipeGroup {
+    GENERATED_BODY()
+
+    UPROPERTY(VisibleAnywhere, Category = "Group")
+    FGuid id;
+
+    UPROPERTY(VisibleAnywhere, Category = "Group")
+    FGuid parent_id;
+
+    UPROPERTY(EditAnywhere, Category = "Group")
+    FName name{TEXT("Group")};
+
+    UPROPERTY(EditAnywhere, Category = "Transform")
+    FVector translation{FVector::ZeroVector};
+
+    UPROPERTY(EditAnywhere, Category = "Transform")
+    FRotator rotation{FRotator::ZeroRotator};
+
+    UPROPERTY(EditAnywhere, Category = "Transform", meta = (ClampMin = "0.001"))
+    FVector scale{FVector::OneVector};
+
+    [[nodiscard]] auto to_transform() const -> FTransform;
+    void set_transform(FTransform const& transform);
+};
+
+namespace SandboxMesh {
+
+[[nodiscard]] SBXMESHGENLAB_API auto
+    is_legacy_mesh_assembly_recipe(TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                   TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
+                                   int32 format_version) -> bool;
+[[nodiscard]] SBXMESHGENLAB_API auto
+    validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                     TArray<FSbxMeshAssemblyRecipeGroup> const& groups) -> FString;
+[[nodiscard]] SBXMESHGENLAB_API auto
+    resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                    TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
+                                    FName output_asset_name) -> TArray<FSbxMeshAssemblyPart>;
+
+}
 
 UCLASS(BlueprintType)
 class SBXMESHGENLAB_API USbxMeshAssemblyRecipe final : public UObject {
     GENERATED_BODY()
   public:
     UPROPERTY(VisibleAnywhere, Category = "Recipe")
-    int32 format_version{1};
+    int32 format_version{2};
 
     UPROPERTY(EditAnywhere, Category = "Recipe")
     FName output_asset_name{TEXT("SM_GeneratedAssembly")};
@@ -111,6 +160,11 @@ class SBXMESHGENLAB_API USbxMeshAssemblyRecipe final : public UObject {
     UPROPERTY(EditAnywhere, Category = "Recipe")
     TArray<FSbxMeshAssemblyRecipePart> parts;
 
-    void set_assembly(FName asset_name, TArray<FSbxMeshAssemblyPart> const& assembly_parts);
+    UPROPERTY(EditAnywhere, Category = "Recipe")
+    TArray<FSbxMeshAssemblyRecipeGroup> groups;
+
+    void set_hierarchy(FName asset_name,
+                       TArray<FSbxMeshAssemblyRecipePart> const& assembly_parts,
+                       TArray<FSbxMeshAssemblyRecipeGroup> const& assembly_groups);
     [[nodiscard]] auto to_assembly() const -> TArray<FSbxMeshAssemblyPart>;
 };

@@ -34,8 +34,8 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                           .Text(
                               LOCTEXT("Instructions",
                                       "Select parts here or Ctrl/Shift-click them in the viewport. "
-                                      "Use W/E/R to transform the selection around its shared "
-                                      "pivot. Properties edit the primary part."))
+                                      "Select a group to transform all its descendants. Use W/E/R "
+                                      "for transforms; properties edit the primary selection."))
                           .AutoWrapText(true)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +
@@ -75,6 +75,49 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                      [SAssignNew(recipe_document_text_, STextBlock)
                           .Font(FAppStyle::Get().GetFontStyle("NormalFontBold"))
                           .AutoWrapText(true)] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
+                     [SNew(STextBlock)
+                          .Text(LOCTEXT("Groups", "Assembly Groups"))
+                          .Font(FAppStyle::Get().GetFontStyle("HeadingExtraSmall"))] +
+                 SVerticalBox::Slot().AutoHeight().MaxHeight(100.0f).Padding(0.0f, 0.0f, 0.0f, 6.0f)
+                     [SAssignNew(groups_list_, SListView<TSharedPtr<int32>>)
+                          .ListItemsSource(&group_items_)
+                          .SelectionMode(ESelectionMode::Single)
+                          .OnGenerateRow_Lambda([this](TSharedPtr<int32> const item,
+                                                       TSharedRef<STableViewBase> const& owner) {
+                              return SNew(STableRow<TSharedPtr<int32>>,
+                                          owner)[SNew(STextBlock).Text_Lambda([this, item]() {
+                                  if (!mode_.IsValid() || !item.IsValid() ||
+                                      !mode_->get_groups().IsValidIndex(*item)) {
+                                      return FText::GetEmpty();
+                                  }
+                                  return FText::FromName(mode_->get_groups()[*item].name);
+                              })];
+                          })
+                          .OnSelectionChanged_Lambda(
+                              [this](TSharedPtr<int32> const item, ESelectInfo::Type) {
+                                  if (!refreshing_ && item.IsValid()) {
+                                      select_group_from_list(item);
+                                  }
+                              })] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("CreateGroup", "Create Group"))
+                               .ToolTipText(
+                                   LOCTEXT("CreateGroupTooltip",
+                                           "Group the selected parts, or wrap the selected group."))
+                               .IsEnabled_Lambda([this]() {
+                                   return mode_.IsValid() && mode_->can_create_group();
+                               })
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::create_group)] +
+                      SHorizontalBox::Slot().AutoWidth()
+                          [SNew(SButton)
+                               .Text(LOCTEXT("Ungroup", "Ungroup"))
+                               .IsEnabled_Lambda(
+                                   [this]() { return mode_.IsValid() && mode_->can_ungroup(); })
+                               .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::ungroup)]] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
                      [SNew(STextBlock)
                           .Text(LOCTEXT("Parts", "Assembly Parts"))
@@ -204,6 +247,20 @@ void FSbxMeshGenLabEditorModeToolkit::on_property_changed(FPropertyChangedEvent 
 
 void FSbxMeshGenLabEditorModeToolkit::refresh_part_items() {
     refreshing_ = true;
+    auto const group_count{mode_->get_groups().Num()};
+    if (group_items_.Num() != group_count) {
+        group_items_.Reset();
+        for (int32 group_index{}; group_index < group_count; ++group_index) {
+            group_items_.Add(MakeShared<int32>(group_index));
+        }
+    }
+    groups_list_->RequestListRefresh();
+    groups_list_->ClearSelection();
+    auto const selected_group_index{mode_->get_selected_group_index()};
+    if (group_items_.IsValidIndex(selected_group_index)) {
+        groups_list_->SetSelection(group_items_[selected_group_index]);
+    }
+
     auto const part_count{mode_->get_parts().Num()};
     if (part_items_.Num() != part_count) {
         part_items_.Reset();
@@ -220,6 +277,12 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_part_items() {
         }
     }
     refreshing_ = false;
+}
+
+void FSbxMeshGenLabEditorModeToolkit::select_group_from_list(TSharedPtr<int32> const item) {
+    if (mode_.IsValid() && item.IsValid()) {
+        mode_->select_group(*item);
+    }
 }
 
 void FSbxMeshGenLabEditorModeToolkit::select_parts_from_list(TSharedPtr<int32> const primary_item) {
@@ -253,6 +316,16 @@ auto FSbxMeshGenLabEditorModeToolkit::duplicate_part() -> FReply {
 
 auto FSbxMeshGenLabEditorModeToolkit::remove_part() -> FReply {
     mode_->remove_part();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::create_group() -> FReply {
+    mode_->create_group();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::ungroup() -> FReply {
+    mode_->ungroup();
     return FReply::Handled();
 }
 

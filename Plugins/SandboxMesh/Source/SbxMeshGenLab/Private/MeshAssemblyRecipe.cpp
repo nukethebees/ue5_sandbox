@@ -1,8 +1,11 @@
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 
-auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part)
-    -> FSbxMeshAssemblyRecipePart {
+auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
+                                           FGuid const id,
+                                           FGuid const parent_id) -> FSbxMeshAssemblyRecipePart {
     FSbxMeshAssemblyRecipePart recipe_part;
+    recipe_part.id = id;
+    recipe_part.parent_id = parent_id;
     recipe_part.shape = part.mesh.shape;
     recipe_part.translation = FVector{part.transform.translation};
     recipe_part.rotation = FRotator{part.transform.rotation};
@@ -56,21 +59,178 @@ auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
     return {request, {FVector3f{translation}, FRotator3f{rotation}, FVector3f{scale}}};
 }
 
-void USbxMeshAssemblyRecipe::set_assembly(FName const asset_name,
-                                          TArray<FSbxMeshAssemblyPart> const& assembly_parts) {
-    output_asset_name = asset_name;
-    parts.Reset();
-    parts.Reserve(assembly_parts.Num());
-    for (auto const& part : assembly_parts) {
-        parts.Add(FSbxMeshAssemblyRecipePart::from_part(part));
+auto FSbxMeshAssemblyRecipeGroup::to_transform() const -> FTransform {
+    return FTransform{rotation, translation, scale};
+}
+
+void FSbxMeshAssemblyRecipeGroup::set_transform(FTransform const& transform) {
+    translation = transform.GetLocation();
+    rotation = transform.Rotator();
+    scale = transform.GetScale3D();
+}
+
+namespace SandboxMesh {
+namespace {
+auto resolve_group_transform(int32 const group_index,
+                             TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
+                             TMap<FGuid, int32> const& group_indices,
+                             TArray<uint8>& states,
+                             TArray<FTransform>& transforms) -> bool {
+    if (states[group_index] == 2) {
+        return true;
     }
+    if (states[group_index] == 1) {
+        return false;
+    }
+
+    states[group_index] = 1;
+    auto const& group{groups[group_index]};
+    auto transform{group.to_transform()};
+    if (group.parent_id.IsValid()) {
+        auto const* const parent_index{group_indices.Find(group.parent_id)};
+        if (parent_index == nullptr ||
+            !resolve_group_transform(*parent_index, groups, group_indices, states, transforms)) {
+            return false;
+        }
+        transform *= transforms[*parent_index];
+    }
+    transforms[group_index] = transform;
+    states[group_index] = 2;
+    return true;
+}
+}
+
+auto is_legacy_mesh_assembly_recipe(TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                    TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
+                                    int32 const format_version) -> bool {
+    if (format_version == 1) {
+        return true;
+    }
+    if (!groups.IsEmpty() || parts.IsEmpty()) {
+        return false;
+    }
+    return parts.ContainsByPredicate(
+               [](FSbxMeshAssemblyRecipePart const& part) { return part.id.IsValid(); }) == false;
+}
+
+auto validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                      TArray<FSbxMeshAssemblyRecipeGroup> const& groups)
+    -> FString {
+    TSet<FGuid> node_ids;
+    TMap<FGuid, int32> group_indices;
+    auto const group_count{groups.Num()};
+    for (int32 group_index{}; group_index < group_count; ++group_index) {
+        auto const& group{groups[group_index]};
+        if (!group.id.IsValid()) {
+            return FString::Printf(TEXT("Group %d has no stable ID."), group_index + 1);
+        }
+        if (node_ids.Contains(group.id)) {
+            return TEXT("Assembly node IDs must be unique.");
+        }
+        if (group.scale.GetMin() <= 0.0) {
+            return FString::Printf(TEXT("Group %d scale values must be greater than zero."),
+                                   group_index + 1);
+        }
+        node_ids.Add(group.id);
+        group_indices.Add(group.id, group_index);
+    }
+
+    for (auto const& group : groups) {
+        if (group.parent_id.IsValid() && !group_indices.Contains(group.parent_id)) {
+            return FString::Printf(TEXT("Group '%s' has a missing parent."),
+                                   *group.name.ToString());
+        }
+    }
+
+    TArray<uint8> states;
+    states.SetNumZeroed(group_count);
+    TArray<FTransform> transforms;
+    transforms.SetNum(group_count);
+    for (int32 group_index{}; group_index < group_count; ++group_index) {
+        if (!resolve_group_transform(group_index, groups, group_indices, states, transforms)) {
+            return TEXT("Assembly group hierarchy contains a parenting cycle.");
+        }
+    }
+
+    auto const part_count{parts.Num()};
+    for (int32 part_index{}; part_index < part_count; ++part_index) {
+        auto const& part{parts[part_index]};
+        if (!part.id.IsValid()) {
+            return FString::Printf(TEXT("Part %d has no stable ID."), part_index + 1);
+        }
+        if (node_ids.Contains(part.id)) {
+            return TEXT("Assembly node IDs must be unique.");
+        }
+        if (part.parent_id.IsValid() && !group_indices.Contains(part.parent_id)) {
+            return FString::Printf(TEXT("Part %d has a missing parent."), part_index + 1);
+        }
+        node_ids.Add(part.id);
+    }
+    return {};
+}
+
+auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                     TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
+                                     FName const output_asset_name)
+    -> TArray<FSbxMeshAssemblyPart> {
+    check(validate_mesh_assembly_hierarchy(parts, groups).IsEmpty());
+
+    TMap<FGuid, int32> group_indices;
+    auto const group_count{groups.Num()};
+    for (int32 group_index{}; group_index < group_count; ++group_index) {
+        group_indices.Add(groups[group_index].id, group_index);
+    }
+    TArray<uint8> states;
+    states.SetNumZeroed(group_count);
+    TArray<FTransform> group_transforms;
+    group_transforms.SetNum(group_count);
+    for (int32 group_index{}; group_index < group_count; ++group_index) {
+        check(
+            resolve_group_transform(group_index, groups, group_indices, states, group_transforms));
+    }
+
+    TArray<FSbxMeshAssemblyPart> resolved_parts;
+    resolved_parts.Reserve(parts.Num());
+    for (auto const& recipe_part : parts) {
+        auto part{recipe_part.to_part(output_asset_name)};
+        FTransform transform{FRotator{part.transform.rotation},
+                             FVector{part.transform.translation},
+                             FVector{part.transform.scale}};
+        if (recipe_part.parent_id.IsValid()) {
+            transform *= group_transforms[group_indices.FindChecked(recipe_part.parent_id)];
+        }
+        part.transform = {FVector3f{transform.GetLocation()},
+                          FRotator3f{transform.Rotator()},
+                          FVector3f{transform.GetScale3D()}};
+        resolved_parts.Add(MoveTemp(part));
+    }
+    return resolved_parts;
+}
+
+}
+
+void USbxMeshAssemblyRecipe::set_hierarchy(
+    FName const asset_name,
+    TArray<FSbxMeshAssemblyRecipePart> const& assembly_parts,
+    TArray<FSbxMeshAssemblyRecipeGroup> const& assembly_groups) {
+    format_version = 2;
+    output_asset_name = asset_name;
+    parts = assembly_parts;
+    groups = assembly_groups;
 }
 
 auto USbxMeshAssemblyRecipe::to_assembly() const -> TArray<FSbxMeshAssemblyPart> {
-    TArray<FSbxMeshAssemblyPart> assembly_parts;
-    assembly_parts.Reserve(parts.Num());
-    for (auto const& part : parts) {
-        assembly_parts.Add(part.to_part(output_asset_name));
+    auto hierarchy_parts{parts};
+    auto const is_legacy{
+        SandboxMesh::is_legacy_mesh_assembly_recipe(hierarchy_parts, groups, format_version)};
+    if (is_legacy) {
+        for (auto& part : hierarchy_parts) {
+            part.id = FGuid::NewGuid();
+            part.parent_id.Invalidate();
+        }
     }
-    return assembly_parts;
+    return SandboxMesh::resolve_mesh_assembly_hierarchy(
+        hierarchy_parts,
+        is_legacy ? TArray<FSbxMeshAssemblyRecipeGroup>{} : groups,
+        output_asset_name);
 }
