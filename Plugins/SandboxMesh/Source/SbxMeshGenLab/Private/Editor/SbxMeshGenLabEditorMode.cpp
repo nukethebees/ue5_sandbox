@@ -6,13 +6,14 @@
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
-#include "Components/StaticMeshComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "Components/SceneComponent.h"
 #include "Editor.h"
 #include "EditorViewportClient.h"
 #include "Engine/Selection.h"
-#include "Engine/StaticMeshActor.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "GameFramework/Actor.h"
 #include "HitProxies.h"
 #include "LevelEditorViewport.h"
 #include "Styling/AppStyle.h"
@@ -58,7 +59,7 @@ void USbxMeshGenLabEditorMode::Exit() {
         changing_selection_ = false;
     }
 
-    destroy_preview_actors();
+    destroy_preview();
 
     if (GEditor != nullptr) {
         changing_selection_ = true;
@@ -80,9 +81,7 @@ void USbxMeshGenLabEditorMode::CreateToolkit() {
 }
 
 auto USbxMeshGenLabEditorMode::UsesTransformWidget() const -> bool {
-    return !selected_part_indices_.IsEmpty() &&
-           preview_actors_.IsValidIndex(selected_part_index_) &&
-           IsValid(preview_actors_[selected_part_index_]);
+    return !selected_part_indices_.IsEmpty() && parts_.IsValidIndex(selected_part_index_);
 }
 
 auto USbxMeshGenLabEditorMode::ShouldDrawWidget() const -> bool {
@@ -94,18 +93,18 @@ auto USbxMeshGenLabEditorMode::GetWidgetLocation() const -> FVector {
         return FVector::ZeroVector;
     }
     if (get_settings()->selection_pivot == ESbxMeshSelectionPivot::PrimaryPart) {
-        return preview_actors_[selected_part_index_]->GetActorLocation();
+        return make_part_world_transform(parts_[selected_part_index_]).GetLocation();
     }
 
     FVector pivot{FVector::ZeroVector};
-    int32 valid_actor_count{};
+    int32 valid_part_count{};
     for (int32 const part_index : selected_part_indices_) {
-        if (preview_actors_.IsValidIndex(part_index) && IsValid(preview_actors_[part_index])) {
-            pivot += preview_actors_[part_index]->GetActorLocation();
-            ++valid_actor_count;
+        if (parts_.IsValidIndex(part_index)) {
+            pivot += make_part_world_transform(parts_[part_index]).GetLocation();
+            ++valid_part_count;
         }
     }
-    return valid_actor_count > 0 ? pivot / valid_actor_count : FVector::ZeroVector;
+    return valid_part_count > 0 ? pivot / valid_part_count : FVector::ZeroVector;
 }
 
 auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_client,
@@ -120,7 +119,7 @@ auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_
 
     auto const pivot{GetWidgetLocation()};
     auto const rotation_delta{rotation.Quaternion()};
-    auto const primary_scale{preview_actors_[selected_part_index_]->GetActorScale3D()};
+    auto const primary_scale{FVector{parts_[selected_part_index_].transform.scale}};
     FVector scale_factor{FVector::OneVector};
     if (!scale.IsNearlyZero()) {
         scale_factor.X = FMath::Max(primary_scale.X + scale.X, 0.001) / primary_scale.X;
@@ -129,12 +128,11 @@ auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_
     }
 
     for (int32 const part_index : selected_part_indices_) {
-        if (!preview_actors_.IsValidIndex(part_index) || !IsValid(preview_actors_[part_index])) {
+        if (!parts_.IsValidIndex(part_index)) {
             continue;
         }
 
-        auto* const actor{preview_actors_[part_index].Get()};
-        auto transform{actor->GetActorTransform()};
+        auto transform{make_part_world_transform(parts_[part_index])};
         auto relative_location{transform.GetLocation() - pivot};
         relative_location *= scale_factor;
         relative_location = rotation_delta.RotateVector(relative_location);
@@ -147,10 +145,14 @@ auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_
         new_scale.Y = FMath::Max(new_scale.Y, 0.001);
         new_scale.Z = FMath::Max(new_scale.Z, 0.001);
         transform.SetScale3D(new_scale);
-        actor->SetActorTransform(transform, false, nullptr, ETeleportType::TeleportPhysics);
+        auto& part_transform{parts_[part_index].transform};
+        part_transform.translation = FVector3f{transform.GetLocation() - preview_origin_};
+        part_transform.rotation = FRotator3f{transform.Rotator()};
+        part_transform.scale = FVector3f{transform.GetScale3D()};
+        refresh_preview_instance(part_index, false);
     }
 
-    sync_selected_part_transforms_from_actors();
+    get_settings()->load_transform(parts_[selected_part_index_].transform);
     mark_recipe_dirty();
     status_ = FText::Format(LOCTEXT("PartsMoved", "Transforming {0} selected part(s)."),
                             FText::AsNumber(selected_part_indices_.Num()));
@@ -166,8 +168,9 @@ auto USbxMeshGenLabEditorMode::EndTracking(FEditorViewportClient*, FViewport*) -
 auto USbxMeshGenLabEditorMode::HandleClick(FEditorViewportClient* const viewport_client,
                                            HHitProxy* const hit_proxy,
                                            FViewportClick const& click) -> bool {
-    if (auto const* const actor_proxy{HitProxyCast<HActor>(hit_proxy)}) {
-        auto const part_index{find_preview_actor(actor_proxy->Actor)};
+    if (auto const* const instance_proxy{HitProxyCast<HInstancedStaticMeshInstance>(hit_proxy)}) {
+        auto const part_index{
+            find_preview_part(instance_proxy->Component, instance_proxy->InstanceIndex)};
         if (part_index != INDEX_NONE) {
             if (click.IsControlDown() || click.IsShiftDown()) {
                 auto part_indices{selected_part_indices_};
@@ -191,25 +194,10 @@ auto USbxMeshGenLabEditorMode::HandleClick(FEditorViewportClient* const viewport
 
 auto USbxMeshGenLabEditorMode::IsSelectionAllowed(AActor* const actor, bool const selecting) const
     -> bool {
-    return changing_selection_ || !selecting || find_preview_actor(actor) != INDEX_NONE;
+    return changing_selection_ || !selecting || actor == preview_actor_;
 }
 
-void USbxMeshGenLabEditorMode::ActorSelectionChangeNotify() {
-    if (changing_selection_ || GEditor == nullptr) {
-        return;
-    }
-
-    TArray<int32> part_indices;
-    for (FSelectionIterator iterator{*GEditor->GetSelectedActors()}; iterator; ++iterator) {
-        auto const part_index{find_preview_actor(Cast<AActor>(*iterator))};
-        if (part_index != INDEX_NONE) {
-            part_indices.Add(part_index);
-        }
-    }
-    if (!part_indices.IsEmpty()) {
-        select_parts(part_indices, part_indices.Last());
-    }
-}
+void USbxMeshGenLabEditorMode::ActorSelectionChangeNotify() {}
 
 auto USbxMeshGenLabEditorMode::get_settings() const -> USbxMeshGenLabSettings* {
     return CastChecked<USbxMeshGenLabSettings>(SettingsObject);
@@ -285,7 +273,7 @@ void USbxMeshGenLabEditorMode::select_parts(TArray<int32> const& part_indices,
     settings->load_request(parts_[part_index].mesh);
     settings->load_transform(parts_[part_index].transform);
     settings->asset_name = asset_name;
-    select_preview_actors();
+    select_preview_instances();
 
     status_ =
         selected_part_indices_.Num() == 1
@@ -318,7 +306,9 @@ void USbxMeshGenLabEditorMode::add_part() {
     FSbxMeshAssemblyPart part;
     part.mesh = SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box);
     parts_.Add(part);
-    create_preview_actor(parts_.Num() - 1);
+    part_ids_.Add(FGuid::NewGuid());
+    rebuild_part_index_map();
+    add_preview_instance(parts_.Num() - 1);
     mark_recipe_dirty();
     select_part(parts_.Num() - 1);
 }
@@ -391,7 +381,9 @@ void USbxMeshGenLabEditorMode::duplicate_part() {
     auto const duplicate_count{duplicate_parts.Num()};
     for (int32 duplicate_offset{}; duplicate_offset < duplicate_count; ++duplicate_offset) {
         auto const duplicate_index{parts_.Add(MoveTemp(duplicate_parts[duplicate_offset]))};
-        create_preview_actor(duplicate_index);
+        part_ids_.Add(FGuid::NewGuid());
+        part_index_by_id_.Add(part_ids_.Last(), duplicate_index);
+        add_preview_instance(duplicate_index);
         duplicate_indices.Add(duplicate_index);
         if (duplicate_offset == duplicate_primary_offset) {
             duplicate_primary_index = duplicate_index;
@@ -416,18 +408,24 @@ void USbxMeshGenLabEditorMode::remove_part() {
         changing_selection_ = false;
     }
 
+    TArray<FGuid> ids_to_remove;
+    ids_to_remove.Reserve(selected_part_indices_.Num());
+    for (int32 const part_index : selected_part_indices_) {
+        ids_to_remove.Add(part_ids_[part_index]);
+    }
+    for (FGuid const part_id : ids_to_remove) {
+        remove_preview_instance(part_id);
+    }
+
     auto indices_to_remove{selected_part_indices_};
     indices_to_remove.Sort([](int32 const left, int32 const right) { return left > right; });
     auto const next_selection{
         FMath::Min(indices_to_remove.Last(), parts_.Num() - indices_to_remove.Num() - 1)};
     for (int32 const part_index : indices_to_remove) {
-        auto* const actor{preview_actors_[part_index].Get()};
-        if (IsValid(actor) && actor->GetWorld() != nullptr) {
-            actor->GetWorld()->DestroyActor(actor);
-        }
         parts_.RemoveAt(part_index);
-        preview_actors_.RemoveAt(part_index);
+        part_ids_.RemoveAt(part_index);
     }
+    rebuild_part_index_map();
 
     mark_recipe_dirty();
     select_part(next_selection);
@@ -439,7 +437,7 @@ void USbxMeshGenLabEditorMode::new_assembly() {
         GEditor->SelectNone(false, true, false);
         changing_selection_ = false;
     }
-    destroy_preview_actors();
+    destroy_preview();
 
     auto* const settings{get_settings()};
     settings->load_request(SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box));
@@ -451,10 +449,12 @@ void USbxMeshGenLabEditorMode::new_assembly() {
 
     parts_.Reset();
     parts_.Add({settings->to_request(), settings->to_transform()});
+    part_ids_ = {FGuid::NewGuid()};
+    rebuild_part_index_map();
     selected_part_index_ = 0;
     selected_part_indices_ = {0};
-    create_preview_actor(0);
-    select_preview_actors();
+    add_preview_instance(0);
+    select_preview_instances();
 
     status_ = LOCTEXT("NewAssemblyReady", "Started a new assembly.");
     recipe_dirty_ = false;
@@ -538,15 +538,21 @@ void USbxMeshGenLabEditorMode::load_recipe() {
         GEditor->SelectNone(false, true, false);
         changing_selection_ = false;
     }
-    destroy_preview_actors();
+    destroy_preview();
     parts_ = MoveTemp(parts);
+    part_ids_.Reset();
+    part_ids_.Reserve(parts_.Num());
+    for (int32 part_index{}; part_index < parts_.Num(); ++part_index) {
+        part_ids_.Add(FGuid::NewGuid());
+    }
+    rebuild_part_index_map();
     settings->asset_name = selected_recipe->output_asset_name;
     settings->recipe_name = selected_recipe->GetFName();
     current_recipe_ = selected_recipe;
 
     auto const part_count{parts_.Num()};
     for (int32 part_index{0}; part_index < part_count; ++part_index) {
-        create_preview_actor(part_index);
+        add_preview_instance(part_index);
     }
     selected_part_index_ = INDEX_NONE;
     selected_part_indices_.Reset();
@@ -569,7 +575,7 @@ void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
     auto* const settings{get_settings()};
     parts_[selected_part_index_].mesh = settings->to_request();
     parts_[selected_part_index_].transform = settings->to_transform();
-    refresh_preview_actor(selected_part_index_, true);
+    refresh_preview_instance(selected_part_index_, true);
     if (mark_dirty) {
         mark_recipe_dirty();
     }
@@ -632,135 +638,224 @@ void USbxMeshGenLabEditorMode::initialize_session() {
     new_assembly();
 }
 
-void USbxMeshGenLabEditorMode::create_preview_actor(int32 const part_index) {
-    if (!parts_.IsValidIndex(part_index) || preview_actors_.Num() != part_index) {
-        UE_LOG(LogSbxMeshGenLabEditorMode,
-               Error,
-               TEXT("Cannot create preview actor for assembly part %d."),
-               part_index + 1);
-        return;
+auto USbxMeshGenLabEditorMode::ensure_preview_actor() -> bool {
+    if (IsValid(preview_actor_)) {
+        return true;
     }
-    preview_actors_.Add(nullptr);
-
     auto* const world{GetWorld()};
     if (world == nullptr) {
         UE_LOG(LogSbxMeshGenLabEditorMode,
                Error,
-               TEXT("Cannot create a preview actor because the editor world is unavailable."));
+               TEXT("Cannot create the ISMC preview because the editor world is unavailable."));
         status_ = LOCTEXT("PreviewWorldFailed", "The editor world is unavailable.");
-        return;
+        return false;
     }
 
     FActorSpawnParameters spawn_parameters;
     spawn_parameters.Name = MakeUniqueObjectName(
-        world->GetCurrentLevel(), AStaticMeshActor::StaticClass(), TEXT("SbxMeshPreview"));
+        world->GetCurrentLevel(), AActor::StaticClass(), TEXT("SbxMeshPreview"));
     spawn_parameters.ObjectFlags = RF_Transient | RF_TextExportTransient;
     spawn_parameters.OverrideLevel = world->GetCurrentLevel();
     spawn_parameters.bHideFromSceneOutliner = true;
     spawn_parameters.SpawnCollisionHandlingOverride =
         ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
 
-    auto* const actor{world->SpawnActor<AStaticMeshActor>(spawn_parameters)};
-    if (actor == nullptr) {
+    preview_actor_ = world->SpawnActor<AActor>(spawn_parameters);
+    if (!IsValid(preview_actor_)) {
         UE_LOG(LogSbxMeshGenLabEditorMode,
                Error,
-               TEXT("Failed to spawn preview actor for assembly part %d."),
-               part_index + 1);
+               TEXT("Failed to spawn the transient ISMC preview actor."));
         status_ = LOCTEXT("PreviewActorFailed", "Failed to create a transient preview actor.");
-        return;
+        return false;
     }
 
-    actor->SetActorEnableCollision(false);
-    actor->SetActorLabel(FString::Printf(TEXT("Sandbox Mesh Preview %d"), part_index + 1));
-    auto* const component{actor->GetStaticMeshComponent()};
+    preview_actor_->SetActorEnableCollision(false);
+    preview_actor_->SetActorLabel(TEXT("Sandbox Mesh Preview"));
+    auto* const root{NewObject<USceneComponent>(preview_actor_, TEXT("PreviewRoot"))};
+    preview_actor_->SetRootComponent(root);
+    preview_actor_->AddInstanceComponent(root);
+    root->RegisterComponent();
+    return true;
+}
+
+auto USbxMeshGenLabEditorMode::find_or_create_preview_bucket(
+    FSbxMeshGenerationRequest const& request) -> int32 {
+    auto const mesh_key{SandboxMesh::describe_mesh_request(request)};
+    auto const existing_index{preview_buckets_.IndexOfByPredicate(
+        [&mesh_key](FSbxMeshPreviewBucket const& bucket) { return bucket.mesh_key == mesh_key; })};
+    if (existing_index != INDEX_NONE) {
+        return existing_index;
+    }
+    if (!ensure_preview_actor()) {
+        return INDEX_NONE;
+    }
+
+    auto* const static_mesh{
+        SandboxMesh::create_transient_static_mesh(SandboxMesh::generate_mesh(request))};
+    if (static_mesh == nullptr) {
+        UE_LOG(LogSbxMeshGenLabEditorMode,
+               Error,
+               TEXT("Failed to build an ISMC preview mesh for %s."),
+               *mesh_key);
+        status_ = LOCTEXT("PreviewMeshFailed", "Failed to build a transient preview mesh.");
+        return INDEX_NONE;
+    }
+
+    auto const component_name{MakeUniqueObjectName(
+        preview_actor_, UInstancedStaticMeshComponent::StaticClass(), TEXT("SbxMeshInstances"))};
+    auto* const component{
+        NewObject<UInstancedStaticMeshComponent>(preview_actor_, component_name, RF_Transient)};
+    preview_actor_->AddInstanceComponent(component);
+    component->SetupAttachment(preview_actor_->GetRootComponent());
     component->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     component->SetMobility(EComponentMobility::Movable);
+    component->SetCanEverAffectNavigation(false);
+    component->SetRemoveSwap();
+    component->bHasPerInstanceHitProxies = true;
+    component->SetStaticMesh(static_mesh);
+    component->RegisterComponent();
+    check(component->SupportsRemoveSwap());
 
-    preview_actors_[part_index] = actor;
-    refresh_preview_actor(part_index, true);
+    return preview_buckets_.Add({mesh_key, component, {}});
 }
 
-void USbxMeshGenLabEditorMode::destroy_preview_actors() {
-    for (auto const& actor_pointer : preview_actors_) {
-        auto* const actor{actor_pointer.Get()};
-        if (IsValid(actor) && actor->GetWorld() != nullptr) {
-            actor->GetWorld()->DestroyActor(actor);
-        }
-    }
-    preview_actors_.Reset();
-}
-
-void USbxMeshGenLabEditorMode::refresh_preview_actor(int32 const part_index,
-                                                     bool const rebuild_mesh) {
-    if (!parts_.IsValidIndex(part_index) || !preview_actors_.IsValidIndex(part_index) ||
-        !IsValid(preview_actors_[part_index])) {
+void USbxMeshGenLabEditorMode::add_preview_instance(int32 const part_index) {
+    if (!parts_.IsValidIndex(part_index) || !part_ids_.IsValidIndex(part_index)) {
         return;
     }
 
-    auto* const actor{preview_actors_[part_index].Get()};
+    auto const validation_error{SandboxMesh::validate_mesh_request(parts_[part_index].mesh)};
+    if (!validation_error.IsEmpty()) {
+        status_ = FText::FromString(validation_error);
+        return;
+    }
+
+    auto const bucket_index{find_or_create_preview_bucket(parts_[part_index].mesh)};
+    if (!preview_buckets_.IsValidIndex(bucket_index)) {
+        return;
+    }
+
+    auto& bucket{preview_buckets_[bucket_index]};
+    auto* const component{bucket.component.Get()};
+    if (!IsValid(component)) {
+        return;
+    }
+
+    auto const instance_index{
+        component->AddInstance(make_part_world_transform(parts_[part_index]), true)};
+    auto const part_id{part_ids_[part_index]};
+    check(instance_index == bucket.instance_part_ids.Num());
+    bucket.instance_part_ids.Add(part_id);
+    preview_location_by_part_id_.Add(part_id, {bucket_index, instance_index});
+}
+
+void USbxMeshGenLabEditorMode::remove_preview_instance(FGuid const part_id) {
+    auto const* const location{preview_location_by_part_id_.Find(part_id)};
+    if (location == nullptr || !preview_buckets_.IsValidIndex(location->bucket_index)) {
+        return;
+    }
+
+    auto& bucket{preview_buckets_[location->bucket_index]};
+    auto* const component{bucket.component.Get()};
+    if (!IsValid(component) || !bucket.instance_part_ids.IsValidIndex(location->instance_index)) {
+        preview_location_by_part_id_.Remove(part_id);
+        return;
+    }
+
+    auto const removed_index{location->instance_index};
+    auto const final_index{bucket.instance_part_ids.Num() - 1};
+    auto const moved_part_id{bucket.instance_part_ids[final_index]};
+    if (!component->RemoveInstance(removed_index)) {
+        UE_LOG(LogSbxMeshGenLabEditorMode,
+               Error,
+               TEXT("Failed to remove ISMC preview instance %d."),
+               removed_index);
+        return;
+    }
+
+    bucket.instance_part_ids.RemoveAtSwap(removed_index, EAllowShrinking::No);
+    preview_location_by_part_id_.Remove(part_id);
+    if (removed_index != final_index) {
+        preview_location_by_part_id_.FindChecked(moved_part_id).instance_index = removed_index;
+    }
+}
+
+void USbxMeshGenLabEditorMode::destroy_preview() {
+    if (IsValid(preview_actor_) && preview_actor_->GetWorld() != nullptr) {
+        preview_actor_->GetWorld()->DestroyActor(preview_actor_);
+    }
+    preview_actor_ = nullptr;
+    preview_buckets_.Reset();
+    preview_location_by_part_id_.Reset();
+}
+
+void USbxMeshGenLabEditorMode::refresh_preview_instance(int32 const part_index,
+                                                        bool const rebuild_mesh) {
+    if (!parts_.IsValidIndex(part_index) || !part_ids_.IsValidIndex(part_index)) {
+        return;
+    }
+
+    auto const part_id{part_ids_[part_index]};
     if (rebuild_mesh) {
-        auto const validation_error{SandboxMesh::validate_mesh_request(parts_[part_index].mesh)};
-        if (!validation_error.IsEmpty()) {
-            actor->GetStaticMeshComponent()->SetStaticMesh(nullptr);
-            status_ = FText::FromString(validation_error);
-            return;
-        }
-
-        auto* const static_mesh{SandboxMesh::create_transient_static_mesh(
-            SandboxMesh::generate_mesh(parts_[part_index].mesh))};
-        if (static_mesh == nullptr) {
-            UE_LOG(LogSbxMeshGenLabEditorMode,
-                   Error,
-                   TEXT("Failed to build the preview mesh for assembly part %d."),
-                   part_index + 1);
-            status_ = LOCTEXT("PreviewMeshFailed", "Failed to build a transient preview mesh.");
-            return;
-        }
-        actor->GetStaticMeshComponent()->SetStaticMesh(static_mesh);
-    }
-    actor->SetActorTransform(make_part_world_transform(parts_[part_index]),
-                             false,
-                             nullptr,
-                             ETeleportType::TeleportPhysics);
-}
-
-void USbxMeshGenLabEditorMode::select_preview_actors() {
-    if (GEditor == nullptr || selected_part_indices_.IsEmpty()) {
+        remove_preview_instance(part_id);
+        add_preview_instance(part_index);
+        select_preview_instances();
         return;
     }
 
-    changing_selection_ = true;
-    GEditor->SelectNone(false, true, false);
-    for (int32 const part_index : selected_part_indices_) {
-        if (!preview_actors_.IsValidIndex(part_index) || !IsValid(preview_actors_[part_index])) {
-            UE_LOG(LogSbxMeshGenLabEditorMode,
-                   Error,
-                   TEXT("Cannot select the missing preview actor for assembly part %d."),
-                   part_index + 1);
-            continue;
-        }
-        GEditor->SelectActor(preview_actors_[part_index], true, false);
+    auto const* const location{preview_location_by_part_id_.Find(part_id)};
+    if (location == nullptr || !preview_buckets_.IsValidIndex(location->bucket_index)) {
+        add_preview_instance(part_index);
+        return;
     }
-    GEditor->NoteSelectionChange();
-    changing_selection_ = false;
+    auto* const component{preview_buckets_[location->bucket_index].component.Get()};
+    if (IsValid(component)) {
+        component->UpdateInstanceTransform(location->instance_index,
+                                           make_part_world_transform(parts_[part_index]),
+                                           true,
+                                           true,
+                                           true);
+    }
 }
 
-void USbxMeshGenLabEditorMode::sync_selected_part_transforms_from_actors() {
-    for (int32 const part_index : selected_part_indices_) {
-        if (!parts_.IsValidIndex(part_index) || !preview_actors_.IsValidIndex(part_index) ||
-            !IsValid(preview_actors_[part_index])) {
-            continue;
+void USbxMeshGenLabEditorMode::select_preview_instances() {
+    for (auto& bucket : preview_buckets_) {
+        if (auto* const component{bucket.component.Get()}) {
+            component->ClearInstanceSelection();
         }
-
-        auto const transform{preview_actors_[part_index]->GetActorTransform()};
-        auto& part_transform{parts_[part_index].transform};
-        part_transform.translation = FVector3f{transform.GetLocation() - preview_origin_};
-        part_transform.rotation = FRotator3f{transform.Rotator()};
-        part_transform.scale = FVector3f{transform.GetScale3D()};
     }
 
-    if (parts_.IsValidIndex(selected_part_index_)) {
-        get_settings()->load_transform(parts_[selected_part_index_].transform);
+    for (int32 const part_index : selected_part_indices_) {
+        if (!part_ids_.IsValidIndex(part_index)) {
+            continue;
+        }
+        auto const* const location{preview_location_by_part_id_.Find(part_ids_[part_index])};
+        if (location == nullptr || !preview_buckets_.IsValidIndex(location->bucket_index)) {
+            continue;
+        }
+        if (auto* const component{preview_buckets_[location->bucket_index].component.Get()}) {
+            component->SelectInstance(true, location->instance_index);
+        }
+    }
+
+    for (auto& bucket : preview_buckets_) {
+        if (auto* const component{bucket.component.Get()}) {
+            component->MarkRenderStateDirty();
+        }
+    }
+
+    if (GEditor != nullptr) {
+        changing_selection_ = true;
+        GEditor->SelectNone(false, true, false);
+        changing_selection_ = false;
+    }
+}
+
+void USbxMeshGenLabEditorMode::rebuild_part_index_map() {
+    part_index_by_id_.Reset();
+    auto const part_count{part_ids_.Num()};
+    for (int32 part_index{}; part_index < part_count; ++part_index) {
+        part_index_by_id_.Add(part_ids_[part_index], part_index);
     }
 }
 
@@ -775,11 +870,21 @@ void USbxMeshGenLabEditorMode::notify_session_changed(bool const refresh_control
     }
 }
 
-auto USbxMeshGenLabEditorMode::find_preview_actor(AActor const* const actor) const -> int32 {
-    return preview_actors_.IndexOfByPredicate(
-        [actor](TObjectPtr<AStaticMeshActor> const& preview_actor) {
-            return preview_actor == actor;
-        });
+auto USbxMeshGenLabEditorMode::find_preview_part(
+    UInstancedStaticMeshComponent const* const component, int32 const instance_index) const
+    -> int32 {
+    auto const bucket_index{
+        preview_buckets_.IndexOfByPredicate([component](FSbxMeshPreviewBucket const& bucket) {
+            return bucket.component.Get() == component;
+        })};
+    if (!preview_buckets_.IsValidIndex(bucket_index) ||
+        !preview_buckets_[bucket_index].instance_part_ids.IsValidIndex(instance_index)) {
+        return INDEX_NONE;
+    }
+
+    auto const part_id{preview_buckets_[bucket_index].instance_part_ids[instance_index]};
+    auto const* const part_index{part_index_by_id_.Find(part_id)};
+    return part_index == nullptr ? INDEX_NONE : *part_index;
 }
 
 auto USbxMeshGenLabEditorMode::make_part_world_transform(FSbxMeshAssemblyPart const& part) const

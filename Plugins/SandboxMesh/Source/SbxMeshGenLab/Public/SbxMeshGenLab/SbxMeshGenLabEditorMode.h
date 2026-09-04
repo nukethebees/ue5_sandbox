@@ -5,13 +5,24 @@
 
 #include "SbxMeshGenLabEditorMode.generated.h"
 
-class AStaticMeshActor;
 class FEditorViewportClient;
 class FViewport;
 class HHitProxy;
+class UInstancedStaticMeshComponent;
 class USbxMeshAssemblyRecipe;
 class USbxMeshGenLabSettings;
 struct FViewportClick;
+
+struct FSbxMeshPreviewBucket {
+    FString mesh_key;
+    TWeakObjectPtr<UInstancedStaticMeshComponent> component;
+    TArray<FGuid> instance_part_ids;
+};
+
+struct FSbxMeshPreviewInstanceLocation {
+    int32 bucket_index{INDEX_NONE};
+    int32 instance_index{INDEX_NONE};
+};
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnSbxMeshSessionChanged, bool);
 
@@ -67,27 +78,35 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final : public UBaseLegacyWidge
     void save_generated_mesh();
   private:
     void initialize_session();
-    void create_preview_actor(int32 part_index);
-    void destroy_preview_actors();
-    void refresh_preview_actor(int32 part_index, bool rebuild_mesh);
-    void select_preview_actors();
-    void sync_selected_part_transforms_from_actors();
+    auto ensure_preview_actor() -> bool;
+    auto find_or_create_preview_bucket(FSbxMeshGenerationRequest const& request) -> int32;
+    void add_preview_instance(int32 part_index);
+    void remove_preview_instance(FGuid part_id);
+    void destroy_preview();
+    void refresh_preview_instance(int32 part_index, bool rebuild_mesh);
+    void select_preview_instances();
+    void rebuild_part_index_map();
     void apply_settings(bool mark_dirty);
     void save_recipe_with_name(FName recipe_name);
     void mark_recipe_dirty();
     void notify_session_changed(bool refresh_controls = true);
-    [[nodiscard]] auto find_preview_actor(AActor const* actor) const -> int32;
+    [[nodiscard]] auto find_preview_part(UInstancedStaticMeshComponent const* component,
+                                         int32 instance_index) const -> int32;
     [[nodiscard]] auto make_part_world_transform(FSbxMeshAssemblyPart const& part) const
         -> FTransform;
 
     UPROPERTY(Transient)
-    TArray<TObjectPtr<AStaticMeshActor>> preview_actors_;
+    TObjectPtr<AActor> preview_actor_;
 
     UPROPERTY(Transient)
     TObjectPtr<USbxMeshAssemblyRecipe> current_recipe_;
 
     TArray<FSbxMeshAssemblyPart> parts_;
+    TArray<FGuid> part_ids_;
     TArray<int32> selected_part_indices_;
+    TArray<FSbxMeshPreviewBucket> preview_buckets_;
+    TMap<FGuid, int32> part_index_by_id_;
+    TMap<FGuid, FSbxMeshPreviewInstanceLocation> preview_location_by_part_id_;
     TArray<TWeakObjectPtr<AActor>> previous_actor_selection_;
     FVector preview_origin_{FVector::ZeroVector};
     FText status_;
