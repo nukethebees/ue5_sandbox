@@ -8,11 +8,6 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogRadar3DWidget, Log, All);
 
-namespace {
-constexpr int32 radar_3d_output_texture_dimension{512};
-constexpr int32 initial_contact_count{5};
-}
-
 void SRadar3DWidget::Construct(FArguments const&) {
     initialise_contacts(initial_contact_count);
 
