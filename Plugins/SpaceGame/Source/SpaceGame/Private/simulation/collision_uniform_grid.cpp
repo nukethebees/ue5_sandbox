@@ -626,6 +626,9 @@ void CollisionUniformGrid::trace_aabbs(
             }
 
             advance_to_next_cell(current_cell, cell_steps, t, t_deltas);
+            if (!is_cell_coord_in_bounds(current_cell)) {
+                break;
+            }
         }
 
         if (FMath::IsFinite(nearest_t)) {
