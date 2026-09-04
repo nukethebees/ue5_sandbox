@@ -1,16 +1,14 @@
 #include "SpaceGame/ui/PauseMenuWidget.h"
 
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/ui/common/MenuButtonWidget.h"
 
-#include <Components/Button.h>
 #include <Components/TextBlock.h>
+#include <Input/CommonUIInputTypes.h>
+#include <Input/UIActionBinding.h>
+#include <InputAction.h>
 
 namespace ml::ioj {
-namespace {
-FLinearColor const selected_tab_colour{0.16f, 0.38f, 0.55f, 1.f};
-FLinearColor const inactive_tab_colour{0.12f, 0.14f, 0.16f, 1.f};
-}
-
 void UPauseMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
@@ -22,30 +20,50 @@ void UPauseMenuWidget::NativeOnInitialized() {
         return;
     }
 
-    resume_button->OnClicked.AddDynamic(this, &ThisClass::handle_resume);
-    overview_button->OnClicked.AddDynamic(this, &ThisClass::handle_overview);
-    stats_button->OnClicked.AddDynamic(this, &ThisClass::handle_stats);
-    options_button->OnClicked.AddDynamic(this, &ThisClass::handle_options);
-}
-
-void UPauseMenuWidget::NativeConstruct() {
-    Super::NativeConstruct();
+    resume_button->OnClicked().AddUObject(this, &ThisClass::handle_resume);
+    overview_button->OnClicked().AddUObject(this, &ThisClass::handle_overview);
+    stats_button->OnClicked().AddUObject(this, &ThisClass::handle_stats);
+    options_button->OnClicked().AddUObject(this, &ThisClass::handle_options);
+    overview_button->SetIsSelectable(true);
+    overview_button->SetIsToggleable(true);
+    stats_button->SetIsSelectable(true);
+    stats_button->SetIsToggleable(true);
+    options_button->SetIsSelectable(true);
+    options_button->SetIsToggleable(true);
     set_active_tab(EPauseMenuTab::Overview);
 }
 
-void UPauseMenuWidget::focus_resume_button() {
-    if (!IsValid(resume_button)) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("UPauseMenuWidget::focus_resume_button: Resume button is invalid."));
-        return;
-    }
+void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action) {
+    toggle_action_ = &toggle_action;
+    set_active_tab(EPauseMenuTab::Overview);
+}
 
-    resume_button->SetKeyboardFocus();
+void UPauseMenuWidget::NativeOnActivated() {
+    set_active_tab(EPauseMenuTab::Overview);
+    if (auto* const toggle_action{toggle_action_.Get()}; IsValid(toggle_action)) {
+        FBindUIActionArgs const args{
+            toggle_action,
+            false,
+            FSimpleDelegate::CreateUObject(this, &ThisClass::handle_toggle_action)};
+        toggle_action_binding_ = RegisterUIActionBinding(args);
+    }
+    Super::NativeOnActivated();
+}
+
+void UPauseMenuWidget::NativeOnDeactivated() {
+    if (toggle_action_binding_.IsValid()) {
+        toggle_action_binding_.Unregister();
+        toggle_action_binding_ = {};
+    }
+    Super::NativeOnDeactivated();
+}
+
+auto UPauseMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
+    return resume_button;
 }
 
 void UPauseMenuWidget::handle_resume() {
-    resume_requested.Broadcast();
+    DeactivateWidget();
 }
 
 void UPauseMenuWidget::handle_overview() {
@@ -58,6 +76,10 @@ void UPauseMenuWidget::handle_stats() {
 
 void UPauseMenuWidget::handle_options() {
     set_active_tab(EPauseMenuTab::Options);
+}
+
+void UPauseMenuWidget::handle_toggle_action() {
+    DeactivateWidget();
 }
 
 void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
@@ -101,12 +123,8 @@ void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
     active_tab = tab;
     page_heading->SetText(heading);
     page_placeholder->SetText(placeholder);
-    set_tab_button_state(*overview_button, tab == EPauseMenuTab::Overview);
-    set_tab_button_state(*stats_button, tab == EPauseMenuTab::Stats);
-    set_tab_button_state(*options_button, tab == EPauseMenuTab::Options);
-}
-
-void UPauseMenuWidget::set_tab_button_state(UButton& button, bool const selected) {
-    button.SetBackgroundColor(selected ? selected_tab_colour : inactive_tab_colour);
+    overview_button->SetIsSelected(tab == EPauseMenuTab::Overview);
+    stats_button->SetIsSelected(tab == EPauseMenuTab::Stats);
+    options_button->SetIsSelected(tab == EPauseMenuTab::Options);
 }
 }

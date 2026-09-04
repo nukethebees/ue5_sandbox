@@ -65,9 +65,6 @@ auto FShipControlContext::bind() -> bool {
     bound_ = true;
     bind_actions();
     add_selected_mapping_context();
-    auto* const owner{owner_.Get()};
-    owner->SetInputMode(FInputModeGameOnly{});
-    owner->SetShowMouseCursor(false);
     return true;
 }
 

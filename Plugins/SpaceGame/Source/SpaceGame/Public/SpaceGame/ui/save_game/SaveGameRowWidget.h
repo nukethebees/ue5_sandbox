@@ -19,6 +19,7 @@ class SPACEGAME_API USaveGameRowWidget : public UUserWidget {
     void set_summary(FSaveProfileSummary const& summary);
     void set_selected(bool selected);
     void focus_row();
+    [[nodiscard]] auto get_focus_target() const -> UWidget*;
 
     FSaveGameRowSelected selected;
   protected:

@@ -1,8 +1,10 @@
 #include <SandboxTests/support/test_setup.h>
 
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 
+#include <CommonInputSettings.h>
 #include <Components/Button.h>
 #include <Components/TextBlock.h>
 #include <CQTest.h>
@@ -33,15 +35,19 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
+        FCommonInputBase::GetInputSettings()->LoadData();
         auto const slate_widget{widget->TakeWidget()};
         (void)slate_widget;
+        widget->ActivateWidget();
 
-        auto* const resume_button{Cast<UButton>(widget->GetWidgetFromName(TEXT("resume_button")))};
+        auto* const resume_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("resume_button")))};
         auto* const overview_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("overview_button")))};
-        auto* const stats_button{Cast<UButton>(widget->GetWidgetFromName(TEXT("stats_button")))};
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("overview_button")))};
+        auto* const stats_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("stats_button")))};
         auto* const options_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("options_button")))};
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("options_button")))};
         auto* const page_heading{Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("page_heading")))};
         auto* const page_placeholder{
             Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("page_placeholder")))};
@@ -56,11 +62,13 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(TEXT("Overview is active initially"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Overview);
+        TestRunner->TestTrue(TEXT("Resume is the deterministic initial focus target"),
+                             widget->GetDesiredFocusTarget() == resume_button);
         TestRunner->TestEqual(TEXT("Overview heading is displayed"),
                               page_heading->GetText().ToString(),
                               TEXT("Overview"));
 
-        stats_button->OnClicked.Broadcast();
+        stats_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Stats button activates Stats"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Stats);
         TestRunner->TestEqual(
@@ -68,23 +76,20 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Stats placeholder is displayed"),
                              page_placeholder->GetText().ToString().Contains(TEXT("Stats")));
         TestRunner->TestTrue(TEXT("Stats has a distinct selected appearance"),
-                             stats_button->GetBackgroundColor() !=
-                                 overview_button->GetBackgroundColor());
+                             stats_button->GetSelected() && !overview_button->GetSelected());
 
-        options_button->OnClicked.Broadcast();
+        options_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Options button activates Options"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Options);
         TestRunner->TestEqual(TEXT("Options heading is displayed"),
                               page_heading->GetText().ToString(),
                               TEXT("Options"));
 
-        overview_button->OnClicked.Broadcast();
+        overview_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Overview button returns to Overview"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Overview);
 
-        bool resume_requested{false};
-        widget->resume_requested.AddLambda([&resume_requested] { resume_requested = true; });
-        resume_button->OnClicked.Broadcast();
-        TestRunner->TestTrue(TEXT("Resume button broadcasts its request"), resume_requested);
+        resume_button->OnClicked().Broadcast();
+        TestRunner->TestFalse(TEXT("Resume deactivates the pause menu"), widget->IsActivated());
     }
 };

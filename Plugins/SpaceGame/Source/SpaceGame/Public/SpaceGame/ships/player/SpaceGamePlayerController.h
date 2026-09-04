@@ -1,7 +1,5 @@
 #pragma once
 
-#include <SpaceGame/ships/player/MainMenuControlContext.h>
-#include <SpaceGame/ships/player/PauseMenuControlContext.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
@@ -20,14 +18,14 @@ class UShipHudWidget;
 class UTestBatchGameUiData;
 
 namespace ml::ioj {
-class UMainMenuWidget;
+class UGameUiRootLayout;
+class UPauseMenuWidget;
 }
 
 UCLASS()
 class ASpaceGamePlayerController : public APlayerController {
     GENERATED_BODY()
 
-    friend struct FPauseMenuControlContext;
     friend struct FShipControlContext;
   public:
     using Pawn = ATestSpaceShip;
@@ -62,8 +60,12 @@ class ASpaceGamePlayerController : public APlayerController {
     // UI and simulation transitions
     void initialise_main_menu();
     void initialise_gameplay();
+    auto initialise_ui_root() -> bool;
+    void shutdown_ui_root();
     void initialise_hud();
     void resume_game();
+    void on_pause_menu_deactivated();
+    void select_main_menu_camera();
     void bind_orchestrator_reset();
     void on_orchestrator_reset(ATestBatchOrchestrator& orchestrator);
 
@@ -81,8 +83,11 @@ class ASpaceGamePlayerController : public APlayerController {
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
 
-    UPROPERTY()
-    TSubclassOf<ml::ioj::UMainMenuWidget> main_menu_widget_class{nullptr};
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
+    TObjectPtr<ml::ioj::UGameUiRootLayout> ui_root{nullptr};
+
+    UPROPERTY(Transient)
+    TObjectPtr<ml::ioj::UPauseMenuWidget> pause_menu{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
@@ -92,12 +97,6 @@ class ASpaceGamePlayerController : public APlayerController {
 
     FShipControlContext ship_control_context_;
 
-    UPROPERTY(Transient)
-    FMainMenuControlContext main_menu_control_context_;
-
-    UPROPERTY(Transient)
-    FPauseMenuControlContext pause_menu_control_context_;
-
     TWeakObjectPtr<UEnhancedInputComponent> global_input_component_;
     TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> global_input_subsystem_;
     uint32 global_input_binding_handle_{0};
@@ -105,6 +104,9 @@ class ASpaceGamePlayerController : public APlayerController {
     bool global_input_bound_{false};
     bool begin_play_finished_{false};
     bool main_menu_requested_{false};
+    bool restore_ship_controls_after_pause_{false};
+    bool pause_resume_pending_{false};
+    bool shutting_down_ui_{false};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};

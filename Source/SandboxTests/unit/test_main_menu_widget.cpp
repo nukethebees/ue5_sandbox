@@ -1,11 +1,13 @@
 #include <SandboxTests/support/test_setup.h>
 
+#include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
+#include <CommonInputSettings.h>
 #include <Components/Button.h>
 #include <Components/HorizontalBox.h>
 #include <Components/HorizontalBoxSlot.h>
@@ -19,6 +21,12 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 {
     TEST_METHOD(Navigation)
     {
+        auto const* const text_style{GetDefault<ml::ioj::UMenuTextStyle>()};
+        TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
+                             IsValid(text_style) &&
+                                 (text_style->Font.CompositeFont.IsValid() ||
+                                  IsValid(text_style->Font.FontObject)));
+
         auto const world_result{ml::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
@@ -36,16 +44,16 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
+        FCommonInputBase::GetInputSettings()->LoadData();
         auto const slate_widget{widget->TakeWidget()};
         (void)slate_widget;
 
-        auto* const play_button{Cast<UButton>(widget->GetWidgetFromName(TEXT("play_button")))};
+        auto* const play_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("play_button")))};
         auto* const options_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("options_button")))};
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("options_button")))};
         auto* const save_games_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("save_games_button")))};
-        auto* const level_select_widget{Cast<ml::s7::UScriptLevelSelectWidget>(
-            widget->GetWidgetFromName(TEXT("level_select_widget")))};
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("save_games_button")))};
         auto* const options_widget{
             Cast<ml::ioj::UOptionsWidget>(widget->GetWidgetFromName(TEXT("options_widget")))};
         auto* const save_game_viewer{Cast<ml::ioj::USaveGameViewerWidget>(
@@ -54,16 +62,29 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             Cast<UButton>(widget->GetWidgetFromName(TEXT("save_games_back_button")))};
 
         auto const main_bindings_valid{IsValid(play_button) && IsValid(save_games_button) &&
-                                       IsValid(options_button) && IsValid(level_select_widget) &&
-                                       IsValid(save_game_viewer) &&
+                                       IsValid(options_button) && IsValid(save_game_viewer) &&
                                        IsValid(save_games_back_button) && IsValid(options_widget)};
         if (!TestRunner->TestTrue(TEXT("All required main menu bindings are valid"),
                                   main_bindings_valid)) {
             return;
         }
 
-        auto* const level_back_button{
-            Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("back_button")))};
+        auto const level_select_class{LoadClass<ml::s7::UScriptLevelSelectWidget>(
+            nullptr, TEXT("/SpaceGame/UI/MainMenu/WBP_LevelSelect.WBP_LevelSelect_C"))};
+        auto* const level_select_widget{IsValid(level_select_class)
+                                            ? CreateWidget<ml::s7::UScriptLevelSelectWidget>(
+                                                  world_result.value(), level_select_class)
+                                            : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Level selector is created"),
+                                  IsValid(level_select_widget))) {
+            return;
+        }
+        auto const level_select_slate{level_select_widget->TakeWidget()};
+        (void)level_select_slate;
+        level_select_widget->ActivateWidget();
+
+        auto* const level_back_button{Cast<ml::ioj::UMenuButtonWidget>(
+            level_select_widget->GetWidgetFromName(TEXT("back_button")))};
         auto* const level_list{
             Cast<UVerticalBox>(level_select_widget->GetWidgetFromName(TEXT("level_list")))};
         auto* const title_text{
@@ -74,10 +95,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("status_text")))};
         auto* const details_text{
             Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("details_text")))};
-        auto* const launch_button{
-            Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("launch_button")))};
-        auto* const start_paused_button{
-            Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("start_paused_button")))};
+        auto* const launch_button{Cast<ml::ioj::UMenuButtonWidget>(
+            level_select_widget->GetWidgetFromName(TEXT("launch_button")))};
+        auto* const start_paused_button{Cast<ml::ioj::UMenuButtonWidget>(
+            level_select_widget->GetWidgetFromName(TEXT("start_paused_button")))};
         auto* const video_button{
             Cast<UButton>(options_widget->GetWidgetFromName(TEXT("video_button")))};
         auto* const gameplay_button{
@@ -104,10 +125,14 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(TEXT("Main page is active initially"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
+        TestRunner->TestTrue(TEXT("Play is the deterministic initial focus target"),
+                             widget->GetDesiredFocusTarget() == play_button);
 
-        play_button->OnClicked.Broadcast();
-        TestRunner->TestTrue(TEXT("Play opens level select"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::LevelSelect);
+        bool level_select_requested{false};
+        widget->level_select_requested.AddLambda(
+            [&level_select_requested] { level_select_requested = true; });
+        play_button->OnClicked().Broadcast();
+        TestRunner->TestTrue(TEXT("Play requests level select"), level_select_requested);
         TestRunner->TestTrue(TEXT("Level select discovers the example script"),
                              level_list->GetChildrenCount() > 0);
         TestRunner->TestFalse(TEXT("Launch is disabled until a level is selected"),
@@ -115,16 +140,12 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Start Paused is disabled until a level is selected"),
                               start_paused_button->GetIsEnabled());
 
-        auto* const level_button{Cast<ml::s7::ULevelScriptButton>(level_list->GetChildAt(0))};
+        auto* const level_button{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(0))};
         if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
             return;
         }
-        auto* const level_button_text{Cast<UTextBlock>(level_button->GetChildAt(0))};
-        if (!TestRunner->TestTrue(TEXT("Level row has a text label"), IsValid(level_button_text))) {
-            return;
-        }
         TestRunner->TestEqual(TEXT("Level row contains only the authored title"),
-                              level_button_text->GetText().ToString(),
+                              level_button->get_text().ToString(),
                               FString{TEXT("Border Skirmish")});
 
         auto* const levels_scroll{Cast<UScrollBox>(level_list->GetParent())};
@@ -158,7 +179,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Selector fills the root vertically"),
                              page_slot->GetVerticalAlignment() == VAlign_Fill);
 
-        level_button->OnClicked.Broadcast();
+        level_button->OnClicked().Broadcast();
         TestRunner->TestEqual(TEXT("Selected level title is shown"),
                               title_text->GetText().ToString(),
                               FString{TEXT("Border Skirmish")});
@@ -175,11 +196,12 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             TEXT("Selected level details include its stable id"),
             details_text->GetText().ToString().Contains(TEXT("Level ID: border-skirmish")));
 
-        level_back_button->OnClicked.Broadcast();
-        TestRunner->TestTrue(TEXT("Level select Back returns to main"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
+        level_select_widget->ActivateWidget();
+        level_back_button->OnClicked().Broadcast();
+        TestRunner->TestFalse(TEXT("Level select Back deactivates the screen"),
+                              level_select_widget->IsActivated());
 
-        save_games_button->OnClicked.Broadcast();
+        save_games_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Save Games opens save viewer"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::SaveGames);
 
@@ -187,7 +209,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Save Games Back returns to main"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
 
-        options_button->OnClicked.Broadcast();
+        options_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Options opens options page"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Options);
         TestRunner->TestTrue(TEXT("Video is the initial options tab"),

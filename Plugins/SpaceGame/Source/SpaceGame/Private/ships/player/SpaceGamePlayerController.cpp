@@ -6,17 +6,21 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
+#include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGame/ui/common/GameUiRootLayout.h>
+#include <SpaceGame/ui/PauseMenuWidget.h>
 
+#include <Camera/CameraActor.h>
 #include <Engine/Engine.h>
+#include <Engine/GameInstance.h>
 #include <Engine/GameViewportClient.h>
 #include <Engine/LocalPlayer.h>
+#include <EngineUtils.h>
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystems.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
 #include <UnrealClient.h>
-#include <UObject/ConstructorHelpers.h>
 
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 
@@ -27,10 +31,6 @@ constexpr int32 global_mapping_priority{100};
 ASpaceGamePlayerController::ASpaceGamePlayerController() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
-
-    static ConstructorHelpers::FClassFinder<ml::ioj::UMainMenuWidget> const widget_class{
-        TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu")};
-    main_menu_widget_class = widget_class.Class;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -106,14 +106,8 @@ auto ASpaceGamePlayerController::can_bind_context(EPlayerControlContext const co
         case EPlayerControlContext::None: {
             return true;
         }
-        case EPlayerControlContext::MainMenu: {
-            return main_menu_control_context_.can_bind();
-        }
         case EPlayerControlContext::Ship: {
             return ship_control_context_.can_bind();
-        }
-        case EPlayerControlContext::PauseMenu: {
-            return pause_menu_control_context_.can_bind();
         }
     }
     return false;
@@ -124,14 +118,8 @@ auto ASpaceGamePlayerController::bind_context(EPlayerControlContext const contex
         case EPlayerControlContext::None: {
             return true;
         }
-        case EPlayerControlContext::MainMenu: {
-            return main_menu_control_context_.bind();
-        }
         case EPlayerControlContext::Ship: {
             return ship_control_context_.bind();
-        }
-        case EPlayerControlContext::PauseMenu: {
-            return pause_menu_control_context_.bind();
         }
     }
     return false;
@@ -142,16 +130,8 @@ void ASpaceGamePlayerController::unbind_context(EPlayerControlContext const cont
         case EPlayerControlContext::None: {
             break;
         }
-        case EPlayerControlContext::MainMenu: {
-            main_menu_control_context_.unbind();
-            break;
-        }
         case EPlayerControlContext::Ship: {
             ship_control_context_.unbind();
-            break;
-        }
-        case EPlayerControlContext::PauseMenu: {
-            pause_menu_control_context_.unbind();
             break;
         }
     }
@@ -220,23 +200,44 @@ void ASpaceGamePlayerController::toggle_pause_game() {
 
     switch (orchestrator->get_state()) {
         case EOrchestratorState::Running: {
-            if (!pause_menu_control_context_.can_bind()) {
+            if (!IsValid(ui_root) || !IsValid(global_input.toggle_menu)) {
                 UE_LOG(LogSandboxController,
                        Error,
-                       TEXT("ASpaceGamePlayerController::toggle_pause_game: Menu context is not "
+                       TEXT("ASpaceGamePlayerController::toggle_pause_game: Pause UI is not "
                             "available."));
                 return;
             }
 
+            restore_ship_controls_after_pause_ =
+                active_control_context_ == EPlayerControlContext::Ship;
+            pause_resume_pending_ = true;
             orchestrator->pause_simulation();
-            if (!set_control_context(EPlayerControlContext::PauseMenu)) {
+            if (!set_control_context(EPlayerControlContext::None)) {
                 orchestrator->start_simulation();
+                return;
             }
+
+            pause_menu = ui_root->show_pause_menu(*global_input.toggle_menu);
+            if (!IsValid(pause_menu)) {
+                if (restore_ship_controls_after_pause_) {
+                    set_control_context(EPlayerControlContext::Ship);
+                }
+                restore_ship_controls_after_pause_ = false;
+                pause_resume_pending_ = false;
+                orchestrator->start_simulation();
+                return;
+            }
+            pause_menu->OnDeactivated().RemoveAll(this);
+            pause_menu->OnDeactivated().AddUObject(this, &ThisClass::on_pause_menu_deactivated);
             break;
         }
         case EOrchestratorState::Uninitialised:
         case EOrchestratorState::Paused: {
-            resume_game();
+            if (IsValid(pause_menu) && pause_menu->IsActivated()) {
+                pause_menu->DeactivateWidget();
+            } else {
+                resume_game();
+            }
             break;
         }
         case EOrchestratorState::Stopped: {
@@ -255,6 +256,7 @@ void ASpaceGamePlayerController::BeginPlay() {
     Super::BeginPlay();
 
     begin_play_finished_ = true;
+    initialise_ui_root();
     if (main_menu_requested_) {
         initialise_main_menu();
         return;
@@ -266,13 +268,6 @@ void ASpaceGamePlayerController::BeginPlay() {
 void ASpaceGamePlayerController::initialise_gameplay() {
     bind_orchestrator_reset();
     initialise_hud();
-    if (IsValid(ui_data)) {
-        pause_menu_control_context_.initialise(*this, *ui_data);
-    } else {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ASpaceGamePlayerController::initialise_gameplay: UI data is invalid."));
-    }
 
     auto* const ship{Cast<Pawn>(GetPawn())};
     if (IsValid(ship)) {
@@ -295,9 +290,13 @@ void ASpaceGamePlayerController::Tick(float const dt) {
 }
 
 void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
+    shutting_down_ui_ = true;
+    if (IsValid(pause_menu)) {
+        pause_menu->OnDeactivated().RemoveAll(this);
+    }
+    pause_menu = nullptr;
+    shutdown_ui_root();
     set_control_context(EPlayerControlContext::None);
-    main_menu_control_context_.shutdown();
-    pause_menu_control_context_.shutdown();
     ship_control_context_.shutdown();
     shutdown_global_input();
 
@@ -340,8 +339,7 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
 
     ship->on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
     ship_control_context_.set_ship(ship);
-    if (begin_play_finished_ && active_control_context_ != EPlayerControlContext::MainMenu &&
-        active_control_context_ != EPlayerControlContext::PauseMenu) {
+    if (begin_play_finished_ && !IsValid(pause_menu) && !main_menu_requested_) {
         set_control_context(EPlayerControlContext::Ship);
     }
 
@@ -383,13 +381,76 @@ void ASpaceGamePlayerController::initialise_main_menu() {
     ship_control_context_.shutdown();
     shutdown_global_input();
 
-    if (!main_menu_control_context_.is_initialised() &&
-        !main_menu_control_context_.initialise(*this, main_menu_widget_class)) {
+    if (!IsValid(ui_root) && !initialise_ui_root()) {
         return;
     }
 
-    set_control_context(EPlayerControlContext::MainMenu);
+    auto* const game_instance{GetGameInstance()};
+    auto* const subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    auto const show_level_select{IsValid(subsystem) && subsystem->has_level_launch_error()};
+    if (!ui_root->show_main_menu(show_level_select)) {
+        return;
+    }
+
+    select_main_menu_camera();
     SetActorTickEnabled(false);
+}
+
+auto ASpaceGamePlayerController::initialise_ui_root() -> bool {
+    if (IsValid(ui_root)) {
+        return true;
+    }
+    if (!IsValid(ui_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::initialise_ui_root: UI data is invalid."));
+        return false;
+    }
+
+    auto const root_class{ui_data->get_widget_class<ml::ioj::UGameUiRootLayout>()};
+    if (!root_class) {
+        return false;
+    }
+    auto* const root{
+        CreateWidget<ml::ioj::UGameUiRootLayout>(this, root_class, TEXT("game_ui_root"))};
+    if (!IsValid(root) || !root->initialise(*ui_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::initialise_ui_root: Failed to create root."));
+        return false;
+    }
+
+    ui_root = root;
+    root->AddToPlayerScreen(100);
+    root->ActivateWidget();
+    return true;
+}
+
+void ASpaceGamePlayerController::shutdown_ui_root() {
+    if (!IsValid(ui_root)) {
+        return;
+    }
+    ui_root->clear_menus();
+    ui_root->DeactivateWidget();
+    ui_root->RemoveFromParent();
+    ui_root = nullptr;
+}
+
+void ASpaceGamePlayerController::select_main_menu_camera() {
+    static FName const camera_tag{TEXT("MainMenuCamera")};
+    for (TActorIterator<ACameraActor> it{GetWorld()}; it; ++it) {
+        if (it->ActorHasTag(camera_tag)) {
+            SetViewTarget(*it);
+            return;
+        }
+    }
+
+    UE_LOG(LogSandboxController,
+           Warning,
+           TEXT("ASpaceGamePlayerController::select_main_menu_camera: No camera tagged '%s' was "
+                "found."),
+           *camera_tag.ToString());
 }
 
 void ASpaceGamePlayerController::bind_orchestrator_reset() {
@@ -416,6 +477,13 @@ void ASpaceGamePlayerController::bind_orchestrator_reset() {
 }
 
 void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& orchestrator) {
+    if (IsValid(pause_menu)) {
+        pause_menu->OnDeactivated().RemoveAll(this);
+        pause_menu->DeactivateWidget();
+        pause_menu = nullptr;
+    }
+    restore_ship_controls_after_pause_ = false;
+    pause_resume_pending_ = false;
     set_control_context(EPlayerControlContext::None);
 
     auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator.get_player_ship())};
@@ -514,11 +582,16 @@ void ASpaceGamePlayerController::resume_game() {
         return;
     }
 
-    auto const target_context{IsValid(Cast<Pawn>(GetPawn())) ? EPlayerControlContext::Ship
-                                                             : EPlayerControlContext::None};
+    auto const should_restore_ship{pause_resume_pending_ ? restore_ship_controls_after_pause_
+                                                         : IsValid(Cast<Pawn>(GetPawn()))};
+    auto const target_context{should_restore_ship && IsValid(Cast<Pawn>(GetPawn()))
+                                  ? EPlayerControlContext::Ship
+                                  : EPlayerControlContext::None};
     if (!set_control_context(target_context)) {
         return;
     }
+    restore_ship_controls_after_pause_ = false;
+    pause_resume_pending_ = false;
 
     switch (orchestrator->get_state()) {
         case EOrchestratorState::Uninitialised:
@@ -530,6 +603,16 @@ void ASpaceGamePlayerController::resume_game() {
         case EOrchestratorState::Stopped: {
             break;
         }
+    }
+}
+
+void ASpaceGamePlayerController::on_pause_menu_deactivated() {
+    if (IsValid(pause_menu)) {
+        pause_menu->OnDeactivated().RemoveAll(this);
+    }
+    pause_menu = nullptr;
+    if (!shutting_down_ui_) {
+        resume_game();
     }
 }
 

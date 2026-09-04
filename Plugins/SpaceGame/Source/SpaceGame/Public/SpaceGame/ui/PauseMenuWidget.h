@@ -1,64 +1,63 @@
 #pragma once
 
-#include "Blueprint/UserWidget.h"
+#include "SpaceGame/ui/common/MenuActivatableWidget.h"
+
+#include <Input/UIActionBindingHandle.h>
 
 #include "PauseMenuWidget.generated.h"
 
-class UButton;
+class UInputAction;
 class UOverlay;
 class UTextBlock;
 
 namespace ml::ioj {
+class UMenuButtonWidget;
+
 enum class EPauseMenuTab : uint8 {
     Overview,
     Stats,
     Options,
 };
 
-DECLARE_MULTICAST_DELEGATE(FPauseMenuResumeRequested);
-
 UCLASS()
-class SPACEGAME_API UPauseMenuWidget : public UUserWidget {
+class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     GENERATED_BODY()
   public:
     [[nodiscard]] auto get_active_tab() const noexcept -> EPauseMenuTab { return active_tab; }
-
-    void focus_resume_button();
-
-    FPauseMenuResumeRequested resume_requested;
+    void prepare_for_open(UInputAction& toggle_action);
   protected:
     void NativeOnInitialized() override;
-    void NativeConstruct() override;
+    void NativeOnActivated() override;
+    void NativeOnDeactivated() override;
+    auto NativeGetDesiredFocusTarget() const -> UWidget* override;
 
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
     UOverlay* root_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UButton* resume_button{nullptr};
+    UMenuButtonWidget* resume_button{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* overview_button{nullptr};
+    UMenuButtonWidget* overview_button{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* stats_button{nullptr};
+    UMenuButtonWidget* stats_button{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UButton* options_button{nullptr};
+    UMenuButtonWidget* options_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* page_heading{nullptr};
     UPROPERTY(meta = (BindWidget))
     UTextBlock* page_placeholder{nullptr};
   private:
-    UFUNCTION()
     void handle_resume();
-    UFUNCTION()
     void handle_overview();
-    UFUNCTION()
     void handle_stats();
-    UFUNCTION()
     void handle_options();
+    void handle_toggle_action();
 
     void set_active_tab(EPauseMenuTab tab);
-    void set_tab_button_state(UButton& button, bool selected);
 
     EPauseMenuTab active_tab{EPauseMenuTab::Overview};
+    TWeakObjectPtr<UInputAction> toggle_action_;
+    FUIActionBindingHandle toggle_action_binding_;
 };
 }

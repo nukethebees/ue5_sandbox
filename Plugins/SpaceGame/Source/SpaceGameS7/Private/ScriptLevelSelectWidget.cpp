@@ -11,6 +11,7 @@
 #include <Components/VerticalBoxSlot.h>
 #include <Engine/GameInstance.h>
 #include <Kismet/GameplayStatics.h>
+#include <UObject/ConstructorHelpers.h>
 
 namespace ml::s7 {
 namespace {
@@ -59,28 +60,10 @@ auto level_details(FLevelScriptEntry const& entry, ml::ioj::FLevelProgressSummar
 }
 }
 
-void ULevelScriptButton::initialise(int32 const index, FString const& label, bool const valid) {
-    index_ = index;
-    valid_ = valid;
-    auto* const text{NewObject<UTextBlock>(this)};
-    text->SetText(FText::FromString(label));
-    AddChild(text);
-    OnClicked.AddDynamic(this, &ThisClass::handle_clicked);
-    set_selected(false);
-}
-
-void ULevelScriptButton::set_selected(bool const selected_value) {
-    if (selected_value) {
-        SetBackgroundColor(FLinearColor{0.08f, 0.3f, 0.65f});
-    } else if (valid_) {
-        SetBackgroundColor(FLinearColor::White);
-    } else {
-        SetBackgroundColor(FLinearColor{0.4f, 0.08f, 0.08f});
-    }
-}
-
-void ULevelScriptButton::handle_clicked() {
-    selected.Broadcast(index_);
+UScriptLevelSelectWidget::UScriptLevelSelectWidget() {
+    static ConstructorHelpers::FClassFinder<ml::ioj::UMenuButtonWidget> const menu_button_class{
+        TEXT("/SpaceGame/UI/Common/WBP_MenuButton")};
+    menu_button_class_ = menu_button_class.Class;
 }
 
 void UScriptLevelSelectWidget::NativeOnInitialized() {
@@ -104,11 +87,12 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
         return;
     }
 
-    refresh_button->OnClicked.AddDynamic(this, &ThisClass::handle_refresh);
-    launch_button->OnClicked.AddDynamic(this, &ThisClass::handle_launch);
-    start_paused_button->OnClicked.AddDynamic(this, &ThisClass::handle_start_paused);
+    refresh_button->OnClicked().AddUObject(this, &ThisClass::handle_refresh);
+    launch_button->OnClicked().AddUObject(this, &ThisClass::handle_launch);
+    start_paused_button->OnClicked().AddUObject(this, &ThisClass::handle_start_paused);
     launch_button->SetIsEnabled(false);
     start_paused_button->SetIsEnabled(false);
+    refresh_levels();
 }
 
 auto UScriptLevelSelectWidget::create_script_preview() -> bool {
@@ -133,15 +117,21 @@ auto UScriptLevelSelectWidget::create_script_preview() -> bool {
     return true;
 }
 
-void UScriptLevelSelectWidget::activate() {
+void UScriptLevelSelectWidget::NativeOnActivated() {
     refresh_levels();
-    if (IsValid(level_list) && level_list->GetChildrenCount() > 0) {
-        level_list->GetChildAt(0)->SetKeyboardFocus();
+    if (!level_buttons_.IsEmpty() && IsValid(level_buttons_[0])) {
+        desired_focus_target_ = level_buttons_[0];
     } else if (IsValid(refresh_button)) {
-        refresh_button->SetKeyboardFocus();
+        desired_focus_target_ = refresh_button;
     } else {
-        Super::activate();
+        desired_focus_target_ = Super::NativeGetDesiredFocusTarget();
     }
+    Super::NativeOnActivated();
+}
+
+auto UScriptLevelSelectWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
+    return IsValid(desired_focus_target_) ? desired_focus_target_.Get()
+                                          : Super::NativeGetDesiredFocusTarget();
 }
 
 void UScriptLevelSelectWidget::refresh_levels() {
@@ -177,14 +167,41 @@ void UScriptLevelSelectWidget::refresh_levels() {
                                   : status + TEXT("\n") + MoveTemp(launch_error);
     }
 
+    if (!menu_button_class_) {
+        status_text->SetText(FText::FromString(TEXT("Menu button class is unavailable.")));
+        return;
+    }
+
     auto const count{entries_.Num()};
     for (int32 i{0}; i < count; ++i) {
         auto const& entry{entries_[i]};
-        auto* const button{NewObject<ULevelScriptButton>(this)};
-        button->initialise(i, entry.display_title, static_cast<bool>(entry));
-        button->selected.AddUObject(this, &ThisClass::select_level);
+        auto* const button{
+            CreateWidget<ml::ioj::UMenuButtonWidget>(GetWorld(), menu_button_class_)};
+        if (!IsValid(button)) {
+            UE_LOG(LogSandboxUI,
+                   Error,
+                   TEXT("UScriptLevelSelectWidget::refresh_levels: Failed to create level row."));
+            return;
+        }
+        button->set_text(FText::FromString(entry.display_title));
+        button->SetIsSelectable(true);
+        button->SetIsToggleable(true);
+        button->OnClicked().AddWeakLambda(this, [this, i] { select_level(i); });
         level_list->AddChildToVerticalBox(button);
         level_buttons_.Add(button);
+    }
+
+    auto const button_count{level_buttons_.Num()};
+    for (int32 i{0}; i < button_count; ++i) {
+        auto* const previous{i > 0 ? level_buttons_[i - 1].Get() : nullptr};
+        auto* const next{i + 1 < button_count ? level_buttons_[i + 1].Get() : nullptr};
+        if (IsValid(previous)) {
+            level_buttons_[i]->SetNavigationRuleExplicit(EUINavigation::Up, previous);
+        }
+        if (IsValid(next)) {
+            level_buttons_[i]->SetNavigationRuleExplicit(EUINavigation::Down, next);
+        }
+        level_buttons_[i]->SetNavigationRuleExplicit(EUINavigation::Left, launch_button);
     }
 
     if (status.IsEmpty()) {
@@ -204,7 +221,7 @@ void UScriptLevelSelectWidget::select_level(int32 const index) {
     selected_index_ = index;
     auto const button_count{level_buttons_.Num()};
     for (int32 i{0}; i < button_count; ++i) {
-        level_buttons_[i]->set_selected(i == index);
+        level_buttons_[i]->SetIsSelected(i == index);
     }
 
     auto const& entry{entries_[index]};
@@ -224,7 +241,9 @@ void UScriptLevelSelectWidget::select_level(int32 const index) {
         status_text->SetText(FText::FromString(
             progress_label(entry.definition.GetValue(), progress) + TEXT(" - Ready to launch.")));
         details_text->SetText(FText::FromString(level_details(entry, progress)));
-        launch_button->SetKeyboardFocus();
+        desired_focus_target_ = launch_button;
+        launch_button->SetNavigationRuleExplicit(EUINavigation::Right, level_buttons_[index]);
+        RequestRefreshFocus();
     } else {
         status_text->SetText(FText::FromString(entry.error));
         details_text->SetText(FText::GetEmpty());
@@ -233,6 +252,8 @@ void UScriptLevelSelectWidget::select_level(int32 const index) {
 
 void UScriptLevelSelectWidget::handle_refresh() {
     refresh_levels();
+    desired_focus_target_ = !level_buttons_.IsEmpty() ? level_buttons_[0].Get() : refresh_button;
+    RequestRefreshFocus();
 }
 
 void UScriptLevelSelectWidget::handle_launch() {

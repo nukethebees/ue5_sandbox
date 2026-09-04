@@ -1,8 +1,7 @@
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-
-#include <Components/Button.h>
+#include "SpaceGame/ui/common/MenuButtonWidget.h"
 
 namespace ml::ioj {
 void ULevelSelectWidget::NativeOnInitialized() {
@@ -16,25 +15,14 @@ void ULevelSelectWidget::NativeOnInitialized() {
         return;
     }
 
-    back_button->OnClicked.AddDynamic(this, &ThisClass::handle_back);
+    back_button->OnClicked().AddUObject(this, &ThisClass::handle_back);
 }
 
-void ULevelSelectWidget::activate() {
-    focus_back_button();
-}
-
-void ULevelSelectWidget::focus_back_button() {
-    if (!IsValid(back_button)) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("ULevelSelectWidget::focus_back_button: Back button is invalid."));
-        return;
-    }
-
-    back_button->SetKeyboardFocus();
+auto ULevelSelectWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
+    return back_button;
 }
 
 void ULevelSelectWidget::handle_back() {
-    back_requested.Broadcast();
+    DeactivateWidget();
 }
 }

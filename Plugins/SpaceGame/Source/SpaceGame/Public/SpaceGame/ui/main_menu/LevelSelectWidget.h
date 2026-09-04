@@ -1,32 +1,27 @@
 #pragma once
 
-#include "Blueprint/UserWidget.h"
-#include "SandboxGameShared/ui/CommonMenuDelegates.h"
+#include "SpaceGame/ui/common/MenuActivatableWidget.h"
 
 #include "LevelSelectWidget.generated.h"
 
-class UButton;
 class UOverlay;
 
 namespace ml::ioj {
-UCLASS()
-class SPACEGAME_API ULevelSelectWidget : public UUserWidget {
-    GENERATED_BODY()
-  public:
-    virtual void activate();
-    void focus_back_button();
+class UMenuButtonWidget;
 
-    FBackRequested back_requested;
+UCLASS()
+class SPACEGAME_API ULevelSelectWidget : public UMenuActivatableWidget {
+    GENERATED_BODY()
   protected:
     void NativeOnInitialized() override;
+    auto NativeGetDesiredFocusTarget() const -> UWidget* override;
 
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
     UOverlay* root_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UButton* back_button{nullptr};
+    UMenuButtonWidget* back_button{nullptr};
   private:
-    UFUNCTION()
     void handle_back();
 };
 }
