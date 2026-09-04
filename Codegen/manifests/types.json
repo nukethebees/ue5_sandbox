@@ -8,6 +8,14 @@
       "spelling": "ml::subtract_in_place",
       "header": "SandboxCore/array_math.h"
     },
+    "actor_ptr": {
+      "spelling": "AActor*",
+      "header": "GameFramework/Actor.h"
+    },
+    "actor_weak_ptr": {
+      "spelling": "TWeakObjectPtr<AActor>",
+      "header": "GameFramework/Actor.h"
+    },
     "check": {
       "spelling": "check",
       "header": "CoreMinimal.h"
@@ -22,6 +30,10 @@
     "death_reason": {
       "spelling": "ETestDeathReason",
       "header": "SpaceGame/entities/TestDeathReason.h"
+    },
+    "collision_enabled": {
+      "spelling": "ECollisionEnabled::Type",
+      "header": "Engine/EngineTypes.h"
     },
     "entity_type": {
       "spelling": "ETestEntityType",
@@ -74,6 +86,14 @@
     },
     "primitive_component_const_ptr": {
       "spelling": "UPrimitiveComponent const*",
+      "header": "Components/PrimitiveComponent.h"
+    },
+    "primitive_component_ptr": {
+      "spelling": "UPrimitiveComponent*",
+      "header": "Components/PrimitiveComponent.h"
+    },
+    "primitive_component_weak_ptr": {
+      "spelling": "TWeakObjectPtr<UPrimitiveComponent>",
       "header": "Components/PrimitiveComponent.h"
     },
     "registry_handle": {
@@ -159,6 +179,10 @@
       "operations": {
         "remove_at_swap": "remove_at_swap"
       }
+    },
+    "transform": {
+      "spelling": "FTransform",
+      "header": "Math/Transform.h"
     },
     "vectors_3i32": {
       "spelling": "FVectors3i32",
