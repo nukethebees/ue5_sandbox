@@ -1,6 +1,9 @@
 #include "SandboxNiagaraControlPanel.h"
 #include "SandboxNiagaraPreviewViewport.h"
 
+#include "SandboxUI/slate/SlateSlots.h"
+#include "SandboxUI/widgets/SLabeledRow.h"
+
 #include "NiagaraSystem.h"
 
 #include "AssetRegistry/AssetData.h"
@@ -82,17 +85,20 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
         .Padding(12.0f)
             [SNew(SScrollBox) +
              SScrollBox::Slot()[SNew(SVerticalBox) +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 12.0f})
                                     [SNew(STextBlock)
                                          .Text(NSLOCTEXT("SandboxNiagara",
                                                         "ControlPanelTitle",
                                                         "Sandbox Niagara Experiments"))
                                          .Font(FAppStyle::Get().GetFontStyle(
                                              "HeadingExtraSmall"))] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 8.0f})
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "TemplateLabel", "Template System"))] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 12.0f})
                                     [SNew(SObjectPropertyEntryBox)
                                          .AllowedClass(UNiagaraSystem::StaticClass())
                                          .ObjectPath_Lambda([this]() {
@@ -101,10 +107,12 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
                                          .OnObjectChanged_UObject(
                                              this,
                                              &USandboxNiagaraControlPanel::select_template)] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 8.0f})
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "ExperimentLabel", "Experiment"))] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 12.0f})
                                     [SAssignNew(
                                          experiment_combo_,
                                          SComboBox<TSharedPtr<FSandboxNiagaraExperimentDefinition>>)
@@ -129,18 +137,23 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
                                                                    "NoExperiments",
                                                                    "No experiments found");
                                          })]] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 8.0f})
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "NameLabel", "Experiment Name"))] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 12.0f})
                                     [SAssignNew(experiment_name_input_, SEditableTextBox)
                                          .Text(FText::FromString(initial_name))] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 8.0f})
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "ParametersLabel", "Parameters"))] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 12.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 12.0f})
                                     [SAssignNew(parameter_list_, SVerticalBox)] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 8.0f})
                                     [SNew(SUniformGridPanel)
                                          .SlotPadding(FMargin{3.0f}) +
                                      SUniformGridPanel::Slot(0, 0)
@@ -201,10 +214,12 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
                                               .OnClicked_UObject(
                                                   this,
                                                   &USandboxNiagaraControlPanel::open_showcase)]] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 8.0f, 0.0f, 8.0f})
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "PreviewLabel", "Live Preview"))] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 8.0f})
                                     [SNew(SUniformGridPanel)
                                          .SlotPadding(FMargin{3.0f}) +
                                      SUniformGridPanel::Slot(0, 0)
@@ -231,14 +246,16 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
                                               .OnClicked_UObject(
                                                   this,
                                                   &USandboxNiagaraControlPanel::frame_preview)]] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 0.0f, 0.0f, 8.0f})
                                     [SNew(SBox)
                                          .HeightOverride(520.0f)
                                          [preview_viewport_.ToSharedRef()]] +
-                                SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 4.0f)
+                                SandboxUI::Slate::vbox_auto_slot(
+                                    FMargin{0.0f, 8.0f, 0.0f, 4.0f})
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "StatusLabel", "Status"))] +
-                                SVerticalBox::Slot().AutoHeight()
+                                SandboxUI::Slate::vbox_auto_slot()
                                     [SAssignNew(status_output_, SMultiLineEditableTextBox)
                                          .IsReadOnly(true)
                                          .Text(FText::FromString(initial_status))]]]};
@@ -355,20 +372,19 @@ void USandboxNiagaraControlPanel::rebuild_parameter_controls() {
             0);
     } else {
         parameter_list_->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
-            [SNew(SHorizontalBox) +
-             SHorizontalBox::Slot().FillWidth(0.45f).VAlign(VAlign_Center)
-                 [SNew(STextBlock).Text(
-                     NSLOCTEXT("SandboxNiagara", "BurstCountParameter", "Burst Count"))] +
-             SHorizontalBox::Slot().FillWidth(0.55f)
-                 [SNew(SNumericEntryBox<int32>)
-                      .MinValue(1)
-                      .MaxValue(1000000)
-                      .Value_Lambda([this]() {
-                          return TOptional<int32>{selected_configuration_.burst_count};
-                      })
-                      .OnValueCommitted_Lambda([this](int32 const value, ETextCommit::Type) {
-                          selected_configuration_.burst_count = value;
-                      })]];
+            [SNew(SLabeledRow)
+                 .Label(NSLOCTEXT("SandboxNiagara", "BurstCountParameter", "Burst Count"))
+                 .LabelFillWidth(0.45f)
+                 .ContentFillWidth(0.55f)
+                     [SNew(SNumericEntryBox<int32>)
+                          .MinValue(1)
+                          .MaxValue(1000000)
+                          .Value_Lambda([this]() {
+                              return TOptional<int32>{selected_configuration_.burst_count};
+                          })
+                          .OnValueCommitted_Lambda([this](int32 const value, ETextCommit::Type) {
+                              selected_configuration_.burst_count = value;
+                          })]];
     }
     if (selected_configuration_.spawn_shape == ESandboxNiagaraSpawnShape::Cylinder) {
         configuration_parameters.Add(
@@ -393,40 +409,40 @@ void USandboxNiagaraControlPanel::rebuild_parameter_controls() {
     for (FConfigurationParameter const& parameter : configuration_parameters) {
         auto const member{parameter.member};
         parameter_list_->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
-            [SNew(SHorizontalBox) +
-             SHorizontalBox::Slot().FillWidth(0.45f).VAlign(VAlign_Center)
-                 [SNew(STextBlock).Text(parameter.label)] +
-             SHorizontalBox::Slot().FillWidth(0.55f)
-                 [SNew(SNumericEntryBox<float>)
-                      .MinValue(parameter.minimum)
-                      .MaxValue(parameter.maximum)
-                      .Value_Lambda([this, member]() {
-                          return TOptional<float>{selected_configuration_.*member};
-                      })
-                      .OnValueCommitted_Lambda(
-                          [this, member](float const value, ETextCommit::Type) {
-                              selected_configuration_.*member = value;
-                          })]];
+            [SNew(SLabeledRow)
+                 .Label(parameter.label)
+                 .LabelFillWidth(0.45f)
+                 .ContentFillWidth(0.55f)
+                     [SNew(SNumericEntryBox<float>)
+                          .MinValue(parameter.minimum)
+                          .MaxValue(parameter.maximum)
+                          .Value_Lambda([this, member]() {
+                              return TOptional<float>{selected_configuration_.*member};
+                          })
+                          .OnValueCommitted_Lambda(
+                              [this, member](float const value, ETextCommit::Type) {
+                                  selected_configuration_.*member = value;
+                              })]];
     }
 
     for (FSandboxNiagaraFloatParameter const& parameter :
          selected_configuration_.float_parameters) {
         auto const parameter_name{parameter.name};
         parameter_list_->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
-            [SNew(SHorizontalBox) +
-             SHorizontalBox::Slot().FillWidth(0.45f).VAlign(VAlign_Center)
-                 [SNew(STextBlock).Text(FText::FromString(parameter.display_name))] +
-             SHorizontalBox::Slot().FillWidth(0.55f)
-                 [SNew(SNumericEntryBox<float>)
-                      .MinValue(parameter.minimum)
-                      .MaxValue(parameter.maximum)
-                      .Value_Lambda([this, parameter_name]() {
-                          return get_float_parameter(parameter_name);
-                      })
-                      .OnValueCommitted_Lambda(
-                          [this, parameter_name](float const value, ETextCommit::Type) {
-                              set_float_parameter(parameter_name, value);
-                          })]];
+            [SNew(SLabeledRow)
+                 .Label(FText::FromString(parameter.display_name))
+                 .LabelFillWidth(0.45f)
+                 .ContentFillWidth(0.55f)
+                     [SNew(SNumericEntryBox<float>)
+                          .MinValue(parameter.minimum)
+                          .MaxValue(parameter.maximum)
+                          .Value_Lambda([this, parameter_name]() {
+                              return get_float_parameter(parameter_name);
+                          })
+                          .OnValueCommitted_Lambda(
+                              [this, parameter_name](float const value, ETextCommit::Type) {
+                                  set_float_parameter(parameter_name, value);
+                              })]];
     }
 }
 

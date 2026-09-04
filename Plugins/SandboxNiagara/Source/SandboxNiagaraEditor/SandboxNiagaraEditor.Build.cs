@@ -30,6 +30,7 @@ public class SandboxNiagaraEditor : ModuleRules
             "NiagaraEditor",
             "PropertyEditor",
             "Projects",
+            "SandboxUI",
             "Slate",
             "UMG",
             "UMGEditor",

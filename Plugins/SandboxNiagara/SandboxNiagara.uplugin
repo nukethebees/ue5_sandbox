@@ -20,6 +20,10 @@
 		{
 			"Name": "Niagara",
 			"Enabled": true
+		},
+		{
+			"Name": "SandboxUI",
+			"Enabled": true
 		}
 	]
 }

@@ -8,37 +8,17 @@
 #include "SandboxEditorToolsLogCategories.h"
 #include "SandboxEditorToolsSubsystem.h"
 #include "SandboxUI/slate/SlateSlots.h"
+#include "SandboxUI/widgets/SSectionPanel.h"
 
 #include "Engine/Engine.h"
 #include "Layout/Margin.h"
 #include "Selection.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Input/SVectorInputBox.h"
-#include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
 #define LOCTEXT_NAMESPACE "SandboxEditorToolsMainPanel"
-
-void SSandboxEditorToolsSection::Construct(FArguments const& in_args) {
-    auto const border_image{FAppStyle::Get().GetBrush("WhiteBrush")};
-    auto const border_bg_colour{FLinearColor(0.1f, 0.1f, 0.1f)};
-    auto const border_padding{8.f};
-
-    // clang-format off
-    ChildSlot
-    [
-        SNew(SBorder)
-        .Padding(border_padding)
-        .BorderImage(border_image)
-        .BorderBackgroundColor(border_bg_colour)
-        .Content()
-        [
-            in_args._Content.Widget
-        ]
-    ];
-    // clang-format on
-}
 
 void SSandboxEditorToolsMainPanel::Construct(FArguments const&) {
     construct_children();
@@ -46,6 +26,8 @@ void SSandboxEditorToolsMainPanel::Construct(FArguments const&) {
 }
 void SSandboxEditorToolsMainPanel::construct_children() {
     FMargin const section_padding{0.0f, 4.0f};
+    auto const section_border{FAppStyle::Get().GetBrush("WhiteBrush")};
+    FLinearColor const section_background{0.1f, 0.1f, 0.1f};
     auto const make_centered_text{[](FText const& text) -> TSharedRef<SWidget> {
         // clang-format off
         return SNew(STextBlock)
@@ -63,19 +45,21 @@ void SSandboxEditorToolsMainPanel::construct_children() {
         SNew(SVerticalBox)
         +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
         [
-            SNew(SSandboxEditorToolsSection)
+            SNew(SSectionPanel)
+            .Title(LOCTEXT("CursorHeading", "Cursor"))
+            .TitleJustification(ETextJustify::Center)
+            .TitlePadding(section_padding)
+            .BorderImage(section_border)
+            .BorderBackgroundColor(section_background)
+            .Padding(8.0f)
             [
                 SNew(SVerticalBox)
                 +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
-                    make_centered_text(LOCTEXT("CursorHeading", "Cursor"))
-                ]
-                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
-                [
                     SNew(SHorizontalBox)
-                    +SHorizontalBox::Slot() 
+                    +SandboxUI::Slate::hbox_fill_slot()
                     .VAlign(VAlign_Fill)
-                    .HAlign(EHorizontalAlignment::HAlign_Fill)
+                    .HAlign(HAlign_Fill)
                     [
                         SAssignNew(cursor_name, STextBlock)
                         .Text(LOCTEXT("NoCursor", "Cursor name: (no cursor)"))
@@ -111,13 +95,15 @@ void SSandboxEditorToolsMainPanel::construct_children() {
         //------------------------------------------------------------------------------------------
         +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
         [
-            SNew(SSandboxEditorToolsSection)
+            SNew(SSectionPanel)
+            .Title(LOCTEXT("AlignmentHeading", "Alignment"))
+            .TitleJustification(ETextJustify::Center)
+            .TitlePadding(section_padding)
+            .BorderImage(section_border)
+            .BorderBackgroundColor(section_background)
+            .Padding(8.0f)
             [
                 SNew(SVerticalBox)
-                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
-                [
-                    make_centered_text(LOCTEXT("AlignmentHeading", "Alignment"))
-                ]
                 +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SButton)
@@ -168,13 +154,15 @@ void SSandboxEditorToolsMainPanel::construct_children() {
         //------------------------------------------------------------------------------------------
         +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
         [
-            SNew(SSandboxEditorToolsSection)
+            SNew(SSectionPanel)
+            .Title(LOCTEXT("LayoutHeading", "Layout"))
+            .TitleJustification(ETextJustify::Center)
+            .TitlePadding(section_padding)
+            .BorderImage(section_border)
+            .BorderBackgroundColor(section_background)
+            .Padding(8.0f)
             [
                 SNew(SVerticalBox)
-                +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
-                [
-                    make_centered_text(LOCTEXT("LayoutHeading", "Layout"))
-                ]
                 +SandboxUI::Slate::vbox_auto_slot(section_padding).VAlign(VAlign_Center)
                 [
                     SNew(SNumericVectorInputBox<double>)

@@ -16,6 +16,7 @@ public class SandboxGpuTutorials : ModuleRules
             "LevelEditor",
             "Projects",
             "RenderCore",
+            "SandboxUI",
             "Slate",
             "SlateCore",
             "ToolMenus",
