@@ -1,0 +1,41 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "1.0",
+	"FriendlyName": "Space Game Legacy",
+	"Description": "Archived actor-based space-game gameplay and showcase content.",
+	"Category": "Sandbox",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": false,
+	"Installed": false,
+	"Plugins": [
+		{
+			"Name": "EnhancedInput",
+			"Enabled": true
+		},
+		{
+			"Name": "Niagara",
+			"Enabled": true
+		},
+		{
+			"Name": "SandboxCore",
+			"Enabled": true
+		},
+		{
+			"Name": "SandboxGameShared",
+			"Enabled": true
+		},
+		{
+			"Name": "SpaceGame",
+			"Enabled": true
+		}
+	],
+	"Modules": [
+		{
+			"Name": "SGLegacy",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}

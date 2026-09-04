@@ -10,7 +10,7 @@ class UStaticMeshComponent;
 class UArrowComponent;
 
 UCLASS()
-class ASandboxActorSpawner : public AActor {
+class SANDBOX_API ASandboxActorSpawner : public AActor {
     GENERATED_BODY()
   public:
     ASandboxActorSpawner();

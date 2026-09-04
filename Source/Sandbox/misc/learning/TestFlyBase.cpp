@@ -1,8 +1,8 @@
 #include "TestFlyBase.h"
 
-#include "SpaceGame/ships/common/ShipHealthComponent.h"
-#include "SpaceGame/ships/player/legacy/ShipDamageResult.h"
 #include "SandboxGameShared/constants/collision_channels.h"
+#include "SpaceGame/combat/ShipDamageResult.h"
+#include "SpaceGame/ships/common/ShipHealthComponent.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/StaticMeshComponent.h"

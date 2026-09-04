@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Sandbox/misc/learning/TestMaterialConfig.h"
-#include "SpaceGame/ships/player/legacy/DamageableShip.h"
+#include "SpaceGame/combat/DamageableShip.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"

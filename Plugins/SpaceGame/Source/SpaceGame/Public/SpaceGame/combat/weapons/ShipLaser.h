@@ -13,6 +13,8 @@ class UMaterialInterface;
 
 class UShipLaserConfig;
 
+DECLARE_DELEGATE(FOnShipLaserKilled);
+
 UCLASS()
 class SPACEGAME_API AShipLaser : public AActor {
     GENERATED_BODY()
@@ -26,6 +28,8 @@ class SPACEGAME_API AShipLaser : public AActor {
     void set_damage(int32 new_damage) { damage = new_damage; }
     auto get_damage() const { return damage; }
     void set_config(UShipLaserConfig const& config);
+
+    FOnShipLaserKilled on_killed;
   protected:
     void BeginPlay() override;
     void OnConstruction(FTransform const& transform);

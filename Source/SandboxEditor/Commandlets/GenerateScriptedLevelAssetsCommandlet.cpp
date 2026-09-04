@@ -609,6 +609,7 @@ auto configure_runtime_game_mode(UClass& player_controller_class) -> bool {
     }
     game_mode->Modify();
     game_mode->PlayerControllerClass = &player_controller_class;
+    game_mode->DefaultPawnClass = nullptr;
     return save_asset(*blueprint);
 }
 

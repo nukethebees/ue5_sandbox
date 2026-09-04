@@ -1,0 +1,340 @@
+#include "SGLegacy/players/MothershipBoss.h"
+
+#include "SandboxGameShared/constants/collision_channels.h"
+#include "SpaceGame/combat/DamageableShip.h"
+#include "SpaceGame/ships/common/ShipHealthComponent.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
+
+#include "Components/PointLightComponent.h"
+#include "Components/SceneComponent.h"
+#include "Components/SpotLightComponent.h"
+#include "Components/StaticMeshComponent.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/World.h"
+#include "Materials/MaterialInstance.h"
+
+#include <type_traits>
+
+#include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
+AMothershipBoss::AMothershipBoss()
+    : mesh_component{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("main_ship"))} {
+    PrimaryActorTick.bCanEverTick = true;
+    PrimaryActorTick.bStartWithTickEnabled = true;
+
+    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
+
+    mesh_component->SetupAttachment(RootComponent);
+
+    add_n_components<n_hatches>(hatch_meshes, TEXT("hatch"));
+    add_n_components<n_hatches>(hatch_lights, TEXT("hatch_light"));
+    add_n_components<n_hatches>(hatch_healths, TEXT("hatch_health"));
+    add_n_components<n_search_lights>(search_light_meshes, TEXT("search_light"));
+    add_n_components<n_point_lights>(point_lights, TEXT("point_light"));
+}
+
+template <int32 N, typename T>
+void AMothershipBoss::add_n_components(TArray<T*>& components, FString const& name_base) {
+    for (int32 i{0}; i < N; i++) {
+        auto const name{FString::Printf(TEXT("%s_%d"), *name_base, i)};
+        auto* new_component{CreateDefaultSubobject<T>(*name)};
+        if (!new_component) {
+            WARN_IS_FALSE(LogSandboxActor, new_component);
+        }
+        if constexpr (std::is_base_of_v<USceneComponent, T>) {
+            new_component->SetupAttachment(mesh_component);
+        }
+
+        components.Add(new_component);
+    }
+}
+
+void AMothershipBoss::Tick(float dt) {
+    Super::Tick(dt);
+
+#if WITH_EDITOR
+    log_cooldown -= dt;
+#endif
+
+    auto const delta_hatch_light_rotation{hatch_light_rotation_speed * dt};
+    for (auto* light : hatch_lights) {
+        light->AddRelativeRotation(delta_hatch_light_rotation);
+    }
+
+    switch (state) {
+        case EMothershipBossState::Moving: {
+            handle_moving(dt);
+            break;
+        }
+        case EMothershipBossState::Spawning: {
+            handle_spawning(dt);
+            break;
+        }
+        case EMothershipBossState::SpawnCooldown: {
+            handle_spawn_cooldown(dt);
+            break;
+        }
+        case EMothershipBossState::Destroyed: {
+            handle_destroyed(dt);
+            break;
+        }
+    }
+
+#if WITH_EDITOR
+    if (log_cooldown.is_finished()) {
+        log_cooldown.reset();
+    }
+#endif
+}
+void AMothershipBoss::BeginPlay() {
+    Super::BeginPlay();
+
+    set_state(EMothershipBossState::Moving);
+}
+void AMothershipBoss::OnConstruction(FTransform const& transform) {
+    Super::OnConstruction(transform);
+
+    UE_LOG(LogSandboxActor, Log, TEXT("AMothershipBoss::OnConstruction"));
+
+    RETURN_IF_NULLPTR(mesh_component);
+    TRY_INIT_PTR(mesh, mesh_component->GetStaticMesh());
+
+    attach_components<n_hatches>(*mesh_component, *mesh, hatch_meshes, TEXT("Hatch"));
+    attach_components<n_hatches>(*mesh_component, *mesh, hatch_lights, TEXT("HatchLight"));
+    attach_components<n_search_lights>(
+        *mesh_component, *mesh, search_light_meshes, TEXT("SearchLight"));
+    attach_components<n_point_lights>(*mesh_component, *mesh, point_lights, TEXT("ShipLight"));
+
+    set_meshes(hatch_mesh_asset, hatch_meshes);
+    set_meshes(search_light_mesh, search_light_meshes);
+
+    RETURN_IF_NULLPTR(search_light_mesh_material);
+    for (auto* c : search_light_meshes) {
+        c->SetMaterial(0, search_light_mesh_material);
+    }
+
+    config_point_lights();
+    config_hatch_lights();
+
+    set_mothership_collision();
+}
+
+void AMothershipBoss::handle_moving(float dt) {
+    auto const delta_pos{dt * movement_speed};
+    auto const loc{GetActorLocation()};
+    if (target) {
+        auto const tgt_loc{target->GetActorLocation()};
+        auto const tgt_loc_adjusted{tgt_loc + target_offset};
+        auto const dist{FVector::Dist(tgt_loc_adjusted, loc)};
+
+        if (dist > target_arrived_threshold) {
+            auto const dir{(tgt_loc_adjusted - loc).GetSafeNormal()};
+            SetActorLocation(loc + dir * delta_pos);
+        } else {
+            on_target_reached.ExecuteIfBound();
+            set_state(EMothershipBossState::Spawning);
+        }
+    }
+}
+void AMothershipBoss::handle_spawning(float dt) {
+    idle_rotation(dt);
+    spawn_cycle -= dt;
+    spawn_interval -= dt;
+    if (spawn_interval.is_finished()) {
+        spawn_ships();
+        spawn_interval.reset();
+    }
+    if (spawn_cycle.is_finished()) {
+        set_state(EMothershipBossState::SpawnCooldown);
+    }
+}
+void AMothershipBoss::handle_spawn_cooldown(float dt) {
+    idle_rotation(dt);
+    spawn_cooldown -= dt;
+    if (spawn_cooldown.is_finished()) {
+        set_state(EMothershipBossState::Spawning);
+    }
+}
+void AMothershipBoss::handle_destroyed(float dt) {}
+
+template <int32 N, typename T>
+void AMothershipBoss::attach_components(UStaticMeshComponent& parent,
+                                        UStaticMesh& parent_mesh,
+                                        TArray<T*>& components,
+                                        FString const& socket_base) {
+    auto const n_components{components.Num()};
+    if (n_components != N) {
+        UE_LOG(LogSandboxActor, Warning, TEXT("Incorrect number of components"));
+        return;
+    }
+
+    auto const rules{FAttachmentTransformRules::SnapToTargetNotIncludingScale};
+
+    for (int32 i{0}; i < N; i++) {
+        auto const socket_name{FString::Printf(TEXT("%s_%d"), *socket_base, i)};
+        auto* socket{parent_mesh.FindSocket(*socket_name)};
+        CONTINUE_IF_NULLPTR(socket);
+        auto* component{components[i]};
+        CONTINUE_IF_NULLPTR(component);
+        component->AttachToComponent(&parent, rules, *socket_name);
+    }
+}
+void AMothershipBoss::set_meshes(UStaticMesh* mesh, TArray<UStaticMeshComponent*>& components) {
+    RETURN_IF_NULLPTR(mesh);
+    for (auto* c : components) {
+        c->SetStaticMesh(mesh);
+    }
+}
+void AMothershipBoss::config_point_lights() {
+    for (auto* pl : point_lights) {
+        CONTINUE_IF_NULLPTR(pl);
+        pl->SetLightColor(point_light_settings.colour);
+        pl->SetLightBrightness(point_light_settings.brightness);
+        pl->SetAttenuationRadius(point_light_settings.attenuation_radius);
+        pl->SetSourceRadius(point_light_settings.source_radius);
+    }
+}
+void AMothershipBoss::config_hatch_lights() {
+    for (auto* pl : hatch_lights) {
+        CONTINUE_IF_NULLPTR(pl);
+        pl->SetLightColor(hatch_light_settings.colour);
+        pl->SetLightBrightness(hatch_light_settings.brightness);
+        pl->SetSourceRadius(hatch_light_settings.source_radius);
+        pl->SetAttenuationRadius(hatch_light_settings.attenuation_radius);
+        pl->SetInnerConeAngle(hatch_light_settings.inner_cone_angle);
+        pl->SetOuterConeAngle(hatch_light_settings.outer_cone_angle);
+    }
+}
+
+auto AMothershipBoss::apply_damage(ShipDamageContext context) -> FShipDamageResult {
+    for (int32 i{0}; i < n_hatches; ++i) {
+        auto* hatch_mesh{hatch_meshes[i]};
+        if (&context.component_hit == hatch_mesh) {
+            UE_LOG(LogSandboxActor, Display, TEXT("Mothership hatch %d hit."), i);
+
+            auto* health{hatch_healths[i]};
+            if (health->is_dead()) {
+                return {EDamageResult::AlreadyDestroyed};
+            }
+            health->apply_damage(context.damage);
+            if (health->is_dead()) {
+                UE_LOG(LogSandboxActor, Display, TEXT("Mothership hatch %d destroyed."), i);
+                on_hatch_destroyed(*hatch_mesh);
+                return {EDamageResult::ComponentDestroyed};
+            } else {
+                UE_LOG(LogSandboxActor,
+                       Display,
+                       TEXT("Mothership hatch %d hp: %d/%d"),
+                       i,
+                       health->get_health(),
+                       health->get_max_health());
+                return {EDamageResult::Damaged};
+            }
+        }
+    }
+
+    UE_LOG(LogSandboxActor,
+           Display,
+           TEXT("Mothership hit but no hatch hit. (%s)"),
+           *context.component_hit.GetName());
+
+    return {EDamageResult::NoEffect};
+}
+void AMothershipBoss::set_mothership_collision() {
+    set_component_collision(*mesh_component);
+    for (auto* hatch : hatch_meshes) {
+        set_component_collision(*hatch);
+    }
+}
+void AMothershipBoss::set_component_collision(UPrimitiveComponent& c) {
+    c.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    c.SetCollisionResponseToChannel(ml::collision::projectile, ECollisionResponse::ECR_Block);
+}
+
+void AMothershipBoss::idle_rotation(float dt) {
+    auto const delta_rotation{rotation_speed * dt};
+    SetActorRotation(GetActorRotation() + delta_rotation);
+}
+void AMothershipBoss::set_state(EMothershipBossState new_state) {
+    state = new_state;
+
+    switch (new_state) {
+        case EMothershipBossState::SpawnCooldown: {
+            spawn_cooldown.reset();
+            break;
+        }
+        case EMothershipBossState::Spawning: {
+            spawn_cycle.reset();
+            spawn_interval.reset();
+            break;
+        }
+        case EMothershipBossState::Destroyed: {
+            on_killed.Broadcast(this);
+            break;
+        }
+        default: {
+            break;
+        }
+    }
+}
+void AMothershipBoss::spawn_ships() {
+    if (!ship_class) {
+#if WITH_EDITOR
+        if (!no_ship_class_warning_logged) {
+            UE_LOG(LogSandboxActor, Warning, TEXT("ship_class is nullptr."));
+            no_ship_class_warning_logged = true;
+        }
+#endif
+        return;
+    }
+
+    FName const socket_name{TEXT("Ship_Spawn")};
+    TRY_INIT_PTR(world, GetWorld());
+    for (int32 i{0}; i < n_hatches; i++) {
+        auto* hatch_health{hatch_healths[i]};
+        if (hatch_health->is_dead()) {
+            continue;
+        }
+        auto* hatch{hatch_meshes[i]};
+        if (!hatch->DoesSocketExist(socket_name)) {
+            UE_LOG(LogSandboxActor,
+                   Warning,
+                   TEXT("Hatch socket %s is missing."),
+                   *socket_name.ToString());
+            continue;
+        }
+
+        auto const transform{hatch->GetSocketTransform(socket_name, RTS_World)};
+
+        TRY_INIT_PTR(ship,
+                     world->SpawnActorDeferred<AActor>(ship_class, transform, nullptr, nullptr));
+        ship->FinishSpawning(transform);
+    }
+}
+void AMothershipBoss::on_hatch_destroyed(UStaticMeshComponent& hatch) {
+    hatch.SetVisibility(false);
+    hatch.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+
+    auto const n{num_alive_hatches()};
+    UE_LOG(LogSandboxActor, Display, TEXT("%d/%d hatches alive"), n, n_hatches);
+    if (!n) {
+        set_state(EMothershipBossState::Destroyed);
+    }
+}
+auto AMothershipBoss::num_dead_hatches() -> int32 {
+    return n_hatches - num_alive_hatches();
+}
+auto AMothershipBoss::num_alive_hatches() -> int32 {
+    int32 out{0};
+
+    for (auto* health : hatch_healths) {
+        if (!health->is_dead()) {
+            out++;
+        }
+    }
+
+    return out;
+}
+bool AMothershipBoss::all_hatches_dead() {
+    return num_alive_hatches() == 0;
+}

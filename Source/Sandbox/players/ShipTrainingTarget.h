@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpaceGame/ships/player/legacy/DamageableShip.h"
+#include "SpaceGame/combat/DamageableShip.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
