@@ -9,6 +9,11 @@
 #include <type_traits>
 
 namespace ml {
+template <SupportsIsEmpty... Containers>
+[[nodiscard]] auto any_non_empty(Containers const&... containers) -> bool {
+    return ((!containers.IsEmpty()) || ...);
+}
+
 template <SupportsNum T>
 auto num(T const& value) noexcept -> int32 {
     return NumTraits<T>::num(value);

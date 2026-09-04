@@ -19,6 +19,11 @@ concept HasMutableNumAndGetData = requires(T const& value) {
     { value.GetData() } -> std::convertible_to<void*>;
 };
 
+template <typename T>
+concept SupportsIsEmpty = requires(T const& value) {
+    { value.IsEmpty() } -> std::convertible_to<bool>;
+};
+
 // num
 template <typename T>
 concept SupportsNum = requires(T const& value) {
