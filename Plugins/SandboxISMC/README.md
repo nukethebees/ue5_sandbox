@@ -20,44 +20,34 @@ material.
 
 ## Data flow
 
-The canonical CPU database is a generated `InstanceData` SoA containing `FVector3f` positions,
-`FQuat4f` rotations, and `FVector3f` scales. Dense integer indices provide direct access. Batch
-removal uses swap-removal, so integer indices are unstable. Simulation arrays that mirror the
-component must apply the same descending removal indices to remain aligned.
+Callers own their canonical instance data in whatever layout and datatypes suit the simulation. The
+generated `InstanceData` SoA remains available as an optional container, but the component does not
+depend on it.
 
-`commit_instance_updates()` converts dirty SoA ranges into immutable render update packets. Each GPU
-instance contains an origin and three scaled-rotation rows, for 64 bytes per instance. Packets cross
-to the render thread, where their byte ranges are copied through RHI-managed staging memory into one
-persistent vertex buffer. The buffer grows to a power-of-two capacity and is not reallocated while
-the active count remains within that capacity. A shared zero stream supplies the unused lightmap-bias
-attribute required by the engine shader layout.
+`set_instances()` accepts the complete live instance count and a chunk callback. The callback reads
+the caller's source arrays and writes transforms through `FSandboxISMCInstanceChunkWriter`, so source
+conversion, final 64-byte GPU packing, and conservative bounds accumulation happen in one pass with
+no intermediate transform array. `Auto`, `Sequential`, and `Parallel` policies control whether the
+fixed 1,024-instance chunks are processed by `ParallelFor`; `Auto` switches at 4,096 instances.
 
-Mutation APIs operate on batches. Contiguous transform updates mark one dirty range, while scattered
-updates mark and coalesce their individual indices. The generated `InstanceData` SoA provides aligned
-position, rotation, and scale views. Mutable whole-instance access conservatively marks every instance
-dirty; callers doing zero-copy partial work should use `edit_instances()` for the relevant range.
-Additions dirty the appended range.
-Creation, buffer growth, swap-removal/reordering, mesh changes, and multiple unsent commits fall back
-to a full snapshot.
-
-Component bounds use a conservative transformed mesh sphere per instance. Sparse updates maintain a
-binary bounds tree from only the changed leaves and their ancestors. A full-range update uses a
-faster linear aggregate and invalidates the tree; the first subsequent sparse update rebuilds it once.
-Creation, removal, mesh changes, and bounds-capacity growth also rebuild the tree. The sphere bounds
-can be looser for elongated meshes, but remain safe for culling.
+Each call replaces the pending immutable snapshot. The render thread copies its complete packed array
+through one offset-zero RHI buffer lock into a persistent vertex buffer. The buffer grows to a
+power-of-two capacity and is not reallocated while the active count remains within that capacity. A
+shared zero stream supplies the unused lightmap-bias attribute required by the engine shader layout.
+Changing the mesh or submitting zero instances clears the snapshot. Component bounds reduce the
+per-chunk conservative mesh-sphere bounds in chunk order.
 
 ## Current update cost
 
-An ordinary partial commit now:
+An update now:
 
-1. packs only coalesced dirty ranges;
-2. updates the corresponding bounds-tree leaves and ancestors; and
-3. uploads only those packed byte ranges.
+1. converts, packs, and accumulates bounds for the complete snapshot, optionally in parallel;
+2. reduces the chunk bounds; and
+3. uploads one contiguous packed array.
 
-At 40,000 instances a full payload is approximately 2.44 MiB; updating 10% as one contiguous range is
-approximately 250 KiB. `stat SandboxISMC` shows preparation, submission, and render-thread upload CPU
-scopes. The lab actor also logs the most recent timings, instance count, dirty count/ranges, and
-payload bytes.
+At 40,000 instances the payload is approximately 2.44 MiB. `stat SandboxISMC` shows snapshot build,
+submission, and render-thread upload CPU scopes. The lab actor also logs the most recent timings,
+instance count, and payload bytes.
 
 ## Version risk
 
@@ -86,15 +76,16 @@ structure; no Chaos integration belongs in this phase.
 Open `/SandboxISMC/Lab/FT_SandboxISMC`. The map contains a lab actor configured with the
 engine cube mesh, a 200 x 200 grid (40,000 instances), lighting, and a camera aimed at the grid. The
 instances regenerate when the actor is constructed so they are visible in the editor. In Simulate or
-PIE, the first 1,024 instances rotate and commit one partial range every tick; the Output Log reports
-update timings and payload bytes.
+PIE, the first 1,024 source instances rotate and the actor submits a complete snapshot every tick;
+the Output Log reports update timings and payload bytes.
 
 ## ISMC comparison benchmark
 
 Open `/SandboxISMC/Lab/FT_SandboxISMCBenchmark` and start PIE. The fixed camera shows two matching
 40,000-instance grids: custom on the left and engine ISMC on the right. Every tick, the configured
 contiguous percentage of both grids receives the same slow vertical translation and rotation. The
-custom update and engine update run consecutively inside the same Game Thread frame, so their sibling
+custom component rebuilds its complete snapshot while the engine ISMC uses its matching batch update.
+The custom update and engine update run consecutively inside the same Game Thread frame, so their sibling
 scopes can be compared directly. Select paired, custom-only, or engine-ISMC-only mode. The isolated
 modes make whole-frame and GPU comparisons attributable to one renderer. There are no phases, warmups,
 or automatic stop; stop PIE after capturing the interval you want.
@@ -136,12 +127,11 @@ maximum values over the complete run:
 - `game_thread`, `render_thread`, and `gpu` are Unreal's whole-frame thread/GPU timers. They are most
   useful in isolated custom-only and engine-only runs; GPU startup samples reported as zero are
   omitted from the CSV.
-- `total_update` covers preparation plus the public component update call.
-- `prepare` is benchmark-side writing or construction of the changed transforms.
-- `api` is `commit_instance_updates()` or `BatchUpdateInstancesTransforms()`.
-- `pack` and `bounds` split the custom component's dirty-range packing and bounds-tree update;
-  both are contained within `api`, not additional costs.
-- `uploaded`, `dirty_instances`, and `dirty_ranges` expose the custom commit packet size and shape.
+- `total_update` covers the public component update path.
+- `build` is the custom component's complete conversion, packing, and bounds pass.
+- `prepare` is benchmark-side construction of the changed engine ISMC transforms.
+- `api` is `set_instances()` or `BatchUpdateInstancesTransforms()`.
+- `uploaded` is the custom snapshot payload size.
 
 When tracing is enabled, the actor records `Saved/Profiling/SandboxISMC_Paired_*.utrace`, including
 CPU, GPU, frame, bookmark, counter, stats, render-command, and RHI-command channels. An editor `Failed
@@ -153,7 +143,7 @@ to connect to the store client` message does not invalidate a file trace when th
 On the Game Thread, expand `SandboxISMCBenchmark_FrameUpdates`. In paired mode every frame contains
 these two sibling scopes:
 
-- `SandboxISMCBenchmark_CustomUpdate`, containing transform preparation and the custom commit.
+- `SandboxISMCBenchmark_CustomUpdate`, containing the custom snapshot build.
 - `SandboxISMCBenchmark_EngineISMCUpdate`, containing transform preparation and
   `BatchUpdateInstancesTransforms()`.
 
@@ -163,9 +153,7 @@ The nested scopes separate caller-side preparation from component API cost. Crea
 
 Filter timers by `SandboxISMC_Custom` to follow the custom path across threads:
 
-- `SandboxISMC_Custom_PackAndBounds` contains the complete custom preparation pass.
-- `SandboxISMC_Custom_PackTransforms` packs the SoA transforms.
-- `SandboxISMC_Custom_UpdateConservativeBounds` updates the conservative bounds tree.
+- `SandboxISMC_Custom_BuildSnapshot` contains the complete conversion, packing, and bounds pass.
 - `SandboxISMC_Custom_SubmitRenderUpdate` submits the snapshot.
 - `SandboxISMC_Custom_RenderThreadUpload` uploads the packed buffer on the Render Thread.
 
@@ -176,7 +164,7 @@ Thread without asynchronous Game Thread readback. The custom component commits e
 counters receive a new sample every frame.
 
 Add counters beginning with `SandboxISMCBenchmark/Custom/` and
-`SandboxISMCBenchmark/EngineISMC/` to the same graph to overlay total update, preparation, and API
+`SandboxISMCBenchmark/EngineISMC/` to the same graph to overlay total update, build/preparation, and API
 time. `SandboxISMCBenchmark/FrameMs` provides frame context. Engine ISMC's normal GPU Scene and
 culling path remains enabled because it is part of the renderer being compared; the chosen cube has
 one LOD, matching the custom renderer's LOD0-only limitation.
