@@ -14,8 +14,9 @@ density cache resolution and defaults to 256 so that large volumes retain useful
 When structural settings change, a compute shader generates domain-warped, periodic 3D density
 directly into a transient single-channel R8 volume texture. The raymarch samples this true spatial
 density once per step, avoiding the sheet-like layering caused by projected 2D textures. One
-`nebula_flow` lookup per pixel offsets the volume coordinates for slow coherent motion. The flow
-texture lives in this plugin, so there is no runtime dependency on the Sandbox Image Lab.
+`nebula_flow` lookup offsets the entire volume for slow coherent motion. The offset is independent
+of the camera ray, so flying through the volume does not introduce view-dependent turbulence. The
+flow texture lives in this plugin, so there is no runtime dependency on the Sandbox Image Lab.
 
 A 128-cubed R8 density volume uses approximately 2 MiB of VRAM per actor; the default 256-cubed
 volume uses approximately 16 MiB. Generation happens once after creation and again only when
@@ -31,8 +32,8 @@ editor action forces a refresh without changing settings.
 The shader has a hard 96-step ceiling. Recurring cost is one translucent draw, one volume-density
 sample per executed step, and one flow sample per pixel. Screen coverage, overlap, resolution, and
 early opacity exit determine the actual GPU cost; avoid stacking several full-screen volumes.
-Stable per-pixel jitter hides most low-step banding, with temporal anti-aliasing providing the
-smoothest result.
+Midpoint ray samples remain stable while the camera moves. Use the high-quality preset for close
+fly-throughs where low step counts would expose the intervals between samples.
 
 The translucent material does not write scene depth and has the usual translucent sorting limits.
 Open `/SandboxShaders/Showcase/SandboxShaders_Showcase` and select **NEBULA VOLUME** to edit it.

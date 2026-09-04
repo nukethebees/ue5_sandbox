@@ -70,19 +70,18 @@ float4 sbx_nebula_volume(float2 screen_uv,
     int const requested_steps = clamp((int)round(step_count), 8, 96);
     float const segment_length = ray_end - ray_start;
     float const step_length = segment_length / float(requested_steps);
-    float const jitter = sbx_hash21(screen_uv * 8192.0);
-    float travelled = ray_start + step_length * jitter;
+    float travelled = ray_start + step_length * 0.5;
     float4 accumulated = 0.0;
     float const time = animation_time * drift_speed;
-    float3 const entry_position_local = camera_position_local + ray_direction * ray_start;
-    float3 const entry_position_physical = entry_position_local * volume_extent * 0.01;
     float3 const seed_offset = sbx_nebula_seed_offset(seed);
-    float2 const flow_uv = entry_position_physical.xy / max(feature_size, 100.0) * 0.47 +
-                           seed_offset.xy + time * float2(0.07, -0.05);
-    float2 const flow = sbx_nebula_decode_flow(
-                            flow_texture.SampleLevel(flow_sampler, flow_uv, 0.0).rg) *
-                        flow_strength;
-    float3 const density_motion = float3(flow.x, flow.y, (flow.x - flow.y) * 0.5) * time * 0.08;
+    float2 const flow_uv = frac(seed_offset.xy) + time * float2(0.07, -0.05);
+    float2 const flow =
+        sbx_nebula_decode_flow(flow_texture.SampleLevel(flow_sampler, flow_uv, 0.0).rg);
+    float3 const drift_direction =
+        normalize(seed_offset / 127.0 * 2.0 - 1.0 + float3(0.001, 0.002, 0.003));
+    float3 const flow_offset = float3(flow.x, flow.y, (flow.x - flow.y) * 0.5) * 0.06;
+    float3 const density_motion =
+        (drift_direction * time * 0.025 + flow_offset) * flow_strength;
     float3 const world_step = ray_direction * step_length * volume_extent * 0.01;
     float const optical_step = length(world_step) / max(feature_size, 100.0);
 
