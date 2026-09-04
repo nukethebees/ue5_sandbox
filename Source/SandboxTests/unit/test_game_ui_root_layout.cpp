@@ -3,6 +3,7 @@
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
+#include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
@@ -66,12 +67,24 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
                 menu_input_config->bIgnoreMoveInput && menu_input_config->bIgnoreLookInput);
         TestRunner->TestEqual(
             TEXT("The screen stack contains one menu"), root->get_screen_count(), 1);
+        auto const root_menu_input_config{root->GetDesiredInputConfig()};
+        TestRunner->TestTrue(TEXT("The root keeps menu input active while a normal screen exists"),
+                             root_menu_input_config.IsSet() &&
+                                 root_menu_input_config->GetInputMode() == ECommonInputMode::Menu &&
+                                 root_menu_input_config->GetMouseCaptureMode() ==
+                                     EMouseCaptureMode::NoCapture);
 
         play_button->OnClicked().Broadcast();
         auto* const level_select{Cast<ml::ioj::ULevelSelectWidget>(root->get_active_screen())};
         TestRunner->TestTrue(TEXT("Play pushes the level selector"), IsValid(level_select));
         TestRunner->TestEqual(
             TEXT("The screen stack contains main and level select"), root->get_screen_count(), 2);
+        auto const transitioned_input_config{root->GetDesiredInputConfig()};
+        TestRunner->TestTrue(
+            TEXT("Pushing level select does not expose gameplay mouse capture"),
+            transitioned_input_config.IsSet() &&
+                transitioned_input_config->GetInputMode() == ECommonInputMode::Menu &&
+                transitioned_input_config->GetMouseCaptureMode() == EMouseCaptureMode::NoCapture);
         if (IsValid(level_select)) {
             level_select->DeactivateWidget();
         }
@@ -103,5 +116,20 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Pause can be reopened"), IsValid(pause_menu));
         TestRunner->TestEqual(
             TEXT("Reopening pause does not accumulate widgets"), root->get_modal_count(), 1);
+        pause_menu->DeactivateWidget();
+
+        auto* const completion{root->show_level_completion(TEXT("Border Skirmish"))};
+        if (!TestRunner->TestTrue(TEXT("Completion is pushed"), IsValid(completion))) {
+            return;
+        }
+        auto* const return_button{Cast<ml::ioj::UMenuButtonWidget>(
+            completion->GetWidgetFromName(TEXT("return_to_level_select_button")))};
+        TestRunner->TestTrue(TEXT("Return is the completion focus target"),
+                             IsValid(return_button) &&
+                                 completion->GetDesiredFocusTarget() == return_button);
+        TestRunner->TestTrue(TEXT("Repeated completion returns the active instance"),
+                             root->show_level_completion(TEXT("Ignored")) == completion);
+        TestRunner->TestEqual(
+            TEXT("Completion does not accumulate widgets"), root->get_modal_count(), 1);
     }
 };

@@ -13,7 +13,8 @@ void UPauseMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     if (!IsValid(resume_button) || !IsValid(overview_button) || !IsValid(stats_button) ||
-        !IsValid(options_button)) {
+        !IsValid(options_button) || !IsValid(return_to_level_select_button) ||
+        !IsValid(quit_button)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UPauseMenuWidget::NativeOnInitialized: One or more buttons are invalid."));
@@ -24,6 +25,9 @@ void UPauseMenuWidget::NativeOnInitialized() {
     overview_button->OnClicked().AddUObject(this, &ThisClass::handle_overview);
     stats_button->OnClicked().AddUObject(this, &ThisClass::handle_stats);
     options_button->OnClicked().AddUObject(this, &ThisClass::handle_options);
+    return_to_level_select_button->OnClicked().AddUObject(
+        this, &ThisClass::handle_return_to_level_select);
+    quit_button->OnClicked().AddUObject(this, &ThisClass::handle_quit);
     overview_button->SetIsSelectable(true);
     overview_button->SetIsToggleable(true);
     stats_button->SetIsSelectable(true);
@@ -35,6 +39,7 @@ void UPauseMenuWidget::NativeOnInitialized() {
 
 void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action) {
     toggle_action_ = &toggle_action;
+    terminal_action_requested_ = false;
     set_active_tab(EPauseMenuTab::Overview);
 }
 
@@ -63,6 +68,9 @@ auto UPauseMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
 }
 
 void UPauseMenuWidget::handle_resume() {
+    if (terminal_action_requested_) {
+        return;
+    }
     DeactivateWidget();
 }
 
@@ -78,7 +86,26 @@ void UPauseMenuWidget::handle_options() {
     set_active_tab(EPauseMenuTab::Options);
 }
 
+void UPauseMenuWidget::handle_return_to_level_select() {
+    if (terminal_action_requested_) {
+        return;
+    }
+    terminal_action_requested_ = true;
+    return_to_level_select_requested.Broadcast();
+}
+
+void UPauseMenuWidget::handle_quit() {
+    if (terminal_action_requested_) {
+        return;
+    }
+    terminal_action_requested_ = true;
+    quit_requested.Broadcast();
+}
+
 void UPauseMenuWidget::handle_toggle_action() {
+    if (terminal_action_requested_) {
+        return;
+    }
     DeactivateWidget();
 }
 

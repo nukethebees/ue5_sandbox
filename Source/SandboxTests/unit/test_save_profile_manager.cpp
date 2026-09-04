@@ -7,6 +7,7 @@ struct FFakeProfileStorage {
     bool index_exists{};
     bool index_load_fails{};
     bool index_save_fails{};
+    bool results_save_fails{};
     bool legacy_exists{};
     FSaveProfileIndexData index{};
     TMap<FString, FSaveProfileResultsData> results{};
@@ -45,6 +46,9 @@ struct FFakeProfileStorage {
                 },
             .save_results =
                 [this](FString const& profile_id, FSaveProfileResultsData const& value) {
+                    if (results_save_fails) {
+                        return false;
+                    }
                     results.Add(profile_id, value);
                     return true;
                 },
@@ -171,5 +175,21 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Activation switches the active profile"),
                               manager.get_active_profile_id(),
                               default_profile_id);
+    }
+
+    TEST_METHOD(FailedCompletionSaveDoesNotClaimPersistence)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{};
+        ml::ioj::FSaveProfileManager manager{storage.make()};
+        TestRunner->TestTrue(TEXT("Profile manager initialises"), manager.initialise());
+
+        storage.results_save_fails = true;
+        auto const record{save_profile_manager_test::make_record(
+            FDateTime{2026, 9, 4}, TEXT("border-skirmish"), 6)};
+        TestRunner->TestFalse(TEXT("Failed storage reports that completion was not persisted"),
+                              manager.append_score_record(record));
+        TestRunner->TestEqual(TEXT("Failed completion is rolled back in memory"),
+                              manager.get_active_records().Num(),
+                              0);
     }
 };

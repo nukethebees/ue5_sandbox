@@ -13,6 +13,7 @@
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/ui/common/GameUiRootLayout.h"
 #include "SpaceGame/ui/common/MenuButtonWidget.h"
+#include "SpaceGame/ui/LevelCompletionWidget.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 #include "SpaceGame/ui/PauseMenuWidget.h"
@@ -54,6 +55,7 @@ auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass
         ml::ioj::UMainMenuWidget::StaticClass(),
         ml::ioj::ULevelSelectWidget::StaticClass(),
         ml::ioj::UPauseMenuWidget::StaticClass(),
+        ml::ioj::ULevelCompletionWidget::StaticClass(),
     };
     return classes;
 }

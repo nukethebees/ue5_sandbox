@@ -130,12 +130,14 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #endif
 }
 
-void USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) {
+auto USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) -> bool {
     if (!profile_manager_.append_score_record(record)) {
         UE_LOG(LogSandboxSubsystem,
                Error,
                TEXT("USpaceSaveSubsystem::save_score_record: Failed to save mission result."));
+        return false;
     }
+    return true;
 }
 
 void USpaceSaveSubsystem::log_save_data() const {

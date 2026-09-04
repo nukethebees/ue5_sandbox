@@ -4,6 +4,10 @@
 #include "SpaceGame/ui/common/MenuButtonWidget.h"
 
 namespace ml::ioj {
+void ULevelSelectWidget::prepare_for_open(FName const preferred_level_id) noexcept {
+    preferred_level_id_ = preferred_level_id;
+}
+
 void ULevelSelectWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 

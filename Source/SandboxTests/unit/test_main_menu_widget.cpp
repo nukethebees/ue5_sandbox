@@ -23,9 +23,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
     {
         auto const* const text_style{GetDefault<ml::ioj::UMenuTextStyle>()};
         TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
-                             IsValid(text_style) &&
-                                 (text_style->Font.CompositeFont.IsValid() ||
-                                  IsValid(text_style->Font.FontObject)));
+                             IsValid(text_style) && (text_style->Font.CompositeFont.IsValid() ||
+                                                     IsValid(text_style->Font.FontObject)));
 
         auto const world_result{ml::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
@@ -79,6 +78,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                                   IsValid(level_select_widget))) {
             return;
         }
+        level_select_widget->prepare_for_open(TEXT("target-practice"));
         auto const level_select_slate{level_select_widget->TakeWidget()};
         (void)level_select_slate;
         level_select_widget->ActivateWidget();
@@ -127,6 +127,11 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
         TestRunner->TestTrue(TEXT("Play is the deterministic initial focus target"),
                              widget->GetDesiredFocusTarget() == play_button);
+        auto* const play_label{
+            IsValid(play_button) ? play_button->GetWidgetFromName(TEXT("label_text")) : nullptr};
+        TestRunner->TestTrue(TEXT("Common button labels do not intercept mouse input"),
+                             IsValid(play_label) &&
+                                 play_label->GetVisibility() == ESlateVisibility::HitTestInvisible);
 
         bool level_select_requested{false};
         widget->level_select_requested.AddLambda(
@@ -135,18 +140,44 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Play requests level select"), level_select_requested);
         TestRunner->TestTrue(TEXT("Level select discovers the example script"),
                              level_list->GetChildrenCount() > 0);
-        TestRunner->TestFalse(TEXT("Launch is disabled until a level is selected"),
-                              launch_button->GetIsEnabled());
-        TestRunner->TestFalse(TEXT("Start Paused is disabled until a level is selected"),
-                              start_paused_button->GetIsEnabled());
+        TestRunner->TestTrue(TEXT("Restored preferred level enables Launch"),
+                             launch_button->GetIsEnabled());
+        TestRunner->TestTrue(TEXT("Restored preferred level enables Start Paused"),
+                             start_paused_button->GetIsEnabled());
 
         auto* const level_button{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(0))};
         if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
             return;
         }
-        TestRunner->TestEqual(TEXT("Level row contains only the authored title"),
+        TestRunner->TestEqual(TEXT("Uncompleted level row contains its authored title"),
                               level_button->get_text().ToString(),
                               FString{TEXT("Border Skirmish")});
+        TestRunner->TestEqual(TEXT("Completed level rows receive a visible marker"),
+                              ml::s7::format_level_row_title(TEXT("Border Skirmish"), true),
+                              FString{TEXT("\u2713 Border Skirmish")});
+
+        ml::ioj::UMenuButtonWidget* target_practice_button{nullptr};
+        auto const level_row_count{level_list->GetChildrenCount()};
+        for (int32 i{0}; i < level_row_count; ++i) {
+            auto* const candidate{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(i))};
+            if (IsValid(candidate) && candidate->get_text().ToString() == TEXT("Target Practice")) {
+                target_practice_button = candidate;
+                break;
+            }
+        }
+        TestRunner->TestTrue(TEXT("Uncompleted level row remains unchanged"),
+                             IsValid(target_practice_button));
+        TestRunner->TestTrue(TEXT("Preferred stable level id restores row focus"),
+                             level_select_widget->GetDesiredFocusTarget() ==
+                                 target_practice_button);
+        TestRunner->TestTrue(TEXT("Preferred stable level id restores row selection"),
+                             IsValid(target_practice_button) &&
+                                 target_practice_button->GetSelected());
+        TestRunner->TestEqual(TEXT("Preferred level information is displayed immediately"),
+                              title_text->GetText().ToString(),
+                              FString{TEXT("Target Practice")});
+        TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
+                             launch_button->GetIsEnabled());
 
         auto* const levels_scroll{Cast<UScrollBox>(level_list->GetParent())};
         auto* const levels_column{

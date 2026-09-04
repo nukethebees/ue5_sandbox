@@ -7,6 +7,7 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
+#include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
@@ -52,6 +53,9 @@ constexpr TCHAR main_menu_widget_package_name[]{TEXT("/SpaceGame/UI/MainMenu/WBP
 constexpr TCHAR pause_menu_widget_object_path[]{
     TEXT("/Game/UI/pause_menu/WBP_PauseMenu.WBP_PauseMenu")};
 constexpr TCHAR pause_menu_widget_package_name[]{TEXT("/Game/UI/pause_menu/WBP_PauseMenu")};
+constexpr TCHAR completion_widget_object_path[]{
+    TEXT("/SpaceGame/UI/InGame/WBP_LevelCompletion.WBP_LevelCompletion")};
+constexpr TCHAR completion_widget_package_name[]{TEXT("/SpaceGame/UI/InGame/WBP_LevelCompletion")};
 constexpr TCHAR menu_button_package_name[]{TEXT("/SpaceGame/UI/Common/WBP_MenuButton")};
 constexpr TCHAR menu_button_object_path[]{
     TEXT("/SpaceGame/UI/Common/WBP_MenuButton.WBP_MenuButton")};
@@ -191,6 +195,7 @@ auto generate_menu_button_widget() -> UClass* {
     }
     auto* const label{make_widget<UCommonTextBlock>(*blueprint->WidgetTree, TEXT("label_text"))};
     label->SetJustification(ETextJustify::Center);
+    label->SetVisibility(ESlateVisibility::HitTestInvisible);
     blueprint->WidgetTree->RootWidget = label;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
@@ -250,6 +255,12 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     make_menu_button(tree, *actions, button_class, TEXT("overview_button"), TEXT("Overview"));
     make_menu_button(tree, *actions, button_class, TEXT("stats_button"), TEXT("Stats"));
     make_menu_button(tree, *actions, button_class, TEXT("options_button"), TEXT("Options"));
+    make_menu_button(tree,
+                     *actions,
+                     button_class,
+                     TEXT("return_to_level_select_button"),
+                     TEXT("Return to Level Select"));
+    make_menu_button(tree, *actions, button_class, TEXT("quit_button"), TEXT("Quit Game"));
 
     auto* const page{tree.ConstructWidget<UVerticalBox>()};
     panel->AddChildToHorizontalBox(page)->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
@@ -261,6 +272,50 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     auto* const placeholder{make_widget<UTextBlock>(tree, TEXT("page_placeholder"))};
     placeholder->SetAutoWrapText(true);
     page->AddChildToVerticalBox(placeholder);
+    tree.RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
+auto generate_level_completion_widget(UClass& button_class) -> UClass* {
+    auto* const blueprint{
+        load_or_create_widget_blueprint(completion_widget_object_path,
+                                        completion_widget_package_name,
+                                        TEXT("WBP_LevelCompletion"),
+                                        *ml::ioj::ULevelCompletionWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+
+    auto& tree{*blueprint->WidgetTree};
+    auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
+    auto* const panel{tree.ConstructWidget<UVerticalBox>()};
+    auto* const panel_slot{root->AddChildToOverlay(panel)};
+    panel_slot->SetPadding(FMargin{80.0f});
+    panel_slot->SetHorizontalAlignment(HAlign_Center);
+    panel_slot->SetVerticalAlignment(VAlign_Center);
+
+    auto* const heading{make_widget<UTextBlock>(tree, TEXT("mission_complete_text"))};
+    heading->SetText(FText::FromString(TEXT("Mission Complete")));
+    auto heading_font{heading->GetFont()};
+    heading_font.Size = 38;
+    heading->SetFont(heading_font);
+    panel->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
+
+    auto* const level_name{make_widget<UTextBlock>(tree, TEXT("level_name_text"))};
+    auto level_name_font{level_name->GetFont()};
+    level_name_font.Size = 28;
+    level_name->SetFont(level_name_font);
+    panel->AddChildToVerticalBox(level_name)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 24.0f});
+
+    auto* const statistics{make_widget<UVerticalBox>(tree, TEXT("statistics_container"))};
+    panel->AddChildToVerticalBox(statistics)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 24.0f});
+    make_menu_button(tree,
+                     *panel,
+                     button_class,
+                     TEXT("return_to_level_select_button"),
+                     TEXT("Return to Level Select"));
+    make_menu_button(tree, *panel, button_class, TEXT("keep_playing_button"), TEXT("Keep Playing"));
+
     tree.RootWidget = root;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
@@ -371,7 +426,8 @@ auto configure_ui_data(UClass& root_class,
                        UClass& button_class,
                        UClass& main_class,
                        UClass& level_class,
-                       UClass& pause_class) -> bool {
+                       UClass& pause_class,
+                       UClass& completion_class) -> bool {
     auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
         return false;
@@ -382,6 +438,8 @@ auto configure_ui_data(UClass& root_class,
     ui_data->widget_classes.classes.Add(ml::ioj::UMainMenuWidget::StaticClass(), &main_class);
     ui_data->widget_classes.classes.Add(ml::ioj::ULevelSelectWidget::StaticClass(), &level_class);
     ui_data->widget_classes.classes.Add(ml::ioj::UPauseMenuWidget::StaticClass(), &pause_class);
+    ui_data->widget_classes.classes.Add(ml::ioj::ULevelCompletionWidget::StaticClass(),
+                                        &completion_class);
     return save_asset(*ui_data);
 }
 
@@ -640,14 +698,21 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     auto* const root_class{generate_root_layout_widget()};
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
                                                   : nullptr};
+    auto* const completion_class{
+        IsValid(button_class) ? generate_level_completion_widget(*button_class) : nullptr};
     auto* const main_class{IsValid(button_class) ? generate_main_menu_widget(*button_class)
                                                  : nullptr};
     auto* const level_class{IsValid(button_class) ? generate_level_select_widget(*button_class)
                                                   : nullptr};
-    auto const ui_generated{
-        IsValid(root_class) && IsValid(button_class) && IsValid(main_class) &&
-        IsValid(level_class) && IsValid(pause_class) &&
-        configure_ui_data(*root_class, *button_class, *main_class, *level_class, *pause_class)};
+    auto const ui_generated{IsValid(root_class) && IsValid(button_class) && IsValid(main_class) &&
+                            IsValid(level_class) && IsValid(pause_class) &&
+                            IsValid(completion_class) &&
+                            configure_ui_data(*root_class,
+                                              *button_class,
+                                              *main_class,
+                                              *level_class,
+                                              *pause_class,
+                                              *completion_class)};
     auto const map_generated{generate_runtime_map()};
     return input_generated && ui_generated && map_generated ? 0 : 1;
 }

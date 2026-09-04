@@ -48,12 +48,17 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("stats_button")))};
         auto* const options_button{
             Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("options_button")))};
+        auto* const return_button{Cast<ml::ioj::UMenuButtonWidget>(
+            widget->GetWidgetFromName(TEXT("return_to_level_select_button")))};
+        auto* const quit_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("quit_button")))};
         auto* const page_heading{Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("page_heading")))};
         auto* const page_placeholder{
             Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("page_placeholder")))};
 
         auto const bindings_valid{IsValid(resume_button) && IsValid(overview_button) &&
                                   IsValid(stats_button) && IsValid(options_button) &&
+                                  IsValid(return_button) && IsValid(quit_button) &&
                                   IsValid(page_heading) && IsValid(page_placeholder)};
         if (!TestRunner->TestTrue(TEXT("All required pause menu bindings are valid"),
                                   bindings_valid)) {
@@ -91,5 +96,13 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
 
         resume_button->OnClicked().Broadcast();
         TestRunner->TestFalse(TEXT("Resume deactivates the pause menu"), widget->IsActivated());
+
+        int32 return_requests{0};
+        widget->return_to_level_select_requested.AddLambda(
+            [&return_requests] { ++return_requests; });
+        return_button->OnClicked().Broadcast();
+        return_button->OnClicked().Broadcast();
+        TestRunner->TestEqual(
+            TEXT("Return to level select is emitted only once"), return_requests, 1);
     }
 };

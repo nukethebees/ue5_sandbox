@@ -10,6 +10,7 @@ class UTestBatchGameUiData;
 
 namespace ml::ioj {
 class ULevelSelectWidget;
+class ULevelCompletionWidget;
 class UMainMenuWidget;
 class UPauseMenuWidget;
 
@@ -18,8 +19,9 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
     GENERATED_BODY()
   public:
     auto initialise(UTestBatchGameUiData& ui_data) -> bool;
-    auto show_main_menu(bool show_level_select) -> bool;
+    auto show_main_menu(bool show_level_select, FName preferred_level_id = NAME_None) -> bool;
     auto show_pause_menu(UInputAction& toggle_action) -> UPauseMenuWidget*;
+    auto show_level_completion(FString level_display_name) -> ULevelCompletionWidget*;
     void clear_menus();
 
     [[nodiscard]] auto get_active_screen() const -> UCommonActivatableWidget*;
@@ -38,5 +40,6 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
     void show_level_select();
 
     TWeakObjectPtr<UTestBatchGameUiData> ui_data_;
+    FName level_select_focus_id_{NAME_None};
 };
 }

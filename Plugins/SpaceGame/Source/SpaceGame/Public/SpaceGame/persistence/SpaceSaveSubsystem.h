@@ -45,7 +45,7 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     bool activate_profile(FString const& profile_id);
     bool reset_test_profile();
 
-    void save_score_record(FScoreRecord const& record);
+    [[nodiscard]] auto save_score_record(FScoreRecord const& record) -> bool;
     void log_save_data() const;
   private:
     static constexpr int32 user_index{0};

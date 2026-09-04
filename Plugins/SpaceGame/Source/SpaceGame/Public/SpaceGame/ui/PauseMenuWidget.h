@@ -13,6 +13,9 @@ class UTextBlock;
 namespace ml::ioj {
 class UMenuButtonWidget;
 
+DECLARE_MULTICAST_DELEGATE(FPauseReturnToLevelSelectRequested);
+DECLARE_MULTICAST_DELEGATE(FPauseQuitRequested);
+
 enum class EPauseMenuTab : uint8 {
     Overview,
     Stats,
@@ -25,6 +28,9 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
   public:
     [[nodiscard]] auto get_active_tab() const noexcept -> EPauseMenuTab { return active_tab; }
     void prepare_for_open(UInputAction& toggle_action);
+
+    FPauseReturnToLevelSelectRequested return_to_level_select_requested;
+    FPauseQuitRequested quit_requested;
   protected:
     void NativeOnInitialized() override;
     void NativeOnActivated() override;
@@ -42,6 +48,10 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     UMenuButtonWidget* stats_button{nullptr};
     UPROPERTY(meta = (BindWidget))
     UMenuButtonWidget* options_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UMenuButtonWidget* return_to_level_select_button{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UMenuButtonWidget* quit_button{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UTextBlock* page_heading{nullptr};
@@ -52,6 +62,8 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void handle_overview();
     void handle_stats();
     void handle_options();
+    void handle_return_to_level_select();
+    void handle_quit();
     void handle_toggle_action();
 
     void set_active_tab(EPauseMenuTab tab);
@@ -59,5 +71,6 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     EPauseMenuTab active_tab{EPauseMenuTab::Overview};
     TWeakObjectPtr<UInputAction> toggle_action_;
     FUIActionBindingHandle toggle_action_binding_;
+    bool terminal_action_requested_{false};
 };
 }

@@ -15,6 +15,8 @@ enum class ELevelLaunchMode : uint8;
 }
 
 namespace ml::s7 {
+SPACEGAMES7_API auto format_level_row_title(FString title, bool completed) -> FString;
+
 UCLASS()
 class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWidget {
     GENERATED_BODY()
@@ -29,6 +31,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void launch_selected_level(ml::ioj::ELevelLaunchMode launch_mode);
     void refresh_levels();
     void select_level(int32 index);
+    void restore_level_selection(int32 index);
+    void apply_level_selection(int32 index, UWidget& focus_target, bool refresh_focus);
 
     void handle_refresh();
     void handle_launch();
@@ -62,5 +66,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     UPROPERTY(Transient)
     TObjectPtr<UWidget> desired_focus_target_{nullptr};
     int32 selected_index_{INDEX_NONE};
+    FName selected_level_id_{NAME_None};
 };
 }

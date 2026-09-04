@@ -177,6 +177,9 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(Mission_SuccessIsTerminal,
                            ml::FTestMissionManagerScenario,
                            ml::EMissionManagerScenario::SuccessIsTerminal)
+    SHARED_SIMULATION_TEST(Mission_ExplicitCompletionIsLatched,
+                           ml::FTestMissionManagerScenario,
+                           ml::EMissionManagerScenario::ExplicitCompletionIsLatched)
 
     SHARED_SIMULATION_TEST(PlayerShip_LethalDamageDestroysPlayerShip,
                            ml::FTestPlayerShipDeathScenario)
