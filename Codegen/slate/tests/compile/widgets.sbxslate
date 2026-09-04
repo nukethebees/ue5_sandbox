@@ -1,0 +1,20 @@
+(widget-library CompileSmoke::Widgets
+  (function empty (params) (::CompileSmoke::Widget))
+  (function callback
+    (params (callback clicked))
+    (::CompileSmoke::Widget :OnClicked (callback clicked)))
+  (function existing
+    (params (existing child))
+    (existing child))
+  (function factory
+    (params (factory make_child) (value value))
+    (call make_child value)))
+
+(widget-class CompileSmoke::Host
+  (function callback
+    (params (callback clicked))
+    (::CompileSmoke::Widget :OnClicked (callback clicked)))
+  (function member (params)
+    (::CompileSmoke::Widget :OnClicked (method clicked)))
+  (function object (params)
+    (::CompileSmoke::Widget :OnClicked (uobject clicked))))

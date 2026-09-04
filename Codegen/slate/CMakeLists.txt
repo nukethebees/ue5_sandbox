@@ -39,6 +39,39 @@ endif()
 
 gtest_discover_tests(slate-codegen-tests PROPERTIES LABELS "unit;all;codegen")
 
+set(SLATE_COMPILE_FIXTURE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile")
+set(SLATE_COMPILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/compile-generated")
+set(SLATE_COMPILE_HEADERS
+  "${SLATE_COMPILE_OUTPUT}/CompileSmoke/Widgets.slate.generated.h"
+  "${SLATE_COMPILE_OUTPUT}/CompileSmoke/Host.slate.generated.h"
+)
+add_custom_command(
+  OUTPUT ${SLATE_COMPILE_HEADERS}
+  COMMAND sandbox-slatec
+    --manifest "${SLATE_COMPILE_FIXTURE}/manifest.json"
+    --output-root "${SLATE_COMPILE_OUTPUT}"
+  DEPENDS sandbox-slatec
+    "${SLATE_COMPILE_FIXTURE}/manifest.json"
+    "${SLATE_COMPILE_FIXTURE}/widgets.sbxslate"
+  VERBATIM
+)
+add_executable(slate-generated-compile-tests
+  tests/compile/main.cpp
+  tests/compile/other.cpp
+  ${SLATE_COMPILE_HEADERS}
+)
+set_target_properties(slate-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
+target_compile_features(slate-generated-compile-tests PRIVATE cxx_std_23)
+target_include_directories(slate-generated-compile-tests PRIVATE "${SLATE_COMPILE_OUTPUT}")
+if(MSVC)
+  target_compile_options(slate-generated-compile-tests PRIVATE /W4 /WX)
+else()
+  target_compile_options(slate-generated-compile-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
+endif()
+add_dependencies(slate-codegen-tests slate-generated-compile-tests)
+add_test(NAME SlateGeneratedCompileSmoke COMMAND slate-generated-compile-tests)
+set_tests_properties(SlateGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
+
 set(SLATE_CODEGEN_DOCUMENTS
   "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.sbxslate"
   "Plugins/SandboxUI/Source/SandboxUIExamples/Private/SandboxUIShowcase.sbxslate"

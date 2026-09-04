@@ -179,6 +179,13 @@ a shared macro is picked up on the next generation or freshness check without re
 
 ## Commands
 
+The `codegen` workflow also generates and builds `tests/compile/widgets.sbxslate` into a standalone
+`slate-generated-compile-tests` executable. Two separate translation units include both generated
+headers to exercise inline linkage. Runtime checks cover move-only callbacks, copy-only lvalue
+callbacks, existing widgets, reusable factories, and private host callbacks. The small test API
+checks generated C++ semantics without Unreal dependencies; production editor builds check actual
+Slate compatibility. Fixture outputs live in the build directory and are not committed.
+
 ```text
 cmake --build --preset codegen --target generate-slate-code
 cmake --build --preset codegen --target check-generated-slate-code
