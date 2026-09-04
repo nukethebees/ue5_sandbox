@@ -10,7 +10,6 @@
 class UTextBlock;
 class UVerticalBox;
 class UMultiLineEditableTextBox;
-class USizeBox;
 
 namespace ml::ioj {
 enum class ELevelLaunchMode : uint8;
@@ -47,7 +46,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void launch_selected_level(ml::ioj::ELevelLaunchMode launch_mode);
     void refresh_levels();
     void select_level(int32 index);
-    void set_script_preview_visible(bool visible);
 
     UFUNCTION()
     void handle_refresh();
@@ -55,9 +53,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void handle_launch();
     UFUNCTION()
     void handle_start_paused();
-    UFUNCTION()
-    void handle_toggle_script();
-
     UPROPERTY(meta = (BindWidget))
     UVerticalBox* level_list{nullptr};
     UPROPERTY(meta = (BindWidget))
@@ -69,6 +64,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     UPROPERTY(meta = (BindWidget))
     UTextBlock* status_text{nullptr};
     UPROPERTY(meta = (BindWidget))
+    UTextBlock* details_text{nullptr};
+    UPROPERTY(meta = (BindWidget))
     UButton* refresh_button{nullptr};
     UPROPERTY(meta = (BindWidget))
     UButton* launch_button{nullptr};
@@ -79,14 +76,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     UPROPERTY(Transient)
     TArray<TObjectPtr<ULevelScriptButton>> level_buttons_{};
     UPROPERTY(Transient)
-    TObjectPtr<UButton> script_toggle_button_{nullptr};
-    UPROPERTY(Transient)
-    TObjectPtr<UTextBlock> script_toggle_text_{nullptr};
-    UPROPERTY(Transient)
-    TObjectPtr<USizeBox> script_preview_container_{nullptr};
-    UPROPERTY(Transient)
     TObjectPtr<UMultiLineEditableTextBox> script_preview_{nullptr};
     int32 selected_index_{INDEX_NONE};
-    bool script_preview_visible_{false};
 };
 }

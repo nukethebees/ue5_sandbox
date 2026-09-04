@@ -7,6 +7,10 @@
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include <Components/Button.h>
+#include <Components/HorizontalBox.h>
+#include <Components/HorizontalBoxSlot.h>
+#include <Components/OverlaySlot.h>
+#include <Components/ScrollBox.h>
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <CQTest.h>
@@ -68,6 +72,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("description_text")))};
         auto* const status_text{
             Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("status_text")))};
+        auto* const details_text{
+            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("details_text")))};
         auto* const launch_button{
             Cast<UButton>(level_select_widget->GetWidgetFromName(TEXT("launch_button")))};
         auto* const start_paused_button{
@@ -87,10 +93,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 
         auto const child_bindings_valid{
             IsValid(level_back_button) && IsValid(level_list) && IsValid(title_text) &&
-            IsValid(description_text) && IsValid(status_text) && IsValid(launch_button) &&
-            IsValid(start_paused_button) && IsValid(video_button) && IsValid(gameplay_button) &&
-            IsValid(audio_button) && IsValid(controls_button) && IsValid(accessibility_button) &&
-            IsValid(options_back_button)};
+            IsValid(description_text) && IsValid(status_text) && IsValid(details_text) &&
+            IsValid(launch_button) && IsValid(start_paused_button) && IsValid(video_button) &&
+            IsValid(gameplay_button) && IsValid(audio_button) && IsValid(controls_button) &&
+            IsValid(accessibility_button) && IsValid(options_back_button)};
         if (!TestRunner->TestTrue(TEXT("All required child menu bindings are valid"),
                                   child_bindings_valid)) {
             return;
@@ -113,6 +119,45 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
             return;
         }
+        auto* const level_button_text{Cast<UTextBlock>(level_button->GetChildAt(0))};
+        if (!TestRunner->TestTrue(TEXT("Level row has a text label"), IsValid(level_button_text))) {
+            return;
+        }
+        TestRunner->TestEqual(TEXT("Level row contains only the authored title"),
+                              level_button_text->GetText().ToString(),
+                              FString{TEXT("Border Skirmish")});
+
+        auto* const levels_scroll{Cast<UScrollBox>(level_list->GetParent())};
+        auto* const levels_column{
+            IsValid(levels_scroll) ? Cast<UVerticalBox>(levels_scroll->GetParent()) : nullptr};
+        auto* const controls_column{Cast<UVerticalBox>(launch_button->GetParent())};
+        auto* const details_column{Cast<UVerticalBox>(title_text->GetParent())};
+        auto* const body{IsValid(details_column) ? Cast<UHorizontalBox>(details_column->GetParent())
+                                                 : nullptr};
+        auto* const page{IsValid(body) ? Cast<UVerticalBox>(body->GetParent()) : nullptr};
+        auto* const controls_slot{
+            IsValid(controls_column) ? Cast<UHorizontalBoxSlot>(controls_column->Slot) : nullptr};
+        auto* const levels_slot{
+            IsValid(levels_column) ? Cast<UHorizontalBoxSlot>(levels_column->Slot) : nullptr};
+        auto* const details_slot{
+            IsValid(details_column) ? Cast<UHorizontalBoxSlot>(details_column->Slot) : nullptr};
+        auto* const page_slot{IsValid(page) ? Cast<UOverlaySlot>(page->Slot) : nullptr};
+        auto const layout_valid{IsValid(controls_slot) && IsValid(levels_slot) &&
+                                IsValid(details_slot) && IsValid(page_slot)};
+        if (!TestRunner->TestTrue(TEXT("Level selector layout is valid"), layout_valid)) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Controls column is auto sized"),
+                             controls_slot->GetSize().SizeRule == ESlateSizeRule::Automatic);
+        TestRunner->TestTrue(TEXT("Levels column is auto sized"),
+                             levels_slot->GetSize().SizeRule == ESlateSizeRule::Automatic);
+        TestRunner->TestTrue(TEXT("Details column fills remaining width"),
+                             details_slot->GetSize().SizeRule == ESlateSizeRule::Fill);
+        TestRunner->TestTrue(TEXT("Selector fills the root horizontally"),
+                             page_slot->GetHorizontalAlignment() == HAlign_Fill);
+        TestRunner->TestTrue(TEXT("Selector fills the root vertically"),
+                             page_slot->GetVerticalAlignment() == VAlign_Fill);
+
         level_button->OnClicked.Broadcast();
         TestRunner->TestEqual(TEXT("Selected level title is shown"),
                               title_text->GetText().ToString(),
@@ -124,9 +169,11 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                              launch_button->GetIsEnabled());
         TestRunner->TestTrue(TEXT("A valid selected level can start paused"),
                              start_paused_button->GetIsEnabled());
-        TestRunner->TestEqual(TEXT("Selected level reports that it is ready"),
-                              status_text->GetText().ToString(),
-                              FString{TEXT("Ready to launch.")});
+        TestRunner->TestTrue(TEXT("Selected level reports that it is ready"),
+                             status_text->GetText().ToString().Contains(TEXT("Ready to launch.")));
+        TestRunner->TestTrue(
+            TEXT("Selected level details include its stable id"),
+            details_text->GetText().ToString().Contains(TEXT("Level ID: border-skirmish")));
 
         level_back_button->OnClicked.Broadcast();
         TestRunner->TestTrue(TEXT("Level select Back returns to main"),

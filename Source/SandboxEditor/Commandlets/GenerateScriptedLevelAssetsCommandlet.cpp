@@ -61,7 +61,7 @@ auto make_widget(UWidgetTree& tree, FName const name) -> T* {
 }
 
 auto make_labelled_button(UWidgetTree& tree,
-                          UHorizontalBox& parent,
+                          UVerticalBox& parent,
                           FName const name,
                           FString const& label) -> UButton* {
     auto* const button{make_widget<UButton>(tree, name)};
@@ -69,8 +69,8 @@ auto make_labelled_button(UWidgetTree& tree,
     text->SetText(FText::FromString(label));
     auto* const content_slot{CastChecked<UButtonSlot>(button->AddChild(text))};
     content_slot->SetPadding(FMargin{12.0f, 6.0f});
-    auto* const action_slot{parent.AddChildToHorizontalBox(button)};
-    action_slot->SetPadding(FMargin{4.0f});
+    auto* const action_slot{parent.AddChildToVerticalBox(button)};
+    action_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
     return button;
 }
 
@@ -103,6 +103,8 @@ auto generate_level_select_widget() -> bool {
     auto* const page{tree.ConstructWidget<UVerticalBox>()};
     auto* const page_slot{root->AddChildToOverlay(page)};
     page_slot->SetPadding(FMargin{32.0f});
+    page_slot->SetHorizontalAlignment(HAlign_Fill);
+    page_slot->SetVerticalAlignment(VAlign_Fill);
     tree.RootWidget = root;
 
     auto* const heading{tree.ConstructWidget<UTextBlock>()};
@@ -113,37 +115,79 @@ auto generate_level_select_widget() -> bool {
     auto* const heading_slot{page->AddChildToVerticalBox(heading)};
     heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
 
+    auto* const body{tree.ConstructWidget<UHorizontalBox>()};
+    auto* const body_slot{page->AddChildToVerticalBox(body)};
+    body_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+
+    auto* const controls{tree.ConstructWidget<UVerticalBox>()};
+    auto* const controls_slot{body->AddChildToHorizontalBox(controls)};
+    controls_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+    controls_slot->SetPadding(FMargin{0.0f, 0.0f, 20.0f, 0.0f});
+
+    auto* const controls_heading{tree.ConstructWidget<UTextBlock>()};
+    controls_heading->SetText(FText::FromString(TEXT("Controls")));
+    auto controls_heading_font{controls_heading->GetFont()};
+    controls_heading_font.Size = 20;
+    controls_heading->SetFont(controls_heading_font);
+    auto* const controls_heading_slot{controls->AddChildToVerticalBox(controls_heading)};
+    controls_heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
+
+    make_labelled_button(tree, *controls, TEXT("launch_button"), TEXT("Launch"));
+    make_labelled_button(tree, *controls, TEXT("start_paused_button"), TEXT("Start Paused"));
+    make_labelled_button(tree, *controls, TEXT("refresh_button"), TEXT("Refresh"));
+    make_labelled_button(tree, *controls, TEXT("back_button"), TEXT("Back"));
+
+    auto* const levels{tree.ConstructWidget<UVerticalBox>()};
+    auto* const levels_slot{body->AddChildToHorizontalBox(levels)};
+    levels_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+    levels_slot->SetPadding(FMargin{0.0f, 0.0f, 24.0f, 0.0f});
+
+    auto* const levels_heading{tree.ConstructWidget<UTextBlock>()};
+    levels_heading->SetText(FText::FromString(TEXT("Levels")));
+    auto levels_heading_font{levels_heading->GetFont()};
+    levels_heading_font.Size = 20;
+    levels_heading->SetFont(levels_heading_font);
+    auto* const levels_heading_slot{levels->AddChildToVerticalBox(levels_heading)};
+    levels_heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
+
     auto* const scroll{tree.ConstructWidget<UScrollBox>()};
     auto* const level_list{make_widget<UVerticalBox>(tree, TEXT("level_list"))};
     scroll->AddChild(level_list);
-    auto* const scroll_slot{page->AddChildToVerticalBox(scroll)};
+    auto* const scroll_slot{levels->AddChildToVerticalBox(scroll)};
     scroll_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
-    scroll_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
 
-    auto* const selected_file{make_widget<UTextBlock>(tree, TEXT("selected_file_text"))};
-    auto* const selected_file_slot{page->AddChildToVerticalBox(selected_file)};
-    selected_file_slot->SetPadding(FMargin{0.0f, 4.0f});
+    auto* const details{tree.ConstructWidget<UVerticalBox>()};
+    auto* const details_slot{body->AddChildToHorizontalBox(details)};
+    details_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+
     auto* const title{make_widget<UTextBlock>(tree, TEXT("title_text"))};
     auto title_font{title->GetFont()};
-    title_font.Size = 22;
+    title_font.Size = 26;
     title->SetFont(title_font);
-    auto* const title_slot{page->AddChildToVerticalBox(title)};
-    title_slot->SetPadding(FMargin{0.0f, 4.0f});
-    auto* const description{make_widget<UTextBlock>(tree, TEXT("description_text"))};
-    description->SetAutoWrapText(true);
-    auto* const description_slot{page->AddChildToVerticalBox(description)};
-    description_slot->SetPadding(FMargin{0.0f, 4.0f, 0.0f, 8.0f});
+    auto* const title_slot{details->AddChildToVerticalBox(title)};
+    title_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 4.0f});
     auto* const status{make_widget<UTextBlock>(tree, TEXT("status_text"))};
     status->SetAutoWrapText(true);
-    auto* const status_slot{page->AddChildToVerticalBox(status)};
-    status_slot->SetPadding(FMargin{0.0f, 4.0f, 0.0f, 8.0f});
-
-    auto* const actions{tree.ConstructWidget<UHorizontalBox>()};
-    page->AddChildToVerticalBox(actions);
-    make_labelled_button(tree, *actions, TEXT("refresh_button"), TEXT("Refresh"));
-    make_labelled_button(tree, *actions, TEXT("launch_button"), TEXT("Launch"));
-    make_labelled_button(tree, *actions, TEXT("start_paused_button"), TEXT("Start Paused"));
-    make_labelled_button(tree, *actions, TEXT("back_button"), TEXT("Back"));
+    auto* const status_slot{details->AddChildToVerticalBox(status)};
+    status_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
+    auto* const description{make_widget<UTextBlock>(tree, TEXT("description_text"))};
+    description->SetAutoWrapText(true);
+    auto* const description_slot{details->AddChildToVerticalBox(description)};
+    description_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
+    auto* const selected_file{make_widget<UTextBlock>(tree, TEXT("selected_file_text"))};
+    auto* const selected_file_slot{details->AddChildToVerticalBox(selected_file)};
+    selected_file_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
+    auto* const details_text{make_widget<UTextBlock>(tree, TEXT("details_text"))};
+    details_text->SetAutoWrapText(true);
+    auto* const level_details_slot{details->AddChildToVerticalBox(details_text)};
+    level_details_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 16.0f});
+    auto* const script_heading{tree.ConstructWidget<UTextBlock>()};
+    script_heading->SetText(FText::FromString(TEXT("Script")));
+    auto script_heading_font{script_heading->GetFont()};
+    script_heading_font.Size = 20;
+    script_heading->SetFont(script_heading_font);
+    auto* const script_heading_slot{details->AddChildToVerticalBox(script_heading)};
+    script_heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
 
     blueprint->WidgetVariableNameToGuidMap.Reset();
     tree.ForEachWidget(

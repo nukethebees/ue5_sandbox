@@ -1,12 +1,11 @@
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
+#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
 
 #include <Blueprint/WidgetTree.h>
-#include <Components/ButtonSlot.h>
 #include <Components/MultiLineEditableTextBox.h>
-#include <Components/SizeBox.h>
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <Components/VerticalBoxSlot.h>
@@ -14,6 +13,52 @@
 #include <Kismet/GameplayStatics.h>
 
 namespace ml::s7 {
+namespace {
+auto progress_label(FLevelDefinition const& definition,
+                    ml::ioj::FLevelProgressSummary const& progress) -> FString {
+    if (!definition.mission.IsSet()) {
+        return TEXT("No objective");
+    }
+
+    switch (progress.state) {
+        case ml::ioj::ELevelProgressState::Completed:
+            return TEXT("Completed");
+        case ml::ioj::ELevelProgressState::Attempted:
+            return TEXT("Attempted");
+        case ml::ioj::ELevelProgressState::NotAttempted:
+            return TEXT("Not attempted");
+    }
+    checkNoEntry();
+    return {};
+}
+
+auto level_details(FLevelScriptEntry const& entry, ml::ioj::FLevelProgressSummary const& progress)
+    -> FString {
+    check(entry.definition.IsSet());
+    auto const& definition{entry.definition.GetValue()};
+    auto details{FString::Printf(TEXT("Level ID: %s\nTeams: %d    Entities: %d    Player: %s\n"
+                                      "Progress: %s"),
+                                 *definition.metadata.id.value.ToString(),
+                                 definition.teams.Num(),
+                                 definition.entities.num(),
+                                 definition.player_entity_id.is_set() ? TEXT("Yes") : TEXT("No"),
+                                 *progress_label(definition, progress))};
+    if (!definition.mission.IsSet() || progress.attempt_count == 0) {
+        return details;
+    }
+
+    details += FString::Printf(TEXT("\nAttempts: %d    Completions: %d    Best kills: %d"),
+                               progress.attempt_count,
+                               progress.completion_count,
+                               progress.best_kills);
+    if (progress.best_completion_time_seconds >= 0.0f) {
+        details +=
+            FString::Printf(TEXT("    Best time: %.1f s"), progress.best_completion_time_seconds);
+    }
+    return details;
+}
+}
+
 void ULevelScriptButton::initialise(int32 const index, FString const& label, bool const valid) {
     index_ = index;
     valid_ = valid;
@@ -42,8 +87,8 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
     if (!IsValid(level_list) || !IsValid(selected_file_text) || !IsValid(title_text) ||
-        !IsValid(description_text) || !IsValid(status_text) || !IsValid(refresh_button) ||
-        !IsValid(launch_button) || !IsValid(start_paused_button)) {
+        !IsValid(description_text) || !IsValid(status_text) || !IsValid(details_text) ||
+        !IsValid(refresh_button) || !IsValid(launch_button) || !IsValid(start_paused_button)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UScriptLevelSelectWidget::NativeOnInitialized: One or more bound widgets "
@@ -62,11 +107,8 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
     refresh_button->OnClicked.AddDynamic(this, &ThisClass::handle_refresh);
     launch_button->OnClicked.AddDynamic(this, &ThisClass::handle_launch);
     start_paused_button->OnClicked.AddDynamic(this, &ThisClass::handle_start_paused);
-    script_toggle_button_->OnClicked.AddDynamic(this, &ThisClass::handle_toggle_script);
     launch_button->SetIsEnabled(false);
     start_paused_button->SetIsEnabled(false);
-    script_toggle_button_->SetIsEnabled(false);
-    set_script_preview_visible(false);
 }
 
 auto UScriptLevelSelectWidget::create_script_preview() -> bool {
@@ -76,37 +118,17 @@ auto UScriptLevelSelectWidget::create_script_preview() -> bool {
         return false;
     }
 
-    script_toggle_button_ = WidgetTree->ConstructWidget<UButton>();
-    script_toggle_text_ = WidgetTree->ConstructWidget<UTextBlock>();
-    script_preview_container_ = WidgetTree->ConstructWidget<USizeBox>();
     script_preview_ = WidgetTree->ConstructWidget<UMultiLineEditableTextBox>();
-    if (!IsValid(script_toggle_button_) || !IsValid(script_toggle_text_) ||
-        !IsValid(script_preview_container_) || !IsValid(script_preview_)) {
+    if (!IsValid(script_preview_)) {
         return false;
     }
-
-    script_toggle_text_->SetText(FText::FromString(TEXT("Show Script")));
-    auto* const button_slot{
-        Cast<UButtonSlot>(script_toggle_button_->AddChild(script_toggle_text_))};
-    if (!IsValid(button_slot)) {
-        return false;
-    }
-    button_slot->SetPadding(FMargin{12.0f, 6.0f});
 
     script_preview_->SetIsReadOnly(true);
-    script_preview_container_->SetHeightOverride(260.0f);
-    script_preview_container_->AddChild(script_preview_);
-
-    auto const status_index{parent->GetChildIndex(status_text)};
-    auto* const toggle_slot{
-        Cast<UVerticalBoxSlot>(parent->InsertChildAt(status_index + 1, script_toggle_button_))};
-    auto* const preview_slot{
-        Cast<UVerticalBoxSlot>(parent->InsertChildAt(status_index + 2, script_preview_container_))};
-    if (!IsValid(toggle_slot) || !IsValid(preview_slot)) {
+    auto* const preview_slot{parent->AddChildToVerticalBox(script_preview_)};
+    if (!IsValid(preview_slot)) {
         return false;
     }
-    toggle_slot->SetHorizontalAlignment(HAlign_Left);
-    toggle_slot->SetPadding(FMargin{0.0f, 4.0f, 0.0f, 8.0f});
+    preview_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
     preview_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
     return true;
 }
@@ -125,8 +147,7 @@ void UScriptLevelSelectWidget::activate() {
 void UScriptLevelSelectWidget::refresh_levels() {
     if (!IsValid(level_list) || !IsValid(launch_button) || !IsValid(start_paused_button) ||
         !IsValid(status_text) || !IsValid(selected_file_text) || !IsValid(title_text) ||
-        !IsValid(description_text) || !IsValid(script_toggle_button_) ||
-        !IsValid(script_preview_)) {
+        !IsValid(description_text) || !IsValid(details_text) || !IsValid(script_preview_)) {
         return;
     }
 
@@ -136,13 +157,12 @@ void UScriptLevelSelectWidget::refresh_levels() {
     selected_index_ = INDEX_NONE;
     launch_button->SetIsEnabled(false);
     start_paused_button->SetIsEnabled(false);
-    script_toggle_button_->SetIsEnabled(false);
     script_preview_->SetText(FText::GetEmpty());
-    set_script_preview_visible(false);
     selected_file_text->SetText(FText::GetEmpty());
     title_text->SetText(FText::FromString(TEXT("Select a level")));
     description_text->SetText(
         FText::FromString(TEXT("Choose a script to inspect its metadata and validation result.")));
+    details_text->SetText(FText::GetEmpty());
 
     auto catalog{discover_level_scripts()};
     entries_ = MoveTemp(catalog.entries);
@@ -160,14 +180,8 @@ void UScriptLevelSelectWidget::refresh_levels() {
     auto const count{entries_.Num()};
     for (int32 i{0}; i < count; ++i) {
         auto const& entry{entries_[i]};
-        auto label{entry.display_title};
-        if (!entry) {
-            label += TEXT(" [Invalid]");
-        }
-        label += FString::Printf(TEXT("  (%s)"), *entry.filename);
-
         auto* const button{NewObject<ULevelScriptButton>(this)};
-        button->initialise(i, label, static_cast<bool>(entry));
+        button->initialise(i, entry.display_title, static_cast<bool>(entry));
         button->selected.AddUObject(this, &ThisClass::select_level);
         level_list->AddChildToVerticalBox(button);
         level_buttons_.Add(button);
@@ -183,7 +197,7 @@ void UScriptLevelSelectWidget::refresh_levels() {
 void UScriptLevelSelectWidget::select_level(int32 const index) {
     if (!entries_.IsValidIndex(index) || !IsValid(launch_button) || !IsValid(start_paused_button) ||
         !IsValid(selected_file_text) || !IsValid(title_text) || !IsValid(description_text) ||
-        !IsValid(status_text) || !IsValid(script_toggle_button_) || !IsValid(script_preview_)) {
+        !IsValid(status_text) || !IsValid(details_text) || !IsValid(script_preview_)) {
         return;
     }
 
@@ -197,27 +211,24 @@ void UScriptLevelSelectWidget::select_level(int32 const index) {
     selected_file_text->SetText(FText::FromString(entry.filename));
     title_text->SetText(FText::FromString(entry.display_title));
     description_text->SetText(FText::FromString(entry.description));
-    status_text->SetText(
-        FText::FromString(entry ? FString{TEXT("Ready to launch.")} : entry.error));
     script_preview_->SetText(FText::FromString(entry.source_text));
-    script_toggle_button_->SetIsEnabled(true);
     launch_button->SetIsEnabled(static_cast<bool>(entry));
     start_paused_button->SetIsEnabled(static_cast<bool>(entry));
     if (entry) {
+        auto* const game_instance{GetGameInstance()};
+        auto* const save_subsystem{
+            IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
+        auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(
+                                                          entry.definition->metadata.id.value)
+                                                    : ml::ioj::FLevelProgressSummary{}};
+        status_text->SetText(FText::FromString(
+            progress_label(entry.definition.GetValue(), progress) + TEXT(" - Ready to launch.")));
+        details_text->SetText(FText::FromString(level_details(entry, progress)));
         launch_button->SetKeyboardFocus();
+    } else {
+        status_text->SetText(FText::FromString(entry.error));
+        details_text->SetText(FText::GetEmpty());
     }
-}
-
-void UScriptLevelSelectWidget::set_script_preview_visible(bool const visible) {
-    if (!IsValid(script_preview_container_) || !IsValid(script_toggle_text_)) {
-        return;
-    }
-
-    script_preview_visible_ = visible;
-    script_preview_container_->SetVisibility(visible ? ESlateVisibility::Visible
-                                                     : ESlateVisibility::Collapsed);
-    script_toggle_text_->SetText(
-        FText::FromString(visible ? FString{TEXT("Hide Script")} : FString{TEXT("Show Script")}));
 }
 
 void UScriptLevelSelectWidget::handle_refresh() {
@@ -256,13 +267,5 @@ void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode c
                                                ? TEXT("Loading level paused...")
                                                : TEXT("Loading level...")));
     UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/GameRuntime")});
-}
-
-void UScriptLevelSelectWidget::handle_toggle_script() {
-    if (!entries_.IsValidIndex(selected_index_)) {
-        return;
-    }
-
-    set_script_preview_visible(!script_preview_visible_);
 }
 }
