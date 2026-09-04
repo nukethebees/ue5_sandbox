@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <iterator>
 #include <set>
 #include <stdexcept>
 #include <string_view>
@@ -375,6 +376,56 @@ void validate_enum(EnumModuleSchema const& module,
             }
         }
         require_unique_names(value_names, "Enum '" + schema.name + "' values");
+
+        if (schema.count.has_value() && !schema.enum_array) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' specifies a count without enabling enum_array"};
+        }
+        if (schema.enum_array) {
+            for (auto const& value : schema.values) {
+                if (value.initializer.has_value()) {
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
+                                                "' value '" + value.name +
+                                                "' must not have an explicit initializer"};
+                }
+            }
+
+            auto count_value{schema.values.end()};
+            if (schema.count.has_value()) {
+                require_identifier(*schema.count, "Enum '" + schema.name + "' count");
+                count_value = std::find_if(schema.values.begin(),
+                                           schema.values.end(),
+                                           [&](auto const& value) {
+                                               return value.name == *schema.count;
+                                           });
+                if (count_value == schema.values.end()) {
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
+                                                "' count '" + *schema.count +
+                                                "' does not name an enum value"};
+                }
+                if (std::next(count_value) != schema.values.end()) {
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
+                                                "' count must be the final enum value"};
+                }
+                if (count_value == schema.values.begin()) {
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
+                                                "' count must follow at least one array value"};
+                }
+                if (schema.reflection != EnumReflection::none && !count_value->hidden) {
+                    throw std::invalid_argument{"Reflected enum-array enum '" + schema.name +
+                                                "' count must be hidden"};
+                }
+            }
+
+            for (auto const& value : schema.values) {
+                auto const is_count{schema.count.has_value() && value.name == *schema.count};
+                if (value.hidden && !is_count) {
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
+                                                "' value '" + value.name +
+                                                "' must not be hidden"};
+                }
+            }
+        }
 
         std::set<EnumConversion> conversions;
         for (auto const conversion : schema.conversions) {

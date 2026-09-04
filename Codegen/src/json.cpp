@@ -373,6 +373,8 @@ auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
                     "underlying_type",
                     "reflection",
                     "values",
+                    "enum_array",
+                    "count",
                     "conversions",
                     "export_specifier"});
     std::vector<EnumeratorSchema> values;
@@ -403,6 +405,8 @@ auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
                                           path + "/underlying_type"),
         .reflection = parse_enum_reflection(reflection_name, path + "/reflection"),
         .values = std::move(values),
+        .enum_array = value_or<bool>(value, "enum_array", false, path),
+        .count = optional<std::string>(value, "count", path),
         .conversions = std::move(conversions),
         .export_specifier = optional<std::string>(value, "export_specifier", path),
     };

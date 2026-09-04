@@ -46,6 +46,8 @@
           "name": "ETestEntityType",
           "underlying_type": "uint8",
           "reflection": "uenum",
+          "enum_array": true,
+          "count": "COUNT",
           "export_specifier": "SPACEGAME_API",
           "values": [
             {"name": "PlayerShip", "display_name": "Player Ship"},

@@ -210,6 +210,21 @@ void test_facades() {
 }
 
 void test_enums() {
+    static_assert(TEnumTraits<EPlainFixture>::count == 2);
+    static_assert(TEnumArray<EPlainFixture, float>::size() == 2);
+
+    TEnumArray<EPlainFixture, float> radii;
+    radii[EPlainFixture::First] = 100.0f;
+    radii[EPlainFixture::ReadableName] = 200.0f;
+    check(radii[EPlainFixture::First] == 100.0f);
+    check(radii[EPlainFixture::ReadableName] == 200.0f);
+
+    static_assert(TEnumTraits<EReflectedFixture>::count == 1);
+    static_assert(TEnumArray<EReflectedFixture, int32>::size() == 1);
+    TEnumArray<EReflectedFixture, int32> reflected_values;
+    reflected_values[EReflectedFixture::Visible] = 42;
+    check(reflected_values[EReflectedFixture::Visible] == 42);
+
     check(std::string_view{LexToString(EPlainFixture::First)} == "First");
     check(to_string_view(EPlainFixture::ReadableName) == "ReadableName");
     check(to_string(EPlainFixture::ReadableName) == "ReadableName");

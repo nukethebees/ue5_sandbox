@@ -11,9 +11,10 @@
         {
           "name": "EPlainFixture",
           "underlying_type": "uint8",
+          "enum_array": true,
           "values": [
-            {"name": "First", "value": "1"},
-            {"name": "ReadableName", "value": "2", "display_name": "Readable Name"}
+            {"name": "First"},
+            {"name": "ReadableName", "display_name": "Readable Name"}
           ],
           "conversions": [
             "lex_to_string",
@@ -39,6 +40,8 @@
           "name": "EReflectedFixture",
           "underlying_type": "uint8",
           "reflection": "blueprint",
+          "enum_array": true,
+          "count": "COUNT",
           "values": [
             {"name": "Visible", "display_name": "Visible Value"},
             {"name": "COUNT", "hidden": true}

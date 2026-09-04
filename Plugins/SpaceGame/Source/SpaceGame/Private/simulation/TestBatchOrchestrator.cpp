@@ -410,15 +410,12 @@ void ATestBatchOrchestrator::begin_play() {
     lasers_phase.begin_play();
 
     ml::ioj::FCollisionSystem::EntityMeshes entity_meshes{};
-    entity_meshes[std::to_underlying(ETestEntityType::PlayerShip)] =
+    entity_meshes[ETestEntityType::PlayerShip] =
         IsValid(player_ship) ? player_ship->get_collision_mesh() : nullptr;
-    entity_meshes[std::to_underlying(ETestEntityType::Turret)] = level_config->turrets.mesh;
-    entity_meshes[std::to_underlying(ETestEntityType::CapitalShip)] =
-        level_config->capital_ships.mesh;
-    entity_meshes[std::to_underlying(ETestEntityType::CapitalShipFighter)] =
-        level_config->fighters.mesh;
-    entity_meshes[std::to_underlying(ETestEntityType::TubeSpinner)] =
-        level_config->tube_spinners.mesh;
+    entity_meshes[ETestEntityType::Turret] = level_config->turrets.mesh;
+    entity_meshes[ETestEntityType::CapitalShip] = level_config->capital_ships.mesh;
+    entity_meshes[ETestEntityType::CapitalShipFighter] = level_config->fighters.mesh;
+    entity_meshes[ETestEntityType::TubeSpinner] = level_config->tube_spinners.mesh;
     query_manager.initialise(entity_registry, level_config->collision_grid, entity_meshes);
     query_manager.reserve_thread_buffers(
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads()));

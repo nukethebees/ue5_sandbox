@@ -6,6 +6,8 @@
 
 #include "CoreMinimal.h"
 
+#include "SandboxGameShared/utilities/enum_array.h"
+
 #include "TestEntityType.generated.h"
 
 enum class ETestEntityType : uint8;
@@ -23,6 +25,11 @@ enum class ETestEntityType : uint8 {
     CapitalShipFighter UMETA(DisplayName = "Capital Ship Fighter"),
     TubeSpinner UMETA(DisplayName = "Tube Spinner"),
     COUNT UMETA(Hidden),
+};
+
+template <>
+struct TEnumTraits<ETestEntityType> {
+    static constexpr int32 count{static_cast<int32>(ETestEntityType::COUNT)};
 };
 
 SPACEGAME_API auto LexToString(ETestEntityType const value) -> TCHAR const*;

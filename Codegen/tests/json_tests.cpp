@@ -239,7 +239,7 @@ TEST(Json, LoadsEnumModulesAndConversions) {
     files.write("types.json", R"({"types":{}})");
     files.write(
         "modules.json",
-        R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","source":"Modes.cpp","helper_namespace":"ml","enums":[{"name":"EMode","underlying_type":"uint8","reflection":"blueprint","export_specifier":"PROJECT_API","values":[{"name":"First"},{"name":"Readable","value":"7","display_name":"Readable Value"},{"name":"COUNT","hidden":true}],"conversions":["lex_to_string","string_view","string","lex_to_display_string","display_string_view","display_string"]}]}]})");
+        R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","source":"Modes.cpp","helper_namespace":"ml","enums":[{"name":"EMode","underlying_type":"uint8","reflection":"blueprint","enum_array":false,"export_specifier":"PROJECT_API","values":[{"name":"First"},{"name":"Readable","value":"7","display_name":"Readable Value"},{"name":"COUNT","hidden":true}],"conversions":["lex_to_string","string_view","string","lex_to_display_string","display_string_view","display_string"]}]}]})");
     files.write("manifest.json",
                 R"({"schema_version":5,"types":"types.json","modules":["modules.json"]})");
 
@@ -252,12 +252,31 @@ TEST(Json, LoadsEnumModulesAndConversions) {
     auto const& schema{module.enums.front()};
     EXPECT_EQ(schema.name, "EMode");
     EXPECT_EQ(schema.reflection, EnumReflection::blueprint);
+    EXPECT_FALSE(schema.enum_array);
+    EXPECT_FALSE(schema.count.has_value());
     EXPECT_EQ(schema.export_specifier, "PROJECT_API");
     ASSERT_EQ(schema.values.size(), 3);
     EXPECT_EQ(schema.values[1].initializer, "7");
     EXPECT_EQ(schema.values[1].display_name, "Readable Value");
     EXPECT_TRUE(schema.values[2].hidden);
     EXPECT_EQ(schema.conversions.size(), 6);
+}
+
+TEST(Json, LoadsEnumArrayCount) {
+    TemporaryManifest files;
+    files.write("types.json", R"({"types":{}})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","enums":[{"name":"EMode","underlying_type":"uint8","reflection":"uenum","enum_array":true,"count":"COUNT","values":[{"name":"First"},{"name":"COUNT","hidden":true}]}]}]})");
+    files.write("manifest.json",
+                R"({"schema_version":5,"types":"types.json","modules":["modules.json"]})");
+
+    auto const manifest{load_manifest(files.path("manifest.json"))};
+
+    auto const& module{std::get<EnumModuleSchema>(manifest.modules.front())};
+    auto const& schema{module.enums.front()};
+    EXPECT_TRUE(schema.enum_array);
+    EXPECT_EQ(schema.count, "COUNT");
 }
 
 TEST(Json, LoadsStaticTableModules) {

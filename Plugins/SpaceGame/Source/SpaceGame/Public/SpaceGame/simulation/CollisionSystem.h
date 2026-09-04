@@ -1,10 +1,9 @@
 #pragma once
 
+#include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/simulation/collision_uniform_grid.h>
 #include <SpaceGame/simulation/EntityAABBs.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
-
-#include <Containers/StaticArray.h>
 
 class UStaticMesh;
 class UPrimitiveComponent;
@@ -15,7 +14,7 @@ struct FCollisionGridConfig;
 namespace ml::ioj {
 struct SPACEGAME_API FCollisionSystem {
   public:
-    using EntityMeshes = TStaticArray<UStaticMesh const*, FEntityAABBs::num_rows>;
+    using EntityMeshes = TEnumArray<ETestEntityType, UStaticMesh const*>;
 
     FCollisionSystem() = default;
 

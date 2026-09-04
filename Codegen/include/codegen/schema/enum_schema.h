@@ -16,6 +16,8 @@ struct EnumSchema {
     TypeRef underlying_type;
     EnumReflection reflection{EnumReflection::none};
     std::vector<EnumeratorSchema> values;
+    bool enum_array{false};
+    std::optional<std::string> count;
     std::vector<EnumConversion> conversions;
     std::optional<std::string> export_specifier;
 };

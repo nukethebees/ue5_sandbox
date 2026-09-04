@@ -84,7 +84,7 @@ void FCollisionSystem::initialise(EntityMeshes const& meshes) {
     auto const count{FEntityAABBs::num()};
     for (int32 i{0}; i < count; ++i) {
         auto const entity_type{static_cast<ETestEntityType>(i)};
-        set_mesh_aabb(entity_aabbs_, i, LexToString(entity_type), meshes[i]);
+        set_mesh_aabb(entity_aabbs_, i, LexToString(entity_type), meshes[entity_type]);
     }
 }
 void FCollisionSystem::initialise_static_geometry(UWorld& world,
