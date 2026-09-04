@@ -588,11 +588,10 @@ auto USandboxISMCComponent::set_instance_transforms(
     int32 first_index, ml::sandbox_ismc::InstanceDataConstView instances) -> void {
     instances.validate_array_sizes();
     auto const count{instances.num()};
-    checkf(first_index >= 0 && first_index <= instance_data_.num() &&
-               count <= instance_data_.num() - first_index,
-           TEXT("Invalid SandboxISMC transform range [%d, %d)"),
+    checkf(is_valid_instance_range(first_index, count),
+           TEXT("Invalid SandboxISMC transform range: first index %d, count %d"),
            first_index,
-           first_index + count);
+           count);
 
     instance_data_.copy_elements(first_index, instances, 0, count);
     mark_instance_range_dirty(first_index, count);
@@ -664,11 +663,10 @@ auto USandboxISMCComponent::instances() const -> ml::sandbox_ismc::InstanceDataC
 
 auto USandboxISMCComponent::edit_instances(int32 first_index, int32 count)
     -> ml::sandbox_ismc::InstanceDataView {
-    checkf(first_index >= 0 && count >= 0 && first_index <= instance_data_.num() &&
-               count <= instance_data_.num() - first_index,
-           TEXT("Invalid SandboxISMC instance edit range [%d, %d)"),
+    checkf(is_valid_instance_range(first_index, count),
+           TEXT("Invalid SandboxISMC instance edit range: first index %d, count %d"),
            first_index,
-           first_index + count);
+           count);
     mark_instance_range_dirty(first_index, count);
     return instance_data_.get_view(first_index, count);
 }
@@ -677,12 +675,12 @@ auto USandboxISMCComponent::mark_instance_range_dirty(int32 first_index, int32 c
     if (count == 0) {
         return;
     }
-    if (first_index < 0 || count < 0 || first_index + count > instance_data_.num()) {
+    if (!is_valid_instance_range(first_index, count)) {
         UE_LOG(LogSandboxISMC,
                Warning,
-               TEXT("Invalid SandboxISMC dirty range [%d, %d)"),
+               TEXT("Invalid SandboxISMC dirty range: first index %d, count %d"),
                first_index,
-               first_index + count);
+               count);
         return;
     }
 
@@ -707,6 +705,17 @@ auto USandboxISMCComponent::mark_instance_range_dirty(int32 first_index, int32 c
 
     dirty_ranges_.Insert({.first_index = merged_first, .count = merged_end - merged_first},
                          range_index);
+}
+
+auto USandboxISMCComponent::is_valid_instance_range(int32 first_index, int32 count) const -> bool {
+    return is_valid_instance_range(first_index, count, instance_data_.num());
+}
+
+auto USandboxISMCComponent::is_valid_instance_range(int32 first_index,
+                                                    int32 count,
+                                                    int32 instance_count) -> bool {
+    return first_index >= 0 && count >= 0 && first_index <= instance_count &&
+           count <= instance_count - first_index;
 }
 
 auto USandboxISMCComponent::mark_all_instances_dirty() -> void {

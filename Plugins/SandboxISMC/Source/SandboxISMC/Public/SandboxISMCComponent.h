@@ -53,6 +53,10 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     virtual auto CalcBounds(FTransform const& local_to_world) const -> FBoxSphereBounds override;
     virtual auto SendRenderDynamicData_Concurrent() -> void override;
   private:
+    auto is_valid_instance_range(int32 first_index, int32 count) const -> bool;
+    static auto is_valid_instance_range(int32 first_index, int32 count, int32 instance_count)
+        -> bool;
+
     auto calculate_instance_bounds(int32 instance_index) const -> FBox3f;
     auto rebuild_bounds_tree() -> void;
     auto update_bounds_tree(TConstArrayView<FSandboxISMCDirtyRange> dirty_ranges) -> void;
