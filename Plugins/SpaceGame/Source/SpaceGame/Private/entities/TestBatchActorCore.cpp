@@ -1,14 +1,15 @@
 #include "SpaceGame/entities/TestBatchActorCore.h"
 
-#include <SpaceGame/simulation/SpatialQueryManager.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityType.h>
-#include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
 
 #include <Containers/Array.h>
 #include <HAL/Platform.h>
+#include <Templates/Greater.h>
 
 namespace ml::batch {
 void configure_ismc(UInstancedStaticMeshComponent& instances, FIsmcConfig const& config) {
@@ -38,6 +39,28 @@ void configure_ismc(UInstancedStaticMeshComponent& instances, FIsmcConfig const&
     if (config.num_custom_data_floats.IsSet()) {
         instances.SetNumCustomDataFloats(config.num_custom_data_floats.GetValue());
     }
+}
+
+void sort_and_deduplicate_removal_indices(TArray<int32>& local_indices_to_remove) {
+    local_indices_to_remove.Sort(TGreater<int32>{});
+
+    auto const num_indices{local_indices_to_remove.Num()};
+    if (num_indices < 2) {
+        return;
+    }
+
+    int32 write_index{1};
+    for (int32 read_index{1}; read_index < num_indices; ++read_index) {
+        auto const local_index{local_indices_to_remove[read_index]};
+        if (local_index == local_indices_to_remove[write_index - 1]) {
+            continue;
+        }
+
+        local_indices_to_remove[write_index] = local_index;
+        ++write_index;
+    }
+
+    local_indices_to_remove.SetNum(write_index, EAllowShrinking::No);
 }
 
 namespace {

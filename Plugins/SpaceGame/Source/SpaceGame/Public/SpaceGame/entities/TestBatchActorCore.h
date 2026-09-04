@@ -1,12 +1,12 @@
 #pragma once
 
-#include <SpaceGame/simulation/SpatialQueryHit.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/simulation/SpatialQueryHit.h>
 
+#include <Components/InstancedStaticMeshComponent.h>
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
-#include <Components/InstancedStaticMeshComponent.h>
 #include <HAL/Platform.h>
 #include <Misc/Optional.h>
 
@@ -33,6 +33,8 @@ struct FIsmcConfig {
 };
 
 void configure_ismc(UInstancedStaticMeshComponent& instances, FIsmcConfig const& config);
+
+void sort_and_deduplicate_removal_indices(TArray<int32>& local_indices_to_remove);
 
 void resolve_damage_events(FTestEntityRegistry const& registry,
                            TArray<FRegistryEntityHandle>& entity_handles,

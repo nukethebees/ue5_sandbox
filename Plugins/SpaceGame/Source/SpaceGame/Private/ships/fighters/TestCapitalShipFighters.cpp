@@ -887,13 +887,15 @@ void ATestCapitalShipFighters::self_destruct_fighter(FRegistryEntityHandle const
     check(index != INDEX_NONE);
 
     data.healths[index] = 0;
-    local_indices_to_remove.Add(index);
+    if (!local_indices_to_remove.Contains(index)) {
+        local_indices_to_remove.Add(index);
+    }
 }
 void ATestCapitalShipFighters::remove_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::remove_dead_entities);
     auto& data{entity_buffers.current()};
 
-    local_indices_to_remove.Sort(TGreater<int32>{});
+    ml::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
 
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove, ismc_transforms, data);
 

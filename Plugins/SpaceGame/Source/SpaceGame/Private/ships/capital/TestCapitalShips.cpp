@@ -754,10 +754,11 @@ void ATestCapitalShips::handle_dead_entities() {
         return;
     }
 
+    ml::batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+
     trigger_death_effects();
     reassign_fighter_handles_of_dying_capital();
 
-    local_indices_to_remove.Sort(TGreater<int32>{});
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove, entities);
 }
 void ATestCapitalShips::reassign_fighter_handles_of_dying_capital() {
