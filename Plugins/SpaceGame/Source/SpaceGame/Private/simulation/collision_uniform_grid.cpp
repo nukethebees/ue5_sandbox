@@ -162,6 +162,27 @@ void CollisionUniformGrid::set_static_aabbs(WorldAABBs static_aabbs) {
 
     static_aabbs.validate_array_sizes();
     static_aabbs_ = MoveTemp(static_aabbs);
+    rebuild_static_grid();
+}
+
+auto CollisionUniformGrid::add_static_aabb(FVector3f const min_point, FVector3f const max_point)
+    -> int32 {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::CollisionUniformGrid::add_static_aabb);
+
+    checkf(is_configured(), TEXT("Cannot add static geometry to an unconfigured grid"));
+    auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
+    checkf(!min_point.ContainsNaN() && !max_point.ContainsNaN() &&
+               is_cell_coord_in_bounds(min_coord, max_coord),
+           TEXT("Static collision AABB is invalid or outside the collision grid"));
+
+    auto const static_index{static_aabbs_.num()};
+    static_aabbs_.mins.add(min_point);
+    static_aabbs_.maxes.add(max_point);
+    rebuild_static_grid();
+    return static_index;
+}
+
+void CollisionUniformGrid::rebuild_static_grid() {
     static_cell_range_offsets_.Reset();
     static_cell_range_counts_.Reset();
     static_aabb_indices_.Reset();

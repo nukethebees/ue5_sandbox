@@ -61,6 +61,7 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     void reset();
     void set_static_aabbs(WorldAABBs static_aabbs);
+    auto add_static_aabb(FVector3f min_point, FVector3f max_point) -> int32;
     void rebuild_grid(FEntityAABBs const& entity_aabbs);
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_aabbs_; }
@@ -75,6 +76,7 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_index(int32 x, int32 y, int32 z) const -> int32;
     auto to_index(FIntVector3 coord) const -> int32;
     auto to_index(FVector3f pos) const -> int32;
+    void rebuild_static_grid();
 
     FTestEntityRegistry const* entity_registry_{nullptr};
 

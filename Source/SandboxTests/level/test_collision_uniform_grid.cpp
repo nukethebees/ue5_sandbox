@@ -1931,6 +1931,21 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
     checks.are_equal(fixture.handles[0],
                      tied_hits.entities[0],
                      TEXT("Dynamic geometry wins exact-distance static tie"));
+
+    set_static_aabb({140.f, -10.f, -10.f}, {160.f, 10.f, 10.f});
+    auto const runtime_static_index{
+        fixture.grid.add_static_aabb({-60.f, -10.f, -10.f}, {-40.f, 10.f, 10.f})};
+    checks.are_equal(1, runtime_static_index, TEXT("Runtime static AABB receives stable identity"));
+    auto const runtime_static_hits{run_traces(fixture, starts, ends)};
+    checks.are_equal(runtime_static_index,
+                     runtime_static_hits.static_geometry_indices[0],
+                     TEXT("Runtime static AABB is immediately traceable"));
+
+    fixture.grid.rebuild_grid(fixture.aabbs);
+    auto const rebuilt_runtime_static_hits{run_traces(fixture, starts, ends)};
+    checks.are_equal(runtime_static_index,
+                     rebuilt_runtime_static_hits.static_geometry_indices[0],
+                     TEXT("Runtime static AABB survives dynamic rebuild"));
 }
 
 void FCollisionUniformGridTraceScenario::test_static_harvesting() {
