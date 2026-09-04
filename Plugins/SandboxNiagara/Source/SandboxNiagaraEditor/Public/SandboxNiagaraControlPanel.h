@@ -33,6 +33,8 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraControlPanel : public UEditorUtili
     auto generate() -> FReply;
     auto regenerate() -> FReply;
     auto regenerate_all() -> FReply;
+    auto create_or_refresh_showcase() -> FReply;
+    auto open_showcase() -> FReply;
     auto reload_definitions() -> FReply;
     auto open_generated_asset() -> FReply;
     auto delete_generated_asset() -> FReply;

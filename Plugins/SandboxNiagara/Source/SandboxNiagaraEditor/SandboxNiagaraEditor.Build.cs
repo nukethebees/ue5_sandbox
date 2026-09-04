@@ -25,6 +25,7 @@ public class SandboxNiagaraEditor : ModuleRules
             "BlueprintEditorLibrary",
             "InputCore",
             "Json",
+            "LevelEditor",
             "Niagara",
             "NiagaraEditor",
             "PropertyEditor",

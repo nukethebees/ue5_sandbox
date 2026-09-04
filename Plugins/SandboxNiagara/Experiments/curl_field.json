@@ -1,10 +1,12 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "curl_field",
   "display_name": "Analytic Curl Field",
   "default_asset_name": "NS_SandboxNiagaraCurlField",
   "configuration": {
+    "emission_mode": "continuous",
     "spawn_rate": 2500.0,
+    "local_space": true,
     "particle_lifetime": 18.0,
     "sprite_size": 8.0,
     "spawn_shape": "sphere",

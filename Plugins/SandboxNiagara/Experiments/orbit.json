@@ -1,10 +1,12 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "orbit",
   "display_name": "Orbit",
   "default_asset_name": "NS_SandboxNiagaraOrbit",
   "configuration": {
+    "emission_mode": "continuous",
     "spawn_rate": 2000.0,
+    "local_space": true,
     "particle_lifetime": 20.0,
     "sprite_size": 10.0,
     "spawn_shape": "ring",

@@ -1,10 +1,12 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "toroidal_vortex",
   "display_name": "Toroidal Vortex",
   "default_asset_name": "NS_SandboxNiagaraToroidalVortex",
   "configuration": {
+    "emission_mode": "continuous",
     "spawn_rate": 2600.0,
+    "local_space": true,
     "particle_lifetime": 30.0,
     "sprite_size": 7.0,
     "spawn_shape": "ring",

@@ -1,10 +1,12 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "lorenz",
   "display_name": "Lorenz Attractor",
   "default_asset_name": "NS_SandboxNiagaraLorenz",
   "configuration": {
+    "emission_mode": "continuous",
     "spawn_rate": 1500.0,
+    "local_space": true,
     "particle_lifetime": 30.0,
     "sprite_size": 10.0,
     "spawn_shape": "sphere",

@@ -8,6 +8,12 @@
 class UNiagaraSystem;
 
 UENUM(BlueprintType)
+enum class ESandboxNiagaraEmissionMode : uint8 {
+    Continuous,
+    Burst,
+};
+
+UENUM(BlueprintType)
 enum class ESandboxNiagaraSpawnShape : uint8 {
     Sphere,
     Disc,
@@ -43,7 +49,16 @@ struct FSandboxNiagaraExperimentConfiguration {
     FString output_path{TEXT("/SandboxNiagara/Generated")};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    ESandboxNiagaraEmissionMode emission_mode{ESandboxNiagaraEmissionMode::Continuous};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
     float spawn_rate{1000.0f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    int32 burst_count{64};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
+    bool local_space{false};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Sandbox Niagara")
     float particle_lifetime{10.0f};
@@ -178,6 +193,12 @@ class SANDBOXNIAGARAEDITOR_API USandboxNiagaraSubsystem : public UEditorSubsyste
 
     UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
     FSandboxNiagaraValidationResult regenerate_all_experiments(UNiagaraSystem* template_system);
+
+    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
+    FSandboxNiagaraValidationResult create_or_refresh_showcase();
+
+    UFUNCTION(BlueprintCallable, Category = "Sandbox Niagara")
+    FSandboxNiagaraValidationResult open_showcase();
 
   private:
     FSandboxNiagaraGenerationResult

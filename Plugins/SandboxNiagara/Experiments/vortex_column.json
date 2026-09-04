@@ -1,10 +1,12 @@
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "id": "vortex_column",
   "display_name": "Vortex Column",
   "default_asset_name": "NS_SandboxNiagaraVortexColumn",
   "configuration": {
+    "emission_mode": "continuous",
     "spawn_rate": 2200.0,
+    "local_space": true,
     "particle_lifetime": 12.0,
     "sprite_size": 9.0,
     "spawn_shape": "cylinder",

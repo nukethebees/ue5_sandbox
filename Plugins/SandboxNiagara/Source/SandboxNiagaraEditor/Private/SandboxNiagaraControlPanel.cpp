@@ -184,7 +184,23 @@ TSharedRef<SWidget> USandboxNiagaraControlPanel::RebuildWidget() {
                                                              "Reload Definitions"))
                                               .OnClicked_UObject(
                                                   this,
-                                                  &USandboxNiagaraControlPanel::reload_definitions)]] +
+                                                  &USandboxNiagaraControlPanel::reload_definitions)] +
+                                     SUniformGridPanel::Slot(0, 2)
+                                         [SNew(SButton)
+                                              .Text(NSLOCTEXT("SandboxNiagara",
+                                                             "CreateShowcase",
+                                                             "Create/Refresh Showcase"))
+                                              .OnClicked_UObject(
+                                                  this,
+                                                  &USandboxNiagaraControlPanel::create_or_refresh_showcase)] +
+                                     SUniformGridPanel::Slot(1, 2)
+                                         [SNew(SButton)
+                                              .Text(NSLOCTEXT("SandboxNiagara",
+                                                             "OpenShowcase",
+                                                             "Open Showcase"))
+                                              .OnClicked_UObject(
+                                                  this,
+                                                  &USandboxNiagaraControlPanel::open_showcase)]] +
                                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f, 0.0f, 8.0f)
                                     [SNew(STextBlock).Text(NSLOCTEXT(
                                         "SandboxNiagara", "PreviewLabel", "Live Preview"))] +
@@ -317,10 +333,6 @@ void USandboxNiagaraControlPanel::rebuild_parameter_controls() {
         float maximum{0.0f};
     };
     TArray<FConfigurationParameter> configuration_parameters{
-        {NSLOCTEXT("SandboxNiagara", "SpawnRateParameter", "Spawn Rate"),
-         &FSandboxNiagaraExperimentConfiguration::spawn_rate,
-         0.0f,
-         1000000.0f},
         {NSLOCTEXT("SandboxNiagara", "LifetimeParameter", "Particle Lifetime"),
          &FSandboxNiagaraExperimentConfiguration::particle_lifetime,
          0.001f,
@@ -334,6 +346,30 @@ void USandboxNiagaraControlPanel::rebuild_parameter_controls() {
          0.0f,
          1000000.0f},
     };
+    if (selected_configuration_.emission_mode == ESandboxNiagaraEmissionMode::Continuous) {
+        configuration_parameters.Insert(
+            {NSLOCTEXT("SandboxNiagara", "SpawnRateParameter", "Spawn Rate"),
+             &FSandboxNiagaraExperimentConfiguration::spawn_rate,
+             0.0f,
+             1000000.0f},
+            0);
+    } else {
+        parameter_list_->AddSlot().AutoHeight().Padding(0.0f, 2.0f)
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot().FillWidth(0.45f).VAlign(VAlign_Center)
+                 [SNew(STextBlock).Text(
+                     NSLOCTEXT("SandboxNiagara", "BurstCountParameter", "Burst Count"))] +
+             SHorizontalBox::Slot().FillWidth(0.55f)
+                 [SNew(SNumericEntryBox<int32>)
+                      .MinValue(1)
+                      .MaxValue(1000000)
+                      .Value_Lambda([this]() {
+                          return TOptional<int32>{selected_configuration_.burst_count};
+                      })
+                      .OnValueCommitted_Lambda([this](int32 const value, ETextCommit::Type) {
+                          selected_configuration_.burst_count = value;
+                      })]];
+    }
     if (selected_configuration_.spawn_shape == ESandboxNiagaraSpawnShape::Cylinder) {
         configuration_parameters.Add(
             {NSLOCTEXT("SandboxNiagara", "SpawnHeightParameter", "Spawn Height"),
@@ -410,6 +446,37 @@ auto USandboxNiagaraControlPanel::regenerate_all() -> FReply {
     if (result.success) {
         refresh_preview();
     }
+    return FReply::Handled();
+}
+
+auto USandboxNiagaraControlPanel::create_or_refresh_showcase() -> FReply {
+    auto* const subsystem{GEditor != nullptr
+                              ? GEditor->GetEditorSubsystem<USandboxNiagaraSubsystem>()
+                              : nullptr};
+    if (subsystem == nullptr) {
+        set_status(TEXT("The Sandbox Niagara subsystem is unavailable."), false);
+        return FReply::Handled();
+    }
+
+    auto const result{subsystem->create_or_refresh_showcase()};
+    set_operation_status(result, TEXT("Created and opened the Niagara showcase."));
+    if (result.success) {
+        refresh_preview();
+    }
+    return FReply::Handled();
+}
+
+auto USandboxNiagaraControlPanel::open_showcase() -> FReply {
+    auto* const subsystem{GEditor != nullptr
+                              ? GEditor->GetEditorSubsystem<USandboxNiagaraSubsystem>()
+                              : nullptr};
+    if (subsystem == nullptr) {
+        set_status(TEXT("The Sandbox Niagara subsystem is unavailable."), false);
+        return FReply::Handled();
+    }
+
+    auto const result{subsystem->open_showcase()};
+    set_operation_status(result, TEXT("Opened the Niagara showcase."));
     return FReply::Handled();
 }
 
