@@ -305,12 +305,29 @@ auto USbxMeshGenLabEditorMode::IsSelectionAllowed(AActor* const actor, bool cons
 
 void USbxMeshGenLabEditorMode::ActorSelectionChangeNotify() {}
 
+auto USbxMeshGenLabEditorMode::HasCustomViewportFocus() const -> bool {
+    return !selected_part_indices_.IsEmpty();
+}
+
+auto USbxMeshGenLabEditorMode::ComputeCustomViewportFocus() const -> FBox {
+    FBox bounds{ForceInit};
+    for (int32 const part_index : selected_part_indices_) {
+        bounds += get_preview_part_bounds(part_index);
+    }
+    return bounds;
+}
+
 auto USbxMeshGenLabEditorMode::get_settings() const -> USbxMeshGenLabSettings* {
     return CastChecked<USbxMeshGenLabSettings>(SettingsObject);
 }
 
 auto USbxMeshGenLabEditorMode::get_parts() const -> TArray<FSbxMeshAssemblyPart> const& {
     return parts_;
+}
+
+auto USbxMeshGenLabEditorMode::get_recipe_parts() const
+    -> TArray<FSbxMeshAssemblyRecipePart> const& {
+    return session_state_->parts;
 }
 
 auto USbxMeshGenLabEditorMode::get_selected_part_index() const -> int32 {
@@ -429,6 +446,49 @@ void USbxMeshGenLabEditorMode::select_group(int32 const group_index) {
                             FText::FromName(session_state_->groups[group_index].name),
                             FText::AsNumber(part_indices.Num()));
     notify_session_changed();
+}
+
+void USbxMeshGenLabEditorMode::select_node(FGuid const id) {
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    if (group_index != INDEX_NONE) {
+        select_group(group_index);
+        return;
+    }
+
+    auto const* const part_index{part_index_by_id_.Find(id)};
+    if (part_index != nullptr) {
+        select_part(*part_index);
+    }
+}
+
+void USbxMeshGenLabEditorMode::select_nodes(TArray<FGuid> const& ids, FGuid const primary_id) {
+    if (ids.Num() == 1) {
+        select_node(ids[0]);
+        return;
+    }
+
+    TArray<int32> part_indices;
+    for (FGuid const id : ids) {
+        if (auto const* const part_index{part_index_by_id_.Find(id)}; part_index != nullptr) {
+            part_indices.AddUnique(*part_index);
+            continue;
+        }
+
+        auto const group_index{session_state_->groups.IndexOfByPredicate(
+            [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+        if (session_state_->groups.IsValidIndex(group_index)) {
+            for (int32 const part_index : get_descendant_part_indices(id)) {
+                part_indices.AddUnique(part_index);
+            }
+        }
+    }
+    if (part_indices.IsEmpty()) {
+        return;
+    }
+
+    auto const* const primary_index{part_index_by_id_.Find(primary_id)};
+    select_parts(part_indices, primary_index == nullptr ? part_indices.Last() : *primary_index);
 }
 
 void USbxMeshGenLabEditorMode::select_all_parts() {
@@ -720,6 +780,92 @@ void USbxMeshGenLabEditorMode::ungroup() {
     rebuild_resolved_parts();
     mark_recipe_dirty();
     select_parts(selected_parts, selected_parts[0]);
+}
+
+auto USbxMeshGenLabEditorMode::rename_group(FGuid const id, FName const name) -> bool {
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    if (!session_state_->groups.IsValidIndex(group_index) || name.IsNone()) {
+        return false;
+    }
+    if (session_state_->groups[group_index].name == name) {
+        return true;
+    }
+
+    FScopedTransaction const transaction{
+        LOCTEXT("RenameAssemblyGroupTransaction", "Rename Mesh Group")};
+    session_state_->Modify();
+    session_state_->groups[group_index].name = name;
+    mark_recipe_dirty();
+    status_ =
+        FText::Format(LOCTEXT("GroupRenamed", "Renamed group to '{0}'."), FText::FromName(name));
+    notify_session_changed();
+    return true;
+}
+
+auto USbxMeshGenLabEditorMode::reparent_node(FGuid const id, FGuid const parent_id) -> bool {
+    auto const parent_index{session_state_->groups.IndexOfByPredicate(
+        [parent_id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == parent_id; })};
+    if (parent_id.IsValid() && !session_state_->groups.IsValidIndex(parent_index)) {
+        return false;
+    }
+
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    auto const* const part_index_ptr{part_index_by_id_.Find(id)};
+    if (group_index == INDEX_NONE && part_index_ptr == nullptr) {
+        return false;
+    }
+    if (group_index != INDEX_NONE) {
+        auto const& group{session_state_->groups[group_index]};
+        if (group.parent_id == parent_id) {
+            return true;
+        }
+        if (id == parent_id) {
+            return false;
+        }
+        for (int32 const descendant_index : get_descendant_group_indices(id)) {
+            if (session_state_->groups[descendant_index].id == parent_id) {
+                status_ = LOCTEXT("CyclicGroupRejected",
+                                  "A group cannot be moved beneath one of its descendants.");
+                notify_session_changed(false);
+                return false;
+            }
+        }
+    } else if (session_state_->parts[*part_index_ptr].parent_id == parent_id) {
+        return true;
+    }
+
+    auto const parent_world{get_parent_world_transform(parent_id)};
+    FScopedTransaction const transaction{
+        LOCTEXT("ReparentAssemblyNodeTransaction", "Move Mesh Hierarchy Node")};
+    session_state_->Modify();
+
+    if (group_index != INDEX_NONE) {
+        auto const world_transform{get_group_world_transform(group_index)};
+        auto& group{session_state_->groups[group_index]};
+        group.parent_id = parent_id;
+        group.set_transform(world_transform.GetRelativeTransform(parent_world));
+    } else {
+        auto const part_index{*part_index_ptr};
+        FTransform const world_transform{FRotator{parts_[part_index].transform.rotation},
+                                         FVector{parts_[part_index].transform.translation},
+                                         FVector{parts_[part_index].transform.scale}};
+        auto& part{session_state_->parts[part_index]};
+        part.parent_id = parent_id;
+        auto const local_transform{world_transform.GetRelativeTransform(parent_world)};
+        part.translation = local_transform.GetLocation();
+        part.rotation = local_transform.Rotator();
+        part.scale = local_transform.GetScale3D();
+    }
+
+    rebuild_resolved_parts();
+    mark_recipe_dirty();
+    select_node(id);
+    status_ = LOCTEXT("HierarchyNodeMoved",
+                      "Moved the hierarchy node without changing its world transform.");
+    notify_session_changed(false);
+    return true;
 }
 
 void USbxMeshGenLabEditorMode::new_assembly() {

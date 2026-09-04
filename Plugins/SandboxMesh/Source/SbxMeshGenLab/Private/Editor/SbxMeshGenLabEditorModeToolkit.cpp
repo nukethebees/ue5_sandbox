@@ -3,15 +3,34 @@
 #include "SbxMeshGenLab/SbxMeshGenLabEditorMode.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
+#include "DragAndDrop/DecoratedDragDropOp.h"
 #include "IDetailsView.h"
+#include "InputCoreTypes.h"
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/SBoxPanel.h"
+#include "Widgets/Text/SInlineEditableTextBlock.h"
 #include "Widgets/Text/STextBlock.h"
-#include "Widgets/Views/SListView.h"
+#include "Widgets/Views/STreeView.h"
 
 #define LOCTEXT_NAMESPACE "FSbxMeshGenLabEditorModeToolkit"
+
+class FSbxMeshTreeDragDropOp final : public FDecoratedDragDropOp {
+  public:
+    DRAG_DROP_OPERATOR_TYPE(FSbxMeshTreeDragDropOp, FDecoratedDragDropOp)
+
+    static auto create(FGuid const item_id, FText const& text)
+        -> TSharedRef<FSbxMeshTreeDragDropOp> {
+        auto operation{MakeShared<FSbxMeshTreeDragDropOp>()};
+        operation->item_id = item_id;
+        operation->DefaultHoverText = text;
+        operation->Construct();
+        return operation;
+    }
+
+    FGuid item_id;
+};
 
 void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_host,
                                            TWeakObjectPtr<UEdMode> const owning_mode) {
@@ -31,12 +50,14 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                 [SNew(SVerticalBox) +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)
                      [SNew(STextBlock)
-                          .Text(
-                              LOCTEXT("Instructions",
-                                      "Select parts here or Ctrl/Shift-click them in the viewport. "
-                                      "Ctrl+Alt+left-drag box-selects parts. Select a group to "
-                                      "transform all its descendants. Use W/E/R for transforms; "
-                                      "properties edit the primary selection."))
+                          .Text(LOCTEXT(
+                              "Instructions",
+                              "Select hierarchy nodes here or Ctrl/Shift-click parts in the "
+                              "viewport. "
+                              "Ctrl+Alt+left-drag box-selects parts. Select a group to "
+                              "transform all its descendants. Drag nodes onto a group (or "
+                              "Assembly) to reparent them. Double-click a group name to rename "
+                              "it. Use W/E/R for transforms and F to frame the selection."))
                           .AutoWrapText(true)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +
@@ -78,29 +99,18 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                           .AutoWrapText(true)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
                      [SNew(STextBlock)
-                          .Text(LOCTEXT("Groups", "Assembly Groups"))
+                          .Text(LOCTEXT("Hierarchy", "Assembly Hierarchy"))
                           .Font(FAppStyle::Get().GetFontStyle("HeadingExtraSmall"))] +
-                 SVerticalBox::Slot().AutoHeight().MaxHeight(100.0f).Padding(0.0f, 0.0f, 0.0f, 6.0f)
-                     [SAssignNew(groups_list_, SListView<TSharedPtr<int32>>)
-                          .ListItemsSource(&group_items_)
-                          .SelectionMode(ESelectionMode::Single)
-                          .OnGenerateRow_Lambda([this](TSharedPtr<int32> const item,
-                                                       TSharedRef<STableViewBase> const& owner) {
-                              return SNew(STableRow<TSharedPtr<int32>>,
-                                          owner)[SNew(STextBlock).Text_Lambda([this, item]() {
-                                  if (!mode_.IsValid() || !item.IsValid() ||
-                                      !mode_->get_groups().IsValidIndex(*item)) {
-                                      return FText::GetEmpty();
-                                  }
-                                  return FText::FromName(mode_->get_groups()[*item].name);
-                              })];
-                          })
-                          .OnSelectionChanged_Lambda(
-                              [this](TSharedPtr<int32> const item, ESelectInfo::Type) {
-                                  if (!refreshing_ && item.IsValid()) {
-                                      select_group_from_list(item);
-                                  }
-                              })] +
+                 SVerticalBox::Slot().AutoHeight().MaxHeight(280.0f).Padding(0.0f, 0.0f, 0.0f, 6.0f)
+                     [SAssignNew(hierarchy_tree_, STreeView<FTreeItem>)
+                          .TreeItemsSource(&root_items_)
+                          .SelectionMode(ESelectionMode::Multi)
+                          .OnGenerateRow(this, &FSbxMeshGenLabEditorModeToolkit::generate_tree_row)
+                          .OnGetChildren(this, &FSbxMeshGenLabEditorModeToolkit::get_tree_children)
+                          .OnSelectionChanged(this,
+                                              &FSbxMeshGenLabEditorModeToolkit::select_from_tree)
+                          .OnExpansionChanged(
+                              this, &FSbxMeshGenLabEditorModeToolkit::tree_expansion_changed)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +
                       SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
@@ -119,41 +129,6 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                                .IsEnabled_Lambda(
                                    [this]() { return mode_.IsValid() && mode_->can_ungroup(); })
                                .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::ungroup)]] +
-                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
-                     [SNew(STextBlock)
-                          .Text(LOCTEXT("Parts", "Assembly Parts"))
-                          .Font(FAppStyle::Get().GetFontStyle("HeadingExtraSmall"))] +
-                 SVerticalBox::Slot().AutoHeight().MaxHeight(180.0f).Padding(0.0f, 0.0f, 0.0f, 6.0f)
-                     [SAssignNew(parts_list_, SListView<TSharedPtr<int32>>)
-                          .ListItemsSource(&part_items_)
-                          .SelectionMode(ESelectionMode::Multi)
-                          .OnGenerateRow_Lambda([this](TSharedPtr<int32> const item,
-                                                       TSharedRef<STableViewBase> const& owner) {
-                              return SNew(STableRow<TSharedPtr<int32>>,
-                                          owner)[SNew(STextBlock).Text_Lambda([this, item]() {
-                                  if (!mode_.IsValid() || !item.IsValid() ||
-                                      !mode_->get_parts().IsValidIndex(*item)) {
-                                      return FText::GetEmpty();
-                                  }
-
-                                  auto const& part{mode_->get_parts()[*item]};
-                                  auto const* const shape_enum{StaticEnum<ESbxMeshShape>()};
-                                  auto const shape_text{
-                                      shape_enum == nullptr
-                                          ? FText::GetEmpty()
-                                          : shape_enum->GetDisplayNameTextByValue(
-                                                static_cast<int64>(part.mesh.shape))};
-                                  return FText::Format(LOCTEXT("PartEntry", "Part {0} — {1}"),
-                                                       FText::AsNumber(*item + 1),
-                                                       shape_text);
-                              })];
-                          })
-                          .OnSelectionChanged_Lambda(
-                              [this](TSharedPtr<int32> const item, ESelectInfo::Type) {
-                                  if (!refreshing_ && mode_.IsValid()) {
-                                      select_parts_from_list(item);
-                                  }
-                              })] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +
                       SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
@@ -211,7 +186,7 @@ void FSbxMeshGenLabEditorModeToolkit::on_session_changed(bool const refresh_cont
     }
 
     if (refresh_controls) {
-        refresh_part_items();
+        refresh_tree_items();
         DetailsView->ForceRefresh();
     }
     recipe_document_text_->SetText(mode_->get_recipe_document_text());
@@ -246,58 +221,216 @@ void FSbxMeshGenLabEditorModeToolkit::on_property_changed(FPropertyChangedEvent 
     }
 }
 
-void FSbxMeshGenLabEditorModeToolkit::refresh_part_items() {
+void FSbxMeshGenLabEditorModeToolkit::refresh_tree_items() {
     refreshing_ = true;
-    auto const group_count{mode_->get_groups().Num()};
-    if (group_items_.Num() != group_count) {
-        group_items_.Reset();
-        for (int32 group_index{}; group_index < group_count; ++group_index) {
-            group_items_.Add(MakeShared<int32>(group_index));
+
+    for (auto const& [id, item] : tree_item_by_id_) {
+        if (hierarchy_tree_->IsItemExpanded(item)) {
+            expanded_ids_.Add(id);
         }
     }
-    groups_list_->RequestListRefresh();
-    groups_list_->ClearSelection();
+
+    auto previous_items{MoveTemp(tree_item_by_id_)};
+    auto const root{root_items_.IsEmpty() ? MakeShared<FSbxMeshTreeItem>() : root_items_[0]};
+    root->kind = ESbxMeshTreeItemKind::Root;
+    root->children.Reset();
+    root_items_ = {root};
+
+    auto const& groups{mode_->get_groups()};
+    auto const group_count{groups.Num()};
+    for (int32 group_index{}; group_index < group_count; ++group_index) {
+        auto item{previous_items.FindRef(groups[group_index].id)};
+        if (!item.IsValid() || item->kind != ESbxMeshTreeItemKind::Group) {
+            item = MakeShared<FSbxMeshTreeItem>();
+        }
+        item->id = groups[group_index].id;
+        item->kind = ESbxMeshTreeItemKind::Group;
+        item->data_index = group_index;
+        item->children.Reset();
+        tree_item_by_id_.Add(item->id, item);
+    }
+
+    auto const& recipe_parts{mode_->get_recipe_parts()};
+    auto const part_count{recipe_parts.Num()};
+    for (int32 part_index{}; part_index < part_count; ++part_index) {
+        auto item{previous_items.FindRef(recipe_parts[part_index].id)};
+        if (!item.IsValid() || item->kind != ESbxMeshTreeItemKind::Part) {
+            item = MakeShared<FSbxMeshTreeItem>();
+        }
+        item->id = recipe_parts[part_index].id;
+        item->kind = ESbxMeshTreeItemKind::Part;
+        item->data_index = part_index;
+        item->children.Reset();
+        tree_item_by_id_.Add(item->id, item);
+    }
+
+    for (auto const& group : groups) {
+        auto const item{tree_item_by_id_.FindChecked(group.id)};
+        auto const* const parent{tree_item_by_id_.Find(group.parent_id)};
+        if (parent != nullptr && (*parent)->kind == ESbxMeshTreeItemKind::Group) {
+            (*parent)->children.Add(item);
+        } else {
+            root->children.Add(item);
+        }
+    }
+    for (auto const& part : recipe_parts) {
+        auto const item{tree_item_by_id_.FindChecked(part.id)};
+        auto const* const parent{tree_item_by_id_.Find(part.parent_id)};
+        if (parent != nullptr && (*parent)->kind == ESbxMeshTreeItemKind::Group) {
+            (*parent)->children.Add(item);
+        } else {
+            root->children.Add(item);
+        }
+    }
+
+    hierarchy_tree_->RequestTreeRefresh();
+    hierarchy_tree_->SetItemExpansion(root, true);
+    for (FGuid const id : expanded_ids_) {
+        if (auto const* const item{tree_item_by_id_.Find(id)}; item != nullptr) {
+            hierarchy_tree_->SetItemExpansion(*item, true);
+        }
+    }
+
+    hierarchy_tree_->ClearSelection();
     auto const selected_group_index{mode_->get_selected_group_index()};
-    if (group_items_.IsValidIndex(selected_group_index)) {
-        groups_list_->SetSelection(group_items_[selected_group_index]);
-    }
-
-    auto const part_count{mode_->get_parts().Num()};
-    if (part_items_.Num() != part_count) {
-        part_items_.Reset();
-        for (int32 part_index{0}; part_index < part_count; ++part_index) {
-            part_items_.Add(MakeShared<int32>(part_index));
-        }
-    }
-    parts_list_->RequestListRefresh();
-
-    parts_list_->ClearSelection();
-    for (int32 const selected_index : mode_->get_selected_part_indices()) {
-        if (part_items_.IsValidIndex(selected_index)) {
-            parts_list_->SetItemSelection(part_items_[selected_index], true);
+    if (groups.IsValidIndex(selected_group_index)) {
+        hierarchy_tree_->SetItemSelection(
+            tree_item_by_id_.FindChecked(groups[selected_group_index].id), true);
+    } else {
+        for (int32 const selected_index : mode_->get_selected_part_indices()) {
+            if (recipe_parts.IsValidIndex(selected_index)) {
+                hierarchy_tree_->SetItemSelection(
+                    tree_item_by_id_.FindChecked(recipe_parts[selected_index].id), true);
+            }
         }
     }
     refreshing_ = false;
 }
 
-void FSbxMeshGenLabEditorModeToolkit::select_group_from_list(TSharedPtr<int32> const item) {
-    if (mode_.IsValid() && item.IsValid()) {
-        mode_->select_group(*item);
+auto FSbxMeshGenLabEditorModeToolkit::generate_tree_row(FTreeItem const item,
+                                                        TSharedRef<STableViewBase> const& owner)
+    -> TSharedRef<ITableRow> {
+    TSharedRef<SWidget> content{
+        SNew(STextBlock).Text_Lambda([this, item]() { return tree_item_text(item); })};
+    if (item->kind == ESbxMeshTreeItemKind::Group) {
+        content =
+            SNew(SInlineEditableTextBlock)
+                .Text_Lambda([this, item]() { return tree_item_text(item); })
+                .OnTextCommitted(this, &FSbxMeshGenLabEditorModeToolkit::rename_tree_item, item);
+    }
+
+    return SNew(STableRow<FTreeItem>, owner)
+        .OnDragDetected(this, &FSbxMeshGenLabEditorModeToolkit::begin_tree_drag, item)
+        .OnCanAcceptDrop(this, &FSbxMeshGenLabEditorModeToolkit::can_accept_tree_drop)
+        .OnAcceptDrop(this, &FSbxMeshGenLabEditorModeToolkit::accept_tree_drop)[content];
+}
+
+void FSbxMeshGenLabEditorModeToolkit::get_tree_children(FTreeItem const item,
+                                                        TArray<FTreeItem>& children) const {
+    if (item.IsValid()) {
+        children = item->children;
     }
 }
 
-void FSbxMeshGenLabEditorModeToolkit::select_parts_from_list(TSharedPtr<int32> const primary_item) {
-    TArray<int32> selected_indices;
-    for (auto const& item : parts_list_->GetSelectedItems()) {
-        if (item.IsValid()) {
-            selected_indices.Add(*item);
-        }
+void FSbxMeshGenLabEditorModeToolkit::select_from_tree(FTreeItem const primary_item,
+                                                       ESelectInfo::Type) {
+    if (refreshing_ || !mode_.IsValid()) {
+        return;
+    }
+    if (!primary_item.IsValid() || primary_item->kind == ESbxMeshTreeItemKind::Root) {
+        mode_->SelectNone();
+        return;
     }
 
-    if (!selected_indices.IsEmpty()) {
-        auto const primary_index{primary_item.IsValid() ? *primary_item : selected_indices.Last()};
-        mode_->select_parts(selected_indices, primary_index);
+    TArray<FGuid> selected_ids;
+    for (auto const& item : hierarchy_tree_->GetSelectedItems()) {
+        if (item.IsValid() && item->kind != ESbxMeshTreeItemKind::Root) {
+            selected_ids.Add(item->id);
+        }
     }
+    mode_->select_nodes(selected_ids, primary_item->id);
+}
+
+void FSbxMeshGenLabEditorModeToolkit::tree_expansion_changed(FTreeItem const item,
+                                                             bool const expanded) {
+    if (refreshing_ || !item.IsValid() || !item->id.IsValid()) {
+        return;
+    }
+    if (expanded) {
+        expanded_ids_.Add(item->id);
+    } else {
+        expanded_ids_.Remove(item->id);
+    }
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::begin_tree_drag(FGeometry const&,
+                                                      FPointerEvent const& event,
+                                                      FTreeItem const item) -> FReply {
+    if (!item.IsValid() || item->kind == ESbxMeshTreeItemKind::Root ||
+        !event.IsMouseButtonDown(EKeys::LeftMouseButton)) {
+        return FReply::Unhandled();
+    }
+    return FReply::Handled().BeginDragDrop(FSbxMeshTreeDragDropOp::create(
+        item->id, FText::Format(LOCTEXT("MoveHierarchyNode", "Move {0}"), tree_item_text(item))));
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::can_accept_tree_drop(FDragDropEvent const& event,
+                                                           EItemDropZone,
+                                                           FTreeItem const target) const
+    -> TOptional<EItemDropZone> {
+    auto const operation{event.GetOperationAs<FSbxMeshTreeDragDropOp>()};
+    if (!operation.IsValid() || !target.IsValid() || target->kind == ESbxMeshTreeItemKind::Part ||
+        operation->item_id == target->id) {
+        return {};
+    }
+    return EItemDropZone::OntoItem;
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::accept_tree_drop(FDragDropEvent const& event,
+                                                       EItemDropZone,
+                                                       FTreeItem const target) -> FReply {
+    auto const operation{event.GetOperationAs<FSbxMeshTreeDragDropOp>()};
+    if (!mode_.IsValid() || !operation.IsValid() || !target.IsValid()) {
+        return FReply::Unhandled();
+    }
+    auto const parent_id{target->kind == ESbxMeshTreeItemKind::Root ? FGuid{} : target->id};
+    return mode_->reparent_node(operation->item_id, parent_id) ? FReply::Handled()
+                                                               : FReply::Unhandled();
+}
+
+void FSbxMeshGenLabEditorModeToolkit::rename_tree_item(FText const& text,
+                                                       ETextCommit::Type,
+                                                       FTreeItem const item) {
+    if (mode_.IsValid() && item.IsValid() && item->kind == ESbxMeshTreeItemKind::Group) {
+        mode_->rename_group(item->id, FName{text.ToString().TrimStartAndEnd()});
+    }
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::tree_item_text(FTreeItem const item) const -> FText {
+    if (!mode_.IsValid() || !item.IsValid()) {
+        return FText::GetEmpty();
+    }
+    if (item->kind == ESbxMeshTreeItemKind::Root) {
+        return LOCTEXT("AssemblyRoot", "Assembly");
+    }
+    if (item->kind == ESbxMeshTreeItemKind::Group) {
+        auto const& groups{mode_->get_groups()};
+        return groups.IsValidIndex(item->data_index)
+                 ? FText::FromName(groups[item->data_index].name)
+                 : FText::GetEmpty();
+    }
+
+    auto const& parts{mode_->get_parts()};
+    if (!parts.IsValidIndex(item->data_index)) {
+        return FText::GetEmpty();
+    }
+    auto const* const shape_enum{StaticEnum<ESbxMeshShape>()};
+    auto const shape_text{shape_enum == nullptr
+                              ? FText::GetEmpty()
+                              : shape_enum->GetDisplayNameTextByValue(
+                                    static_cast<int64>(parts[item->data_index].mesh.shape))};
+    return FText::Format(
+        LOCTEXT("PartEntry", "Part {0} — {1}"), FText::AsNumber(item->data_index + 1), shape_text);
 }
 
 auto FSbxMeshGenLabEditorModeToolkit::add_part() -> FReply {

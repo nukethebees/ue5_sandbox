@@ -81,9 +81,12 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void SelectNone() override;
     auto IsSelectionAllowed(AActor* actor, bool selecting) const -> bool override;
     void ActorSelectionChangeNotify() override;
+    auto HasCustomViewportFocus() const -> bool override;
+    auto ComputeCustomViewportFocus() const -> FBox override;
 
     [[nodiscard]] auto get_settings() const -> USbxMeshGenLabSettings*;
     [[nodiscard]] auto get_parts() const -> TArray<FSbxMeshAssemblyPart> const&;
+    [[nodiscard]] auto get_recipe_parts() const -> TArray<FSbxMeshAssemblyRecipePart> const&;
     [[nodiscard]] auto get_selected_part_index() const -> int32;
     [[nodiscard]] auto get_selected_part_indices() const -> TArray<int32> const&;
     [[nodiscard]] auto get_groups() const -> TArray<FSbxMeshAssemblyRecipeGroup> const&;
@@ -99,6 +102,8 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void select_part(int32 part_index);
     void select_parts(TArray<int32> const& part_indices, int32 primary_part_index);
     void select_group(int32 group_index);
+    void select_node(FGuid id);
+    void select_nodes(TArray<FGuid> const& ids, FGuid primary_id);
     void select_all_parts();
     void selection_settings_changed();
     void add_part();
@@ -106,6 +111,8 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void remove_part();
     void create_group();
     void ungroup();
+    auto rename_group(FGuid id, FName name) -> bool;
+    auto reparent_node(FGuid id, FGuid parent_id) -> bool;
     void new_assembly();
     void save_recipe();
     void save_recipe_as();

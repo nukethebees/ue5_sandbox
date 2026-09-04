@@ -1,13 +1,25 @@
 #pragma once
 
 #include "Toolkits/BaseToolkit.h"
+#include "Widgets/Views/STreeView.h"
 
 class IDetailsView;
 class STextBlock;
 class UEdMode;
 class USbxMeshGenLabEditorMode;
-template <typename ItemType>
-class SListView;
+
+enum class ESbxMeshTreeItemKind : uint8 {
+    Root,
+    Group,
+    Part,
+};
+
+struct FSbxMeshTreeItem {
+    FGuid id;
+    ESbxMeshTreeItemKind kind{ESbxMeshTreeItemKind::Part};
+    int32 data_index{INDEX_NONE};
+    TArray<TSharedPtr<FSbxMeshTreeItem>> children;
+};
 
 class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
   public:
@@ -17,11 +29,25 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
     auto GetBaseToolkitName() const -> FText override;
     auto GetInlineContent() const -> TSharedPtr<SWidget> override;
   private:
+    using FTreeItem = TSharedPtr<FSbxMeshTreeItem>;
+
     void on_session_changed(bool refresh_controls);
     void on_property_changed(FPropertyChangedEvent const& event);
-    void refresh_part_items();
-    void select_parts_from_list(TSharedPtr<int32> primary_item);
-    void select_group_from_list(TSharedPtr<int32> item);
+    void refresh_tree_items();
+    auto generate_tree_row(FTreeItem item, TSharedRef<STableViewBase> const& owner)
+        -> TSharedRef<ITableRow>;
+    void get_tree_children(FTreeItem item, TArray<FTreeItem>& children) const;
+    void select_from_tree(FTreeItem primary_item, ESelectInfo::Type select_info);
+    void tree_expansion_changed(FTreeItem item, bool expanded);
+    auto begin_tree_drag(FGeometry const& geometry, FPointerEvent const& event, FTreeItem item)
+        -> FReply;
+    auto can_accept_tree_drop(FDragDropEvent const& event,
+                              EItemDropZone drop_zone,
+                              FTreeItem target) const -> TOptional<EItemDropZone>;
+    auto accept_tree_drop(FDragDropEvent const& event, EItemDropZone drop_zone, FTreeItem target)
+        -> FReply;
+    void rename_tree_item(FText const& text, ETextCommit::Type commit_type, FTreeItem item);
+    [[nodiscard]] auto tree_item_text(FTreeItem item) const -> FText;
     auto add_part() -> FReply;
     auto select_all_parts() -> FReply;
     auto duplicate_part() -> FReply;
@@ -35,10 +61,10 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
     auto save_generated_mesh() -> FReply;
 
     TWeakObjectPtr<USbxMeshGenLabEditorMode> mode_;
-    TArray<TSharedPtr<int32>> part_items_;
-    TArray<TSharedPtr<int32>> group_items_;
-    TSharedPtr<SListView<TSharedPtr<int32>>> parts_list_;
-    TSharedPtr<SListView<TSharedPtr<int32>>> groups_list_;
+    TArray<FTreeItem> root_items_;
+    TMap<FGuid, FTreeItem> tree_item_by_id_;
+    TSet<FGuid> expanded_ids_;
+    TSharedPtr<STreeView<FTreeItem>> hierarchy_tree_;
     TSharedPtr<STextBlock> recipe_document_text_;
     TSharedPtr<STextBlock> status_text_;
     bool refreshing_{};
