@@ -24,8 +24,6 @@ struct FSpaceShipControllerInputs {
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* fire_laser{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* fire_bomb{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* boost{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* brake{nullptr};

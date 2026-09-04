@@ -14,7 +14,6 @@ class UStaticMesh;
 class UNiagaraSystem;
 class UMaterialInterface;
 
-class AShipLaser;
 class UTestTeamVisualData;
 class USandboxVisualLoggerStyle;
 

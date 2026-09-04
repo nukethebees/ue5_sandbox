@@ -1,8 +1,8 @@
 #pragma once
 
+#include <SandboxGameShared/players/SpeedResponse.h>
 #include <SpaceGame/ships/common/BarrelRoll.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
-#include <SandboxGameShared/players/SpeedResponse.h>
 
 #include <SandboxCoreEngine/collision_settings.h>
 
@@ -15,8 +15,6 @@
 class UStaticMesh;
 
 class UTestTeamVisualData;
-
-class AShipBomb;
 
 UCLASS(BlueprintType)
 class UTestSpaceShipData : public UDataAsset {
@@ -117,7 +115,4 @@ class UTestSpaceShipData : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Combat")
     float laser_max_distance{10000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    TSubclassOf<AShipBomb> bomb_class;
 };

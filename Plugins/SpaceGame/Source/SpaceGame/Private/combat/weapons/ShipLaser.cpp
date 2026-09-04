@@ -1,11 +1,11 @@
 #include "SpaceGame/combat/weapons/ShipLaser.h"
 
-#include "SpaceGame/combat/weapons/ShipLaserConfig.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ships/player/legacy/DamageableShip.h"
-#include "SpaceGame/ships/player/legacy/ShipScoringSubsystem.h"
 #include "SandboxGameShared/constants/collision_channels.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
+#include "SpaceGame/combat/weapons/ShipLaserConfig.h"
+#include "SpaceGame/ships/player/legacy/DamageableShip.h"
+#include "SpaceGame/ships/player/legacy/ShipScoringSubsystem.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
@@ -105,8 +105,7 @@ void AShipLaser::do_hit(AActor& actor, UPrimitiveComponent& other_component) {
     TRY_INIT_PTR(world, GetWorld());
     TRY_INIT_PTR(ss, world->GetSubsystem<UShipScoringSubsystem>());
 
-    FShipAttackResult kill_result{
-        instigator, EShipProjectileType::laser, FShipAttackResult::Actors{&actor}};
+    FShipAttackResult kill_result{instigator, FShipAttackResult::Actors{&actor}};
 
     ss->register_kills(kill_result);
 }

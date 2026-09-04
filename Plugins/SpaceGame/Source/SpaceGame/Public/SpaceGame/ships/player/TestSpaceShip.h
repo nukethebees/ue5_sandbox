@@ -28,9 +28,6 @@ class UBoxComponent;
 class UNiagaraSystem;
 class UNiagaraComponent;
 
-class AShipLaser;
-class UShipLaserConfig;
-class AShipHomingLaser;
 class UShipHealthComponent;
 class UTestSpaceShipData;
 struct FTestEntityRegistry;
@@ -230,9 +227,6 @@ class SPACEGAME_API ATestSpaceShip
     void update_laser_firing();
     void fire_laser();
     void fire_lasers_from(TConstArrayView<FTransform> const fire_points);
-
-    // Combat - homing laser
-    void fire_homing_laser();
 
     // Visuals
     void configure_boost_pulse();

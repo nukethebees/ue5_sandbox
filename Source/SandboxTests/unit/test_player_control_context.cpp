@@ -171,7 +171,6 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         input.move = move_action;
         input.turn = move_action;
         input.fire_laser = move_action;
-        input.fire_bomb = move_action;
         input.boost = move_action;
         input.brake = move_action;
         input.roll = move_action;

@@ -1,11 +1,9 @@
 #include "SpaceGame/ships/player/legacy/SpaceShip.h"
 
-#include "SpaceGame/combat/weapons/ShipBomb.h"
-#include "SpaceGame/combat/weapons/ShipHomingLaser.h"
+#include "SandboxGameShared/utilities/actor_utils.h"
 #include "SpaceGame/combat/weapons/ShipLaser.h"
 #include "SpaceGame/ships/common/ShipHealthComponent.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SandboxGameShared/utilities/actor_utils.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"
@@ -393,7 +391,6 @@ void ASpaceShip::start_fire_laser() {
 }
 void ASpaceShip::stop_fire_laser() {
     if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
-        fire_homing_laser();
         set_lock_on_target(nullptr);
     }
 
@@ -442,57 +439,6 @@ void ASpaceShip::fire_laser_from(UShipLaserConfig const& fire_laser_config, FTra
     laser->set_speed(laser_speed);
     laser->FinishSpawning(fire_point);
 }
-void ASpaceShip::fire_homing_laser() {
-    UE_LOG(LogSandboxActor, Verbose, TEXT("Firing homing laser."));
-
-    if (!IsValid(lock_on_target)) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("Invalid lock-on target when firing."));
-        return;
-    }
-    TRY_INIT_PTR(world, GetWorld());
-    auto const fire_point{get_middle_socket()};
-
-    UE_LOG(LogSandboxActor,
-           Verbose,
-           TEXT("Spawning laser at %s"),
-           *fire_point.ToHumanReadableString());
-
-    TRY_INIT_PTR(
-        laser,
-        world->SpawnActorDeferred<AShipHomingLaser>(homing_laser_class, fire_point, nullptr, this));
-    laser->set_speed(laser_speed);
-    laser->set_target(lock_on_target);
-    laser->FinishSpawning(fire_point);
-}
-void ASpaceShip::fire_bomb() {
-    if (auto ab{active_bomb.Pin()}) {
-        if (!ab->has_detonated()) {
-            active_bomb.Get()->detonate();
-            return;
-        }
-    }
-
-    if (bombs <= 0) {
-        UE_LOG(LogSandboxActor, Verbose, TEXT("No bombs left."));
-        return;
-    }
-
-    TRY_INIT_PTR(world, GetWorld());
-    auto const fire_point{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
-
-    UE_LOG(
-        LogSandboxActor, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
-
-    active_bomb = world->SpawnActorDeferred<AShipBomb>(bomb_class, fire_point, nullptr, this);
-    if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
-        active_bomb->set_target(this->lock_on_target);
-        set_lock_on_target(nullptr);
-        set_laser_mode(ELaserFiringState::idle);
-    }
-    active_bomb->FinishSpawning(fire_point);
-
-    subtract_bomb();
-}
 void ASpaceShip::set_lock_on_target(AActor* target) {
     lock_on_target = target;
     on_lock_on_acquired.ExecuteIfBound(lock_on_target);
@@ -504,15 +450,6 @@ void ASpaceShip::upgrade_laser() {
         laser_mode = EShipLaserMode::Hyper;
     }
 }
-void ASpaceShip::add_bomb() {
-    bombs++;
-    on_bombs_changed.Execute(bombs);
-}
-void ASpaceShip::subtract_bomb() {
-    bombs--;
-    on_bombs_changed.Execute(bombs);
-}
-
 void ASpaceShip::add_health(int32 added_health) {
     health->add_health(added_health);
 }

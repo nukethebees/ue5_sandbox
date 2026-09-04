@@ -5,10 +5,7 @@
 #include "SpaceGame/ships/player/legacy/SpaceShip.h"
 
 void UShipScoringSubsystem::register_kills(FShipAttackResult attack) {
-    int32 kills{attack.killed_actors.Num()};
-    if (attack.projectile_type == EShipProjectileType::homing_laser) {
-        kills += kills - 1;
-    }
+    auto const kills{attack.killed_actors.Num()};
 
     UE_LOG(LogSandboxSubsystem, Verbose, TEXT("Registering %d kill(s)."), kills);
     if (attack.instigator.IsValid()) {

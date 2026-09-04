@@ -1,10 +1,10 @@
 #include "Sandbox/players/SpaceShipController.h"
 
 #include "SpaceGame/presentation/TestBatchGameUiData.h"
-#include "SpaceGame/ships/common/ShipHealthComponent.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ships/player/legacy/SpaceShip.h"
 #include "SpaceGame/presentation/widgets/ShipHudWidget.h"
+#include "SpaceGame/ships/common/ShipHealthComponent.h"
+#include "SpaceGame/ships/player/legacy/SpaceShip.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Engine/LocalPlayer.h"
@@ -42,7 +42,6 @@ void ASpaceShipController::SetupInputComponent() {
 
     bind(input.fire_laser, Started, &ThisClass::start_fire_laser);
     bind(input.fire_laser, Completed, &ThisClass::stop_fire_laser);
-    bind(input.fire_bomb, Started, &ThisClass::fire_bomb);
 }
 void ASpaceShipController::Tick(float dt) {
     Super::Tick(dt);
@@ -258,11 +257,6 @@ void ASpaceShipController::stop_fire_laser() {
     TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
     ship->stop_fire_laser();
 }
-void ASpaceShipController::fire_bomb(FInputActionValue const& value) {
-    TRY_INIT_PTR(ship, Cast<ASpaceShip>(GetPawn()));
-    ship->fire_bomb();
-}
-
 void ASpaceShipController::on_laser_firing_mode_changed(ELaserFiringState mode) {
     RETURN_IF_NULLPTR(hud_widget);
 

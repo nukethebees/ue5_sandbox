@@ -2,7 +2,6 @@
 
 #include <SandboxGameShared/utilities/enums.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/combat/weapons/ShipLaserConfig.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
@@ -556,7 +555,6 @@ void ATestSpaceShip::start_fire_laser() {
 }
 void ATestSpaceShip::stop_fire_laser() {
     if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
-        fire_homing_laser();
         set_lock_on_target({});
     }
 
@@ -653,9 +651,6 @@ void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept
 
     on_ship_fire_rate_changed.ExecuteIfBound(laser_fire_rate);
 }
-
-// Combat - homing laser
-void ATestSpaceShip::fire_homing_laser() {}
 
 /* ------------------------------------------------------------------------------------------ */
 // Visuals

@@ -1,14 +1,13 @@
 #pragma once
 
-#include "SpaceGame/combat/weapons/ShipProjectileType.h"
-#include "SpaceGame/ships/common/ShipHealthComponent.h"
+#include "SandboxGameShared/players/SpeedResponse.h"
 #include "SpaceGame/ships/common/BarrelRoll.h"
-#include "SpaceGame/ships/player/legacy/DamageableShip.h"
 #include "SpaceGame/ships/common/LaserFiringState.h"
+#include "SpaceGame/ships/common/ShipHealthComponent.h"
 #include "SpaceGame/ships/common/ShipLaserMode.h"
 #include "SpaceGame/ships/common/SpaceShipCommon.h"
 #include "SpaceGame/ships/common/SpaceShipFlightModel.h"
-#include "SandboxGameShared/players/SpeedResponse.h"
+#include "SpaceGame/ships/player/legacy/DamageableShip.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"
@@ -24,8 +23,6 @@ class UNiagaraComponent;
 
 class AShipLaser;
 class UShipLaserConfig;
-class AShipHomingLaser;
-class AShipBomb;
 class UShipHealthComponent;
 
 UCLASS(MinimalAPI)
@@ -56,10 +53,7 @@ class ASpaceShip
 
     SPACEGAME_API void start_fire_laser();
     SPACEGAME_API void stop_fire_laser();
-    SPACEGAME_API void fire_bomb();
     SPACEGAME_API void upgrade_laser();
-    SPACEGAME_API void add_bomb();
-    auto get_bombs() const { return bombs; }
     auto get_lock_on_target() const -> AActor const* { return lock_on_target; }
 
     void upgrade_max_health();
@@ -91,7 +85,6 @@ class ASpaceShip
     FOnShipSpeedChanged on_speed_changed;
     SPACEGAME_API auto get_on_health_changed_delegate() -> FOnShipHealthChanged&;
     FOnShipEnergyChanged on_energy_changed;
-    FOnShipBombsChanged on_bombs_changed;
     FOnShipGoldRingsChanged on_gold_rings_changed;
     FOnShipPointsChanged on_points_changed;
     FOnLivesChanged on_lives_changed;
@@ -114,8 +107,6 @@ class ASpaceShip
 
     void fire_laser();
     void fire_laser_from(UShipLaserConfig const& fire_laser_config, FTransform fire_point);
-    void subtract_bomb();
-    void fire_homing_laser();
 
     void add_points(int32 x);
 
@@ -231,19 +222,9 @@ class ASpaceShip
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     TSubclassOf<AShipLaser> laser_class;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
-    TSubclassOf<AShipHomingLaser> homing_laser_class;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     UShipLaserConfig* laser_config;
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Laser")
     UShipLaserConfig* hyper_laser_config;
-
-    // Bombs
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
-    TSubclassOf<AShipBomb> bomb_class;
-    UPROPERTY(EditAnywhere, Category = "SpaceShip|Bomb")
-    int32 bombs{3};
-    UPROPERTY(VisibleAnywhere, Category = "SpaceShip|Bomb")
-    TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
 
     // Points
     UPROPERTY(EditAnywhere, Category = "SpaceShip")

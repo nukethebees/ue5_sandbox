@@ -1,12 +1,12 @@
 #pragma once
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "Sandbox/players/BarrelRollInputData.h"
-#include "SpaceGame/ships/common/LaserFiringState.h"
-#include "SpaceGame/ships/common/SpaceShipControllerInputs.h"
-#include "SpaceGame/presentation/HudCrosshairDistances.h"
 #include "SandboxGameShared/input/EnhancedInputMixin.hpp"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
+#include "SpaceGame/presentation/HudCrosshairDistances.h"
+#include "SpaceGame/ships/common/LaserFiringState.h"
+#include "SpaceGame/ships/common/SpaceShipControllerInputs.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"
@@ -68,8 +68,6 @@ class ASpaceShipController
     void start_fire_laser();
     UFUNCTION()
     void stop_fire_laser();
-    UFUNCTION()
-    void fire_bomb(FInputActionValue const& value);
 
     // UI
     UFUNCTION()
