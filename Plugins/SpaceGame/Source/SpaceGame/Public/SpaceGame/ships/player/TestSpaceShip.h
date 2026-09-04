@@ -1,51 +1,20 @@
 #pragma once
 
-#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/entities/TestEntityRegistryData.h>
-#include <SpaceGame/entities/TestEntityUniqueId.h>
-#include <SpaceGame/ships/common/LaserFiringState.h>
-#include <SpaceGame/ships/common/ShipHealthComponent.h>
-#include <SpaceGame/ships/common/ShipLaserMode.h>
-#include <SpaceGame/ships/common/SpaceShipCommon.h>
-#include <SpaceGame/ships/common/SpaceShipFlightModel.h>
-#include <SpaceGame/ships/player/TestShipFireRate.h>
-#include <SpaceGame/ships/player/TestSpaceShipControlMode.h>
-#include <SpaceGame/ships/player/TestSpaceShipFlightMode.h>
 #include <SpaceGame/ships/player/TestSpaceShipSimulation.h>
-#include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
 
-#include "CoreMinimal.h"
-#include "GameFramework/Pawn.h"
+#include <CoreMinimal.h>
+#include <GameFramework/Pawn.h>
 
 #include "TestSpaceShip.generated.h"
 
+class ATestBatchOrchestrator;
 class UCameraComponent;
+class UNiagaraComponent;
 class UStaticMesh;
 class UStaticMeshComponent;
-class UBoxComponent;
-class UNiagaraSystem;
-class UNiagaraComponent;
-
-class UShipHealthComponent;
-class UTestSpaceShipData;
-struct FTestEntityRegistry;
-class ATestLasers;
-struct EntityDeathInfo;
-
-namespace ml {
-struct FSpatialQueryManager;
-}
-
-namespace ml::test_space_ship {
-class PhaseInterface;
-}
-
-namespace ml::entity_registry {
-struct EntityData;
-}
 
 DECLARE_DELEGATE(FOnPlayerShipDied);
 
@@ -54,13 +23,8 @@ class SPACEGAME_API ATestSpaceShip
     : public APawn
     , public ITestEntity {
     GENERATED_BODY()
-    friend class ml::test_space_ship::PhaseInterface;
     friend class ATestBatchOrchestrator;
   public:
-    using RegistryEntityData = ml::entity_registry::EntityData;
-
-    static constexpr bool sweep_movement{false};
-
     struct Sockets {
         inline static FName const left{"Left"};
         inline static FName const right{"Right"};
@@ -69,40 +33,17 @@ class SPACEGAME_API ATestSpaceShip
 
     ATestSpaceShip();
 
-    // ITestEntity
-    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
-        return simulation().registry_handle;
-    }
+    auto get_entity_handle() const noexcept -> FRegistryEntityHandle override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
-    /* ------------------------------------------------------------------------------------------ */
-    // Entity data
-    /* ------------------------------------------------------------------------------------------ */
     auto get_unique_id() const -> TestEntityUniqueId;
     auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
 
-    auto get_entity_registry() const { return entity_registry; }
-    void set_entity_registry(FTestEntityRegistry* er) { entity_registry = er; }
-    void set_spatial_query_manager(ml::FSpatialQueryManager const& manager) {
-        spatial_query_manager = &manager;
-    }
-
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator);
-
-    auto get_laser_actor() const { return laser_actor; }
-    void set_laser_actor(ATestLasers* actor) { laser_actor = actor; }
-
-    auto get_actor_config() const { return actor_config; }
-    void set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
-        actor_config = new_config;
-    }
-
+    auto get_actor_config() const noexcept -> FPlayerShipConfig const* { return actor_config; }
+    void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
     auto get_kills() const -> int32;
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Movement
-    /* ------------------------------------------------------------------------------------------ */
     void set_move_input(FVector2D input);
     void set_lateral_move_input(float input);
     void set_vertical_move_input(float input);
@@ -122,214 +63,86 @@ class SPACEGAME_API ATestSpaceShip
     auto get_speed() const -> float;
     void roll(float direction);
     auto get_target_speed() const -> float;
-    auto get_move_input() const { return simulation().planar_movement_direction; }
-    auto get_control_mode() const { return simulation().control_mode; }
-    auto get_flight_mode() const { return simulation().flight_mode; }
+    auto get_move_input() const -> FVector2D;
+    auto get_control_mode() const -> ETestSpaceShipControlMode;
+    auto get_flight_mode() const -> ETestSpaceShipFlightMode;
     void set_flight_mode(ETestSpaceShipFlightMode new_flight_mode) noexcept;
-    auto get_target_local_planar_velocity_scale() const {
-        return simulation().target_local_planar_velocity_scale;
-    }
-    auto get_target_local_planar_velocity() const {
-        return simulation().target_local_planar_velocity;
-    }
-    auto get_turn_input() const { return simulation().rotation_input; }
+    auto get_target_local_planar_velocity_scale() const -> FVector2D;
+    auto get_target_local_planar_velocity() const -> FVector;
+    auto get_turn_input() const -> FVector2D;
 
-    // Energy
-    bool energy_is_full() const;
+    auto energy_is_full() const -> bool;
     auto get_energy() const -> float;
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Combat
-    /* ------------------------------------------------------------------------------------------ */
-    auto get_lock_on_target() const -> FRegistryEntityHandle { return simulation().lock_on_target; }
-
-    // Combat - laser
+    auto get_lock_on_target() const -> FRegistryEntityHandle;
     void start_fire_laser();
     void stop_fire_laser();
     void upgrade_laser();
-
-    auto get_laser_fire_rate() const noexcept -> ETestShipFireRate {
-        return simulation().laser_fire_rate;
-    }
-    auto get_laser_firing_mode() const noexcept -> ELaserFiringState {
-        return simulation().laser_firing_mode;
-    }
+    auto get_laser_fire_rate() const noexcept -> ETestShipFireRate;
+    auto get_laser_firing_mode() const noexcept -> ELaserFiringState;
     void select_next_laser_fire_rate() noexcept;
     void select_previous_laser_fire_rate() noexcept;
-    void set_laser_fire_rate(ETestShipFireRate const value) noexcept;
+    void set_laser_fire_rate(ETestShipFireRate value) noexcept;
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Health
-    /* ------------------------------------------------------------------------------------------ */
     void add_health(int32 added_health);
-    auto get_health_info() const -> FShipHealth { return simulation().health; }
-    bool is_alive() const noexcept { return simulation().health.is_alive(); }
+    auto get_health_info() const -> FShipHealth;
+    auto is_alive() const noexcept -> bool;
 
-    static constexpr auto tick_clamp(auto value, auto delta_time, auto abs_max_value) {
-        return FMath::Clamp(value * delta_time, -abs_max_value, abs_max_value);
-    }
-    static constexpr auto clamp(auto value, auto abs_max_value) {
-        return FMath::Clamp(value, -abs_max_value, abs_max_value);
-    }
-
-    // Mesh
     auto get_collision_mesh() const -> UStaticMesh const*;
     auto get_ship_forward_vector() const -> FVector;
     auto get_middle_socket() const -> FTransform;
 
-    // Delegates
-    FOnShipSpeedChanged on_speed_changed;
-    FOnShipTargetSpeedChanged on_target_speed_changed;
-    FOnShipHealthChanged on_health_changed;
-    FOnShipEnergyChanged on_energy_changed;
-    FOnLaserModeChanged on_laser_mode_changed;
-    FOnShipFireRateChanged on_ship_fire_rate_changed;
     FOnPlayerShipDied on_player_ship_died;
 
-#if WITH_EDITORONLY_DATA
-    FOnSpeedSampled on_speed_sampled;
-#endif
-
 #if WITH_EDITOR
-    auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d> {
-        return simulation().speed_samples;
-    }
-    auto get_speed_sample_index() const noexcept -> int32 {
-        return simulation().speed_sample_index;
-    }
+    auto get_speed_samples() const noexcept -> TConstArrayView<FVector2d>;
+    auto get_speed_sample_index() const noexcept -> int32;
 #endif
   private:
-    /* ------------------------------------------------------------------------------------------ */
-    // Life cycle
-    /* ------------------------------------------------------------------------------------------ */
-    void begin_play();
-    void begin_tick();
-    void update_timers(float const dt);
-    void move(float const dt);
-    void queue_commands();
-    void resolve_damage_events();
-    void update_entity_registry();
-    void resolve_damage_targets();
-    void sync_from_registry();
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
+    auto GetVelocity() const -> FVector override;
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Entity data
-    /* ------------------------------------------------------------------------------------------ */
-    void register_with_entity_registry();
-    auto get_entity_update_data() const -> RegistryEntityData;
     auto make_simulation() const -> ml::test_space_ship::Simulation;
     void bind_simulation(ml::test_space_ship::Simulation& new_simulation);
     void unbind_simulation();
     auto simulation() -> ml::test_space_ship::Simulation&;
     auto simulation() const -> ml::test_space_ship::Simulation const&;
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Movement
-    /* ------------------------------------------------------------------------------------------ */
-    auto GetVelocity() const -> FVector override;
-    void set(EBoostBrakeState s);
-    void update_boost_brake(float dt);
-    void integrate_velocity(float dt);
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Combat
-    /* ------------------------------------------------------------------------------------------ */
-    void set_lock_on_target(FRegistryEntityHandle target);
-
-    // Combat - laser
-    void set_laser_mode(ELaserFiringState laser_mode);
-    void update_laser_firing();
-    void fire_laser();
-    void fire_lasers_from(TConstArrayView<FTransform> const fire_points);
-
-    // Visuals
+    void begin_play_presentation();
+    void update_visual_data(float dt);
+    void commit_visual_data();
+    void handle_simulation_death();
     void configure_boost_pulse();
     void configure_boost_engine_effect();
     void configure_ship_mesh();
-
-    void update_actor_rotation(float dt);
-    void update_visual_orientation(float dt);
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Health
-    /* ------------------------------------------------------------------------------------------ */
-    void set_health(int32 new_health);
-    void die(FRegistryEntityHandle killer);
-    void queue_entity_update(EntityDeathInfo const& death_info);
-
-    // Mesh
-    auto get_middle_socket(UStaticMeshComponent const& m) const -> FTransform;
-
-    // Debugging
     void draw_debug_shapes();
-#if WITH_EDITOR
-    void sample_speed();
-#endif
-    void configure_speed_sampling();
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Config
-    /* ------------------------------------------------------------------------------------------ */
     FPlayerShipConfig const* actor_config{nullptr};
-
-    /* ------------------------------------------------------------------------------------------ */
-    // Entity data
-    /* ------------------------------------------------------------------------------------------ */
-    FTestEntityRegistry* entity_registry{nullptr};
-    ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestTeam team{ETestTeam::White};
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Visuals
-    /* ------------------------------------------------------------------------------------------ */
-    // Camera
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     UCameraComponent* camera{nullptr};
-
-    // Ship
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     UStaticMeshComponent* ship_mesh{nullptr};
-
-    // Visuals - engine
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_pulse{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_engine_effect{nullptr};
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Simulation defaults
-    /* ------------------------------------------------------------------------------------------ */
     UPROPERTY(EditAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
     ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
     ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
 
-    /* ------------------------------------------------------------------------ */
-    /* Combat */
-    /* ------------------------------------------------------------------------ */
-    // Combat - Laser
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
-    TObjectPtr<ATestLasers> laser_actor{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     EShipLaserMode laser_mode{EShipLaserMode::Single};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Health
-    /* ------------------------------------------------------------------------------------------ */
     UPROPERTY(EditAnywhere, Category = "Sandbox|Health", meta = (AllowPrivateAccess))
     FShipHealth health{1000};
 
-    /* ------------------------------------------------------------------------------------------ */
-    // Misc
-    /* ------------------------------------------------------------------------------------------ */
-    // Logging
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};
 
@@ -344,7 +157,7 @@ class SPACEGAME_API ATestSpaceShip
     float debug_lock_on_sphere_radius{1000.f};
 #endif
 
-    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     mutable TOptional<ml::test_space_ship::Simulation> standalone_simulation;
     ml::test_space_ship::Simulation* bound_simulation{nullptr};
+    EBoostBrakeState presented_boost_brake_state{EBoostBrakeState::None};
 };

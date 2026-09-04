@@ -226,8 +226,8 @@
       "header": "SpaceGame/entities/TestEntityRegistry.h"
     },
     "test_space_ship": {
-      "spelling": "ATestSpaceShip",
-      "header": "SpaceGame/ships/player/TestSpaceShip.h"
+      "spelling": "ml::test_space_ship::Simulation",
+      "header": "SpaceGame/ships/player/TestSpaceShipSimulation.h"
     },
     "test_lasers": {
       "spelling": "ATestLasers",

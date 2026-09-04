@@ -423,6 +423,9 @@ void ATestBatchOrchestrator::begin_play() {
     spinners_phase.clear_runtime_state();
 
     if (IsValid(player_ship)) {
+        player_ship->begin_play_presentation();
+    }
+    if (player_ship_simulation.IsSet()) {
         player_ship_phase.begin_play();
     }
     capital_ships_phase.begin_play();
@@ -608,8 +611,8 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 }
 
 void ATestBatchOrchestrator::validate_proxy_handles() {
-    if (IsValid(player_ship)) {
-        if (!entity_registry.is_valid_handle(player_ship->get_entity_registry_handle())) {
+    if (player_ship_simulation.IsSet()) {
+        if (!entity_registry.is_valid_handle(player_ship_simulation->registry_handle)) {
             UE_LOG(LogSandbox, Fatal, TEXT("Player ship handle is invalid"));
         }
     }
@@ -632,6 +635,9 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     simulation_tick_loop.add_time(dt);
 
     while (simulation_tick_loop.try_tick()) {
+        auto const player_simulation_is_active{[this] {
+            return player_ship_simulation.IsSet() && player_ship_simulation->health.is_alive();
+        }};
 #if WITH_EDITOR
         if (log_ticks) {
             UE_LOG(LogSandbox,
@@ -649,7 +655,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // Assume registry data is stable here
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.begin_tick();
             }
 
@@ -669,7 +675,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.update_timers(simulation_tick_loop.tick_period);
             }
             capital_ship_fighters_phase.update_timers(simulation_tick_loop.tick_period);
@@ -692,7 +698,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // Movement
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.move(simulation_tick_loop.tick_period);
             }
 
@@ -705,7 +711,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             // e.g. spawning lasers for the next frame
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.queue_commands();
             }
 
@@ -736,8 +742,11 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.resolve_damage_events();
+                if (player_ship_simulation->consume_death_notification() && IsValid(player_ship)) {
+                    player_ship->handle_simulation_death();
+                }
             }
 
             capital_ships_phase.resolve_damage_events();
@@ -750,7 +759,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.update_entity_registry();
             }
 
@@ -771,7 +780,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.sync_from_registry();
             }
 
@@ -786,7 +795,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
 
             if (IsValid(player_ship)) {
-                player_ship_phase.update_visual_data();
+                player_ship->update_visual_data(simulation_tick_loop.tick_period);
             }
 
             capital_ships_phase.update_visual_data();
@@ -802,7 +811,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
 
-            if (IsValid(player_ship)) {
+            if (player_simulation_is_active()) {
                 player_ship_phase.end_tick();
             }
 
@@ -839,7 +848,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
 
         if (IsValid(player_ship)) {
-            player_ship_phase.commit_visual_data();
+            player_ship->commit_visual_data();
         }
 
         capital_ships_phase.commit_visual_data();
@@ -875,7 +884,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     if (IsValid(player_ship)) {
         player_ship_simulation.Emplace();
         player_ship->bind_simulation(player_ship_simulation.GetValue());
-        player_ship_phase.bind(*player_ship);
+        player_ship_phase.bind(player_ship_simulation.GetValue());
     } else {
         player_ship_simulation.Reset();
     }
@@ -894,16 +903,16 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     capital_ships->bind_fighters(*capital_ship_fighters);
 
     auto const bind_simulation_clock{[this](auto actor) { actor->bind_simulation_clock(*this); }};
-    if (IsValid(player_ship)) {
-        bind_simulation_clock(player_ship);
+    if (player_ship_simulation.IsSet()) {
+        player_ship_simulation->bind_simulation_clock(*this);
     }
     ml::invoke_on_all(bind_simulation_clock, capital_ship_fighters, turrets, spinners, lasers);
     mission_manager.bind_simulation_clock(*this);
 
-    if (IsValid(player_ship)) {
-        player_ship->set_entity_registry(&entity_registry);
-        player_ship->set_spatial_query_manager(query_manager);
-        player_ship->set_laser_actor(lasers);
+    if (player_ship_simulation.IsSet()) {
+        player_ship_simulation->set_entity_registry(entity_registry);
+        player_ship_simulation->set_spatial_query_manager(query_manager);
+        player_ship_simulation->set_lasers(*lasers);
     }
 
     ml::invoke_on_all([&](auto actor) { actor->set_entity_registry(entity_registry); },
