@@ -7,6 +7,7 @@
 #include <Containers/StaticArray.h>
 
 class UStaticMesh;
+class UPrimitiveComponent;
 class UWorld;
 struct FTestEntityRegistry;
 struct FCollisionGridConfig;
@@ -20,6 +21,7 @@ struct SPACEGAME_API FCollisionSystem {
 
     void initialise(EntityMeshes const& meshes);
     void initialise_static_geometry(UWorld& world, FCollisionGridConfig const& config);
+    auto add_static_geometry(UPrimitiveComponent& component) -> bool;
     void update();
 
     auto get_entity_aabbs() const noexcept -> FEntityAABBs const& { return entity_aabbs_; }

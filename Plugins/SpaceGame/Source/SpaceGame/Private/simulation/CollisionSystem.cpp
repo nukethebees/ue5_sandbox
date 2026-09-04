@@ -226,6 +226,67 @@ void FCollisionSystem::initialise_static_geometry(UWorld& world,
            unsupported_component_count,
            unexpected_actor_count);
 }
+auto FCollisionSystem::add_static_geometry(UPrimitiveComponent& component) -> bool {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::add_static_geometry);
+
+    auto* const actor{component.GetOwner()};
+    auto const reject_component{[&](TCHAR const* const reason) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("Cannot add runtime static collision component %s on actor %s: %s"),
+               *component.GetPathName(),
+               IsValid(actor) ? *actor->GetPathName() : TEXT("<invalid>"),
+               reason);
+        return false;
+    }};
+
+    if (!IsValid(actor)) {
+        return reject_component(TEXT("component has no valid owner"));
+    }
+    if (component.GetCollisionEnabled() == ECollisionEnabled::NoCollision ||
+        !component.IsQueryCollisionEnabled()) {
+        return reject_component(TEXT("component has no query collision"));
+    }
+    if (component.Mobility != EComponentMobility::Static) {
+        return reject_component(TEXT("component mobility is not static"));
+    }
+    if (component.IsA<UInstancedStaticMeshComponent>()) {
+        return reject_component(TEXT("instanced static mesh components are not supported"));
+    }
+
+    auto* const body_setup{component.GetBodySetup()};
+    if (!IsValid(body_setup)) {
+        return reject_component(TEXT("component has no body setup"));
+    }
+    if (body_setup->CollisionTraceFlag == CTF_UseComplexAsSimple) {
+        return reject_component(TEXT("complex-as-simple collision is not supported"));
+    }
+    if (has_unsupported_geometry(body_setup->AggGeom)) {
+        return reject_component(TEXT("aggregate geometry contains unsupported shape types"));
+    }
+
+    auto const transform{component.GetComponentTransform()};
+    auto const aabb{ml::get_aabb(body_setup->AggGeom, transform)};
+    if (!aabb.IsValid) {
+        return reject_component(TEXT("component has no query-enabled simple collision geometry"));
+    }
+
+    FVector3f const min_point{aabb.Min};
+    FVector3f const max_point{aabb.Max};
+    auto const& uniform_grid{uniform_grid_};
+    auto const [min_coord, max_coord]{uniform_grid.to_cell_coord_bounds(min_point, max_point)};
+    if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
+        !uniform_grid.is_cell_coord_in_bounds(min_coord, max_coord)) {
+        return reject_component(TEXT("world AABB is invalid or outside the collision grid"));
+    }
+
+    auto const original_collision_mode{component.GetCollisionEnabled()};
+    auto const static_index{uniform_grid_.add_static_aabb(min_point, max_point)};
+    check(static_index == static_collision_sources_.num());
+    static_collision_sources_.add(actor, &component, transform, original_collision_mode);
+    component.SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    return true;
+}
 void FCollisionSystem::update() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::update);
     rebuild_grid();
