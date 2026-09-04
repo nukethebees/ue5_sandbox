@@ -191,9 +191,6 @@ struct SPACEGAME_API FLaserProjectileConfig {
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UNiagaraSystem> hit_effect{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Collision")
-    TEnumAsByte<ECollisionChannel> collision_channel{ECC_Visibility};
 };
 
 USTRUCT(BlueprintType)

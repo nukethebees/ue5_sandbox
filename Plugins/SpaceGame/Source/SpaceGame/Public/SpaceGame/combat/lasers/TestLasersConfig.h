@@ -1,9 +1,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Containers/EnumAsByte.h"
 #include "Engine/DataAsset.h"
-#include "Engine/EngineTypes.h"
 
 #include "TestLasersConfig.generated.h"
 
@@ -31,8 +29,4 @@ class UTestLasersConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere)
     TObjectPtr<UNiagaraSystem> hit_effect{nullptr};
-
-    // Collision
-    UPROPERTY(EditAnywhere)
-    TEnumAsByte<ECollisionChannel> collision_channel{ECC_Visibility};
 };

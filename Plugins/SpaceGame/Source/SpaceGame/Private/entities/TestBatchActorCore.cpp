@@ -22,9 +22,7 @@ void configure_ismc(UInstancedStaticMeshComponent& instances, FIsmcConfig const&
     }
 
     instances.SetCanEverAffectNavigation(false);
-    instances.SetCollisionEnabled(ECollisionEnabled::QueryOnly);
-    instances.SetCollisionResponseToAllChannels(ECR_Ignore);
-    instances.SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+    instances.SetCollisionEnabled(ECollisionEnabled::NoCollision);
     instances.SetGenerateOverlapEvents(false);
     instances.SetCastShadow(false);
     instances.SetAffectDistanceFieldLighting(false);

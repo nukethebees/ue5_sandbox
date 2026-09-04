@@ -703,21 +703,8 @@ void ATestSpaceShip::configure_boost_engine_effect() {
 }
 void ATestSpaceShip::configure_ship_mesh() {
     ship_mesh->SetCanEverAffectNavigation(false);
-    ship_mesh->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+    ship_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     ship_mesh->SetGenerateOverlapEvents(false);
-
-    FCollisionResponseContainer collision_response;
-
-    constexpr auto block{ECollisionResponse::ECR_Block};
-
-    collision_response.Visibility = block;
-    collision_response.WorldDynamic = block;
-    collision_response.WorldStatic = block;
-
-    collision_response.SetResponse(ml::collision::projectile, block);
-    collision_response.SetResponse(ml::collision::description, block);
-
-    ship_mesh->SetCollisionResponseToChannels(collision_response);
 }
 
 // Mesh
