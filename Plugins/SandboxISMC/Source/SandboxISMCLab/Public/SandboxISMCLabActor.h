@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SandboxISMCInstanceData.h"
+
 #include "GameFramework/Actor.h"
 
 #include "SandboxISMCLabActor.generated.h"
@@ -29,6 +31,8 @@ class SANDBOXISMCLAB_API ASandboxISMCLabActor final : public AActor {
     UFUNCTION(CallInEditor, Category = "Sandbox ISMC Lab")
     void clear_instances();
   private:
+    void submit_instances();
+
     UPROPERTY(VisibleAnywhere, Category = "Sandbox ISMC Lab")
     TObjectPtr<USandboxISMCComponent> instances_;
 
@@ -76,5 +80,6 @@ class SANDBOXISMCLAB_API ASandboxISMCLabActor final : public AActor {
               meta = (ClampMin = "0.1"))
     float log_interval_seconds_{1.0f};
 
+    ml::sandbox_ismc::InstanceData instance_data_;
     double next_log_time_seconds_{0.0};
 };

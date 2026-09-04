@@ -1,10 +1,12 @@
 #pragma once
 
-#include "SandboxISMCInstanceState.h"
+#include "SandboxISMCInstanceChunkWriter.h"
+#include "SandboxISMCParallelism.h"
 #include "SandboxISMCUpdateMetrics.h"
 
 #include "Components/MeshComponent.h"
-#include "Containers/ArrayView.h"
+#include "Math/BoxSphereBounds.h"
+#include "Templates/Function.h"
 #include "Templates/SharedPointer.h"
 
 #include "SandboxISMCComponent.generated.h"
@@ -12,6 +14,7 @@
 class UStaticMesh;
 class UMaterialInterface;
 struct FSandboxISMCMetricsState;
+struct FSandboxISMCRenderUpdate;
 
 UCLASS(ClassGroup = (Rendering), meta = (DisplayName = "Sandbox ISMC"))
 class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
@@ -23,26 +26,15 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     auto clear_static_mesh() -> void;
     auto get_static_mesh() const -> UStaticMesh*;
 
-    auto reserve_instances(int32 capacity) -> void;
-    auto add_instances(TConstArrayView<FVector3f> positions) -> int32;
-    auto add_instances(TConstArrayView<FVector3f> positions, TConstArrayView<FQuat4f> rotations)
-        -> int32;
-    auto add_instances(ml::sandbox_ismc::InstanceDataConstView instances) -> int32;
-    auto set_instance_transforms(int32 first_index,
-                                 ml::sandbox_ismc::InstanceDataConstView instances) -> void;
-    auto set_instance_transforms(TConstArrayView<int32> instance_indices,
-                                 ml::sandbox_ismc::InstanceDataConstView instances) -> void;
-    auto remove_instances_swap(TConstArrayView<int32> sorted_instance_indices) -> void;
+    template <typename FillChunk>
+    auto set_instances(int32 instance_count,
+                       ESandboxISMCParallelism parallelism,
+                       FillChunk&& fill_chunk) -> void {
+        set_instances_internal(instance_count, parallelism, fill_chunk);
+    }
+
     auto clear_instances() -> void;
-
     auto get_instance_count() const -> int32;
-    auto instances() -> ml::sandbox_ismc::InstanceDataView;
-    auto instances() const -> ml::sandbox_ismc::InstanceDataConstView;
-    auto edit_instances(int32 first_index, int32 count) -> ml::sandbox_ismc::InstanceDataView;
-    auto mark_instance_range_dirty(int32 first_index, int32 count) -> void;
-    auto mark_all_instances_dirty() -> void;
-
-    auto commit_instance_updates() -> void;
     auto get_update_metrics() const -> FSandboxISMCUpdateMetrics;
 
     virtual auto CreateSceneProxy() -> FPrimitiveSceneProxy* override;
@@ -51,10 +43,19 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     virtual auto CalcBounds(FTransform const& local_to_world) const -> FBoxSphereBounds override;
     virtual auto SendRenderDynamicData_Concurrent() -> void override;
   private:
+    auto set_instances_internal(int32 instance_count,
+                                ESandboxISMCParallelism parallelism,
+                                TFunctionRef<void(FSandboxISMCInstanceChunkWriter&)> fill_chunk)
+        -> void;
+
     UPROPERTY(EditAnywhere, Category = "Mesh")
     TObjectPtr<UStaticMesh> static_mesh_;
 
-    ml::sandbox_ismc::InstanceState instance_state_;
     TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> pending_render_update_;
     TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics_;
+    FBoxSphereBounds local_bounds_{ForceInit};
+    FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
+    float mesh_bounds_radius_{0.0f};
+    int32 instance_count_{0};
+    bool has_mesh_bounds_{false};
 };

@@ -36,24 +36,18 @@ class SANDBOXISMCLAB_API ASandboxISMCBenchmarkActor final : public AActor {
   private:
     struct FUpdateTiming {
         double total_ms{0.0};
-        double prepare_ms{0.0};
-        double pack_ms{-1.0};
-        double bounds_ms{-1.0};
+        double prepare_ms{-1.0};
+        double build_ms{-1.0};
         double api_ms{0.0};
         double uploaded_bytes{-1.0};
-        double dirty_instances{-1.0};
-        double dirty_ranges{-1.0};
     };
 
     struct FRendererSamples {
         TArray<double> total_update_ms;
         TArray<double> prepare_ms;
-        TArray<double> pack_ms;
-        TArray<double> bounds_ms;
+        TArray<double> build_ms;
         TArray<double> api_ms;
         TArray<double> uploaded_bytes;
-        TArray<double> dirty_instances;
-        TArray<double> dirty_ranges;
     };
 
     void parse_command_line();

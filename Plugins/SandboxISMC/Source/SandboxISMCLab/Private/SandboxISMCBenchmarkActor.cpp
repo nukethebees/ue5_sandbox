@@ -42,19 +42,12 @@ TRACE_DECLARE_FLOAT_COUNTER(BenchmarkRenderThreadMs, TEXT("SandboxISMCBenchmark/
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkGpuMs, TEXT("SandboxISMCBenchmark/GpuMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomTotalMs,
                             TEXT("SandboxISMCBenchmark/Custom/TotalUpdateMs"));
-TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomPrepareMs,
-                            TEXT("SandboxISMCBenchmark/Custom/PrepareTransformsMs"));
-TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomApiMs, TEXT("SandboxISMCBenchmark/Custom/CommitApiMs"));
-TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomPackMs,
-                            TEXT("SandboxISMCBenchmark/Custom/PackTransformsMs"));
-TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomBoundsMs,
-                            TEXT("SandboxISMCBenchmark/Custom/UpdateBoundsMs"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomBuildMs,
+                            TEXT("SandboxISMCBenchmark/Custom/BuildSnapshotMs"));
+TRACE_DECLARE_FLOAT_COUNTER(BenchmarkCustomApiMs,
+                            TEXT("SandboxISMCBenchmark/Custom/SetInstancesApiMs"));
 TRACE_DECLARE_MEMORY_COUNTER(BenchmarkCustomUploadBytes,
                              TEXT("SandboxISMCBenchmark/Custom/UploadBytes"));
-TRACE_DECLARE_INT_COUNTER(BenchmarkCustomDirtyInstances,
-                          TEXT("SandboxISMCBenchmark/Custom/DirtyInstances"));
-TRACE_DECLARE_INT_COUNTER(BenchmarkCustomDirtyRanges,
-                          TEXT("SandboxISMCBenchmark/Custom/DirtyRanges"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEngineTotalMs,
                             TEXT("SandboxISMCBenchmark/EngineISMC/TotalUpdateMs"));
 TRACE_DECLARE_FLOAT_COUNTER(BenchmarkEnginePrepareMs,
@@ -245,16 +238,10 @@ void ASandboxISMCBenchmarkActor::Tick(float const delta_seconds) {
     TRACE_COUNTER_SET_ALWAYS(BenchmarkRenderThreadMs, render_thread_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkGpuMs, gpu_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomTotalMs, custom_timing.total_ms);
-    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomPrepareMs, custom_timing.prepare_ms);
+    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomBuildMs, custom_timing.build_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomApiMs, custom_timing.api_ms);
-    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomPackMs, custom_timing.pack_ms);
-    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomBoundsMs, custom_timing.bounds_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomUploadBytes,
                              static_cast<int64>(FMath::Max(custom_timing.uploaded_bytes, 0.0)));
-    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomDirtyInstances,
-                             static_cast<int64>(FMath::Max(custom_timing.dirty_instances, 0.0)));
-    TRACE_COUNTER_SET_ALWAYS(BenchmarkCustomDirtyRanges,
-                             static_cast<int64>(FMath::Max(custom_timing.dirty_ranges, 0.0)));
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineTotalMs, engine_timing.total_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEnginePrepareMs, engine_timing.prepare_ms);
     TRACE_COUNTER_SET_ALWAYS(BenchmarkEngineApiMs, engine_timing.api_ms);
@@ -390,10 +377,18 @@ bool ASandboxISMCBenchmarkActor::create_instances() {
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomCreateInstances);
             custom_ismc_->set_static_mesh(*static_mesh_);
-            custom_ismc_->clear_instances();
-            custom_ismc_->reserve_instances(count);
-            custom_ismc_->add_instances(base_positions_);
-            custom_ismc_->commit_instance_updates();
+            custom_ismc_->set_instances(
+                count, ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                    auto const chunk_count{chunk.num()};
+                    auto const first_index{chunk.first_index()};
+                    for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                        auto const instance_index{first_index + local_index};
+                        chunk.set_transform(local_index,
+                                            base_positions_[instance_index],
+                                            FQuat4f::Identity,
+                                            FVector3f::OneVector);
+                    }
+                });
         }
         custom_creation_ms_ =
             FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - custom_start);
@@ -427,37 +422,36 @@ auto ASandboxISMCBenchmarkActor::update_custom(float const vertical_offset,
                                                float const angle_radians) -> FUpdateTiming {
     TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomUpdate);
     auto const total_start{FPlatformTime::Cycles64()};
-    auto const prepare_start{FPlatformTime::Cycles64()};
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomPrepareTransforms);
-        auto const count{get_update_count()};
-        auto instance_data{custom_ismc_->edit_instances(0, count)};
-        auto const rotation{FQuat4f{FVector3f::UpVector, angle_radians}};
-        for (auto range_index = 0; range_index < count; ++range_index) {
-            instance_data.positions[range_index] =
-                base_positions_[range_index] + FVector3f{0.0f, 0.0f, vertical_offset};
-            instance_data.rotations[range_index] = rotation;
-        }
-    }
-    auto const prepare_cycles{FPlatformTime::Cycles64() - prepare_start};
-
     auto const api_start{FPlatformTime::Cycles64()};
     {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomCommit);
-        custom_ismc_->commit_instance_updates();
+        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMCBenchmark_CustomSetInstances);
+        auto const count{base_positions_.Num()};
+        auto const updated_count{get_update_count()};
+        auto const rotation{FQuat4f{FVector3f::UpVector, angle_radians}};
+        custom_ismc_->set_instances(
+            count, ESandboxISMCParallelism::Auto, [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                auto const chunk_count{chunk.num()};
+                auto const first_index{chunk.first_index()};
+                for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                    auto const instance_index{first_index + local_index};
+                    auto const animated{instance_index < updated_count};
+                    auto const position{base_positions_[instance_index] +
+                                        FVector3f{0.0f, 0.0f, animated ? vertical_offset : 0.0f}};
+                    chunk.set_transform(local_index,
+                                        position,
+                                        animated ? rotation : FQuat4f::Identity,
+                                        FVector3f::OneVector);
+                }
+            });
     }
     auto const api_cycles{FPlatformTime::Cycles64() - api_start};
     auto const total_cycles{FPlatformTime::Cycles64() - total_start};
     auto const metrics{custom_ismc_->get_update_metrics()};
     return {
         .total_ms = FPlatformTime::ToMilliseconds64(total_cycles),
-        .prepare_ms = FPlatformTime::ToMilliseconds64(prepare_cycles),
-        .pack_ms = metrics.pack_ms,
-        .bounds_ms = metrics.bounds_ms,
+        .build_ms = metrics.build_ms,
         .api_ms = FPlatformTime::ToMilliseconds64(api_cycles),
         .uploaded_bytes = static_cast<double>(metrics.upload_bytes),
-        .dirty_instances = static_cast<double>(metrics.dirty_instance_count),
-        .dirty_ranges = static_cast<double>(metrics.dirty_range_count),
     };
 }
 
@@ -500,22 +494,15 @@ auto ASandboxISMCBenchmarkActor::update_engine_ismc(float const vertical_offset,
 void ASandboxISMCBenchmarkActor::record_samples(FRendererSamples& samples,
                                                 FUpdateTiming const& timing) {
     samples.total_update_ms.Add(timing.total_ms);
-    samples.prepare_ms.Add(timing.prepare_ms);
-    if (timing.pack_ms >= 0.0) {
-        samples.pack_ms.Add(timing.pack_ms);
+    if (timing.prepare_ms >= 0.0) {
+        samples.prepare_ms.Add(timing.prepare_ms);
     }
-    if (timing.bounds_ms >= 0.0) {
-        samples.bounds_ms.Add(timing.bounds_ms);
+    if (timing.build_ms >= 0.0) {
+        samples.build_ms.Add(timing.build_ms);
     }
     samples.api_ms.Add(timing.api_ms);
     if (timing.uploaded_bytes >= 0.0) {
         samples.uploaded_bytes.Add(timing.uploaded_bytes);
-    }
-    if (timing.dirty_instances >= 0.0) {
-        samples.dirty_instances.Add(timing.dirty_instances);
-    }
-    if (timing.dirty_ranges >= 0.0) {
-        samples.dirty_ranges.Add(timing.dirty_ranges);
     }
 }
 
@@ -697,16 +684,9 @@ void ASandboxISMCBenchmarkActor::save_report() const {
     if (runs_custom()) {
         append(TEXT("custom"), TEXT("creation"), TEXT("ms"), {custom_creation_ms_});
         append(TEXT("custom"), TEXT("total_update"), TEXT("ms"), custom_samples_.total_update_ms);
-        append(TEXT("custom"), TEXT("prepare"), TEXT("ms"), custom_samples_.prepare_ms);
-        append(TEXT("custom"), TEXT("pack"), TEXT("ms"), custom_samples_.pack_ms);
-        append(TEXT("custom"), TEXT("bounds"), TEXT("ms"), custom_samples_.bounds_ms);
+        append(TEXT("custom"), TEXT("build"), TEXT("ms"), custom_samples_.build_ms);
         append(TEXT("custom"), TEXT("api"), TEXT("ms"), custom_samples_.api_ms);
         append(TEXT("custom"), TEXT("uploaded"), TEXT("bytes"), custom_samples_.uploaded_bytes);
-        append(TEXT("custom"),
-               TEXT("dirty_instances"),
-               TEXT("count"),
-               custom_samples_.dirty_instances);
-        append(TEXT("custom"), TEXT("dirty_ranges"), TEXT("count"), custom_samples_.dirty_ranges);
     }
     if (runs_engine_ismc()) {
         append(TEXT("engine_ismc"), TEXT("creation"), TEXT("ms"), {engine_creation_ms_});
