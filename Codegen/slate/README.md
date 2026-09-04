@@ -7,7 +7,9 @@ normal Unreal build freshness check.
 ## Grammar
 
 ```text
-document     := widget EOF
+document     := widget_class+ EOF
+widget_class := "(" "widget-class" qualified_name function+ ")"
+function     := "(" "function" identifier child ")"
 widget       := "(" type_name widget_item* ")"
 widget_item  := argument | named_slot | child
 argument     := keyword value
@@ -22,20 +24,49 @@ box_option   := ":weight" number
 margin       := number
               | "(" number number ")"
               | "(" number number number number ")"
-value        := number | boolean | quoted_text | atom
+value        := number | boolean | quoted_text | atom | callable
+callable     := "(" "callback" identifier ")"
+              | "(" "method" identifier ")"
+              | "(" "uobject" identifier ")"
 type_name    := atom
+qualified_name := identifier ("::" identifier)*
 ```
 
 `;` introduces a line comment. Atoms remain opaque, allowing types such as `SSpinBox<int32>` and
 constants such as `HAlign_Left`. Quoted text generates `FText::FromString(TEXT(...))`; it is only
-for this non-production sample. Calls, operators, member access, bindings, events, assignment, raw
-C++, localization, and existing widgets are intentionally unsupported.
+for this non-production sample. Calls, operators, member access, assignment, raw C++, localization,
+and existing widgets are intentionally unsupported.
 
 Slate DSL source uses two-space indentation to keep deeply nested trees compact. Generated C++
 continues to use the project's ordinary four-space indentation.
 
 Keyword arguments must precede children. Each widget may have one direct default child and uniquely
 named `(slot Name child)` forms. Box slot options are keywords and must precede their one child.
+
+A document may declare multiple owning widget classes. Each `widget-class` produces an independent
+generated header containing one friend builder struct, and each `function` becomes a builder member
+function. Generated output paths follow the qualified owner name: `Example::SPanel` produces
+`Example/SPanel.slate.generated.h`. A handwritten owner forward-declares and friends its builder:
+
+```cpp
+namespace SlateGenerated {
+struct URadar3DShowcaseBuilder;
+}
+
+class URadar3DShowcase {
+    friend struct SlateGenerated::URadar3DShowcaseBuilder;
+};
+```
+
+The generated header is included by the handwritten implementation after the owner is complete. A
+`callback` value becomes a forwarding-reference function parameter and an `_Lambda` attribute. It
+may be consumed once. `method` binds the friend-held owner through the ordinary Slate attribute
+overload, while `uobject` selects the `_UObject` lifetime-aware overload. A generated function can
+then be called normally:
+
+```cpp
+return SlateGenerated::URadar3DShowcaseBuilder{*this}.RebuildWidget(on_value_changed);
+```
 
 ## Commands
 
@@ -50,8 +81,9 @@ The compiler interface is:
 slatec --manifest <path> [--output-root <directory>] [--check]
 ```
 
-Manifest paths are relative to the manifest. Output defaults to a `generated` directory beside the
-manifest, keeping its generated-file inventory isolated from the production schema generator.
+Manifest input paths are relative to the manifest. Output defaults to a `generated` directory beside
+the manifest, keeping its generated-file inventory isolated from the production schema generator.
+Output filenames are derived from the widget class declarations rather than listed in the manifest.
 
 ## Pilot baseline
 

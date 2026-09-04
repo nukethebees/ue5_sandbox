@@ -38,7 +38,7 @@ struct Token {
     SourceSpan span;
 };
 
-enum class ValueKind { number, boolean, text, symbol };
+enum class ValueKind { number, boolean, text, symbol, callback, method, uobject };
 
 struct Value {
     ValueKind kind;
@@ -87,6 +87,23 @@ struct VBox {
 struct Child {
     std::variant<Widget, VBox> value;
     SourceSpan span;
+};
+
+struct SlateFunction {
+    std::string name;
+    std::vector<std::string> callbacks;
+    Child root;
+    SourceSpan span;
+};
+
+struct WidgetClass {
+    std::string owner;
+    std::vector<SlateFunction> functions;
+    SourceSpan span;
+};
+
+struct Document {
+    std::vector<WidgetClass> widget_classes;
 };
 
 }

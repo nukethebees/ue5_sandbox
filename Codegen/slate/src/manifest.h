@@ -8,7 +8,6 @@ namespace slate_codegen::detail {
 
 struct ManifestEntry {
     std::filesystem::path input;
-    std::filesystem::path output;
 };
 
 auto read_file(std::filesystem::path const& path) -> std::string;

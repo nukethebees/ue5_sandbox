@@ -48,31 +48,18 @@ auto load_manifest(std::filesystem::path const& path) -> std::vector<ManifestEnt
 
     std::vector<ManifestEntry> result;
     std::set<std::string> inputs;
-    std::set<std::string> outputs;
     for (auto const& item : document.at("entries")) {
-        if (!item.is_object() || !item.contains("input") || !item.at("input").is_string() ||
-            !item.contains("output") || !item.at("output").is_string()) {
-            throw std::invalid_argument{
-                "Each Slate manifest entry requires string input and output fields"};
+        if (!item.is_object() || !item.contains("input") || !item.at("input").is_string()) {
+            throw std::invalid_argument{"Each Slate manifest entry requires a string input field"};
         }
-        ManifestEntry entry{item.at("input").get<std::string>(),
-                            item.at("output").get<std::string>()};
+        ManifestEntry entry{item.at("input").get<std::string>()};
         validate_relative_path(entry.input, "Slate manifest input");
-        validate_relative_path(entry.output, "Slate manifest output");
         if (entry.input.extension() != ".sbxslate") {
             throw std::invalid_argument{"Slate manifest inputs must use the .sbxslate extension"};
-        }
-        if (!entry.output.generic_string().ends_with(".slate.generated.inl")) {
-            throw std::invalid_argument{
-                "Slate manifest outputs must end with .slate.generated.inl"};
         }
         if (!inputs.insert(entry.input.generic_string()).second) {
             throw std::invalid_argument{"Duplicate Slate manifest input: " +
                                         entry.input.generic_string()};
-        }
-        if (!outputs.insert(entry.output.generic_string()).second) {
-            throw std::invalid_argument{"Duplicate Slate manifest output: " +
-                                        entry.output.generic_string()};
         }
         result.push_back(std::move(entry));
     }

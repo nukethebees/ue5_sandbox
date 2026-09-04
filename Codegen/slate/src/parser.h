@@ -7,6 +7,6 @@
 
 namespace slate_codegen::detail {
 
-auto parse(std::string_view path, std::vector<Token> tokens) -> Child;
+auto parse(std::string_view path, std::vector<Token> tokens) -> Document;
 
 }

@@ -9,19 +9,26 @@
 #include <codegen/generator.h>
 
 #include <filesystem>
+#include <set>
+#include <string_view>
 #include <utility>
 #include <vector>
 
 namespace slate_codegen {
 namespace {
 
-auto render_entry(std::filesystem::path const& manifest_directory,
-                  detail::ManifestEntry const& entry) -> codegen::GeneratedFile {
-    auto const source{detail::read_file(manifest_directory / entry.input)};
-    auto tokens{detail::lex(entry.input.generic_string(), source)};
-    auto const root{detail::parse(entry.input.generic_string(), std::move(tokens))};
-    return codegen::GeneratedFile{entry.output,
-                                  detail::render(entry.input.generic_string(), root)};
+auto output_path(std::string_view owner) -> std::filesystem::path {
+    std::filesystem::path result;
+    while (true) {
+        auto const separator{owner.find("::")};
+        auto const component{owner.substr(0, separator)};
+        if (separator == std::string_view::npos) {
+            result /= std::string{component} + ".slate.generated.h";
+            return result;
+        }
+        result /= component;
+        owner.remove_prefix(separator + 2);
+    }
 }
 
 }
@@ -34,9 +41,22 @@ auto compile_manifest(CompileOptions const& options) -> int {
                                : manifest_directory / "generated"};
     auto const entries{detail::load_manifest(manifest_path)};
     std::vector<codegen::GeneratedFile> files;
-    files.reserve(entries.size());
+    std::set<std::string> owners;
     for (auto const& entry : entries) {
-        files.push_back(render_entry(manifest_directory, entry));
+        auto const source{detail::read_file(manifest_directory / entry.input)};
+        auto tokens{detail::lex(entry.input.generic_string(), source)};
+        auto const document{detail::parse(entry.input.generic_string(), std::move(tokens))};
+        for (auto const& widget_class : document.widget_classes) {
+            if (!owners.insert(widget_class.owner).second) {
+                throw detail::SourceError{
+                    entry.input.generic_string(),
+                    widget_class.span,
+                    "duplicate widget class declaration '" + widget_class.owner + "'"};
+            }
+            files.push_back(codegen::GeneratedFile{
+                output_path(widget_class.owner),
+                detail::render(entry.input.generic_string(), widget_class)});
+        }
     }
     return codegen::generate_files(files, output_root, output_root, options.check);
 }

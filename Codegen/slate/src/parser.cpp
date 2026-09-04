@@ -14,10 +14,24 @@ class Parser {
     Parser(std::string_view const path, std::vector<Token> tokens)
         : path_{path}, tokens_{std::move(tokens)} {}
 
-    auto parse() -> Child {
-        auto result{parse_widget()};
-        expect(TokenKind::end, "expected end of file");
-        return result;
+    auto parse() -> Document {
+        Document document;
+        std::set<std::string> owners;
+        while (!at(TokenKind::end)) {
+            if (!list_head_is("widget-class")) {
+                fail(current().span, "expected 'widget-class' declaration");
+            }
+            auto widget_class{parse_widget_class()};
+            if (!owners.insert(widget_class.owner).second) {
+                fail(widget_class.span,
+                     "duplicate widget class declaration '" + widget_class.owner + "'");
+            }
+            document.widget_classes.push_back(std::move(widget_class));
+        }
+        if (document.widget_classes.empty()) {
+            fail(current().span, "document must contain at least one widget class");
+        }
+        return document;
     }
 
   private:
@@ -58,11 +72,65 @@ class Parser {
         throw SourceError{path_, span, std::string{message}};
     }
 
+    auto parse_widget_class() -> WidgetClass {
+        auto const& opening{
+            expect(TokenKind::left_parenthesis, "expected '(' before widget class")};
+        auto const& form{expect_atom("expected 'widget-class'")};
+        if (form.text != "widget-class") {
+            fail(form.span, "expected 'widget-class'");
+        }
+
+        auto const& owner{expect_atom("expected widget class owner type")};
+        if (!is_qualified_identifier(owner.text)) {
+            fail(owner.span, "widget class owner must be a qualified C++ identifier");
+        }
+
+        WidgetClass result{.owner = owner.text, .span = opening.span};
+        std::set<std::string> function_names;
+        while (!at(TokenKind::right_parenthesis)) {
+            if (at(TokenKind::end)) {
+                fail(current().span, "expected ')' after widget class declaration");
+            }
+            if (!list_head_is("function")) {
+                fail(current().span, "expected 'function' declaration");
+            }
+            auto function{parse_slate_function()};
+            if (!function_names.insert(function.name).second) {
+                fail(function.span, "duplicate generated function '" + function.name + "'");
+            }
+            result.functions.push_back(std::move(function));
+        }
+        expect(TokenKind::right_parenthesis, "expected ')' after widget class declaration");
+        if (result.functions.empty()) {
+            fail(opening.span, "widget class must contain at least one function");
+        }
+        return result;
+    }
+
+    auto parse_slate_function() -> SlateFunction {
+        auto const& opening{
+            expect(TokenKind::left_parenthesis, "expected '(' before function")};
+        auto const& form{expect_atom("expected 'function'")};
+        if (form.text != "function") {
+            fail(form.span, "expected 'function'");
+        }
+
+        auto const& name{expect_atom("expected generated function name")};
+        if (!is_identifier(name.text)) {
+            fail(name.span, "generated function name must be a C++ identifier");
+        }
+        callback_names_.clear();
+        callbacks_.clear();
+        auto root{parse_child()};
+        expect(TokenKind::right_parenthesis, "expected ')' after generated function");
+        return SlateFunction{name.text, std::move(callbacks_), std::move(root), opening.span};
+    }
+
     auto parse_widget() -> Child {
         auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before widget")};
         auto const& type{expect_atom("expected widget type")};
-        if (type.text == "vbox" || type.text == "slot" || type.text == "auto" ||
-            type.text == "fill") {
+        if (type.text == "widget-class" || type.text == "function" || type.text == "vbox" ||
+            type.text == "slot" || type.text == "auto" || type.text == "fill") {
             fail(type.span, "expected widget type, found structural form '" + type.text + "'");
         }
 
@@ -120,6 +188,9 @@ class Parser {
         if (consume(TokenKind::string)) {
             return Value{ValueKind::text, previous().text, span};
         }
+        if (at(TokenKind::left_parenthesis)) {
+            return parse_callable_value();
+        }
         if (!consume(TokenKind::atom)) {
             fail(span, "expected number, boolean, text, or symbol");
         }
@@ -132,6 +203,34 @@ class Parser {
             return Value{ValueKind::number, token.text, span};
         }
         return Value{ValueKind::symbol, token.text, span};
+    }
+
+    auto parse_callable_value() -> Value {
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected callable value")};
+        auto const& form{expect_atom("expected callback, method, or uobject")};
+        auto kind{ValueKind::symbol};
+        if (form.text == "callback") {
+            kind = ValueKind::callback;
+        } else if (form.text == "method") {
+            kind = ValueKind::method;
+        } else if (form.text == "uobject") {
+            kind = ValueKind::uobject;
+        } else {
+            fail(form.span, "expected callback, method, or uobject value form");
+        }
+
+        auto const& name{expect_atom("expected callable name")};
+        if (!is_identifier(name.text)) {
+            fail(name.span, "callable name must be a C++ identifier");
+        }
+        expect(TokenKind::right_parenthesis, "expected ')' after callable value");
+        if (kind == ValueKind::callback) {
+            if (!callback_names_.insert(name.text).second) {
+                fail(opening.span, "callback parameter '" + name.text + "' may only be used once");
+            }
+            callbacks_.push_back(name.text);
+        }
+        return Value{kind, name.text, opening.span};
     }
 
     auto parse_named_slot() -> WidgetSlot {
@@ -153,7 +252,8 @@ class Parser {
         if (list_head_is("vbox")) {
             return parse_vbox();
         }
-        if (list_head_is("slot") || list_head_is("auto") || list_head_is("fill")) {
+        if (list_head_is("widget-class") || list_head_is("function") || list_head_is("slot") ||
+            list_head_is("auto") || list_head_is("fill")) {
             fail(tokens_[index_ + 1].span, "expected widget or vbox child");
         }
         return parse_widget();
@@ -301,14 +401,43 @@ class Parser {
         return index == text.size();
     }
 
+    static auto is_identifier(std::string_view const text) -> bool {
+        if (text.empty() ||
+            (std::isalpha(static_cast<unsigned char>(text.front())) == 0 && text.front() != '_')) {
+            return false;
+        }
+        for (auto const character : text.substr(1)) {
+            if (std::isalnum(static_cast<unsigned char>(character)) == 0 && character != '_') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    static auto is_qualified_identifier(std::string_view text) -> bool {
+        while (true) {
+            auto const separator{text.find("::")};
+            auto const component{text.substr(0, separator)};
+            if (!is_identifier(component)) {
+                return false;
+            }
+            if (separator == std::string_view::npos) {
+                return true;
+            }
+            text.remove_prefix(separator + 2);
+        }
+    }
+
     std::string_view path_;
     std::vector<Token> tokens_;
     std::size_t index_{};
+    std::set<std::string> callback_names_;
+    std::vector<std::string> callbacks_;
 };
 
 }
 
-auto parse(std::string_view const path, std::vector<Token> tokens) -> Child {
+auto parse(std::string_view const path, std::vector<Token> tokens) -> Document {
     return Parser{path, std::move(tokens)}.parse();
 }
 
