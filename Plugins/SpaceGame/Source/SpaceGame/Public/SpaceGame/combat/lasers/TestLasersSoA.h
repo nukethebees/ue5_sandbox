@@ -10,7 +10,6 @@
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors_3f.h"
 
-#include "Components/InstancedStaticMeshComponent.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
@@ -277,7 +276,6 @@ struct SPACEGAME_API EntitiesConstView {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ismc_data,
             self.colours,
             self.locations,
             self.rotations,
@@ -299,7 +297,6 @@ struct SPACEGAME_API EntitiesConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<FInstancedStaticMeshInstanceData> ismc_data;
     TConstArrayView<FLinearColor> colours;
     FVectors3f::ConstView locations;
     FRotatorsf::ConstView rotations;
@@ -316,7 +313,6 @@ struct SPACEGAME_API EntitiesView {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ismc_data,
             self.colours,
             self.locations,
             self.rotations,
@@ -343,7 +339,6 @@ struct SPACEGAME_API EntitiesView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<FInstancedStaticMeshInstanceData> ismc_data;
     TArrayView<FLinearColor> colours;
     FVectors3f::View locations;
     FRotatorsf::View rotations;
@@ -366,7 +361,6 @@ struct SPACEGAME_API Entities {
     void add_defaulted(int32 const count);
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
-        ismc_data.RemoveAtSwap(index, count, allow_shrinking);
         colours.RemoveAtSwap(index, count, allow_shrinking);
         locations.remove_at_swap(index, count, allow_shrinking);
         rotations.remove_at_swap(index, count, allow_shrinking);
@@ -380,7 +374,6 @@ struct SPACEGAME_API Entities {
 
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
-        ml::copy_element(ismc_data, dst_i, other.ismc_data, src_i);
         ml::copy_element(colours, dst_i, other.colours, src_i);
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(rotations, dst_i, other.rotations, src_i);
@@ -392,7 +385,6 @@ struct SPACEGAME_API Entities {
 
     template <typename Other>
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
-        ml::copy_elements(ismc_data, dst_i, other.ismc_data, src_i, count);
         ml::copy_elements(colours, dst_i, other.colours, src_i, count);
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
@@ -412,7 +404,6 @@ struct SPACEGAME_API Entities {
     template <typename Other>
     void append_from(Other const& other)
         requires ml::SupportsApplyArrayPairsWith<Entities, Other> {
-        ml::append_from(ismc_data, other.ismc_data);
         ml::append_from(colours, other.colours);
         ml::append_from(locations, other.locations);
         ml::append_from(rotations, other.rotations);
@@ -453,7 +444,6 @@ struct SPACEGAME_API Entities {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ismc_data,
             self.colours,
             self.locations,
             self.rotations,
@@ -468,7 +458,6 @@ struct SPACEGAME_API Entities {
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.ismc_data, other.ismc_data,
             self.colours, other.colours,
             self.locations, other.locations,
             self.rotations, other.rotations,
@@ -495,7 +484,6 @@ struct SPACEGAME_API Entities {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<FInstancedStaticMeshInstanceData> ismc_data;
     TArray<FLinearColor> colours;
     FVectors3f locations;
     FRotatorsf rotations;

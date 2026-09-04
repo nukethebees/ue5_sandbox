@@ -83,7 +83,7 @@
           {"name":"set_colours","return_type":"void","parameters":[{"type":{"name":"@linear_color","suffix":" const"},"name":"value"}]}
         ]},
         {"name":"Entities","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
-          {"name":"ismc_data","kind":"array","type":"@instance_data"}, {"name":"colours","kind":"array","type":"@linear_color"},
+          {"name":"colours","kind":"array","type":"@linear_color"},
           {"name":"locations","kind":"nested","type":"@vectors_3f"}, {"name":"rotations","kind":"nested","type":"@rotators_f"},
           {"name":"velocities","kind":"nested","type":"@vectors_3f"}, {"name":"damages","kind":"array","type":"int32"},
           {"name":"lifetimes_remaining","kind":"array","type":"float"}, {"name":"instigator_handles","kind":"array","type":"@registry_handle"}

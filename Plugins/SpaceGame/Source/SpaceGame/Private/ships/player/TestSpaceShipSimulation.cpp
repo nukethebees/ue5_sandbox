@@ -1,7 +1,7 @@
 #include "SpaceGame/ships/player/TestSpaceShipSimulation.h"
 
 #include <SandboxGameShared/utilities/enums.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
@@ -29,7 +29,7 @@ void Simulation::set_spatial_query_manager(FSpatialQueryManager const& new_query
     spatial_query_manager = &new_query_manager;
 }
 
-void Simulation::set_lasers(ATestLasers& new_lasers) noexcept {
+void Simulation::set_lasers(ml::test_lasers::Simulation& new_lasers) noexcept {
     lasers = &new_lasers;
 }
 
@@ -42,7 +42,7 @@ void Simulation::begin_play() {
     check(config);
     check(entity_registry);
     check(spatial_query_manager);
-    check(IsValid(lasers));
+    check(lasers);
     check(IsValid(config->team_visual_data));
     check(simulation_clock.is_valid());
 

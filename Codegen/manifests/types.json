@@ -230,8 +230,8 @@
       "header": "SpaceGame/ships/player/TestSpaceShipSimulation.h"
     },
     "test_lasers": {
-      "spelling": "ATestLasers",
-      "header": "SpaceGame/combat/lasers/TestLasers.h"
+      "spelling": "ml::test_lasers::Simulation",
+      "header": "SpaceGame/combat/lasers/TestLasersSimulation.h"
     },
     "test_capital_ships": {
       "spelling": "ATestCapitalShips",

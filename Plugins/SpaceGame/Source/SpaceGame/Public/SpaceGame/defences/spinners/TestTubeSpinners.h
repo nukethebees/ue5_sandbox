@@ -3,7 +3,7 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <SandboxNative/RegistryEntityHandle.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersSoA.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
@@ -23,7 +23,6 @@
 class UInstancedStaticMeshComponent;
 
 class ATestTubeSpinnerProxy;
-class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
@@ -54,8 +53,12 @@ class ATestTubeSpinners : public AActor {
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
 
-    auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
-    void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
+    auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
+        return laser_simulation;
+    }
+    void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) {
+        laser_simulation = &new_simulation;
+    }
 
     // Checks
     void validate_array_sizes() const;
@@ -104,8 +107,7 @@ class ATestTubeSpinners : public AActor {
     TArray<FTransform> ismc_transforms;
 
     // Firing
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<ATestLasers> laser_actor{nullptr};
+    ml::test_lasers::Simulation* laser_simulation{nullptr};
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;
 };

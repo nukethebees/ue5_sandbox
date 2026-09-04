@@ -4,7 +4,7 @@
 
 #include <SandboxGameShared/utilities/enums.h>
 #include <SandboxNative/RegistryEntityHandle.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
@@ -30,7 +30,6 @@
 
 class UInstancedStaticMeshComponent;
 
-class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
@@ -82,8 +81,12 @@ class SPACEGAME_API ATestCapitalShipFighters : public AActor {
         spatial_query_manager = &manager;
     }
 
-    auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
-    void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
+    auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
+        return laser_simulation;
+    }
+    void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) {
+        laser_simulation = &new_simulation;
+    }
 
     auto get_view(int32 const offset, int32 const width) -> EntityData::View {
         return entity_buffers.current().get_view(offset, width);
@@ -257,8 +260,7 @@ class SPACEGAME_API ATestCapitalShipFighters : public AActor {
     float fire_dot_product_threshold{0.95f};
 
     // Laser
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<ATestLasers> laser_actor{nullptr};
+    ml::test_lasers::Simulation* laser_simulation{nullptr};
     ml::test_lasers::SpawnRequests new_lasers;
     TArray<float> aiming_dot_product_buffer;
 

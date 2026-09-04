@@ -1,5 +1,7 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
+#include <SpaceGame/combat/lasers/TestLasers.h>
+
 #include "LevelArchetypeResolution.h"
 #include "LevelEntityTableOperations.h"
 #include "LevelTeamResolution.h"
@@ -311,7 +313,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     }
 
     orchestrator_.spawn_missing_actors();
-    if (!IsValid(orchestrator_.get_lasers()) || !IsValid(orchestrator_.get_capital_ships()) ||
+    if (!IsValid(orchestrator_.get_lasers_actor()) || !IsValid(orchestrator_.get_capital_ships()) ||
         !IsValid(orchestrator_.get_capital_ship_fighters()) ||
         !IsValid(orchestrator_.get_turrets()) || !IsValid(orchestrator_.get_spinners()) ||
         !IsValid(orchestrator_.get_niagara_spawner())) {

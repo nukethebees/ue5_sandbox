@@ -118,7 +118,7 @@ void FLaserLifecycleScenario::begin_scenario() {
 }
 
 void FLaserLifecycleScenario::queue_projectiles() {
-    auto* const lasers{const_cast<ATestLasers*>(driver->orchestrator.get_lasers())};
+    auto* const lasers{driver->orchestrator.get_lasers()};
     check(lasers);
 
     auto const& entity_data{driver->registry.get_entity_data()};
@@ -138,7 +138,7 @@ void FLaserLifecycleScenario::queue_projectiles() {
     auto const projectile_count{scenario_ == ELaserLifecycleScenario::SimultaneousLethalHits ? 2
                                                                                              : 1};
 
-    ATestLasers::SpawnRequests requests;
+    ml::test_lasers::SpawnRequests requests;
     requests.add_uninitialised(projectile_count);
     for (int32 i{0}; i < projectile_count; ++i) {
         ml::assign(requests.locations, i, start);

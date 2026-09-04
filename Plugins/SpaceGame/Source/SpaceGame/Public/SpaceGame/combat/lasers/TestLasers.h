@@ -1,140 +1,61 @@
 #pragma once
 
-#include <SpaceGame/combat/lasers/TestLasersSoA.h>
-#include <SpaceGame/entities/DirectDamageEvents.h>
-#include <SpaceGame/simulation/LineTraces.h>
-#include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/TraceHits.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 
+#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
 
 #include "TestLasers.generated.h"
 
-class USceneComponent;
-class UInstancedStaticMeshComponent;
-class UActorComponent;
-class UWorld;
-
-struct FTestEntityRegistry;
-class ATestBatchOrchestrator;
-namespace ml {
-struct FSpatialQueryManager;
-}
-
-namespace ml::test_lasers {
-class PhaseInterface;
-
-struct ThreadLocalCollisionData {
-    FLineTraces traces;
-    FTraceHits trace_hits;
-    DirectDamageEvents damage_events;
-    TArray<int32> to_remove;
-    HitDetails hit_details;
-};
-}
-
 UCLASS()
 class SPACEGAME_API ATestLasers : public AActor {
     GENERATED_BODY()
-    friend class ml::test_lasers::PhaseInterface;
+    friend class ATestBatchOrchestrator;
   public:
-    using SpawnRequests = ml::test_lasers::SpawnRequests;
-    using Entities = ml::test_lasers::Entities;
-    using HitDetails = ml::test_lasers::HitDetails;
-    using ThreadLocalCollisionData = ml::test_lasers::ThreadLocalCollisionData;
-
     static constexpr bool is_world_space{false};
-    static constexpr int32 n_custom_ismc_floats{5}; // RGB[3], lifetime, spawn time
+    static constexpr int32 n_custom_ismc_floats{5};
 
     ATestLasers();
 
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-    // Accessors
-    auto get_num_instances() const noexcept -> int32;
-    auto get_config() const -> FLaserProjectileConfig const* { return actor_config; }
-    void set_actor_config(FLaserProjectileConfig const* const new_config) noexcept {
+    auto get_config() const noexcept -> FLaserProjectileConfig const* { return actor_config; }
+    void set_actor_config(FLaserProjectileConfig const* new_config) noexcept {
         actor_config = new_config;
     }
-
-    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
-    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
-    void set_spatial_query_manager(ml::FSpatialQueryManager& manager) { query_manager = &manager; }
-
-    auto get_number_spawned() const { return number_spawned; }
-
-    // Spawning / configuration
-    void queue_laser_spawns(SpawnRequests const& spawn_data);
-
-    // Checks
-    void validate_array_sizes() const;
   private:
-    // Spawning / Configuration
-    void preallocate_instances();
-    void process_pending_spawns();
+    void bind_simulation(ml::test_lasers::Simulation& new_simulation);
+    auto simulation() -> ml::test_lasers::Simulation&;
+    auto simulation() const -> ml::test_lasers::Simulation const&;
 
-    // Movement
-    void update_locations(float const dt);
-    void handle_collisions(float const dt);
+    void clear_runtime_state_presentation();
+    void begin_play_presentation();
+    void update_visual_data();
+    void commit_visual_data();
+    void end_tick_presentation();
 
-    // Visuals
     void configure_ismc();
+    void apply_simulation_changes_to_ismc();
     void prepare_ismc_transforms();
     void update_ismc();
     void spawn_hit_effects();
-
-    // Lifetimes
-    void tick_lifetimes(float const dt);
-    void collect_old_instance_indices();
-
-    // Collision
-    static void check_collision_thread(int32 const job_index,
-                                       int32 const updates_per_slice,
-                                       float const dt,
-                                       ThreadLocalCollisionData& data,
-                                       ATestLasers const& lasers);
-    void merge_collision_data();
-
-    // Misc
-    void remove_instances(TConstArrayView<int32> indices);
-    void clear_spawn_buffers();
-    void clear_hit_buffers();
-
-    FTestEntityRegistry* entity_registry{nullptr};
-    ml::FSpatialQueryManager* query_manager{nullptr};
+    void validate_array_sizes() const;
 
     FLaserProjectileConfig const* actor_config{nullptr};
-    ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
+
+    UPROPERTY(meta = (AllowPrivateAccess))
+    TObjectPtr<UInstancedStaticMeshComponent> instances;
+
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     int32 n_preallocated_instances{5000};
 
-    // Visuals
-    UPROPERTY(meta = (AllowPrivateAccess))
-    TObjectPtr<UInstancedStaticMeshComponent> instances;
-    Entities entities;
-
-    // Spawning
-    ml::test_lasers::SpawnRequests pending_spawns;
-    TArray<float> custom_data_spawn_buffer;
-    TArray<FTransform> dummy_transforms_spawn_buffer;
-
-    // Removal
-    TArray<int32> to_remove;
-
-    // Damage transaction
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     int32 collision_jobs{8};
-    TArray<ThreadLocalCollisionData> thread_local_collision_data;
-    DirectDamageEvents collision_damage_events;
 
-    // Hits
-    HitDetails hit_details;
+    TArray<FInstancedStaticMeshInstanceData> ismc_data;
+    TArray<FTransform> dummy_transforms_spawn_buffer;
 
-    int32 number_spawned{0};
-
-    // Debugging
     bool have_warned_hit_effect{false};
 
 #if WITH_EDITORONLY_DATA
@@ -144,13 +65,6 @@ class SPACEGAME_API ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Lasers", meta = (AllowPrivateAccess))
     bool debugging_shapes_enabled{false};
 #endif
-  private:
-    void clear_runtime_state();
-    void begin_play();
-    void begin_tick();
-    void commit_spawns();
-    void simulate(float const dt);
-    void update_visual_data();
-    void commit_visual_data();
-    void end_tick();
+
+    ml::test_lasers::Simulation* bound_simulation{nullptr};
 };

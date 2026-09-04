@@ -1,7 +1,6 @@
 #include "SpaceGame/defences/turrets/TestStaticTurrets.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
@@ -66,7 +65,7 @@ void ATestStaticTurrets::begin_play() {
 
     ml::fatal_if_uobject_ptrs_invalid({
         {
-            SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+            SANDBOX_NAMED_UOBJECT_PTR(instances),
         },
         {
             {actor_config->mesh.Get(), TEXT("ISMC Static Mesh")},
@@ -74,6 +73,7 @@ void ATestStaticTurrets::begin_play() {
             SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
         },
     });
+    check(laser_simulation);
 
     debug_drawer = actor_config->debug_drawer;
     debug_drawer.world = GetWorld();
@@ -390,7 +390,7 @@ void ATestStaticTurrets::fire_at_enemies() {
         new_lasers.colours.Add(colour_cache[entities.teams[i]]);
     }
 
-    laser_actor->queue_laser_spawns(new_lasers);
+    laser_simulation->queue_laser_spawns(new_lasers);
 }
 auto ATestStaticTurrets::get_disengage_radius() const -> float {
     return actor_config->detection_radius * 1.2f;

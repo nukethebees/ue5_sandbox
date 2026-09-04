@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SpaceGame/combat/lasers/TestLasersPhaseInterface.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
@@ -91,7 +92,11 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_player_ship_simulation() const noexcept -> ml::test_space_ship::Simulation const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
-    auto get_lasers() const -> auto const* { return lasers.Get(); }
+    auto get_lasers_actor() const -> auto const* { return lasers.Get(); }
+    auto get_lasers() noexcept -> ml::test_lasers::Simulation* { return &lasers_simulation; }
+    auto get_lasers() const noexcept -> ml::test_lasers::Simulation const* {
+        return &lasers_simulation;
+    }
     auto get_capital_ships() const -> auto const* { return capital_ships.Get(); }
     auto get_capital_ship_fighters() const -> auto const* { return capital_ship_fighters.Get(); }
     auto get_turrets() const -> auto const* { return turrets.Get(); }
@@ -186,6 +191,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<ml::test_space_ship::Simulation> player_ship_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestLasers> lasers{nullptr};
+    ml::test_lasers::Simulation lasers_simulation;
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestCapitalShips> capital_ships{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox")

@@ -3,7 +3,7 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <SandboxNative/RegistryEntityHandle.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsSoA.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
@@ -28,7 +28,6 @@
 class UInstancedStaticMeshComponent;
 
 class ATestStaticTurretsProxy;
-class ATestLasers;
 struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
@@ -70,8 +69,12 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
         spatial_query_manager = &manager;
     }
 
-    auto get_laser_actor() const -> ATestLasers const* { return laser_actor; }
-    void set_laser_actor(ATestLasers& new_ref) { laser_actor = &new_ref; }
+    auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
+        return laser_simulation;
+    }
+    void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) {
+        laser_simulation = &new_simulation;
+    }
 
     // Checks
     void validate_array_sizes() const;
@@ -145,8 +148,7 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     int32 target_refresh_next_offset{0};
 
     // Firing
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<ATestLasers> laser_actor{nullptr};
+    ml::test_lasers::Simulation* laser_simulation{nullptr};
 
     TArray<int32> scratch_int_buffer;
     FVectors3f line_of_sight_start_locations;

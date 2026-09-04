@@ -346,7 +346,6 @@ auto EntitiesConstView::get_view() const -> ConstView {
 
 auto EntitiesConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -363,7 +362,6 @@ auto EntitiesConstView::get_const_view() const -> ConstView {
 
 auto EntitiesConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -375,7 +373,7 @@ auto EntitiesConstView::get_const_view(int32 const offset, int32 const count) co
 }
 
 auto EntitiesConstView::num() const noexcept -> int32 {
-    return ml::num(ismc_data);
+    return ml::num(colours);
 }
 
 auto EntitiesConstView::is_empty() const noexcept -> bool {
@@ -384,7 +382,6 @@ auto EntitiesConstView::is_empty() const noexcept -> bool {
 
 void EntitiesConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(ismc_data),
         ml::num(colours),
         ml::num(locations),
         ml::num(rotations),
@@ -413,7 +410,6 @@ auto EntitiesView::get_view() -> View {
 
 auto EntitiesView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_view(offset, count),
         rotations.get_view(offset, count),
@@ -430,7 +426,6 @@ auto EntitiesView::get_view() const -> ConstView {
 
 auto EntitiesView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -447,7 +442,6 @@ auto EntitiesView::get_const_view() const -> ConstView {
 
 auto EntitiesView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -459,7 +453,7 @@ auto EntitiesView::get_const_view(int32 const offset, int32 const count) const -
 }
 
 auto EntitiesView::num() const noexcept -> int32 {
-    return ml::num(ismc_data);
+    return ml::num(colours);
 }
 
 auto EntitiesView::is_empty() const noexcept -> bool {
@@ -468,7 +462,6 @@ auto EntitiesView::is_empty() const noexcept -> bool {
 
 void EntitiesView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(ismc_data),
         ml::num(colours),
         ml::num(locations),
         ml::num(rotations),
@@ -504,7 +497,6 @@ auto EntitiesView::right(int32 const count) const -> ConstView {
 }
 
 void Entities::reset() {
-    ml::reset(ismc_data);
     ml::reset(colours);
     ml::reset(locations);
     ml::reset(rotations);
@@ -515,7 +507,6 @@ void Entities::reset() {
 }
 
 void Entities::reserve(int32 const count) {
-    ml::reserve(ismc_data, count);
     ml::reserve(colours, count);
     ml::reserve(locations, count);
     ml::reserve(rotations, count);
@@ -526,7 +517,6 @@ void Entities::reserve(int32 const count) {
 }
 
 void Entities::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(ismc_data, count);
     ml::add_uninitialised(colours, count);
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(rotations, count);
@@ -537,7 +527,6 @@ void Entities::add_uninitialised(int32 const count) {
 }
 
 void Entities::add_defaulted(int32 const count) {
-    ml::add_defaulted(ismc_data, count);
     ml::add_defaulted(colours, count);
     ml::add_defaulted(locations, count);
     ml::add_defaulted(rotations, count);
@@ -548,7 +537,6 @@ void Entities::add_defaulted(int32 const count) {
 }
 
 void Entities::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(ismc_data, count, allow_shrinking);
     ml::set_num(colours, count, allow_shrinking);
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(rotations, count, allow_shrinking);
@@ -561,7 +549,6 @@ void Entities::set_num(int32 const count, EAllowShrinking const allow_shrinking)
 void Entities::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(ismc_data, indices);
     ml::apply_permutation(colours, indices);
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(rotations, indices);
@@ -577,7 +564,6 @@ auto Entities::get_view() -> View {
 
 auto Entities::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_view(offset, count),
         rotations.get_view(offset, count),
@@ -594,7 +580,6 @@ auto Entities::get_view() const -> ConstView {
 
 auto Entities::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -611,7 +596,6 @@ auto Entities::get_const_view() const -> ConstView {
 
 auto Entities::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<FInstancedStaticMeshInstanceData>{ismc_data}.Slice(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
         locations.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
@@ -623,7 +607,7 @@ auto Entities::get_const_view(int32 const offset, int32 const count) const -> Co
 }
 
 auto Entities::num() const noexcept -> int32 {
-    return ml::num(ismc_data);
+    return ml::num(colours);
 }
 
 auto Entities::is_empty() const noexcept -> bool {
@@ -632,7 +616,6 @@ auto Entities::is_empty() const noexcept -> bool {
 
 void Entities::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(ismc_data),
         ml::num(colours),
         ml::num(locations),
         ml::num(rotations),

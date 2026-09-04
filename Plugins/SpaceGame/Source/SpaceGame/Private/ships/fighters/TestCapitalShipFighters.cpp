@@ -1,7 +1,6 @@
 #include "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
@@ -154,8 +153,9 @@ void ATestCapitalShipFighters::begin_play() {
 
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh),
-        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
+        SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
     });
+    check(laser_simulation);
 
     ensureAlways(IsValid(actor_config->team_visual_data));
 
@@ -1027,7 +1027,7 @@ void ATestCapitalShipFighters::handle_firing(TaskView const& data) {
     new_lasers.set_speeds(laser_speed);
     new_lasers.set_max_distances(laser_max_distance);
 
-    laser_actor->queue_laser_spawns(new_lasers);
+    laser_simulation->queue_laser_spawns(new_lasers);
 }
 
 // Orders

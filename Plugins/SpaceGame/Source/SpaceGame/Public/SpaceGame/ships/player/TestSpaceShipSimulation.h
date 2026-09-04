@@ -17,13 +17,16 @@
 #include <CoreMinimal.h>
 
 class ATestBatchOrchestrator;
-class ATestLasers;
 struct EntityDeathInfo;
 struct FPlayerShipConfig;
 struct FTestEntityRegistry;
 
 namespace ml {
 struct FSpatialQueryManager;
+}
+
+namespace ml::test_lasers {
+struct Simulation;
 }
 
 namespace ml::test_space_ship {
@@ -35,7 +38,7 @@ struct SPACEGAME_API Simulation {
     void set_config(FPlayerShipConfig const& new_config) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
-    void set_lasers(ATestLasers& new_lasers) noexcept;
+    void set_lasers(ml::test_lasers::Simulation& new_lasers) noexcept;
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator);
 
     void set_move_input(FVector2D input) noexcept;
@@ -159,7 +162,7 @@ struct SPACEGAME_API Simulation {
     FPlayerShipConfig const* config{nullptr};
     FTestEntityRegistry* entity_registry{nullptr};
     FSpatialQueryManager const* spatial_query_manager{nullptr};
-    ATestLasers* lasers{nullptr};
+    ml::test_lasers::Simulation* lasers{nullptr};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     bool death_notification_pending{false};
 };

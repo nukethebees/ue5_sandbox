@@ -4,12 +4,12 @@
 
 #pragma once
 
-#include "SpaceGame/combat/lasers/TestLasers.h"
+#include "SpaceGame/combat/lasers/TestLasersSimulation.h"
 
 namespace ml::test_lasers {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ATestLasers& new_target);
+    void bind(ml::test_lasers::Simulation& new_target);
 
     void clear_runtime_state();
 
@@ -21,15 +21,10 @@ class SPACEGAME_API PhaseInterface {
 
     void commit_spawns();
 
-    void update_visual_data();
-
-    void commit_visual_data();
-
     void end_tick();
 
-    friend class ATestLasers;
     friend class ATestBatchOrchestrator;
-    ATestLasers* actor{nullptr};
+    ml::test_lasers::Simulation* simulation{nullptr};
 };
 } // namespace ml::test_lasers
 // clang-format on

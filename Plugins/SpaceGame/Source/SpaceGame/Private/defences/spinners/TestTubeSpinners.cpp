@@ -1,7 +1,6 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinners.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
@@ -50,9 +49,9 @@ void ATestTubeSpinners::begin_play() {
     }
 
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(instances),
     });
+    check(laser_simulation);
 
     configure_ismc();
 
@@ -289,7 +288,7 @@ void ATestTubeSpinners::fire_lasers() {
         entities.next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
-    laser_actor->queue_laser_spawns(new_lasers);
+    laser_simulation->queue_laser_spawns(new_lasers);
 }
 
 // Checks
