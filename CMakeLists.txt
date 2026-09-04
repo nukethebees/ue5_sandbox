@@ -171,6 +171,24 @@ add_custom_target(generate-s7lab-assets
   VERBATIM
 )
 
+add_custom_target(generate-scripted-level-assets
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=GenerateScriptedLevelAssets
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+    -ddc=NoZenLocalFallback
+    -unattended
+    -nop4
+    -nosplash
+    -nullrhi
+    -nosound
+    -stdout
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  COMMENT "Generating scripted-level runtime and menu assets"
+  USES_TERMINAL
+  VERBATIM
+)
+
 add_custom_target(generate-lualab-assets
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=GenerateLuaLabAssets

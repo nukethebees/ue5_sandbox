@@ -1,12 +1,12 @@
-#include <SpaceGame/ships/player/TestSpaceShipController.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
-#include <SandboxCoreEngine/uobject_utils.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 
 #include <Engine/Engine.h>
 #include <Engine/GameViewportClient.h>
@@ -16,6 +16,7 @@
 #include <InputAction.h>
 #include <InputMappingContext.h>
 #include <UnrealClient.h>
+#include <UObject/ConstructorHelpers.h>
 
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 
@@ -23,16 +24,24 @@ namespace {
 constexpr int32 global_mapping_priority{100};
 }
 
-ATestSpaceShipController::ATestSpaceShipController() {
+ASpaceGamePlayerController::ASpaceGamePlayerController() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    static ConstructorHelpers::FClassFinder<ml::ioj::UMainMenuWidget> const widget_class{
+        TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu")};
+    main_menu_widget_class = widget_class.Class;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
 // Input orchestration
 /* ---------------------------------------------------------------------------------------------- */
-void ATestSpaceShipController::SetupInputComponent() {
+void ASpaceGamePlayerController::SetupInputComponent() {
     Super::SetupInputComponent();
+
+    if (main_menu_requested_) {
+        return;
+    }
 
     TRY_INIT_PTR(input_component, Cast<UEnhancedInputComponent>(InputComponent));
     TRY_INIT_PTR(local_player, GetLocalPlayer());
@@ -45,19 +54,19 @@ void ATestSpaceShipController::SetupInputComponent() {
     initialise_global_input(*input_component, *input_subsystem);
 }
 
-auto ATestSpaceShipController::initialise_global_input(
+auto ASpaceGamePlayerController::initialise_global_input(
     UEnhancedInputComponent& input_component, UEnhancedInputLocalPlayerSubsystem& input_subsystem)
     -> bool {
     if (global_input_bound_) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::initialise_global_input: Already initialised."));
+               TEXT("ASpaceGamePlayerController::initialise_global_input: Already initialised."));
         return false;
     }
     if (!IsValid(global_input.mapping_context) || !IsValid(global_input.toggle_menu)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::initialise_global_input: Input configuration is "
+               TEXT("ASpaceGamePlayerController::initialise_global_input: Input configuration is "
                     "invalid."));
         return false;
     }
@@ -72,7 +81,7 @@ auto ATestSpaceShipController::initialise_global_input(
     return true;
 }
 
-void ATestSpaceShipController::shutdown_global_input() {
+void ASpaceGamePlayerController::shutdown_global_input() {
     if (!global_input_bound_) {
         return;
     }
@@ -91,60 +100,71 @@ void ATestSpaceShipController::shutdown_global_input() {
     global_input_bound_ = false;
 }
 
-auto ATestSpaceShipController::can_bind_context(EPlayerControlContext const context) const -> bool {
+auto ASpaceGamePlayerController::can_bind_context(EPlayerControlContext const context) const
+    -> bool {
     switch (context) {
         case EPlayerControlContext::None: {
             return true;
+        }
+        case EPlayerControlContext::MainMenu: {
+            return main_menu_control_context_.can_bind();
         }
         case EPlayerControlContext::Ship: {
             return ship_control_context_.can_bind();
         }
-        case EPlayerControlContext::Menu: {
-            return menu_control_context_.can_bind();
+        case EPlayerControlContext::PauseMenu: {
+            return pause_menu_control_context_.can_bind();
         }
     }
     return false;
 }
 
-auto ATestSpaceShipController::bind_context(EPlayerControlContext const context) -> bool {
+auto ASpaceGamePlayerController::bind_context(EPlayerControlContext const context) -> bool {
     switch (context) {
         case EPlayerControlContext::None: {
             return true;
         }
+        case EPlayerControlContext::MainMenu: {
+            return main_menu_control_context_.bind();
+        }
         case EPlayerControlContext::Ship: {
             return ship_control_context_.bind();
         }
-        case EPlayerControlContext::Menu: {
-            return menu_control_context_.bind();
+        case EPlayerControlContext::PauseMenu: {
+            return pause_menu_control_context_.bind();
         }
     }
     return false;
 }
 
-void ATestSpaceShipController::unbind_context(EPlayerControlContext const context) {
+void ASpaceGamePlayerController::unbind_context(EPlayerControlContext const context) {
     switch (context) {
         case EPlayerControlContext::None: {
+            break;
+        }
+        case EPlayerControlContext::MainMenu: {
+            main_menu_control_context_.unbind();
             break;
         }
         case EPlayerControlContext::Ship: {
             ship_control_context_.unbind();
             break;
         }
-        case EPlayerControlContext::Menu: {
-            menu_control_context_.unbind();
+        case EPlayerControlContext::PauseMenu: {
+            pause_menu_control_context_.unbind();
             break;
         }
     }
 }
 
-auto ATestSpaceShipController::set_control_context(EPlayerControlContext const context) -> bool {
+auto ASpaceGamePlayerController::set_control_context(EPlayerControlContext const context) -> bool {
     if (context == active_control_context_) {
         return bind_context(context);
     }
     if (!can_bind_context(context)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::set_control_context: Requested context cannot "
+               TEXT("ASpaceGamePlayerController::set_control_context: Requested context cannot "
                     "bind."));
         return false;
     }
@@ -160,21 +180,21 @@ auto ATestSpaceShipController::set_control_context(EPlayerControlContext const c
 
     UE_LOG(LogSandboxController,
            Error,
-           TEXT("ATestSpaceShipController::set_control_context: Failed to bind requested "
+           TEXT("ASpaceGamePlayerController::set_control_context: Failed to bind requested "
                 "context."));
     if (bind_context(previous_context)) {
         active_control_context_ = previous_context;
     } else {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::set_control_context: Failed to restore previous "
+               TEXT("ASpaceGamePlayerController::set_control_context: Failed to restore previous "
                     "context."));
     }
     return false;
 }
 
-void
-    ATestSpaceShipController::on_ship_mapping_context_changed(UInputMappingContext const& context) {
+void ASpaceGamePlayerController::on_ship_mapping_context_changed(
+    UInputMappingContext const& context) {
     auto const context_name{GetNameSafe(&context)};
     UE_LOG(LogSandbox, Display, TEXT("Setting context to: %s"), *context_name);
 
@@ -182,34 +202,34 @@ void
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Warning,
-               TEXT("ATestSpaceShipController::on_ship_mapping_context_changed: HUD "
+               TEXT("ASpaceGamePlayerController::on_ship_mapping_context_changed: HUD "
                     "orchestrator is invalid."));
         return;
     }
     orchestrator->get_hud_manager().set_selected_mapping_context(context_name);
 }
 
-void ATestSpaceShipController::toggle_pause_game() {
+void ASpaceGamePlayerController::toggle_pause_game() {
     auto* const orchestrator{hud_orchestrator.Get()};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::toggle_pause_game: Orchestrator is invalid."));
+               TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is invalid."));
         return;
     }
 
     switch (orchestrator->get_state()) {
         case EOrchestratorState::Running: {
-            if (!menu_control_context_.can_bind()) {
+            if (!pause_menu_control_context_.can_bind()) {
                 UE_LOG(LogSandboxController,
                        Error,
-                       TEXT("ATestSpaceShipController::toggle_pause_game: Menu context is not "
+                       TEXT("ASpaceGamePlayerController::toggle_pause_game: Menu context is not "
                             "available."));
                 return;
             }
 
             orchestrator->pause_simulation();
-            if (!set_control_context(EPlayerControlContext::Menu)) {
+            if (!set_control_context(EPlayerControlContext::PauseMenu)) {
                 orchestrator->start_simulation();
             }
             break;
@@ -222,7 +242,7 @@ void ATestSpaceShipController::toggle_pause_game() {
         case EOrchestratorState::Stopped: {
             UE_LOG(LogSandboxController,
                    Error,
-                   TEXT("ATestSpaceShipController::toggle_pause_game: Orchestrator is stopped."));
+                   TEXT("ASpaceGamePlayerController::toggle_pause_game: Orchestrator is stopped."));
             break;
         }
     }
@@ -231,20 +251,29 @@ void ATestSpaceShipController::toggle_pause_game() {
 /* ---------------------------------------------------------------------------------------------- */
 // Life cycle
 /* ---------------------------------------------------------------------------------------------- */
-void ATestSpaceShipController::BeginPlay() {
+void ASpaceGamePlayerController::BeginPlay() {
     Super::BeginPlay();
 
+    begin_play_finished_ = true;
+    if (main_menu_requested_) {
+        initialise_main_menu();
+        return;
+    }
+
+    initialise_gameplay();
+}
+
+void ASpaceGamePlayerController::initialise_gameplay() {
     bind_orchestrator_reset();
     initialise_hud();
     if (IsValid(ui_data)) {
-        menu_control_context_.initialise(*this, *ui_data);
+        pause_menu_control_context_.initialise(*this, *ui_data);
     } else {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::BeginPlay: UI data is invalid."));
+               TEXT("ASpaceGamePlayerController::initialise_gameplay: UI data is invalid."));
     }
 
-    begin_play_finished_ = true;
     auto* const ship{Cast<Pawn>(GetPawn())};
     if (IsValid(ship)) {
         ship_control_context_.set_ship(ship);
@@ -252,12 +281,12 @@ void ATestSpaceShipController::BeginPlay() {
     } else {
         UE_LOG(LogSandbox,
                Display,
-               TEXT("ATestSpaceShipController::BeginPlay: No valid pawn, disabling tick."));
+               TEXT("ASpaceGamePlayerController::BeginPlay: No valid pawn, disabling tick."));
         SetActorTickEnabled(false);
     }
 }
 
-void ATestSpaceShipController::Tick(float const dt) {
+void ASpaceGamePlayerController::Tick(float const dt) {
     Super::Tick(dt);
 
     log_config.tick(dt);
@@ -265,9 +294,10 @@ void ATestSpaceShipController::Tick(float const dt) {
     log_config.on_tick_end();
 }
 
-void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
+void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     set_control_context(EPlayerControlContext::None);
-    menu_control_context_.shutdown();
+    main_menu_control_context_.shutdown();
+    pause_menu_control_context_.shutdown();
     ship_control_context_.shutdown();
     shutdown_global_input();
 
@@ -292,23 +322,26 @@ void ATestSpaceShipController::EndPlay(EEndPlayReason::Type const reason) {
 /* ---------------------------------------------------------------------------------------------- */
 // Pawn possession
 /* ---------------------------------------------------------------------------------------------- */
-void ATestSpaceShipController::OnPossess(APawn* const in_pawn) {
+void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
     Super::OnPossess(in_pawn);
 
-    initialise_hud();
+    if (!main_menu_requested_) {
+        initialise_hud();
+    }
 
     auto* const ship{Cast<Pawn>(in_pawn)};
     if (!IsValid(ship)) {
         UE_LOG(LogSandbox,
                Error,
-               TEXT("ATestSpaceShipController::OnPossess: Player ship is invalid."));
+               TEXT("ASpaceGamePlayerController::OnPossess: Player ship is invalid."));
         SetActorTickEnabled(false);
         return;
     }
 
     ship->on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
     ship_control_context_.set_ship(ship);
-    if (begin_play_finished_ && active_control_context_ != EPlayerControlContext::Menu) {
+    if (begin_play_finished_ && active_control_context_ != EPlayerControlContext::MainMenu &&
+        active_control_context_ != EPlayerControlContext::PauseMenu) {
         set_control_context(EPlayerControlContext::Ship);
     }
 
@@ -316,7 +349,7 @@ void ATestSpaceShipController::OnPossess(APawn* const in_pawn) {
     UE_LOG(LogSandbox, Display, TEXT("Possessed player ship"));
 }
 
-void ATestSpaceShipController::OnUnPossess() {
+void ASpaceGamePlayerController::OnUnPossess() {
     if (auto* const ship{Cast<Pawn>(GetPawn())}) {
         ship->on_player_ship_died.Unbind();
     }
@@ -331,27 +364,49 @@ void ATestSpaceShipController::OnUnPossess() {
     Super::OnUnPossess();
 }
 
-void ATestSpaceShipController::on_player_ship_died() {
+void ASpaceGamePlayerController::on_player_ship_died() {
     UnPossess();
 }
 
 /* ---------------------------------------------------------------------------------------------- */
 // UI and simulation transitions
 /* ---------------------------------------------------------------------------------------------- */
-void ATestSpaceShipController::bind_orchestrator_reset() {
+void ASpaceGamePlayerController::show_main_menu() {
+    main_menu_requested_ = true;
+    if (begin_play_finished_) {
+        initialise_main_menu();
+    }
+}
+
+void ASpaceGamePlayerController::initialise_main_menu() {
+    set_control_context(EPlayerControlContext::None);
+    ship_control_context_.shutdown();
+    shutdown_global_input();
+
+    if (!main_menu_control_context_.is_initialised() &&
+        !main_menu_control_context_.initialise(*this, main_menu_widget_class)) {
+        return;
+    }
+
+    set_control_context(EPlayerControlContext::MainMenu);
+    SetActorTickEnabled(false);
+}
+
+void ASpaceGamePlayerController::bind_orchestrator_reset() {
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::bind_orchestrator_reset: World is invalid."));
+               TEXT("ASpaceGamePlayerController::bind_orchestrator_reset: World is invalid."));
         return;
     }
 
     auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
     if (!IsValid(orchestrator)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("ATestSpaceShipController::bind_orchestrator_reset: Orchestrator is invalid."));
+        UE_LOG(
+            LogSandboxController,
+            Error,
+            TEXT("ASpaceGamePlayerController::bind_orchestrator_reset: Orchestrator is invalid."));
         return;
     }
 
@@ -360,7 +415,7 @@ void ATestSpaceShipController::bind_orchestrator_reset() {
     orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
 }
 
-void ATestSpaceShipController::on_orchestrator_reset(ATestBatchOrchestrator& orchestrator) {
+void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& orchestrator) {
     set_control_context(EPlayerControlContext::None);
 
     auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator.get_player_ship())};
@@ -379,30 +434,47 @@ void ATestSpaceShipController::on_orchestrator_reset(ATestBatchOrchestrator& orc
     }
 }
 
-void ATestSpaceShipController::initialise_hud() {
+void ASpaceGamePlayerController::initialise_hud() {
     if (IsValid(hud_widget)) {
         return;
     }
 
     auto* const world{GetWorld()};
-    auto* const local_player{GetLocalPlayer()};
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(world),
-        SANDBOX_NAMED_UOBJECT_PTR(local_player),
-    });
+    if (!IsValid(world)) {
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("ASpaceGamePlayerController::initialise_hud: World is not available yet."));
+        return;
+    }
+    if (!IsValid(GetLocalPlayer())) {
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("ASpaceGamePlayerController::initialise_hud: Local player is not available "
+                    "yet."));
+        return;
+    }
 
     auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(orchestrator),
-        SANDBOX_NAMED_UOBJECT_PTR(ui_data),
-    });
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("ASpaceGamePlayerController::initialise_hud: Orchestrator is not available "
+                    "yet."));
+        return;
+    }
+    if (!IsValid(ui_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::initialise_hud: UI data is invalid."));
+        return;
+    }
     hud_orchestrator = orchestrator;
 
     auto* const team_visual_data{ui_data->team_visual_data.Get()};
     if (!IsValid(team_visual_data)) {
         UE_LOG(LogSandbox,
                Error,
-               TEXT("ATestSpaceShipController::initialise_hud: Team visual data is invalid."));
+               TEXT("ASpaceGamePlayerController::initialise_hud: Team visual data is invalid."));
         return;
     }
 
@@ -416,7 +488,7 @@ void ATestSpaceShipController::initialise_hud() {
     if (!IsValid(created_widget)) {
         UE_LOG(LogSandbox,
                Error,
-               TEXT("ATestSpaceShipController::initialise_hud: Failed to create HUD widget."));
+               TEXT("ASpaceGamePlayerController::initialise_hud: Failed to create HUD widget."));
         return;
     }
 
@@ -427,18 +499,18 @@ void ATestSpaceShipController::initialise_hud() {
     orchestrator->get_hud_manager().register_hud(*created_widget);
 }
 
-void ATestSpaceShipController::resume_game() {
+void ASpaceGamePlayerController::resume_game() {
     auto* const orchestrator{hud_orchestrator.Get()};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::resume_game: Orchestrator is invalid."));
+               TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is invalid."));
         return;
     }
     if (orchestrator->get_state() == EOrchestratorState::Stopped) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ATestSpaceShipController::resume_game: Orchestrator is stopped."));
+               TEXT("ASpaceGamePlayerController::resume_game: Orchestrator is stopped."));
         return;
     }
 
@@ -464,7 +536,7 @@ void ATestSpaceShipController::resume_game() {
 /* ---------------------------------------------------------------------------------------------- */
 // Misc
 /* ---------------------------------------------------------------------------------------------- */
-void ATestSpaceShipController::screenshot_tick(float const dt) {
+void ASpaceGamePlayerController::screenshot_tick(float const dt) {
     if (screenshot_period > 0.f) {
         screenshot_accumulator += dt;
         if (screenshot_accumulator >= screenshot_period) {

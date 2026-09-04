@@ -10,5 +10,7 @@ class SPACEGAME_API AMainMenuGameMode : public AGameModeBase {
     GENERATED_BODY()
   public:
     AMainMenuGameMode();
+
+    void PostLogin(APlayerController* new_player) override;
 };
 }

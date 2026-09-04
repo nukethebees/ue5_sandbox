@@ -37,7 +37,9 @@ public class SandboxEditor : ModuleRules
             "RenderCore", // Often needed for material nodes
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
+            "SbxShadersExperiments",
             "SpaceGame",
+            "SpaceGameS7",
             "Slate",
             "SlateCore",
             "InputCore", // For SNumericVectorInputBox 

@@ -48,6 +48,7 @@ void FPlayerShipVsCapitalScenario::spawn_fixture() {
     if (!checks.is_valid(player, TEXT("Player ship is spawned"))) {
         return;
     }
+    player->set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
     player->SetActorTransform(
         FTransform{FRotator{0.f, -90.f, 0.f}, FVector{19850.f, 1300.f, 980.f}});
     context_.orchestrator.set_player_ship(*player);

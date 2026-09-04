@@ -30,6 +30,7 @@ public class SandboxTests : ModuleRules
             "SandboxNative",
             "Sandbox",
             "SpaceGame",
+            "SpaceGameS7",
             "Core",
             "CoreUObject",
             "Engine",

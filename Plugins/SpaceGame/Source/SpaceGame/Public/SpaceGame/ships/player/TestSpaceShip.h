@@ -80,6 +80,7 @@ class SPACEGAME_API ATestSpaceShip
     auto get_unique_id() const -> TestEntityUniqueId;
     auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
+    void set_team(ETestTeam const new_team) noexcept { team = new_team; }
 
     auto get_entity_registry() const { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry* er) { entity_registry = er; }
@@ -121,6 +122,7 @@ class SPACEGAME_API ATestSpaceShip
     auto get_move_input() const { return planar_movement_direction; }
     auto get_control_mode() const { return control_mode; }
     auto get_flight_mode() const { return flight_mode; }
+    void set_flight_mode(ETestSpaceShipFlightMode new_flight_mode) noexcept;
     auto get_target_local_planar_velocity_scale() const {
         return target_local_planar_velocity_scale;
     }

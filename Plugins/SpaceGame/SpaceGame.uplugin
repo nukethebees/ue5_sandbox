@@ -27,7 +27,15 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxShaders",
+			"Enabled": true
+		},
+		{
 			"Name": "SandboxUI",
+			"Enabled": true
+		},
+		{
+			"Name": "SbxLangLab",
 			"Enabled": true
 		}
 	],
@@ -36,6 +44,11 @@
 			"Name": "SpaceGame",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SpaceGameS7",
+			"Type": "Runtime",
+			"LoadingPhase": "PreDefault"
 		}
 	]
 }

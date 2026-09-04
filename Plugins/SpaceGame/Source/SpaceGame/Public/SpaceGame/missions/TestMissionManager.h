@@ -1,14 +1,14 @@
 #pragma once
 
+#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/simulation/SimulationClockInterface.h>
-#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/missions/TestMissionFailReason.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGame/ships/common/ShipHealth.h>
-#include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGame/simulation/SimulationClockInterface.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -50,6 +50,7 @@ struct SPACEGAME_API FTestMissionManager {
     void set_target_time(float new_target_time);
     void set_kill_target(int32 new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
+    void set_level_name(FName level_name) noexcept;
     void add_hero_entity(AActor& actor);
     void add_entity_that_must_survive(AActor& actor);
     void add_entity_required_to_kill(AActor& actor);
@@ -73,6 +74,7 @@ struct SPACEGAME_API FTestMissionManager {
     auto get_mission_fail_reason() const noexcept -> ETestMissionFailReason {
         return mission_fail_reason;
     }
+    auto get_level_name() const noexcept -> FName { return level_name; }
     auto should_save_mission_results() const noexcept -> bool { return save_mission_results; }
     auto get_hero_entity_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
         return hero_entity_handles;
@@ -168,6 +170,8 @@ struct SPACEGAME_API FTestMissionManager {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool save_mission_results{true};
+
+    FName level_name{NAME_None};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     int32 mission_kills{0};

@@ -5,7 +5,7 @@
 #include <CoreMinimal.h>
 
 class ATestSpaceShip;
-class ATestSpaceShipController;
+class ASpaceGamePlayerController;
 class UEnhancedInputComponent;
 class UInputAction;
 class IEnhancedInputSubsystemInterface;
@@ -19,7 +19,7 @@ struct SPACEGAME_API FShipControlContext {
     auto operator=(FShipControlContext const&) -> FShipControlContext& = delete;
     auto operator=(FShipControlContext&&) -> FShipControlContext& = delete;
 
-    auto initialise(ATestSpaceShipController& owner,
+    auto initialise(ASpaceGamePlayerController& owner,
                     UEnhancedInputComponent& input_component,
                     IEnhancedInputSubsystemInterface& input_subsystem,
                     FSpaceShipControllerInputs const& input) -> bool;
@@ -75,7 +75,7 @@ struct SPACEGAME_API FShipControlContext {
 
     auto get_ship() const -> ATestSpaceShip*;
 
-    TWeakObjectPtr<ATestSpaceShipController> owner_;
+    TWeakObjectPtr<ASpaceGamePlayerController> owner_;
     TWeakObjectPtr<UEnhancedInputComponent> input_component_;
     TWeakObjectPtr<UObject> input_subsystem_object_;
     TWeakObjectPtr<ATestSpaceShip> ship_;

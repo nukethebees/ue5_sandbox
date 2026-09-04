@@ -1,10 +1,10 @@
 #include "SpaceGame/missions/TestMissionManager.h"
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
@@ -136,6 +136,10 @@ void FTestMissionManager::set_kill_target(int32 const new_kill_target) {
 void FTestMissionManager::set_save_mission_results(bool const should_save) noexcept {
     check(mission_state == ETestMissionState::NotStarted);
     save_mission_results = should_save;
+}
+void FTestMissionManager::set_level_name(FName const new_level_name) noexcept {
+    check(mission_state == ETestMissionState::NotStarted);
+    level_name = new_level_name;
 }
 
 void FTestMissionManager::add_hero_entity(AActor& actor) {
@@ -440,11 +444,12 @@ void FTestMissionManager::handle_mission_ended(ETestMissionFailReason const fail
     auto* const game_instance{world->GetGameInstance()};
     auto* save_manager{game_instance->GetSubsystem<USpaceSaveSubsystem>()};
 
-    auto const level_name{UGameplayStatics::GetCurrentLevelName(world)};
+    auto const result_level_name{
+        level_name.IsNone() ? FName{UGameplayStatics::GetCurrentLevelName(world)} : level_name};
 
     FScoreRecord const record{
         .date = FDateTime::Now(),
-        .level_name = *level_name,
+        .level_name = result_level_name,
         .mission_mode = mission_mode,
         .end_state = mission_state,
         .fail_reason = fail_reason,

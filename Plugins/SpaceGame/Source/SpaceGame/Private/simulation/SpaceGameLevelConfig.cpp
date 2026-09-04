@@ -1,7 +1,7 @@
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
 #include <SpaceGame/effects/DelayedNiagaraSpawner.h>
-#include <SpaceGame/ships/player/TestSpaceShipController.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
 
 #if WITH_EDITOR

@@ -135,6 +135,16 @@ class FInterpreter::FImpl final {
     ~FImpl() { s7_free(scheme_); }
 
     auto evaluate(FStringView const expression) -> FEvaluationResult {
+        FString value;
+        auto result{evaluate_value(expression, [&value, this](s7_pointer const payload) {
+            value = object_to_fstring(scheme_, payload);
+        })};
+        result.value = MoveTemp(value);
+        return result;
+    }
+
+    auto evaluate_value(FStringView const expression,
+                        TFunctionRef<void(s7_pointer)> const consume_value) -> FEvaluationResult {
         auto const converted{FTCHARToUTF8{expression.GetData(), expression.Len()}};
         auto const source{s7_make_string_with_length(scheme_, converted.Get(), converted.Length())};
         s7_symbol_set_value(scheme_, source_symbol_, source);
@@ -148,7 +158,10 @@ class FInterpreter::FImpl final {
         bool const succeeded{s7_boolean(scheme_, s7_car(result))};
         s7_pointer const payload{s7_cdr(result)};
         if (succeeded) {
-            return {.succeeded = true, .value = object_to_fstring(scheme_, payload)};
+            auto const protection{s7_gc_protect(scheme_, payload)};
+            consume_value(payload);
+            s7_gc_unprotect_at(scheme_, protection);
+            return {.succeeded = true};
         }
         if (!s7_is_string(payload)) {
             return {.error = TEXT("s7 returned an invalid error result.")};
@@ -156,6 +169,8 @@ class FInterpreter::FImpl final {
 
         return {.error = to_fstring(s7_string(payload))};
     }
+
+    auto native_handle() noexcept -> s7_scheme* { return scheme_; }
   private:
     s7_scheme* scheme_{};
     s7_pointer source_symbol_{};
@@ -170,5 +185,18 @@ FInterpreter::~FInterpreter() = default;
 
 auto FInterpreter::evaluate(FStringView const expression) -> FEvaluationResult {
     return impl_->evaluate(expression);
+}
+
+auto
+    FInterpreter::evaluate_value(FStringView const expression,
+                                 TFunctionRef<void(s7_scheme&, native::FValue)> const consume_value)
+        -> FEvaluationResult {
+    return impl_->evaluate_value(expression, [this, &consume_value](native::FValue const value) {
+        consume_value(*native_handle(), value);
+    });
+}
+
+auto FInterpreter::native_handle() noexcept -> s7_scheme* {
+    return impl_->native_handle();
 }
 }

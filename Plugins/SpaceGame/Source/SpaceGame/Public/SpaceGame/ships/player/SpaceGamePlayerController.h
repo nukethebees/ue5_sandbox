@@ -1,6 +1,7 @@
 #pragma once
 
-#include <SpaceGame/ships/player/MenuControlContext.h>
+#include <SpaceGame/ships/player/MainMenuControlContext.h>
+#include <SpaceGame/ships/player/PauseMenuControlContext.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
@@ -8,7 +9,7 @@
 #include <CoreMinimal.h>
 #include <GameFramework/PlayerController.h>
 
-#include "TestSpaceShipController.generated.h"
+#include "SpaceGamePlayerController.generated.h"
 
 class ATestBatchOrchestrator;
 class ATestSpaceShip;
@@ -18,19 +19,29 @@ class UInputMappingContext;
 class UShipHudWidget;
 class UTestBatchGameUiData;
 
+namespace ml::ioj {
+class UMainMenuWidget;
+}
+
 UCLASS()
-class ATestSpaceShipController : public APlayerController {
+class ASpaceGamePlayerController : public APlayerController {
     GENERATED_BODY()
 
-    friend struct FMenuControlContext;
+    friend struct FPauseMenuControlContext;
     friend struct FShipControlContext;
   public:
     using Pawn = ATestSpaceShip;
 
-    ATestSpaceShipController();
+    ASpaceGamePlayerController();
 
     void SetupInputComponent() override;
     void Tick(float dt) override;
+
+    void show_main_menu();
+
+    [[nodiscard]] auto get_active_control_context() const noexcept -> EPlayerControlContext {
+        return active_control_context_;
+    }
   protected:
     void BeginPlay() override;
     void OnPossess(APawn* in_pawn) override;
@@ -49,6 +60,8 @@ class ATestSpaceShipController : public APlayerController {
     void toggle_pause_game();
 
     // UI and simulation transitions
+    void initialise_main_menu();
+    void initialise_gameplay();
     void initialise_hud();
     void resume_game();
     void bind_orchestrator_reset();
@@ -68,6 +81,9 @@ class ATestSpaceShipController : public APlayerController {
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
 
+    UPROPERTY()
+    TSubclassOf<ml::ioj::UMainMenuWidget> main_menu_widget_class{nullptr};
+
     UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
     FSpaceShipControllerInputs input;
 
@@ -77,7 +93,10 @@ class ATestSpaceShipController : public APlayerController {
     FShipControlContext ship_control_context_;
 
     UPROPERTY(Transient)
-    FMenuControlContext menu_control_context_;
+    FMainMenuControlContext main_menu_control_context_;
+
+    UPROPERTY(Transient)
+    FPauseMenuControlContext pause_menu_control_context_;
 
     TWeakObjectPtr<UEnhancedInputComponent> global_input_component_;
     TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> global_input_subsystem_;
@@ -85,6 +104,7 @@ class ATestSpaceShipController : public APlayerController {
     EPlayerControlContext active_control_context_{EPlayerControlContext::None};
     bool global_input_bound_{false};
     bool begin_play_finished_{false};
+    bool main_menu_requested_{false};
 
     UPROPERTY(EditAnywhere, Category = "SpaceShip|Logging")
     FActorLoggingConfig log_config{1.f};

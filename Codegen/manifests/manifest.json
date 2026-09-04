@@ -6,6 +6,7 @@
     "core_layouts.json",
     "test_fixtures.json",
     "dynamic_entities.json",
+    "level_definition.json",
     "entity_registry.json",
     "batch_game.json",
     "enums.json",

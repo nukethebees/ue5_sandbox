@@ -20,7 +20,7 @@ class ATestCapitalShipProxy;
 class ATestCapitalShips;
 class ATestLasers;
 class ATestSpaceShip;
-class ATestSpaceShipController;
+class ASpaceGamePlayerController;
 class ATestStaticTurrets;
 class ATestTubeSpinners;
 class UMaterialInterface;
@@ -57,7 +57,7 @@ struct SPACEGAME_API FScenarioClassConfig {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<ATestSpaceShipController> player_controller_class{nullptr};
+    TSubclassOf<ASpaceGamePlayerController> player_controller_class{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Classes")
     TSubclassOf<ATestSpaceShip> player_ship_class{nullptr};

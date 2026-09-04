@@ -53,6 +53,18 @@
       "spelling": "FString",
       "header": "CoreMinimal.h"
     },
+    "entity_archetype_id": {
+      "spelling": "ml::FEntityArchetypeId",
+      "header": "SpaceGame/levels/LevelTypes.h"
+    },
+    "level_entity_id": {
+      "spelling": "ml::FLevelEntityId",
+      "header": "SpaceGame/levels/LevelTypes.h"
+    },
+    "level_team_id": {
+      "spelling": "ml::FLevelTeamId",
+      "header": "SpaceGame/levels/LevelTypes.h"
+    },
     "index_span": {
       "spelling": "FIndexSpan",
       "header": "SpaceGame/support/IndexSpan.h"
@@ -86,6 +98,13 @@
     },
     "rotators_f": {
       "spelling": "FRotatorsf",
+      "header": "SandboxCore/soa_rotators.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "rotators_d": {
+      "spelling": "FRotatorsd",
       "header": "SandboxCore/soa_rotators.h",
       "operations": {
         "remove_at_swap": "remove_at_swap"
@@ -156,6 +175,13 @@
     "vectors_3f": {
       "spelling": "FVectors3f",
       "header": "SandboxCore/soa_vectors_3f.h",
+      "operations": {
+        "remove_at_swap": "remove_at_swap"
+      }
+    },
+    "vectors_3d": {
+      "spelling": "FVectors3d",
+      "header": "SandboxCore/soa_vectors_3d.h",
       "operations": {
         "remove_at_swap": "remove_at_swap"
       }
