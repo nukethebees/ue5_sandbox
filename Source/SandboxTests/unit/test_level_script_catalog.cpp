@@ -78,4 +78,34 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Malformed entries include a useful error"),
                              !result.entries[2].error.IsEmpty());
     }
+
+    TEST_METHOD(RejectsDuplicateLevelIds)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const alpha_path{FPaths::Combine(directory.path, TEXT("alpha.scm"))};
+        auto const bravo_path{FPaths::Combine(directory.path, TEXT("bravo.scm"))};
+        auto const files_written{
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("shared"), TEXT("Alpha")),
+                                          *alpha_path) &&
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("shared"), TEXT("Bravo")),
+                                          *bravo_path)};
+        if (!TestRunner->TestTrue(TEXT("Test scripts are written"), files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        TestRunner->TestEqual(TEXT("Both scripts remain visible"), result.entries.Num(), 2);
+        if (result.entries.Num() != 2) {
+            return;
+        }
+
+        TestRunner->TestFalse(TEXT("First duplicate is invalid"),
+                              static_cast<bool>(result.entries[0]));
+        TestRunner->TestFalse(TEXT("Second duplicate is invalid"),
+                              static_cast<bool>(result.entries[1]));
+        TestRunner->TestTrue(TEXT("Conflict identifies the first file"),
+                             result.entries[0].error.Contains(TEXT("alpha.scm")));
+        TestRunner->TestTrue(TEXT("Conflict identifies the second file"),
+                             result.entries[0].error.Contains(TEXT("bravo.scm")));
+    }
 };

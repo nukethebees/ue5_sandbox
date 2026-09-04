@@ -2,6 +2,7 @@
 
 #include <SpaceGameS7/LevelDefinitionReader.h>
 
+#include <Containers/Map.h>
 #include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
@@ -49,6 +50,8 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
 
     FLevelDefinitionReader reader;
     result.entries.Reserve(filenames.Num());
+    TMap<FLevelId, int32> entry_indices_by_id;
+    entry_indices_by_id.Reserve(filenames.Num());
     for (auto const& filename : filenames) {
         auto const path{FPaths::Combine(result.directory, filename)};
         FLevelScriptEntry entry{
@@ -64,8 +67,24 @@ auto discover_level_scripts(FStringView const directory) -> FLevelScriptCatalogR
 
         auto read_result{reader.read_source(entry.source_text)};
         if (read_result) {
+            auto const id{read_result.definition->metadata.id};
             entry.display_title = read_result.definition->metadata.title;
             entry.description = read_result.definition->metadata.description;
+            if (auto const* const existing_index{entry_indices_by_id.Find(id)}) {
+                auto& existing_entry{result.entries[*existing_index]};
+                auto const error{FString::Printf(TEXT("Level id '%s' is declared by both '%s' "
+                                                      "and '%s'."),
+                                                 *id.value.ToString(),
+                                                 *existing_entry.filename,
+                                                 *filename)};
+                existing_entry.error = error;
+                existing_entry.definition.Reset();
+                entry.error = error;
+                result.entries.Add(MoveTemp(entry));
+                continue;
+            }
+
+            entry_indices_by_id.Add(id, result.entries.Num());
             entry.definition = MoveTemp(read_result.definition);
         } else {
             entry.error = format_read_error(read_result);
