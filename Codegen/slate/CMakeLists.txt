@@ -16,7 +16,10 @@ add_executable(sandbox-slatec src/main.cpp)
 set_target_properties(sandbox-slatec PROPERTIES OUTPUT_NAME slatec)
 target_link_libraries(sandbox-slatec PRIVATE slate-codegen-lib)
 
-add_executable(slate-codegen-tests tests/compiler_tests.cpp)
+add_executable(slate-codegen-tests
+  tests/compiler_io_tests.cpp
+  tests/compiler_tests.cpp
+)
 target_include_directories(slate-codegen-tests PRIVATE src)
 target_link_libraries(slate-codegen-tests PRIVATE
   slate-codegen-lib

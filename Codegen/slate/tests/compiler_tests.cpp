@@ -68,6 +68,97 @@ TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
     EXPECT_NE(output.find(".WidthOverride(width)"), std::string::npos);
 }
 
+TEST(SlateDsl, ValueParametersWorkInLetBindingsAndPadding) {
+    auto const document{parse_source(R"(
+(widget-class FOwner
+  (function Build
+    (params
+      (value padding)
+      (value width))
+    (let ((box_width width))
+      (vbox
+        (auto :padding padding
+          (SBox :WidthOverride box_width))))))
+)")};
+
+    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    EXPECT_NE(output.find("auto const box_width{width};"), std::string::npos);
+    EXPECT_NE(output.find("vbox_auto_slot(FMargin{padding})"), std::string::npos);
+    EXPECT_NE(output.find(".WidthOverride(box_width)"), std::string::npos);
+}
+
+TEST(SlateDsl, RejectsRepeatedSingleUseParameters) {
+    auto const repeated_callback{parse_error(R"(
+(widget-class FOwner
+  (function Build
+    (params (callback handle))
+    (SButton
+      :OnClicked (callback handle)
+      :OnPressed (callback handle))))
+)")};
+    EXPECT_NE(repeated_callback.find("callback parameter 'handle' may only be used once"),
+              std::string::npos);
+
+    auto const repeated_existing{parse_error(R"(
+(widget-class FOwner
+  (function Build
+    (params (existing child))
+    (vbox
+      (auto (existing child))
+      (auto (existing child)))))
+)")};
+    EXPECT_NE(repeated_existing.find("existing parameter 'child' may only be used once"),
+              std::string::npos);
+}
+
+TEST(SlateDsl, RendersSupportedTreeForms) {
+    auto const document{parse_source(R"(
+(widget-class FOwner
+  (function Build
+    (params (value title))
+    (SSectionPanel
+      :Title title
+      :Description (loc "Tests" "Description" "Description text")
+      :State (method current_state)
+      :OnClicked (uobject handle_clicked)
+      (slot Header
+        (STextBlock :Text title))
+      (slot Body
+        (assign child_ SBox)))))
+)")};
+
+    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    EXPECT_NE(output.find("NSLOCTEXT(\"Tests\", \"Description\", \"Description text\")"),
+              std::string::npos);
+    EXPECT_NE(output.find(".State(&self_, &ThisClass::current_state)"), std::string::npos);
+    EXPECT_NE(output.find(".OnClicked_UObject(&self_, &ThisClass::handle_clicked)"),
+              std::string::npos);
+    EXPECT_NE(output.find(".Header()"), std::string::npos);
+    EXPECT_NE(output.find(".Body()"), std::string::npos);
+    EXPECT_NE(output.find("SAssignNew(self_.child_, SBox)"), std::string::npos);
+}
+
+TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
+    auto const document{parse_source(R"(
+(widget-class FOwner
+  (function BuildControls
+    (params)
+    (vbox
+      (fill :weight 2 :padding (1 2) :halign right :valign bottom
+        (SButton))))
+  (function BuildPreview
+    (params)
+    (SImage)))
+)")};
+
+    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    EXPECT_NE(output.find("auto BuildControls()"), std::string::npos);
+    EXPECT_NE(output.find("auto BuildPreview()"), std::string::npos);
+    EXPECT_NE(output.find("vbox_fill_slot(2.0f, FMargin{1.0f, 2.0f})"), std::string::npos);
+    EXPECT_NE(output.find(".HAlign(HAlign_Right)"), std::string::npos);
+    EXPECT_NE(output.find(".VAlign(VAlign_Bottom)"), std::string::npos);
+}
+
 TEST(SlateDsl, RejectsUndeclaredAndIncorrectParameterUses) {
     auto const undeclared{parse_error(R"(
 (widget-class FOwner
