@@ -9,3 +9,9 @@
       :WidthOverride $size
       :HeightOverride $size
       (existing $widget))))
+
+(defmacro benchmark-output (member context)
+  (slot Output
+    (assign $member SMultiLineEditableTextBox
+      :IsReadOnly true
+      :Text (loc $context "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV."))))

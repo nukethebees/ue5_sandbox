@@ -31,10 +31,7 @@
               :ButtonText (loc "Radar3D" "RunBenchmark" "Benchmark RDG contact scaling")
               :ToolTipText (loc "Radar3D" "RunBenchmarkTooltip" "Runs a short 512x512 benchmark from 1 to 256 contacts.")
               :OnClicked (uobject run_benchmark)
-              (slot Output
-                (assign benchmark_output_ SMultiLineEditableTextBox
-                  :IsReadOnly true
-                  :Text (loc "Radar3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
+              (benchmark-output benchmark_output_ "Radar3D")))))
       (square-preview radar_widget 512.0f))))
 
 (widget-class SRadar3DWidget

@@ -119,10 +119,7 @@
                 :ButtonText (loc "VolumeHeatmap3D" "RunBenchmark" "Benchmark grid and slice scaling")
                 :OnClicked (uobject run_benchmark)
                 :OutputHeight 105.0f
-                (slot Output
-                  (assign benchmark_output_ SMultiLineEditableTextBox
-                    :IsReadOnly true
-                    :Text (loc "VolumeHeatmap3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
+                (benchmark-output benchmark_output_ "VolumeHeatmap3D")))))
         (square-preview volume_widget preview_size)))))
 
 (widget-class SVolumeHeatmap3DWidget

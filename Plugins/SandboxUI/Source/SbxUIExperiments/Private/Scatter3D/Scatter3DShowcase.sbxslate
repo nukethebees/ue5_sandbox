@@ -32,10 +32,7 @@
               :ButtonText (loc "Scatter3D" "RunBenchmark" "Benchmark RDG point scaling")
               :ToolTipText (loc "Scatter3D" "RunBenchmarkTooltip" "Runs a short 512x512 benchmark from 1 to 65,536 points.")
               :OnClicked (uobject run_benchmark)
-              (slot Output
-                (assign benchmark_output_ SMultiLineEditableTextBox
-                  :IsReadOnly true
-                  :Text (loc "Scatter3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
+              (benchmark-output benchmark_output_ "Scatter3D")))))
       (square-preview scatter_widget 512.0f))))
 
 (widget-class SScatter3DWidget

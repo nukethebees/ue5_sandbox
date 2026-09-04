@@ -52,10 +52,7 @@
               :ToolTipText (loc "HeatmapRDG" "RunBenchmarkTooltip" "Runs a short CPU benchmark at 32x32 through 512x512.")
               :OnClicked (uobject run_benchmark)
               :OutputHeight 180.0f
-              (slot Output
-                (assign benchmark_output_ SMultiLineEditableTextBox
-                  :IsReadOnly true
-                  :Text (loc "HeatmapRDG" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
+              (benchmark-output benchmark_output_ "HeatmapRDG")))))
       (slot Preview
         (SBox
           :MinDesiredWidth preview_size
