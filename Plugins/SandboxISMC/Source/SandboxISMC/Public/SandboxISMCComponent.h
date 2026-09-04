@@ -1,7 +1,6 @@
 #pragma once
 
-#include "SandboxISMCDirtyRange.h"
-#include "SandboxISMCInstanceData.h"
+#include "SandboxISMCInstanceState.h"
 #include "SandboxISMCUpdateMetrics.h"
 
 #include "Components/MeshComponent.h"
@@ -13,7 +12,6 @@
 class UStaticMesh;
 class UMaterialInterface;
 struct FSandboxISMCMetricsState;
-struct FSandboxISMCRenderUpdate;
 
 UCLASS(ClassGroup = (Rendering), meta = (DisplayName = "Sandbox ISMC"))
 class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
@@ -53,31 +51,10 @@ class SANDBOXISMC_API USandboxISMCComponent final : public UMeshComponent {
     virtual auto CalcBounds(FTransform const& local_to_world) const -> FBoxSphereBounds override;
     virtual auto SendRenderDynamicData_Concurrent() -> void override;
   private:
-    auto is_valid_instance_range(int32 first_index, int32 count) const -> bool;
-    static auto is_valid_instance_range(int32 first_index, int32 count, int32 instance_count)
-        -> bool;
-
-    auto calculate_instance_bounds(int32 instance_index) const -> FBox3f;
-    auto rebuild_bounds_tree() -> void;
-    auto update_bounds_tree(TConstArrayView<FSandboxISMCDirtyRange> dirty_ranges) -> void;
-    auto update_local_bounds_from_tree() -> void;
-
     UPROPERTY(EditAnywhere, Category = "Mesh")
     TObjectPtr<UStaticMesh> static_mesh_;
 
-    ml::sandbox_ismc::InstanceData instance_data_;
-    TArray<FSandboxISMCDirtyRange> dirty_ranges_;
-    TArray<FBox3f> bounds_tree_;
-
-    FBoxSphereBounds local_bounds_{ForceInit};
-    FVector3f mesh_bounds_origin_{FVector3f::ZeroVector};
-    float mesh_bounds_radius_{0.0f};
+    ml::sandbox_ismc::InstanceState instance_state_;
     TSharedPtr<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe> pending_render_update_;
     TSharedPtr<FSandboxISMCMetricsState, ESPMode::ThreadSafe> metrics_;
-    int32 bounds_leaf_capacity_{0};
-    int32 submitted_buffer_capacity_{0};
-    bool force_full_upload_{true};
-    bool bounds_rebuild_required_{true};
-    bool bounds_tree_valid_{false};
-    bool instance_count_changed_{false};
 };

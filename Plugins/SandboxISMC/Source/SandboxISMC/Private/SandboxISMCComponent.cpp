@@ -57,27 +57,6 @@ struct FSandboxISMCMetricsState {
     TAtomic<int32> dirty_range_count{0};
 };
 
-struct FSandboxISMCRenderInstance {
-    FVector4f origin;
-    FVector4f transform_row_0;
-    FVector4f transform_row_1;
-    FVector4f transform_row_2;
-};
-
-static_assert(sizeof(FSandboxISMCRenderInstance) == 64);
-
-struct FSandboxISMCRenderRange {
-    int32 first_instance{0};
-    int32 count{0};
-};
-
-struct FSandboxISMCRenderUpdate {
-    int32 instance_count{0};
-    bool full_upload{false};
-    TArray<FSandboxISMCRenderRange> ranges;
-    TArray<FSandboxISMCRenderInstance> instances;
-};
-
 namespace {
 class FSandboxISMCInstanceBuffer final : public FVertexBuffer {
   public:
@@ -491,11 +470,8 @@ auto USandboxISMCComponent::set_static_mesh(UStaticMesh& mesh) -> void {
 
     static_mesh_ = &mesh;
     auto const mesh_bounds{mesh.GetBounds()};
-    mesh_bounds_origin_ = FVector3f{mesh_bounds.Origin};
-    mesh_bounds_radius_ = static_cast<float>(mesh_bounds.SphereRadius);
-    force_full_upload_ = true;
-    bounds_rebuild_required_ = true;
-    mark_all_instances_dirty();
+    instance_state_.set_mesh_bounds(FVector3f{mesh_bounds.Origin},
+                                    static_cast<float>(mesh_bounds.SphereRadius));
     commit_instance_updates();
     MarkRenderStateDirty();
 }
@@ -506,11 +482,7 @@ auto USandboxISMCComponent::clear_static_mesh() -> void {
     }
 
     static_mesh_ = nullptr;
-    mesh_bounds_origin_ = FVector3f::ZeroVector;
-    mesh_bounds_radius_ = 0.0f;
-    force_full_upload_ = true;
-    bounds_rebuild_required_ = true;
-    mark_all_instances_dirty();
+    instance_state_.clear_mesh_bounds();
     commit_instance_updates();
     MarkRenderStateDirty();
 }
@@ -520,306 +492,66 @@ auto USandboxISMCComponent::get_static_mesh() const -> UStaticMesh* {
 }
 
 auto USandboxISMCComponent::reserve_instances(int32 capacity) -> void {
-    instance_data_.reserve(capacity);
+    instance_state_.reserve_instances(capacity);
 }
 
 auto USandboxISMCComponent::add_instances(TConstArrayView<FVector3f> positions) -> int32 {
-    auto const count{positions.Num()};
-    if (count == 0) {
-        return INDEX_NONE;
-    }
-
-    auto const first_index{instance_data_.num()};
-    instance_data_.add_uninitialised(count);
-    auto const added_instances{instance_data_.right(count)};
-    for (auto index = 0; index < count; ++index) {
-        added_instances.positions[index] = positions[index];
-        added_instances.rotations[index] = FQuat4f::Identity;
-        added_instances.scales[index] = FVector3f::OneVector;
-    }
-
-    mark_instance_range_dirty(first_index, count);
-    instance_count_changed_ = true;
-    return first_index;
+    return instance_state_.add_instances(positions);
 }
 
 auto USandboxISMCComponent::add_instances(TConstArrayView<FVector3f> positions,
                                           TConstArrayView<FQuat4f> rotations) -> int32 {
-    checkf(positions.Num() == rotations.Num(),
-           TEXT("SandboxISMC add views must have equal lengths"));
-
-    auto const count{positions.Num()};
-    if (count == 0) {
-        return INDEX_NONE;
-    }
-
-    auto const first_index{instance_data_.num()};
-    instance_data_.add_uninitialised(count);
-    auto const added_instances{instance_data_.right(count)};
-    for (auto index = 0; index < count; ++index) {
-        added_instances.positions[index] = positions[index];
-        added_instances.rotations[index] = rotations[index];
-        added_instances.scales[index] = FVector3f::OneVector;
-    }
-
-    mark_instance_range_dirty(first_index, count);
-    instance_count_changed_ = true;
-    return first_index;
+    return instance_state_.add_instances(positions, rotations);
 }
 
 auto USandboxISMCComponent::add_instances(ml::sandbox_ismc::InstanceDataConstView instances)
     -> int32 {
-    instances.validate_array_sizes();
-
-    auto const count{instances.num()};
-    if (count == 0) {
-        return INDEX_NONE;
-    }
-
-    auto const first_index{instance_data_.num()};
-    instance_data_.append_from(instances);
-
-    mark_instance_range_dirty(first_index, count);
-    instance_count_changed_ = true;
-    return first_index;
+    return instance_state_.add_instances(instances);
 }
 
 auto USandboxISMCComponent::set_instance_transforms(
     int32 first_index, ml::sandbox_ismc::InstanceDataConstView instances) -> void {
-    instances.validate_array_sizes();
-    auto const count{instances.num()};
-    checkf(is_valid_instance_range(first_index, count),
-           TEXT("Invalid SandboxISMC transform range: first index %d, count %d"),
-           first_index,
-           count);
-
-    instance_data_.copy_elements(first_index, instances, 0, count);
-    mark_instance_range_dirty(first_index, count);
+    instance_state_.set_instance_transforms(first_index, instances);
 }
 
 auto USandboxISMCComponent::set_instance_transforms(
     TConstArrayView<int32> instance_indices, ml::sandbox_ismc::InstanceDataConstView instances)
     -> void {
-    instances.validate_array_sizes();
-    checkf(instance_indices.Num() == instances.num(),
-           TEXT("SandboxISMC scattered transform views must have equal lengths"));
-
-    for (auto const instance_index : instance_indices) {
-        checkf(instance_data_.positions.IsValidIndex(instance_index),
-               TEXT("Invalid SandboxISMC instance index %d"),
-               instance_index);
-    }
-
-    auto const count{instance_indices.Num()};
-    for (auto index = 0; index < count; ++index) {
-        auto const instance_index{instance_indices[index]};
-        instance_data_.copy_element(instance_index, instances, index);
-        mark_instance_range_dirty(instance_index, 1);
-    }
+    instance_state_.set_instance_transforms(instance_indices, instances);
 }
 
 auto USandboxISMCComponent::remove_instances_swap(TConstArrayView<int32> sorted_instance_indices)
     -> void {
-    auto previous_index{instance_data_.num()};
-    for (auto const instance_index : sorted_instance_indices) {
-        checkf(instance_index >= 0 && instance_index < previous_index,
-               TEXT("SandboxISMC removal indices must be valid, unique, and sorted descending"));
-        previous_index = instance_index;
-    }
-
-    if (sorted_instance_indices.IsEmpty()) {
-        return;
-    }
-
-    for (auto const instance_index : sorted_instance_indices) {
-        instance_data_.remove_at_swap(instance_index, 1, EAllowShrinking::No);
-    }
-    force_full_upload_ = true;
-    bounds_rebuild_required_ = true;
-    instance_count_changed_ = true;
-    mark_all_instances_dirty();
+    instance_state_.remove_instances_swap(sorted_instance_indices);
 }
 
 auto USandboxISMCComponent::clear_instances() -> void {
-    instance_data_.reset();
-    dirty_ranges_.Reset();
-    force_full_upload_ = true;
-    bounds_rebuild_required_ = true;
-    instance_count_changed_ = true;
+    instance_state_.clear_instances();
 }
 
 auto USandboxISMCComponent::get_instance_count() const -> int32 {
-    return instance_data_.num();
+    return instance_state_.get_instance_count();
 }
 
 auto USandboxISMCComponent::instances() -> ml::sandbox_ismc::InstanceDataView {
-    mark_all_instances_dirty();
-    return instance_data_.get_view();
+    return instance_state_.instances();
 }
 
 auto USandboxISMCComponent::instances() const -> ml::sandbox_ismc::InstanceDataConstView {
-    return instance_data_.get_const_view();
+    return instance_state_.instances();
 }
 
 auto USandboxISMCComponent::edit_instances(int32 first_index, int32 count)
     -> ml::sandbox_ismc::InstanceDataView {
-    checkf(is_valid_instance_range(first_index, count),
-           TEXT("Invalid SandboxISMC instance edit range: first index %d, count %d"),
-           first_index,
-           count);
-    mark_instance_range_dirty(first_index, count);
-    return instance_data_.get_view(first_index, count);
+    return instance_state_.edit_instances(first_index, count);
 }
 
 auto USandboxISMCComponent::mark_instance_range_dirty(int32 first_index, int32 count) -> void {
-    if (count == 0) {
-        return;
-    }
-    if (!is_valid_instance_range(first_index, count)) {
-        UE_LOG(LogSandboxISMC,
-               Warning,
-               TEXT("Invalid SandboxISMC dirty range: first index %d, count %d"),
-               first_index,
-               count);
-        return;
-    }
-
-    auto merged_first{first_index};
-    auto merged_end{first_index + count};
-    auto range_index{0};
-    while (range_index < dirty_ranges_.Num()) {
-        auto const& range{dirty_ranges_[range_index]};
-        auto const range_end{range.first_index + range.count};
-        if (range_end < merged_first) {
-            ++range_index;
-            continue;
-        }
-        if (range.first_index > merged_end) {
-            break;
-        }
-
-        merged_first = FMath::Min(merged_first, range.first_index);
-        merged_end = FMath::Max(merged_end, range_end);
-        dirty_ranges_.RemoveAt(range_index, EAllowShrinking::No);
-    }
-
-    dirty_ranges_.Insert({.first_index = merged_first, .count = merged_end - merged_first},
-                         range_index);
-}
-
-auto USandboxISMCComponent::is_valid_instance_range(int32 first_index, int32 count) const -> bool {
-    return is_valid_instance_range(first_index, count, instance_data_.num());
-}
-
-auto USandboxISMCComponent::is_valid_instance_range(int32 first_index,
-                                                    int32 count,
-                                                    int32 instance_count) -> bool {
-    return first_index >= 0 && count >= 0 && first_index <= instance_count &&
-           count <= instance_count - first_index;
+    instance_state_.mark_instance_range_dirty(first_index, count);
 }
 
 auto USandboxISMCComponent::mark_all_instances_dirty() -> void {
-    dirty_ranges_.Reset();
-    if (!instance_data_.is_empty()) {
-        dirty_ranges_.Add({.first_index = 0, .count = instance_data_.num()});
-    }
-}
-
-auto USandboxISMCComponent::calculate_instance_bounds(int32 instance_index) const -> FBox3f {
-    if (static_mesh_ == nullptr) {
-        return FBox3f{ForceInit};
-    }
-
-    auto const& scale{instance_data_.scales[instance_index]};
-    auto const center{
-        instance_data_.positions[instance_index] +
-        instance_data_.rotations[instance_index].RotateVector(mesh_bounds_origin_ * scale)};
-    auto const radius{mesh_bounds_radius_ * scale.GetAbsMax()};
-    auto const extent{FVector3f{radius}};
-    return FBox3f{center - extent, center + extent};
-}
-
-auto USandboxISMCComponent::rebuild_bounds_tree() -> void {
-    auto const instance_count{instance_data_.num()};
-    if (instance_count == 0) {
-        bounds_tree_.Reset();
-        bounds_leaf_capacity_ = 0;
-        bounds_tree_valid_ = true;
-        update_local_bounds_from_tree();
-        return;
-    }
-
-    bounds_leaf_capacity_ = FMath::RoundUpToPowerOfTwo(instance_count);
-    bounds_tree_.Init(FBox3f{ForceInit}, bounds_leaf_capacity_ * 2);
-    for (auto instance_index = 0; instance_index < instance_count; ++instance_index) {
-        bounds_tree_[bounds_leaf_capacity_ + instance_index] =
-            calculate_instance_bounds(instance_index);
-    }
-    for (auto node_index = bounds_leaf_capacity_ - 1; node_index > 0; --node_index) {
-        auto combined{bounds_tree_[node_index * 2]};
-        combined += bounds_tree_[node_index * 2 + 1];
-        bounds_tree_[node_index] = combined;
-    }
-    bounds_tree_valid_ = true;
-    update_local_bounds_from_tree();
-}
-
-auto USandboxISMCComponent::update_bounds_tree(TConstArrayView<FSandboxISMCDirtyRange> dirty_ranges)
-    -> void {
-    if (bounds_leaf_capacity_ == 0) {
-        update_local_bounds_from_tree();
-        return;
-    }
-
-    auto const updates_every_instance{dirty_ranges.Num() == 1 && dirty_ranges[0].first_index == 0 &&
-                                      dirty_ranges[0].count == instance_data_.num()};
-    if (updates_every_instance) {
-        FBox3f local_box{ForceInit};
-        auto const instance_count{instance_data_.num()};
-        for (auto instance_index = 0; instance_index < instance_count; ++instance_index) {
-            auto const instance_bounds{calculate_instance_bounds(instance_index)};
-            local_box += instance_bounds;
-        }
-        local_bounds_ = local_box.IsValid != 0
-                          ? FBoxSphereBounds{FBoxSphereBounds3f{local_box}}
-                          : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
-        bounds_tree_valid_ = false;
-        return;
-    }
-
-    if (!bounds_tree_valid_) {
-        rebuild_bounds_tree();
-        return;
-    }
-
-    for (auto const& range : dirty_ranges) {
-        auto const range_end{range.first_index + range.count};
-        for (auto instance_index = range.first_index; instance_index < range_end;
-             ++instance_index) {
-            bounds_tree_[bounds_leaf_capacity_ + instance_index] =
-                calculate_instance_bounds(instance_index);
-        }
-
-        auto first_node{(bounds_leaf_capacity_ + range.first_index) / 2};
-        auto last_node{(bounds_leaf_capacity_ + range_end - 1) / 2};
-        while (first_node > 0) {
-            for (auto node_index = first_node; node_index <= last_node; ++node_index) {
-                auto combined{bounds_tree_[node_index * 2]};
-                combined += bounds_tree_[node_index * 2 + 1];
-                bounds_tree_[node_index] = combined;
-            }
-            first_node /= 2;
-            last_node /= 2;
-        }
-    }
-    update_local_bounds_from_tree();
-}
-
-auto USandboxISMCComponent::update_local_bounds_from_tree() -> void {
-    auto const has_valid_root{bounds_tree_.Num() > 1 && bounds_tree_[1].IsValid != 0};
-    local_bounds_ = has_valid_root
-                      ? FBoxSphereBounds{FBoxSphereBounds3f{bounds_tree_[1]}}
-                      : FBoxSphereBounds{FVector::ZeroVector, FVector::ZeroVector, 0.0};
+    instance_state_.mark_all_instances_dirty();
 }
 
 auto USandboxISMCComponent::commit_instance_updates() -> void {
@@ -827,12 +559,10 @@ auto USandboxISMCComponent::commit_instance_updates() -> void {
     SCOPE_CYCLE_COUNTER(STAT_SandboxISMCPrepare);
     auto const start_cycles = FPlatformTime::Cycles64();
 
-    instance_data_.validate_array_sizes();
-
-    auto const instance_count = instance_data_.num();
-    auto const has_changes{force_full_upload_ || instance_count_changed_ ||
-                           !dirty_ranges_.IsEmpty()};
-    if (!has_changes) {
+    auto prepared{
+        instance_state_.prepare_update(pending_render_update_.IsValid() || SceneProxy == nullptr)};
+    auto const instance_count{instance_state_.get_instance_count()};
+    if (!prepared.render_update.IsValid()) {
         metrics_->instance_count.Store(instance_count);
         metrics_->prepare_cycles.Store(FPlatformTime::Cycles64() - start_cycles);
         metrics_->pack_cycles.Store(0);
@@ -843,89 +573,21 @@ auto USandboxISMCComponent::commit_instance_updates() -> void {
         return;
     }
 
-    auto const full_upload{force_full_upload_ || pending_render_update_.IsValid() ||
-                           SceneProxy == nullptr || instance_count > submitted_buffer_capacity_};
-    TArray<FSandboxISMCDirtyRange> upload_ranges;
-    if (full_upload) {
-        if (instance_count > 0) {
-            upload_ranges.Add({.first_index = 0, .count = instance_count});
-        }
-    } else {
-        upload_ranges = dirty_ranges_;
-    }
-
-    int32 dirty_instance_count{0};
-    for (auto const& range : upload_ranges) {
-        dirty_instance_count += range.count;
-    }
-
-    auto update = MakeShared<FSandboxISMCRenderUpdate, ESPMode::ThreadSafe>();
-    update->instance_count = instance_count;
-    update->full_upload = full_upload;
-    update->ranges.Reserve(upload_ranges.Num());
-    update->instances.SetNumUninitialized(dirty_instance_count);
-
-    auto const pack_start_cycles = FPlatformTime::Cycles64();
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_PackTransforms);
-        int32 packed_instance_index{0};
-        for (auto const& dirty_range : upload_ranges) {
-            update->ranges.Add(
-                {.first_instance = dirty_range.first_index, .count = dirty_range.count});
-            for (auto range_index = 0; range_index < dirty_range.count; ++range_index) {
-                auto const instance_index{dirty_range.first_index + range_index};
-                auto const transform{FTransform3f{instance_data_.rotations[instance_index],
-                                                  instance_data_.positions[instance_index],
-                                                  instance_data_.scales[instance_index]}};
-                auto const matrix{transform.ToMatrixWithScale()};
-                auto& packed{update->instances[packed_instance_index]};
-                packed.origin = FVector4f{instance_data_.positions[instance_index], 0.0f};
-                packed.transform_row_0 =
-                    FVector4f{matrix.M[0][0], matrix.M[0][1], matrix.M[0][2], 0.0f};
-                packed.transform_row_1 =
-                    FVector4f{matrix.M[1][0], matrix.M[1][1], matrix.M[1][2], 0.0f};
-                packed.transform_row_2 =
-                    FVector4f{matrix.M[2][0], matrix.M[2][1], matrix.M[2][2], 0.0f};
-                ++packed_instance_index;
-            }
-        }
-        check(packed_instance_index == update->instances.Num());
-    }
-    auto const pack_cycles = FPlatformTime::Cycles64() - pack_start_cycles;
-
-    auto const bounds_start_cycles = FPlatformTime::Cycles64();
-    {
-        TRACE_CPUPROFILER_EVENT_SCOPE(SandboxISMC_Custom_UpdateConservativeBounds);
-        if (bounds_rebuild_required_ || instance_count > bounds_leaf_capacity_) {
-            rebuild_bounds_tree();
-        } else {
-            update_bounds_tree(dirty_ranges_);
-        }
-    }
-    auto const bounds_cycles = FPlatformTime::Cycles64() - bounds_start_cycles;
-    pending_render_update_ = MoveTemp(update);
+    pending_render_update_ = MoveTemp(prepared.render_update);
 
     auto const elapsed_cycles = FPlatformTime::Cycles64() - start_cycles;
-    auto const upload_bytes{static_cast<uint64>(dirty_instance_count) *
+    auto const upload_bytes{static_cast<uint64>(prepared.dirty_instance_count) *
                             sizeof(FSandboxISMCRenderInstance)};
     metrics_->instance_count.Store(instance_count);
     metrics_->prepare_cycles.Store(elapsed_cycles);
-    metrics_->pack_cycles.Store(pack_cycles);
-    metrics_->bounds_cycles.Store(bounds_cycles);
+    metrics_->pack_cycles.Store(prepared.pack_cycles);
+    metrics_->bounds_cycles.Store(prepared.bounds_cycles);
     metrics_->upload_bytes.Store(upload_bytes);
-    metrics_->dirty_instance_count.Store(dirty_instance_count);
-    metrics_->dirty_range_count.Store(upload_ranges.Num());
+    metrics_->dirty_instance_count.Store(prepared.dirty_instance_count);
+    metrics_->dirty_range_count.Store(prepared.dirty_range_count);
     SET_DWORD_STAT(STAT_SandboxISMCInstances, instance_count);
     SET_DWORD_STAT(STAT_SandboxISMCUploadBytes,
                    static_cast<uint32>(FMath::Min<uint64>(upload_bytes, MAX_uint32)));
-
-    if (instance_count > submitted_buffer_capacity_) {
-        submitted_buffer_capacity_ = FMath::RoundUpToPowerOfTwo(FMath::Max(instance_count, 1));
-    }
-    dirty_ranges_.Reset();
-    force_full_upload_ = false;
-    bounds_rebuild_required_ = false;
-    instance_count_changed_ = false;
 
     MarkRenderTransformDirty();
     MarkRenderDynamicDataDirty();
@@ -949,7 +611,7 @@ auto USandboxISMCComponent::get_update_metrics() const -> FSandboxISMCUpdateMetr
 }
 
 auto USandboxISMCComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
-    if (static_mesh_ == nullptr || instance_data_.is_empty()) {
+    if (static_mesh_ == nullptr || instance_state_.get_instance_count() == 0) {
         return nullptr;
     }
 
@@ -989,7 +651,7 @@ auto USandboxISMCComponent::GetMaterial(int32 element_index) const -> UMaterialI
 }
 
 auto USandboxISMCComponent::CalcBounds(FTransform const& local_to_world) const -> FBoxSphereBounds {
-    return local_bounds_.TransformBy(local_to_world);
+    return instance_state_.local_bounds().TransformBy(local_to_world);
 }
 
 auto USandboxISMCComponent::SendRenderDynamicData_Concurrent() -> void {
