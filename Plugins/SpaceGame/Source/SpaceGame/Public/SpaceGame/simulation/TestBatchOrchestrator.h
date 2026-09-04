@@ -79,6 +79,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return level_config.Get();
     }
     void set_start_mode(EOrchestratorStartMode mode);
+    void set_presentation_enabled(bool enabled);
+    auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
     void set_time_scale(time_type scale) noexcept;
 
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
@@ -183,6 +185,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void validate_proxy_handles();
     void bind_simulation_dependencies();
+    void remove_presentation_actors();
     void initialise_batch_geometry();
     void register_capital_ship_proxies();
     auto register_turret_proxies() -> TArray<FTransform>;
@@ -199,6 +202,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FFixedTickLoop simulation_tick_loop{};
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")
+    bool presentation_enabled{true};
     UPROPERTY(VisibleAnywhere, Transient, Category = "Sandbox")
     EOrchestratorState state{EOrchestratorState::Uninitialised};
 

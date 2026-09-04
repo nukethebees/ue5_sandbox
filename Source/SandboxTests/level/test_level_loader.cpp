@@ -111,6 +111,64 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
     test_driver->advance_timeline();
 }
 
+void FLevelLoaderCameraScenario::load_headless_fixture() {
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    auto& orchestrator{context_.orchestrator};
+    original_config_.Reset(const_cast<USpaceGameLevelConfig*>(orchestrator.get_level_config()));
+    orchestrator.reset_for_new_level();
+    orchestrator.set_presentation_enabled(false);
+    initialise_test_driver();
+
+    auto* const config{
+        DuplicateObject<USpaceGameLevelConfig>(orchestrator.get_level_config(), &orchestrator)};
+    config->classes.player_controller_class = nullptr;
+    config->classes.player_ship_class = nullptr;
+    config->classes.lasers_class = nullptr;
+    config->classes.capital_ships_class = nullptr;
+    config->classes.capital_ship_fighters_class = nullptr;
+    config->classes.turrets_class = nullptr;
+    config->classes.spinners_class = nullptr;
+    config->classes.niagara_spawner_class = nullptr;
+    orchestrator.set_level_config(*config);
+
+    FLevelLoader loader{orchestrator};
+    auto const player_result{loader.load(example_levels::make_native_example())};
+    checks.is_true(!static_cast<bool>(player_result),
+                   TEXT("Headless loading rejects player levels"));
+    checks.are_equal(0,
+                     count_actors<ATestSpaceShip>(context_.world),
+                     TEXT("Rejected headless load creates no player"));
+
+    s7::FLevelDefinitionReader reader;
+    auto const script_path{
+        FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("FleetOverview.scm"))};
+    auto const definition{reader.read_file(script_path)};
+    checks.is_true(static_cast<bool>(definition), TEXT("Playerless fixture can be reloaded"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    auto const result{loader.load(definition.definition.GetValue())};
+    checks.is_true(static_cast<bool>(result),
+                   TEXT("Playerless level loads without presentation classes"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    checks.are_equal(0,
+                     count_actors<ACameraActor>(context_.world),
+                     TEXT("Headless loader does not spawn a camera"));
+
+    reset_and_reserve_time_series(orchestrator, 0.05, entity_counts_);
+    orchestrator.set_end_tick_test_hook(
+        FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
+    test_driver->timeline.finish_at(0.05);
+    orchestrator.start_simulation();
+    checks.is_true(orchestrator.get_lasers_actor() == nullptr &&
+                       orchestrator.get_capital_ships_actor() == nullptr &&
+                       orchestrator.get_capital_ship_fighters_actor() == nullptr &&
+                       orchestrator.get_turrets_actor() == nullptr &&
+                       orchestrator.get_spinners_actor() == nullptr &&
+                       orchestrator.get_niagara_spawner() == nullptr,
+                   TEXT("Headless startup removes the previous presentation actors"));
+    checks.is_true(orchestrator.get_player_ship_simulation() == nullptr,
+                   TEXT("Playerless battle does not create a dummy player simulation"));
+}
+
 void FLevelLoaderCameraScenario::check_runtime() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     checks.is_true(!entity_counts_.is_empty(), TEXT("Runtime state was sampled"));
@@ -125,10 +183,26 @@ void FLevelLoaderCameraScenario::on_tear_down() {
     if (camera_.IsValid()) {
         camera_->Destroy();
     }
+    if (original_config_.IsValid()) {
+        auto& orchestrator{context_.orchestrator};
+        orchestrator.reset_for_new_level();
+        orchestrator.set_presentation_enabled(true);
+        orchestrator.set_level_config(*original_config_);
+        orchestrator.spawn_missing_actors();
+        original_config_.Reset();
+    }
 }
 
 void FLevelLoaderCameraScenario::run() {
     TestCommandBuilder.Do([this] { load_fixture(); })
+        .Until(
+            [this] {
+                return !checks.all_passed ||
+                       (test_driver.IsSet() && test_driver->timeline.is_finished());
+            },
+            timeout)
+        .Then([this] { check_runtime(); })
+        .Then([this] { load_headless_fixture(); })
         .Until(
             [this] {
                 return !checks.all_passed ||

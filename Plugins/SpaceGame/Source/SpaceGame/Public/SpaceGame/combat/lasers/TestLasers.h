@@ -47,12 +47,6 @@ class SPACEGAME_API ATestLasers : public AActor {
     UPROPERTY(meta = (AllowPrivateAccess))
     TObjectPtr<UInstancedStaticMeshComponent> instances;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    int32 n_preallocated_instances{5000};
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    int32 collision_jobs{8};
-
     TArray<FInstancedStaticMeshInstanceData> ismc_data;
     TArray<FTransform> dummy_transforms_spawn_buffer;
 

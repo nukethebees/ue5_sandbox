@@ -137,6 +137,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     stop_visual_logging();
     clear_end_tick_test_hook();
     level_telemetry_manager.reset();
+    hud_manager.deactivate();
 
     TStaticArray<AActor*, 7> recreated_actors{};
     int32 recreated_actor_count{0};
@@ -246,7 +247,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 }
 
 void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
-    if (!ensureAlwaysMsgf(config.is_valid(), TEXT("Level config is invalid"))) {
+    if (!ensureAlwaysMsgf(config.is_valid(presentation_enabled), TEXT("Level config is invalid"))) {
         return;
     }
 
@@ -257,6 +258,11 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
 #endif
 
     level_config = &config;
+    lasers_simulation.n_preallocated_instances = config.laser_projectiles.n_preallocated_instances;
+    lasers_simulation.collision_jobs = config.laser_projectiles.collision_jobs;
+    turrets_simulation.search_slice_size = config.turrets.search_slice_size;
+    capital_ship_fighters_simulation.fire_dot_product_threshold =
+        config.fighters.fire_dot_product_threshold;
     capital_ships_simulation.set_config(config.capital_ships);
     capital_ship_fighters_simulation.set_config(config.fighters);
     turrets_simulation.set_config(config.turrets);
@@ -298,6 +304,16 @@ void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
 
     start_mode = mode;
 }
+void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
+    if (state != EOrchestratorState::Uninitialised) {
+        UE_LOG(
+            LogSandbox, Error, TEXT("Cannot change presentation after simulation initialisation"));
+        return;
+    }
+    presentation_enabled = enabled;
+    refresh_collision_grid_visualization();
+}
+
 auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
     return player_ship.Get();
 }
@@ -346,43 +362,57 @@ void ATestBatchOrchestrator::begin_play() {
     }
 #endif
 
-    ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(lasers),
-        SANDBOX_NAMED_UOBJECT_PTR(capital_ships),
-        SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighters),
-        SANDBOX_NAMED_UOBJECT_PTR(turrets),
-        SANDBOX_NAMED_UOBJECT_PTR(spinners),
-        SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
-        SANDBOX_NAMED_UOBJECT_PTR(world),
-    });
+    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(world)});
+    if (!presentation_enabled) {
+        if (IsValid(player_ship) || ml::get_first_actor<ATestSpaceShip>(*world)) {
+            UE_LOG(LogSandbox,
+                   Error,
+                   TEXT("Presentation-disabled simulation requires a playerless level"));
+            SetActorTickEnabled(false);
+            return;
+        }
+        remove_presentation_actors();
+    } else {
+        ml::fatal_if_uobject_ptrs_invalid({
+            SANDBOX_NAMED_UOBJECT_PTR(lasers),
+            SANDBOX_NAMED_UOBJECT_PTR(capital_ships),
+            SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighters),
+            SANDBOX_NAMED_UOBJECT_PTR(turrets),
+            SANDBOX_NAMED_UOBJECT_PTR(spinners),
+            SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
+        });
+    }
 
     bind_simulation_dependencies();
     mission_manager.set_world(*world);
 
     entity_registry.reset();
 
-    ml::invoke_on_all(
-        [](AActor* actor) {
-            ml::fatal_if_actor_transform_not_identity(*actor);
-            ml::fatal_if_actor_root_not_static(*actor);
-            actor->SetActorTickEnabled(false);
-        },
-        lasers,
-        capital_ships,
-        capital_ship_fighters,
-        turrets,
-        spinners);
-
     lasers_phase.clear_runtime_state();
-    lasers->clear_runtime_state_presentation();
     capital_ships_phase.clear_runtime_state();
-    capital_ships->clear_runtime_state_presentation();
     capital_ship_fighters_phase.clear_runtime_state();
-    capital_ship_fighters->clear_runtime_state_presentation();
     turrets_phase.clear_runtime_state();
-    turrets->clear_runtime_state_presentation();
     spinners_phase.clear_runtime_state();
-    spinners->clear_runtime_state_presentation();
+
+    if (presentation_enabled) {
+        ml::invoke_on_all(
+            [](AActor* actor) {
+                ml::fatal_if_actor_transform_not_identity(*actor);
+                ml::fatal_if_actor_root_not_static(*actor);
+                actor->SetActorTickEnabled(false);
+            },
+            lasers,
+            capital_ships,
+            capital_ship_fighters,
+            turrets,
+            spinners);
+
+        lasers->clear_runtime_state_presentation();
+        capital_ships->clear_runtime_state_presentation();
+        capital_ship_fighters->clear_runtime_state_presentation();
+        turrets->clear_runtime_state_presentation();
+        spinners->clear_runtime_state_presentation();
+    }
 
     if (IsValid(player_ship)) {
         player_ship->begin_play_presentation();
@@ -392,17 +422,27 @@ void ATestBatchOrchestrator::begin_play() {
     }
     initialise_batch_geometry();
     register_capital_ship_proxies();
-    capital_ships->begin_play_presentation();
+    if (presentation_enabled) {
+        capital_ships->begin_play_presentation();
+    }
     capital_ships_phase.begin_play();
-    capital_ship_fighters->begin_play_presentation();
+    if (presentation_enabled) {
+        capital_ship_fighters->begin_play_presentation();
+    }
     capital_ship_fighters_phase.begin_play();
     auto turret_transforms{register_turret_proxies()};
-    turrets->begin_play_presentation(MoveTemp(turret_transforms));
+    if (presentation_enabled) {
+        turrets->begin_play_presentation(MoveTemp(turret_transforms));
+    }
     turrets_phase.begin_play();
     register_spinner_proxies();
-    spinners->begin_play_presentation();
+    if (presentation_enabled) {
+        spinners->begin_play_presentation();
+    }
     spinners_phase.begin_play();
-    lasers->begin_play_presentation();
+    if (presentation_enabled) {
+        lasers->begin_play_presentation();
+    }
     lasers_phase.begin_play();
 
     ml::ioj::FCollisionSystem::EntityMeshes entity_meshes{};
@@ -430,11 +470,13 @@ void ATestBatchOrchestrator::begin_play() {
 
     mission_manager.begin_play();
 
-    hud_manager.initialise(hud_update_frequencies,
-                           mission_manager,
-                           entity_registry,
-                           hud_tick_loop.tick_rate,
-                           player_ship.Get());
+    if (presentation_enabled) {
+        hud_manager.initialise(hud_update_frequencies,
+                               mission_manager,
+                               entity_registry,
+                               hud_tick_loop.tick_rate,
+                               player_ship.Get());
+    }
 
 #if WITH_EDITOR
     if (log_ticks) {
@@ -540,7 +582,7 @@ auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept ->
 
 void ATestBatchOrchestrator::start_visual_logging() {
 #if ENABLE_VISUAL_LOG
-    if (!enable_visual_logging) {
+    if (!presentation_enabled || !enable_visual_logging) {
         return;
     }
 
@@ -571,7 +613,7 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
         return;
     }
 
-    if (!IsValid(level_config)) {
+    if (!presentation_enabled || !IsValid(level_config)) {
         collision_grid_visualization->clear();
         return;
     }
@@ -760,7 +802,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
 
         mission_manager.mission_tick();
 
-        {
+        if (presentation_enabled) {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
 
             if (IsValid(player_ship)) {
@@ -785,15 +827,25 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             }
 
             capital_ships_phase.end_tick();
-            capital_ships->end_tick_presentation();
+            if (presentation_enabled) {
+                capital_ships->end_tick_presentation();
+            }
             capital_ship_fighters_phase.end_tick();
-            capital_ship_fighters->end_tick_presentation();
+            if (presentation_enabled) {
+                capital_ship_fighters->end_tick_presentation();
+            }
             turrets_phase.end_tick();
-            turrets->end_tick_presentation();
+            if (presentation_enabled) {
+                turrets->end_tick_presentation();
+            }
             spinners_phase.end_tick();
-            spinners->end_tick_presentation();
+            if (presentation_enabled) {
+                spinners->end_tick_presentation();
+            }
             lasers_phase.end_tick();
-            lasers->end_tick_presentation();
+            if (presentation_enabled) {
+                lasers->end_tick_presentation();
+            }
             entity_registry.end_tick();
             query_manager.update();
         }
@@ -810,15 +862,17 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         end_tick_test_hook.ExecuteIfBound(*this);
     }
 
-    hud_tick_loop.add_time(dt);
-    while (hud_tick_loop.try_tick()) {
-        hud_manager.tick(1);
+    if (presentation_enabled) {
+        hud_tick_loop.add_time(dt);
+        while (hud_tick_loop.try_tick()) {
+            hud_manager.tick(1);
+        }
     }
 
     /* -------------------------------------------------------------------------------- */
     // Rendering
     /* -------------------------------------------------------------------------------- */
-    {
+    if (presentation_enabled) {
         TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
 
         if (IsValid(player_ship)) {
@@ -862,23 +916,26 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
     } else {
         player_ship_simulation.Reset();
     }
-    check(IsValid(lasers));
-    check(IsValid(capital_ships));
-    check(IsValid(capital_ship_fighters));
-    check(IsValid(turrets));
-    check(IsValid(spinners));
-    lasers->bind_simulation(lasers_simulation);
     lasers_phase.bind(lasers_simulation);
-    capital_ships->bind_simulation(capital_ships_simulation);
     capital_ships_phase.bind(capital_ships_simulation);
-    capital_ship_fighters->bind_simulation(capital_ship_fighters_simulation);
     capital_ship_fighters_phase.bind(capital_ship_fighters_simulation);
-    turrets->bind_simulation(turrets_simulation);
     turrets_phase.bind(turrets_simulation);
-    spinners->bind_simulation(spinners_simulation);
     spinners_phase.bind(spinners_simulation);
 
-    capital_ships->set_niagara_spawner(*niagara_spawner);
+    if (presentation_enabled) {
+        check(IsValid(lasers));
+        check(IsValid(capital_ships));
+        check(IsValid(capital_ship_fighters));
+        check(IsValid(turrets));
+        check(IsValid(spinners));
+        lasers->bind_simulation(lasers_simulation);
+        capital_ships->bind_simulation(capital_ships_simulation);
+        capital_ship_fighters->bind_simulation(capital_ship_fighters_simulation);
+        turrets->bind_simulation(turrets_simulation);
+        spinners->bind_simulation(spinners_simulation);
+
+        capital_ships->set_niagara_spawner(*niagara_spawner);
+    }
     capital_ships_simulation.bind_fighters(capital_ship_fighters_simulation);
 
     if (player_ship_simulation.IsSet()) {
@@ -920,7 +977,39 @@ void ATestBatchOrchestrator::clear_end_tick_test_hook() {
     end_tick_test_hook.Unbind();
 }
 
+void ATestBatchOrchestrator::remove_presentation_actors() {
+    auto* const world{GetWorld()};
+    check(world);
+    for (TActorIterator<AActor> it{world}; it;) {
+        auto* const actor{*it};
+        ++it;
+        if (ml::actor_is_any<ATestLasers,
+                             ATestCapitalShips,
+                             ATestCapitalShipFighters,
+                             ATestStaticTurrets,
+                             ATestTubeSpinners,
+                             ADelayedNiagaraSpawner>(*actor)) {
+            if (!actor->Destroy()) {
+                UE_LOG(LogSandbox,
+                       Fatal,
+                       TEXT("Cannot remove presentation actor %s"),
+                       *actor->GetName());
+            }
+        }
+    }
+    lasers = nullptr;
+    capital_ships = nullptr;
+    capital_ship_fighters = nullptr;
+    turrets = nullptr;
+    spinners = nullptr;
+    niagara_spawner = nullptr;
+}
+
 void ATestBatchOrchestrator::spawn_missing_actors() {
+    if (!presentation_enabled) {
+        return;
+    }
+
     if (state != EOrchestratorState::Uninitialised) {
         UE_LOG(LogSandbox,
                Error,

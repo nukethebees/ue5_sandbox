@@ -28,8 +28,6 @@ ATestLasers::ATestLasers()
 
 void ATestLasers::bind_simulation(ml::test_lasers::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
-    bound_simulation->n_preallocated_instances = n_preallocated_instances;
-    bound_simulation->collision_jobs = collision_jobs;
 }
 
 auto ATestLasers::simulation() -> ml::test_lasers::Simulation& {
@@ -59,7 +57,7 @@ void ATestLasers::begin_play_presentation() {
     }
 
     configure_ismc();
-    instances->PreAllocateInstancesMemory(n_preallocated_instances);
+    instances->PreAllocateInstancesMemory(actor_config->n_preallocated_instances);
 
 #if WITH_EDITOR
     debug_drawer.world = GetWorld();

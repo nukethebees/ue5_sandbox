@@ -37,7 +37,6 @@ void ATestStaticTurrets::set_actor_config(FTurretConfig const* const new_config)
 
 void ATestStaticTurrets::bind_simulation(ml::test_static_turrets::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
-    bound_simulation->search_slice_size = search_slice_size;
 }
 
 auto ATestStaticTurrets::simulation() -> ml::test_static_turrets::Simulation& {

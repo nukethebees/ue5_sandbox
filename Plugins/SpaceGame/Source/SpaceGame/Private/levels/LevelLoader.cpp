@@ -290,7 +290,14 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
 
     auto const* const config{orchestrator_.get_level_config()};
     auto const has_player{definition.player_entity_id.is_set()};
-    if (!IsValid(config) || !config->is_valid() ||
+    auto const presentation_enabled{orchestrator_.is_presentation_enabled()};
+    if (has_player && !presentation_enabled) {
+        add_error(result,
+                  ELevelLoadErrorCode::InvalidDefinition,
+                  TEXT("Presentation-disabled simulation requires a playerless level"));
+        return result;
+    }
+    if (!IsValid(config) || !config->is_valid(presentation_enabled) ||
         (has_player && !IsValid(config->classes.player_ship_class)) ||
         !IsValid(config->classes.capital_ship_proxy_class)) {
         add_error(result,
@@ -308,8 +315,9 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         return result;
     }
 
-    auto* const player_controller{UGameplayStatics::GetPlayerController(world, 0)};
-    if (!IsValid(player_controller)) {
+    auto* const player_controller{
+        presentation_enabled ? UGameplayStatics::GetPlayerController(world, 0) : nullptr};
+    if (presentation_enabled && !IsValid(player_controller)) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,
                   TEXT("Authored level requires a local player controller"));
@@ -317,12 +325,12 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     }
 
     orchestrator_.spawn_missing_actors();
-    if (!IsValid(orchestrator_.get_lasers_actor()) ||
-        !IsValid(orchestrator_.get_capital_ships_actor()) ||
-        !IsValid(orchestrator_.get_capital_ship_fighters_actor()) ||
-        !IsValid(orchestrator_.get_turrets_actor()) ||
-        !IsValid(orchestrator_.get_spinners_actor()) ||
-        !IsValid(orchestrator_.get_niagara_spawner())) {
+    if (presentation_enabled && (!IsValid(orchestrator_.get_lasers_actor()) ||
+                                 !IsValid(orchestrator_.get_capital_ships_actor()) ||
+                                 !IsValid(orchestrator_.get_capital_ship_fighters_actor()) ||
+                                 !IsValid(orchestrator_.get_turrets_actor()) ||
+                                 !IsValid(orchestrator_.get_spinners_actor()) ||
+                                 !IsValid(orchestrator_.get_niagara_spawner()))) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,
                   TEXT("Orchestrator simulation infrastructure is incomplete"));
@@ -362,12 +370,12 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         }
     }
 
-    if (definition.camera.IsSet()) {
+    if (presentation_enabled && definition.camera.IsSet()) {
         if (!spawn_initial_camera(
                 *world, *player_controller, definition, entities, transaction, result)) {
             return result;
         }
-    } else {
+    } else if (presentation_enabled) {
         check(IsValid(player));
         orchestrator_.set_player_ship(*player);
         player_controller->Possess(player);

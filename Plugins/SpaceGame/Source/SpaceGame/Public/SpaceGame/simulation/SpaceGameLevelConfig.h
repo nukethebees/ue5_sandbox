@@ -177,6 +177,12 @@ USTRUCT(BlueprintType)
 struct SPACEGAME_API FLaserProjectileConfig {
     GENERATED_BODY()
 
+    UPROPERTY(EditAnywhere, Category = "Simulation", meta = (ClampMin = "0"))
+    int32 n_preallocated_instances{5000};
+
+    UPROPERTY(EditAnywhere, Category = "Simulation", meta = (ClampMin = "1"))
+    int32 collision_jobs{8};
+
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
@@ -263,6 +269,9 @@ USTRUCT(BlueprintType)
 struct SPACEGAME_API FFighterConfig {
     GENERATED_BODY()
 
+    UPROPERTY(EditAnywhere, Category = "Combat", meta = (ClampMin = "-1", ClampMax = "1"))
+    float fire_dot_product_threshold{0.95f};
+
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
 
@@ -318,6 +327,9 @@ struct SPACEGAME_API FFighterConfig {
 USTRUCT(BlueprintType)
 struct SPACEGAME_API FTurretConfig {
     GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Simulation", meta = (ClampMin = "1"))
+    int32 search_slice_size{64};
 
     UPROPERTY(EditAnywhere, Category = "Visuals")
     TObjectPtr<UStaticMesh> mesh{nullptr};
@@ -414,8 +426,8 @@ UCLASS(BlueprintType)
 class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
     GENERATED_BODY()
   public:
-    [[nodiscard]] auto is_valid() const noexcept -> bool;
-    void get_validation_errors(TArray<FString>& errors) const;
+    [[nodiscard]] auto is_valid(bool require_presentation = true) const noexcept -> bool;
+    void get_validation_errors(TArray<FString>& errors, bool require_presentation = true) const;
     void get_validation_warnings(TArray<FString>& warnings) const;
 
 #if WITH_EDITOR

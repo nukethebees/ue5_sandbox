@@ -44,11 +44,6 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     TObjectPtr<UInstancedStaticMeshComponent> instances;
     TArray<FTransform> ismc_transforms;
 
-    UPROPERTY(EditAnywhere,
-              Category = "Performance",
-              meta = (AllowPrivateAccess, ClampMin = "1", UIMin = "1"))
-    int32 search_slice_size{64};
-
     UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))

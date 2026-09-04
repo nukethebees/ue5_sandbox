@@ -89,35 +89,47 @@ auto FCollisionGridConfig::is_valid() const noexcept -> bool {
     return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }
 
-auto USpaceGameLevelConfig::is_valid() const noexcept -> bool {
+auto USpaceGameLevelConfig::is_valid(bool const require_presentation) const noexcept -> bool {
     TArray<FString> errors;
-    get_validation_errors(errors);
+    get_validation_errors(errors, require_presentation);
     return errors.IsEmpty();
 }
 
-void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors) const {
+void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
+                                                  bool const require_presentation) const {
 #define REQUIRE_CONFIG(condition, message) \
     if (!(condition)) {                    \
         errors.Emplace(TEXT(message));     \
     }
 
-    REQUIRE_CONFIG(classes.player_controller_class, "classes.player_controller_class is null");
-    REQUIRE_CONFIG(classes.lasers_class, "classes.lasers_class is null");
-    REQUIRE_CONFIG(classes.capital_ships_class, "classes.capital_ships_class is null");
+    if (require_presentation) {
+        REQUIRE_CONFIG(classes.player_controller_class, "classes.player_controller_class is null");
+        REQUIRE_CONFIG(classes.lasers_class, "classes.lasers_class is null");
+        REQUIRE_CONFIG(classes.capital_ships_class, "classes.capital_ships_class is null");
+        REQUIRE_CONFIG(classes.capital_ship_fighters_class,
+                       "classes.capital_ship_fighters_class is null");
+        REQUIRE_CONFIG(classes.turrets_class, "classes.turrets_class is null");
+        REQUIRE_CONFIG(classes.spinners_class, "classes.spinners_class is null");
+        REQUIRE_CONFIG(classes.niagara_spawner_class, "classes.niagara_spawner_class is null");
+        REQUIRE_CONFIG(player_ship.thrust_energy_max > 0.f,
+                       "player_ship.thrust_energy_max must be positive");
+        REQUIRE_CONFIG(player_ship.laser.projectile_speed > 0.f,
+                       "player_ship.laser.projectile_speed must be positive");
+        REQUIRE_CONFIG(player_ship.laser.max_distance > 0.f,
+                       "player_ship.laser.max_distance must be positive");
+    }
     REQUIRE_CONFIG(classes.capital_ship_proxy_class, "classes.capital_ship_proxy_class is null");
-    REQUIRE_CONFIG(classes.capital_ship_fighters_class,
-                   "classes.capital_ship_fighters_class is null");
-    REQUIRE_CONFIG(classes.turrets_class, "classes.turrets_class is null");
-    REQUIRE_CONFIG(classes.spinners_class, "classes.spinners_class is null");
-    REQUIRE_CONFIG(classes.niagara_spawner_class, "classes.niagara_spawner_class is null");
-    REQUIRE_CONFIG(player_ship.thrust_energy_max > 0.f,
-                   "player_ship.thrust_energy_max must be positive");
-    REQUIRE_CONFIG(player_ship.laser.projectile_speed > 0.f,
-                   "player_ship.laser.projectile_speed must be positive");
-    REQUIRE_CONFIG(player_ship.laser.max_distance > 0.f,
-                   "player_ship.laser.max_distance must be positive");
     REQUIRE_CONFIG(laser_projectiles.max_cull_distance >= laser_projectiles.min_cull_distance,
                    "laser_projectiles cull distance range is invalid");
+    REQUIRE_CONFIG(laser_projectiles.n_preallocated_instances >= 0,
+                   "laser_projectiles.n_preallocated_instances must not be negative");
+    REQUIRE_CONFIG(laser_projectiles.collision_jobs > 0,
+                   "laser_projectiles.collision_jobs must be positive");
+    REQUIRE_CONFIG(turrets.search_slice_size > 0, "turrets.search_slice_size must be positive");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.fire_dot_product_threshold) &&
+                       fighters.fire_dot_product_threshold >= -1.f &&
+                       fighters.fire_dot_product_threshold <= 1.f,
+                   "fighters.fire_dot_product_threshold must be finite and between -1 and 1");
     REQUIRE_CONFIG(capital_ships.fighter_spawn_slots >= 0,
                    "capital_ships.fighter_spawn_slots must not be negative");
     REQUIRE_CONFIG(capital_ships.fighter_spawn_slots ==

@@ -49,9 +49,6 @@ class SPACEGAME_API ATestCapitalShipFighters : public AActor {
     TArray<FTransform> dummy_transforms_spawn_buffer;
     TArray<float> custom_data_buffer;
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    float fire_dot_product_threshold{0.95f};
-
     UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
     UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging", meta = (AllowPrivateAccess))

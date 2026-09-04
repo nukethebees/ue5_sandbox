@@ -5,6 +5,9 @@
 #include <SandboxCore/time_series_data.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
+#include <UObject/StrongObjectPtr.h>
+
+class USpaceGameLevelConfig;
 
 namespace ml {
 class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
@@ -14,12 +17,14 @@ class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
     void run() override;
   private:
     void load_fixture();
+    void load_headless_fixture();
     void sample_runtime(ATestBatchOrchestrator& orchestrator);
     void check_runtime();
     void on_tear_down() override;
 
     TimeSeriesData<int32> entity_counts_;
     TWeakObjectPtr<AActor> camera_;
+    TStrongObjectPtr<USpaceGameLevelConfig> original_config_;
 };
 
 class FLevelLoaderScenario final : public FSimulationTestScenario {

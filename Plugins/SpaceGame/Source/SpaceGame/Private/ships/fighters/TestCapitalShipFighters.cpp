@@ -48,7 +48,6 @@ void ATestCapitalShipFighters::set_actor_config(FFighterConfig const* const new_
 void ATestCapitalShipFighters::bind_simulation(
     ml::test_capital_ship_fighters::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
-    bound_simulation->fire_dot_product_threshold = fire_dot_product_threshold;
 }
 
 auto ATestCapitalShipFighters::simulation() -> ml::test_capital_ship_fighters::Simulation& {
