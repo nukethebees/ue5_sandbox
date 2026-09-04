@@ -26,10 +26,10 @@ box          := vbox | hbox
 vbox         := "(" "vbox" box_slot+ ")"
 hbox         := "(" "hbox" box_slot+ ")"
 box_slot     := "(" ("auto" | "fill") box_option* child ")"
-box_option   := ":weight" number
+box_option   := ":weight" (number | value_parameter)
               | ":padding" margin
-              | ":halign" ("left" | "center" | "right" | "fill")
-              | ":valign" ("top" | "center" | "bottom" | "fill")
+              | ":halign" ("left" | "center" | "right" | "fill" | value_parameter)
+              | ":valign" ("top" | "center" | "bottom" | "fill" | value_parameter)
 margin       := number
               | identifier
               | "(" number number ")"

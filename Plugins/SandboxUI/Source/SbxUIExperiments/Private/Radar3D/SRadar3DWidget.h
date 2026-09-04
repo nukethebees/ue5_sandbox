@@ -10,7 +10,13 @@
 #include "Widgets/SCompoundWidget.h"
 
 class SImage;
+
+namespace SlateGenerated {
+struct SRadar3DWidgetBuilder;
+}
+
 class SRadar3DWidget final : public SCompoundWidget {
+    friend struct SlateGenerated::SRadar3DWidgetBuilder;
   public:
     static constexpr int32 radar_3d_output_texture_dimension{512};
     static constexpr int32 initial_contact_count{5};

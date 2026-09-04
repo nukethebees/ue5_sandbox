@@ -6,6 +6,8 @@
 #include "RHIGlobals.h"
 #include "Widgets/Images/SImage.h"
 
+#include "generated/SScatter3DWidget.slate.generated.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogScatter3DWidget, Log, All);
 
 namespace {
@@ -25,7 +27,7 @@ void SScatter3DWidget::Construct(FArguments const&) {
     output_ready_ = initialise_output_texture();
     SetCanTick(true);
 
-    ChildSlot[SAssignNew(image_, SImage).Image(&brush_)];
+    ChildSlot[SlateGenerated::SScatter3DWidgetBuilder{*this}.BuildImage(&brush_)];
 }
 
 void SScatter3DWidget::set_point_count(int32 const point_count) {

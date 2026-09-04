@@ -239,7 +239,9 @@ class Renderer {
                                    : helper_prefix + "auto_slot(" + padding + ")";
         }
         if (slot.weight) {
-            auto const weight{float_literal(*slot.weight)};
+            auto const weight{slot.weight->kind == ValueKind::number
+                                  ? float_literal(slot.weight->text)
+                                  : render_value(*slot.weight)};
             return padding.empty() ? helper_prefix + "fill_slot(" + weight + ")"
                                    : helper_prefix + "fill_slot(" + weight + ", " + padding +
                                          ")";
@@ -294,7 +296,10 @@ class Renderer {
         if (value == "right") {
             return "HAlign_Right";
         }
-        return "HAlign_Fill";
+        if (value == "fill") {
+            return "HAlign_Fill";
+        }
+        return std::string{value};
     }
 
     static auto vertical_alignment(std::string_view const value) -> std::string {
@@ -307,7 +312,10 @@ class Renderer {
         if (value == "bottom") {
             return "VAlign_Bottom";
         }
-        return "VAlign_Fill";
+        if (value == "fill") {
+            return "VAlign_Fill";
+        }
+        return std::string{value};
     }
 
     static auto escape_cpp_string(std::string_view const value) -> std::string {

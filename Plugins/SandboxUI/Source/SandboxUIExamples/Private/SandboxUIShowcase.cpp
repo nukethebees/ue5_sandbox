@@ -19,9 +19,13 @@
 #include "Styling/CoreStyle.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
+#include "generated/USandboxUIShowcase.slate.generated.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogSandboxUIExamples, Log, All);
 
 namespace {
+using ShowcaseBuilder = SlateGenerated::USandboxUIShowcaseBuilder;
+
 FName const radar_multi_host_name{TEXT("radar_multi_host")};
 FName const radar_dense_host_name{TEXT("radar_dense_host")};
 FName const graph_series_host_name{TEXT("graph_series_host")};
@@ -129,11 +133,11 @@ auto make_radar_style(FLinearColor const color, FVector2f const size) -> FRadar2
     return style;
 }
 
-auto make_multi_style_radar() -> TSharedRef<SWidget> {
+auto make_multi_style_radar(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FRadar2DPresentation presentation;
     presentation.desired_size = {360.0f, 320.0f};
 
-    auto radar{SNew(SRadar2D).Range(100.0f).Presentation(presentation)};
+    auto radar{builder.BuildRadar(100.0f, presentation)};
     TArray<FRadar2DStyleBucket> buckets;
 
     FRadar2DStyleBucket cyan_bucket;
@@ -164,8 +168,8 @@ auto make_multi_style_radar() -> TSharedRef<SWidget> {
     return radar;
 }
 
-auto make_dense_radar() -> TSharedRef<SWidget> {
-    auto radar{SNew(SRadar2D).Range(100.0f)};
+auto make_dense_radar(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
+    auto radar{builder.BuildRadarWithRange(100.0f)};
     TArray<FRadar2DStyleBucket> buckets;
     buckets.SetNum(3);
     buckets[0].style = make_radar_style({0.18f, 0.8f, 1.0f, 0.9f}, {4.0f, 4.0f});
@@ -184,8 +188,8 @@ auto make_dense_radar() -> TSharedRef<SWidget> {
     return radar;
 }
 
-auto make_time_series_graph() -> TSharedRef<SWidget> {
-    auto graph{SNew(SGraphPlot)};
+auto make_time_series_graph(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
+    auto graph{builder.BuildGraph()};
     TArray<FGraphSeries> series;
     FGraphSeries throughput;
     throughput.name = NSLOCTEXT("SandboxUIShowcase", "Throughput", "Throughput");
@@ -212,11 +216,11 @@ auto make_time_series_graph() -> TSharedRef<SWidget> {
     return graph;
 }
 
-auto make_dense_graph() -> TSharedRef<SWidget> {
+auto make_dense_graph(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FGraphAxisSettings const x_axis{.range_mode = EGraphRangeMode::Fixed,
                                     .fixed_range = {0.0, 60.0}};
     FGraphAxisSettings const y_axis{.range_mode = EGraphRangeMode::AutoIncludeZero};
-    auto graph{SNew(SGraphPlot).XAxis(x_axis).YAxis(y_axis)};
+    auto graph{builder.BuildGraphWithAxes(x_axis, y_axis)};
 
     FGraphSeries activity;
     activity.name = NSLOCTEXT("SandboxUIShowcase", "Activity", "Activity");
@@ -240,8 +244,8 @@ auto make_dense_graph() -> TSharedRef<SWidget> {
     return graph;
 }
 
-auto make_histogram() -> TSharedRef<SWidget> {
-    auto histogram{SNew(SHistogram).DomainMinimum(-4.0f).DomainMaximum(4.0f).BinCount(24)};
+auto make_histogram(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
+    auto histogram{builder.BuildHistogram()};
     TArray<float> samples;
     int32 constexpr sample_count{320};
     samples.Reserve(sample_count);
@@ -256,9 +260,9 @@ auto make_histogram() -> TSharedRef<SWidget> {
     return histogram;
 }
 
-auto make_scatter_plot() -> TSharedRef<SWidget> {
+auto make_scatter_plot(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FScatterPlotDomain const domain{-10.0f, 10.0f, -8.0f, 8.0f};
-    auto scatter{SNew(SScatterPlot).Domain(domain)};
+    auto scatter{builder.BuildScatter(domain)};
     TArray<FScatterPlotPoint> points;
     points.Reserve(160);
 
@@ -290,8 +294,8 @@ auto make_scatter_plot() -> TSharedRef<SWidget> {
     return scatter;
 }
 
-auto make_stacked_bar_chart() -> TSharedRef<SWidget> {
-    auto chart{SNew(SStackedBarChart)};
+auto make_stacked_bar_chart(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
+    auto chart{builder.BuildStackedBarChart()};
     auto const blue{FLinearColor{0.1f, 0.55f, 1.0f, 1.0f}};
     auto const amber{FLinearColor{1.0f, 0.55f, 0.08f, 1.0f}};
     auto const violet{FLinearColor{0.65f, 0.25f, 1.0f, 1.0f}};
@@ -322,9 +326,9 @@ auto heat_peak(float const x,
     return FMath::Exp(-(dx * dx + dy * dy) * sharpness);
 }
 
-auto make_smooth_heatmap() -> TSharedRef<SWidget> {
+auto make_smooth_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{0.0f, 320.0f, 0.0f, 240.0f};
-    auto heatmap{SNew(SHeatmap2D).ValueRange(FHeatmapValueRange{0.0f, 1.0f}).Domain(domain)};
+    auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.0f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 32, .rows = 24};
     grid.values.Reserve(grid.columns * grid.rows);
     for (int32 row{0}; row < grid.rows; ++row) {
@@ -340,9 +344,9 @@ auto make_smooth_heatmap() -> TSharedRef<SWidget> {
     return heatmap;
 }
 
-auto make_sparse_heatmap() -> TSharedRef<SWidget> {
+auto make_sparse_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{-120.0f, 120.0f, -80.0f, 80.0f};
-    auto heatmap{SNew(SHeatmap2D).ValueRange(FHeatmapValueRange{0.18f, 1.0f}).Domain(domain)};
+    auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.18f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 30, .rows = 20};
     grid.values.Reserve(grid.columns * grid.rows);
     for (int32 row{0}; row < grid.rows; ++row) {
@@ -504,13 +508,14 @@ void USandboxUIShowcase::build_widget_tree() {
 
 void USandboxUIShowcase::populate_examples() {
     check(WidgetTree);
-    set_showcase_content(*WidgetTree, radar_multi_host_name, make_multi_style_radar());
-    set_showcase_content(*WidgetTree, radar_dense_host_name, make_dense_radar());
-    set_showcase_content(*WidgetTree, graph_series_host_name, make_time_series_graph());
-    set_showcase_content(*WidgetTree, graph_dense_host_name, make_dense_graph());
-    set_showcase_content(*WidgetTree, histogram_host_name, make_histogram());
-    set_showcase_content(*WidgetTree, scatter_host_name, make_scatter_plot());
-    set_showcase_content(*WidgetTree, stacked_bar_host_name, make_stacked_bar_chart());
-    set_showcase_content(*WidgetTree, heatmap_smooth_host_name, make_smooth_heatmap());
-    set_showcase_content(*WidgetTree, heatmap_sparse_host_name, make_sparse_heatmap());
+    auto builder{ShowcaseBuilder{*this}};
+    set_showcase_content(*WidgetTree, radar_multi_host_name, make_multi_style_radar(builder));
+    set_showcase_content(*WidgetTree, radar_dense_host_name, make_dense_radar(builder));
+    set_showcase_content(*WidgetTree, graph_series_host_name, make_time_series_graph(builder));
+    set_showcase_content(*WidgetTree, graph_dense_host_name, make_dense_graph(builder));
+    set_showcase_content(*WidgetTree, histogram_host_name, make_histogram(builder));
+    set_showcase_content(*WidgetTree, scatter_host_name, make_scatter_plot(builder));
+    set_showcase_content(*WidgetTree, stacked_bar_host_name, make_stacked_bar_chart(builder));
+    set_showcase_content(*WidgetTree, heatmap_smooth_host_name, make_smooth_heatmap(builder));
+    set_showcase_content(*WidgetTree, heatmap_sparse_host_name, make_sparse_heatmap(builder));
 }

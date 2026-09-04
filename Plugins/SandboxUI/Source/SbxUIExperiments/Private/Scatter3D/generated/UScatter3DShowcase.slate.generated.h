@@ -14,9 +14,15 @@ struct UScatter3DShowcaseBuilder {
 
     explicit UScatter3DShowcaseBuilder(ThisClass& self) : self_{self} {}
 
+    auto BuildScatterWidget() {
+        return
+#line 4 "Scatter3DShowcase.sbxslate"
+            SNew(SScatter3DWidget);
+    }
+
     auto RebuildWidget(auto&& on_value_committed, auto&& scatter_widget) {
         return
-#line 6 "Scatter3DShowcase.sbxslate"
+#line 9 "Scatter3DShowcase.sbxslate"
             SNew(SExperimentPanel)
                 .Title(NSLOCTEXT("Scatter3D", "Title", "RDG 3D Scatter Experiment"))
                 .Description(

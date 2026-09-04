@@ -548,7 +548,13 @@ class Parser {
                 if (slot.weight) {
                     fail(option.span, "duplicate fill weight");
                 }
-                slot.weight = parse_number("expected fill weight");
+                auto weight{parse_value()};
+                if (weight.kind != ValueKind::number &&
+                    (weight.kind != ValueKind::symbol ||
+                     !parameter_states_.contains(weight.text))) {
+                    fail(weight.span, "expected fill weight number or value parameter");
+                }
+                slot.weight = std::move(weight);
             } else if (option.text == "padding") {
                 if (has_padding) {
                     fail(option.span, "duplicate slot padding");
@@ -616,6 +622,10 @@ class Parser {
 
     auto parse_alignment(bool const horizontal) -> std::string {
         auto const& value{expect_atom("expected alignment value")};
+        if (is_identifier(value.text) && parameter_states_.contains(value.text)) {
+            use_parameter(value.text, ParameterKind::value, value.span, true);
+            return value.text;
+        }
         auto const valid{horizontal ? value.text == "left" || value.text == "center" ||
                                           value.text == "right" || value.text == "fill"
                                     : value.text == "top" || value.text == "center" ||

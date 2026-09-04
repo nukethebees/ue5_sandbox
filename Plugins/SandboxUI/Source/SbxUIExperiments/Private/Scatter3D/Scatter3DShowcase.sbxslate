@@ -1,4 +1,7 @@
 (widget-class UScatter3DShowcase
+  (function BuildScatterWidget
+    (params)
+    (SScatter3DWidget))
   (function RebuildWidget
     (params
       (callback on_value_committed)
@@ -36,3 +39,8 @@
           :WidthOverride 512.0f
           :HeightOverride 512.0f
           (existing scatter_widget))))))
+
+(widget-class SScatter3DWidget
+  (function BuildImage
+    (params (value brush))
+    (assign image_ SImage :Image brush)))

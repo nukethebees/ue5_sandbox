@@ -6,6 +6,8 @@
 #include "RHIGlobals.h"
 #include "Widgets/Images/SImage.h"
 
+#include "generated/SRadar3DWidget.slate.generated.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogRadar3DWidget, Log, All);
 
 void SRadar3DWidget::Construct(FArguments const&) {
@@ -20,7 +22,7 @@ void SRadar3DWidget::Construct(FArguments const&) {
     output_ready_ = initialise_output_texture();
     SetCanTick(true);
 
-    ChildSlot[SAssignNew(image_, SImage).Image(&brush_)];
+    ChildSlot[SlateGenerated::SRadar3DWidgetBuilder{*this}.BuildImage(&brush_)];
 
     if (output_ready_ && !GUsingNullRHI) {
         submit_render();

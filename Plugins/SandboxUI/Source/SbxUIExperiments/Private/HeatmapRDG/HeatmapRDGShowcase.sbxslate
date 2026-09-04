@@ -1,4 +1,11 @@
 (widget-class UHeatmapRDGShowcase
+  (function BuildSizeButton
+    (params
+      (value label)
+      (value on_clicked))
+    (SButton
+      :Text label
+      :OnClicked on_clicked))
   (function RebuildWidget
     (params
       (existing size_32_button)
@@ -52,3 +59,8 @@
           :MinDesiredWidth preview_size
           :MinDesiredHeight preview_size
           (existing heatmap_preview)))))))
+
+(widget-class UHeatmapRDGWidget
+  (function BuildImage
+    (params (value brush))
+    (assign image_ SImage :Image brush)))

@@ -7,7 +7,12 @@
 #include "Widgets/SCompoundWidget.h"
 #include "Widgets/Text/STextBlock.h"
 
+namespace SlateGenerated {
+struct SSectionPanelBuilder;
+}
+
 class SANDBOXUI_API SSectionPanel : public SCompoundWidget {
+    friend struct SlateGenerated::SSectionPanelBuilder;
   public:
     SLATE_BEGIN_ARGS(SSectionPanel)
         : _Title()

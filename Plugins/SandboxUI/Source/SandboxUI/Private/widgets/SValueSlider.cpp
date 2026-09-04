@@ -7,16 +7,17 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
+#include "generated/SValueSlider.slate.generated.h"
+
 void SValueSlider::Construct(FArguments const& args) {
-    ChildSlot[SNew(SLabeledRow)
-                  .Label(args._Label)
-                  .LabelFillWidth(args._LabelFillWidth)
-                  .ContentFillWidth(args._ControlFillWidth)
-                  .Spacing(args._LabelSpacing)
-                      [SNew(SHorizontalBox) +
-                       SandboxUI::Slate::hbox_fill_slot()
-                           [SNew(SSlider).Value(args._Value).OnValueChanged(args._OnValueChanged)] +
-                       SandboxUI::Slate::hbox_auto_slot(
-                           FMargin{args._ValueTextSpacing, 0.0f})[SNew(SBox).MinDesiredWidth(
-                           args._ValueTextMinWidth)[SNew(STextBlock).Text(args._ValueText)]]]];
+    auto const value_text_padding{FMargin{args._ValueTextSpacing, 0.0f}};
+    ChildSlot[SlateGenerated::SValueSliderBuilder{*this}.Build(args._Label,
+                                                               args._LabelFillWidth,
+                                                               args._ControlFillWidth,
+                                                               args._LabelSpacing,
+                                                               args._Value,
+                                                               args._OnValueChanged,
+                                                               value_text_padding,
+                                                               args._ValueTextMinWidth,
+                                                               args._ValueText)];
 }

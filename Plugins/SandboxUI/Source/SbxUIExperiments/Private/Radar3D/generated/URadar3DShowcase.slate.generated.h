@@ -14,9 +14,15 @@ struct URadar3DShowcaseBuilder {
 
     explicit URadar3DShowcaseBuilder(ThisClass& self) : self_{self} {}
 
+    auto BuildRadarWidget() {
+        return
+#line 4 "Radar3DShowcase.sbxslate"
+            SNew(SRadar3DWidget);
+    }
+
     auto RebuildWidget(auto&& on_value_changed, auto&& radar_widget) {
         return
-#line 6 "Radar3DShowcase.sbxslate"
+#line 9 "Radar3DShowcase.sbxslate"
             SNew(SExperimentPanel)
                 .Title(NSLOCTEXT("Radar3D", "Title", "RDG 3D Radar Experiment"))
                 .Description(

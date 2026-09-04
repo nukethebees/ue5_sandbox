@@ -101,7 +101,7 @@ struct Binding {
 
 struct BoxSlot {
     bool fill{false};
-    std::optional<std::string> weight;
+    std::optional<Value> weight;
     std::optional<Margin> padding;
     std::optional<std::string> horizontal_alignment;
     std::optional<std::string> vertical_alignment;

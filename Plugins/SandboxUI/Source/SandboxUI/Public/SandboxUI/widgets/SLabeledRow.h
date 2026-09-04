@@ -3,7 +3,12 @@
 #include "Layout/Margin.h"
 #include "Widgets/SCompoundWidget.h"
 
+namespace SlateGenerated {
+struct SLabeledRowBuilder;
+}
+
 class SANDBOXUI_API SLabeledRow : public SCompoundWidget {
+    friend struct SlateGenerated::SLabeledRowBuilder;
   public:
     SLATE_BEGIN_ARGS(SLabeledRow)
         : _Label()

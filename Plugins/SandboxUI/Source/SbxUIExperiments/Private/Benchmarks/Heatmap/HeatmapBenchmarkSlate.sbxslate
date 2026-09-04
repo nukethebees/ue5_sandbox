@@ -1,0 +1,4 @@
+(widget-class FHeatmapBenchmarkSlateWidgets
+  (function BuildHeatmap
+    (params (value style))
+    (SHeatmap2D :Style style)))

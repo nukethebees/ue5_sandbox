@@ -22,14 +22,15 @@ UVolumeHeatmap3DShowcase::UVolumeHeatmap3DShowcase() {
 }
 
 TSharedRef<SWidget> UVolumeHeatmap3DShowcase::RebuildWidget() {
-    auto const volume_widget{SNew(SVolumeHeatmap3DWidget)};
-    auto grid_button = [volume_widget](int32 const dimension) -> TSharedRef<SWidget> {
-        return SNew(SButton)
-            .Text(FText::FromString(FString::Printf(TEXT("%d³"), dimension)))
-            .OnClicked_Lambda([volume_widget, dimension] {
-                volume_widget->set_grid_dimension(dimension);
-                return FReply::Handled();
-            });
+    auto builder{SlateGenerated::UVolumeHeatmap3DShowcaseBuilder{*this}};
+    auto const volume_widget{builder.BuildVolumeWidget()};
+    auto grid_button = [&builder, volume_widget](int32 const dimension) -> TSharedRef<SWidget> {
+        auto on_clicked{[volume_widget, dimension] {
+            volume_widget->set_grid_dimension(dimension);
+            return FReply::Handled();
+        }};
+        return builder.BuildGridButton(FText::FromString(FString::Printf(TEXT("%d³"), dimension)),
+                                       std::move(on_clicked));
     };
     auto show_clouds = [volume_widget] {
         volume_widget->set_pattern(EVolumeHeatmap3DPattern::GaussianClouds);
@@ -52,15 +53,14 @@ TSharedRef<SWidget> UVolumeHeatmap3DShowcase::RebuildWidget() {
         volume_widget->set_pitch(value);
     };
 
-    return SlateGenerated::UVolumeHeatmap3DShowcaseBuilder{*this}.RebuildWidget(
-        std::move(show_clouds),
-        std::move(show_shell),
-        grid_button,
-        std::move(set_slice_count),
-        std::move(set_density_scale),
-        std::move(set_yaw),
-        std::move(set_pitch),
-        volume_widget);
+    return builder.RebuildWidget(std::move(show_clouds),
+                                 std::move(show_shell),
+                                 grid_button,
+                                 std::move(set_slice_count),
+                                 std::move(set_density_scale),
+                                 std::move(set_yaw),
+                                 std::move(set_pitch),
+                                 volume_widget);
 }
 
 auto UVolumeHeatmap3DShowcase::run_benchmark() -> FReply {

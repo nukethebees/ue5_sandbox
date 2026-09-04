@@ -1,0 +1,40 @@
+(widget-class USandboxUIShowcase
+  (function BuildRadar
+    (params
+      (value range)
+      (value presentation))
+    (SRadar2D
+      :Range range
+      :Presentation presentation))
+  (function BuildRadarWithRange
+    (params (value range))
+    (SRadar2D :Range range))
+  (function BuildGraph
+    (params)
+    (SGraphPlot))
+  (function BuildGraphWithAxes
+    (params
+      (value x_axis)
+      (value y_axis))
+    (SGraphPlot
+      :XAxis x_axis
+      :YAxis y_axis))
+  (function BuildHistogram
+    (params)
+    (SHistogram
+      :DomainMinimum -4.0f
+      :DomainMaximum 4.0f
+      :BinCount 24))
+  (function BuildScatter
+    (params (value domain))
+    (SScatterPlot :Domain domain))
+  (function BuildStackedBarChart
+    (params)
+    (SStackedBarChart))
+  (function BuildHeatmap
+    (params
+      (value value_range)
+      (value domain))
+    (SHeatmap2D
+      :ValueRange value_range
+      :Domain domain)))

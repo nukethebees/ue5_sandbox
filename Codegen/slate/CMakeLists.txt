@@ -38,16 +38,16 @@ endif()
 
 gtest_discover_tests(slate-codegen-tests PROPERTIES LABELS "unit;all;codegen")
 
-set(SLATE_CODEGEN_SOURCE_ROOT
-  "${PROJECT_SOURCE_DIR}/Plugins/SandboxUI/Source/SbxUIExperiments/Private"
-)
 set(SLATE_CODEGEN_DOCUMENTS
-  "Radar3D/Radar3DShowcase.sbxslate"
-  "HeatmapRDG/HeatmapRDGShowcase.sbxslate"
-  "Scatter3D/Scatter3DShowcase.sbxslate"
-  "SlateDslSmoke/SlateDslSmokeWidget.sbxslate"
-  "VolumeHeatmap3D/VolumeHeatmap3DShowcase.sbxslate"
-  "Widgets/ExperimentPanels.sbxslate"
+  "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.sbxslate"
+  "Plugins/SandboxUI/Source/SandboxUIExamples/Private/SandboxUIShowcase.sbxslate"
+  "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Benchmarks/Heatmap/HeatmapBenchmarkSlate.sbxslate"
+  "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Radar3D/Radar3DShowcase.sbxslate"
+  "Plugins/SandboxUI/Source/SbxUIExperiments/Private/HeatmapRDG/HeatmapRDGShowcase.sbxslate"
+  "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Scatter3D/Scatter3DShowcase.sbxslate"
+  "Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke/SlateDslSmokeWidget.sbxslate"
+  "Plugins/SandboxUI/Source/SbxUIExperiments/Private/VolumeHeatmap3D/VolumeHeatmap3DShowcase.sbxslate"
+  "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets/ExperimentPanels.sbxslate"
 )
 
 set(SLATE_CODEGEN_GENERATE_COMMANDS)
@@ -55,7 +55,7 @@ set(SLATE_CODEGEN_CHECK_COMMANDS)
 set(SLATE_CODEGEN_DEPENDENCIES)
 foreach(document IN LISTS SLATE_CODEGEN_DOCUMENTS)
   get_filename_component(document_directory "${document}" DIRECTORY)
-  set(manifest "${SLATE_CODEGEN_SOURCE_ROOT}/${document_directory}/manifest.json")
+  set(manifest "${PROJECT_SOURCE_DIR}/${document_directory}/manifest.json")
   list(APPEND SLATE_CODEGEN_GENERATE_COMMANDS
     COMMAND sandbox-slatec --manifest "${manifest}"
   )
@@ -64,7 +64,7 @@ foreach(document IN LISTS SLATE_CODEGEN_DOCUMENTS)
   )
   list(APPEND SLATE_CODEGEN_DEPENDENCIES
     "${manifest}"
-    "${SLATE_CODEGEN_SOURCE_ROOT}/${document}"
+    "${PROJECT_SOURCE_DIR}/${document}"
   )
 endforeach()
 

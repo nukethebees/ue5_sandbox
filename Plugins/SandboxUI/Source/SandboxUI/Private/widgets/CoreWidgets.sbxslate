@@ -1,0 +1,93 @@
+(widget-class SLabeledRow
+  (function BuildAutoLabel
+    (params
+      (value label)
+      (value label_min_width)
+      (value label_padding)
+      (value content_fill_width)
+      (value content_halign)
+      (existing content))
+    (hbox
+      (auto :padding label_padding :valign center
+        (SBox
+          :MinDesiredWidth label_min_width
+          (STextBlock :Text label)))
+      (fill :weight content_fill_width :halign content_halign :valign center
+        (existing content))))
+  (function BuildFillLabel
+    (params
+      (value label)
+      (value label_min_width)
+      (value label_padding)
+      (value label_fill_width)
+      (value content_fill_width)
+      (value content_halign)
+      (existing content))
+    (hbox
+      (fill :weight label_fill_width :padding label_padding :valign center
+        (SBox
+          :MinDesiredWidth label_min_width
+          (STextBlock :Text label)))
+      (fill :weight content_fill_width :halign content_halign :valign center
+        (existing content)))))
+
+(widget-class SSectionPanel
+  (function BuildTitle
+    (params
+      (value title)
+      (value justification)
+      (callback visibility))
+    (STextBlock
+      :Text title
+      :Justification justification
+      :Visibility (callback visibility)))
+  (function BuildDescription
+    (params
+      (value description)
+      (callback visibility))
+    (STextBlock
+      :Text description
+      :Visibility (callback visibility)))
+  (function BuildPanel
+    (params
+      (value padding)
+      (value background_color)
+      (value title_padding)
+      (value description_padding)
+      (existing title)
+      (existing description)
+      (existing content))
+    (SBorder
+      :Padding padding
+      :BorderBackgroundColor background_color
+      (vbox
+        (auto :padding title_padding (existing title))
+        (auto :padding description_padding (existing description))
+        (fill (existing content))))))
+
+(widget-class SValueSlider
+  (function Build
+    (params
+      (value label)
+      (value label_fill_width)
+      (value control_fill_width)
+      (value label_spacing)
+      (value value)
+      (value on_value_changed)
+      (value value_text_padding)
+      (value value_text_min_width)
+      (value value_text))
+    (SLabeledRow
+      :Label label
+      :LabelFillWidth label_fill_width
+      :ContentFillWidth control_fill_width
+      :Spacing label_spacing
+      (hbox
+        (fill
+          (SSlider
+            :Value value
+            :OnValueChanged on_value_changed))
+        (auto :padding value_text_padding
+          (SBox
+            :MinDesiredWidth value_text_min_width
+            (STextBlock :Text value_text)))))))

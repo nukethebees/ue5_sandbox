@@ -1,25 +1,30 @@
 #include "SandboxUI/widgets/SLabeledRow.h"
 
+#include "SandboxUI/slate/SlateSlots.h"
+
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
+#include "generated/SLabeledRow.slate.generated.h"
+
 void SLabeledRow::Construct(FArguments const& args) {
-    auto row{SNew(SHorizontalBox)};
-    auto& label_slot{row->AddSlot()
-                         .VAlign(VAlign_Center)
-                         .Padding(0.0f, 0.0f, args._Spacing, 0.0f)[SNew(SBox).MinDesiredWidth(
-                             args._LabelMinWidth)[SNew(STextBlock).Text(args._Label)]]};
+    auto builder{SlateGenerated::SLabeledRowBuilder{*this}};
+    auto const label_padding{FMargin{0.0f, 0.0f, args._Spacing, 0.0f}};
     if (args._LabelFillWidth.IsSet()) {
-        label_slot.FillWidth(args._LabelFillWidth.GetValue());
+        ChildSlot[builder.BuildFillLabel(args._Label,
+                                         args._LabelMinWidth,
+                                         label_padding,
+                                         args._LabelFillWidth.GetValue(),
+                                         args._ContentFillWidth,
+                                         args._ContentHAlign,
+                                         args._Content.Widget)];
     } else {
-        label_slot.AutoWidth();
+        ChildSlot[builder.BuildAutoLabel(args._Label,
+                                         args._LabelMinWidth,
+                                         label_padding,
+                                         args._ContentFillWidth,
+                                         args._ContentHAlign,
+                                         args._Content.Widget)];
     }
-
-    row->AddSlot()
-        .FillWidth(args._ContentFillWidth)
-        .HAlign(args._ContentHAlign)
-        .VAlign(VAlign_Center)[args._Content.Widget];
-
-    ChildSlot[row];
 }

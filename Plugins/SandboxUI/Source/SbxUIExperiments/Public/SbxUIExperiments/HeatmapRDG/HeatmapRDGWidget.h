@@ -12,6 +12,10 @@
 class SImage;
 class UTextureRenderTarget2D;
 
+namespace SlateGenerated {
+struct UHeatmapRDGWidgetBuilder;
+}
+
 USTRUCT(BlueprintType)
 struct SBXUIEXPERIMENTS_API FHeatmapRDGGrid {
     GENERATED_BODY()
@@ -31,6 +35,8 @@ struct SBXUIEXPERIMENTS_API FHeatmapRDGGrid {
 UCLASS(meta = (DisplayName = "RDG Heatmap (Experiment)"))
 class SBXUIEXPERIMENTS_API UHeatmapRDGWidget : public UWidget {
     GENERATED_BODY()
+
+    friend struct SlateGenerated::UHeatmapRDGWidgetBuilder;
   public:
     UHeatmapRDGWidget();
 

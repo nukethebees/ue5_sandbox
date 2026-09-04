@@ -1,4 +1,7 @@
 (widget-class URadar3DShowcase
+  (function BuildRadarWidget
+    (params)
+    (SRadar3DWidget))
   (function RebuildWidget
     (params
       (callback on_value_changed)
@@ -35,3 +38,8 @@
           :WidthOverride 512.0f
           :HeightOverride 512.0f
           (existing radar_widget))))))
+
+(widget-class SRadar3DWidget
+  (function BuildImage
+    (params (value brush))
+    (assign image_ SImage :Image brush)))

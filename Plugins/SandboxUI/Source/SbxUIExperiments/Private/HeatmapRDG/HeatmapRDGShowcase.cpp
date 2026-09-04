@@ -14,12 +14,6 @@
 
 DEFINE_LOG_CATEGORY_STATIC(LogHeatmapRDGShowcase, Log, All);
 
-namespace {
-auto make_size_button(FText const& label, FOnClicked on_clicked) -> TSharedRef<SWidget> {
-    return SNew(SButton).Text(label).OnClicked(MoveTemp(on_clicked));
-}
-} // namespace
-
 UHeatmapRDGShowcase::UHeatmapRDGShowcase() {
     TabDisplayName = NSLOCTEXT("HeatmapRDG", "ShowcaseTabName", "RDG Heatmap Showcase");
     bAlwaysReregisterWithWindowsMenu = true;
@@ -29,6 +23,10 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
     heatmap_widget_ = NewObject<UHeatmapRDGWidget>(this);
     check(heatmap_widget_);
 
+    auto builder{SlateGenerated::UHeatmapRDGShowcaseBuilder{*this}};
+    auto make_size_button{[&builder](FText const& label, FOnClicked on_clicked) {
+        return builder.BuildSizeButton(label, MoveTemp(on_clicked));
+    }};
     auto const size_32_button{make_size_button(
         FText::FromString(TEXT("32 x 32")),
         FOnClicked::CreateUObject(this, &UHeatmapRDGShowcase::select_grid_size, 32))};
@@ -46,12 +44,12 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
         FOnClicked::CreateUObject(this, &UHeatmapRDGShowcase::select_grid_size, 512))};
     auto const heatmap_preview{heatmap_widget_->TakeWidget()};
 
-    return SlateGenerated::UHeatmapRDGShowcaseBuilder{*this}.RebuildWidget(size_32_button,
-                                                                           size_64_button,
-                                                                           size_128_button,
-                                                                           size_256_button,
-                                                                           size_512_button,
-                                                                           heatmap_preview);
+    return builder.RebuildWidget(size_32_button,
+                                 size_64_button,
+                                 size_128_button,
+                                 size_256_button,
+                                 size_512_button,
+                                 heatmap_preview);
 }
 
 auto UHeatmapRDGShowcase::select_grid_size(int32 const grid_size) -> FReply {

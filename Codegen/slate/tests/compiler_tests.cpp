@@ -159,6 +159,26 @@ TEST(SlateDsl, RendersBoxOptionsAndMultipleFunctions) {
     EXPECT_NE(output.find(".VAlign(VAlign_Bottom)"), std::string::npos);
 }
 
+TEST(SlateDsl, RendersValueParametersAsBoxOptions) {
+    auto const document{parse_source(R"(
+(widget-class FOwner
+  (function Build
+    (params
+      (value fill_width)
+      (value horizontal_alignment)
+      (value vertical_alignment))
+    (hbox
+      (fill :weight fill_width :halign horizontal_alignment :valign vertical_alignment
+        (SButton))))
+)
+)")};
+
+    auto const output{render("test.sbxslate", document.widget_classes.front())};
+    EXPECT_NE(output.find("hbox_fill_slot(fill_width)"), std::string::npos);
+    EXPECT_NE(output.find(".HAlign(horizontal_alignment)"), std::string::npos);
+    EXPECT_NE(output.find(".VAlign(vertical_alignment)"), std::string::npos);
+}
+
 TEST(SlateDsl, RejectsUndeclaredAndIncorrectParameterUses) {
     auto const undeclared{parse_error(R"(
 (widget-class FOwner

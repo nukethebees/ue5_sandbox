@@ -8,6 +8,8 @@
 #include "RHIGlobals.h"
 #include "Widgets/Images/SImage.h"
 
+#include "generated/UHeatmapRDGWidget.slate.generated.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogHeatmapRDGWidget, Log, All);
 
 namespace ml::ui::heatmap_rdg {
@@ -152,11 +154,11 @@ void UHeatmapRDGWidget::generate_demo_grid(int32 const width, int32 const height
 }
 
 TSharedRef<SWidget> UHeatmapRDGWidget::RebuildWidget() {
-    SAssignNew(image_, SImage).Image(&brush_);
+    auto image{SlateGenerated::UHeatmapRDGWidgetBuilder{*this}.BuildImage(&brush_)};
     if (!has_submitted_grid_ && !GUsingNullRHI) {
         generate_demo_grid(128, 128);
     }
-    return image_.ToSharedRef();
+    return image;
 }
 
 void UHeatmapRDGWidget::ReleaseSlateResources(bool const release_children) {

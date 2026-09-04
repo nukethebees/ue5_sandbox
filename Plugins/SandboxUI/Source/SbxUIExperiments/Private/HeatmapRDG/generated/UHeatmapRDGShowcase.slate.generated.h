@@ -14,18 +14,26 @@ struct UHeatmapRDGShowcaseBuilder {
 
     explicit UHeatmapRDGShowcaseBuilder(ThisClass& self) : self_{self} {}
 
+    auto BuildSizeButton(auto&& label, auto&& on_clicked) {
+        return
+#line 6 "HeatmapRDGShowcase.sbxslate"
+            SNew(SButton)
+                .Text(label)
+                .OnClicked(on_clicked);
+    }
+
     auto RebuildWidget(auto&& size_32_button, auto&& size_64_button, auto&& size_128_button, auto&& size_256_button, auto&& size_512_button, auto&& heatmap_preview) {
-#line 10 "HeatmapRDGShowcase.sbxslate"
+#line 17 "HeatmapRDGShowcase.sbxslate"
         auto const controls_padding{FMargin{0.0f, 0.0f, 0.0f, 6.0f}};
-#line 11 "HeatmapRDGShowcase.sbxslate"
+#line 18 "HeatmapRDGShowcase.sbxslate"
         auto const section_padding{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};
-#line 12 "HeatmapRDGShowcase.sbxslate"
+#line 19 "HeatmapRDGShowcase.sbxslate"
         auto const button_padding{FMargin{0.0f, 0.0f, 4.0f, 0.0f}};
-#line 13 "HeatmapRDGShowcase.sbxslate"
+#line 20 "HeatmapRDGShowcase.sbxslate"
         auto const preview_size{512.0f};
 
         return
-#line 14 "HeatmapRDGShowcase.sbxslate"
+#line 21 "HeatmapRDGShowcase.sbxslate"
             SNew(SExperimentPanel)
                 .Title(NSLOCTEXT("HeatmapRDG", "Title", "RDG GPU Heatmap Showcase"))
                 .Description(

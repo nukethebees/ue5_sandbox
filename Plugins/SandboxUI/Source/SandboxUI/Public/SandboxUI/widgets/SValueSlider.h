@@ -3,7 +3,12 @@
 #include "Widgets/Input/SSlider.h"
 #include "Widgets/SCompoundWidget.h"
 
+namespace SlateGenerated {
+struct SValueSliderBuilder;
+}
+
 class SANDBOXUI_API SValueSlider : public SCompoundWidget {
+    friend struct SlateGenerated::SValueSliderBuilder;
   public:
     SLATE_BEGIN_ARGS(SValueSlider)
         : _Label()

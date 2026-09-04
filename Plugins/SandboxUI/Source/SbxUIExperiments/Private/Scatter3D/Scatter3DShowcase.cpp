@@ -21,13 +21,13 @@ UScatter3DShowcase::UScatter3DShowcase() {
 }
 
 TSharedRef<SWidget> UScatter3DShowcase::RebuildWidget() {
-    auto const scatter_widget{SNew(SScatter3DWidget)};
+    auto builder{SlateGenerated::UScatter3DShowcaseBuilder{*this}};
+    auto const scatter_widget{builder.BuildScatterWidget()};
     auto on_value_committed{[scatter_widget](int32 const point_count, ETextCommit::Type) {
         scatter_widget->set_point_count(point_count);
     }};
 
-    return SlateGenerated::UScatter3DShowcaseBuilder{*this}.RebuildWidget(
-        std::move(on_value_committed), scatter_widget);
+    return builder.RebuildWidget(std::move(on_value_committed), scatter_widget);
 }
 
 auto UScatter3DShowcase::run_benchmark() -> FReply {

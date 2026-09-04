@@ -6,6 +6,8 @@
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
+#include "generated/SSectionPanel.slate.generated.h"
+
 namespace {
 auto text_visibility(TAttribute<FText> const& text) -> EVisibility {
     return text.Get().IsEmpty() ? EVisibility::Collapsed : EVisibility::Visible;
@@ -13,27 +15,25 @@ auto text_visibility(TAttribute<FText> const& text) -> EVisibility {
 }
 
 void SSectionPanel::Construct(FArguments const& args) {
-    auto title{SNew(STextBlock)
-                   .Text(args._Title)
-                   .Justification(args._TitleJustification)
-                   .Visibility_Lambda(
-                       [title_text = args._Title]() { return text_visibility(title_text); })};
+    auto builder{SlateGenerated::SSectionPanelBuilder{*this}};
+    auto title_visibility{[title_text = args._Title]() { return text_visibility(title_text); }};
+    auto title{
+        builder.BuildTitle(args._Title, args._TitleJustification, MoveTemp(title_visibility))};
     if (args._TitleFont.IsSet()) {
         title->SetFont(args._TitleFont);
     }
 
-    auto border{
-        SNew(SBorder)
-            .Padding(args._Padding)
-            .BorderBackgroundColor(args._BorderBackgroundColor)
-                [SNew(SVerticalBox) + SandboxUI::Slate::vbox_auto_slot(args._TitlePadding)[title] +
-                 SandboxUI::Slate::vbox_auto_slot(args._DescriptionPadding)
-                     [SNew(STextBlock)
-                          .Text(args._Description)
-                          .Visibility_Lambda([description = args._Description]() {
-                              return text_visibility(description);
-                          })] +
-                 SandboxUI::Slate::vbox_fill_slot()[args._Content.Widget]]};
+    auto description_visibility{
+        [description = args._Description]() { return text_visibility(description); }};
+    auto description{builder.BuildDescription(args._Description, MoveTemp(description_visibility))};
+
+    auto border{builder.BuildPanel(args._Padding,
+                                   args._BorderBackgroundColor,
+                                   args._TitlePadding,
+                                   args._DescriptionPadding,
+                                   title,
+                                   description,
+                                   args._Content.Widget)};
     if (args._BorderImage.IsSet()) {
         border->SetBorderImage(args._BorderImage);
     }

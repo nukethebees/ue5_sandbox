@@ -10,12 +10,17 @@
 
 class SImage;
 
+namespace SlateGenerated {
+struct SVolumeHeatmap3DWidgetBuilder;
+}
+
 enum class EVolumeHeatmap3DPattern : uint8 {
     GaussianClouds,
     HollowShell,
 };
 
 class SVolumeHeatmap3DWidget final : public SCompoundWidget {
+    friend struct SlateGenerated::SVolumeHeatmap3DWidgetBuilder;
   public:
     SLATE_BEGIN_ARGS(SVolumeHeatmap3DWidget) {}
     SLATE_END_ARGS()

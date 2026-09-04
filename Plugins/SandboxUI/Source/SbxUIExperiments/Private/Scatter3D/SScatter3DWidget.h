@@ -10,7 +10,13 @@
 #include "Widgets/SCompoundWidget.h"
 
 class SImage;
+
+namespace SlateGenerated {
+struct SScatter3DWidgetBuilder;
+}
+
 class SScatter3DWidget final : public SCompoundWidget {
+    friend struct SlateGenerated::SScatter3DWidgetBuilder;
   public:
     SLATE_BEGIN_ARGS(SScatter3DWidget) {}
     SLATE_END_ARGS()

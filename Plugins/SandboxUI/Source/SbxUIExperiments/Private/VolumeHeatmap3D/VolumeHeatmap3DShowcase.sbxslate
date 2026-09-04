@@ -1,4 +1,14 @@
 (widget-class UVolumeHeatmap3DShowcase
+  (function BuildVolumeWidget
+    (params)
+    (SVolumeHeatmap3DWidget))
+  (function BuildGridButton
+    (params
+      (value label)
+      (callback on_clicked))
+    (SButton
+      :Text label
+      :OnClicked (callback on_clicked)))
   (function RebuildWidget
     (params
       (callback show_clouds)
@@ -116,3 +126,8 @@
             :WidthOverride preview_size
             :HeightOverride preview_size
             (existing volume_widget)))))))
+
+(widget-class SVolumeHeatmap3DWidget
+  (function BuildImage
+    (params (value brush))
+    (assign image_ SImage :Image brush)))

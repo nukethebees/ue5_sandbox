@@ -21,13 +21,13 @@ URadar3DShowcase::URadar3DShowcase() {
 }
 
 TSharedRef<SWidget> URadar3DShowcase::RebuildWidget() {
-    auto const radar_widget{SNew(SRadar3DWidget)};
+    auto builder{SlateGenerated::URadar3DShowcaseBuilder{*this}};
+    auto const radar_widget{builder.BuildRadarWidget()};
     auto on_value_changed{[radar_widget](int32 const contact_count) {
         radar_widget->set_contact_count(contact_count);
     }};
 
-    return SlateGenerated::URadar3DShowcaseBuilder{*this}.RebuildWidget(std::move(on_value_changed),
-                                                                        radar_widget);
+    return builder.RebuildWidget(std::move(on_value_changed), radar_widget);
 }
 
 auto URadar3DShowcase::run_benchmark() -> FReply {

@@ -5,6 +5,8 @@
 #include "RHIGlobals.h"
 #include "Widgets/Images/SImage.h"
 
+#include "generated/SVolumeHeatmap3DWidget.slate.generated.h"
+
 DEFINE_LOG_CATEGORY_STATIC(LogVolumeHeatmap3DWidget, Log, All);
 
 namespace ml::ui::volume_heatmap_3d_widget {
@@ -25,7 +27,7 @@ void SVolumeHeatmap3DWidget::Construct(FArguments const&) {
                                  ml::ui::volume_heatmap_3d_widget::output_texture_dimension};
     output_ready_ = initialise_output_texture();
     SetCanTick(true);
-    ChildSlot[SAssignNew(image_, SImage).Image(&brush_)];
+    ChildSlot[SlateGenerated::SVolumeHeatmap3DWidgetBuilder{*this}.BuildImage(&brush_)];
 }
 
 SVolumeHeatmap3DWidget::~SVolumeHeatmap3DWidget() {

@@ -3,6 +3,10 @@
 #include "HAL/PlatformTime.h"
 #include "SandboxUI/widgets/SHeatmap2D.h"
 
+struct FHeatmapBenchmarkSlateWidgets {};
+
+#include "generated/FHeatmapBenchmarkSlateWidgets.slate.generated.h"
+
 namespace {
 auto make_slate_grid(TConstArrayView<float> const values, int32 const resolution) -> FHeatmapGrid {
     FHeatmapGrid grid{.columns = resolution, .rows = resolution};
@@ -28,7 +32,9 @@ void benchmark_slate_heatmap(TConstArrayView<float> const values,
     style.desired_size = {512.0f, 512.0f};
     style.chart_padding = FMargin{0.0f};
     style.show_axes = false;
-    auto widget{SNew(SHeatmap2D).Style(style)};
+    FHeatmapBenchmarkSlateWidgets widget_owner;
+    auto widget{
+        SlateGenerated::FHeatmapBenchmarkSlateWidgetsBuilder{widget_owner}.BuildHeatmap(style)};
     auto const color_lut{build_heatmap_color_lut(style.color_stops)};
 
     for (int32 iteration{0}; iteration < warmup_iterations; ++iteration) {
