@@ -182,7 +182,6 @@ void FShipControlContext::bind_actions() {
 
     bind_no_value(input_->fire_laser, Started, &FShipControlContext::start_fire_laser);
     bind_no_value(input_->fire_laser, Completed, &FShipControlContext::stop_fire_laser);
-    bind_no_value(input_->fire_bomb, Started, &FShipControlContext::fire_bomb);
     bind_no_value(
         input_->cycle_prev_fire_rate, Started, &FShipControlContext::cycle_prev_fire_rate);
     bind_no_value(
@@ -375,11 +374,6 @@ void FShipControlContext::start_fire_laser() {
 void FShipControlContext::stop_fire_laser() {
     if (auto* const ship{get_ship()}) {
         ship->stop_fire_laser();
-    }
-}
-void FShipControlContext::fire_bomb() {
-    if (auto* const ship{get_ship()}) {
-        ship->fire_bomb();
     }
 }
 void FShipControlContext::cycle_prev_fire_rate() {

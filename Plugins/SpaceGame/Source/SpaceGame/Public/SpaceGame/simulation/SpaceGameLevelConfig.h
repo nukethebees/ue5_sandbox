@@ -15,7 +15,6 @@
 
 class ADelayedNiagaraSpawner;
 class AActor;
-class AShipBomb;
 class ATestCapitalShipFighters;
 class ATestCapitalShipProxy;
 class ATestCapitalShips;
@@ -172,9 +171,6 @@ struct SPACEGAME_API FPlayerShipConfig {
 
     UPROPERTY(EditAnywhere, Category = "Combat")
     float laser_lock_on_distance{10000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Combat")
-    TSubclassOf<AShipBomb> bomb_class{nullptr};
 };
 
 USTRUCT(BlueprintType)

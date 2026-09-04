@@ -1,9 +1,9 @@
 #include "SpaceGame/presentation/HUDManager.h"
 
 #include "SpaceGame/missions/TestMissionManager.h"
+#include "SpaceGame/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/presentation/widgets/ShipHudWidget.h"
 
 #include <SandboxCore/timing.h>
 
@@ -310,7 +310,7 @@ bool FHUDManager::collect_player_flight_data() {
 
     if (validate_player_ship_for_collection()) {
         auto const ship_socket{player_ship->get_middle_socket()};
-        auto const* const lock_on_target{player_ship->get_lock_on_target()};
+        auto const lock_on_target{player_ship->get_lock_on_target()};
 
         next_data.has_player_ship = true;
         next_data.turning = player_ship->get_turn_input();
@@ -322,9 +322,10 @@ bool FHUDManager::collect_player_flight_data() {
         next_data.flight_mode = player_ship->get_flight_mode();
         next_data.crosshair_origin = ship_socket.GetLocation();
         next_data.crosshair_direction = ship_socket.GetUnitAxis(EAxis::X);
-        next_data.has_lock_on_target = IsValid(lock_on_target);
+        next_data.has_lock_on_target = entity_registry->is_valid_handle(lock_on_target);
         if (next_data.has_lock_on_target) {
-            next_data.lock_on_target_position = lock_on_target->GetActorLocation();
+            next_data.lock_on_target_position =
+                FVector{entity_registry->get_location(lock_on_target)};
         }
     }
 

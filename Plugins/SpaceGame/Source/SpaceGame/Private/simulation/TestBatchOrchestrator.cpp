@@ -812,6 +812,7 @@ void ATestBatchOrchestrator::bind_simulation_dependencies() {
 
     if (IsValid(player_ship)) {
         player_ship->set_entity_registry(&entity_registry);
+        player_ship->set_spatial_query_manager(query_manager);
         player_ship->set_laser_actor(lasers);
     }
 

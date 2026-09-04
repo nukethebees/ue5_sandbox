@@ -32,13 +32,16 @@ class UNiagaraComponent;
 class AShipLaser;
 class UShipLaserConfig;
 class AShipHomingLaser;
-class AShipBomb;
 class UShipHealthComponent;
 class UTestSpaceShipData;
 struct FTestEntityRegistry;
 class ATestLasers;
 struct EntityDeathInfo;
 struct FTestSpaceShipSpatialQueryAccess;
+
+namespace ml {
+struct FSpatialQueryManager;
+}
 
 namespace ml::test_space_ship {
 class PhaseInterface;
@@ -83,6 +86,9 @@ class SPACEGAME_API ATestSpaceShip
 
     auto get_entity_registry() const { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry* er) { entity_registry = er; }
+    void set_spatial_query_manager(ml::FSpatialQueryManager const& manager) {
+        spatial_query_manager = &manager;
+    }
 
     void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator);
 
@@ -134,7 +140,7 @@ class SPACEGAME_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Combat
     /* ------------------------------------------------------------------------------------------ */
-    auto get_lock_on_target() const -> AActor const* { return lock_on_target; }
+    auto get_lock_on_target() const -> FRegistryEntityHandle { return lock_on_target; }
 
     // Combat - laser
     void start_fire_laser();
@@ -146,11 +152,6 @@ class SPACEGAME_API ATestSpaceShip
     void select_next_laser_fire_rate() noexcept;
     void select_previous_laser_fire_rate() noexcept;
     void set_laser_fire_rate(ETestShipFireRate const value) noexcept;
-
-    // Combat - bomb
-    void fire_bomb();
-    void add_bomb();
-    auto get_bombs() const { return bombs; }
 
     /* ------------------------------------------------------------------------------------------ */
     // Health
@@ -175,9 +176,7 @@ class SPACEGAME_API ATestSpaceShip
     FOnShipTargetSpeedChanged on_target_speed_changed;
     FOnShipHealthChanged on_health_changed;
     FOnShipEnergyChanged on_energy_changed;
-    FOnShipBombsChanged on_bombs_changed;
     FOnLaserModeChanged on_laser_mode_changed;
-    FOnLockOnAcquired on_lock_on_acquired;
     FOnShipFireRateChanged on_ship_fire_rate_changed;
     FOnPlayerShipDied on_player_ship_died;
 
@@ -223,16 +222,13 @@ class SPACEGAME_API ATestSpaceShip
     /* ------------------------------------------------------------------------------------------ */
     // Combat
     /* ------------------------------------------------------------------------------------------ */
-    void set_lock_on_target(AActor* target);
+    void set_lock_on_target(FRegistryEntityHandle target);
 
     // Combat - laser
     void set_laser_mode(ELaserFiringState laser_mode);
     void update_laser_firing();
     void fire_laser();
     void fire_lasers_from(TConstArrayView<FTransform> const fire_points);
-
-    // Combat - bomb
-    void subtract_bomb();
 
     // Combat - homing laser
     void fire_homing_laser();
@@ -277,6 +273,7 @@ class SPACEGAME_API ATestSpaceShip
     TestEntityUniqueId unique_entity_id;
 
     FTestEntityRegistry* entity_registry{nullptr};
+    ml::FSpatialQueryManager const* spatial_query_manager{nullptr};
     FRegistryEntityHandle registry_handle{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
@@ -360,18 +357,11 @@ class SPACEGAME_API ATestSpaceShip
     int32 lasers_fired_this_burst{0};
     int32 lasers_per_burst{3};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
-    AActor* lock_on_target{nullptr};
+    FRegistryEntityHandle lock_on_target;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     ELaserFiringState laser_firing_mode{ELaserFiringState::idle};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
-
-    // Combat - Bombs
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Bomb", meta = (AllowPrivateAccess))
-    int32 bombs{3};
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Bomb", meta = (AllowPrivateAccess))
-    TWeakObjectPtr<AShipBomb> active_bomb{nullptr};
 
     /* ------------------------------------------------------------------------------------------ */
     // Health

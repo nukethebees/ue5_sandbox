@@ -69,7 +69,6 @@ struct SPACEGAME_API FShipControlContext {
     void cycle_input_mapping_context();
     void start_fire_laser();
     void stop_fire_laser();
-    void fire_bomb();
     void cycle_prev_fire_rate();
     void cycle_next_fire_rate();
 

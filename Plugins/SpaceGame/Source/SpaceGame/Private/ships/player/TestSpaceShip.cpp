@@ -1,9 +1,7 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 
-#include <SandboxGameShared/constants/collision_channels.h>
 #include <SandboxGameShared/utilities/enums.h>
 #include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/combat/weapons/ShipBomb.h>
 #include <SpaceGame/combat/weapons/ShipLaserConfig.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
@@ -12,6 +10,7 @@
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
 #include <SpaceGame/ships/common/ShipHealthComponent.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
 
@@ -491,9 +490,8 @@ void ATestSpaceShip::roll(float direction) {
 /* ------------------------------------------------------------------------------------------ */
 /* Combat */
 /* ------------------------------------------------------------------------------------------ */
-void ATestSpaceShip::set_lock_on_target(AActor* target) {
+void ATestSpaceShip::set_lock_on_target(FRegistryEntityHandle const target) {
     lock_on_target = target;
-    on_lock_on_acquired.ExecuteIfBound(lock_on_target);
 }
 
 // Combat - laser
@@ -528,6 +526,7 @@ void ATestSpaceShip::update_laser_firing() {
             }
         }
         case ELaserFiringState::lock_on_searching: {
+            check(spatial_query_manager);
             TRY_INIT_PTR(world, GetWorld());
             auto const middle{get_middle_socket()};
 
@@ -536,20 +535,10 @@ void ATestSpaceShip::update_laser_firing() {
             auto const distance{actor_config->laser_lock_on_distance};
             auto const end{start + fwd * distance};
 
-            FHitResult hit;
-            FCollisionQueryParams query_params;
-            FCollisionObjectQueryParams obj_query_params;
-            obj_query_params.AddObjectTypesToQuery(ECollisionChannel::ECC_Pawn);
-
-            if (world->LineTraceSingleByObjectType(
-                    hit, start, end, obj_query_params, query_params)) {
-
-                auto const actor_hit{hit.GetActor()};
-                if (!actor_hit) {
-                    break;
-                }
-
-                set_lock_on_target(hit.GetActor());
+            auto const hit{spatial_query_manager->trace_closest(
+                FVector3f{start}, FVector3f{end}, registry_handle)};
+            if (hit.hit && hit.entity.is_valid()) {
+                set_lock_on_target(hit.entity);
                 set_laser_mode(ELaserFiringState::lock_on_acquired);
             }
 
@@ -571,12 +560,12 @@ void ATestSpaceShip::start_fire_laser() {
     set_laser_mode(ELaserFiringState::burst);
     lasers_fired_this_burst = 0;
     laser_shot_cooldown = 0.f;
-    set_lock_on_target(nullptr);
+    set_lock_on_target({});
 }
 void ATestSpaceShip::stop_fire_laser() {
     if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
         fire_homing_laser();
-        set_lock_on_target(nullptr);
+        set_lock_on_target({});
     }
 
     set_laser_mode(ELaserFiringState::idle);
@@ -671,45 +660,6 @@ void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept
     }
 
     on_ship_fire_rate_changed.ExecuteIfBound(laser_fire_rate);
-}
-
-// Combat - bomb
-void ATestSpaceShip::fire_bomb() {
-    if (auto ab{active_bomb.Pin()}) {
-        if (!ab->has_detonated()) {
-            active_bomb.Get()->detonate();
-            return;
-        }
-    }
-
-    if (bombs <= 0) {
-        UE_LOG(LogSandbox, Verbose, TEXT("No bombs left."));
-        return;
-    }
-
-    TRY_INIT_PTR(world, GetWorld());
-    auto const fire_point{ship_mesh->GetSocketTransform(Sockets::middle, RTS_World)};
-
-    UE_LOG(LogSandbox, Verbose, TEXT("Spawning bomb at %s"), *fire_point.ToHumanReadableString());
-
-    active_bomb =
-        world->SpawnActorDeferred<AShipBomb>(actor_config->bomb_class, fire_point, nullptr, this);
-    if (laser_firing_mode == ELaserFiringState::lock_on_acquired) {
-        active_bomb->set_target(this->lock_on_target);
-        set_lock_on_target(nullptr);
-        set_laser_mode(ELaserFiringState::idle);
-    }
-    active_bomb->FinishSpawning(fire_point);
-
-    subtract_bomb();
-}
-void ATestSpaceShip::add_bomb() {
-    bombs++;
-    on_bombs_changed.ExecuteIfBound(bombs);
-}
-void ATestSpaceShip::subtract_bomb() {
-    bombs--;
-    on_bombs_changed.ExecuteIfBound(bombs);
 }
 
 // Combat - homing laser
