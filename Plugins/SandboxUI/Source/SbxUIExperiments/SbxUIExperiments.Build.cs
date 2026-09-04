@@ -19,12 +19,15 @@ public class SbxUIExperiments : ModuleRules
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
+            "AssetRegistry",
             "Engine",
             "Projects",
             "RenderCore",
             "RHI",
             "SandboxUI",
             "Slate",
+            "UMGEditor",
+            "UnrealEd",
         });
     }
 }

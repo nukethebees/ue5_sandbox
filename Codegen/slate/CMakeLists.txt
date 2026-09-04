@@ -27,27 +27,38 @@ endif()
 set(SLATE_CODEGEN_SAMPLE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/samples")
 set(SLATE_CODEGEN_SAMPLE_MANIFEST "${SLATE_CODEGEN_SAMPLE_DIR}/manifest.json")
 set(SLATE_CODEGEN_SAMPLE_INPUT "${SLATE_CODEGEN_SAMPLE_DIR}/Radar3DShowcase.sbxslate")
+set(SLATE_CODEGEN_SMOKE_DIR
+  "${PROJECT_SOURCE_DIR}/Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke"
+)
+set(SLATE_CODEGEN_SMOKE_MANIFEST "${SLATE_CODEGEN_SMOKE_DIR}/manifest.json")
+set(SLATE_CODEGEN_SMOKE_INPUT "${SLATE_CODEGEN_SMOKE_DIR}/SlateDslSmokeWidget.sbxslate")
 
 add_custom_target(generate-slate-code
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SAMPLE_MANIFEST}"
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}"
   DEPENDS
     sandbox-slatec
     "${SLATE_CODEGEN_SAMPLE_MANIFEST}"
     "${SLATE_CODEGEN_SAMPLE_INPUT}"
+    "${SLATE_CODEGEN_SMOKE_MANIFEST}"
+    "${SLATE_CODEGEN_SMOKE_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Generating the experimental Slate DSL sample"
+  COMMENT "Generating experimental Slate DSL outputs"
   USES_TERMINAL
   VERBATIM
 )
 
 add_custom_target(check-generated-slate-code
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SAMPLE_MANIFEST}" --check
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}" --check
   DEPENDS
     sandbox-slatec
     "${SLATE_CODEGEN_SAMPLE_MANIFEST}"
     "${SLATE_CODEGEN_SAMPLE_INPUT}"
+    "${SLATE_CODEGEN_SMOKE_MANIFEST}"
+    "${SLATE_CODEGEN_SMOKE_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Checking the experimental Slate DSL sample"
+  COMMENT "Checking experimental Slate DSL outputs"
   USES_TERMINAL
   VERBATIM
 )

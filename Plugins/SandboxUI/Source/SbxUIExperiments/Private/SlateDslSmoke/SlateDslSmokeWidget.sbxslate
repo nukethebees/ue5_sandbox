@@ -1,0 +1,18 @@
+(widget-class USlateDslSmokeWidget
+  (function RebuildWidget
+    (vbox
+      (auto :padding (8 8 8 4)
+        (STextBlock
+          :Text "This widget was generated from Slate DSL"))
+
+      (auto :padding (8 4)
+        (SSpinBox<int32>
+          :MinValue 0
+          :MaxValue 100
+          :Value 5
+          :OnValueChanged (callback on_value_changed)))
+
+      (auto :padding (8 4 8 8)
+        (SButton
+          :Text "Invoke private UObject callback"
+          :OnClicked (uobject handle_clicked))))))
