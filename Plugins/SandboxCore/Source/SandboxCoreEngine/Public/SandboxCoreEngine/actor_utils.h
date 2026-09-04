@@ -5,9 +5,11 @@
 #include <SandboxCore/container_concepts.h>
 #include <SandboxCore/log_categories.h>
 
+#include <Containers/ArrayView.h>
 #include <CoreMinimal.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
+#include <Templates/SubclassOf.h>
 
 #include <concepts>
 
@@ -31,6 +33,16 @@ void get_first_actor(UWorld& world, T*& actor) {
 template <typename... T>
 auto actor_is_any(AActor const& actor) -> bool {
     return (actor.IsA<T>() || ...);
+}
+
+inline auto actor_is_any(AActor const& actor,
+                         TConstArrayView<TSubclassOf<AActor>> const actor_classes) -> bool {
+    for (auto const actor_class : actor_classes) {
+        if (actor.IsA(actor_class)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 auto SANDBOXCOREENGINE_API is_actor_in_world(UWorld const& world, AActor const* target) -> bool;
