@@ -82,10 +82,21 @@ struct ExistingWidget {
     SourceSpan span;
 };
 
+struct Margin {
+    std::vector<std::string> values;
+    std::optional<std::string> binding;
+};
+
+struct Binding {
+    std::string name;
+    std::variant<Value, Margin> initializer;
+    SourceSpan span;
+};
+
 struct BoxSlot {
     bool fill{false};
     std::optional<std::string> weight;
-    std::vector<std::string> padding;
+    std::optional<Margin> padding;
     std::optional<std::string> horizontal_alignment;
     std::optional<std::string> vertical_alignment;
     std::shared_ptr<Child> child;
@@ -108,6 +119,7 @@ struct Child {
 struct SlateFunction {
     std::string name;
     std::vector<std::string> forwarded_parameters;
+    std::vector<Binding> bindings;
     Child root;
     SourceSpan span;
 };

@@ -104,6 +104,13 @@ class Renderer {
         }
         declaration += ") {";
         append_line(4, declaration);
+        for (auto const& binding : function.bindings) {
+            append_source_line(binding.span);
+            append_line(8, "auto const " + binding.name + "{" + render_binding(binding) + "};");
+        }
+        if (!function.bindings.empty()) {
+            append_line(0, {});
+        }
         append_line(8, "return");
         append_source_line(function.root.span);
         render_child(function.root, 12);
@@ -212,7 +219,7 @@ class Renderer {
     static auto render_slot_helper(BoxSlot const& slot, bool const vertical) -> std::string {
         std::string const helper_prefix{vertical ? "SandboxUI::Slate::vbox_"
                                                  : "SandboxUI::Slate::hbox_"};
-        auto const padding{render_padding(slot.padding)};
+        auto const padding{slot.padding ? render_margin(*slot.padding) : std::string{}};
         if (!slot.fill) {
             return padding.empty() ? helper_prefix + "auto_slot()"
                                    : helper_prefix + "auto_slot(" + padding + ")";
@@ -227,16 +234,29 @@ class Renderer {
                                : helper_prefix + "fill_slot(1.0f, " + padding + ")";
     }
 
-    static auto render_padding(std::vector<std::string> const& values) -> std::string {
-        if (values.empty()) {
-            return {};
+    static auto render_binding(Binding const& binding) -> std::string {
+        return std::visit(
+            [](auto const& initializer) {
+                using T = std::decay_t<decltype(initializer)>;
+                if constexpr (std::is_same_v<T, Value>) {
+                    return render_value(initializer);
+                } else {
+                    return render_margin(initializer);
+                }
+            },
+            binding.initializer);
+    }
+
+    static auto render_margin(Margin const& margin) -> std::string {
+        if (margin.binding) {
+            return "FMargin{" + *margin.binding + "}";
         }
         std::string result{"FMargin{"};
-        for (std::size_t index{}; index < values.size(); ++index) {
+        for (std::size_t index{}; index < margin.values.size(); ++index) {
             if (index != 0) {
                 result += ", ";
             }
-            result += float_literal(values[index]);
+            result += float_literal(margin.values[index]);
         }
         result += '}';
         return result;

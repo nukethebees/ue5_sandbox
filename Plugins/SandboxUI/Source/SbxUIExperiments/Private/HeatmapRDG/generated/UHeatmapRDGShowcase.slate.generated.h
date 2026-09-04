@@ -15,8 +15,17 @@ struct UHeatmapRDGShowcaseBuilder {
     explicit UHeatmapRDGShowcaseBuilder(ThisClass& self) : self_{self} {}
 
     auto RebuildWidget(auto&& size_32_button, auto&& size_64_button, auto&& size_128_button, auto&& size_256_button, auto&& size_512_button, auto&& heatmap_preview) {
-        return
 #line 3 "HeatmapRDGShowcase.sbxslate"
+        auto const controls_padding{FMargin{0.0f, 0.0f, 0.0f, 6.0f}};
+#line 4 "HeatmapRDGShowcase.sbxslate"
+        auto const section_padding{FMargin{0.0f, 0.0f, 0.0f, 10.0f}};
+#line 5 "HeatmapRDGShowcase.sbxslate"
+        auto const button_padding{FMargin{0.0f, 0.0f, 4.0f, 0.0f}};
+#line 6 "HeatmapRDGShowcase.sbxslate"
+        auto const preview_size{512.0f};
+
+        return
+#line 7 "HeatmapRDGShowcase.sbxslate"
             SNew(SExperimentPanel)
                 .Title(NSLOCTEXT("HeatmapRDG", "Title", "RDG GPU Heatmap Showcase"))
                 .Description(
@@ -24,26 +33,26 @@ struct UHeatmapRDGShowcaseBuilder {
                 .Controls()
                 [
                     SNew(SVerticalBox)
-                        + SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 6.0f})
+                        + SandboxUI::Slate::vbox_auto_slot(FMargin{controls_padding})
                             [
                                 SNew(SLabeledRow)
                                     .Label(
                                         NSLOCTEXT("HeatmapRDG", "InputResolution", "Input grid resolution:"))
                                     [
                                         SNew(SHorizontalBox)
-                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{0.0f, 0.0f, 4.0f, 0.0f})
+                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{button_padding})
                                                 [
                                                     std::forward<decltype(size_32_button)>(size_32_button)
                                                 ]
-                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{0.0f, 0.0f, 4.0f, 0.0f})
+                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{button_padding})
                                                 [
                                                     std::forward<decltype(size_64_button)>(size_64_button)
                                                 ]
-                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{0.0f, 0.0f, 4.0f, 0.0f})
+                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{button_padding})
                                                 [
                                                     std::forward<decltype(size_128_button)>(size_128_button)
                                                 ]
-                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{0.0f, 0.0f, 4.0f, 0.0f})
+                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{button_padding})
                                                 [
                                                     std::forward<decltype(size_256_button)>(size_256_button)
                                                 ]
@@ -53,13 +62,13 @@ struct UHeatmapRDGShowcaseBuilder {
                                                 ]
                                     ]
                             ]
-                        + SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
+                        + SandboxUI::Slate::vbox_auto_slot(FMargin{section_padding})
                             [
                                 SNew(SLabeledRow)
                                     .Label(NSLOCTEXT("HeatmapRDG", "Pattern", "Pattern:"))
                                     [
                                         SNew(SHorizontalBox)
-                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{0.0f, 0.0f, 4.0f, 0.0f})
+                                            + SandboxUI::Slate::hbox_auto_slot(FMargin{button_padding})
                                                 [
                                                     SNew(SButton)
                                                         .Text(
@@ -98,8 +107,8 @@ struct UHeatmapRDGShowcaseBuilder {
                 .Preview()
                 [
                     SNew(SBox)
-                        .MinDesiredWidth(512.0f)
-                        .MinDesiredHeight(512.0f)
+                        .MinDesiredWidth(preview_size)
+                        .MinDesiredHeight(preview_size)
                         [
                             std::forward<decltype(heatmap_preview)>(heatmap_preview)
                         ]

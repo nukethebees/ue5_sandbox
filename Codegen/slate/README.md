@@ -9,7 +9,9 @@ checks that committed generated Slate headers are current before invoking Unreal
 ```text
 document     := widget_class+ EOF
 widget_class := "(" "widget-class" qualified_name function+ ")"
-function     := "(" "function" identifier child ")"
+function     := "(" "function" identifier (child | let) ")"
+let          := "(" "let" "(" binding+ ")" child ")"
+binding      := "(" identifier (value | margin) ")"
 widget       := "(" type_name widget_item* ")"
 assigned     := "(" "assign" identifier type_name widget_item* ")"
 existing     := "(" "existing" identifier ")"
@@ -26,6 +28,7 @@ box_option   := ":weight" number
               | ":halign" ("left" | "center" | "right" | "fill")
               | ":valign" ("top" | "center" | "bottom" | "fill")
 margin       := number
+              | identifier
               | "(" number number ")"
               | "(" number number number number ")"
 value        := number | boolean | quoted_text | localized_text | atom | callable
@@ -41,6 +44,11 @@ qualified_name := identifier ("::" identifier)*
 constants such as `HAlign_Left`. Quoted text generates `FText::FromString(TEXT(...))`. A `loc`
 form generates `NSLOCTEXT(context, key, text)`. Calls, operators, member access, and raw C++ remain
 intentionally unsupported.
+
+`let` is restricted to one optional wrapper directly inside a function. It emits sequential
+`auto const` locals, so later bindings may refer to earlier ones. A margin tuple emits an `FMargin`
+local and can be referenced from `:padding`; a scalar binding used as padding is converted to an
+`FMargin`. Bindings cannot be nested, shadowed, or initialized with callable forms.
 
 Slate DSL source uses two-space indentation to keep deeply nested trees compact. Generated C++
 continues to use the project's ordinary four-space indentation.

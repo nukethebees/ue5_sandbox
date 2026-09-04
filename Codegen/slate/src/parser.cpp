@@ -121,10 +121,68 @@ class Parser {
         }
         forwarded_parameter_names_.clear();
         forwarded_parameters_.clear();
-        auto root{parse_child()};
+        binding_names_.clear();
+        std::vector<Binding> bindings;
+        auto root{list_head_is("let") ? parse_let(bindings) : parse_child()};
         expect(TokenKind::right_parenthesis, "expected ')' after generated function");
-        return SlateFunction{
-            name.text, std::move(forwarded_parameters_), std::move(root), opening.span};
+        return SlateFunction{name.text,
+                             std::move(forwarded_parameters_),
+                             std::move(bindings),
+                             std::move(root),
+                             opening.span};
+    }
+
+    auto parse_let(std::vector<Binding>& bindings) -> Child {
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected '(' before let")};
+        auto const& form{expect_atom("expected 'let'")};
+        if (form.text != "let") {
+            fail(form.span, "expected 'let'");
+        }
+        expect(TokenKind::left_parenthesis, "expected '(' before let bindings");
+        while (!at(TokenKind::right_parenthesis)) {
+            if (at(TokenKind::end)) {
+                fail(current().span, "expected ')' after let bindings");
+            }
+            bindings.push_back(parse_binding());
+        }
+        expect(TokenKind::right_parenthesis, "expected ')' after let bindings");
+        if (bindings.empty()) {
+            fail(opening.span, "let must contain at least one binding");
+        }
+
+        auto root{parse_child()};
+        expect(TokenKind::right_parenthesis, "expected ')' after let body");
+        return root;
+    }
+
+    auto parse_binding() -> Binding {
+        auto const& opening{expect(TokenKind::left_parenthesis, "expected let binding")};
+        auto const& name{expect_atom("expected let binding name")};
+        if (!is_identifier(name.text)) {
+            fail(name.span, "let binding name must be a C++ identifier");
+        }
+        if (name.text == "self_" || name.text == "ThisClass") {
+            fail(name.span, "reserved generated name cannot be used as a let binding");
+        }
+        if (binding_names_.contains(name.text)) {
+            fail(name.span, "duplicate let binding '" + name.text + "'");
+        }
+
+        std::variant<Value, Margin> initializer;
+        if (at(TokenKind::left_parenthesis) && !list_head_is("loc") &&
+            !list_head_is("callback") && !list_head_is("method") && !list_head_is("uobject")) {
+            initializer = parse_margin();
+        } else {
+            auto value{parse_value()};
+            if (value.kind == ValueKind::callback || value.kind == ValueKind::method ||
+                value.kind == ValueKind::uobject) {
+                fail(value.span, "callable values cannot initialize let bindings");
+            }
+            initializer = std::move(value);
+        }
+        expect(TokenKind::right_parenthesis, "expected ')' after let binding");
+        binding_names_.insert(name.text);
+        return Binding{name.text, std::move(initializer), opening.span};
     }
 
     auto parse_widget() -> Child {
@@ -153,7 +211,8 @@ class Parser {
     void validate_widget_type(Token const& type) const {
         if (type.text == "widget-class" || type.text == "function" || type.text == "vbox" ||
             type.text == "hbox" || type.text == "slot" || type.text == "auto" ||
-            type.text == "fill" || type.text == "assign" || type.text == "existing") {
+            type.text == "fill" || type.text == "assign" || type.text == "existing" ||
+            type.text == "let") {
             fail(type.span, "expected widget type, found structural form '" + type.text + "'");
         }
     }
@@ -286,6 +345,9 @@ class Parser {
     }
 
     void register_forwarded_parameter(std::string const& name, SourceSpan const span) {
+        if (binding_names_.contains(name)) {
+            fail(span, "forwarded parameter '" + name + "' conflicts with let binding");
+        }
         if (!forwarded_parameter_names_.insert(name).second) {
             fail(span, "forwarded parameter '" + name + "' may only be used once");
         }
@@ -389,12 +451,12 @@ class Parser {
                 has_vertical_alignment = true;
                 slot.vertical_alignment = parse_alignment(false);
             } else {
-                fail(option.span, "unsupported vbox slot option ':" + option.text + "'");
+                fail(option.span, "unsupported box slot option ':" + option.text + "'");
             }
         }
 
         slot.child = std::make_shared<Child>(parse_child());
-        expect(TokenKind::right_parenthesis, "expected ')' after vbox slot");
+        expect(TokenKind::right_parenthesis, "expected ')' after box slot");
         return slot;
     }
 
@@ -406,9 +468,16 @@ class Parser {
         return value.text;
     }
 
-    auto parse_margin() -> std::vector<std::string> {
+    auto parse_margin() -> Margin {
         if (!consume(TokenKind::left_parenthesis)) {
-            return {parse_number("expected padding value")};
+            auto const& value{expect_atom("expected padding value or let binding")};
+            if (is_number(value.text)) {
+                return Margin{.values = {value.text}};
+            }
+            if (!is_identifier(value.text) || !binding_names_.contains(value.text)) {
+                fail(value.span, "expected padding value or earlier let binding");
+            }
+            return Margin{.binding = value.text};
         }
 
         std::vector<std::string> values;
@@ -422,7 +491,7 @@ class Parser {
         if (values.size() != 2 && values.size() != 4) {
             fail(closing.span, "padding tuple must contain two or four values");
         }
-        return values;
+        return Margin{.values = std::move(values)};
     }
 
     auto parse_alignment(bool const horizontal) -> std::string {
@@ -501,6 +570,7 @@ class Parser {
     std::size_t index_{};
     std::set<std::string> forwarded_parameter_names_;
     std::vector<std::string> forwarded_parameters_;
+    std::set<std::string> binding_names_;
 };
 
 }

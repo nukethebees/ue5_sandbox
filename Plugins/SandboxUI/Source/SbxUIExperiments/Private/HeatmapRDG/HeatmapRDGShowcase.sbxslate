@@ -1,24 +1,28 @@
 (widget-class UHeatmapRDGShowcase
   (function RebuildWidget
-    (SExperimentPanel
+    (let ((controls_padding (0 0 0 6))
+          (section_padding (0 0 0 10))
+          (button_padding (0 0 4 0))
+          (preview_size 512.0f))
+      (SExperimentPanel
       :Title (loc "HeatmapRDG" "Title" "RDG GPU Heatmap Showcase")
       :Description (loc "HeatmapRDG" "Description" "Each update uploads one dense scalar grid and draws one Slate image.")
       (slot Controls
         (vbox
-          (auto :padding (0 0 0 6)
+          (auto :padding controls_padding
             (SLabeledRow
               :Label (loc "HeatmapRDG" "InputResolution" "Input grid resolution:")
               (hbox
-                (auto :padding (0 0 4 0) (existing size_32_button))
-                (auto :padding (0 0 4 0) (existing size_64_button))
-                (auto :padding (0 0 4 0) (existing size_128_button))
-                (auto :padding (0 0 4 0) (existing size_256_button))
+                (auto :padding button_padding (existing size_32_button))
+                (auto :padding button_padding (existing size_64_button))
+                (auto :padding button_padding (existing size_128_button))
+                (auto :padding button_padding (existing size_256_button))
                 (auto (existing size_512_button)))))
-          (auto :padding (0 0 0 10)
+          (auto :padding section_padding
             (SLabeledRow
               :Label (loc "HeatmapRDG" "Pattern" "Pattern:")
               (hbox
-                (auto :padding (0 0 4 0)
+                (auto :padding button_padding
                   (SButton
                     :Text (loc "HeatmapRDG" "Hotspots" "Hotspots")
                     :OnClicked (uobject show_hotspots)))
@@ -38,6 +42,6 @@
                   :Text (loc "HeatmapRDG" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
       (slot Preview
         (SBox
-          :MinDesiredWidth 512.0f
-          :MinDesiredHeight 512.0f
-          (existing heatmap_preview))))))
+          :MinDesiredWidth preview_size
+          :MinDesiredHeight preview_size
+          (existing heatmap_preview)))))))
