@@ -3,7 +3,13 @@
 #include "Widgets/Input/SButton.h"
 #include "Widgets/SCompoundWidget.h"
 
+namespace SlateGenerated {
+struct SExperimentPanelBuilder;
+struct SExperimentBenchmarkBuilder;
+}
+
 class SExperimentPanel final : public SCompoundWidget {
+    friend struct SlateGenerated::SExperimentPanelBuilder;
   public:
     SLATE_BEGIN_ARGS(SExperimentPanel)
         : _Title()
@@ -18,6 +24,7 @@ class SExperimentPanel final : public SCompoundWidget {
 };
 
 class SExperimentBenchmark final : public SCompoundWidget {
+    friend struct SlateGenerated::SExperimentBenchmarkBuilder;
   public:
     SLATE_BEGIN_ARGS(SExperimentBenchmark)
         : _ButtonText()

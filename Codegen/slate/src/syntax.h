@@ -122,7 +122,7 @@ struct Child {
     SourceSpan span;
 };
 
-enum class ParameterKind { callback, factory, existing };
+enum class ParameterKind { value, callback, factory, existing };
 
 struct FunctionParameter {
     ParameterKind kind;

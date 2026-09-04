@@ -7,26 +7,23 @@
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/SBoxPanel.h"
 
+#include "generated/SExperimentBenchmark.slate.generated.h"
+#include "generated/SExperimentPanel.slate.generated.h"
+
 void SExperimentPanel::Construct(FArguments const& args) {
-    ChildSlot[SNew(SSectionPanel)
-                  .Title(args._Title)
-                  .Description(args._Description)
-                  .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
-                  .TitleFont(FAppStyle::Get().GetFontStyle(
-                      "HeadingExtraSmall"))[SNew(SVerticalBox) +
-                                            SandboxUI::Slate::vbox_auto_slot(FMargin{
-                                                0.0f, 0.0f, 0.0f, 10.0f})[args._Controls.Widget] +
-                                            SandboxUI::Slate::vbox_fill_slot()
-                                                .HAlign(HAlign_Center)
-                                                .VAlign(VAlign_Center)[args._Preview.Widget]]];
+    ChildSlot[SlateGenerated::SExperimentPanelBuilder{*this}.Build(
+        args._Title,
+        args._Description,
+        FAppStyle::GetBrush("ToolPanel.GroupBorder"),
+        FAppStyle::Get().GetFontStyle("HeadingExtraSmall"),
+        args._Controls.Widget,
+        args._Preview.Widget)];
 }
 
 void SExperimentBenchmark::Construct(FArguments const& args) {
-    ChildSlot[SNew(SVerticalBox) +
-              SandboxUI::Slate::vbox_auto_slot()[SNew(SButton)
-                                                     .Text(args._ButtonText)
-                                                     .ToolTipText(args._ToolTipText)
-                                                     .OnClicked(args._OnClicked)] +
-              SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 4.0f, 0.0f, 0.0f})
-                  [SNew(SBox).HeightOverride(args._OutputHeight)[args._Output.Widget]]];
+    ChildSlot[SlateGenerated::SExperimentBenchmarkBuilder{*this}.Build(args._ButtonText,
+                                                                       args._ToolTipText,
+                                                                       args._OnClicked,
+                                                                       args._OutputHeight,
+                                                                       args._Output.Widget)];
 }

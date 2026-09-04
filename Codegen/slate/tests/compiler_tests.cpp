@@ -28,22 +28,24 @@ TEST(SlateDsl, ExplicitParametersDetermineSignatureAndRoles) {
 (widget-class FOwner
   (function Build
     (params
+      (value label)
       (factory make_child)
       (existing supplied_child)
       (callback on_clicked))
     (vbox
-      (auto (call make_child 1))
-      (auto (call make_child 2))
+      (auto (call make_child label))
+      (auto (call make_child label))
       (auto (existing supplied_child))
-      (auto (SButton :OnClicked (callback on_clicked))))))
+      (auto (SButton :Text label :OnClicked (callback on_clicked))))))
 )")};
 
     ASSERT_EQ(document.widget_classes.size(), 1);
     auto const output{render("test.sbxslate", document.widget_classes.front())};
-    EXPECT_NE(output.find("auto Build(auto&& make_child, auto&& supplied_child, auto&& on_clicked)"),
+    EXPECT_NE(output.find(
+                  "auto Build(auto&& label, auto&& make_child, auto&& supplied_child, auto&& on_clicked)"),
               std::string::npos);
-    EXPECT_NE(output.find("make_child(1)"), std::string::npos);
-    EXPECT_NE(output.find("make_child(2)"), std::string::npos);
+    EXPECT_NE(output.find("make_child(label)"), output.rfind("make_child(label)"));
+    EXPECT_NE(output.find(".Text(label)"), std::string::npos);
 }
 
 TEST(SlateDsl, LetBindingsSupportValuesAndMargins) {
@@ -82,6 +84,14 @@ TEST(SlateDsl, RejectsUndeclaredAndIncorrectParameterUses) {
     (SButton :OnClicked (callback on_clicked))))
 )")};
     EXPECT_NE(incorrect_role.find("declared as existing, not callback"), std::string::npos);
+
+    auto const incorrect_value_role{parse_error(R"(
+(widget-class FOwner
+  (function Build
+    (params (existing label))
+    (SButton :Text label)))
+)")};
+    EXPECT_NE(incorrect_value_role.find("declared as existing, not value"), std::string::npos);
 }
 
 TEST(SlateDsl, RejectsUnusedAndDuplicateParameters) {

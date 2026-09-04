@@ -1,0 +1,38 @@
+(widget-class SExperimentPanel
+  (function Build
+    (params
+      (value title)
+      (value description)
+      (value border_image)
+      (value title_font)
+      (existing controls)
+      (existing preview))
+    (SSectionPanel
+      :Title title
+      :Description description
+      :BorderImage border_image
+      :TitleFont title_font
+      (vbox
+        (auto :padding (0 0 0 10)
+          (existing controls))
+        (fill :halign center :valign center
+          (existing preview))))))
+
+(widget-class SExperimentBenchmark
+  (function Build
+    (params
+      (value button_text)
+      (value tool_tip_text)
+      (value on_clicked)
+      (value output_height)
+      (existing output))
+    (vbox
+      (auto
+        (SButton
+          :Text button_text
+          :ToolTipText tool_tip_text
+          :OnClicked on_clicked))
+      (auto :padding (0 4 0 0)
+        (SBox
+          :HeightOverride output_height
+          (existing output))))))

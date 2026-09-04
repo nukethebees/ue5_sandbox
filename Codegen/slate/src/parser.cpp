@@ -157,14 +157,17 @@ class Parser {
                 fail(current().span, "expected ')' after params declaration");
             }
             auto const& opening{expect(TokenKind::left_parenthesis, "expected parameter declaration")};
-            auto const& role{expect_atom("expected callback, factory, or existing parameter role")};
-            auto kind{ParameterKind::callback};
-            if (role.text == "factory") {
+            auto const& role{
+                expect_atom("expected value, callback, factory, or existing parameter role")};
+            auto kind{ParameterKind::value};
+            if (role.text == "callback") {
+                kind = ParameterKind::callback;
+            } else if (role.text == "factory") {
                 kind = ParameterKind::factory;
             } else if (role.text == "existing") {
                 kind = ParameterKind::existing;
-            } else if (role.text != "callback") {
-                fail(role.span, "expected callback, factory, or existing parameter role");
+            } else if (role.text != "value") {
+                fail(role.span, "expected value, callback, factory, or existing parameter role");
             }
             auto const& name{expect_atom("expected parameter name")};
             if (!is_identifier(name.text)) {
@@ -344,6 +347,9 @@ class Parser {
         if (is_number(token.text)) {
             return Value{ValueKind::number, token.text, span};
         }
+        if (is_identifier(token.text) && parameter_states_.contains(token.text)) {
+            use_parameter(token.text, ParameterKind::value, token.span, true);
+        }
         return Value{ValueKind::symbol, token.text, span};
     }
 
@@ -450,6 +456,9 @@ class Parser {
     }
 
     static auto parameter_kind_name(ParameterKind const kind) -> std::string {
+        if (kind == ParameterKind::value) {
+            return "value";
+        }
         if (kind == ParameterKind::callback) {
             return "callback";
         }
@@ -582,8 +591,11 @@ class Parser {
             if (is_number(value.text)) {
                 return Margin{.values = {value.text}};
             }
-            if (!is_identifier(value.text) || !binding_names_.contains(value.text)) {
+            if (!is_identifier(value.text)) {
                 fail(value.span, "expected padding value or earlier let binding");
+            }
+            if (!binding_names_.contains(value.text)) {
+                use_parameter(value.text, ParameterKind::value, value.span, true);
             }
             return Margin{.binding = value.text};
         }

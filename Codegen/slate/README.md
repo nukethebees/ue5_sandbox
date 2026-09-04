@@ -11,7 +11,7 @@ document     := widget_class+ EOF
 widget_class := "(" "widget-class" qualified_name function+ ")"
 function     := "(" "function" identifier params (child | let) ")"
 params       := "(" "params" parameter* ")"
-parameter    := "(" ("callback" | "factory" | "existing") identifier ")"
+parameter    := "(" ("value" | "callback" | "factory" | "existing") identifier ")"
 let          := "(" "let" "(" binding+ ")" child ")"
 binding      := "(" identifier (value | margin) ")"
 widget       := "(" type_name widget_item* ")"
@@ -77,7 +77,8 @@ class URadar3DShowcase {
 The generated header is included by the handwritten implementation after the owner is complete.
 Every generated function explicitly declares its handwritten boundary in `params`; declaration
 order determines the generated C++ signature. Every parameter must be used with its declared role.
-A `callback` becomes a forwarding-reference function parameter and an `_Lambda` attribute.
+A `value` is an ordinary symbol used by widget arguments, factory arguments, let initializers, or
+padding and may be reused. A `callback` becomes a forwarding-reference function parameter and an `_Lambda` attribute.
 `existing` similarly forwards a widget supplied by handwritten code into the generated tree, while
 `assign` generates `SAssignNew` against a member of the friend-held owner. Callback and existing
 parameters may each be consumed once. `call` invokes a supplied `factory` parameter with DSL values

@@ -44,6 +44,7 @@ set(SLATE_CODEGEN_DOCUMENTS
   "Scatter3D/Scatter3DShowcase.sbxslate"
   "SlateDslSmoke/SlateDslSmokeWidget.sbxslate"
   "VolumeHeatmap3D/VolumeHeatmap3DShowcase.sbxslate"
+  "Widgets/ExperimentPanels.sbxslate"
 )
 
 set(SLATE_CODEGEN_GENERATE_COMMANDS)
