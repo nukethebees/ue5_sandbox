@@ -13,20 +13,8 @@
 #include <Engine/World.h>
 #include <HAL/PlatformMisc.h>
 
-#include <functional>
 #include <mutex>
 #include <utility>
-
-namespace ml {
-namespace {
-// Spatial query hits are ordered by component pointer ascending according to std::less.
-auto spatial_query_component_less(UPrimitiveComponent const* const lhs,
-                                  UPrimitiveComponent const* const rhs) -> bool {
-    return std::less<UPrimitiveComponent const*>{}(lhs, rhs);
-}
-
-}
-}
 
 namespace ml::query_manager {
 FThreadBufferLease::FThreadBufferLease(FSpatialQueryManager const& in_manager)
@@ -74,6 +62,9 @@ void FSpatialQueryManager::initialise_static_geometry(
     check(IsValid(world));
     collision.initialise_static_geometry(*world, collision_grid_config);
 }
+auto FSpatialQueryManager::add_static_geometry(UPrimitiveComponent& component) -> bool {
+    return collision.add_static_geometry(component);
+}
 
 auto FSpatialQueryManager::acquire_thread_buffer() const -> int32 {
     std::lock_guard const lock{thread_buffers_mutex};
@@ -108,26 +99,24 @@ void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_regis
     reserve_thread_buffers(1);
 
     entity_registry = &in_entity_registry;
+    world = &in_world;
     collision.set_entity_registry(in_entity_registry);
     auto& uniform_grid{collision.get_uniform_grid()};
     uniform_grid.set_grid_dims(collision_grid_config.calculate_grid_dimensions());
     uniform_grid.set_cell_dims(collision_grid_config.cell_size);
 
-    world = &in_world;
-    player_ship_access = FTestSpaceShipSpatialQueryAccess{player_ship};
-    capital_ships_access = FTestCapitalShipsSpatialQueryAccess{&capital_ships};
-    capital_ship_fighters_access =
-        FTestCapitalShipFightersSpatialQueryAccess{&capital_ship_fighters};
-    static_turrets_access = FTestStaticTurretsSpatialQueryAccess{&static_turrets};
-    tube_spinners_access = FTestTubeSpinnersSpatialQueryAccess{&tube_spinners};
-
-    auto const* const capital_ship_instances{capital_ships_access.get_spatial_query_component()};
+    auto const* const capital_ship_instances{
+        FTestCapitalShipsSpatialQueryAccess{&capital_ships}.get_spatial_query_component()};
     auto const* const capital_ship_fighter_instances{
-        capital_ship_fighters_access.get_spatial_query_component()};
-    auto const* const static_turret_instances{static_turrets_access.get_spatial_query_component()};
-    auto const* const tube_spinner_instances{tube_spinners_access.get_spatial_query_component()};
+        FTestCapitalShipFightersSpatialQueryAccess{&capital_ship_fighters}
+            .get_spatial_query_component()};
+    auto const* const static_turret_instances{
+        FTestStaticTurretsSpatialQueryAccess{&static_turrets}.get_spatial_query_component()};
+    auto const* const tube_spinner_instances{
+        FTestTubeSpinnersSpatialQueryAccess{&tube_spinners}.get_spatial_query_component()};
     auto const* const player_ship_mesh{
-        player_ship ? player_ship_access.get_spatial_query_component() : nullptr};
+        player_ship ? FTestSpaceShipSpatialQueryAccess{player_ship}.get_spatial_query_component()
+                    : nullptr};
 
     fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(capital_ship_instances),
@@ -136,19 +125,9 @@ void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_regis
         SANDBOX_NAMED_UOBJECT_PTR(tube_spinner_instances),
     });
 
-    component_resolvers.Reset();
-    component_resolvers.Reserve(std::to_underlying(EHitResolverKind::Count));
-
     if (player_ship) {
         fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(player_ship_mesh)});
-        component_resolvers.Add({player_ship_mesh, EHitResolverKind::PlayerShipMesh});
     }
-
-    component_resolvers.Add({capital_ship_instances, EHitResolverKind::CapitalShipInstances});
-    component_resolvers.Add(
-        {capital_ship_fighter_instances, EHitResolverKind::CapitalShipFighterInstances});
-    component_resolvers.Add({static_turret_instances, EHitResolverKind::StaticTurretInstances});
-    component_resolvers.Add({tube_spinner_instances, EHitResolverKind::TubeSpinnerInstances});
 
     ioj::FCollisionSystem::EntityMeshes meshes{};
     meshes[std::to_underlying(ETestEntityType::PlayerShip)] = ml::get_static_mesh(player_ship_mesh);
@@ -163,97 +142,6 @@ void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_regis
     collision.initialise(meshes);
 }
 
-auto FSpatialQueryManager::classify_component(UPrimitiveComponent const* const component) const
-    -> EHitResolverKind {
-    for (auto const& resolver : component_resolvers) {
-        if (resolver.component == component) {
-            return resolver.kind;
-        }
-    }
-
-    return EHitResolverKind::Unknown;
-}
-
-void FSpatialQueryManager::resolve_hits(
-    TConstArrayView<FSpatialQueryHit> const hits,
-    TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::resolve_hits);
-    check(hits.Num() == out_entity_handles.Num());
-    check(component_resolvers.Num() >= (std::to_underlying(EHitResolverKind::Count) - 1));
-
-    for (auto& handle : out_entity_handles) {
-        handle = FRegistryEntityHandle{};
-    }
-
-    auto const n{hits.Num()};
-    if (n == 0) {
-        return;
-    }
-
-    struct FResolverSpan {
-        int32 offset{};
-        int32 count{};
-    };
-    TStaticArray<FResolverSpan, std::to_underlying(EHitResolverKind::Count)> resolver_spans{};
-
-    auto previous_kind{EHitResolverKind::Unknown};
-    auto const* previous_component{static_cast<UPrimitiveComponent const*>(nullptr)};
-    for (int32 i{}; i < n; ++i) {
-        auto const& hit{hits[i]};
-        if (hit.component != previous_component) {
-            if (i > 0) {
-                check(spatial_query_component_less(previous_component, hit.component));
-            }
-            previous_component = hit.component;
-            previous_kind = classify_component(hit.component);
-        }
-
-        if (previous_kind == EHitResolverKind::Unknown) {
-            continue;
-        }
-
-        auto& span{resolver_spans[std::to_underlying(previous_kind)]};
-        if (span.count == 0) {
-            span.offset = i;
-        } else {
-            check(span.offset + span.count == i);
-        }
-        ++span.count;
-    }
-
-    for (int32 i{}; i < std::to_underlying(EHitResolverKind::Count); ++i) {
-        auto const& span{resolver_spans[i]};
-        if (span.count == 0) {
-            continue;
-        }
-
-        auto const resolver_kind{static_cast<EHitResolverKind>(i)};
-        auto const hit_slice{hits.Slice(span.offset, span.count)};
-        auto const handle_slice{out_entity_handles.Slice(span.offset, span.count)};
-
-        switch (resolver_kind) {
-            case EHitResolverKind::PlayerShipMesh:
-                player_ship_access.resolve_hits(hit_slice, handle_slice);
-                break;
-            case EHitResolverKind::CapitalShipInstances:
-                capital_ships_access.resolve_hits(hit_slice, handle_slice);
-                break;
-            case EHitResolverKind::CapitalShipFighterInstances:
-                capital_ship_fighters_access.resolve_hits(hit_slice, handle_slice);
-                break;
-            case EHitResolverKind::StaticTurretInstances:
-                static_turrets_access.resolve_hits(hit_slice, handle_slice);
-                break;
-            case EHitResolverKind::TubeSpinnerInstances:
-                tube_spinners_access.resolve_hits(hit_slice, handle_slice);
-                break;
-            case EHitResolverKind::Unknown:
-            case EHitResolverKind::Count:
-                break;
-        }
-    }
-}
-
 void FSpatialQueryManager::trace_line_of_sight(
     FVectors3f::ConstView const start_locations,
     FVectors3f::ConstView const end_locations,
@@ -263,8 +151,6 @@ void FSpatialQueryManager::trace_line_of_sight(
     auto const n{start_locations.num()};
     check(n == end_locations.num());
     check(n == out_entity_handles.Num());
-    check(IsValid(world));
-
     ml::fill(out_entity_handles, FRegistryEntityHandle{});
 
     if (n == 0) {
@@ -273,30 +159,18 @@ void FSpatialQueryManager::trace_line_of_sight(
 
     query_manager::FThreadBufferLease const buffer_lease{*this};
     auto& buffers{buffer_lease.get()};
-    auto& line_of_sight_hits{buffers.line_of_sight_hits};
-    auto& sorted_line_of_sight_hits{buffers.sorted_line_of_sight_hits};
-    auto& sorted_line_of_sight_entity_handles{buffers.sorted_line_of_sight_entity_handles};
-    auto& line_of_sight_sort_indices{buffers.line_of_sight_sort_indices};
-
-    line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
-
-    FHitResult hit_result{};
+    auto& traces{buffers.line_traces};
+    auto& hits{buffers.trace_hits};
+    traces.set_num(n, EAllowShrinking::No);
+    hits.set_num(n, EAllowShrinking::No);
     for (int32 i{}; i < n; ++i) {
-        hit_result.Reset();
-
-        auto const did_hit{world->LineTraceSingleByChannel(hit_result,
-                                                           ml::get_vector3d(start_locations, i),
-                                                           ml::get_vector3d(end_locations, i),
-                                                           ECC_Visibility)};
-        line_of_sight_hits[i] = did_hit
-                                  ? FSpatialQueryHit{hit_result.GetComponent(), hit_result.Item}
-                                  : FSpatialQueryHit{};
+        traces.starts.set(i, ml::get_vector3f(start_locations, i));
+        traces.ends.set(i, ml::get_vector3f(end_locations, i));
     }
 
-    resolve_line_of_sight_hits(buffers, n);
-
+    collision.get_uniform_grid().trace_aabbs(traces.get_const_view(), hits.get_view());
     for (int32 i{}; i < n; ++i) {
-        out_entity_handles[line_of_sight_sort_indices[i]] = sorted_line_of_sight_entity_handles[i];
+        out_entity_handles[i] = hits.entities[i];
     }
 }
 
@@ -310,8 +184,6 @@ void FSpatialQueryManager::has_line_of_sight_to_targets(
     auto const n{end_locations.num()};
     check(n == targets.Num());
     check(n == has_los.Num());
-    check(IsValid(world));
-
     ml::fill(has_los, uint8{0});
     if (n == 0) {
         return;
@@ -319,58 +191,81 @@ void FSpatialQueryManager::has_line_of_sight_to_targets(
 
     query_manager::FThreadBufferLease const buffer_lease{*this};
     auto& buffers{buffer_lease.get()};
-    auto& line_of_sight_hits{buffers.line_of_sight_hits};
-    auto const trace_start{FVector{start_location}};
-
-    line_of_sight_hits.SetNumUninitialized(n, EAllowShrinking::No);
-
-    FHitResult hit_result{};
+    auto& traces{buffers.line_traces};
+    auto& hits{buffers.trace_hits};
+    traces.set_num(n, EAllowShrinking::No);
+    hits.set_num(n, EAllowShrinking::No);
     for (int32 i{}; i < n; ++i) {
-        hit_result.Reset();
-
-        auto const did_hit{world->LineTraceSingleByChannel(
-            hit_result, trace_start, ml::get_vector3d(end_locations, i), ECC_Visibility)};
-        line_of_sight_hits[i] = did_hit
-                                  ? FSpatialQueryHit{hit_result.GetComponent(), hit_result.Item}
-                                  : FSpatialQueryHit{};
+        traces.starts.set(i, start_location);
+        traces.ends.set(i, ml::get_vector3f(end_locations, i));
     }
 
-    resolve_line_of_sight_hits(buffers, n);
-
-    auto const& sorted_entity_handles{buffers.sorted_line_of_sight_entity_handles};
-    auto const& sort_indices{buffers.line_of_sight_sort_indices};
-    for (int32 sorted_i{}; sorted_i < n; ++sorted_i) {
-        auto const input_i{sort_indices[sorted_i]};
-        auto const did_hit{line_of_sight_hits[input_i].component != nullptr};
-        has_los[input_i] =
-            static_cast<uint8>(!did_hit || (sorted_entity_handles[sorted_i] == targets[input_i]));
+    collision.get_uniform_grid().trace_aabbs(traces.get_const_view(), hits.get_view());
+    for (int32 i{}; i < n; ++i) {
+        has_los[i] = static_cast<uint8>(hits.hits[i] == 0 || hits.entities[i] == targets[i]);
     }
 }
 
-void FSpatialQueryManager::resolve_line_of_sight_hits(query_manager::FThreadBuffers& buffers,
-                                                      int32 const count) const {
-    auto& line_of_sight_hits{buffers.line_of_sight_hits};
-    auto& sorted_line_of_sight_hits{buffers.sorted_line_of_sight_hits};
-    auto& sorted_line_of_sight_entity_handles{buffers.sorted_line_of_sight_entity_handles};
-    auto& line_of_sight_sort_indices{buffers.line_of_sight_sort_indices};
+void FSpatialQueryManager::have_clear_lines(
+    FVectors3f::ConstView const start_locations,
+    FVectors3f::ConstView const end_locations,
+    TArrayView<uint8> const clear_lines,
+    TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
+    auto const n{start_locations.num()};
+    check(n == end_locations.num());
+    check(n == clear_lines.Num());
+    check(ignored_entities.IsEmpty() || ignored_entities.Num() == n);
 
-    check(line_of_sight_hits.Num() == count);
-
-    sorted_line_of_sight_hits.SetNumUninitialized(count, EAllowShrinking::No);
-    sorted_line_of_sight_entity_handles.SetNumUninitialized(count, EAllowShrinking::No);
-    line_of_sight_sort_indices.SetNumUninitialized(count, EAllowShrinking::No);
-
-    ml::fill_indices(line_of_sight_sort_indices);
-    line_of_sight_sort_indices.Sort([&line_of_sight_hits](int32 const lhs, int32 const rhs) {
-        return spatial_query_component_less(line_of_sight_hits[lhs].component,
-                                            line_of_sight_hits[rhs].component);
-    });
-
-    for (int32 i{}; i < count; ++i) {
-        sorted_line_of_sight_hits[i] = line_of_sight_hits[line_of_sight_sort_indices[i]];
+    if (n == 0) {
+        return;
     }
 
-    resolve_hits(sorted_line_of_sight_hits, sorted_line_of_sight_entity_handles);
+    query_manager::FThreadBufferLease const buffer_lease{*this};
+    auto& buffers{buffer_lease.get()};
+    auto& traces{buffers.line_traces};
+    auto& hits{buffers.trace_hits};
+    traces.set_num(n, EAllowShrinking::No);
+    hits.set_num(n, EAllowShrinking::No);
+    for (int32 i{}; i < n; ++i) {
+        traces.starts.set(i, ml::get_vector3f(start_locations, i));
+        traces.ends.set(i, ml::get_vector3f(end_locations, i));
+    }
+
+    collision.get_uniform_grid().trace_aabbs(
+        traces.get_const_view(), hits.get_view(), ignored_entities);
+    for (int32 i{}; i < n; ++i) {
+        clear_lines[i] = static_cast<uint8>(hits.hits[i] == 0);
+    }
+}
+
+auto FSpatialQueryManager::has_clear_line(FVector3f const start_location,
+                                          FVector3f const end_location,
+                                          FRegistryEntityHandle const ignored_entity) const
+    -> bool {
+    return !trace_closest(start_location, end_location, ignored_entity).hit;
+}
+
+auto FSpatialQueryManager::trace_closest(FVector3f const start_location,
+                                         FVector3f const end_location,
+                                         FRegistryEntityHandle const ignored_entity) const
+    -> FLineTraceResult {
+    FVectors3f starts;
+    FVectors3f ends;
+    starts.add(start_location);
+    ends.add(end_location);
+    FTraceHits hits;
+    hits.add_uninitialised(1);
+    TStaticArray<FRegistryEntityHandle, 1> ignored_entities{ignored_entity};
+    collision.get_uniform_grid().trace_aabbs(
+        FLineTracesConstView{starts.get_const_view(), ends.get_const_view()},
+        hits.get_view(),
+        ignored_entities);
+    return {
+        .location = ml::get_vector3f(hits.locations, 0),
+        .entity = hits.entities[0],
+        .static_geometry_index = hits.static_geometry_indices[0],
+        .hit = hits.hits[0] != 0,
+    };
 }
 
 auto FSpatialQueryManager::collect_non_team_entities_in_range(

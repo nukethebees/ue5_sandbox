@@ -227,6 +227,18 @@ void FTurretLineOfSightBlockingScenario::spawn_line_of_sight_blocker() {
         return;
     }
 
+    auto* const collision{Cast<UPrimitiveComponent>(blocker->GetRootComponent())};
+    if (!checks.is_true(IsValid(collision), TEXT("Line-of-sight blocker has collision"))) {
+        return;
+    }
+    if (!checks.is_true(
+            test_driver->orchestrator.get_spatial_query_manager().add_static_geometry(*collision),
+            TEXT("Line-of-sight blocker is added to the custom collision grid"))) {
+        return;
+    }
+    checks.is_true(collision->GetCollisionEnabled() == ECollisionEnabled::NoCollision,
+                   TEXT("Registered blocker no longer uses Unreal collision"));
+
     blocker_spawn_time = test_driver->get_time();
 }
 
@@ -382,8 +394,8 @@ FTurretSearchRequiresLineOfSightScenario::FTurretSearchRequiresLineOfSightScenar
 
         auto blocker_transform{FTransform::Identity};
         blocker_transform.SetScale3D(FVector{1.f, 0.2f, 1.f});
-        auto* const blocker{
-            ml::spawn_visibility_blocker(world, blocker_transform, TEXT("search_los_blocker"))};
+        blocker =
+            ml::spawn_visibility_blocker(world, blocker_transform, TEXT("search_los_blocker"));
         if (!checks.is_valid(blocker, TEXT("Line-of-sight blocker is spawned"))) {
             return;
         }
@@ -424,6 +436,16 @@ void FTurretSearchRequiresLineOfSightScenario::on_end_tick(ATestBatchOrchestrato
 void FTurretSearchRequiresLineOfSightScenario::initial_setup() {
     initialise_test_driver();
     test_driver->orchestrator.start_simulation();
+
+    auto* const collision{IsValid(blocker) ? Cast<UPrimitiveComponent>(blocker->GetRootComponent())
+                                           : nullptr};
+    checks.is_true(IsValid(collision), TEXT("Line-of-sight blocker has collision"));
+    if (IsValid(collision)) {
+        checks.is_true(
+            test_driver->orchestrator.get_spatial_query_manager().add_static_geometry(*collision),
+            TEXT("Line-of-sight blocker is added to the custom collision grid"));
+    }
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     checks.is_true(blocked_enemy_handle.is_valid(), TEXT("Blocked enemy handle is bound"));
     checks.is_true(visible_enemy_handle.is_valid(), TEXT("Visible enemy handle is bound"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);

@@ -27,9 +27,7 @@ void FSpatialQueryEmptyScenario::on_tear_down() {
 /* ------------------------------------------------------------------------------------------ */
 void FSpatialQueryEmptyScenario::run_queries() {
     auto& queries{driver->orchestrator.get_spatial_query_manager()};
-    TArray<FSpatialQueryHit> hits;
     TArray<FRegistryEntityHandle> handles;
-    queries.resolve_hits(hits, handles);
 
     FVectors3f starts;
     FVectors3f ends;

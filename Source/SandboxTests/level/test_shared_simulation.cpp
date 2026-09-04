@@ -18,7 +18,6 @@
 #include "test_simulation_core_regressions_scenario.h"
 #include "test_spatial_query_empty_scenario.h"
 #include "test_spatial_query_line_of_sight_scenario.h"
-#include "test_spatial_query_resolution_scenario.h"
 #include "test_turret_acquisition_regressions_scenario.h"
 #include "test_turret_combat_scenario.h"
 #include "test_turret_line_of_sight_blocking_scenario.h"
@@ -197,7 +196,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(SpatialQuery_EmptyBatchesAndWorld, ml::FSpatialQueryEmptyScenario)
     SHARED_SIMULATION_TEST(SpatialQuery_TeamAndInclusiveRadiusFiltering,
                            ml::FSpatialQueryRangeScenario)
-    SHARED_SIMULATION_TEST(SpatialQuery_ResolvesHitBatches, ml::FSpatialQueryResolutionScenario)
     SHARED_SIMULATION_TEST(Collision_UniformGridContainsAllEntityTypes,
                            ml::FCollisionUniformGridScenario)
     SHARED_SIMULATION_TEST(Collision_UniformGridTraceHitsAndMisses,

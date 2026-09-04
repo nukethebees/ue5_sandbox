@@ -7,6 +7,8 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 
+class AActor;
+
 namespace ml {
 class FTurretSearchRequiresLineOfSightScenario final : public FSimulationTestScenario {
 
@@ -26,6 +28,7 @@ class FTurretSearchRequiresLineOfSightScenario final : public FSimulationTestSce
     FName const blocked_enemy_name{TEXT("BlockedEnemy")};
     FName const visible_enemy_name{TEXT("VisibleEnemy")};
     TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
+    AActor* blocker{nullptr};
     FRegistryEntityHandle blocked_enemy_handle{};
     FRegistryEntityHandle visible_enemy_handle{};
 };

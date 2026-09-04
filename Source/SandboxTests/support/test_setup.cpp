@@ -42,6 +42,7 @@ auto spawn_visibility_blocker(UWorld& world, FTransform const& transform, FName 
 
     blocker->AddInstanceComponent(collision);
     blocker->SetRootComponent(collision);
+    collision->SetMobility(EComponentMobility::Static);
     collision->SetBoxExtent(FVector{100.f, 1000.f, 1000.f});
     collision->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
     collision->SetCollisionObjectType(ECC_WorldStatic);

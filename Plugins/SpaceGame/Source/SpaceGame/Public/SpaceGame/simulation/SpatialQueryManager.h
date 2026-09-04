@@ -9,20 +9,20 @@
 #include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/CollisionSystem.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SpaceGame/simulation/LineTraces.h>
+#include <SpaceGame/simulation/TraceHits.h>
 
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
 #include <Containers/BitArray.h>
-#include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
 #include <mutex>
 #include <utility>
 
-class UPrimitiveComponent;
 class UWorld;
+class UPrimitiveComponent;
 struct FTestEntityRegistry;
 struct FCollisionGridConfig;
 
@@ -31,26 +31,9 @@ struct FSpatialQueryManager;
 }
 
 namespace ml::query_manager {
-enum class EHitResolverKind : uint8 {
-    PlayerShipMesh,
-    CapitalShipInstances,
-    CapitalShipFighterInstances,
-    StaticTurretInstances,
-    TubeSpinnerInstances,
-    Count,
-    Unknown,
-};
-
-struct FComponentResolver {
-    UPrimitiveComponent const* component{nullptr};
-    EHitResolverKind kind{EHitResolverKind::Unknown};
-};
-
 struct FThreadBuffers {
-    TArray<FSpatialQueryHit> line_of_sight_hits;
-    TArray<FSpatialQueryHit> sorted_line_of_sight_hits;
-    TArray<FRegistryEntityHandle> sorted_line_of_sight_entity_handles;
-    TArray<int32> line_of_sight_sort_indices;
+    FLineTraces line_traces;
+    FTraceHits trace_hits;
     TBitArray<> range_query_seen_entities;
 };
 
@@ -70,6 +53,13 @@ class FThreadBufferLease {
 }
 
 namespace ml {
+struct FLineTraceResult {
+    FVector3f location{FVector3f::ZeroVector};
+    FRegistryEntityHandle entity;
+    int32 static_geometry_index{INDEX_NONE};
+    bool hit{false};
+};
+
 struct SPACEGAME_API FSpatialQueryManager {
   public:
     FSpatialQueryManager() = default;
@@ -85,9 +75,8 @@ struct SPACEGAME_API FSpatialQueryManager {
 
     void reserve_thread_buffers(int32 count);
     void initialise_static_geometry(FCollisionGridConfig const& collision_grid_config);
+    auto add_static_geometry(UPrimitiveComponent& component) -> bool;
 
-    void resolve_hits(TConstArrayView<FSpatialQueryHit> hits,
-                      TArrayView<FRegistryEntityHandle> out_entity_handles) const;
     void trace_line_of_sight(FVectors3f::ConstView start_locations,
                              FVectors3f::ConstView end_locations,
                              TArrayView<FRegistryEntityHandle> out_entity_handles) const;
@@ -95,6 +84,16 @@ struct SPACEGAME_API FSpatialQueryManager {
                                       FVectors3f::ConstView end_locations,
                                       TConstArrayView<FRegistryEntityHandle> targets,
                                       TArrayView<uint8> has_los) const;
+    void have_clear_lines(FVectors3f::ConstView start_locations,
+                          FVectors3f::ConstView end_locations,
+                          TArrayView<uint8> clear_lines,
+                          TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
+    auto has_clear_line(FVector3f start_location,
+                        FVector3f end_location,
+                        FRegistryEntityHandle ignored_entity = {}) const -> bool;
+    auto trace_closest(FVector3f start_location,
+                       FVector3f end_location,
+                       FRegistryEntityHandle ignored_entity = {}) const -> FLineTraceResult;
 
     auto collect_non_team_entities_in_range(
         FVector3f const& origin,
@@ -112,31 +111,18 @@ struct SPACEGAME_API FSpatialQueryManager {
   private:
     friend class query_manager::FThreadBufferLease;
 
-    using EHitResolverKind = query_manager::EHitResolverKind;
-    using FComponentResolver = query_manager::FComponentResolver;
     using FThreadBuffers = query_manager::FThreadBuffers;
 
-    auto classify_component(UPrimitiveComponent const* component) const -> EHitResolverKind;
     auto acquire_thread_buffer() const -> int32;
     void release_thread_buffer(int32 index) const;
-    void resolve_line_of_sight_hits(query_manager::FThreadBuffers& buffers, int32 count) const;
 
-    using ComponentResolvers =
-        TArray<FComponentResolver, TInlineAllocator<std::to_underlying(EHitResolverKind::Count)>>;
     FTestEntityRegistry const* entity_registry{nullptr};
     UWorld* world{nullptr};
 
-    ComponentResolvers component_resolvers;
     mutable std::mutex thread_buffers_mutex;
     mutable TArray<FThreadBuffers> thread_buffers;
     mutable TArray<int32> free_thread_buffer_indices;
     mutable int32 active_thread_buffer_count{};
-
-    FTestSpaceShipSpatialQueryAccess player_ship_access;
-    FTestCapitalShipsSpatialQueryAccess capital_ships_access;
-    FTestCapitalShipFightersSpatialQueryAccess capital_ship_fighters_access;
-    FTestStaticTurretsSpatialQueryAccess static_turrets_access;
-    FTestTubeSpinnersSpatialQueryAccess tube_spinners_access;
 
     ioj::FCollisionSystem collision;
 };
