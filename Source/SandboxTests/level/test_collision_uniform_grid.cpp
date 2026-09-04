@@ -453,11 +453,10 @@ void FCollisionUniformGridScenario::sample_grid() {
         auto const local_aabb_centre{entity_aabbs.get_centre(aabb_index)};
         auto const half_extents{entity_aabbs.get_half_extents(aabb_index)};
         auto const world_aabb_centre{entity_location + local_aabb_centre};
-        auto const min_coord{grid.to_min_cell_coord(world_aabb_centre - half_extents)};
-        auto const max_coord{grid.to_max_cell_coord(world_aabb_centre + half_extents)};
+        auto const [min_coord, max_coord]{grid.to_cell_coord_bounds(
+            world_aabb_centre - half_extents, world_aabb_centre + half_extents)};
 
-        auto const is_in_bounds{grid.is_cell_coord_in_bounds(min_coord) &&
-                                grid.is_cell_coord_in_bounds(max_coord)};
+        auto const is_in_bounds{grid.is_cell_coord_in_bounds(min_coord, max_coord)};
         checks.is_true(is_in_bounds,
                        FString::Printf(TEXT("Expected collision-grid %s entity is placed"),
                                        LexToString(entity_type)));
@@ -1808,8 +1807,8 @@ void FCollisionUniformGridTraceScenario::test_dense_and_wide_aabbs() {
     FVector3f const wide_half_extents{160.f, 160.f, 160.f};
     TArray<FVector3f> const wide_locations{FVector3f::ZeroVector};
     FTraceFixture const wide_fixture{wide_locations, wide_half_extents};
-    auto const min_coord{wide_fixture.grid.to_min_cell_coord(-wide_half_extents)};
-    auto const max_coord{wide_fixture.grid.to_max_cell_coord(wide_half_extents)};
+    auto const [min_coord, max_coord]{
+        wide_fixture.grid.to_cell_coord_bounds(-wide_half_extents, wide_half_extents)};
     int32 membership_count{};
     for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
         for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {

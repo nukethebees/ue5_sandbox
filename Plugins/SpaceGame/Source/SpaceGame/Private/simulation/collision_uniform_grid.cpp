@@ -21,13 +21,19 @@ static_assert(FEntityAABBs::fighter_index ==
 static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntityType::TubeSpinner));
 static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
 
-auto to_closed_max_cell(float const value, float const cell_dim, int32 const grid_dim) -> int32 {
-    auto const half_grid_extent{static_cast<float>(grid_dim) * cell_dim * 0.5f};
+auto to_cell(float const value, float const cell_dim, float const half_grid_extent) -> int32 {
+    return FMath::FloorToInt((value + half_grid_extent) / cell_dim);
+}
+
+auto to_closed_max_cell(float const value,
+                        float const cell_dim,
+                        int32 const grid_dim,
+                        float const half_grid_extent) -> int32 {
     if (value == half_grid_extent) {
         return grid_dim - 1;
     }
 
-    return FMath::FloorToInt((value + half_grid_extent) / cell_dim);
+    return to_cell(value, cell_dim, half_grid_extent);
 }
 
 auto clip_segment_to_half_open_aabb(FVector3f const start,
@@ -142,7 +148,8 @@ void CollisionUniformGrid::reset() {
     entities_buffer_.reset();
     static_aabbs_.reset();
     cell_static_range_indices_.Reset();
-    static_cell_ranges_.Reset();
+    static_cell_range_offsets_.Reset();
+    static_cell_range_counts_.Reset();
     static_aabb_indices_.Reset();
 }
 
@@ -155,7 +162,8 @@ void CollisionUniformGrid::set_static_aabbs(WorldAABBs static_aabbs) {
 
     static_aabbs.validate_array_sizes();
     static_aabbs_ = MoveTemp(static_aabbs);
-    static_cell_ranges_.Reset();
+    static_cell_range_offsets_.Reset();
+    static_cell_range_counts_.Reset();
     static_aabb_indices_.Reset();
 
     auto const n_cells{num_cells()};
@@ -166,9 +174,9 @@ void CollisionUniformGrid::set_static_aabbs(WorldAABBs static_aabbs) {
 
     auto const static_count{static_aabbs_.num()};
     for (int32 static_index{}; static_index < static_count; ++static_index) {
-        auto const min_coord{to_min_cell_coord(static_aabbs_.mins[static_index])};
-        auto const max_coord{to_max_cell_coord(static_aabbs_.maxes[static_index])};
-        checkf(is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord),
+        auto const [min_coord, max_coord]{to_cell_coord_bounds(static_aabbs_.mins[static_index],
+                                                               static_aabbs_.maxes[static_index])};
+        checkf(is_cell_coord_in_bounds(min_coord, max_coord),
                TEXT("Static collision AABB %d is outside the collision grid"),
                static_index);
 
@@ -181,43 +189,49 @@ void CollisionUniformGrid::set_static_aabbs(WorldAABBs static_aabbs) {
         }
     }
 
-    int32 membership_count{};
+    int64 membership_count{};
     for (int32 cell_index{}; cell_index < n_cells; ++cell_index) {
         auto const count{cell_counts[cell_index]};
         if (count == 0) {
             continue;
         }
 
-        cell_static_range_indices_[cell_index] = static_cell_ranges_.Num();
-        static_cell_ranges_.Add({membership_count, count});
+        checkf(count <= std::numeric_limits<uint16>::max(),
+               TEXT("Static collision cell %d contains %d AABBs, exceeding uint16 capacity"),
+               cell_index,
+               count);
+        checkf(membership_count + count <= std::numeric_limits<int32>::max(),
+               TEXT("Static collision grid contains too many cell memberships"));
+
+        cell_static_range_indices_[cell_index] = static_cell_range_offsets_.Num();
+        static_cell_range_offsets_.Add(static_cast<uint32>(membership_count));
+        static_cell_range_counts_.Add(static_cast<uint16>(count));
         membership_count += count;
     }
 
-    static_aabb_indices_.AddUninitialized(membership_count);
-    TArray<int32> write_indices;
-    write_indices.Reserve(static_cell_ranges_.Num());
-    for (auto const& range : static_cell_ranges_) {
-        write_indices.Add(range.offset);
-    }
+    static_aabb_indices_.AddUninitialized(static_cast<int32>(membership_count));
+    TArray<uint32> write_indices{static_cell_range_offsets_};
 
     for (int32 static_index{}; static_index < static_count; ++static_index) {
-        auto const min_coord{to_min_cell_coord(static_aabbs_.mins[static_index])};
-        auto const max_coord{to_max_cell_coord(static_aabbs_.maxes[static_index])};
+        auto const [min_coord, max_coord]{to_cell_coord_bounds(static_aabbs_.mins[static_index],
+                                                               static_aabbs_.maxes[static_index])};
 
         for (int32 x{min_coord.X}; x <= max_coord.X; ++x) {
             for (int32 y{min_coord.Y}; y <= max_coord.Y; ++y) {
                 for (int32 z{min_coord.Z}; z <= max_coord.Z; ++z) {
                     auto const range_index{cell_static_range_indices_[to_index(x, y, z)]};
-                    static_aabb_indices_[write_indices[range_index]++] = static_index;
+                    auto& write_index{write_indices[range_index]};
+                    static_aabb_indices_[static_cast<int32>(write_index++)] = static_index;
                 }
             }
         }
     }
 
-    auto const range_count{static_cell_ranges_.Num()};
+    auto const range_count{static_cell_range_offsets_.Num()};
     for (int32 range_index{}; range_index < range_count; ++range_index) {
-        auto const& range{static_cell_ranges_[range_index]};
-        check(write_indices[range_index] == range.offset + range.count);
+        auto const offset{static_cell_range_offsets_[range_index]};
+        auto const count{static_cell_range_counts_[range_index]};
+        check(write_indices[range_index] == offset + count);
     }
 }
 
@@ -277,10 +291,9 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
             auto const min_point{world_aabb_centre - half_extents};
             auto const max_point{world_aabb_centre + half_extents};
 
-            auto const min_coord{to_min_cell_coord(min_point)};
-            auto const max_coord{to_max_cell_coord(max_point)};
+            auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
 
-            if (!is_cell_coord_in_bounds(min_coord) || !is_cell_coord_in_bounds(max_coord)) {
+            if (!is_cell_coord_in_bounds(min_coord, max_coord)) {
                 FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
                                                 static_cast<float>(grid_dims_.Y),
                                                 static_cast<float>(grid_dims_.Z)};
@@ -591,9 +604,10 @@ void CollisionUniformGrid::trace_aabbs(
                                               ? cell_static_range_indices_[cell_index]
                                               : INDEX_NONE};
             if (static_range_index != INDEX_NONE) {
-                auto const& range{static_cell_ranges_[static_range_index]};
-                auto const static_indices{
-                    TConstArrayView<int32>{static_aabb_indices_}.Slice(range.offset, range.count)};
+                auto const offset{static_cell_range_offsets_[static_range_index]};
+                auto const count{static_cell_range_counts_[static_range_index]};
+                auto const static_indices{TConstArrayView<int32>{static_aabb_indices_}.Slice(
+                    static_cast<int32>(offset), static_cast<int32>(count))};
                 auto const static_aabbs{static_aabbs_.get_const_view()};
 
                 for (auto const static_index : static_indices) {
@@ -625,15 +639,15 @@ void CollisionUniformGrid::trace_aabbs(
 
 auto CollisionUniformGrid::to_cell_x(float const value) const -> int32 {
     auto const half_grid_extent{static_cast<float>(grid_dims_.X) * cell_dims_.X * 0.5f};
-    return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.X);
+    return to_cell(value, cell_dims_.X, half_grid_extent);
 }
 auto CollisionUniformGrid::to_cell_y(float const value) const -> int32 {
     auto const half_grid_extent{static_cast<float>(grid_dims_.Y) * cell_dims_.Y * 0.5f};
-    return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.Y);
+    return to_cell(value, cell_dims_.Y, half_grid_extent);
 }
 auto CollisionUniformGrid::to_cell_z(float const value) const -> int32 {
     auto const half_grid_extent{static_cast<float>(grid_dims_.Z) * cell_dims_.Z * 0.5f};
-    return FMath::FloorToInt((value + half_grid_extent) / cell_dims_.Z);
+    return to_cell(value, cell_dims_.Z, half_grid_extent);
 }
 auto CollisionUniformGrid::to_cell_coord(FVector3f const pos) const -> FIntVector3 {
     return {
@@ -646,10 +660,31 @@ auto CollisionUniformGrid::to_min_cell_coord(FVector3f const pos) const -> FIntV
     return to_cell_coord(pos);
 }
 auto CollisionUniformGrid::to_max_cell_coord(FVector3f const pos) const -> FIntVector3 {
+    FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
+                                    static_cast<float>(grid_dims_.Y),
+                                    static_cast<float>(grid_dims_.Z)};
+    auto const half_grid_extents{grid_dimensions * cell_dims_ * 0.5f};
     return {
-        to_closed_max_cell(pos.X, cell_dims_.X, grid_dims_.X),
-        to_closed_max_cell(pos.Y, cell_dims_.Y, grid_dims_.Y),
-        to_closed_max_cell(pos.Z, cell_dims_.Z, grid_dims_.Z),
+        to_closed_max_cell(pos.X, cell_dims_.X, grid_dims_.X, half_grid_extents.X),
+        to_closed_max_cell(pos.Y, cell_dims_.Y, grid_dims_.Y, half_grid_extents.Y),
+        to_closed_max_cell(pos.Z, cell_dims_.Z, grid_dims_.Z, half_grid_extents.Z),
+    };
+}
+auto CollisionUniformGrid::to_cell_coord_bounds(FVector3f const min_point,
+                                                FVector3f const max_point) const
+    -> FCellCoordBounds {
+    FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
+                                    static_cast<float>(grid_dims_.Y),
+                                    static_cast<float>(grid_dims_.Z)};
+    auto const half_grid_extents{grid_dimensions * cell_dims_ * 0.5f};
+
+    return {
+        {to_cell(min_point.X, cell_dims_.X, half_grid_extents.X),
+         to_cell(min_point.Y, cell_dims_.Y, half_grid_extents.Y),
+         to_cell(min_point.Z, cell_dims_.Z, half_grid_extents.Z)},
+        {to_closed_max_cell(max_point.X, cell_dims_.X, grid_dims_.X, half_grid_extents.X),
+         to_closed_max_cell(max_point.Y, cell_dims_.Y, grid_dims_.Y, half_grid_extents.Y),
+         to_closed_max_cell(max_point.Z, cell_dims_.Z, grid_dims_.Z, half_grid_extents.Z)},
     };
 }
 auto CollisionUniformGrid::to_cell_min_x(int32 const x) const -> float {
@@ -698,6 +733,10 @@ auto CollisionUniformGrid::to_cell_centre(FIntVector3 const coord) const -> FVec
 auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const coord) const -> bool {
     return coord.X >= 0 && coord.X < grid_dims_.X && coord.Y >= 0 && coord.Y < grid_dims_.Y &&
            coord.Z >= 0 && coord.Z < grid_dims_.Z;
+}
+auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const min_coord,
+                                                   FIntVector3 const max_coord) const -> bool {
+    return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
 }
 auto CollisionUniformGrid::to_string(FIntVector3 const value) -> FString {
     return FString::Printf(TEXT("(%d, %d, %d)"), value.X, value.Y, value.Z);

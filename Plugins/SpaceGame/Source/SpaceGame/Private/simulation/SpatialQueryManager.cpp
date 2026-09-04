@@ -406,8 +406,7 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     FVector3f const radius_extent{abs_radius, abs_radius, abs_radius};
     auto const min_point{origin - radius_extent};
     auto const max_point{origin + radius_extent};
-    auto min_coord{grid.to_min_cell_coord(min_point)};
-    auto max_coord{grid.to_max_cell_coord(max_point)};
+    auto [min_coord, max_coord]{grid.to_cell_coord_bounds(min_point, max_point)};
     auto const grid_dims{grid.get_grid_dims()};
     auto const max_grid_coord{grid_dims - FIntVector3{1, 1, 1}};
     if (max_coord.X < 0 || max_coord.Y < 0 || max_coord.Z < 0 || min_coord.X > max_grid_coord.X ||

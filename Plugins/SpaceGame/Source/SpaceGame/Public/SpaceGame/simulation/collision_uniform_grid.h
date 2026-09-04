@@ -16,6 +16,11 @@ struct FTraceHitsView;
 }
 
 namespace ml::ioj {
+struct FCellCoordBounds {
+    FIntVector3 min;
+    FIntVector3 max;
+};
+
 struct SPACEGAME_API CollisionUniformGrid {
     static inline FVector3f const origin{FVector3f::ZeroVector};
 
@@ -36,6 +41,7 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_cell_coord(FVector3f pos) const -> FIntVector3;
     auto to_min_cell_coord(FVector3f pos) const -> FIntVector3;
     auto to_max_cell_coord(FVector3f pos) const -> FIntVector3;
+    auto to_cell_coord_bounds(FVector3f min_point, FVector3f max_point) const -> FCellCoordBounds;
 
     auto to_cell_min_x(int32 x) const -> float;
     auto to_cell_min_y(int32 y) const -> float;
@@ -50,6 +56,7 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_cell_centre(FIntVector3 coord) const -> FVector3f;
 
     auto is_cell_coord_in_bounds(FIntVector3 coord) const -> bool;
+    auto is_cell_coord_in_bounds(FIntVector3 min_coord, FIntVector3 max_coord) const -> bool;
     static auto to_string(FIntVector3 value) -> FString;
 
     void reset();
@@ -83,14 +90,10 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     FEntityCellData entities_buffer_;
 
-    struct FStaticCellRange {
-        int32 offset{};
-        int32 count{};
-    };
-
     WorldAABBs static_aabbs_;
     TArray<int32> cell_static_range_indices_;
-    TArray<FStaticCellRange> static_cell_ranges_;
+    TArray<uint32> static_cell_range_offsets_;
+    TArray<uint16> static_cell_range_counts_;
     TArray<int32> static_aabb_indices_;
 };
 }
