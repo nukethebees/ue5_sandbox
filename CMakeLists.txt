@@ -312,7 +312,7 @@ add_test(
     "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
 )
 set_tests_properties(SandboxISMC.RenderTests PROPERTIES
-  LABELS level
+  LABELS "level;all"
   TIMEOUT 900
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
 )
