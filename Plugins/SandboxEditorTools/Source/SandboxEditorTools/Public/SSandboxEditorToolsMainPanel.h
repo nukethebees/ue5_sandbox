@@ -32,7 +32,7 @@ class SSandboxEditorToolsMainPanel : public SCompoundWidget {
 
     void Construct(FArguments const& args);
   protected:
-    void construct_children(FArguments const& args);
+    void construct_children();
     auto get_subsystem() -> USandboxEditorToolsSubsystem*;
 
     auto on_move_cursor_to_button_clicked() -> FReply;

@@ -41,6 +41,7 @@ public class SandboxEditorTools : ModuleRules
                 "EditorStyle",
                 "Engine",
                 "PropertyEditor",
+                "SandboxUI",
                 "Slate",
                 "SlateCore",
                 "ToolMenus",

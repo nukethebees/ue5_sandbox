@@ -1,6 +1,8 @@
 #include "SbxUIExperiments/HeatmapRDG/HeatmapRDGShowcase.h"
 
 #include "Benchmarks/Heatmap/HeatmapBenchmark.h"
+#include "SandboxUI/slate/SlateSlots.h"
+#include "SandboxUI/widgets/SLabeledRow.h"
 #include "SbxUIExperiments/HeatmapRDG/HeatmapRDGWidget.h"
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
@@ -31,63 +33,60 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
         .BorderImage(FAppStyle::GetBrush("ToolPanel.GroupBorder"))
         .Padding(12.0f)
             [SNew(SVerticalBox) +
-             SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 4.0f)
+             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 4.0f})
                  [SNew(STextBlock)
                       .Text(NSLOCTEXT("HeatmapRDG", "Title", "RDG GPU Heatmap Showcase"))
                       .Font(FAppStyle::Get().GetFontStyle("HeadingExtraSmall"))] +
-             SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
+             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
                  [SNew(STextBlock)
                       .Text(NSLOCTEXT("HeatmapRDG",
                                       "Description",
                                       "Each update uploads one dense scalar grid and draws one "
                                       "Slate image."))] +
-             SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)
-                 [SNew(SHorizontalBox) +
-                  SHorizontalBox::Slot()
-                      .AutoWidth()
-                      .VAlign(VAlign_Center)
-                      .Padding(0.0f, 0.0f, 8.0f, 0.0f)
-                          [SNew(STextBlock)
-                               .Text(NSLOCTEXT(
-                                   "HeatmapRDG", "InputResolution", "Input grid resolution:"))] +
-                  SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                      [make_size_button(FText::FromString(TEXT("32 x 32")),
-                                        FOnClicked::CreateUObject(
-                                            this, &UHeatmapRDGShowcase::select_grid_size, 32))] +
-                  SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                      [make_size_button(FText::FromString(TEXT("64 x 64")),
-                                        FOnClicked::CreateUObject(
-                                            this, &UHeatmapRDGShowcase::select_grid_size, 64))] +
-                  SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                      [make_size_button(FText::FromString(TEXT("128 x 128")),
-                                        FOnClicked::CreateUObject(
-                                            this, &UHeatmapRDGShowcase::select_grid_size, 128))] +
-                  SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                      [make_size_button(FText::FromString(TEXT("256 x 256")),
-                                        FOnClicked::CreateUObject(
-                                            this, &UHeatmapRDGShowcase::select_grid_size, 256))] +
-                  SHorizontalBox::Slot().AutoWidth()[make_size_button(
-                      FText::FromString(TEXT("512 x 512")),
-                      FOnClicked::CreateUObject(
-                          this, &UHeatmapRDGShowcase::select_grid_size, 512))]] +
-             SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
-                 [SNew(SHorizontalBox) +
-                  SHorizontalBox::Slot()
-                      .AutoWidth()
-                      .VAlign(VAlign_Center)
-                      .Padding(0.0f, 0.0f, 8.0f, 0.0f)
-                          [SNew(STextBlock).Text(NSLOCTEXT("HeatmapRDG", "Pattern", "Pattern:"))] +
-                  SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
-                      [SNew(SButton)
-                           .Text(NSLOCTEXT("HeatmapRDG", "Hotspots", "Hotspots"))
-                           .OnClicked_UObject(this, &UHeatmapRDGShowcase::show_hotspots)] +
-                  SHorizontalBox::Slot().AutoWidth()
-                      [SNew(SButton)
-                           .Text(NSLOCTEXT("HeatmapRDG", "Gradient", "Gradient + checker"))
-                           .OnClicked_UObject(this, &UHeatmapRDGShowcase::show_gradient)]] +
-             SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 10.0f)
+             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 6.0f})
+                 [SNew(SLabeledRow)
+                      .Label(NSLOCTEXT("HeatmapRDG", "InputResolution", "Input grid resolution:"))
+                          [SNew(SHorizontalBox) +
+                           SandboxUI::Slate::hbox_auto_slot(
+                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
+                               FText::FromString(TEXT("32 x 32")),
+                               FOnClicked::CreateUObject(
+                                   this, &UHeatmapRDGShowcase::select_grid_size, 32))] +
+                           SandboxUI::Slate::hbox_auto_slot(
+                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
+                               FText::FromString(TEXT("64 x 64")),
+                               FOnClicked::CreateUObject(
+                                   this, &UHeatmapRDGShowcase::select_grid_size, 64))] +
+                           SandboxUI::Slate::hbox_auto_slot(
+                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
+                               FText::FromString(TEXT("128 x 128")),
+                               FOnClicked::CreateUObject(
+                                   this, &UHeatmapRDGShowcase::select_grid_size, 128))] +
+                           SandboxUI::Slate::hbox_auto_slot(
+                               FMargin{0.0f, 0.0f, 4.0f, 0.0f})[make_size_button(
+                               FText::FromString(TEXT("256 x 256")),
+                               FOnClicked::CreateUObject(
+                                   this, &UHeatmapRDGShowcase::select_grid_size, 256))] +
+                           SandboxUI::Slate::hbox_auto_slot()[make_size_button(
+                               FText::FromString(TEXT("512 x 512")),
+                               FOnClicked::CreateUObject(
+                                   this, &UHeatmapRDGShowcase::select_grid_size, 512))]]] +
+             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
+                 [SNew(SLabeledRow)
+                      .Label(NSLOCTEXT("HeatmapRDG", "Pattern", "Pattern:"))
+                          [SNew(SHorizontalBox) +
+                           SandboxUI::Slate::hbox_auto_slot(FMargin{0.0f, 0.0f, 4.0f, 0.0f})
+                               [SNew(SButton)
+                                    .Text(NSLOCTEXT("HeatmapRDG", "Hotspots", "Hotspots"))
+                                    .OnClicked_UObject(this, &UHeatmapRDGShowcase::show_hotspots)] +
+                           SandboxUI::Slate::hbox_auto_slot()
+                               [SNew(SButton)
+                                    .Text(NSLOCTEXT("HeatmapRDG", "Gradient", "Gradient + checker"))
+                                    .OnClicked_UObject(this,
+                                                       &UHeatmapRDGShowcase::show_gradient)]]] +
+             SandboxUI::Slate::vbox_auto_slot(FMargin{0.0f, 0.0f, 0.0f, 10.0f})
                  [SNew(SVerticalBox) +
-                  SVerticalBox::Slot().AutoHeight()
+                  SandboxUI::Slate::vbox_auto_slot()
                       [SNew(SButton)
                            .Text(NSLOCTEXT("HeatmapRDG",
                                            "RunBenchmark",
@@ -97,16 +96,15 @@ TSharedRef<SWidget> UHeatmapRDGShowcase::RebuildWidget() {
                                          "RunBenchmarkTooltip",
                                          "Runs a short CPU benchmark at 32x32 through 512x512."))
                            .OnClicked_UObject(this, &UHeatmapRDGShowcase::run_benchmark)] +
-                  SVerticalBox::Slot().AutoHeight().Padding(
-                      0.0f, 4.0f, 0.0f, 0.0f)[SNew(SBox).HeightOverride(
+                  SandboxUI::Slate::vbox_auto_slot(
+                      FMargin{0.0f, 4.0f, 0.0f, 0.0f})[SNew(SBox).HeightOverride(
                       180.0f)[SAssignNew(benchmark_output_, SMultiLineEditableTextBox)
                                   .IsReadOnly(true)
                                   .Text(NSLOCTEXT("HeatmapRDG",
                                                   "BenchmarkInstructions",
                                                   "Results appear here. The CLI writes the same "
                                                   "stages to CSV."))]]] +
-             SVerticalBox::Slot().FillHeight(
-                 1.0f)[SNew(SBox).MinDesiredWidth(512.0f).MinDesiredHeight(
+             SandboxUI::Slate::vbox_fill_slot()[SNew(SBox).MinDesiredWidth(512.0f).MinDesiredHeight(
                  512.0f)[heatmap_widget_->TakeWidget()]]];
 }
 
