@@ -1,0 +1,35 @@
+(widget-class UScatter3DShowcase
+  (function RebuildWidget
+    (SExperimentPanel
+      :Title (loc "Scatter3D" "Title" "RDG 3D Scatter Experiment")
+      :Description (loc "Scatter3D" "Description" "Deterministic CPU clusters are uploaded only when changed, rasterized by RDG, and displayed as one Slate image.")
+      (slot Controls
+        (vbox
+          (auto :padding (0 0 0 10)
+            (SLabeledRow
+              :Label (loc "Scatter3D" "PointCount" "Points")
+              :ContentHAlign HAlign_Left
+              (SSpinBox<int32>
+                :MinValue 1
+                :MaxValue 65536
+                :MinSliderValue 1
+                :MaxSliderValue 65536
+                :SliderExponent 4.0f
+                :Delta 1
+                :MinDesiredWidth 140.0f
+                :Value 4096
+                :OnValueCommitted (callback on_value_committed))))
+          (auto
+            (SExperimentBenchmark
+              :ButtonText (loc "Scatter3D" "RunBenchmark" "Benchmark RDG point scaling")
+              :ToolTipText (loc "Scatter3D" "RunBenchmarkTooltip" "Runs a short 512x512 benchmark from 1 to 65,536 points.")
+              :OnClicked (uobject run_benchmark)
+              (slot Output
+                (assign benchmark_output_ SMultiLineEditableTextBox
+                  :IsReadOnly true
+                  :Text (loc "Scatter3D" "BenchmarkInstructions" "Results appear here. The CLI writes the same stages to CSV.")))))))
+      (slot Preview
+        (SBox
+          :WidthOverride 512.0f
+          :HeightOverride 512.0f
+          (existing scatter_widget))))))

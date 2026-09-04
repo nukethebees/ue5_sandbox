@@ -29,6 +29,11 @@ set(SLATE_CODEGEN_RADAR_DIR
 )
 set(SLATE_CODEGEN_RADAR_MANIFEST "${SLATE_CODEGEN_RADAR_DIR}/manifest.json")
 set(SLATE_CODEGEN_RADAR_INPUT "${SLATE_CODEGEN_RADAR_DIR}/Radar3DShowcase.sbxslate")
+set(SLATE_CODEGEN_SCATTER_DIR
+  "${PROJECT_SOURCE_DIR}/Plugins/SandboxUI/Source/SbxUIExperiments/Private/Scatter3D"
+)
+set(SLATE_CODEGEN_SCATTER_MANIFEST "${SLATE_CODEGEN_SCATTER_DIR}/manifest.json")
+set(SLATE_CODEGEN_SCATTER_INPUT "${SLATE_CODEGEN_SCATTER_DIR}/Scatter3DShowcase.sbxslate")
 set(SLATE_CODEGEN_SMOKE_DIR
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke"
 )
@@ -37,11 +42,14 @@ set(SLATE_CODEGEN_SMOKE_INPUT "${SLATE_CODEGEN_SMOKE_DIR}/SlateDslSmokeWidget.sb
 
 add_custom_target(generate-slate-code
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_RADAR_MANIFEST}"
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SCATTER_MANIFEST}"
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}"
   DEPENDS
     sandbox-slatec
     "${SLATE_CODEGEN_RADAR_MANIFEST}"
     "${SLATE_CODEGEN_RADAR_INPUT}"
+    "${SLATE_CODEGEN_SCATTER_MANIFEST}"
+    "${SLATE_CODEGEN_SCATTER_INPUT}"
     "${SLATE_CODEGEN_SMOKE_MANIFEST}"
     "${SLATE_CODEGEN_SMOKE_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -52,11 +60,14 @@ add_custom_target(generate-slate-code
 
 add_custom_target(check-generated-slate-code
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_RADAR_MANIFEST}" --check
+  COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SCATTER_MANIFEST}" --check
   COMMAND sandbox-slatec --manifest "${SLATE_CODEGEN_SMOKE_MANIFEST}" --check
   DEPENDS
     sandbox-slatec
     "${SLATE_CODEGEN_RADAR_MANIFEST}"
     "${SLATE_CODEGEN_RADAR_INPUT}"
+    "${SLATE_CODEGEN_SCATTER_MANIFEST}"
+    "${SLATE_CODEGEN_SCATTER_INPUT}"
     "${SLATE_CODEGEN_SMOKE_MANIFEST}"
     "${SLATE_CODEGEN_SMOKE_INPUT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
