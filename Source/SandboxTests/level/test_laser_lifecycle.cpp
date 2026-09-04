@@ -2,6 +2,7 @@
 
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestCollisionActor.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SpaceGame/combat/lasers/TestLasers.h>
@@ -11,6 +12,8 @@
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
+
+#include <Components/BoxComponent.h>
 
 namespace ml {
 namespace {
@@ -38,6 +41,11 @@ void FLaserLifecycleScenario::on_tear_down() {
         driver->orchestrator.clear_end_tick_test_hook();
         driver->orchestrator.pause_simulation();
     }
+
+    if (scenario_ == ELaserLifecycleScenario::WorldBlocker) {
+        auto& config{const_cast<USpaceGameLevelConfig&>(context_.config)};
+        config.collision_grid.harvested_collision_actor_classes = previous_harvested_classes;
+    }
 }
 
 void FLaserLifecycleScenario::spawn_fixture() {
@@ -64,9 +72,15 @@ void FLaserLifecycleScenario::spawn_fixture() {
     target->set_spawn_cooldown(60.f);
 
     if (scenario_ == ELaserLifecycleScenario::WorldBlocker) {
-        auto* const blocker{spawn_visibility_blocker(
-            context_.world, FTransform{FVector::ZeroVector}, TEXT("laser_world_blocker"))};
-        checks.is_valid(blocker, TEXT("Laser world blocker is spawned"));
+        auto& config{const_cast<USpaceGameLevelConfig&>(context_.config)};
+        previous_harvested_classes = config.collision_grid.harvested_collision_actor_classes;
+        config.collision_grid.harvested_collision_actor_classes.AddUnique(
+            ASandboxTestCollisionActor::StaticClass());
+
+        world_blocker = context_.world.SpawnActor<ASandboxTestDerivedCollisionActor>(
+            ASandboxTestDerivedCollisionActor::StaticClass(),
+            FTransform{FVector{-1000.f, 0.f, 0.f}});
+        checks.is_valid(world_blocker.Get(), TEXT("Laser world blocker is spawned"));
     }
 
     ATestBatchOrchestrator::on_proxy_entities_bound.AddRaw(this,
@@ -88,6 +102,11 @@ void FLaserLifecycleScenario::begin_scenario() {
     orchestrator.start_simulation();
     checks.is_true(shooter_handle.is_valid(), TEXT("Laser shooter handle is bound"));
     checks.is_true(target_handle.is_valid(), TEXT("Laser target handle is bound"));
+    if (scenario_ == ELaserLifecycleScenario::WorldBlocker && world_blocker.IsValid()) {
+        checks.is_true(world_blocker->get_collision_component()->GetCollisionEnabled() ==
+                           ECollisionEnabled::NoCollision,
+                       TEXT("Harvested world blocker has Unreal collision disabled"));
+    }
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const end_time{scenario_ == ELaserLifecycleScenario::Miss ? expiry_test_end_time
@@ -113,7 +132,7 @@ void FLaserLifecycleScenario::queue_projectiles() {
         start = FVector3f{0.f, 0.f, 100000.f};
         fire_direction = FVector3f{0.f, 0.f, 1.f};
     } else if (scenario_ == ELaserLifecycleScenario::WorldBlocker) {
-        start = FVector3f{-1000.f, 0.f, 0.f};
+        start = FVector3f{-2000.f, 0.f, 0.f};
         fire_direction = FVector3f{1.f, 0.f, 0.f};
     }
     auto const projectile_count{scenario_ == ELaserLifecycleScenario::SimultaneousLethalHits ? 2

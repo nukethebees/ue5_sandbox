@@ -16,13 +16,9 @@
 #include <Async/ParallelFor.h>
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
-#include <Engine/HitResult.h>
-#include <Engine/World.h>
 #include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 #include <Templates/Greater.h>
-
-#include <functional>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserCount, TEXT("Sandbox/TestLaserCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
@@ -247,7 +243,6 @@ void ATestLasers::handle_collisions(float const dt) {
     });
 
     merge_collision_data();
-    query_manager->resolve_hits(collision_hits, collision_damage_events.damaged_entities);
     entity_registry->queue_direct_damage_events(collision_damage_events);
 
     to_remove.Sort(TGreater<int32>{});
@@ -260,156 +255,74 @@ void ATestLasers::check_collision_thread(int32 const job_index,
                                          ThreadLocalCollisionData& data,
                                          ATestLasers const& lasers) {
     auto const n{lasers.get_num_instances()};
-    auto const* world{lasers.GetWorld()};
-
-    ml::reset(data.hits,
-              data.components_hit,
-              data.component_hit_counts,
-              data.damage_events,
-              data.to_remove,
-              data.hit_details);
-
-    FHitResult hit{};
-
-    FCollisionQueryParams params{};
-    params.AddIgnoredActor(&lasers);
+    ml::reset(data.traces, data.trace_hits, data.damage_events, data.to_remove, data.hit_details);
 
     auto const i_start{job_index * updates_per_slice};
     auto const i_end{FMath::Min(i_start + updates_per_slice, n)};
+    auto const trace_count{i_end - i_start};
+    if (trace_count <= 0) {
+        return;
+    }
 
-    for (int32 i{i_start}; i < i_end; ++i) {
-        auto const start{ml::get_vector3d(lasers.entities.locations, i)};
-        auto const end{start + dt * FVector{lasers.entities.velocities.xs[i],
-                                            lasers.entities.velocities.ys[i],
-                                            lasers.entities.velocities.zs[i]}};
+    data.traces.add_uninitialised(trace_count);
+    data.trace_hits.add_defaulted(trace_count);
 
-        auto const did_hit{
-            world->LineTraceSingleByChannel(hit, start, end, ECC_Visibility, params)};
+    for (int32 trace_index{}; trace_index < trace_count; ++trace_index) {
+        auto const entity_index{i_start + trace_index};
+        auto const start{ml::get_vector3f(lasers.entities.locations, entity_index)};
+        auto const velocity{ml::get_vector3f(lasers.entities.velocities, entity_index)};
+        data.traces.starts.set(trace_index, start);
+        data.traces.ends.set(trace_index, start + dt * velocity);
+    }
 
-        if (!did_hit) {
+    auto const ignored_entities{
+        TConstArrayView<FRegistryEntityHandle>{lasers.entities.instigator_handles}.Slice(
+            i_start, trace_count)};
+    lasers.query_manager->get_collision_system().get_uniform_grid().trace_aabbs(
+        data.traces.get_const_view(), data.trace_hits.get_view(), ignored_entities);
+
+    for (int32 trace_index{}; trace_index < trace_count; ++trace_index) {
+        if (data.trace_hits.hits[trace_index] == 0) {
             continue;
         }
 
-        data.to_remove.Add(i);
+        auto const entity_index{i_start + trace_index};
+        data.to_remove.Add(entity_index);
 
-        auto const* const hit_component{hit.GetComponent()};
-        data.hits.Add({hit_component, hit.Item});
-        auto const component_count_index{data.components_hit.Find(hit_component)};
-        if (component_count_index == INDEX_NONE) {
-            data.components_hit.Add(hit_component);
-            data.component_hit_counts.Add(1);
-        } else {
-            ++data.component_hit_counts[component_count_index];
+        auto const damaged_entity{data.trace_hits.entities[trace_index]};
+        if (damaged_entity.is_valid()) {
+            data.damage_events.damaged_entities.Add(damaged_entity);
+            data.damage_events.damage_amounts.Add(lasers.entities.damages[entity_index]);
+            data.damage_events.instigators.Add(lasers.entities.instigator_handles[entity_index]);
         }
-        data.damage_events.damaged_entities.AddDefaulted();
-        data.damage_events.damage_amounts.Add(lasers.entities.damages[i]);
-        data.damage_events.instigators.Add(lasers.entities.instigator_handles[i]);
 
-        ml::append(data.hit_details.locations, hit.Location);
+        data.hit_details.locations.add(data.trace_hits.locations[trace_index]);
     }
 }
 
 void ATestLasers::merge_collision_data() {
     auto& data{thread_local_collision_data};
+    ml::reset(to_remove, hit_details, collision_damage_events);
 
-    collision_hit_ranges.reset();
-
-    // First combine only the small worker-local component count arrays.
     for (int32 i{}; i < collision_jobs; ++i) {
         auto const& thread_data{data[i]};
-        auto const n_component_counts{thread_data.component_hit_counts.Num()};
-
-        for (int32 j{}; j < n_component_counts; ++j) {
-            auto const component_count{thread_data.component_hit_counts[j]};
-            auto const component{thread_data.components_hit[j]};
-
-            auto const range_index{collision_hit_ranges.components.Find(component)};
-
-            if (range_index == INDEX_NONE) {
-                collision_hit_ranges.components.Add(component);
-                collision_hit_ranges.counts.Add(component_count);
-                collision_hit_ranges.offsets.Add(0);
-                collision_hit_ranges.next_write_indices.Add(0);
-            } else {
-                collision_hit_ranges.counts[range_index] += component_count;
-            }
-        }
-    }
-
-    // Sort the unique components by address, then assign their contiguous output ranges.
-    std::less<void const*> const pointer_less{};
-    auto const n_ranges{collision_hit_ranges.num()};
-    collision_hit_range_sort_indices.Reset();
-    collision_hit_range_sort_indices.Reserve(n_ranges);
-    collision_hit_range_sort_indices.AddUninitialized(n_ranges);
-    collision_hit_ranges.sort(
-        [pointer_less](auto const& ranges, int32 const lhs, int32 const rhs) {
-            return pointer_less(ranges.components[lhs], ranges.components[rhs]);
-        },
-        collision_hit_range_sort_indices);
-
-    int32 total_hits{};
-    for (int32 i{}; i < n_ranges; ++i) {
-        if (i > 0) {
-            check(pointer_less(collision_hit_ranges.components[i - 1],
-                               collision_hit_ranges.components[i]));
-        }
-
-        collision_hit_ranges.offsets[i] = total_hits;
-        collision_hit_ranges.next_write_indices[i] = total_hits;
-        total_hits += collision_hit_ranges.counts[i];
-    }
-
-    // Allocate every combined output once now that the exact collision count is known.
-    ml::reset(to_remove, hit_details, collision_hits, collision_damage_events);
-    to_remove.AddUninitialized(total_hits);
-    hit_details.add_uninitialised(total_hits);
-    collision_hits.AddUninitialized(total_hits);
-    collision_damage_events.add_uninitialised(total_hits);
-
-    // Write all worker data, scattering resolution data into its sorted component range.
-    int32 combined_index{};
-    for (int32 i{}; i < collision_jobs; ++i) {
-        auto const& thread_data{data[i]};
-        auto const n_hits{thread_data.hits.Num()};
-
-        check(n_hits == thread_data.damage_events.num());
-        check(n_hits == thread_data.to_remove.Num());
+        auto const n_hits{thread_data.to_remove.Num()};
         check(n_hits == ml::num(thread_data.hit_details.locations));
 
         for (int32 j{}; j < n_hits; ++j) {
-            auto const range_index{
-                collision_hit_ranges.components.Find(thread_data.hits[j].component)};
-            check(range_index != INDEX_NONE);
-
-            auto const write_index{collision_hit_ranges.next_write_indices[range_index]++};
-            auto const offset{collision_hit_ranges.offsets[range_index]};
-            auto const count{collision_hit_ranges.counts[range_index]};
-
-            check(write_index < (offset + count));
-
-            collision_hits[write_index] = thread_data.hits[j];
-            collision_damage_events.damaged_entities[write_index] = FRegistryEntityHandle{};
-            collision_damage_events.damage_amounts[write_index] =
-                thread_data.damage_events.damage_amounts[j];
-            collision_damage_events.instigators[write_index] =
-                thread_data.damage_events.instigators[j];
-
-            to_remove[combined_index] = thread_data.to_remove[j];
-            ml::copy_element(
-                hit_details.locations, combined_index, thread_data.hit_details.locations, j);
-            hit_details.colours[combined_index] = entities.colours[thread_data.to_remove[j]];
-            ++combined_index;
+            auto const entity_index{thread_data.to_remove[j]};
+            to_remove.Add(entity_index);
+            hit_details.locations.add(thread_data.hit_details.locations[j]);
+            hit_details.colours.Add(entities.colours[entity_index]);
         }
-    }
 
-    check(combined_index == total_hits);
-    for (int32 i{0}; i < n_ranges; ++i) {
-        auto const write_index{collision_hit_ranges.next_write_indices[i]};
-        auto const offset{collision_hit_ranges.offsets[i]};
-        auto const count{collision_hit_ranges.counts[i]};
-
-        check(write_index == (offset + count));
+        auto const damage_count{thread_data.damage_events.num()};
+        for (int32 j{}; j < damage_count; ++j) {
+            collision_damage_events.damaged_entities.Add(
+                thread_data.damage_events.damaged_entities[j]);
+            collision_damage_events.damage_amounts.Add(thread_data.damage_events.damage_amounts[j]);
+            collision_damage_events.instigators.Add(thread_data.damage_events.instigators[j]);
+        }
     }
 }
 
@@ -593,7 +506,7 @@ void ATestLasers::clear_spawn_buffers() {
     ml::reset(pending_spawns, to_remove);
 }
 void ATestLasers::clear_hit_buffers() {
-    ml::reset(hit_details, collision_hits, collision_damage_events, collision_hit_ranges);
+    ml::reset(hit_details, collision_damage_events);
 }
 
 // Checks

@@ -1,11 +1,11 @@
 #pragma once
 
-#include <SpaceGame/combat/lasers/TestLaserCollisionDataSoA.h>
 #include <SpaceGame/combat/lasers/TestLasersSoA.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
+#include <SpaceGame/simulation/LineTraces.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/SpatialQueryHit.h>
+#include <SpaceGame/simulation/TraceHits.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 
 #include <CoreMinimal.h>
@@ -28,9 +28,8 @@ namespace ml::test_lasers {
 class PhaseInterface;
 
 struct ThreadLocalCollisionData {
-    TArray<ml::FSpatialQueryHit> hits;
-    TArray<UPrimitiveComponent const*> components_hit;
-    TArray<int32> component_hit_counts;
+    FLineTraces traces;
+    FTraceHits trace_hits;
     DirectDamageEvents damage_events;
     TArray<int32> to_remove;
     HitDetails hit_details;
@@ -128,10 +127,7 @@ class SPACEGAME_API ATestLasers : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     int32 collision_jobs{8};
     TArray<ThreadLocalCollisionData> thread_local_collision_data;
-    TArray<ml::FSpatialQueryHit> collision_hits;
     DirectDamageEvents collision_damage_events;
-    ml::test_lasers::ComponentHitRanges collision_hit_ranges;
-    TArray<int32> collision_hit_range_sort_indices;
 
     // Hits
     HitDetails hit_details;

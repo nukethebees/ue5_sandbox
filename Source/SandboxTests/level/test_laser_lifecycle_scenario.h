@@ -7,6 +7,9 @@
 
 #include <SandboxCore/time_series_data.h>
 
+class AActor;
+class ASandboxTestCollisionActor;
+
 namespace ml {
 enum class ELaserLifecycleScenario : uint8 { Hit, SimultaneousLethalHits, Miss, WorldBlocker };
 
@@ -35,5 +38,7 @@ class FLaserLifecycleScenario final : public FSimulationTestScenario {
     TimeSeriesData<FSample> samples;
     FRegistryEntityHandle shooter_handle;
     FRegistryEntityHandle target_handle;
+    TArray<TSubclassOf<AActor>> previous_harvested_classes;
+    TWeakObjectPtr<ASandboxTestCollisionActor> world_blocker;
 };
 }
