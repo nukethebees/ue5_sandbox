@@ -237,6 +237,7 @@ void FTurretLineOfSightBlockingScenario::sample_laser_count(ATestBatchOrchestrat
     check(turrets);
     auto const simulation_time{test_driver->get_time()};
     laser_counts.add(simulation_time, lasers->get_num_instances());
+    laser_spawn_counts.add(simulation_time, lasers->get_number_spawned());
     entity_counts.add(simulation_time, test_driver->registry.get_num_elements());
     target_handles.add(simulation_time,
                        TArray<FRegistryEntityHandle>{turrets->get_target_handles()});
@@ -256,6 +257,7 @@ void FTurretLineOfSightBlockingScenario::initial_setup() {
     ml::reset_and_reserve_time_series(test_driver->orchestrator,
                                       test_end_time,
                                       laser_counts,
+                                      laser_spawn_counts,
                                       entity_counts,
                                       target_handles,
                                       registry_locations);
@@ -270,6 +272,7 @@ void FTurretLineOfSightBlockingScenario::initial_setup() {
 void FTurretLineOfSightBlockingScenario::full_checks() {
     checks.is_true(blocker_spawn_time.IsSet(), TEXT("Line-of-sight blocker is spawned"));
     checks.is_true(!laser_counts.is_empty(), TEXT("Laser counts are sampled"));
+    checks.is_true(!laser_spawn_counts.is_empty(), TEXT("Laser spawn counts are sampled"));
     checks.is_true(!entity_counts.is_empty(), TEXT("Entity counts are sampled"));
     checks.is_true(!target_handles.is_empty(), TEXT("Turret target handles are sampled"));
     checks.is_true(!registry_locations.is_empty(), TEXT("Registry locations are sampled"));
@@ -326,14 +329,21 @@ void FTurretLineOfSightBlockingScenario::full_checks() {
     checks.is_true(fired_before_blocker, TEXT("Turrets fire before the blocker is spawned"));
 
     auto const blocker_effective_time{actual_blocker_spawn_time + blocker_grace_period};
-    auto const blocker_effective_sample_index{laser_counts.nearest_index(blocker_effective_time)};
+    auto const blocker_effective_sample_index{
+        laser_spawn_counts.nearest_index(blocker_effective_time)};
+    auto const blocker_effective_spawn_count{
+        laser_spawn_counts.value_at(blocker_effective_sample_index)};
     for (int32 i{blocker_effective_sample_index + 1}; i < n_samples; ++i) {
-        checks.are_equal(
-            0, laser_counts.value_at(i), TEXT("No lasers after line-of-sight is blocked"), i);
+        checks.are_equal(blocker_effective_spawn_count,
+                         laser_spawn_counts.value_at(i),
+                         TEXT("No lasers fired after line-of-sight is blocked"),
+                         i);
     }
 
     checks.are_equal(
         laser_counts.num(), entity_counts.num(), TEXT("Laser and entity samples match"));
+    checks.are_equal(
+        laser_counts.num(), laser_spawn_counts.num(), TEXT("Laser and spawn-count samples match"));
     auto const n_entity_samples{entity_counts.num()};
     for (int32 i{}; i < n_entity_samples; ++i) {
         checks.are_equal(2, entity_counts.value_at(i), TEXT("Two turret entities"), i);

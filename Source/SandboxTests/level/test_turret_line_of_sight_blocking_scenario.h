@@ -37,6 +37,7 @@ class FTurretLineOfSightBlockingScenario final : public FSimulationTestScenario 
         {{5000.f, 0.f, 0.f}, ETestTeam::Red},
     };
     TimeSeriesData<int32> laser_counts;
+    TimeSeriesData<int32> laser_spawn_counts;
     TimeSeriesData<int32> entity_counts;
     TimeSeriesData<TArray<FRegistryEntityHandle>> target_handles;
     TimeSeriesData<TArray<FVector3f>> registry_locations;
