@@ -69,6 +69,8 @@ class ASpaceGamePlayerController : public APlayerController {
     void initialise_hud();
     void hide_hud_for_modal();
     void restore_hud_after_modal();
+    void show_initial_pause_menu();
+    auto open_pause_menu() -> bool;
     auto suspend_gameplay_for_modal() -> bool;
     void resume_game();
     void on_pause_menu_deactivated();

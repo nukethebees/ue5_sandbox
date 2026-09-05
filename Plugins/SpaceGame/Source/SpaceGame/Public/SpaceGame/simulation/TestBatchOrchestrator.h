@@ -74,6 +74,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_tick_period() const noexcept -> time_type {
         return 1.0 / simulation_tick_loop.tick_rate;
     }
+    auto was_launched_paused() const noexcept -> bool { return launched_paused_; }
 
     auto get_player_ship() const -> ATestSpaceShip const*;
     auto get_player_ship_simulation() noexcept -> ml::test_space_ship::Simulation*;
@@ -228,6 +229,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     FHUDManager hud_manager;
     TOptional<FLevelSimulation> level_simulation_;
     TOptional<ml::FLevelDefinition> level_definition_;
+    bool launched_paused_{};
     ml::ioj::FLevelCollisionHost world_collision_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))

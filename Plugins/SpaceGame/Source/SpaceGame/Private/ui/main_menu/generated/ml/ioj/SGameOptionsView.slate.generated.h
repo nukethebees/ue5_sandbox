@@ -14,35 +14,33 @@ struct SGameOptionsViewBuilder {
 
     explicit SGameOptionsViewBuilder(ThisClass& self) : self_{self} {}
 
-    auto BuildPanel(auto&& background, auto&& page_margin, auto&& maximum_width, auto&& chrome_style, auto&& header, auto&& body, auto&& footer) {
+    auto BuildPanel(auto&& background, auto&& page_margin, auto&& window_width, auto&& window_height, auto&& chrome_style, auto&& header, auto&& body, auto&& footer) {
         return
-#line 11 "SGameOptionsView.sbxslate"
+#line 12 "SGameOptionsView.sbxslate"
             SNew(SBorder)
                 .BorderImage(background)
                 .Padding(page_margin)
                 .HAlign(HAlign_Center)
+                .VAlign(VAlign_Center)
                 [
-                    SNew(SBox)
-                        .MaxDesiredWidth(maximum_width)
-                        .HAlign(HAlign_Fill)
+                    SNew(::ml::ioj::SHiveFrame)
+                        .Style(chrome_style)
+                        .WidthOverride(window_width)
+                        .HeightOverride(window_height)
                         [
-                            SNew(::ml::ioj::SHiveFrame)
-                                .Style(chrome_style)
-                                [
-                                    SNew(SVerticalBox)
-                                        + SandboxUI::Slate::vbox_auto_slot()
-                                            [
-                                                std::forward<decltype(header)>(header)
-                                            ]
-                                        + SandboxUI::Slate::vbox_fill_slot()
-                                            [
-                                                std::forward<decltype(body)>(body)
-                                            ]
-                                        + SandboxUI::Slate::vbox_auto_slot()
-                                            [
-                                                std::forward<decltype(footer)>(footer)
-                                            ]
-                                ]
+                            SNew(SVerticalBox)
+                                + SandboxUI::Slate::vbox_auto_slot()
+                                    [
+                                        std::forward<decltype(header)>(header)
+                                    ]
+                                + SandboxUI::Slate::vbox_fill_slot()
+                                    [
+                                        std::forward<decltype(body)>(body)
+                                    ]
+                                + SandboxUI::Slate::vbox_auto_slot()
+                                    [
+                                        std::forward<decltype(footer)>(footer)
+                                    ]
                         ]
                 ];
     }

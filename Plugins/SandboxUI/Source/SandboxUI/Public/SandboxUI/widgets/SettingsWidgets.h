@@ -97,7 +97,7 @@ struct SANDBOXUI_API FSettingsStyle {
     float button_spacing{12.0f};
 
     UPROPERTY(EditAnywhere, Category = "Layout")
-    float maximum_page_width{1120.0f};
+    FVector2f window_size{1240.0f, 760.0f};
 
     UPROPERTY(EditAnywhere, Category = "Layout")
     float label_width{300.0f};

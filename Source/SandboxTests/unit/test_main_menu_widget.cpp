@@ -2,6 +2,7 @@
 
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
+#include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
@@ -18,7 +19,92 @@
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <CQTest.h>
+#include <Engine/Engine.h>
+#include <Engine/GameInstance.h>
+#include <Engine/World.h>
 #include <HAL/FileManager.h>
+#include <Layout/ArrangedChildren.h>
+#include <Layout/Geometry.h>
+
+namespace {
+
+class FScopedEditorWorldGameInstance {
+  public:
+    explicit FScopedEditorWorldGameInstance(UWorld& world)
+        : world_{&world}
+        , previous_{world.GetGameInstance()} {
+        if (IsValid(previous_)) {
+            return;
+        }
+        owned_ = NewObject<UGameInstance>(GEngine);
+        if (!IsValid(owned_)) {
+            return;
+        }
+        owned_->Init();
+        world_->SetGameInstance(owned_);
+    }
+
+    ~FScopedEditorWorldGameInstance() {
+        if (!IsValid(owned_)) {
+            return;
+        }
+        world_->SetGameInstance(previous_);
+        owned_->Shutdown();
+    }
+
+    [[nodiscard]] auto is_valid() const -> bool { return IsValid(world_->GetGameInstance()); }
+  private:
+    UWorld* world_{};
+    UGameInstance* previous_{};
+    UGameInstance* owned_{};
+};
+
+auto find_slate_descendant(TSharedRef<SWidget> const& widget, FName const type)
+    -> TSharedPtr<SWidget> {
+    if (widget->GetType() == type) {
+        return widget;
+    }
+
+    auto* const children{widget->GetChildren()};
+    auto const child_count{children->Num()};
+    for (int32 child_index{}; child_index < child_count; ++child_index) {
+        if (auto const result{find_slate_descendant(children->GetChildAt(child_index), type)};
+            result.IsValid()) {
+            return result;
+        }
+    }
+    return {};
+}
+
+auto find_arranged_size(TSharedRef<SWidget> const& widget,
+                        FGeometry const& geometry,
+                        TSharedRef<SWidget> const& target) -> TOptional<FVector2f> {
+    if (widget == target) {
+        return FVector2f{geometry.GetAbsoluteSize()};
+    }
+
+    FArrangedChildren children{EVisibility::Visible};
+    widget->ArrangeChildren(geometry, children);
+    auto const child_count{children.Num()};
+    for (int32 child_index{}; child_index < child_count; ++child_index) {
+        auto const& child{children[child_index]};
+        if (auto const result{find_arranged_size(child.Widget, child.Geometry, target)};
+            result.IsSet()) {
+            return result;
+        }
+    }
+    return {};
+}
+
+auto arranged_size(TSharedRef<SWidget> const& root,
+                   TSharedRef<SWidget> const& descendant,
+                   FVector2D const available_size) -> TOptional<FVector2f> {
+    root->SlatePrepass();
+    return find_arranged_size(
+        root, FGeometry::MakeRoot(available_size, FSlateLayoutTransform{}), descendant);
+}
+
+} // namespace
 
 TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 {
@@ -66,6 +152,11 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
             return;
         }
+        FScopedEditorWorldGameInstance game_instance{*world_result.value()};
+        if (!TestRunner->TestTrue(TEXT("Test game instance is available"),
+                                  game_instance.is_valid())) {
+            return;
+        }
 
         auto const widget_class{LoadClass<ml::ioj::UMainMenuWidget>(
             nullptr, TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu.WBP_MainMenu_C"))};
@@ -83,12 +174,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto const slate_widget{widget->TakeWidget()};
         (void)slate_widget;
 
-        auto* const play_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("play_button")))};
-        auto* const options_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("options_button")))};
-        auto* const save_games_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("save_games_button")))};
+        auto* const main_page{
+            Cast<ml::ioj::UMainMenuLandingWidget>(widget->GetWidgetFromName(TEXT("main_page")))};
         auto* const options_widget{
             Cast<ml::ioj::UOptionsWidget>(widget->GetWidgetFromName(TEXT("options_widget")))};
         auto* const save_game_viewer{Cast<ml::ioj::USaveGameViewerWidget>(
@@ -96,8 +183,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto* const save_games_back_button{
             Cast<UButton>(widget->GetWidgetFromName(TEXT("save_games_back_button")))};
 
-        auto const main_bindings_valid{IsValid(play_button) && IsValid(save_games_button) &&
-                                       IsValid(options_button) && IsValid(save_game_viewer) &&
+        auto const main_bindings_valid{IsValid(main_page) && IsValid(save_game_viewer) &&
                                        IsValid(save_games_back_button) && IsValid(options_widget)};
         if (!TestRunner->TestTrue(TEXT("All required main menu bindings are valid"),
                                   main_bindings_valid)) {
@@ -146,19 +232,14 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(TEXT("Main page is active initially"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
-        TestRunner->TestTrue(TEXT("Play is the deterministic initial focus target"),
-                             widget->GetDesiredFocusTarget() == play_button);
-        auto* const play_label{
-            IsValid(play_button) ? play_button->GetWidgetFromName(TEXT("label_text")) : nullptr};
-        TestRunner->TestTrue(TEXT("Common button labels do not intercept mouse input"),
-                             IsValid(play_label) &&
-                                 play_label->GetVisibility() == ESlateVisibility::HitTestInvisible);
+        TestRunner->TestTrue(TEXT("Landing page is the deterministic initial focus target"),
+                             widget->GetDesiredFocusTarget() == main_page);
 
         bool level_select_requested{false};
         widget->level_select_requested.AddLambda(
             [&level_select_requested] { level_select_requested = true; });
-        play_button->OnClicked().Broadcast();
-        TestRunner->TestTrue(TEXT("Play requests level select"), level_select_requested);
+        main_page->select_mission_requested.Broadcast();
+        TestRunner->TestTrue(TEXT("Select Mission requests level select"), level_select_requested);
         TestRunner->TestTrue(TEXT("Level select discovers the example script"),
                              level_list->GetChildrenCount() > 0);
         TestRunner->TestTrue(TEXT("Restored preferred level enables Launch"),
@@ -292,19 +373,40 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Level select Back deactivates the screen"),
                               level_select_widget->IsActivated());
 
-        save_games_button->OnClicked().Broadcast();
-        TestRunner->TestTrue(TEXT("Save Games opens save viewer"),
+        main_page->save_data_requested.Broadcast();
+        TestRunner->TestTrue(TEXT("Save Data opens save viewer"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::SaveGames);
 
         save_games_back_button->OnClicked.Broadcast();
         TestRunner->TestTrue(TEXT("Save Games Back returns to main"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
 
-        options_button->OnClicked().Broadcast();
+        main_page->options_requested.Broadcast();
         TestRunner->TestTrue(TEXT("Options opens options page"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Options);
         TestRunner->TestTrue(TEXT("Video is the initial options tab"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Video);
+
+        auto const options_slate{options_widget->TakeWidget()};
+        auto const options_frame{
+            find_slate_descendant(options_slate, FName{TEXT("::ml::ioj::SHiveFrame")})};
+        if (!TestRunner->TestTrue(TEXT("Options contains its reusable Hive frame"),
+                                  options_frame.IsValid())) {
+            return;
+        }
+        auto const window_size{configured_style.settings().window_size};
+        options_slate->SlatePrepass();
+        auto const video_desired_size{FVector2f{options_frame->GetDesiredSize()}};
+        TestRunner->TestTrue(TEXT("Populated options frame reports its configured size"),
+                             video_desired_size.Equals(window_size));
+
+        auto const constrained_size{FVector2D{480.0, 594.0}};
+        auto const video_frame_size{
+            arranged_size(options_slate, options_frame.ToSharedRef(), constrained_size)};
+        if (!TestRunner->TestTrue(TEXT("Options frame is arranged in a constrained viewport"),
+                                  video_frame_size.IsSet())) {
+            return;
+        }
 
         options_widget->select_tab(ml::ioj::EOptionsTab::Gameplay);
         TestRunner->TestTrue(TEXT("Gameplay tab is selectable"),
@@ -322,6 +424,23 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Accessibility tab is selectable"),
                              options_widget->get_active_tab() ==
                                  ml::ioj::EOptionsTab::Accessibility);
+        options_slate->SlatePrepass();
+        auto const accessibility_desired_size{FVector2f{options_frame->GetDesiredSize()}};
+        TestRunner->TestTrue(TEXT("Sparse options frame reports its configured size"),
+                             accessibility_desired_size.Equals(window_size));
+        auto const accessibility_frame_size{
+            arranged_size(options_slate, options_frame.ToSharedRef(), constrained_size)};
+        if (!TestRunner->TestTrue(TEXT("Sparse options frame remains arranged"),
+                                  accessibility_frame_size.IsSet())) {
+            return;
+        }
+        TestRunner->TestTrue(
+            TEXT("Options keeps stable arranged dimensions across sparse and populated tabs"),
+            video_frame_size.GetValue().Equals(accessibility_frame_size.GetValue()));
+        TestRunner->TestTrue(TEXT("Constrained options fit within the available viewport"),
+                             accessibility_frame_size.GetValue().X <= constrained_size.X &&
+                                 accessibility_frame_size.GetValue().Y <= constrained_size.Y);
+
         options_widget->select_tab(ml::ioj::EOptionsTab::System);
         TestRunner->TestTrue(TEXT("System tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::System);

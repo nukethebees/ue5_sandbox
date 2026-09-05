@@ -208,33 +208,13 @@ void ASpaceGamePlayerController::toggle_pause_game() {
                 (IsValid(completion_menu) && completion_menu->IsActivated())) {
                 return;
             }
-            if (!IsValid(ui_root) || !IsValid(global_input.toggle_menu)) {
-                UE_LOG(LogSandboxController,
-                       Error,
-                       TEXT("ASpaceGamePlayerController::toggle_pause_game: Pause UI is not "
-                            "available."));
-                return;
-            }
-
             if (!suspend_gameplay_for_modal()) {
                 return;
             }
 
-            auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot(
-                orchestrator->get_completed_ticks(), orchestrator->get_tick_period())};
-            pause_menu =
-                ui_root->show_pause_menu(*global_input.toggle_menu, MoveTemp(stats_snapshot));
-            if (!IsValid(pause_menu)) {
+            if (!open_pause_menu()) {
                 resume_game();
-                return;
             }
-            pause_menu->return_to_level_select_requested.RemoveAll(this);
-            pause_menu->return_to_level_select_requested.AddUObject(
-                this, &ThisClass::return_to_level_select);
-            pause_menu->quit_requested.RemoveAll(this);
-            pause_menu->quit_requested.AddUObject(this, &ThisClass::quit_game);
-            pause_menu->OnDeactivated().RemoveAll(this);
-            pause_menu->OnDeactivated().AddUObject(this, &ThisClass::on_pause_menu_deactivated);
             break;
         }
         case EOrchestratorState::Uninitialised:
@@ -289,6 +269,8 @@ void ASpaceGamePlayerController::initialise_gameplay() {
                TEXT("ASpaceGamePlayerController::BeginPlay: No valid pawn, disabling tick."));
         SetActorTickEnabled(false);
     }
+
+    GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::show_initial_pause_menu);
 }
 
 void ASpaceGamePlayerController::Tick(float const dt) {
@@ -630,6 +612,57 @@ void ASpaceGamePlayerController::restore_hud_after_modal() {
         hud_widget->SetVisibility(hud_visibility_before_modal_);
     }
     hud_restore_pending_ = false;
+}
+
+void ASpaceGamePlayerController::show_initial_pause_menu() {
+    auto* const orchestrator{hud_orchestrator.Get()};
+    if (!IsValid(orchestrator) || !orchestrator->was_launched_paused() ||
+        orchestrator->get_state() != EOrchestratorState::Paused || main_menu_requested_ ||
+        return_to_level_select_pending_ || IsValid(pause_menu) || IsValid(completion_menu)) {
+        return;
+    }
+
+    restore_ship_controls_after_modal_ =
+        active_control_context_ == EPlayerControlContext::Ship || IsValid(Cast<Pawn>(GetPawn()));
+    modal_resume_pending_ = true;
+    if (!set_control_context(EPlayerControlContext::None)) {
+        restore_ship_controls_after_modal_ = false;
+        modal_resume_pending_ = false;
+        return;
+    }
+
+    hide_hud_for_modal();
+    if (!open_pause_menu()) {
+        resume_game();
+    }
+}
+
+auto ASpaceGamePlayerController::open_pause_menu() -> bool {
+    auto* const orchestrator{hud_orchestrator.Get()};
+    if (!IsValid(orchestrator) || orchestrator->get_state() != EOrchestratorState::Paused ||
+        !IsValid(ui_root) || !IsValid(global_input.toggle_menu)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::open_pause_menu: Paused gameplay UI is not "
+                    "available."));
+        return false;
+    }
+
+    auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot(
+        orchestrator->get_completed_ticks(), orchestrator->get_tick_period())};
+    pause_menu = ui_root->show_pause_menu(*global_input.toggle_menu, MoveTemp(stats_snapshot));
+    if (!IsValid(pause_menu)) {
+        return false;
+    }
+
+    pause_menu->return_to_level_select_requested.RemoveAll(this);
+    pause_menu->return_to_level_select_requested.AddUObject(this,
+                                                            &ThisClass::return_to_level_select);
+    pause_menu->quit_requested.RemoveAll(this);
+    pause_menu->quit_requested.AddUObject(this, &ThisClass::quit_game);
+    pause_menu->OnDeactivated().RemoveAll(this);
+    pause_menu->OnDeactivated().AddUObject(this, &ThisClass::on_pause_menu_deactivated);
+    return true;
 }
 
 auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {

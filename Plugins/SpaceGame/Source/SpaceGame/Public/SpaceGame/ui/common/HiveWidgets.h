@@ -10,8 +10,12 @@ class SGameButton;
 class SPACEGAME_API SHiveFrame final : public SCompoundWidget {
   public:
     SLATE_BEGIN_ARGS(SHiveFrame)
-        : _Style(nullptr) {}
+        : _Style(nullptr)
+        , _WidthOverride()
+        , _HeightOverride() {}
     SLATE_ARGUMENT(FGameUiChromeStyle const*, Style)
+    SLATE_ATTRIBUTE(FOptionalSize, WidthOverride)
+    SLATE_ATTRIBUTE(FOptionalSize, HeightOverride)
     SLATE_DEFAULT_SLOT(FArguments, Content)
     SLATE_END_ARGS()
 

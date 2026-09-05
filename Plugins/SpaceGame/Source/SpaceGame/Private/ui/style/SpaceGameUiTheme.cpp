@@ -183,7 +183,7 @@ auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
     settings.footer_spacing = 0.0f;
     settings.tab_spacing = 8.0f;
     settings.button_spacing = 12.0f;
-    settings.maximum_page_width = 1240.0f;
+    settings.window_size = FVector2f{1240.0f, 760.0f};
     settings.label_width = 280.0f;
     settings.control_width = 440.0f;
     settings.row_minimum_height = 38.0f;

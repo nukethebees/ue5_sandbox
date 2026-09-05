@@ -194,6 +194,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     }
     level_simulation_.Reset();
     level_definition_.Reset();
+    launched_paused_ = false;
     world_collision_.restore_collision();
     collision_grid_visualization->clear_collision_bounds();
     laser_instances_->clear_instances();
@@ -606,6 +607,8 @@ void ATestBatchOrchestrator::begin_play() {
 }
 
 void ATestBatchOrchestrator::load_authored_level() {
+    launched_paused_ = false;
+
     auto* const world{GetWorld()};
     auto* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
     auto* const subsystem{
@@ -631,6 +634,8 @@ void ATestBatchOrchestrator::load_authored_level() {
         }
         return;
     }
+
+    launched_paused_ = pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused;
 
     ml::FLevelLoader loader{*this};
     auto const result{loader.load(pending->definition)};
@@ -658,7 +663,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     }
 
     begin_play();
-    if (pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
+    if (launched_paused_) {
         pause_simulation();
     }
 }

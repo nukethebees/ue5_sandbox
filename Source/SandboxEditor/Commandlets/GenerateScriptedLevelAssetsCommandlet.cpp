@@ -8,6 +8,7 @@
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
+#include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
@@ -435,7 +436,7 @@ auto generate_level_completion_widget(UClass& button_class) -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-auto generate_main_menu_widget(UClass& button_class) -> UClass* {
+auto generate_main_menu_widget() -> UClass* {
     auto* const options_class{
         LoadClass<ml::ioj::UOptionsWidget>(nullptr, options_widget_class_path)};
     auto* const save_viewer_class{
@@ -460,17 +461,7 @@ auto generate_main_menu_widget(UClass& button_class) -> UClass* {
     switcher_slot->SetHorizontalAlignment(HAlign_Fill);
     switcher_slot->SetVerticalAlignment(VAlign_Fill);
 
-    auto* const main_page{make_widget<UVerticalBox>(tree, TEXT("main_page"))};
-    auto* const heading{tree.ConstructWidget<UTextBlock>()};
-    heading->SetText(FText::FromString(TEXT("Nuke the Bees")));
-    auto heading_font{heading->GetFont()};
-    heading_font.Size = 38;
-    heading->SetFont(heading_font);
-    main_page->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
-    make_menu_button(tree, *main_page, button_class, TEXT("play_button"), TEXT("Play"));
-    make_menu_button(tree, *main_page, button_class, TEXT("save_games_button"), TEXT("Save Games"));
-    make_menu_button(tree, *main_page, button_class, TEXT("options_button"), TEXT("Options"));
-    make_menu_button(tree, *main_page, button_class, TEXT("quit_button"), TEXT("Quit"));
+    auto* const main_page{make_widget<ml::ioj::UMainMenuLandingWidget>(tree, TEXT("main_page"))};
     switcher->AddChild(main_page);
 
     auto* const save_page{make_widget<UVerticalBox>(tree, TEXT("save_games_page"))};
@@ -816,8 +807,7 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
                                                   : nullptr};
     auto* const completion_class{
         IsValid(button_class) ? generate_level_completion_widget(*button_class) : nullptr};
-    auto* const main_class{IsValid(button_class) ? generate_main_menu_widget(*button_class)
-                                                 : nullptr};
+    auto* const main_class{generate_main_menu_widget()};
     auto* const level_class{IsValid(button_class) ? generate_level_select_widget(*button_class)
                                                   : nullptr};
     auto const ui_generated{IsValid(root_class) && IsValid(button_class) && IsValid(main_class) &&

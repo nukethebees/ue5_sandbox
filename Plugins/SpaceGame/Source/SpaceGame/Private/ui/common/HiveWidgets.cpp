@@ -12,12 +12,15 @@ namespace ml::ioj {
 void SHiveFrame::Construct(FArguments const& args) {
     check(args._Style != nullptr);
     auto const& style{*args._Style};
-    ChildSlot[SNew(SBorder)
-                  .BorderImage(&style.frame_border)
-                  .Padding(style.frame_border_thickness)
+    ChildSlot[SNew(SBox)
+                  .WidthOverride(args._WidthOverride)
+                  .HeightOverride(args._HeightOverride)
                       [SNew(SBorder)
-                           .BorderImage(&style.frame_background)
-                           .Padding(style.frame_padding)[args._Content.Widget]]];
+                           .BorderImage(&style.frame_border)
+                           .Padding(style.frame_border_thickness)
+                               [SNew(SBorder)
+                                    .BorderImage(&style.frame_background)
+                                    .Padding(style.frame_padding)[args._Content.Widget]]]];
 }
 
 void SHiveSectionHeader::Construct(FArguments const& args) {

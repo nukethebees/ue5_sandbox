@@ -10,7 +10,7 @@ class UVerticalBox;
 class UWidgetSwitcher;
 
 namespace ml::ioj {
-class UMenuButtonWidget;
+class UMainMenuLandingWidget;
 class UOptionsWidget;
 class USaveGameViewerWidget;
 
@@ -40,7 +40,7 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     UPROPERTY(meta = (BindWidget))
     UWidgetSwitcher* page_switcher{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UVerticalBox* main_page{nullptr};
+    UMainMenuLandingWidget* main_page{nullptr};
     UPROPERTY(meta = (BindWidget))
     UVerticalBox* save_games_page{nullptr};
     UPROPERTY(meta = (BindWidget))
@@ -49,18 +49,9 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     UOptionsWidget* options_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UMenuButtonWidget* play_button{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UMenuButtonWidget* save_games_button{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UMenuButtonWidget* options_button{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UMenuButtonWidget* quit_button{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
     UButton* save_games_back_button{nullptr};
   private:
-    void handle_play();
+    void handle_select_mission();
     void handle_save_games();
     void handle_options();
     void handle_quit();
@@ -71,7 +62,5 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     void set_active_page(EMainMenuPage page);
 
     EMainMenuPage active_page_{EMainMenuPage::Main};
-    UPROPERTY(Transient)
-    TObjectPtr<UWidget> main_focus_target_{nullptr};
 };
 }

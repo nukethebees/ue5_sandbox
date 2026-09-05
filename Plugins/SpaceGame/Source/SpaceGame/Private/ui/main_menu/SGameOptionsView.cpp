@@ -117,7 +117,8 @@ void SGameOptionsView::Construct(FArguments const& args) {
     auto panel{::SlateGenerated::ml::ioj::SGameOptionsViewBuilder{*this}.BuildPanel(
         &style_->settings().page_background,
         settings_style.page_margin,
-        settings_style.maximum_page_width,
+        settings_style.window_size.X,
+        settings_style.window_size.Y,
         &style_->chrome(),
         header,
         body,

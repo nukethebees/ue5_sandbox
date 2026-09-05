@@ -5,6 +5,7 @@
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
+#include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 
@@ -50,12 +51,12 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(TEXT("Main menu is pushed"), root->show_main_menu(false));
         auto* const main_menu{Cast<ml::ioj::UMainMenuWidget>(root->get_active_screen())};
-        auto* const play_button{IsValid(main_menu)
-                                    ? Cast<ml::ioj::UMenuButtonWidget>(
-                                          main_menu->GetWidgetFromName(TEXT("play_button")))
-                                    : nullptr};
-        if (!TestRunner->TestTrue(TEXT("Main menu and Play are active"),
-                                  IsValid(main_menu) && IsValid(play_button))) {
+        auto* const main_page{IsValid(main_menu)
+                                  ? Cast<ml::ioj::UMainMenuLandingWidget>(
+                                        main_menu->GetWidgetFromName(TEXT("main_page")))
+                                  : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Main menu and landing page are active"),
+                                  IsValid(main_menu) && IsValid(main_page))) {
             return;
         }
         auto const menu_input_config{main_menu->GetDesiredInputConfig()};
@@ -74,9 +75,10 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
                                  root_menu_input_config->GetMouseCaptureMode() ==
                                      EMouseCaptureMode::NoCapture);
 
-        play_button->OnClicked().Broadcast();
+        main_page->select_mission_requested.Broadcast();
         auto* const level_select{Cast<ml::ioj::ULevelSelectWidget>(root->get_active_screen())};
-        TestRunner->TestTrue(TEXT("Play pushes the level selector"), IsValid(level_select));
+        TestRunner->TestTrue(TEXT("Select Mission pushes the level selector"),
+                             IsValid(level_select));
         TestRunner->TestEqual(
             TEXT("The screen stack contains main and level select"), root->get_screen_count(), 2);
         auto const transitioned_input_config{root->GetDesiredInputConfig()};
@@ -92,8 +94,8 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
                              root->get_active_screen() == main_menu);
         TestRunner->TestEqual(
             TEXT("The level selector is removed from the stack"), root->get_screen_count(), 1);
-        TestRunner->TestTrue(TEXT("Returning restores Play as the focus target"),
-                             main_menu->GetDesiredFocusTarget() == play_button);
+        TestRunner->TestTrue(TEXT("Returning restores the landing page as the focus target"),
+                             main_menu->GetDesiredFocusTarget() == main_page);
 
         auto* const pause_action{LoadObject<UInputAction>(
             nullptr, TEXT("/SpaceGame/Input/SpaceShip/IA_pause.IA_pause"))};

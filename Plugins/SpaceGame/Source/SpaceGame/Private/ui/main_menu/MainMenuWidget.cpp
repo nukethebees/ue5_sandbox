@@ -1,7 +1,7 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ui/common/MenuButtonWidget.h"
+#include "SpaceGame/ui/main_menu/MainMenuLandingWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 
@@ -14,8 +14,7 @@ namespace ml::ioj {
 void UMainMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    if (!IsValid(play_button) || !IsValid(save_games_button) || !IsValid(options_button) ||
-        !IsValid(quit_button) || !IsValid(save_games_page) || !IsValid(save_game_viewer) ||
+    if (!IsValid(main_page) || !IsValid(save_games_page) || !IsValid(save_game_viewer) ||
         !IsValid(save_games_back_button) || !IsValid(options_widget)) {
         UE_LOG(LogSandboxUI,
                Error,
@@ -24,19 +23,18 @@ void UMainMenuWidget::NativeOnInitialized() {
         return;
     }
 
-    play_button->OnClicked().AddUObject(this, &ThisClass::handle_play);
-    save_games_button->OnClicked().AddUObject(this, &ThisClass::handle_save_games);
-    options_button->OnClicked().AddUObject(this, &ThisClass::handle_options);
-    quit_button->OnClicked().AddUObject(this, &ThisClass::handle_quit);
+    main_page->select_mission_requested.AddUObject(this, &ThisClass::handle_select_mission);
+    main_page->save_data_requested.AddUObject(this, &ThisClass::handle_save_games);
+    main_page->options_requested.AddUObject(this, &ThisClass::handle_options);
+    main_page->quit_game_requested.AddUObject(this, &ThisClass::handle_quit);
     save_games_back_button->OnClicked.AddDynamic(this, &ThisClass::return_from_save_games);
     options_widget->back_requested.AddUObject(this, &ThisClass::return_from_options);
-    main_focus_target_ = play_button;
 }
 
 auto UMainMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
     switch (active_page_) {
         case EMainMenuPage::Main: {
-            return IsValid(main_focus_target_) ? main_focus_target_.Get() : play_button;
+            return main_page;
         }
         case EMainMenuPage::SaveGames: {
             return IsValid(save_game_viewer) ? save_game_viewer->get_focus_target() : nullptr;
@@ -65,8 +63,7 @@ auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
     return true;
 }
 
-void UMainMenuWidget::handle_play() {
-    main_focus_target_ = play_button;
+void UMainMenuWidget::handle_select_mission() {
     level_select_requested.Broadcast();
 }
 
@@ -84,12 +81,12 @@ void UMainMenuWidget::handle_quit() {
 }
 
 void UMainMenuWidget::return_from_save_games() {
-    main_focus_target_ = save_games_button;
+    main_page->set_preferred_action(EMainMenuAction::SaveData);
     set_active_page(EMainMenuPage::Main);
 }
 
 void UMainMenuWidget::return_from_options() {
-    main_focus_target_ = options_button;
+    main_page->set_preferred_action(EMainMenuAction::Options);
     set_active_page(EMainMenuPage::Main);
 }
 

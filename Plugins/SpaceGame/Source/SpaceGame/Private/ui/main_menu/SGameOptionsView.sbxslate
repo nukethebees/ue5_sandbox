@@ -3,7 +3,8 @@
     (params
       (value background)
       (value page_margin)
-      (value maximum_width)
+      (value window_width)
+      (value window_height)
       (value chrome_style)
       (existing header)
       (existing body)
@@ -12,12 +13,12 @@
       :BorderImage background
       :Padding page_margin
       :HAlign HAlign_Center
-      (SBox
-        :MaxDesiredWidth maximum_width
-        :HAlign HAlign_Fill
-        (::ml::ioj::SHiveFrame
-          :Style chrome_style
-          (vbox
-            (auto (existing header))
-            (fill (existing body))
-            (auto (existing footer))))))))
+      :VAlign VAlign_Center
+      (::ml::ioj::SHiveFrame
+        :Style chrome_style
+        :WidthOverride window_width
+        :HeightOverride window_height
+        (vbox
+          (auto (existing header))
+          (fill (existing body))
+          (auto (existing footer)))))))
