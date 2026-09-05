@@ -1,0 +1,18 @@
+(kernel-module array_math
+  (header "ArrayKernels.h")
+  (source "ArrayKernels.cpp")
+  (header-include "ArrayKernels.h")
+  (namespace ml)
+  (export COMPILE_FIXTURE_API)
+
+  (type-set numeric int32 float double)
+
+  (map multiply
+    (types numeric)
+    (operand lhs array)
+    (operand rhs (array scalar))
+    (output out)
+    (expression (* lhs rhs))
+    (variants
+      (out-of-place multiply)
+      (in-place lhs multiply_in_place))))
