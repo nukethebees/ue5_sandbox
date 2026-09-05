@@ -220,10 +220,8 @@ auto reference_trace_aabb(FVector3f const start,
     return t_min;
 }
 
-auto run_traces(FTraceFixture const& fixture,
-                TConstArrayView<FVector3f> const starts,
-                TConstArrayView<FVector3f> const ends,
-                TConstArrayView<FRegistryEntityHandle> const ignored_entities = {}) -> FTraceHits {
+auto make_line_traces(TConstArrayView<FVector3f> const starts,
+                      TConstArrayView<FVector3f> const ends) -> FLineTraces {
     check(starts.Num() == ends.Num());
 
     FLineTraces traces;
@@ -234,10 +232,32 @@ auto run_traces(FTraceFixture const& fixture,
         traces.starts.add(starts[i]);
         traces.ends.add(ends[i]);
     }
+    return traces;
+}
+
+auto run_traces(FTraceFixture const& fixture,
+                TConstArrayView<FVector3f> const starts,
+                TConstArrayView<FVector3f> const ends,
+                TConstArrayView<FRegistryEntityHandle> const ignored_entities = {}) -> FTraceHits {
+    auto const traces{make_line_traces(starts, ends)};
 
     FTraceHits hits;
-    hits.add_defaulted(count);
+    hits.add_defaulted(traces.num());
     fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view(), ignored_entities);
+    return hits;
+}
+
+auto run_sweeps(FTraceFixture const& fixture,
+                TConstArrayView<FVector3f> const starts,
+                TConstArrayView<FVector3f> const ends,
+                FVector3f const moving_half_extent,
+                TConstArrayView<FRegistryEntityHandle> const ignored_entities = {}) -> FTraceHits {
+    auto const traces{make_line_traces(starts, ends)};
+
+    FTraceHits hits;
+    hits.add_defaulted(traces.num());
+    fixture.grid.sweep_aabbs(
+        traces.get_const_view(), moving_half_extent, hits.get_view(), ignored_entities);
     return hits;
 }
 
@@ -1903,6 +1923,20 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
                      hit_location_tolerance,
                      TEXT("Static hit reports nearest entry point"));
 
+    set_static_aabb({-60.f, 100.f, -10.f}, {-40.f, 120.f, 10.f});
+    TArray<FVector3f> const offset_starts{{-200.f, 80.f, 0.f}};
+    TArray<FVector3f> const offset_ends{{200.f, 80.f, 0.f}};
+    auto const offset_hits{run_traces(fixture, offset_starts, offset_ends)};
+    checks.are_equal(uint8{0}, offset_hits.hits[0], TEXT("Offset line misses static geometry"));
+    auto const sweep_hits{
+        run_sweeps(fixture, offset_starts, offset_ends, FVector3f{20.f, 20.f, 20.f})};
+    checks.are_equal(uint8{1}, sweep_hits.hits[0], TEXT("AABB sweep detects static geometry"));
+    checks.dist_zero(FVector3f{-80.f, 80.f, 0.f},
+                     sweep_hits.locations[0],
+                     hit_location_tolerance,
+                     TEXT("AABB sweep reports expanded entry point"));
+
+    set_static_aabb({-60.f, -10.f, -10.f}, {-40.f, 10.f, 10.f});
     fixture.grid.rebuild_grid(fixture.aabbs);
     auto const rebuilt_static_hits{run_traces(fixture, starts, ends)};
     checks.are_equal(0,

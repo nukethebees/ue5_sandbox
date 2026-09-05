@@ -435,16 +435,90 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     }
 }
 
+template <bool ExpandBounds>
+auto CollisionUniformGrid::trace_aabb(WorldAABBs::ConstView const& aabbs,
+                                      int32 const aabb_index,
+                                      FVector3f const trace_start,
+                                      FVector3f const inverse_trace_delta,
+                                      FVector3f const trace_delta,
+                                      FVector3f const expansion) -> float {
+    constexpr auto no_hit{std::numeric_limits<float>::infinity()};
+
+    auto aabb_min{aabbs.mins[aabb_index]};
+    auto aabb_max{aabbs.maxes[aabb_index]};
+    if constexpr (ExpandBounds) {
+        aabb_min -= expansion;
+        aabb_max += expansion;
+    }
+
+    float tmin{0.f};
+    float tmax{1.f};
+    for (int32 axis{}; axis < 3; ++axis) {
+        auto const slab_min{aabb_min[axis]};
+        auto const slab_max{aabb_max[axis]};
+        auto const start{trace_start[axis]};
+        auto const axis_delta{trace_delta[axis]};
+
+        if (axis_delta == 0.f) {
+            if (start < slab_min || start > slab_max) {
+                return no_hit;
+            }
+
+            continue;
+        }
+
+        auto t1{(slab_min - start) * inverse_trace_delta[axis]};
+        auto t2{(slab_max - start) * inverse_trace_delta[axis]};
+        if (t1 > t2) {
+            Swap(t1, t2);
+        }
+
+        tmin = std::max(tmin, t1);
+        tmax = std::min(tmax, t2);
+        if (tmin > tmax) {
+            return no_hit;
+        }
+    }
+
+    return tmin;
+}
+
 void CollisionUniformGrid::trace_aabbs(
     FLineTracesConstView const& traces,
     FTraceHitsView const& hits,
     TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
+    trace_aabbs_impl<false>(traces, hits, ignored_entities, FVector3f::ZeroVector);
+}
+
+void CollisionUniformGrid::sweep_aabbs(
+    FLineTracesConstView const& centre_paths,
+    FVector3f const moving_half_extent,
+    FTraceHitsView const& hits,
+    TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
+    check(!moving_half_extent.ContainsNaN());
+    check(moving_half_extent.X >= 0.f);
+    check(moving_half_extent.Y >= 0.f);
+    check(moving_half_extent.Z >= 0.f);
+
+    trace_aabbs_impl<true>(centre_paths, hits, ignored_entities, moving_half_extent);
+}
+
+template <bool UsePaddedTraversal>
+void CollisionUniformGrid::trace_aabbs_impl(
+    FLineTracesConstView const& traces,
+    FTraceHitsView const& hits,
+    TConstArrayView<FRegistryEntityHandle> const ignored_entities,
+    FVector3f const moving_half_extent) const {
     constexpr int32 n_axes{3};
 
     auto const n{traces.num()};
     check(n == hits.num());
     check(ignored_entities.IsEmpty() || ignored_entities.Num() == n);
 
+    auto const has_ignored_entities{!ignored_entities.IsEmpty()};
+    auto const grid_width{grid_dims_.X};
+    auto const grid_plane_stride{grid_dims_.X * grid_dims_.Y};
+    FIntVector3 const max_cell_coord{grid_dims_.X - 1, grid_dims_.Y - 1, grid_dims_.Z - 1};
     FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
                                     static_cast<float>(grid_dims_.Y),
                                     static_cast<float>(grid_dims_.Z)};
@@ -455,13 +529,18 @@ void CollisionUniformGrid::trace_aabbs(
     for (int32 axis{}; axis < n_axes; ++axis) {
         grid_max_inside[axis] = std::nextafter(grid_max[axis], grid_min[axis]);
     }
-    auto const to_traversal_cell_coord{[this](FVector3f const position) {
+    auto const to_traversal_cell_coord{[this, max_cell_coord](FVector3f const position) {
         auto cell_coord{to_cell_coord(position)};
         for (int32 axis{}; axis < n_axes; ++axis) {
-            cell_coord[axis] = FMath::Clamp(cell_coord[axis], 0, grid_dims_[axis] - 1);
+            cell_coord[axis] = FMath::Clamp(cell_coord[axis], 0, max_cell_coord[axis]);
         }
         return cell_coord;
     }};
+    auto const to_linear_index{[grid_width, grid_plane_stride](FIntVector3 const cell) {
+        return cell.X + cell.Y * grid_width + cell.Z * grid_plane_stride;
+    }};
+    auto const static_aabb_indices{TConstArrayView<int32>{static_aabb_indices_}};
+    auto const static_aabbs{static_aabbs_.get_const_view()};
 
     constexpr auto initialise_traversal_axis{[](float const cell_min,
                                                 float const cell_dim,
@@ -492,56 +571,14 @@ void CollisionUniformGrid::trace_aabbs(
                 }
             }
         }};
-    constexpr auto trace_entity{[](WorldAABBs::ConstView const& aabbs,
-                                   int32 const i_entity,
-                                   FVector3f const p0,
-                                   FVector3f const inv_delta,
-                                   FVector3f const delta) -> float {
-        constexpr auto no_hit{std::numeric_limits<float>::infinity()};
-
-        // We want to find the hit with the smallest tmin
-        // That is the closest hit
-        float tmin{0.f};
-        // We don't want to find anything that is beyond the ray
-        float tmax{1.f};
-
-        auto const aabb_min{aabbs.mins[i_entity]};
-        auto const aabb_max{aabbs.maxes[i_entity]};
-
-        for (int32 axis{0}; axis < n_axes; ++axis) {
-            auto const slab_min{aabb_min[axis]};
-            auto const slab_max{aabb_max[axis]};
-            auto const start{p0[axis]};
-            auto const axis_delta{delta[axis]};
-
-            if (axis_delta == 0.0f) {
-                if (start < slab_min || start > slab_max) {
-                    return no_hit;
-                }
-
-                continue;
-            }
-
-            auto const inverse_axis_delta{inv_delta[axis]};
-            auto t1{(slab_min - start) * inverse_axis_delta};
-            auto t2{(slab_max - start) * inverse_axis_delta};
-
-            if (t1 > t2) {
-                Swap(t1, t2);
-            }
-
-            // Compute the intersection of slab intersection intervals
-            tmin = std::max(tmin, t1);
-            tmax = std::min(tmax, t2);
-
-            // Exit with no collision as soon as slab intersection becomes empty
-            if (tmin > tmax) {
-                return no_hit;
-            }
-        }
-
-        return tmin;
-    }};
+    FIntVector3 cell_padding{};
+    if constexpr (UsePaddedTraversal) {
+        cell_padding = {
+            FMath::CeilToInt(moving_half_extent.X / cell_dims_.X),
+            FMath::CeilToInt(moving_half_extent.Y / cell_dims_.Y),
+            FMath::CeilToInt(moving_half_extent.Z / cell_dims_.Z),
+        };
+    }
 
     for (int32 i_test{0}; i_test < n; ++i_test) {
         hits.hits[i_test] = 0;
@@ -593,12 +630,9 @@ void CollisionUniformGrid::trace_aabbs(
         auto nearest_t{std::numeric_limits<float>::infinity()};
         FRegistryEntityHandle nearest_entity;
         int32 nearest_static_index{INDEX_NONE};
-        auto const ignored_entity{ignored_entities.IsEmpty() ? FRegistryEntityHandle{}
-                                                             : ignored_entities[i_test]};
-
-        while (true) {
-            auto const cell_index{to_index(current_cell)};
-
+        auto const ignored_entity{has_ignored_entities ? ignored_entities[i_test]
+                                                       : FRegistryEntityHandle{}};
+        auto const trace_cell{[&](int32 const cell_index) {
             auto const entity_offset{cell_entity_offsets_[cell_index]};
             auto const entity_count{cell_entity_counts_[cell_index]};
 
@@ -612,7 +646,8 @@ void CollisionUniformGrid::trace_aabbs(
                         continue;
                     }
 
-                    auto const hit_t{trace_entity(aabbs, i_entity, p0, inv_delta, delta)};
+                    auto const hit_t{trace_aabb<UsePaddedTraversal>(
+                        aabbs, i_entity, p0, inv_delta, delta, moving_half_extent)};
                     if (hit_t < nearest_t) {
                         nearest_t = hit_t;
                         nearest_entity = entities[i_entity];
@@ -624,31 +659,134 @@ void CollisionUniformGrid::trace_aabbs(
             auto const static_range_index{cell_static_range_indices_.IsValidIndex(cell_index)
                                               ? cell_static_range_indices_[cell_index]
                                               : INDEX_NONE};
-            if (static_range_index != INDEX_NONE) {
-                auto const offset{static_cell_range_offsets_[static_range_index]};
-                auto const count{static_cell_range_counts_[static_range_index]};
-                auto const static_indices{TConstArrayView<int32>{static_aabb_indices_}.Slice(
-                    static_cast<int32>(offset), static_cast<int32>(count))};
-                auto const static_aabbs{static_aabbs_.get_const_view()};
-
-                for (auto const static_index : static_indices) {
-                    auto const hit_t{
-                        trace_entity(static_aabbs, static_index, p0, inv_delta, delta)};
-                    if (hit_t < nearest_t) {
-                        nearest_t = hit_t;
-                        nearest_entity = FRegistryEntityHandle{};
-                        nearest_static_index = static_index;
-                    }
-                }
+            if (static_range_index == INDEX_NONE) {
+                return;
             }
 
+            auto const offset{static_cell_range_offsets_[static_range_index]};
+            auto const count{static_cell_range_counts_[static_range_index]};
+            auto const static_indices{
+                static_aabb_indices.Slice(static_cast<int32>(offset), static_cast<int32>(count))};
+
+            for (auto const static_index : static_indices) {
+                auto const hit_t{trace_aabb<UsePaddedTraversal>(
+                    static_aabbs, static_index, p0, inv_delta, delta, moving_half_extent)};
+                if (hit_t < nearest_t) {
+                    nearest_t = hit_t;
+                    nearest_entity = FRegistryEntityHandle{};
+                    nearest_static_index = static_index;
+                }
+            }
+        }};
+
+        auto const try_advance_traversal{[&] {
             if (current_cell == coord1) {
-                break;
+                return false;
+            }
+            if (FMath::Min3(t.X, t.Y, t.Z) > 1.f) {
+                return false;
             }
 
             advance_to_next_cell(current_cell, cell_steps, t, t_deltas);
-            if (!is_cell_coord_in_bounds(current_cell)) {
-                break;
+            return true;
+        }};
+
+        if constexpr (UsePaddedTraversal) {
+            auto const trace_z_range{
+                [&](int32 const x, int32 const y, int32 const min_z, int32 const max_z) {
+                    auto cell_index{x + y * grid_width + min_z * grid_plane_stride};
+                    for (int32 z{min_z}; z <= max_z; ++z) {
+                        trace_cell(cell_index);
+                        cell_index += grid_plane_stride;
+                    }
+                }};
+            auto const trace_yz_plane{
+                [&](int32 const x, FIntVector3 const min_cell, FIntVector3 const max_cell) {
+                    for (int32 y{min_cell.Y}; y <= max_cell.Y; ++y) {
+                        trace_z_range(x, y, min_cell.Z, max_cell.Z);
+                    }
+                }};
+            auto const trace_x_range{[&](int32 const min_x,
+                                         int32 const max_x,
+                                         FIntVector3 const min_cell,
+                                         FIntVector3 const max_cell) {
+                for (int32 x{min_x}; x <= max_x; ++x) {
+                    trace_yz_plane(x, min_cell, max_cell);
+                }
+            }};
+            auto const trace_y_range{[&](int32 const x,
+                                         int32 const min_y,
+                                         int32 const max_y,
+                                         int32 const min_z,
+                                         int32 const max_z) {
+                for (int32 y{min_y}; y <= max_y; ++y) {
+                    trace_z_range(x, y, min_z, max_z);
+                }
+            }};
+            auto const get_padded_cell_range{[&](FIntVector3 const centre_cell) {
+                auto min_cell{centre_cell - cell_padding};
+                auto max_cell{centre_cell + cell_padding};
+                for (int32 axis{}; axis < n_axes; ++axis) {
+                    min_cell[axis] = FMath::Max(min_cell[axis], 0);
+                    max_cell[axis] = FMath::Min(max_cell[axis], max_cell_coord[axis]);
+                }
+                return FCellCoordBounds{min_cell, max_cell};
+            }};
+
+            auto [previous_min_cell, previous_max_cell]{get_padded_cell_range(current_cell)};
+            trace_x_range(
+                previous_min_cell.X, previous_max_cell.X, previous_min_cell, previous_max_cell);
+
+            while (try_advance_traversal()) {
+                auto const [min_cell, max_cell]{get_padded_cell_range(current_cell)};
+
+                // Consecutive padded DDA boxes overlap heavily. Partition the current box into
+                // disjoint X planes, Y columns, and Z ends outside the previous box so each cell
+                // is traced only when it first enters the swept region.
+                trace_x_range(min_cell.X,
+                              FMath::Min(max_cell.X, previous_min_cell.X - 1),
+                              min_cell,
+                              max_cell);
+
+                auto const overlap_min_x{FMath::Max(min_cell.X, previous_min_cell.X)};
+                auto const overlap_max_x{FMath::Min(max_cell.X, previous_max_cell.X)};
+                for (int32 x{overlap_min_x}; x <= overlap_max_x; ++x) {
+                    trace_y_range(x,
+                                  min_cell.Y,
+                                  FMath::Min(max_cell.Y, previous_min_cell.Y - 1),
+                                  min_cell.Z,
+                                  max_cell.Z);
+
+                    auto const overlap_min_y{FMath::Max(min_cell.Y, previous_min_cell.Y)};
+                    auto const overlap_max_y{FMath::Min(max_cell.Y, previous_max_cell.Y)};
+                    for (int32 y{overlap_min_y}; y <= overlap_max_y; ++y) {
+                        trace_z_range(
+                            x, y, min_cell.Z, FMath::Min(max_cell.Z, previous_min_cell.Z - 1));
+                        trace_z_range(
+                            x, y, FMath::Max(min_cell.Z, previous_max_cell.Z + 1), max_cell.Z);
+                    }
+
+                    trace_y_range(x,
+                                  FMath::Max(min_cell.Y, previous_max_cell.Y + 1),
+                                  max_cell.Y,
+                                  min_cell.Z,
+                                  max_cell.Z);
+                }
+
+                trace_x_range(FMath::Max(min_cell.X, previous_max_cell.X + 1),
+                              max_cell.X,
+                              min_cell,
+                              max_cell);
+
+                previous_min_cell = min_cell;
+                previous_max_cell = max_cell;
+            }
+        } else {
+            while (true) {
+                trace_cell(to_linear_index(current_cell));
+                if (!try_advance_traversal()) {
+                    break;
+                }
             }
         }
 
@@ -761,6 +899,31 @@ auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const coord) cons
 auto CollisionUniformGrid::is_cell_coord_in_bounds(FIntVector3 const min_coord,
                                                    FIntVector3 const max_coord) const -> bool {
     return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
+}
+void CollisionUniformGrid::are_spheres_in_bounds(FVectors3f::ConstView const centres,
+                                                 float const radius,
+                                                 TArrayView<uint8> const out_results) const {
+    auto const count{centres.num()};
+    check(out_results.Num() == count);
+    check(FMath::IsFinite(radius));
+    check(radius >= 0.f);
+
+    FVector3f const grid_dimensions{static_cast<float>(grid_dims_.X),
+                                    static_cast<float>(grid_dims_.Y),
+                                    static_cast<float>(grid_dims_.Z)};
+    auto const half_grid_size{grid_dimensions * cell_dims_ * 0.5f};
+    FVector3f const extent{radius, radius, radius};
+    auto const allowed_centre_min{-half_grid_size + extent};
+    auto const allowed_centre_max{half_grid_size - extent};
+
+    for (int32 i{}; i < count; ++i) {
+        auto const centre{centres[i]};
+        auto const is_in_bounds{
+            centre.X >= allowed_centre_min.X && centre.X <= allowed_centre_max.X &&
+            centre.Y >= allowed_centre_min.Y && centre.Y <= allowed_centre_max.Y &&
+            centre.Z >= allowed_centre_min.Z && centre.Z <= allowed_centre_max.Z};
+        out_results[i] = static_cast<uint8>(is_in_bounds);
+    }
 }
 auto CollisionUniformGrid::to_string(FIntVector3 const value) -> FString {
     return FString::Printf(TEXT("(%d, %d, %d)"), value.X, value.Y, value.Z);

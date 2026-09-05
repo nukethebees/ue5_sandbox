@@ -6,6 +6,7 @@
 #include <SpaceGame/simulation/EntityCellData.h>
 
 #include <CoreMinimal.h>
+#include <SandboxCore/soa_vectors.h>
 
 class UStaticMesh;
 struct FTestEntityRegistry;
@@ -57,6 +58,9 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     auto is_cell_coord_in_bounds(FIntVector3 coord) const -> bool;
     auto is_cell_coord_in_bounds(FIntVector3 min_coord, FIntVector3 max_coord) const -> bool;
+    void are_spheres_in_bounds(FVectors3f::ConstView centres,
+                               float radius,
+                               TArrayView<uint8> out_results) const;
     static auto to_string(FIntVector3 value) -> FString;
 
     void reset();
@@ -69,7 +73,25 @@ struct SPACEGAME_API CollisionUniformGrid {
     void trace_aabbs(FLineTracesConstView const& traces,
                      FTraceHitsView const& hits,
                      TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
+    void sweep_aabbs(FLineTracesConstView const& centre_paths,
+                     FVector3f moving_half_extent,
+                     FTraceHitsView const& hits,
+                     TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
   private:
+    template <bool ExpandBounds>
+    static auto trace_aabb(WorldAABBs::ConstView const& aabbs,
+                           int32 aabb_index,
+                           FVector3f trace_start,
+                           FVector3f inverse_trace_delta,
+                           FVector3f trace_delta,
+                           FVector3f expansion) -> float;
+
+    template <bool UsePaddedTraversal>
+    void trace_aabbs_impl(FLineTracesConstView const& traces,
+                          FTraceHitsView const& hits,
+                          TConstArrayView<FRegistryEntityHandle> ignored_entities,
+                          FVector3f moving_half_extent) const;
+
     auto to_cell_x(float value) const -> int32;
     auto to_cell_y(float value) const -> int32;
     auto to_cell_z(float value) const -> int32;
