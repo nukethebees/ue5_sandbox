@@ -7,7 +7,6 @@
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
-#include "Widgets/Layout/SScaleBox.h"
 #include "Widgets/SBoxPanel.h"
 #include "Widgets/Text/STextBlock.h"
 
@@ -30,20 +29,14 @@ void SMainMenuView::Construct(FArguments const& args) {
         SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[navigation] +
         SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin{2.0f, 0.0f, 0.0f, 0.0f})[identity]};
 
-    auto const frame{
-        SNew(SHiveFrame)
-            .Style(&style_->chrome())
-            .WidthOverride(1120.0f)
-            .HeightOverride(640.0f)[SNew(SVerticalBox) + SVerticalBox::Slot().AutoHeight()[header] +
-                                    SVerticalBox::Slot().FillHeight(1.0f)[body] +
-                                    SVerticalBox::Slot().AutoHeight()[footer]]};
-
     ChildSlot[SNew(SBorder)
                   .BorderImage(&style_->chrome().canvas)
-                  .Padding(
-                      FMargin{16.0f})[SNew(SScaleBox)
-                                          .Stretch(EStretch::ScaleToFit)
-                                          .StretchDirection(EStretchDirection::DownOnly)[frame]]];
+                  .Padding(FMargin{})
+                      [SNew(SHiveFrame)
+                           .Style(&style_->chrome())[SNew(SVerticalBox) +
+                                                     SVerticalBox::Slot().AutoHeight()[header] +
+                                                     SVerticalBox::Slot().FillHeight(1.0f)[body] +
+                                                     SVerticalBox::Slot().AutoHeight()[footer]]]];
 }
 
 void SMainMenuView::focus_action(EMainMenuAction const action) {

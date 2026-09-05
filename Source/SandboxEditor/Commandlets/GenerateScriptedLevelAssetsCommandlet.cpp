@@ -8,6 +8,7 @@
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
+#include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 #include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
@@ -95,6 +96,7 @@ constexpr TCHAR source_config_object_path[]{
     TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/DA_FT_soa_entities_LevelConfig."
          "DA_FT_soa_entities_LevelConfig")};
 constexpr TCHAR runtime_map_package_name[]{TEXT("/SpaceGame/Levels/GameRuntime")};
+constexpr TCHAR main_menu_map_package_name[]{TEXT("/SpaceGame/Levels/MainMenu")};
 constexpr TCHAR runtime_game_mode_class_path[]{
     TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C")};
 constexpr TCHAR runtime_game_mode_object_path[]{
@@ -457,7 +459,6 @@ auto generate_main_menu_widget() -> UClass* {
     auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
     auto* const switcher{make_widget<UWidgetSwitcher>(tree, TEXT("page_switcher"))};
     auto* const switcher_slot{root->AddChildToOverlay(switcher)};
-    switcher_slot->SetPadding(FMargin{80.0f});
     switcher_slot->SetHorizontalAlignment(HAlign_Fill);
     switcher_slot->SetVerticalAlignment(VAlign_Fill);
 
@@ -790,6 +791,25 @@ auto generate_runtime_map() -> bool {
         runtime_map_package_name, FPackageName::GetMapPackageExtension())};
     return FEditorFileUtils::SaveLevel(world->PersistentLevel, filename);
 }
+
+auto generate_main_menu_map() -> bool {
+    auto* const world{UEditorLoadingAndSavingUtils::NewBlankMap(false)};
+    if (!IsValid(world)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not create blank main-menu map"));
+        return false;
+    }
+
+    auto* const world_settings{world->GetWorldSettings()};
+    if (!IsValid(world_settings)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not configure the main-menu game mode"));
+        return false;
+    }
+    world_settings->DefaultGameMode = ml::ioj::AMainMenuGameMode::StaticClass();
+
+    auto const filename{FPackageName::LongPackageNameToFilename(
+        main_menu_map_package_name, FPackageName::GetMapPackageExtension())};
+    return FEditorFileUtils::SaveLevel(world->PersistentLevel, filename);
+}
 }
 
 UGenerateScriptedLevelAssetsCommandlet::UGenerateScriptedLevelAssetsCommandlet() {
@@ -819,6 +839,6 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
                                               *level_class,
                                               *pause_class,
                                               *completion_class)};
-    auto const map_generated{generate_runtime_map()};
+    auto const map_generated{generate_runtime_map() && generate_main_menu_map()};
     return input_generated && ui_generated && map_generated ? 0 : 1;
 }

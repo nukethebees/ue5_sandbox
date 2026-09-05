@@ -12,12 +12,10 @@
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 
-#include <Camera/CameraActor.h>
 #include <Engine/Engine.h>
 #include <Engine/GameInstance.h>
 #include <Engine/GameViewportClient.h>
 #include <Engine/LocalPlayer.h>
-#include <EngineUtils.h>
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystems.h>
 #include <InputAction.h>
@@ -392,7 +390,6 @@ void ASpaceGamePlayerController::initialise_main_menu() {
 
     apply_main_menu_input_mode();
     GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::apply_main_menu_input_mode);
-    select_main_menu_camera();
     SetActorTickEnabled(false);
 }
 
@@ -445,22 +442,6 @@ void ASpaceGamePlayerController::shutdown_ui_root() {
     ui_root->DeactivateWidget();
     ui_root->RemoveFromParent();
     ui_root = nullptr;
-}
-
-void ASpaceGamePlayerController::select_main_menu_camera() {
-    static FName const camera_tag{TEXT("MainMenuCamera")};
-    for (TActorIterator<ACameraActor> it{GetWorld()}; it; ++it) {
-        if (it->ActorHasTag(camera_tag)) {
-            SetViewTarget(*it);
-            return;
-        }
-    }
-
-    UE_LOG(LogSandboxController,
-           Warning,
-           TEXT("ASpaceGamePlayerController::select_main_menu_camera: No camera tagged '%s' was "
-                "found."),
-           *camera_tag.ToString());
 }
 
 void ASpaceGamePlayerController::bind_orchestrator_events() {

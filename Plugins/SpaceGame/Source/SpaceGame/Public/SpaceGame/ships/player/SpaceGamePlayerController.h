@@ -79,7 +79,6 @@ class ASpaceGamePlayerController : public APlayerController {
     void return_to_level_select();
     void quit_game();
     void detach_modal_callbacks();
-    void select_main_menu_camera();
     void bind_orchestrator_events();
     void on_orchestrator_reset(ATestBatchOrchestrator& orchestrator);
 
