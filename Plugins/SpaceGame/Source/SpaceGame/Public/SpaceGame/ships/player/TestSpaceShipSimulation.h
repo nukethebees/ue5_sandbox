@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
+
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
 #include <SpaceGame/entities/TestEntityUniqueId.h>
@@ -17,8 +19,9 @@
 #include <CoreMinimal.h>
 
 class ATestBatchOrchestrator;
+struct FLevelSimulation;
 struct EntityDeathInfo;
-struct FPlayerShipConfig;
+struct FPlayerSimulationConfig;
 struct FTestEntityRegistry;
 
 namespace ml {
@@ -32,14 +35,30 @@ struct Simulation;
 namespace ml::test_space_ship {
 class PhaseInterface;
 
+struct FPlayerSpawnData {
+    FPlayerSimulationConfig config;
+    ETestTeam team{ETestTeam::White};
+    FTransform transform{FTransform::Identity};
+    FTransform visual_transform{FTransform::Identity};
+    FTransform left_socket{FTransform::Identity};
+    FTransform right_socket{FTransform::Identity};
+    FTransform middle_socket{FTransform::Identity};
+    float collision_radius{};
+    ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::ForwardSpeed};
+    ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
+    EShipLaserMode laser_mode{EShipLaserMode::Single};
+    ETestShipFireRate laser_fire_rate{ETestShipFireRate::Burst3};
+    FShipHealth health{1000};
+};
+
 struct SPACEGAME_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
 
-    void set_config(FPlayerShipConfig const& new_config) noexcept;
+    void set_config(FPlayerSimulationConfig const& new_config) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
     void set_lasers(ml::test_lasers::Simulation& new_lasers) noexcept;
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator);
+    void bind_simulation_clock(FSimulationClock const& clock);
 
     void set_move_input(FVector2D input) noexcept;
     void set_lateral_move_input(float input) noexcept;
@@ -159,7 +178,7 @@ struct SPACEGAME_API Simulation {
 
     friend class PhaseInterface;
 
-    FPlayerShipConfig const* config{nullptr};
+    FPlayerSimulationConfig config{};
     FTestEntityRegistry* entity_registry{nullptr};
     FSpatialQueryManager const* spatial_query_manager{nullptr};
     ml::test_lasers::Simulation* lasers{nullptr};

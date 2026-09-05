@@ -2,8 +2,7 @@
 
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/simulation/SpatialQueryManager.h>
 
 #include <SandboxCore/array_utils.h>
@@ -22,8 +21,8 @@ TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStatic
 
 namespace ml::test_static_turrets {
 
-void Simulation::set_config(FTurretConfig const& new_config) noexcept {
-    config = &new_config;
+void Simulation::set_config(FTurretSimulationConfig const& new_config) noexcept {
+    config = new_config;
 }
 
 void Simulation::set_entity_registry(FTestEntityRegistry& new_registry) noexcept {
@@ -47,7 +46,6 @@ void Simulation::clear_runtime_state() {
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
-    check(config);
     check(entity_registry);
     check(spatial_query_manager);
     check(laser_simulation);
@@ -55,7 +53,7 @@ void Simulation::begin_play() {
     check(search_slice_size > 0);
 
     auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config->laser.fire_cooldown)};
+        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
     entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
     validate_array_sizes();
 }
@@ -69,9 +67,9 @@ void Simulation::register_turrets(SpawnData const& spawn_data) {
         return;
     }
 
-    check(config->target_refresh_frequency > 0.f);
+    check(config.target_refresh_frequency > 0.f);
     auto const target_refresh_tick_period_unsigned{
-        simulation_clock.frequency_to_tick_period(config->target_refresh_frequency)};
+        simulation_clock.frequency_to_tick_period(config.target_refresh_frequency)};
     check(FPeriodicTickCountdown16::valid_period(target_refresh_tick_period_unsigned));
     auto const target_refresh_tick_period{
         static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_tick_period_unsigned)};
@@ -87,7 +85,7 @@ void Simulation::register_turrets(SpawnData const& spawn_data) {
     ml::fill(entities.target_velocities, 0.f);
     entities.laser_cooldowns.zero_last(n_to_add);
 
-    FVector3f const fire_point_offset{config->fire_point_offset.GetLocation()};
+    FVector3f const fire_point_offset{config.fire_point_offset.GetLocation()};
     for (int32 i{0}; i < n_to_add; ++i) {
         ml::assign(entities.fire_point_locations,
                    i,
@@ -130,8 +128,8 @@ void Simulation::validate_array_sizes() const {
     entities.validate_array_sizes();
 }
 
-void Simulation::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
-    simulation_clock.bind(orchestrator);
+void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
+    simulation_clock.bind(clock);
 }
 
 void Simulation::begin_tick() {
@@ -236,7 +234,7 @@ void Simulation::perform_search() {
         return;
     }
 
-    auto const radius{config->detection_radius};
+    auto const radius{config.detection_radius};
 
     auto const hardware_thread_count{
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads())};
@@ -319,13 +317,13 @@ void Simulation::fire_at_enemies() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::fire_at_enemies);
 
     auto const n{get_num_instances()};
-    auto const laser_speed{config->laser.projectile_speed};
-    auto const laser_max_distance{config->laser.max_distance};
+    auto const laser_speed{config.laser.projectile_speed};
+    auto const laser_max_distance{config.laser.max_distance};
 
     auto const disengage_radius{get_disengage_radius()};
     auto const disengage_radius_sq{disengage_radius * disengage_radius};
 
-    auto const colour_cache{UTestTeamVisualData::build_team_colour_cache(config->team_visual_data)};
+    auto const colour_cache{config.team_colours};
 
     auto& candidate_indices{scratch_int_buffer};
     auto& start_locations{line_of_sight_start_locations};
@@ -413,7 +411,7 @@ void Simulation::fire_at_enemies() {
 }
 
 auto Simulation::get_disengage_radius() const -> float {
-    return config->detection_radius * 1.2f;
+    return config.detection_radius * 1.2f;
 }
 
 void Simulation::clear_tick_buffers() {

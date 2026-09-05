@@ -16,10 +16,7 @@
 #include <mutex>
 #include <utility>
 
-class UWorld;
-class UPrimitiveComponent;
 struct FTestEntityRegistry;
-struct FCollisionGridConfig;
 
 namespace ml {
 struct FSpatialQueryManager;
@@ -60,13 +57,11 @@ struct SPACEGAME_API FSpatialQueryManager {
     FSpatialQueryManager() = default;
 
     void initialise(FTestEntityRegistry const& entity_registry,
-                    FCollisionGridConfig const& collision_grid_config,
-                    ioj::FCollisionSystem::EntityMeshes const& entity_meshes);
+                    FIntVector3 const grid_dimensions,
+                    FVector3f const cell_size,
+                    ioj::FEntityAABBs const& entity_bounds);
 
     void reserve_thread_buffers(int32 count);
-    void initialise_static_geometry(UWorld& world,
-                                    FCollisionGridConfig const& collision_grid_config);
-    auto add_static_geometry(UPrimitiveComponent& component) -> bool;
 
     void trace_line_of_sight(FVectors3f::ConstView start_locations,
                              FVectors3f::ConstView end_locations,

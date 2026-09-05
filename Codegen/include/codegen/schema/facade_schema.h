@@ -20,6 +20,7 @@ struct FacadeSchema {
     std::string bind_access{"public"};
     std::string method_access{"public"};
     std::vector<std::string> friends;
+    std::string friend_kind{"class"};
     bool definitions_in_source{false};
 };
 

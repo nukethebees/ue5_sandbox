@@ -6,13 +6,12 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
-#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -78,13 +77,6 @@ auto FTestBatchOrchestratorResetScenario::is_core_runtime_actor(AActor const& ac
 void FTestBatchOrchestratorResetScenario::save_old_owned_actors(
     ATestBatchOrchestrator const& orchestrator) {
     old_owned_actors[0] = const_cast<ATestSpaceShip*>(orchestrator.get_player_ship());
-    old_owned_actors[1] = const_cast<ATestLasers*>(orchestrator.get_lasers_actor());
-    old_owned_actors[2] = const_cast<ATestCapitalShips*>(orchestrator.get_capital_ships_actor());
-    old_owned_actors[3] =
-        const_cast<ATestCapitalShipFighters*>(orchestrator.get_capital_ship_fighters_actor());
-    old_owned_actors[4] = const_cast<ATestStaticTurrets*>(orchestrator.get_turrets_actor());
-    old_owned_actors[5] = const_cast<ATestTubeSpinners*>(orchestrator.get_spinners_actor());
-    old_owned_actors[6] = const_cast<ADelayedNiagaraSpawner*>(orchestrator.get_niagara_spawner());
 }
 
 void FTestBatchOrchestratorResetScenario::save_old_transient_actors(
@@ -104,7 +96,7 @@ void FTestBatchOrchestratorResetScenario::save_old_transient_actors(
 void FTestBatchOrchestratorResetScenario::sample(ATestBatchOrchestrator& orchestrator) {
     FSimulationSample const sample{
         .actor_count = count_actors(*test_driver->get_world()),
-        .registry_alive = test_driver->registry.count_alive(),
+        .registry_alive = test_driver->get_registry().count_alive(),
         .capital_count = orchestrator.get_capital_ships()->get_num_instances(),
         .fighter_count = orchestrator.get_capital_ship_fighters()->get_num_instances(),
         .laser_count = orchestrator.get_lasers()->get_num_instances(),
@@ -139,18 +131,36 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
     initial_registry_alive = initial_samples.last_value().registry_alive;
     save_old_owned_actors(test_driver->orchestrator);
     save_old_transient_actors(test_driver->orchestrator);
-    auto const& telemetry{
+    auto const& initial_telemetry{
         test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
-    checks.is_true(!telemetry.is_empty(), TEXT("Initial level telemetry is populated"));
+    checks.is_true(!initial_telemetry.is_empty(), TEXT("Initial level telemetry is populated"));
+    auto const resources{test_driver->orchestrator.get_presentation_resources()};
     test_driver->orchestrator.reset_for_new_level();
-    checks.is_true(telemetry.is_empty(), TEXT("Level reset clears telemetry"));
+    auto const retained{test_driver->orchestrator.get_presentation_resources()};
+    checks.is_true(
+        resources.lasers == retained.lasers && resources.capital_ships == retained.capital_ships &&
+            resources.fighters == retained.fighters && resources.turrets == retained.turrets &&
+            resources.spinners == retained.spinners,
+        TEXT("Reset retains the orchestrator's presentation components"));
+    for (auto const* component : {retained.lasers,
+                                  retained.capital_ships,
+                                  retained.fighters,
+                                  retained.turrets,
+                                  retained.spinners}) {
+        checks.are_equal(
+            0, component->GetInstanceCount(), TEXT("Reset clears presentation instances"));
+    }
+    checks.is_true(test_driver->orchestrator.get_level_simulation() == nullptr,
+                   TEXT("Level reset destroys the previous simulation"));
     reset_complete = true;
     test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorResetScenario::on_end_tick));
     test_driver->orchestrator.start_simulation();
+    auto const& telemetry{
+        test_driver->orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
     checks.are_equal(int32{1}, telemetry.num(), TEXT("Restart records one telemetry baseline"));
     checks.are_equal(uint64{0}, telemetry.last_time(), TEXT("Restart baseline uses tick zero"));
-    checks.are_equal(test_driver->registry.get_num_alive_active_entities(),
+    checks.are_equal(test_driver->get_registry().get_num_alive_active_entities(),
                      telemetry.last_value(),
                      TEXT("Restart baseline records active entities"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
@@ -184,12 +194,6 @@ void FTestBatchOrchestratorResetScenario::check_reset() {
     auto const& orchestrator{test_driver->orchestrator};
     TStaticArray<AActor const*, owned_actor_count> const recreated_owned_actors{
         orchestrator.get_player_ship(),
-        orchestrator.get_lasers_actor(),
-        orchestrator.get_capital_ships_actor(),
-        orchestrator.get_capital_ship_fighters_actor(),
-        orchestrator.get_turrets_actor(),
-        orchestrator.get_spinners_actor(),
-        orchestrator.get_niagara_spawner(),
     };
     for (int32 i{0}; i < owned_actor_count; ++i) {
         if (old_owned_actors[i] == nullptr) {

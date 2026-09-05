@@ -5,8 +5,8 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -31,6 +31,7 @@ FEntityInterfaceScenario::FEntityInterfaceScenario(FSimulationTestContext& conte
 }
 
 void FEntityInterfaceScenario::on_tear_down() {
+    context_.orchestrator.reset_for_new_level();
     context_.orchestrator.set_level_config(const_cast<USpaceGameLevelConfig&>(context_.config));
 }
 
@@ -38,20 +39,14 @@ void FEntityInterfaceScenario::on_tear_down() {
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FEntityInterfaceScenario::spawn_fixture() {
-    auto* const capital_actor{
-        const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships_actor())};
-    if (!checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
-        return;
-    }
-
-    auto* const capital_config{duplicate_capital_ships_config(context_.config, *capital_actor)};
+    auto* const capital_config{&level_config->capital_ships};
     if (!checks.not_nullptr(capital_config, TEXT("Entity interface capital config is created"))) {
         return;
     }
     capital_config->spawn_delay = 10.f;
     capital_config->max_health = 10000;
     capital_config->visual_logger_style = nullptr;
-    capital_actor->set_actor_config(capital_config);
+    context_.orchestrator.set_level_config(*level_config);
 
     auto* const player{spawn_player_ship(
         context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};

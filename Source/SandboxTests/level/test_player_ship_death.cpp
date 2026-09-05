@@ -90,7 +90,7 @@ void FTestPlayerShipDeathScenario::queue_player_ship_death() {
 }
 
 void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
-    auto const& unique_entities{test_driver->registry.get_unique_entities()};
+    auto const& unique_entities{test_driver->get_registry().get_unique_entities()};
 
     if (!checks.is_true(unique_entities.alive.IsValidIndex(player_ship_id.id),
                         TEXT("Check player id is valid"))) {
@@ -98,7 +98,7 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
     }
 
     samples.add(test_driver->get_time(),
-                FSimulationSample{test_driver->registry.is_valid_dead(player_ship_handle),
+                FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
                                   IsValid(player_ship.Get()),
                                   static_cast<bool>(unique_entities.alive[player_ship_id.id])});
     test_driver->advance_timeline();

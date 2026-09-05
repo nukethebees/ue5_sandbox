@@ -16,7 +16,7 @@
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -37,7 +37,7 @@ FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context
             return;
         }
 
-        auto& mission_manager{orchestrator->get_mission_manager()};
+        auto& mission_manager{orchestrator->get_mission_definition()};
         mission_manager.set_mission_mode(ETestMissionMode::None);
         mission_manager.set_save_mission_results(true);
     });
@@ -130,7 +130,7 @@ void FTestHUDManagerScenario::configure_defence_mission(UWorld& world,
     auto* const defended{find_capital(FName{TEXT("defended_capital")})};
     auto* const required_enemy{find_capital(FName{TEXT("required_enemy_capital")})};
 
-    auto& mission_manager{orchestrator.get_mission_manager()};
+    auto& mission_manager{orchestrator.get_mission_definition()};
     mission_manager.set_save_mission_results(false);
     mission_manager.set_mission_mode(ETestMissionMode::SurviveTime);
     mission_manager.set_target_time(10.f);

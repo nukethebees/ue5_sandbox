@@ -1,8 +1,7 @@
 #include "SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h"
 
 #include <SpaceGame/entities/TestBatchActorCore.h>
-#include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
@@ -88,12 +87,12 @@ auto find_appropriate_fire_point(ml::FSpatialQueryManager const& spatial_query_m
 } // namespace
 
 namespace ml::test_capital_ship_fighters {
-void Simulation::set_config(FFighterConfig const& new_config) noexcept {
-    config = &new_config;
+void Simulation::set_config(FFighterSimulationConfig const& new_config) noexcept {
+    config = new_config;
 }
 
-void Simulation::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
-    simulation_clock.bind(orchestrator);
+void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
+    simulation_clock.bind(clock);
 }
 
 void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
@@ -129,37 +128,35 @@ void Simulation::begin_play() {
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
     check(entity_registry);
     check(spatial_query_manager);
-    check(config);
     check(laser_simulation);
     check(simulation_clock.is_valid());
     check(collision_radius > 0.f);
     check(fire_point_distance >= 0.f);
-    check(IsValid(config->team_visual_data));
 
     auto const awareness_scan_tick_period{
-        simulation_clock.frequency_to_tick_period(config->awareness_scan_frequency)};
+        simulation_clock.frequency_to_tick_period(config.awareness_scan_frequency)};
     entity_buffers.for_each([=](auto& data) {
         data.awareness_scan_countdowns.set_tick_value(awareness_scan_tick_period);
     });
 
     auto const attack_reposition_tick_period{
-        simulation_clock.frequency_to_tick_period(config->attack_reposition_frequency)};
+        simulation_clock.frequency_to_tick_period(config.attack_reposition_frequency)};
     entity_buffers.for_each([=](auto& data) {
         data.attack_reposition_countdowns.set_tick_value(attack_reposition_tick_period);
     });
 
     auto const fire_cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config->laser.fire_cooldown)};
+        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
     entity_buffers.for_each(
         [=](auto& data) { data.attack_cooldowns.set_tick_value(fire_cooldown_tick_period); });
 
     auto const attack_retry_cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config->attack_retry_cooldown)};
+        simulation_clock.duration_to_tick_period(config.attack_retry_cooldown)};
     check(FTickCountdown16::tick_can_fit(attack_retry_cooldown_tick_period));
     attack_retry_cooldown_tick_value =
         static_cast<FTickCountdown16::counter_type>(attack_retry_cooldown_tick_period);
 
-    check(config->attack_distance_band.values_are_valid());
+    check(config.attack_distance_band.values_are_valid());
 }
 
 void Simulation::begin_tick() {
@@ -182,13 +179,13 @@ void Simulation::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::make_decisions);
 
     auto& data{entity_buffers.current()};
-    auto const awareness_radius{config->awareness_radius};
-    auto const attack_engagement_threshold{config->attack_engagement_threshold};
+    auto const awareness_radius{config.awareness_radius};
+    auto const attack_engagement_threshold{config.attack_engagement_threshold};
     auto const attack_engagement_threshold_sq{attack_engagement_threshold *
                                               attack_engagement_threshold};
     auto const n{data.num()};
     TStaticArray<FRegistryEntityHandle, 128> nearby_entities;
-    auto const dot_threshold{config->minimum_opportunistic_intercept_deviation_dot_product};
+    auto const dot_threshold{config.minimum_opportunistic_intercept_deviation_dot_product};
 
     for (int32 i{0}; i < n; ++i) {
         if (!data.awareness_scan_countdowns.try_consume(i)) {
@@ -221,7 +218,7 @@ void Simulation::make_decisions() {
 void Simulation::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::move);
 
-    auto const d_turn{FMath::Min(1.f, config->turn_speed_unitless * dt)};
+    auto const d_turn{FMath::Min(1.f, config.turn_speed_unitless * dt)};
     auto& data{entity_buffers.current()};
     if (data.num() < 1) {
         return;
@@ -232,8 +229,8 @@ void Simulation::move(float const dt) {
     auto const do_move{move_view.num() > 0};
     auto const n_attack{attack_view.num()};
     auto const do_attack{n_attack > 0};
-    auto const laser_max_distance{config->laser.max_distance};
-    auto const& attack_distance_band{config->attack_distance_band};
+    auto const laser_max_distance{config.laser.max_distance};
+    auto const& attack_distance_band{config.attack_distance_band};
     auto const desired_attack_distance{laser_max_distance * attack_distance_band.desired_ratio};
     auto const inner_attack_distance{laser_max_distance * attack_distance_band.minimum_ratio};
     auto const outer_attack_distance{laser_max_distance * attack_distance_band.maximum_ratio};
@@ -243,7 +240,7 @@ void Simulation::move(float const dt) {
                                   attack_view.locations.get_const_view(),
                                   attack_view.target_locations.get_const_view(),
                                   attack_view.target_velocities.get_const_view(),
-                                  config->laser.projectile_speed);
+                                  config.laser.projectile_speed);
 
         for (int32 i{0}; i < n_attack; ++i) {
             auto const intercept_location{ml::get_vector3f(attack_view.target_locations, i) +
@@ -568,9 +565,9 @@ void Simulation::commit_spawns() {
     data.velocities.add_zeroed(n_new);
     data.move_distances.AddZeroed(n_new);
     ml::add_uninitialised(data.aim_directions, n_new);
-    ml::append_n(data.speeds, config->speed, n_new);
+    ml::append_n(data.speeds, config.speed, n_new);
     data.teams.Append(new_teams);
-    ml::append_n(data.healths, config->health, n_new);
+    ml::append_n(data.healths, config.health, n_new);
     data.awareness_scan_countdowns.add_zeroed(n_new);
     data.attack_reposition_countdowns.add_zeroed(n_new);
     data.target_handles.Append(new_targets);
@@ -638,15 +635,15 @@ void Simulation::handle_firing(TaskView const& data) {
 
     auto const n_ships{ml::num(data)};
     auto const aim_threshold{fire_dot_product_threshold};
-    auto const laser_damage{config->laser.damage};
-    auto const laser_speed{config->laser.projectile_speed};
-    auto const laser_max_distance{config->laser.max_distance};
+    auto const laser_damage{config.laser.damage};
+    auto const laser_speed{config.laser.projectile_speed};
+    auto const laser_max_distance{config.laser.max_distance};
     auto const laser_max_distance_sq{laser_max_distance * laser_max_distance};
     auto const desired_attack_distance{laser_max_distance *
-                                       config->attack_distance_band.desired_ratio};
-    auto const arrival_distance{config->arrival_distance};
+                                       config.attack_distance_band.desired_ratio};
+    auto const arrival_distance{config.arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
-    auto const colour_cache{UTestTeamVisualData::build_team_colour_cache(config->team_visual_data)};
+    auto const colour_cache{config.team_colours};
     auto& can_fire{scratch_int_buffer};
 
     ml::reset(new_lasers, aiming_dot_product_buffer, can_fire);
@@ -671,7 +668,7 @@ void Simulation::handle_firing(TaskView const& data) {
     }
 
     auto const n_can_fire_before_los{can_fire.Num()};
-    auto const los_check_buffer{config->los_check_buffer};
+    auto const los_check_buffer{config.los_check_buffer};
     line_of_sight_starts.set_num(n_can_fire_before_los, EAllowShrinking::No);
     line_of_sight_ends.set_num(n_can_fire_before_los, EAllowShrinking::No);
     line_of_sight_results.SetNumUninitialized(n_can_fire_before_los, EAllowShrinking::No);

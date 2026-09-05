@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
+
 #include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsSoA.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
@@ -9,8 +11,9 @@
 #include <CoreMinimal.h>
 
 class ATestBatchOrchestrator;
-class ATestStaticTurrets;
-struct FTurretConfig;
+struct FLevelSimulation;
+struct FTurretPresentation;
+struct FTurretSimulationConfig;
 struct FTestEntityRegistry;
 
 namespace ml {
@@ -25,8 +28,8 @@ struct SPACEGAME_API Simulation {
     using EntityData = ml::test_static_turrets::EntityData;
     using SpawnData = ml::test_static_turrets::SpawnData;
 
-    void set_config(FTurretConfig const& new_config) noexcept;
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
+    void set_config(FTurretSimulationConfig const& new_config) noexcept;
+    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& manager) noexcept;
     void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
@@ -68,9 +71,10 @@ struct SPACEGAME_API Simulation {
 
     friend class PhaseInterface;
     friend class ::ATestBatchOrchestrator;
-    friend class ::ATestStaticTurrets;
+    friend struct ::FLevelSimulation;
+    friend struct ::FTurretPresentation;
 
-    FTurretConfig const* config{nullptr};
+    FTurretSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTestEntityRegistry* entity_registry{nullptr};
     FSpatialQueryManager const* spatial_query_manager{nullptr};

@@ -2,7 +2,7 @@
 
 #include <CoreMinimal.h>
 
-class ATestBatchOrchestrator;
+#include <SpaceGame/simulation/SimulationClock.h>
 
 namespace ml::test_batch_orchestrator {
 class SPACEGAME_API SimulationClockInterface {
@@ -11,11 +11,11 @@ class SPACEGAME_API SimulationClockInterface {
     using time_type = double;
 
     SimulationClockInterface() = default;
-    SimulationClockInterface(ATestBatchOrchestrator const& orch);
+    SimulationClockInterface(FSimulationClock const& orch);
 
     bool is_valid() const noexcept;
 
-    void bind(ATestBatchOrchestrator const& new_orchestrator) noexcept;
+    void bind(FSimulationClock const& new_orchestrator) noexcept;
 
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
 
@@ -25,6 +25,6 @@ class SPACEGAME_API SimulationClockInterface {
     auto get_simulation_time() const noexcept -> time_type;
     auto get_tick_period() const noexcept -> time_type;
   private:
-    ATestBatchOrchestrator const* orchestrator{nullptr};
+    FSimulationClock const* orchestrator{nullptr};
 };
 }

@@ -13,16 +13,10 @@
 
 #include "SpaceGameLevelConfig.generated.h"
 
-class ADelayedNiagaraSpawner;
 class AActor;
-class ATestCapitalShipFighters;
 class ATestCapitalShipProxy;
-class ATestCapitalShips;
-class ATestLasers;
 class ATestSpaceShip;
 class ASpaceGamePlayerController;
-class ATestStaticTurrets;
-class ATestTubeSpinners;
 class UMaterialInterface;
 class UNiagaraSystem;
 class USandboxVisualLoggerStyle;
@@ -63,25 +57,7 @@ struct SPACEGAME_API FScenarioClassConfig {
     TSubclassOf<ATestSpaceShip> player_ship_class{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<ATestLasers> lasers_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<ATestCapitalShips> capital_ships_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Classes")
     TSubclassOf<ATestCapitalShipProxy> capital_ship_proxy_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<ATestCapitalShipFighters> capital_ship_fighters_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<ATestStaticTurrets> turrets_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<ATestTubeSpinners> spinners_class{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Classes")
-    TSubclassOf<ADelayedNiagaraSpawner> niagara_spawner_class{nullptr};
 };
 
 USTRUCT(BlueprintType)

@@ -6,19 +6,15 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
-#include <GameFramework/Actor.h>
 
-#include "TestCapitalShipFighters.generated.h"
-
-UCLASS()
-class SPACEGAME_API ATestCapitalShipFighters : public AActor {
-    GENERATED_BODY()
-    friend class ATestBatchOrchestrator;
+struct SPACEGAME_API FFighterPresentation {
+    friend struct FLevelPresentation;
+    friend struct FLevelSimulation;
   public:
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};
 
-    ATestCapitalShipFighters();
+    explicit FFighterPresentation(UInstancedStaticMeshComponent& component);
 
     void set_actor_config(FFighterConfig const* new_config) noexcept;
   private:
@@ -41,19 +37,15 @@ class SPACEGAME_API ATestCapitalShipFighters : public AActor {
     void visual_log_state() const;
     void validate_array_sizes() const;
 
-    UPROPERTY(EditDefaultsOnly, meta = (AllowPrivateAccess))
-    TObjectPtr<UInstancedStaticMeshComponent> instances;
+    UInstancedStaticMeshComponent* instances{nullptr};
 
     FFighterConfig const* actor_config{nullptr};
     TArray<FTransform> ismc_transforms;
     TArray<FTransform> dummy_transforms_spawn_buffer;
     TArray<float> custom_data_buffer;
 
-    UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging", meta = (AllowPrivateAccess))
     bool enable_target_debug_drawing{false};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Debugging", meta = (AllowPrivateAccess))
     bool enable_ship_location_debug_drawing{false};
 
     ml::test_capital_ship_fighters::Simulation* bound_simulation{nullptr};

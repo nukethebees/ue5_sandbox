@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
+
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
@@ -15,9 +17,10 @@
 
 #include <optional>
 
-class ATestCapitalShips;
+struct FCapitalPresentation;
 class ATestBatchOrchestrator;
-struct FCapitalShipConfig;
+struct FLevelSimulation;
+struct FCapitalSimulationConfig;
 struct FTestEntityRegistry;
 
 namespace ml {
@@ -39,7 +42,7 @@ struct SPACEGAME_API Simulation {
     using FighterReassignment = ml::test_capital_ships::FighterReassignment;
     using EntityBuffers = ml::MultiBuffer<EntityTickData, 2>;
 
-    void set_config(FCapitalShipConfig const& new_config) noexcept;
+    void set_config(FCapitalSimulationConfig const& new_config) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
     void bind_fighters(ml::test_capital_ship_fighters::Simulation& fighters);
@@ -106,9 +109,10 @@ struct SPACEGAME_API Simulation {
 
     friend class PhaseInterface;
     friend class ::ATestBatchOrchestrator;
-    friend class ::ATestCapitalShips;
+    friend struct ::FLevelSimulation;
+    friend struct ::FCapitalPresentation;
 
-    FCapitalShipConfig const* config{nullptr};
+    FCapitalSimulationConfig config{};
     FTestEntityRegistry* entity_registry{nullptr};
     FSpatialQueryManager const* spatial_query_manager{nullptr};
 

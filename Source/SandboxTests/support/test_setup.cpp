@@ -108,7 +108,8 @@ void FTestBatchOrchestratorLevelSetup::end_test() {
 
 void FTestBatchOrchestratorLevelSetup::reset_test_configuration() {
     check(orchestrator.IsValid());
-    auto& mission_manager{orchestrator->get_mission_manager()};
+    orchestrator->set_level_config(*config);
+    auto& mission_manager{orchestrator->get_mission_definition()};
     mission_manager.set_mission_mode(ETestMissionMode::None);
     mission_manager.set_target_time(60.f);
     mission_manager.set_kill_target(5);
@@ -183,7 +184,7 @@ auto FTestBatchOrchestratorLevelSetup::spawn_orchestrator(UWorld& world) -> bool
 
     new_orchestrator->set_start_mode(EOrchestratorStartMode::PausedInTest);
     new_orchestrator->set_level_config(*config);
-    new_orchestrator->spawn_missing_actors();
+    new_orchestrator->prepare_level();
     auto* const finished_orchestrator{
         UGameplayStatics::FinishSpawningActor(new_orchestrator, FTransform::Identity)};
     if (!IsValid(finished_orchestrator)) {

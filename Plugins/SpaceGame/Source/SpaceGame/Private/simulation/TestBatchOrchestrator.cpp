@@ -4,19 +4,13 @@
 #include "SpaceGame/system/GameSubsystem.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/combat/lasers/TestLasers.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/HUDManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/CollisionGridVisualizationComponent.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
@@ -38,6 +32,8 @@
 #include <GameFramework/WorldSettings.h>
 #include <HAL/PlatformMisc.h>
 #include <Kismet/GameplayStatics.h>
+#include <SpaceGame/persistence/SpaceSaveGame.h>
+#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <VisualLogger/VisualLogger.h>
 
 namespace {
@@ -70,6 +66,17 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     collision_grid_visualization = CreateDefaultSubobject<UCollisionGridVisualizationComponent>(
         TEXT("CollisionGridVisualization"));
     RootComponent = collision_grid_visualization;
+    laser_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Lasers"));
+    laser_instances_->SetupAttachment(RootComponent);
+    capital_instances_ =
+        CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("CapitalShips"));
+    capital_instances_->SetupAttachment(RootComponent);
+    fighter_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Fighters"));
+    fighter_instances_->SetupAttachment(RootComponent);
+    turret_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Turrets"));
+    turret_instances_->SetupAttachment(RootComponent);
+    spinner_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Spinners"));
+    spinner_instances_->SetupAttachment(RootComponent);
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
 }
@@ -83,7 +90,6 @@ void ATestBatchOrchestrator::PostLoad() {
 void ATestBatchOrchestrator::BeginPlay() {
     Super::BeginPlay();
 
-    state = EOrchestratorState::Uninitialised;
     if (start_mode == EOrchestratorStartMode::AuthoredLevel) {
         load_authored_level();
     } else if (should_initialise_in_begin_play()) {
@@ -94,7 +100,11 @@ void ATestBatchOrchestrator::BeginPlay() {
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
     hud_manager.deactivate();
-    state = EOrchestratorState::Stopped;
+    if (IsValid(player_ship)) {
+        player_ship->unbind_simulation();
+    }
+    level_simulation_.Reset();
+    world_collision_.restore_collision();
     SetActorTickEnabled(false);
     stop_visual_logging();
     clear_end_tick_test_hook();
@@ -103,23 +113,21 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
 }
 
 void ATestBatchOrchestrator::start_simulation() {
-    if (state == EOrchestratorState::Uninitialised) {
+    if (!level_simulation_.IsSet()) {
         begin_play();
     }
-
-    if (state != EOrchestratorState::Paused) {
-        UE_LOG(LogSandbox,
-               Error,
-               TEXT("ATestBatchOrchestrator::start_simulation: Orchestrator is not paused"));
+    if (get_state() != EOrchestratorState::Paused) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot start a simulation that is not paused"));
         return;
     }
-
-    state = EOrchestratorState::Running;
+    level_simulation_->start();
     SetActorTickEnabled(true);
     start_visual_logging();
 }
 void ATestBatchOrchestrator::pause_simulation() {
-    state = EOrchestratorState::Paused;
+    if (level_simulation_.IsSet()) {
+        level_simulation_->pause();
+    }
     SetActorTickEnabled(false);
 }
 void ATestBatchOrchestrator::reset_for_new_level() {
@@ -136,10 +144,21 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     SetActorTickEnabled(false);
     stop_visual_logging();
     clear_end_tick_test_hook();
-    level_telemetry_manager.reset();
     hud_manager.deactivate();
+    if (IsValid(player_ship)) {
+        player_ship->unbind_simulation();
+    }
+    level_simulation_.Reset();
+    world_collision_.restore_collision();
+    for (auto* component : {laser_instances_.Get(),
+                            capital_instances_.Get(),
+                            fighter_instances_.Get(),
+                            turret_instances_.Get(),
+                            spinner_instances_.Get()}) {
+        component->ClearInstances();
+    }
 
-    TStaticArray<AActor*, 7> recreated_actors{};
+    TStaticArray<AActor*, 1> recreated_actors{};
     int32 recreated_actor_count{0};
     auto recreate_actor{[this, world, &recreated_actors, &recreated_actor_count]<typename T>(
                             TObjectPtr<T>& actor) {
@@ -174,19 +193,13 @@ void ATestBatchOrchestrator::reset_for_new_level() {
             return;
         }
 
-        mission_manager.replace_startup_actor(old_actor, *replacement);
+        mission_definition.replace_startup_actor(old_actor, *replacement);
         actor = replacement;
         recreated_actors[recreated_actor_count] = replacement;
         ++recreated_actor_count;
     }};
 
     recreate_actor(player_ship);
-    recreate_actor(lasers);
-    recreate_actor(capital_ships);
-    recreate_actor(capital_ship_fighters);
-    recreate_actor(turrets);
-    recreate_actor(spinners);
-    recreate_actor(niagara_spawner);
 
     auto is_retained_actor{[this, &recreated_actors](AActor const* const actor) {
         if (actor == this || ml::actor_is_any<AWorldSettings,
@@ -225,20 +238,12 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 
     if (IsValid(level_config)) {
         apply_config(player_ship, &level_config->player_ship);
-        apply_config(lasers, &level_config->laser_projectiles);
-        apply_config(capital_ships, &level_config->capital_ships);
-        apply_config(capital_ship_fighters, &level_config->fighters);
-        apply_config(turrets, &level_config->turrets);
-        apply_config(spinners, &level_config->tube_spinners);
     }
 
     for (int32 i{0}; i < recreated_actor_count; ++i) {
         UGameplayStatics::FinishSpawningActor(recreated_actors[i], FTransform::Identity);
     }
 
-    mission_manager.reset_runtime_state();
-    completed_ticks = 0;
-    state = EOrchestratorState::Uninitialised;
     if (should_initialise_in_begin_play()) {
         begin_play();
     }
@@ -247,6 +252,12 @@ void ATestBatchOrchestrator::reset_for_new_level() {
 }
 
 void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
+    if (level_simulation_.IsSet()) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("Reset the level simulation before replacing its configuration"));
+        return;
+    }
     if (!ensureAlwaysMsgf(config.is_valid(presentation_enabled), TEXT("Level config is invalid"))) {
         return;
     }
@@ -258,33 +269,9 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
 #endif
 
     level_config = &config;
-    lasers_simulation.n_preallocated_instances = config.laser_projectiles.n_preallocated_instances;
-    lasers_simulation.collision_jobs = config.laser_projectiles.collision_jobs;
-    turrets_simulation.search_slice_size = config.turrets.search_slice_size;
-    capital_ship_fighters_simulation.fire_dot_product_threshold =
-        config.fighters.fire_dot_product_threshold;
-    capital_ships_simulation.set_config(config.capital_ships);
-    capital_ship_fighters_simulation.set_config(config.fighters);
-    turrets_simulation.set_config(config.turrets);
-    spinners_simulation.set_config(config.tube_spinners);
     refresh_collision_grid_visualization();
     if (IsValid(player_ship)) {
         apply_actor_config(*player_ship, &config.player_ship);
-    }
-    if (IsValid(lasers)) {
-        apply_actor_config(*lasers, &config.laser_projectiles);
-    }
-    if (IsValid(capital_ships)) {
-        apply_actor_config(*capital_ships, &config.capital_ships);
-    }
-    if (IsValid(capital_ship_fighters)) {
-        apply_actor_config(*capital_ship_fighters, &config.fighters);
-    }
-    if (IsValid(turrets)) {
-        apply_actor_config(*turrets, &config.turrets);
-    }
-    if (IsValid(spinners)) {
-        apply_actor_config(*spinners, &config.tube_spinners);
     }
 
     auto* const world{GetWorld()};
@@ -295,7 +282,7 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
     }
 }
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
-    if (state != EOrchestratorState::Uninitialised) {
+    if (get_state() != EOrchestratorState::Uninitialised) {
         UE_LOG(LogSandbox,
                Error,
                TEXT("ATestBatchOrchestrator::set_start_mode: Orchestrator is already initialised"));
@@ -305,7 +292,7 @@ void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     start_mode = mode;
 }
 void ATestBatchOrchestrator::set_presentation_enabled(bool const enabled) {
-    if (state != EOrchestratorState::Uninitialised) {
+    if (get_state() != EOrchestratorState::Uninitialised) {
         UE_LOG(
             LogSandbox, Error, TEXT("Cannot change presentation after simulation initialisation"));
         return;
@@ -319,202 +306,71 @@ auto ATestBatchOrchestrator::get_player_ship() const -> ATestSpaceShip const* {
 }
 auto ATestBatchOrchestrator::get_player_ship_simulation() noexcept
     -> ml::test_space_ship::Simulation* {
-    return player_ship_simulation.IsSet() ? &player_ship_simulation.GetValue() : nullptr;
+    return level_simulation_.IsSet() ? level_simulation_->get_player_ship_simulation() : nullptr;
 }
 auto ATestBatchOrchestrator::get_player_ship_simulation() const noexcept
     -> ml::test_space_ship::Simulation const* {
-    return player_ship_simulation.IsSet() ? &player_ship_simulation.GetValue() : nullptr;
+    return level_simulation_.IsSet() ? level_simulation_->get_player_ship_simulation() : nullptr;
 }
 void ATestBatchOrchestrator::set_player_ship(ATestSpaceShip& new_player_ship) {
+    if (level_simulation_.IsSet()) {
+        UE_LOG(LogSandbox, Error, TEXT("Reset the level simulation before replacing its player"));
+        return;
+    }
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
-    player_ship_simulation.Reset();
     player_ship = &new_player_ship;
 }
 void ATestBatchOrchestrator::clear_player_ship() {
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
-    player_ship_simulation.Reset();
     player_ship = nullptr;
 }
 
 void ATestBatchOrchestrator::begin_play() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::begin_play);
-
-    completed_ticks = 0;
-    simulation_tick_loop.initialise();
-    hud_tick_loop.initialise();
-    mission_manager.reset_runtime_state();
-
+    if (level_simulation_.IsSet()) {
+        UE_LOG(LogSandbox, Error, TEXT("Level simulation is already initialized"));
+        return;
+    }
     auto* world{GetWorld()};
-
-    if (IsValid(level_config)) {
-        set_level_config(*level_config);
-    } else {
-        UE_LOG(LogSandbox, Fatal, TEXT("ATestBatchOrchestrator level_config is nullptr."));
+    ml::fatal_if_uobject_ptrs_invalid(
+        {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
+    if (!presentation_enabled &&
+        (IsValid(player_ship) || ml::get_first_actor<ATestSpaceShip>(*world))) {
+        UE_LOG(LogSandbox, Error, TEXT("Presentation-disabled levels must be playerless"));
+        SetActorTickEnabled(false);
+        return;
     }
-
-#if WITH_EDITOR
-    if (log_ticks) {
-        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play start"));
-    }
-#endif
-
-    ml::fatal_if_uobject_ptrs_invalid({SANDBOX_NAMED_UOBJECT_PTR(world)});
-    if (!presentation_enabled) {
-        if (IsValid(player_ship) || ml::get_first_actor<ATestSpaceShip>(*world)) {
-            UE_LOG(LogSandbox,
-                   Error,
-                   TEXT("Presentation-disabled simulation requires a playerless level"));
-            SetActorTickEnabled(false);
-            return;
-        }
-        remove_presentation_actors();
-    } else {
-        ml::fatal_if_uobject_ptrs_invalid({
-            SANDBOX_NAMED_UOBJECT_PTR(lasers),
-            SANDBOX_NAMED_UOBJECT_PTR(capital_ships),
-            SANDBOX_NAMED_UOBJECT_PTR(capital_ship_fighters),
-            SANDBOX_NAMED_UOBJECT_PTR(turrets),
-            SANDBOX_NAMED_UOBJECT_PTR(spinners),
-            SANDBOX_NAMED_UOBJECT_PTR(niagara_spawner),
-        });
-    }
-
-    bind_simulation_dependencies();
-    mission_manager.set_world(*world);
-
-    entity_registry.reset();
-
-    lasers_phase.clear_runtime_state();
-    capital_ships_phase.clear_runtime_state();
-    capital_ship_fighters_phase.clear_runtime_state();
-    turrets_phase.clear_runtime_state();
-    spinners_phase.clear_runtime_state();
-
-    if (presentation_enabled) {
-        ml::invoke_on_all(
-            [](AActor* actor) {
-                ml::fatal_if_actor_transform_not_identity(*actor);
-                ml::fatal_if_actor_root_not_static(*actor);
-                actor->SetActorTickEnabled(false);
-            },
-            lasers,
-            capital_ships,
-            capital_ship_fighters,
-            turrets,
-            spinners);
-
-        lasers->clear_runtime_state_presentation();
-        capital_ships->clear_runtime_state_presentation();
-        capital_ship_fighters->clear_runtime_state_presentation();
-        turrets->clear_runtime_state_presentation();
-        spinners->clear_runtime_state_presentation();
-    }
-
-    if (IsValid(player_ship)) {
-        player_ship->begin_play_presentation();
-    }
-    if (player_ship_simulation.IsSet()) {
-        player_ship_phase.begin_play();
-    }
-    initialise_batch_geometry();
-    register_capital_ship_proxies();
-    if (presentation_enabled) {
-        capital_ships->begin_play_presentation();
-    }
-    capital_ships_phase.begin_play();
-    if (presentation_enabled) {
-        capital_ship_fighters->begin_play_presentation();
-    }
-    capital_ship_fighters_phase.begin_play();
-    auto turret_transforms{register_turret_proxies()};
-    if (presentation_enabled) {
-        turrets->begin_play_presentation(MoveTemp(turret_transforms));
-    }
-    turrets_phase.begin_play();
-    register_spinner_proxies();
-    if (presentation_enabled) {
-        spinners->begin_play_presentation();
-    }
-    spinners_phase.begin_play();
-    if (presentation_enabled) {
-        lasers->begin_play_presentation();
-    }
-    lasers_phase.begin_play();
-
-    ml::ioj::FCollisionSystem::EntityMeshes entity_meshes{};
-    entity_meshes[ETestEntityType::PlayerShip] =
-        IsValid(player_ship) ? player_ship->get_collision_mesh() : nullptr;
-    entity_meshes[ETestEntityType::Turret] = level_config->turrets.mesh;
-    entity_meshes[ETestEntityType::CapitalShip] = level_config->capital_ships.mesh;
-    entity_meshes[ETestEntityType::CapitalShipFighter] = level_config->fighters.mesh;
-    entity_meshes[ETestEntityType::TubeSpinner] = level_config->tube_spinners.mesh;
-    query_manager.initialise(entity_registry, level_config->collision_grid, entity_meshes);
-    query_manager.reserve_thread_buffers(
-        FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads()));
-
-    validate_proxy_handles();
-
+    set_level_config(*level_config);
+    hud_tick_loop.initialise();
+    initialise_simulation();
     bind_and_destroy_proxies();
-
-    query_manager.initialise_static_geometry(*world, level_config->collision_grid);
-
-    entity_registry.commit_updates();
-    entity_registry.end_tick();
-    query_manager.update();
-
-    level_telemetry_manager.initialise(entity_registry);
-
-    mission_manager.begin_play();
-
+    world_collision_.initialise_static_geometry(
+        *world, level_config->collision_grid, get_spatial_query_manager().get_collision_system());
+    level_simulation_->finish_initialisation();
+    level_simulation_->on_mission_evaluated = [this] { process_mission_result(); };
+    level_simulation_->on_end_tick = [this](FLevelSimulation&) {
+        end_tick_test_hook.ExecuteIfBound(*this);
+        process_mission_result();
+    };
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
-                               mission_manager,
-                               entity_registry,
+                               get_mission_manager(),
+                               get_entity_registry(),
                                hud_tick_loop.tick_rate,
                                player_ship.Get());
     }
-
-#if WITH_EDITOR
-    if (log_ticks) {
-        UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator: begin_play end"));
-    }
-#endif
-
-    switch (start_mode) {
-        case EOrchestratorStartMode::Paused: {
-            state = EOrchestratorState::Paused;
-            SetActorTickEnabled(false);
-            break;
-        }
-        case EOrchestratorStartMode::PausedInTest: {
-            if (GIsAutomationTesting) {
-                state = EOrchestratorState::Paused;
-                SetActorTickEnabled(false);
-            } else {
-                state = EOrchestratorState::Running;
-                SetActorTickEnabled(true);
-            }
-            break;
-        }
-        case EOrchestratorStartMode::Automatic: {
-            state = EOrchestratorState::Running;
-            SetActorTickEnabled(true);
-            break;
-        }
-        case EOrchestratorStartMode::AuthoredLevel: {
-            state = EOrchestratorState::Running;
-            SetActorTickEnabled(true);
-            break;
-        }
-    }
-
-    if (state == EOrchestratorState::Running) {
+    bool const automatic{
+        start_mode == EOrchestratorStartMode::Automatic ||
+        start_mode == EOrchestratorStartMode::AuthoredLevel ||
+        (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
+    if (automatic) {
+        level_simulation_->start();
         start_visual_logging();
     }
+    SetActorTickEnabled(automatic);
 }
 
 void ATestBatchOrchestrator::load_authored_level() {
@@ -622,13 +478,11 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 }
 
 void ATestBatchOrchestrator::validate_proxy_handles() {
-    if (player_ship_simulation.IsSet()) {
-        if (!entity_registry.is_valid_handle(player_ship_simulation->registry_handle)) {
-            UE_LOG(LogSandbox, Fatal, TEXT("Player ship handle is invalid"));
-        }
+    if (auto const* player{get_player_ship_simulation()}) {
+        check(get_entity_registry().is_valid_handle(player->registry_handle));
     }
-    capital_ships_simulation.validate_proxy_handles();
-    turrets_simulation.validate_proxy_handles();
+    get_capital_ships()->validate_proxy_handles();
+    get_turrets()->validate_proxy_handles();
 }
 
 void ATestBatchOrchestrator::Tick(float dt) {
@@ -637,261 +491,25 @@ void ATestBatchOrchestrator::Tick(float dt) {
     tick(static_cast<time_type>(dt));
 }
 void ATestBatchOrchestrator::tick(time_type const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick);
-
-    if (state != EOrchestratorState::Running) {
+    if (get_state() != EOrchestratorState::Running) {
         return;
     }
-
-    simulation_tick_loop.add_time(dt);
-
-    while (simulation_tick_loop.try_tick()) {
-        auto const player_simulation_is_active{[this] {
-            return player_ship_simulation.IsSet() && player_ship_simulation->health.is_alive();
-        }};
-#if WITH_EDITOR
-        if (log_ticks) {
-            UE_LOG(LogSandbox,
-                   Display,
-                   TEXT("ATestBatchOrchestrator: Tick %d start"),
-                   completed_ticks);
-        }
-#endif
-
-        /* -------------------------------------------------------------------------------- */
-        // Setup phase
-        /* -------------------------------------------------------------------------------- */
-        {
-            // Clear transient data
-            // Assume registry data is stable here
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::begin_tick);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.begin_tick();
-            }
-
-            capital_ships_phase.begin_tick();
-            capital_ship_fighters_phase.begin_tick();
-            turrets_phase.begin_tick();
-            spinners_phase.begin_tick();
-            lasers_phase.begin_tick();
-        }
-
-        /* -------------------------------------------------------------------------------- */
-        // Actor decision phase
-        /* -------------------------------------------------------------------------------- */
-        // Query target data from registry
-        // Queue projectile spawns
-
-        {
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::update_timers);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.update_timers(simulation_tick_loop.tick_period);
-            }
-            capital_ship_fighters_phase.update_timers(simulation_tick_loop.tick_period);
-            capital_ships_phase.update_timers(simulation_tick_loop.tick_period);
-            turrets_phase.update_timers(simulation_tick_loop.tick_period);
-            spinners_phase.update_timers(simulation_tick_loop.tick_period);
-        }
-
-        {
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::make_decisions);
-            turrets_phase.make_decisions();
-            capital_ships_phase.make_decisions();
-            capital_ship_fighters_phase.make_decisions();
-        }
-
-        /* -------------------------------------------------------------------------------- */
-        // Simulation phase
-        /* -------------------------------------------------------------------------------- */
-        {
-            // Movement
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::movement);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.move(simulation_tick_loop.tick_period);
-            }
-
-            capital_ship_fighters_phase.move(simulation_tick_loop.tick_period);
-            spinners_phase.move(simulation_tick_loop.tick_period);
-        }
-
-        {
-            // Queue commands
-            // e.g. spawning lasers for the next frame
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::queue_commands);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.queue_commands();
-            }
-
-            capital_ship_fighters_phase.queue_commands();
-            turrets_phase.queue_commands();
-            spinners_phase.queue_commands();
-        }
-
-        {
-            // Entity collision
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::entity_collision);
-        }
-
-        {
-            // Projectile simulation
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                Sandbox::ATestBatchOrchestrator::tick::projectile_simulation);
-
-            lasers_phase.simulate(simulation_tick_loop.tick_period);
-            lasers_phase.commit_spawns();
-        }
-
-        /* -------------------------------------------------------------------------------- */
-        // Resolution phase
-        /* -------------------------------------------------------------------------------- */
-        {
-            // Resolve hit events
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                Sandbox::ATestBatchOrchestrator::tick::resolve_damage_events);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.resolve_damage_events();
-                if (player_ship_simulation->consume_death_notification() && IsValid(player_ship)) {
-                    player_ship->handle_simulation_death();
-                }
-            }
-
-            capital_ships_phase.resolve_damage_events();
-            capital_ship_fighters_phase.resolve_damage_events();
-            turrets_phase.resolve_damage_events();
-        }
-
-        {
-            // Send updates to the registry
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                Sandbox::ATestBatchOrchestrator::tick::update_entity_registry);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.update_entity_registry();
-            }
-
-            capital_ships_phase.update_entity_registry();
-            capital_ship_fighters_phase.update_entity_registry();
-            turrets_phase.update_entity_registry();
-            spinners_phase.update_entity_registry();
-        }
-
-        {
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::commit_updates);
-
-            entity_registry.commit_updates();
-        }
-
-        {
-            // Apply changes from the registry e.g. destroyed targets
-            TRACE_CPUPROFILER_EVENT_SCOPE(
-                Sandbox::ATestBatchOrchestrator::tick::sync_from_registry);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.sync_from_registry();
-            }
-
-            capital_ships_phase.sync_from_registry();
-            capital_ship_fighters_phase.sync_from_registry();
-            turrets_phase.sync_from_registry();
-        }
-
-        mission_manager.mission_tick();
-
-        if (presentation_enabled) {
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::update_visual_data);
-
-            if (IsValid(player_ship)) {
-                player_ship->update_visual_data(simulation_tick_loop.tick_period);
-            }
-
-            capital_ships->update_visual_data();
-            capital_ship_fighters->update_visual_data();
-            turrets->update_visual_data();
-            spinners->update_visual_data();
-            lasers->update_visual_data();
-        }
-
-        /* -------------------------------------------------------------------------------- */
-        // End phase
-        /* -------------------------------------------------------------------------------- */
-        {
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::tick::end_tick);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase.end_tick();
-            }
-
-            capital_ships_phase.end_tick();
-            if (presentation_enabled) {
-                capital_ships->end_tick_presentation();
-            }
-            capital_ship_fighters_phase.end_tick();
-            if (presentation_enabled) {
-                capital_ship_fighters->end_tick_presentation();
-            }
-            turrets_phase.end_tick();
-            if (presentation_enabled) {
-                turrets->end_tick_presentation();
-            }
-            spinners_phase.end_tick();
-            if (presentation_enabled) {
-                spinners->end_tick_presentation();
-            }
-            lasers_phase.end_tick();
-            if (presentation_enabled) {
-                lasers->end_tick_presentation();
-            }
-            entity_registry.end_tick();
-            query_manager.update();
-        }
-
-#if WITH_EDITOR
-        if (log_ticks) {
-            UE_LOG(
-                LogSandbox, Display, TEXT("ATestBatchOrchestrator: Tick %d end"), completed_ticks);
-        }
-#endif
-
-        ++completed_ticks;
-        level_telemetry_manager.tick(completed_ticks, entity_registry);
-        end_tick_test_hook.ExecuteIfBound(*this);
-    }
-
+    level_simulation_->advance(dt);
     if (presentation_enabled) {
         hud_tick_loop.add_time(dt);
         while (hud_tick_loop.try_tick()) {
             hud_manager.tick(1);
         }
     }
-
-    /* -------------------------------------------------------------------------------- */
-    // Rendering
-    /* -------------------------------------------------------------------------------- */
-    if (presentation_enabled) {
-        TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::commit_visual_data);
-
-        if (IsValid(player_ship)) {
-            player_ship->commit_visual_data();
-        }
-
-        capital_ships->commit_visual_data();
-        capital_ship_fighters->commit_visual_data();
-        turrets->commit_visual_data();
-        spinners->commit_visual_data();
-        lasers->commit_visual_data();
-
-        niagara_spawner->update_spawns(dt);
-    }
+    level_simulation_->commit_presentation(dt);
 }
 
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
     check(scale > time_type{0});
     simulation_tick_loop.time_scale = scale;
+    if (level_simulation_.IsSet()) {
+        level_simulation_->set_time_scale(scale);
+    }
 }
 auto ATestBatchOrchestrator::frequency_to_tick_period(time_type const frequency) const noexcept
     -> tick_type {
@@ -906,70 +524,6 @@ auto ATestBatchOrchestrator::duration_to_tick_period(time_type const duration) c
     return static_cast<tick_type>(FMath::CeilToInt64(duration * simulation_tick_loop.tick_rate));
 }
 
-void ATestBatchOrchestrator::bind_simulation_dependencies() {
-    UE_LOG(LogSandbox, Display, TEXT("ATestBatchOrchestrator::bind_simulation_dependencies"));
-
-    if (IsValid(player_ship)) {
-        player_ship_simulation.Emplace();
-        player_ship->bind_simulation(player_ship_simulation.GetValue());
-        player_ship_phase.bind(player_ship_simulation.GetValue());
-    } else {
-        player_ship_simulation.Reset();
-    }
-    lasers_phase.bind(lasers_simulation);
-    capital_ships_phase.bind(capital_ships_simulation);
-    capital_ship_fighters_phase.bind(capital_ship_fighters_simulation);
-    turrets_phase.bind(turrets_simulation);
-    spinners_phase.bind(spinners_simulation);
-
-    if (presentation_enabled) {
-        check(IsValid(lasers));
-        check(IsValid(capital_ships));
-        check(IsValid(capital_ship_fighters));
-        check(IsValid(turrets));
-        check(IsValid(spinners));
-        lasers->bind_simulation(lasers_simulation);
-        capital_ships->bind_simulation(capital_ships_simulation);
-        capital_ship_fighters->bind_simulation(capital_ship_fighters_simulation);
-        turrets->bind_simulation(turrets_simulation);
-        spinners->bind_simulation(spinners_simulation);
-
-        capital_ships->set_niagara_spawner(*niagara_spawner);
-    }
-    capital_ships_simulation.bind_fighters(capital_ship_fighters_simulation);
-
-    if (player_ship_simulation.IsSet()) {
-        player_ship_simulation->bind_simulation_clock(*this);
-    }
-    lasers_simulation.bind_simulation_clock(*this);
-    capital_ship_fighters_simulation.bind_simulation_clock(*this);
-    turrets_simulation.bind_simulation_clock(*this);
-    spinners_simulation.bind_simulation_clock(*this);
-    mission_manager.bind_simulation_clock(*this);
-
-    if (player_ship_simulation.IsSet()) {
-        player_ship_simulation->set_entity_registry(entity_registry);
-        player_ship_simulation->set_spatial_query_manager(query_manager);
-        player_ship_simulation->set_lasers(lasers_simulation);
-    }
-
-    capital_ships_simulation.set_entity_registry(entity_registry);
-    turrets_simulation.set_entity_registry(entity_registry);
-    spinners_simulation.set_entity_registry(entity_registry);
-    capital_ship_fighters_simulation.set_entity_registry(entity_registry);
-    lasers_simulation.set_entity_registry(entity_registry);
-    mission_manager.set_entity_registry(entity_registry);
-
-    lasers_simulation.set_spatial_query_manager(query_manager);
-    capital_ships_simulation.set_spatial_query_manager(query_manager);
-    capital_ship_fighters_simulation.set_spatial_query_manager(query_manager);
-    turrets_simulation.set_spatial_query_manager(query_manager);
-
-    capital_ship_fighters_simulation.set_laser_simulation(lasers_simulation);
-    turrets_simulation.set_laser_simulation(lasers_simulation);
-    spinners_simulation.set_laser_simulation(lasers_simulation);
-}
-
 void ATestBatchOrchestrator::set_end_tick_test_hook(FOrchestratorEndTickTestHook hook) {
     end_tick_test_hook = MoveTemp(hook);
 }
@@ -977,101 +531,18 @@ void ATestBatchOrchestrator::clear_end_tick_test_hook() {
     end_tick_test_hook.Unbind();
 }
 
-void ATestBatchOrchestrator::remove_presentation_actors() {
-    auto* const world{GetWorld()};
-    check(world);
-    for (TActorIterator<AActor> it{world}; it;) {
-        auto* const actor{*it};
-        ++it;
-        if (ml::actor_is_any<ATestLasers,
-                             ATestCapitalShips,
-                             ATestCapitalShipFighters,
-                             ATestStaticTurrets,
-                             ATestTubeSpinners,
-                             ADelayedNiagaraSpawner>(*actor)) {
-            if (!actor->Destroy()) {
-                UE_LOG(LogSandbox,
-                       Fatal,
-                       TEXT("Cannot remove presentation actor %s"),
-                       *actor->GetName());
-            }
-        }
-    }
-    lasers = nullptr;
-    capital_ships = nullptr;
-    capital_ship_fighters = nullptr;
-    turrets = nullptr;
-    spinners = nullptr;
-    niagara_spawner = nullptr;
-}
-
-void ATestBatchOrchestrator::spawn_missing_actors() {
-    if (!presentation_enabled) {
+void ATestBatchOrchestrator::prepare_level() {
+    if (get_state() != EOrchestratorState::Uninitialised) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot prepare an already initialized level"));
         return;
     }
-
-    if (state != EOrchestratorState::Uninitialised) {
-        UE_LOG(LogSandbox,
-               Error,
-               TEXT("ATestBatchOrchestrator::spawn_missing_actors: Orchestrator is already "
-                    "initialised"));
-        return;
-    }
-
     auto* world{GetWorld()};
-    if (!ensureAlwaysMsgf(IsValid(world), TEXT("Cannot spawn simulation actors without a world"))) {
-        return;
-    }
-
-    TArray<AActor*> spawned_actors;
-    auto spawn{[&]<typename T>(TSubclassOf<T> const actor_class) -> T* {
-        if (!IsValid(actor_class)) {
-            UE_LOG(LogSandbox,
-                   Warning,
-                   TEXT("ATestBatchOrchestrator::spawn_missing_actors: Null actor class"));
-            return nullptr;
-        }
-
-        if (auto* const actor{ml::get_first_actor<T>(*world)}) {
-            return actor;
-        }
-
-        auto* const actor{world->SpawnActorDeferred<T>(actor_class, FTransform::Identity)};
-        if (IsValid(actor)) {
-            spawned_actors.Add(actor);
-        } else {
-            UE_LOG(LogSandbox,
-                   Error,
-                   TEXT("ATestBatchOrchestrator::spawn_missing_actors: Failed to spawn %s"),
-                   *actor_class->GetName());
-        }
-
-        return actor;
-    }};
-
+    ml::fatal_if_uobject_ptrs_invalid(
+        {SANDBOX_NAMED_UOBJECT_PTR(world), SANDBOX_NAMED_UOBJECT_PTR(level_config)});
     if (!IsValid(player_ship)) {
         player_ship = ml::get_first_actor<ATestSpaceShip>(*world);
     }
-
-    if (!ensureAlwaysMsgf(IsValid(level_config), TEXT("Cannot spawn without a level config"))) {
-        return;
-    }
-
-    auto const& classes{level_config->classes};
-    lasers = spawn(classes.lasers_class);
-    capital_ships = spawn(classes.capital_ships_class);
-    capital_ship_fighters = spawn(classes.capital_ship_fighters_class);
-    turrets = spawn(classes.turrets_class);
-    spinners = spawn(classes.spinners_class);
-
-    niagara_spawner = spawn(classes.niagara_spawner_class);
-
     set_level_config(*level_config);
-
-    for (auto* const actor : spawned_actors) {
-        actor->FinishSpawning(FTransform::Identity);
-        UE_LOG(LogSandbox, Display, TEXT("Spawned missing %s"), *actor->GetClass()->GetName());
-    }
 }
 
 #if WITH_EDITOR
@@ -1083,7 +554,58 @@ void ATestBatchOrchestrator::apply_level_config() {
     set_level_config(*level_config);
 }
 
-void ATestBatchOrchestrator::spawn_missing_actors_button() {
-    spawn_missing_actors();
+void ATestBatchOrchestrator::prepare_level_button() {
+    prepare_level();
 }
 #endif
+
+auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresentationResources {
+    return {.lasers = laser_instances_,
+            .capital_ships = capital_instances_,
+            .fighters = fighter_instances_,
+            .turrets = turret_instances_,
+            .spinners = spinner_instances_,
+            .config = level_config,
+            .player = player_ship,
+            .settings = presentation_settings};
+}
+auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component) -> bool {
+    check(level_simulation_.IsSet());
+    return world_collision_.add_static_geometry(component,
+                                                get_spatial_query_manager().get_collision_system());
+}
+void ATestBatchOrchestrator::process_mission_result() {
+    auto result{get_mission_manager().take_result()};
+    if (!result.IsSet()) {
+        return;
+    }
+    bool persisted{};
+    if (result->save_results) {
+        auto* game_instance{GetGameInstance()};
+        auto* saves{IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>()
+                                           : nullptr};
+        if (IsValid(saves)) {
+            FScoreRecord const record{
+                .date = FDateTime::Now(),
+                .level_name = result->level_id,
+                .mission_mode = result->mode,
+                .end_state = result->state,
+                .fail_reason = result->fail_reason,
+                .kills = result->kills,
+                .time_seconds = result->elapsed_seconds,
+                .target_kills = result->target_kills,
+                .target_completion_time = result->target_time,
+            };
+            persisted = saves->save_score_record(record);
+        } else {
+            UE_LOG(LogSandbox,
+                   Error,
+                   TEXT("Cannot persist mission result: save subsystem is unavailable"));
+        }
+    }
+    if (result->state == ETestMissionState::Succeeded) {
+        on_mission_completed.Broadcast({.level_id = result->level_id,
+                                        .level_display_name = result->level_display_name,
+                                        .persisted = persisted});
+    }
+}

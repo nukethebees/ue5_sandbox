@@ -71,7 +71,7 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         add_method(facade.method_access, method);
     }
     for (auto const& friend_name : facade.friends) {
-        private_nodes.add(FriendDeclaration{friend_name}, 1);
+        private_nodes.add(FriendDeclaration{friend_name, facade.friend_kind}, 1);
     }
     private_nodes.add(Member{qualify(target_type, "*"), facade.target_member_name, "nullptr"});
 

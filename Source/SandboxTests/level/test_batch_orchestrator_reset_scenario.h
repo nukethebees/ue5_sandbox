@@ -11,7 +11,7 @@ class FTestBatchOrchestratorResetScenario final : public FSimulationTestScenario
 
     static constexpr int32 blocker_count{3};
     static constexpr time_type reset_time{2.0};
-    static constexpr int32 owned_actor_count{7};
+    static constexpr int32 owned_actor_count{1};
     static constexpr int32 max_transient_actor_count{64};
 
     struct FSimulationSample {

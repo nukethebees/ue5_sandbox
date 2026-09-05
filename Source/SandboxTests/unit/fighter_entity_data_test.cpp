@@ -1,4 +1,4 @@
-#include "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
+#include "SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h"
 
 #include "Misc/AutomationTest.h"
 

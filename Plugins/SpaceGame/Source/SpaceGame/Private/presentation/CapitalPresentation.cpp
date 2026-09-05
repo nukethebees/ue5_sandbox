@@ -1,10 +1,10 @@
-#include "SpaceGame/ships/capital/TestCapitalShips.h"
+#include "SpaceGame/presentation/CapitalPresentation.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
+#include <SpaceGame/presentation/DelayedNiagaraSpawns.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/logging/SandboxVisualLoggerStyle.h>
 
@@ -21,48 +21,40 @@
 #include <NiagaraSystem.h>
 #include <VisualLogger/VisualLogger.h>
 
-ATestCapitalShips::ATestCapitalShips()
-    : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
-    instances->SetupAttachment(RootComponent);
+FCapitalPresentation::FCapitalPresentation(UInstancedStaticMeshComponent& component)
+    : instances{&component} {}
 
-    PrimaryActorTick.bCanEverTick = false;
-    PrimaryActorTick.bStartWithTickEnabled = false;
-
-    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
-}
-
-void ATestCapitalShips::set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
+void FCapitalPresentation::set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
     actor_config = new_config;
 }
 
-void ATestCapitalShips::bind_simulation(ml::test_capital_ships::Simulation& new_simulation) {
+void FCapitalPresentation::bind_simulation(ml::test_capital_ships::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
 }
 
-auto ATestCapitalShips::simulation() -> ml::test_capital_ships::Simulation& {
+auto FCapitalPresentation::simulation() -> ml::test_capital_ships::Simulation& {
     check(bound_simulation);
     return *bound_simulation;
 }
 
-auto ATestCapitalShips::simulation() const -> ml::test_capital_ships::Simulation const& {
-    return const_cast<ATestCapitalShips*>(this)->simulation();
+auto FCapitalPresentation::simulation() const -> ml::test_capital_ships::Simulation const& {
+    return const_cast<FCapitalPresentation*>(this)->simulation();
 }
 
-void ATestCapitalShips::set_niagara_spawner(ADelayedNiagaraSpawner& spawner) {
+void FCapitalPresentation::set_niagara_spawner(FDelayedNiagaraSpawns& spawner) {
     niagara_spawner = &spawner;
 }
 
-void ATestCapitalShips::clear_runtime_state_presentation() {
+void FCapitalPresentation::clear_runtime_state_presentation() {
     instances->ClearInstances();
 }
 
-void ATestCapitalShips::begin_play_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::begin_play_presentation);
+void FCapitalPresentation::begin_play_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::begin_play_presentation);
 
-    auto* const world{GetWorld()};
+    auto* const world{instances->GetWorld()};
     if (!actor_config) {
-        UE_LOG(LogSandbox, Fatal, TEXT("ATestCapitalShips actor_config is nullptr."));
+        UE_LOG(LogSandbox, Fatal, TEXT("FCapitalPresentation actor_config is nullptr."));
     }
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(world),
@@ -78,8 +70,8 @@ void ATestCapitalShips::begin_play_presentation() {
     validate_array_sizes();
 }
 
-void ATestCapitalShips::update_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::update_visual_data);
+void FCapitalPresentation::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::update_visual_data);
 
     auto const& indices_to_remove{simulation().presentation_indices_to_remove};
     if (!indices_to_remove.IsEmpty()) {
@@ -89,8 +81,8 @@ void ATestCapitalShips::update_visual_data() {
     }
 }
 
-void ATestCapitalShips::commit_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::commit_visual_data);
+void FCapitalPresentation::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::commit_visual_data);
 
     instances->MarkRenderStateDirty();
     if (debugging_shapes_enabled) {
@@ -98,13 +90,13 @@ void ATestCapitalShips::commit_visual_data() {
     }
 }
 
-void ATestCapitalShips::end_tick_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::end_tick_presentation);
+void FCapitalPresentation::end_tick_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::end_tick_presentation);
     validate_array_sizes();
     visual_log_state();
 }
 
-void ATestCapitalShips::configure_ismc() {
+void FCapitalPresentation::configure_ismc() {
     ml::batch::configure_ismc(*instances,
                               {
                                   .mesh = actor_config->mesh.Get(),
@@ -113,7 +105,7 @@ void ATestCapitalShips::configure_ismc() {
                               });
 }
 
-void ATestCapitalShips::add_initial_visual_instances() {
+void FCapitalPresentation::add_initial_visual_instances() {
     auto const& entities{simulation().entities};
     auto const n_to_add{entities.num()};
     if (n_to_add == 0) {
@@ -140,28 +132,30 @@ void ATestCapitalShips::add_initial_visual_instances() {
     instances->SetCustomData(0, n_to_add - 1, custom_data, mark_render_state_dirty);
 }
 
-void ATestCapitalShips::trigger_death_effects() {
+void FCapitalPresentation::trigger_death_effects() {
     auto const& death_locations{simulation().presentation_death_locations};
     auto const n{death_locations.Num()};
     auto* const small_death_explosion{actor_config->small_death_explosion.Get()};
     auto* const main_death_explosion{actor_config->main_death_explosion.Get()};
 
     if (!IsValid(small_death_explosion)) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("ATestCapitalShips::trigger_death_effects: small_death_explosion is nullptr"));
+        UE_LOG(
+            LogSandbox,
+            Warning,
+            TEXT("FCapitalPresentation::trigger_death_effects: small_death_explosion is nullptr"));
         return;
     }
     if (!IsValid(main_death_explosion)) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("ATestCapitalShips::trigger_death_effects: main_death_explosion is nullptr"));
+        UE_LOG(
+            LogSandbox,
+            Warning,
+            TEXT("FCapitalPresentation::trigger_death_effects: main_death_explosion is nullptr"));
         return;
     }
-    if (!IsValid(niagara_spawner)) {
+    if (!niagara_spawner) {
         UE_LOG(LogSandbox,
                Warning,
-               TEXT("ATestCapitalShips::trigger_death_effects: niagara_spawner is nullptr"));
+               TEXT("FCapitalPresentation::trigger_death_effects: niagara_spawner is nullptr"));
         return;
     }
 
@@ -206,8 +200,8 @@ void ATestCapitalShips::trigger_death_effects() {
     niagara_spawner->add_spawns(spawn_systems, spawn_locations, spawn_delays);
 }
 
-void ATestCapitalShips::draw_debugging_shapes() const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShips::draw_debugging_shapes);
+void FCapitalPresentation::draw_debugging_shapes() const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::draw_debugging_shapes);
 
     auto const& capital_simulation{simulation()};
     auto const& entities{capital_simulation.entities};
@@ -232,7 +226,7 @@ void ATestCapitalShips::draw_debugging_shapes() const {
     }
 }
 
-void ATestCapitalShips::visual_log_state() const {
+void FCapitalPresentation::visual_log_state() const {
 #if ENABLE_VISUAL_LOG
     if (!FVisualLogger::IsRecording()) {
         return;
@@ -246,13 +240,13 @@ void ATestCapitalShips::visual_log_state() const {
     if (!entity_registry) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShips::visual_log_state entity registry is null"));
+               TEXT("FCapitalPresentation::visual_log_state entity registry is null"));
         return;
     }
     if (!actor_config) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShips::visual_log_state actor_config is nullptr"));
+               TEXT("FCapitalPresentation::visual_log_state actor_config is nullptr"));
         return;
     }
     if (auto const message{ml::report_invalid_uobject_ptrs({
@@ -260,7 +254,7 @@ void ATestCapitalShips::visual_log_state() const {
         })}) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShips::visual_log_state UObject ptrs are invalid:\n%s"),
+               TEXT("FCapitalPresentation::visual_log_state UObject ptrs are invalid:\n%s"),
                *message);
         return;
     }
@@ -276,7 +270,7 @@ void ATestCapitalShips::visual_log_state() const {
         FVector const capital_location{ml::get_vector3f(entities.locations, capital_index)};
         FBox const capital_box{capital_location - capital_extent,
                                capital_location + capital_extent};
-        UE_VLOG_BOX(this,
+        UE_VLOG_BOX(instances->GetOwner(),
                     LogSandboxEntities,
                     Log,
                     capital_box,
@@ -293,7 +287,7 @@ void ATestCapitalShips::visual_log_state() const {
                 continue;
             }
             FVector const fighter_location{entity_registry->get_location(fighter_handle)};
-            UE_VLOG_SEGMENT_THICK(this,
+            UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
                                   LogSandboxEntities,
                                   Log,
                                   capital_location,
@@ -309,7 +303,7 @@ void ATestCapitalShips::visual_log_state() const {
             continue;
         }
         FVector const target_location{entity_registry->get_location(target_handle)};
-        UE_VLOG_WIRESPHERE(this,
+        UE_VLOG_WIRESPHERE(instances->GetOwner(),
                            LogSandboxTargeting,
                            Log,
                            target_location,
@@ -317,7 +311,7 @@ void ATestCapitalShips::visual_log_state() const {
                            style.combat.selected_target_colour,
                            TEXT("Target %d"),
                            target_handle.index);
-        UE_VLOG_SEGMENT_THICK(this,
+        UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
                               LogSandboxTargeting,
                               Log,
                               capital_location,
@@ -329,7 +323,7 @@ void ATestCapitalShips::visual_log_state() const {
     }
 }
 
-void ATestCapitalShips::validate_array_sizes() const {
+void FCapitalPresentation::validate_array_sizes() const {
     simulation().validate_array_sizes();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(simulation().get_num_instances()),

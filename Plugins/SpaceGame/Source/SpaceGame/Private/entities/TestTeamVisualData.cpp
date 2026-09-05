@@ -4,10 +4,6 @@
 
 #include <SandboxCore/array_utils.h>
 
-UTestTeamVisualData::FColourArray::FColourArray() {
-    ml::fill(colours, missing_colour);
-}
-
 UTestTeamVisualData::UTestTeamVisualData() {
     ensure_all_team_colours_exist();
 }

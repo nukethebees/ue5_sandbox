@@ -13,8 +13,6 @@ struct FTestEntityRegistry;
 class ATestBatchOrchestrator;
 
 class ATestSpaceShip;
-class ATestLasers;
-class ATestStaticTurrets;
 
 namespace ml::test_capital_ships {
 struct Simulation;
@@ -28,9 +26,7 @@ namespace ml {
 struct TestSimulationDriver {
     using time_type = double;
 
-    explicit TestSimulationDriver(UWorld& world,
-                                  FTestEntityRegistry& registry,
-                                  ATestBatchOrchestrator& orchestrator);
+    explicit TestSimulationDriver(UWorld& world, ATestBatchOrchestrator& orchestrator);
 
     static auto from_world(UWorld& world) -> TestSimulationDriver;
 
@@ -58,7 +54,7 @@ struct TestSimulationDriver {
     bool time_wait_completed() const;
 
     UWorld& world;
-    FTestEntityRegistry& registry;
+    auto get_registry() const -> FTestEntityRegistry&;
     ATestBatchOrchestrator& orchestrator;
 
     uint64 tick_wait_end{0};

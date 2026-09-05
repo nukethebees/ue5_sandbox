@@ -5,7 +5,7 @@
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
-#include <SpaceGame/combat/lasers/TestLasers.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -121,9 +121,9 @@ void FLaserLifecycleScenario::queue_projectiles() {
     auto* const lasers{driver->orchestrator.get_lasers()};
     check(lasers);
 
-    auto const& entity_data{driver->registry.get_entity_data()};
-    auto const shooter_location{driver->registry.get_location(shooter_handle)};
-    auto const target_location{driver->registry.get_location(target_handle)};
+    auto const& entity_data{driver->get_registry().get_entity_data()};
+    auto const shooter_location{driver->get_registry().get_location(shooter_handle)};
+    auto const target_location{driver->get_registry().get_location(target_handle)};
     auto const shooter_radius{entity_data.radii[shooter_handle.index]};
     auto const target_direction{(target_location - shooter_location).GetSafeNormal()};
     auto start{shooter_location + target_direction * (shooter_radius + 100.f)};
@@ -157,7 +157,7 @@ void FLaserLifecycleScenario::queue_projectiles() {
 void FLaserLifecycleScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
     auto const* const lasers{orchestrator.get_lasers()};
     check(lasers);
-    auto const& registry{driver->registry};
+    auto const& registry{driver->get_registry()};
     samples.add(driver->get_time(),
                 FSample{
                     .active_lasers = lasers->get_num_instances(),
@@ -214,10 +214,10 @@ void FLaserLifecycleScenario::check_scenario() {
                            TEXT("Simultaneous projectiles cause lethal damage"));
             checks.are_equal(1, final.alive_entities, TEXT("Lethal target is removed once"));
             checks.are_equal(1, final.kills, TEXT("Simultaneous lethal hits record one kill"));
-            checks.are_equal(
-                TestEntityUniqueEntityData::kills_type{1},
-                driver->registry.get_kills(driver->registry.find_unique_id(shooter_handle)),
-                TEXT("Shooter receives one credited kill"));
+            checks.are_equal(TestEntityUniqueEntityData::kills_type{1},
+                             driver->get_registry().get_kills(
+                                 driver->get_registry().find_unique_id(shooter_handle)),
+                             TEXT("Shooter receives one credited kill"));
             break;
         }
         case ELaserLifecycleScenario::Miss:

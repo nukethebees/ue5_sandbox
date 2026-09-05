@@ -123,12 +123,6 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
         DuplicateObject<USpaceGameLevelConfig>(orchestrator.get_level_config(), &orchestrator)};
     config->classes.player_controller_class = nullptr;
     config->classes.player_ship_class = nullptr;
-    config->classes.lasers_class = nullptr;
-    config->classes.capital_ships_class = nullptr;
-    config->classes.capital_ship_fighters_class = nullptr;
-    config->classes.turrets_class = nullptr;
-    config->classes.spinners_class = nullptr;
-    config->classes.niagara_spawner_class = nullptr;
     orchestrator.set_level_config(*config);
 
     FLevelLoader loader{orchestrator};
@@ -158,13 +152,9 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
         FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
     test_driver->timeline.finish_at(0.05);
     orchestrator.start_simulation();
-    checks.is_true(orchestrator.get_lasers_actor() == nullptr &&
-                       orchestrator.get_capital_ships_actor() == nullptr &&
-                       orchestrator.get_capital_ship_fighters_actor() == nullptr &&
-                       orchestrator.get_turrets_actor() == nullptr &&
-                       orchestrator.get_spinners_actor() == nullptr &&
-                       orchestrator.get_niagara_spawner() == nullptr,
-                   TEXT("Headless startup removes the previous presentation actors"));
+    checks.is_true(orchestrator.get_level_simulation() &&
+                       !orchestrator.get_level_simulation()->has_presentation(),
+                   TEXT("Headless startup has no presentation state"));
     checks.is_true(orchestrator.get_player_ship_simulation() == nullptr,
                    TEXT("Playerless battle does not create a dummy player simulation"));
 }
@@ -188,7 +178,7 @@ void FLevelLoaderCameraScenario::on_tear_down() {
         orchestrator.reset_for_new_level();
         orchestrator.set_presentation_enabled(true);
         orchestrator.set_level_config(*original_config_);
-        orchestrator.spawn_missing_actors();
+        orchestrator.prepare_level();
         original_config_.Reset();
     }
 }

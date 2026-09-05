@@ -3,7 +3,7 @@
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
@@ -21,8 +21,8 @@
 TRACE_DECLARE_INT_COUNTER(SandboxTestCapitalShipCount, TEXT("Sandbox/TestCapitalShipCount"));
 
 namespace ml::test_capital_ships {
-void Simulation::set_config(FCapitalShipConfig const& new_config) noexcept {
-    config = &new_config;
+void Simulation::set_config(FCapitalSimulationConfig const& new_config) noexcept {
+    config = new_config;
 }
 
 void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
@@ -56,12 +56,11 @@ void Simulation::clear_runtime_state() {
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
-    check(config);
     check(entity_registry);
     check(spatial_query_manager);
     check(entity_radius > 0.f);
-    ensureAlways(config->fighter_spawn_slots ==
-                 config->fighter_spawn_slots_relative_transforms.Num());
+    ensureAlways(config.fighter_spawn_slots ==
+                 config.fighter_spawn_slots_relative_transforms.Num());
     validate_array_sizes();
 }
 
@@ -232,8 +231,7 @@ void Simulation::prepare_entity_update_data() {
 }
 
 auto Simulation::get_fighter_spawn_slots() const noexcept -> int32 {
-    check(config);
-    return config->fighter_spawn_slots;
+    return config.fighter_spawn_slots;
 }
 
 void Simulation::queue_fighter_spawns() {
@@ -265,7 +263,7 @@ void Simulation::queue_fighter_spawns() {
         return;
     }
 
-    auto const relative_transforms{config->fighter_spawn_slots_relative_transforms};
+    auto const relative_transforms{config.fighter_spawn_slots_relative_transforms};
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
         auto const base_location{ml::get_vector3f(entities.locations, capital_index)};
         auto const base_rotation{ml::get_rotator3f(entities.rotations, capital_index)};

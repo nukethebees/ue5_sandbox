@@ -4,10 +4,10 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 

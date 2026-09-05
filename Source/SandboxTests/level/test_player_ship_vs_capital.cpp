@@ -2,9 +2,9 @@
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -26,14 +26,12 @@ FPlayerShipVsCapitalScenario::FPlayerShipVsCapitalScenario(FSimulationTestContex
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FPlayerShipVsCapitalScenario::spawn_fixture() {
-    auto* const fighter_actor{const_cast<ATestCapitalShipFighters*>(
-        context_.orchestrator.get_capital_ship_fighters_actor())};
-    if (!checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available"))) {
+    auto* const level_config{duplicate_level_config(context_.config, context_.orchestrator)};
+    if (!checks.not_nullptr(level_config, TEXT("Level config is duplicated"))) {
         return;
     }
 
-    auto* const fighter_config{
-        duplicate_capital_ship_fighters_config(context_.config, *fighter_actor)};
+    auto* const fighter_config{&level_config->fighters};
     if (!checks.not_nullptr(fighter_config,
                             TEXT("Player-versus-capital fighter config is created"))) {
         return;
@@ -41,7 +39,7 @@ void FPlayerShipVsCapitalScenario::spawn_fixture() {
     fighter_config->laser.projectile_speed = 20000.f;
     fighter_config->laser.max_distance = 1.f;
     fighter_config->visual_logger_style = nullptr;
-    fighter_actor->set_actor_config(fighter_config);
+    context_.orchestrator.set_level_config(*level_config);
 
     auto* const player{spawn_player_ship(
         context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
@@ -92,7 +90,7 @@ void FPlayerShipVsCapitalScenario::sample_values(ATestBatchOrchestrator& orchest
     auto const time{test_driver->get_time()};
     player_ship_locations.add(time, player_ship->GetActorLocation());
     player_ship_registry_locations.add(
-        time, FVector{test_driver->registry.get_location(player_ship_handle)});
+        time, FVector{test_driver->get_registry().get_location(player_ship_handle)});
     fighter_target_locations.add(time, to_vector3f_array(fighters->get_target_locations()));
     fighter_locations.add(time, to_vector3f_array(fighters->get_locations()));
     orchestrator_ticks.add(time, orchestrator.get_completed_ticks());

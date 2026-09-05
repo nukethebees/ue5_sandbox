@@ -20,11 +20,8 @@
 #include <limits>
 
 namespace ml {
-TestSimulationDriver::TestSimulationDriver(UWorld& world,
-                                           FTestEntityRegistry& registry,
-                                           ATestBatchOrchestrator& orchestrator)
+TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator& orchestrator)
     : world{world}
-    , registry{registry}
     , orchestrator{orchestrator} {
     orchestrator.set_time_scale(time_scale);
 }
@@ -35,7 +32,11 @@ auto TestSimulationDriver::from_world(UWorld& world) -> TestSimulationDriver {
         UE_LOG(LogSandboxTest, Fatal, TEXT("orchestrator is nullptr"));
     }
 
-    return TestSimulationDriver{world, orchestrator->get_entity_registry(), *orchestrator};
+    return TestSimulationDriver{world, *orchestrator};
+}
+
+auto TestSimulationDriver::get_registry() const -> FTestEntityRegistry& {
+    return orchestrator.get_entity_registry();
 }
 
 auto TestSimulationDriver::get_player_ship() const -> ATestSpaceShip const& {
@@ -67,7 +68,7 @@ void TestSimulationDriver::queue_damage(TConstArrayView<FRegistryEntityHandle> c
     ml::fill(damage_events.damage_amounts, damage);
     ml::fill(damage_events.instigators, instigator);
 
-    registry.queue_direct_damage_events(damage_events);
+    get_registry().queue_direct_damage_events(damage_events);
 }
 void TestSimulationDriver::queue_kills(TConstArrayView<FRegistryEntityHandle> const targets,
                                        FRegistryEntityHandle const instigator) {

@@ -1,4 +1,4 @@
-#include "SpaceGame/effects/DelayedNiagaraSpawner.h"
+#include "SpaceGame/presentation/DelayedNiagaraSpawns.h"
 
 #include <SandboxCore/array_utils.h>
 
@@ -6,16 +6,14 @@
 #include "NiagaraFunctionLibrary.h"
 #include "NiagaraSystem.h"
 
-ADelayedNiagaraSpawner::ADelayedNiagaraSpawner() {
-    PrimaryActorTick.bCanEverTick = false;
-    PrimaryActorTick.bStartWithTickEnabled = false;
+void FDelayedNiagaraSpawns::AddReferencedObjects(FReferenceCollector& collector) {
+    collector.AddReferencedObjects(systems);
 }
 
-void ADelayedNiagaraSpawner::update_spawns(float const dt) {
-    auto* world{GetWorld()};
+void FDelayedNiagaraSpawns::update_spawns(float const dt, UWorld& world) {
     auto const pending_spawn_count{num()};
 
-    if (!IsValid(world) || (pending_spawn_count <= 0)) {
+    if (pending_spawn_count <= 0) {
         return;
     }
 
@@ -29,7 +27,7 @@ void ADelayedNiagaraSpawner::update_spawns(float const dt) {
             continue;
         }
 
-        UNiagaraFunctionLibrary::SpawnSystemAtLocation(world,
+        UNiagaraFunctionLibrary::SpawnSystemAtLocation(&world,
                                                        systems[index],
                                                        locations[index],
                                                        rotations[index],
@@ -41,31 +39,31 @@ void ADelayedNiagaraSpawner::update_spawns(float const dt) {
     }
 }
 
-void ADelayedNiagaraSpawner::add_spawn(UNiagaraSystem* system,
-                                       FVector const& location,
-                                       FRotator const& rotation,
-                                       FVector const& scale,
-                                       float delay) {
+void FDelayedNiagaraSpawns::add_spawn(UNiagaraSystem* system,
+                                      FVector const& location,
+                                      FRotator const& rotation,
+                                      FVector const& scale,
+                                      float delay) {
     systems.Add(system);
     locations.Add(location);
     rotations.Add(rotation);
     scales.Add(scale);
     times_remaining.Add(delay);
 }
-void ADelayedNiagaraSpawner::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
-                                        TConstArrayView<FVector> new_locations,
-                                        TConstArrayView<FRotator> new_rotations,
-                                        TConstArrayView<FVector> new_scales,
-                                        TConstArrayView<float> new_delays) {
+void FDelayedNiagaraSpawns::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
+                                       TConstArrayView<FVector> new_locations,
+                                       TConstArrayView<FRotator> new_rotations,
+                                       TConstArrayView<FVector> new_scales,
+                                       TConstArrayView<float> new_delays) {
     systems.Append(new_systems);
     locations.Append(new_locations);
     rotations.Append(new_rotations);
     scales.Append(new_scales);
     times_remaining.Append(new_delays);
 }
-void ADelayedNiagaraSpawner::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
-                                        TConstArrayView<FVector> new_locations,
-                                        TConstArrayView<float> new_delays) {
+void FDelayedNiagaraSpawns::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
+                                       TConstArrayView<FVector> new_locations,
+                                       TConstArrayView<float> new_delays) {
     auto const n{new_systems.Num()};
 
     systems.Append(new_systems);
@@ -75,11 +73,11 @@ void ADelayedNiagaraSpawner::add_spawns(TArrayView<UNiagaraSystem*> new_systems,
     times_remaining.Append(new_delays);
 }
 
-auto ADelayedNiagaraSpawner::num() const -> int32 {
+auto FDelayedNiagaraSpawns::num() const -> int32 {
     return systems.Num();
 }
 
-void ADelayedNiagaraSpawner::remove_spawn_at(int32 index) {
+void FDelayedNiagaraSpawns::remove_spawn_at(int32 index) {
     check(systems.IsValidIndex(index));
 
     systems.RemoveAtSwap(index, EAllowShrinking::No);

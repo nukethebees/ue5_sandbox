@@ -13,8 +13,8 @@
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/collision_uniform_grid.h>
 #include <SpaceGame/simulation/CollisionSystem.h>
@@ -1976,9 +1976,10 @@ void FCollisionUniformGridTraceScenario::test_static_harvesting() {
     auto& grid{collision.get_uniform_grid()};
     grid.set_grid_dims(config.calculate_grid_dimensions());
     grid.set_cell_dims(config.cell_size);
-    collision.initialise_static_geometry(context_.world, config);
+    ioj::FLevelCollisionHost collision_host;
+    collision_host.initialise_static_geometry(context_.world, config, collision);
 
-    auto const sources{collision.get_static_collision_sources()};
+    auto const sources{collision_host.get_static_collision_sources()};
     auto const source_count{sources.num()};
     int32 source_index{INDEX_NONE};
     int32 harvested_actor_source_count{};
@@ -2005,9 +2006,9 @@ void FCollisionUniformGridTraceScenario::test_static_harvesting() {
     checks.is_true(unsupported_component->GetCollisionEnabled() == ECollisionEnabled::QueryOnly,
                    TEXT("Failed harvest leaves Unreal collision enabled"));
 
-    collision.initialise_static_geometry(context_.world, config);
+    collision_host.initialise_static_geometry(context_.world, config, collision);
     checks.are_equal(source_count,
-                     collision.get_static_collision_sources().num(),
+                     collision_host.get_static_collision_sources().num(),
                      TEXT("Reinitialization restores and reharvests static geometry"));
     checks.is_true(harvested_actor->get_collision_component()->GetCollisionEnabled() ==
                        ECollisionEnabled::NoCollision,

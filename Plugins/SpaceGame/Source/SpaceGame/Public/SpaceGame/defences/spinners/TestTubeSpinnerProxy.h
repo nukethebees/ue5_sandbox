@@ -16,8 +16,6 @@ class USphereComponent;
 class USceneComponent;
 class UArrowComponent;
 
-class ATestStaticTurrets;
-
 UCLASS()
 class ATestTubeSpinnerProxy
     : public AActor

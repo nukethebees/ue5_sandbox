@@ -1,6 +1,5 @@
 #include "SpaceGame/defences/turrets/TestStaticTurretsProxy.h"
 
-#include "SpaceGame/defences/turrets/TestStaticTurrets.h"
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 

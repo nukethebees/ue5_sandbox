@@ -1,6 +1,6 @@
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -115,7 +115,7 @@ void FTurretCombatScenario::initial_setup() {
 
 void FTurretCombatScenario::sample_values() {
     auto const time{test_driver->get_time()};
-    auto const& registry{test_driver->registry};
+    auto const& registry{test_driver->get_registry()};
     unique_ids.add(time, registry.get_num_unique_ids_issued());
     kills.add(time, registry.count_kills());
     alive.add(time, registry.count_alive());
@@ -156,7 +156,8 @@ void FTurretCombatScenario::check_kill_enemy_results() {
             checks.are_equal(hero_health, initial_healths[i], TEXT("Hero turret health"), i);
         }
     }
-    checks.is_true(test_driver->registry.is_valid_dead(enemy_handle), TEXT("Enemy turret is dead"));
+    checks.is_true(test_driver->get_registry().is_valid_dead(enemy_handle),
+                   TEXT("Enemy turret is dead"));
     for (auto const handle : target_handles.value_at(sample_index)) {
         checks.is_true(handle.is_null(), TEXT("All handles end null"));
     }
@@ -184,7 +185,7 @@ void FTurretCombatScenario::check_zero_damage_results() {
         }
     }
     for (auto const handle : turret_handles) {
-        checks.is_true(test_driver->registry.is_valid_alive(handle),
+        checks.is_true(test_driver->get_registry().is_valid_alive(handle),
                        TEXT("Turret is alive at the end"));
     }
 }
@@ -231,9 +232,8 @@ void FTurretLineOfSightBlockingScenario::spawn_line_of_sight_blocker() {
     if (!checks.is_true(IsValid(collision), TEXT("Line-of-sight blocker has collision"))) {
         return;
     }
-    if (!checks.is_true(
-            test_driver->orchestrator.get_spatial_query_manager().add_static_geometry(*collision),
-            TEXT("Line-of-sight blocker is added to the custom collision grid"))) {
+    if (!checks.is_true(test_driver->orchestrator.add_static_geometry(*collision),
+                        TEXT("Line-of-sight blocker is added to the custom collision grid"))) {
         return;
     }
     checks.is_true(collision->GetCollisionEnabled() == ECollisionEnabled::NoCollision,
@@ -250,11 +250,12 @@ void FTurretLineOfSightBlockingScenario::sample_laser_count(ATestBatchOrchestrat
     auto const simulation_time{test_driver->get_time()};
     laser_counts.add(simulation_time, lasers->get_num_instances());
     laser_spawn_counts.add(simulation_time, lasers->get_number_spawned());
-    entity_counts.add(simulation_time, test_driver->registry.get_num_elements());
+    entity_counts.add(simulation_time, test_driver->get_registry().get_num_elements());
     target_handles.add(simulation_time,
                        TArray<FRegistryEntityHandle>{turrets->get_target_handles()});
     registry_locations.add(
-        simulation_time, ml::to_vector3f_array(test_driver->registry.get_entity_data().locations));
+        simulation_time,
+        ml::to_vector3f_array(test_driver->get_registry().get_entity_data().locations));
 }
 
 void FTurretLineOfSightBlockingScenario::on_end_tick(ATestBatchOrchestrator& orchestrator) {
@@ -441,9 +442,8 @@ void FTurretSearchRequiresLineOfSightScenario::initial_setup() {
                                            : nullptr};
     checks.is_true(IsValid(collision), TEXT("Line-of-sight blocker has collision"));
     if (IsValid(collision)) {
-        checks.is_true(
-            test_driver->orchestrator.get_spatial_query_manager().add_static_geometry(*collision),
-            TEXT("Line-of-sight blocker is added to the custom collision grid"));
+        checks.is_true(test_driver->orchestrator.add_static_geometry(*collision),
+                       TEXT("Line-of-sight blocker is added to the custom collision grid"));
     }
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     checks.is_true(blocked_enemy_handle.is_valid(), TEXT("Blocked enemy handle is bound"));

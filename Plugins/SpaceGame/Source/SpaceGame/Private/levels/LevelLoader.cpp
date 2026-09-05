@@ -1,18 +1,11 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
-#include <SpaceGame/combat/lasers/TestLasers.h>
-
 #include "LevelArchetypeResolution.h"
 #include "LevelEntityTableOperations.h"
 #include "LevelTeamResolution.h"
 
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -210,7 +203,7 @@ auto spawn_initial_camera(UWorld& world,
 void configure_mission(FLevelDefinition const& definition,
                        TMap<FLevelEntityId, AActor*> const& spawned_entities,
                        ATestBatchOrchestrator& orchestrator) {
-    auto& manager{orchestrator.get_mission_manager()};
+    auto& manager{orchestrator.get_mission_definition()};
     manager.set_level_identity(definition.metadata.id.value, definition.metadata.title);
     if (!definition.mission.IsSet()) {
         manager.set_mission_mode(ETestMissionMode::None);
@@ -324,13 +317,8 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         return result;
     }
 
-    orchestrator_.spawn_missing_actors();
-    if (presentation_enabled && (!IsValid(orchestrator_.get_lasers_actor()) ||
-                                 !IsValid(orchestrator_.get_capital_ships_actor()) ||
-                                 !IsValid(orchestrator_.get_capital_ship_fighters_actor()) ||
-                                 !IsValid(orchestrator_.get_turrets_actor()) ||
-                                 !IsValid(orchestrator_.get_spinners_actor()) ||
-                                 !IsValid(orchestrator_.get_niagara_spawner()))) {
+    orchestrator_.prepare_level();
+    if (presentation_enabled && !orchestrator_.get_presentation_resources().is_valid()) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,
                   TEXT("Orchestrator simulation infrastructure is incomplete"));

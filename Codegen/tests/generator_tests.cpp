@@ -356,6 +356,10 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
     EXPECT_NE(files[0].content.find("FTarget* target{nullptr};"), std::string::npos);
     EXPECT_NE(files[1].content.find("void FFacade::bind(FTarget& new_target)"), std::string::npos);
     EXPECT_NE(files[1].content.find("return target->get(index);"), std::string::npos);
+
+    std::get<FacadeModuleSchema>(manifest.modules.front()).facade.friend_kind = "struct";
+    auto const struct_files{render_modules(lower_modules(manifest))};
+    EXPECT_NE(struct_files[0].content.find("friend struct FOwner;"), std::string::npos);
 }
 
 TEST(Generator, LowersHomogeneousLayouts) {

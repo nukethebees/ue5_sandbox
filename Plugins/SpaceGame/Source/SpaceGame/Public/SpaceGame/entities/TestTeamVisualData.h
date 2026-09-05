@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/entities/TestTeam.h>
+#include <SpaceGame/entities/TeamColours.h>
 
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
@@ -15,18 +15,7 @@ UCLASS(BlueprintType)
 class UTestTeamVisualData : public UDataAsset {
     GENERATED_BODY()
   public:
-    struct FColourArray {
-        FColourArray();
-
-        auto operator[](ETestTeam const team) const -> FLinearColor const& {
-            return colours[std::to_underlying(team)];
-        }
-        auto operator[](ETestTeam const team) -> FLinearColor& {
-            return colours[std::to_underlying(team)];
-        }
-
-        TStaticArray<FLinearColor, std::to_underlying(ETestTeam::COUNT)> colours;
-    };
+    using FColourArray = FTeamColours;
 
     static constexpr FLinearColor missing_colour{1.f, 0.f, 1.f, 1.f};
 

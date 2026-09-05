@@ -24,6 +24,7 @@ class SPACEGAME_API ATestSpaceShip
     , public ITestEntity {
     GENERATED_BODY()
     friend class ATestBatchOrchestrator;
+    friend struct FLevelPresentation;
   public:
     struct Sockets {
         inline static FName const left{"Left"};
@@ -32,6 +33,10 @@ class SPACEGAME_API ATestSpaceShip
     };
 
     ATestSpaceShip();
+    auto make_spawn_data() const -> ml::test_space_ship::FPlayerSpawnData;
+    void bind_simulation(ml::test_space_ship::Simulation& new_simulation);
+    void unbind_simulation();
+    auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
 
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
@@ -101,9 +106,6 @@ class SPACEGAME_API ATestSpaceShip
   private:
     auto GetVelocity() const -> FVector override;
 
-    auto make_simulation() const -> ml::test_space_ship::Simulation;
-    void bind_simulation(ml::test_space_ship::Simulation& new_simulation);
-    void unbind_simulation();
     auto simulation() -> ml::test_space_ship::Simulation&;
     auto simulation() const -> ml::test_space_ship::Simulation const&;
 
@@ -157,7 +159,6 @@ class SPACEGAME_API ATestSpaceShip
     float debug_lock_on_sphere_radius{1000.f};
 #endif
 
-    mutable TOptional<ml::test_space_ship::Simulation> standalone_simulation;
     ml::test_space_ship::Simulation* bound_simulation{nullptr};
     EBoostBrakeState presented_boost_brake_state{EBoostBrakeState::None};
 };

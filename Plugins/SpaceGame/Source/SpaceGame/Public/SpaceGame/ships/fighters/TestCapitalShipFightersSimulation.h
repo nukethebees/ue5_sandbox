@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
+
 #include <SandboxGameShared/utilities/enums.h>
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/combat/lasers/TestLasersSimulation.h>
@@ -23,8 +25,9 @@
 #include <CoreMinimal.h>
 
 class ATestBatchOrchestrator;
-class ATestCapitalShipFighters;
-struct FFighterConfig;
+struct FLevelSimulation;
+struct FFighterPresentation;
+struct FFighterSimulationConfig;
 struct FTestEntityRegistry;
 
 namespace ml {
@@ -48,8 +51,8 @@ struct SPACEGAME_API Simulation {
     using TaskViews = TStaticArray<TaskView, n_task_types>;
     using ConstTaskViews = TStaticArray<ConstTaskView, n_task_types>;
 
-    void set_config(FFighterConfig const& new_config) noexcept;
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
+    void set_config(FFighterSimulationConfig const& new_config) noexcept;
+    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
     void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
@@ -134,9 +137,9 @@ struct SPACEGAME_API Simulation {
 
     friend class CommandInterface;
     friend class PhaseInterface;
-    friend class ::ATestCapitalShipFighters;
+    friend struct ::FFighterPresentation;
 
-    FFighterConfig const* config{nullptr};
+    FFighterSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
 

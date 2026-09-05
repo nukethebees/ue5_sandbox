@@ -224,7 +224,7 @@ void FShipControlContext::remove_selected_mapping_context() {
 
 void FShipControlContext::neutralise_ship_input() {
     auto* const ship{ship_.Get()};
-    if (!IsValid(ship)) {
+    if (!IsValid(ship) || !ship->has_simulation()) {
         return;
     }
 
@@ -246,6 +246,12 @@ auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
     auto* const ship{ship_.Get()};
     if (!IsValid(ship)) {
         UE_LOG(LogSandboxController, Error, TEXT("FShipControlContext: Player ship is invalid."));
+        return nullptr;
+    }
+    if (!ship->has_simulation()) {
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("FShipControlContext: Player simulation is not initialized."));
         return nullptr;
     }
     return ship;

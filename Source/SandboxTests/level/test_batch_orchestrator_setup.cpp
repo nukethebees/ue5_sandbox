@@ -4,14 +4,13 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
-#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
+#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/missions/TestMissionManager.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelTelemetryManager.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
@@ -31,7 +30,7 @@ FTestBatchOrchestratorSetupScenario::FTestBatchOrchestratorSetupScenario(
 void FTestBatchOrchestratorSetupScenario::run() {
     switch (scenario_) {
         case EOrchestratorSetupScenario::SpawnMissingActors:
-            spawn_missing_actors();
+            prepare_level();
             break;
         case EOrchestratorSetupScenario::SimulationClockConversions:
             simulation_clock_conversions();
@@ -42,7 +41,7 @@ void FTestBatchOrchestratorSetupScenario::run() {
     }
 }
 
-void FTestBatchOrchestratorSetupScenario::spawn_missing_actors() {
+void FTestBatchOrchestratorSetupScenario::prepare_level() {
     TestCommandBuilder.Do([this] {
         auto* const orchestrator{&context_.orchestrator};
         if (!TestRunner->TestNotNull(TEXT("Orchestrator is available"), orchestrator)) {
@@ -56,32 +55,19 @@ void FTestBatchOrchestratorSetupScenario::spawn_missing_actors() {
         TestRunner->TestFalse(TEXT("Uninitialised orchestrator does not tick"),
                               orchestrator->IsActorTickEnabled());
 
-        TestRunner->TestEqual(
-            TEXT("One lasers actor exists"), ml::count_actors<ATestLasers>(world), 1);
-        TestRunner->TestEqual(
-            TEXT("One capital ships actor exists"), ml::count_actors<ATestCapitalShips>(world), 1);
-        TestRunner->TestEqual(TEXT("One fighters actor exists"),
-                              ml::count_actors<ATestCapitalShipFighters>(world),
-                              1);
-        TestRunner->TestEqual(
-            TEXT("One turrets actor exists"), ml::count_actors<ATestStaticTurrets>(world), 1);
-        TestRunner->TestEqual(
-            TEXT("One spinners actor exists"), ml::count_actors<ATestTubeSpinners>(world), 1);
-        TestRunner->TestEqual(
-            TEXT("One Niagara spawner exists"), ml::count_actors<ADelayedNiagaraSpawner>(world), 1);
-
-        TestRunner->TestNotNull(TEXT("Lasers are bound"), orchestrator->get_lasers());
-        TestRunner->TestNotNull(TEXT("Capital ships are bound"), orchestrator->get_capital_ships());
-        TestRunner->TestNotNull(TEXT("Fighters are bound"),
-                                orchestrator->get_capital_ship_fighters());
-        TestRunner->TestNotNull(TEXT("Turrets are bound"), orchestrator->get_turrets());
-        TestRunner->TestNotNull(TEXT("Spinners are bound"), orchestrator->get_spinners());
-        TestRunner->TestNotNull(TEXT("Entity registry is embedded"),
-                                &orchestrator->get_entity_registry());
-        TestRunner->TestNotNull(TEXT("Mission manager is embedded"),
-                                &orchestrator->get_mission_manager());
-        TestRunner->TestNotNull(TEXT("Niagara spawner is bound"),
-                                orchestrator->get_niagara_spawner());
+        auto const resources{orchestrator->get_presentation_resources()};
+        TestRunner->TestTrue(TEXT("Batch components are available"), resources.is_valid());
+        for (auto* component : {resources.lasers,
+                                resources.capital_ships,
+                                resources.fighters,
+                                resources.turrets,
+                                resources.spinners}) {
+            TestRunner->TestTrue(TEXT("Orchestrator owns each batch component"),
+                                 component->GetOwner() == orchestrator);
+        }
+        TestRunner->TestNull(TEXT("Simulation construction is deferred"),
+                             orchestrator->get_level_simulation());
+        initialise_test_driver();
 
         auto const completed_ticks{orchestrator->get_completed_ticks()};
         orchestrator->start_simulation();
@@ -108,8 +94,8 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
         TestRunner->TestTrue(TEXT("Reset leaves the orchestrator uninitialised"),
                              orchestrator->get_state() == EOrchestratorState::Uninitialised);
 
-        ml::test_batch_orchestrator::SimulationClockInterface clock;
-        clock.bind(*orchestrator);
+        FSimulationClock clock;
+        clock.initialise(FFixedTickLoop{});
 
         TestRunner->TestEqual(TEXT("Tick-rate frequency has a one-tick period"),
                               clock.frequency_to_tick_period(60.0),
@@ -155,9 +141,9 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
     telemetry_observations.reserve(16);
 
     test_driver->orchestrator.start_simulation();
-    initial_active_entity_count = test_driver->registry.get_num_alive_active_entities();
-    initial_registry_slot_count = test_driver->registry.get_num_elements();
-    initial_issued_unique_id_count = test_driver->registry.get_num_unique_ids_issued();
+    initial_active_entity_count = test_driver->get_registry().get_num_alive_active_entities();
+    initial_registry_slot_count = test_driver->get_registry().get_num_elements();
+    initial_issued_unique_id_count = test_driver->get_registry().get_num_unique_ids_issued();
     test_driver->orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateRaw(
         this, &FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick));
     test_driver->timeline.then_after(0.05, [this] { kill_telemetry_test_entity(); });
@@ -191,7 +177,7 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
 
     auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
     auto const& telemetry_entity_counts{entity_counts_data.last_value()};
-    auto const registry_entity_counts{test_driver->registry.count_alive_per_team_and_type()};
+    auto const registry_entity_counts{test_driver->get_registry().count_alive_per_team_and_type()};
 
     telemetry_observations.add(
         test_driver->get_time(),
@@ -200,7 +186,7 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
             .telemetry_sample_count = entity_count_data.num(),
             .last_telemetry_tick = entity_count_data.last_time(),
             .telemetry_entity_count = entity_count_data.last_value(),
-            .registry_entity_count = test_driver->registry.get_num_alive_active_entities(),
+            .registry_entity_count = test_driver->get_registry().get_num_alive_active_entities(),
             .composition_sample_count = entity_counts_data.num(),
             .last_composition_tick = entity_counts_data.last_time(),
             .telemetry_player_ship_count =

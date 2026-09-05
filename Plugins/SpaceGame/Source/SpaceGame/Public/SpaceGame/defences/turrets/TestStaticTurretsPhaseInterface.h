@@ -31,7 +31,7 @@ class SPACEGAME_API PhaseInterface {
 
     void end_tick();
 
-    friend class ATestBatchOrchestrator;
+    friend struct FLevelSimulation;
     ml::test_static_turrets::Simulation* simulation{nullptr};
 };
 } // namespace ml::test_static_turrets

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <SandboxNative/RegistryEntityHandle.h>
-#include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/missions/TestMissionFailReason.h>
@@ -11,13 +10,8 @@
 #include <SpaceGame/simulation/SimulationClockInterface.h>
 
 #include <CoreMinimal.h>
-#include <GameFramework/Actor.h>
-
-#include "TestMissionManager.generated.h"
 
 struct FTestEntityRegistry;
-class ATestBatchOrchestrator;
-class UWorld;
 
 struct SPACEGAME_API FTestMissionCompletion {
     FName level_id{NAME_None};
@@ -27,44 +21,37 @@ struct SPACEGAME_API FTestMissionCompletion {
 
 DECLARE_MULTICAST_DELEGATE_OneParam(FOnTestMissionCompleted, FTestMissionCompletion const&);
 
-USTRUCT()
-struct FTestMissionStartupData {
-    GENERATED_BODY()
-
-    void prune_invalid_actors();
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TArray<TObjectPtr<AActor>> hero_entities;
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TArray<TObjectPtr<AActor>> entities_must_survive;
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TArray<TObjectPtr<AActor>> entities_required_to_kill;
+struct FLevelMissionResult {
+    FName level_id{NAME_None};
+    FString level_display_name;
+    ETestMissionMode mode{ETestMissionMode::None};
+    ETestMissionState state{ETestMissionState::NotStarted};
+    ETestMissionFailReason fail_reason{ETestMissionFailReason::None};
+    int32 kills{};
+    float elapsed_seconds{};
+    int32 target_kills{};
+    float target_time{};
+    bool save_results{false};
 };
 
-USTRUCT()
 struct SPACEGAME_API FTestMissionManager {
-    GENERATED_BODY()
   public:
     void begin_play();
     void reset_runtime_state();
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
-    void set_world(UWorld& new_world) noexcept;
+    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void mission_tick();
     auto complete_mission() -> bool;
-    void replace_startup_actor(AActor const* old_actor, AActor& new_actor);
 
     void set_mission_mode(ETestMissionMode new_mode);
     void set_target_time(float new_target_time);
     void set_kill_target(int32 new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
     void set_level_identity(FName level_id, FString display_name);
-    void add_hero_entity(AActor& actor);
-    void add_entity_that_must_survive(AActor& actor);
-    void add_entity_required_to_kill(AActor& actor);
+    void add_hero_entity(FRegistryEntityHandle handle);
+    void add_entity_that_must_survive(FRegistryEntityHandle handle);
+    void add_entity_required_to_kill(FRegistryEntityHandle handle);
 
-    void on_proxy_entities_bound(FProxyEntityMap const& proxy_entities);
+    auto take_result() -> TOptional<FLevelMissionResult>;
 
     // Accessors
     auto get_mission_mode() const noexcept -> ETestMissionMode { return mission_mode; }
@@ -125,8 +112,6 @@ struct SPACEGAME_API FTestMissionManager {
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     auto get_entity_registry() -> FTestEntityRegistry* { return entity_registry; }
     void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
-
-    FOnTestMissionCompleted on_mission_completed;
   private:
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);
@@ -142,17 +127,12 @@ struct SPACEGAME_API FTestMissionManager {
     void update_entity_health_required_to_kill();
     auto entities_required_to_kill_are_dead() const -> bool;
 
-    auto handle_mission_ended(ETestMissionFailReason fail_reason) -> bool;
     void handle_mission_success();
     void handle_mission_failure(ETestMissionFailReason fail_reason);
-    auto resolve_level_id() const -> FName;
-    auto resolve_level_display_name(FName resolved_level_id) const -> FString;
 
+    void queue_result();
+    TOptional<FLevelMissionResult> pending_result_;
     FTestEntityRegistry* entity_registry{nullptr};
-    UWorld* world{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
-    FTestMissionStartupData startup_data{};
 
     TArray<FRegistryEntityHandle> hero_entity_handles{};
     TArray<TestEntityUniqueId> hero_entity_ids{};
@@ -165,33 +145,25 @@ struct SPACEGAME_API FTestMissionManager {
     TArray<ETestEntityType> entity_types_required_to_kill{};
     TArray<FShipHealth> entity_health_required_to_kill{};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionState mission_state{ETestMissionState::NotStarted};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionFailReason mission_fail_reason{ETestMissionFailReason::None};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     ETestMissionMode mission_mode{ETestMissionMode::None};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
     float target_time{60.0f};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
     int32 kill_target{5};
 
     int32 resolved_kill_target{5};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
     bool save_mission_results{true};
 
     FName level_id{NAME_None};
     FString level_display_name{};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     int32 mission_kills{0};
 
-    UPROPERTY(VisibleAnywhere, Category = "Sandbox")
     float mission_elapsed_seconds{0.0f};
 
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;

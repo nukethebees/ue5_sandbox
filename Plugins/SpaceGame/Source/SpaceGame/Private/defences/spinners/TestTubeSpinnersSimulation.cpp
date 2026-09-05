@@ -1,7 +1,7 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h"
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
 
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/array_math.h>
@@ -10,8 +10,8 @@
 #include <SandboxCore/soa_vector_utils.h>
 
 namespace ml::test_tube_spinners {
-void Simulation::set_config(FTubeSpinnerConfig const& new_config) noexcept {
-    config = &new_config;
+void Simulation::set_config(FSpinnerSimulationConfig const& new_config) noexcept {
+    config = new_config;
 }
 
 void Simulation::set_entity_registry(FTestEntityRegistry& new_registry) noexcept {
@@ -28,19 +28,18 @@ void Simulation::clear_runtime_state() {
 
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::begin_play);
-    check(config);
     check(entity_registry);
     check(laser_simulation);
     check(entity_radius > 0.f);
 
     auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config->laser.fire_cooldown)};
+        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
     entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
     validate_array_sizes();
 }
 
-void Simulation::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
-    simulation_clock.bind(orchestrator);
+void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
+    simulation_clock.bind(clock);
 }
 
 void Simulation::begin_tick() {
@@ -124,7 +123,7 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
 void Simulation::rotate_instances(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::rotate_instances);
 
-    auto const speed{config->yaw_rotation_speed_degrees};
+    auto const speed{config.yaw_rotation_speed_degrees};
     auto const delta_yaw_degrees{dt * speed};
 
     ml::add_in_place(TArrayView<float>(entities.yaws), delta_yaw_degrees);
@@ -134,11 +133,11 @@ void Simulation::fire_lasers() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::fire_lasers);
 
     auto const n{get_num_instances()};
-    auto const& firing_point_offsets{config->fire_point_offsets};
+    auto const& firing_point_offsets{config.fire_point_offsets};
     auto const n_firing_points{firing_point_offsets.Num()};
-    auto const laser_damage{config->laser.damage};
-    auto const laser_speed{config->laser.projectile_speed};
-    auto const laser_max_distance{config->laser.max_distance};
+    auto const laser_damage{config.laser.damage};
+    auto const laser_speed{config.laser.projectile_speed};
+    auto const laser_max_distance{config.laser.max_distance};
 
     if (n_firing_points < 1) {
         return;

@@ -5,7 +5,7 @@
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 namespace ml {
@@ -119,7 +119,7 @@ void FSimulationCoreRegressionScenario::begin_damage_lifecycle() {
 void FSimulationCoreRegressionScenario::on_damage_end_tick(ATestBatchOrchestrator& orchestrator) {
     auto const* const capitals{orchestrator.get_capital_ships()};
     check(capitals);
-    auto const& registry{test_driver->registry};
+    auto const& registry{test_driver->get_registry()};
     auto const& telemetry{
         orchestrator.get_level_telemetry_manager().get_active_entity_count_data()};
     damage_samples.add(test_driver->get_time(),
@@ -153,10 +153,11 @@ void FSimulationCoreRegressionScenario::check_damage_lifecycle() {
         0, lethal.telemetry_active_count, TEXT("Telemetry observes committed death before hook"));
     checks.are_equal(
         0, lethal.health, TEXT("Registry retains terminal health for the dead handle"));
-    checks.is_true(test_driver->registry.is_valid_dead(damaged_handle),
+    checks.is_true(test_driver->get_registry().is_valid_dead(damaged_handle),
                    TEXT("Killed handle remains valid-dead"));
-    checks.are_equal(
-        0, test_driver->registry.count_kills(), TEXT("Unattributed death does not create a kill"));
+    checks.are_equal(0,
+                     test_driver->get_registry().count_kills(),
+                     TEXT("Unattributed death does not create a kill"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 

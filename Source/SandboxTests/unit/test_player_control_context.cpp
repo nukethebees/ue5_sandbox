@@ -159,6 +159,9 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             return;
         }
 
+        ml::test_space_ship::Simulation simulation;
+        ship->bind_simulation(simulation);
+
         auto* const input_component{NewObject<UEnhancedInputComponent>(controller)};
         auto* const input_subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         auto* const mapping_context{NewObject<UInputMappingContext>(controller)};

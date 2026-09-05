@@ -3,9 +3,9 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityRegistryData.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/level_checks.h>
@@ -27,21 +27,19 @@ void FFighterAttackScenario::on_tear_down() {
 // Setup
 /* ------------------------------------------------------------------------------------------ */
 void FFighterAttackScenario::spawn_fixture() {
-    auto* const fighter_actor{const_cast<ATestCapitalShipFighters*>(
-        context_.orchestrator.get_capital_ship_fighters_actor())};
-    if (!checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available"))) {
+    auto* const level_config{duplicate_level_config(context_.config, context_.orchestrator)};
+    if (!checks.not_nullptr(level_config, TEXT("Level config is duplicated"))) {
         return;
     }
 
-    auto* const fighter_config{
-        duplicate_capital_ship_fighters_config(context_.config, *fighter_actor)};
+    auto* const fighter_config{&level_config->fighters};
     if (!checks.not_nullptr(fighter_config, TEXT("Fighter attack config is created"))) {
         return;
     }
     fighter_config->laser.projectile_speed = 20000.f;
     fighter_config->laser.max_distance = 25000.f;
     fighter_config->visual_logger_style = nullptr;
-    fighter_actor->set_actor_config(fighter_config);
+    context_.orchestrator.set_level_config(*level_config);
 
     auto* const hero_proxy{spawn_capital_proxy(context_.world,
                                                context_.config,
@@ -82,8 +80,8 @@ void FFighterAttackScenario::initial_setup_and_stimuli() {
     initialise_test_driver();
     test_driver->orchestrator.start_simulation();
 
-    checks.is_true(test_driver->registry.is_valid_handle(hero), TEXT("Read hero handle"));
-    checks.is_true(test_driver->registry.is_valid_handle(enemy), TEXT("Read enemy handle"));
+    checks.is_true(test_driver->get_registry().is_valid_handle(hero), TEXT("Read hero handle"));
+    checks.is_true(test_driver->get_registry().is_valid_handle(enemy), TEXT("Read enemy handle"));
     checks.is_true(hero != enemy, TEXT("Hero and enemy handles are distinct"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
@@ -99,7 +97,7 @@ void FFighterAttackScenario::initial_setup_and_stimuli() {
 // Samples and checks
 /* ------------------------------------------------------------------------------------------ */
 void FFighterAttackScenario::sample_values() {
-    auto const& entity_data{test_driver->registry.get_entity_data()};
+    auto const& entity_data{test_driver->get_registry().get_entity_data()};
     FSimulationSample sample{};
     sample.enemy_health = test_driver->get_capital_ships().get_health(enemy);
     sample.fighter_teams.Append(test_driver->get_capital_ship_fighters().get_teams());

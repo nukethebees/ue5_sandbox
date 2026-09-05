@@ -4,8 +4,8 @@
 #include <SpaceGame/entities/TestEntityRegistryData.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -43,18 +43,17 @@ FEntityRegistryScenario::FEntityRegistryScenario(FSimulationTestContext& context
 // Fixture
 /* ------------------------------------------------------------------------------------------ */
 void FEntityRegistryScenario::spawn_fixture() {
-    auto* const capital_actor{
-        const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships_actor())};
-    if (!checks.is_valid(capital_actor, TEXT("Capital batch actor is available"))) {
+    auto* const level_config{duplicate_level_config(context_.config, context_.orchestrator)};
+    if (!checks.not_nullptr(level_config, TEXT("Level config is duplicated"))) {
         return;
     }
 
-    auto* const capital_config{duplicate_capital_ships_config(context_.config, *capital_actor)};
+    auto* const capital_config{&level_config->capital_ships};
     if (!checks.not_nullptr(capital_config, TEXT("Entity registry capital config is created"))) {
         return;
     }
     capital_config->visual_logger_style = nullptr;
-    capital_actor->set_actor_config(capital_config);
+    context_.orchestrator.set_level_config(*level_config);
 
     if (scenario_ != EEntityRegistryScenario::TeamCounts) {
         spawn_player();
@@ -108,8 +107,8 @@ void FEntityRegistryScenario::begin_team_count_scenario() {
 
 void FEntityRegistryScenario::sample_team_counts() {
     auto const time{test_driver->get_time()};
-    alive_per_team.add(time, test_driver->registry.count_alive_per_team());
-    alive_per_team_and_type.add(time, test_driver->registry.count_alive_per_team_and_type());
+    alive_per_team.add(time, test_driver->get_registry().count_alive_per_team());
+    alive_per_team_and_type.add(time, test_driver->get_registry().count_alive_per_team_and_type());
 }
 
 void FEntityRegistryScenario::on_team_count_end_tick(ATestBatchOrchestrator&) {
@@ -150,8 +149,9 @@ void FEntityRegistryScenario::begin_variable_kill_scenario() {
     test_driver->orchestrator.start_simulation();
     auto const& player{test_driver->get_player_ship()};
     player_id = player.get_unique_id();
-    initial_alive_count = test_driver->registry.count_alive();
-    auto const available_targets{test_driver->registry.get_handles_not_in_team(player.get_team())};
+    initial_alive_count = test_driver->get_registry().count_alive();
+    auto const available_targets{
+        test_driver->get_registry().get_handles_not_in_team(player.get_team())};
     if (!checks.is_greater_than(available_targets.Num(),
                                 expected_kills - 1,
                                 TEXT("Enough non-player-team targets are available"))) {
@@ -172,7 +172,7 @@ void FEntityRegistryScenario::begin_variable_kill_scenario() {
 }
 
 void FEntityRegistryScenario::on_variable_kill_end_tick(ATestBatchOrchestrator&) {
-    auto const& registry{test_driver->registry};
+    auto const& registry{test_driver->get_registry()};
     kill_samples.add(test_driver->get_time(),
                      FVariableKillSample{
                          static_cast<int32>(registry.get_kills(player_id)),

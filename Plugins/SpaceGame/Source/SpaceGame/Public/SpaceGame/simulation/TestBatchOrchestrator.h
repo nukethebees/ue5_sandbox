@@ -1,25 +1,10 @@
 #pragma once
 
-#include <SpaceGame/combat/lasers/TestLasersPhaseInterface.h>
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
-#include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGame/missions/LevelMissionDefinition.h>
 #include <SpaceGame/presentation/HUDManager.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersPhaseInterface.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
-#include <SpaceGame/ships/player/TestSpaceShipPhaseInterface.h>
-#include <SpaceGame/ships/player/TestSpaceShipSimulation.h>
-#include <SpaceGame/simulation/LevelTelemetryManager.h>
+#include <SpaceGame/simulation/LevelCollisionHost.h>
+#include <SpaceGame/simulation/LevelSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/SpatialQueryManager.h>
-#include <SpaceGame/support/FixedTickLoop.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -27,14 +12,7 @@
 #include "TestBatchOrchestrator.generated.h"
 
 class ATestSpaceShip;
-class ATestLasers;
-class ATestCapitalShips;
-class ATestCapitalShipFighters;
-class ATestStaticTurrets;
-class ATestTubeSpinners;
 class UCollisionGridVisualizationComponent;
-
-class ADelayedNiagaraSpawner;
 
 class ATestBatchOrchestrator;
 
@@ -48,14 +26,6 @@ enum class EOrchestratorStartMode : uint8 {
     PausedInTest,
     Automatic,
     AuthoredLevel,
-};
-
-UENUM(BlueprintType)
-enum class EOrchestratorState : uint8 {
-    Uninitialised,
-    Paused,
-    Running,
-    Stopped,
 };
 
 UCLASS()
@@ -86,74 +56,89 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
     auto duration_to_tick_period(time_type const duration) const noexcept -> tick_type;
 
-    auto get_state() const noexcept -> EOrchestratorState { return state; }
-    auto get_completed_ticks() const noexcept -> tick_type { return completed_ticks; }
-    auto get_simulation_time() const noexcept -> time_type {
-        return static_cast<time_type>(completed_ticks) * simulation_tick_loop.tick_period;
+    auto get_state() const noexcept -> EOrchestratorState {
+        return level_simulation_.IsSet() ? level_simulation_->get_state()
+                                         : EOrchestratorState::Uninitialised;
     }
-    auto get_tick_period() const noexcept -> time_type { return simulation_tick_loop.tick_period; }
+    auto get_completed_ticks() const noexcept -> tick_type {
+        return level_simulation_.IsSet() ? level_simulation_->get_clock().get_completed_ticks() : 0;
+    }
+    auto get_simulation_time() const noexcept -> time_type {
+        return level_simulation_.IsSet() ? level_simulation_->get_clock().get_simulation_time()
+                                         : 0.0;
+    }
+    auto get_tick_period() const noexcept -> time_type {
+        return 1.0 / simulation_tick_loop.tick_rate;
+    }
 
     auto get_player_ship() const -> ATestSpaceShip const*;
     auto get_player_ship_simulation() noexcept -> ml::test_space_ship::Simulation*;
     auto get_player_ship_simulation() const noexcept -> ml::test_space_ship::Simulation const*;
     void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
-    auto get_lasers_actor() const -> auto const* { return lasers.Get(); }
-    auto get_lasers() noexcept -> ml::test_lasers::Simulation* { return &lasers_simulation; }
-    auto get_lasers() const noexcept -> ml::test_lasers::Simulation const* {
-        return &lasers_simulation;
+    auto get_lasers() noexcept -> ml::test_lasers::Simulation* {
+        return level_simulation_.IsSet() ? level_simulation_->get_lasers() : nullptr;
     }
-    auto get_capital_ships_actor() const -> auto const* { return capital_ships.Get(); }
+    auto get_lasers() const noexcept -> ml::test_lasers::Simulation const* {
+        return level_simulation_.IsSet() ? level_simulation_->get_lasers() : nullptr;
+    }
     auto get_capital_ships() noexcept -> ml::test_capital_ships::Simulation* {
-        return &capital_ships_simulation;
+        return level_simulation_.IsSet() ? level_simulation_->get_capital_ships() : nullptr;
     }
     auto get_capital_ships() const noexcept -> ml::test_capital_ships::Simulation const* {
-        return &capital_ships_simulation;
-    }
-    auto get_capital_ship_fighters_actor() const -> auto const* {
-        return capital_ship_fighters.Get();
+        return level_simulation_.IsSet() ? level_simulation_->get_capital_ships() : nullptr;
     }
     auto get_capital_ship_fighters() noexcept -> ml::test_capital_ship_fighters::Simulation* {
-        return &capital_ship_fighters_simulation;
+        return level_simulation_.IsSet() ? level_simulation_->get_capital_ship_fighters() : nullptr;
     }
     auto get_capital_ship_fighters() const noexcept
         -> ml::test_capital_ship_fighters::Simulation const* {
-        return &capital_ship_fighters_simulation;
+        return level_simulation_.IsSet() ? level_simulation_->get_capital_ship_fighters() : nullptr;
     }
-    auto get_turrets_actor() const -> auto const* { return turrets.Get(); }
     auto get_turrets() noexcept -> ml::test_static_turrets::Simulation* {
-        return &turrets_simulation;
+        return level_simulation_.IsSet() ? level_simulation_->get_turrets() : nullptr;
     }
     auto get_turrets() const noexcept -> ml::test_static_turrets::Simulation const* {
-        return &turrets_simulation;
+        return level_simulation_.IsSet() ? level_simulation_->get_turrets() : nullptr;
     }
-    auto get_spinners_actor() const -> auto const* { return spinners.Get(); }
     auto get_spinners() noexcept -> ml::test_tube_spinners::Simulation* {
-        return &spinners_simulation;
+        return level_simulation_.IsSet() ? level_simulation_->get_spinners() : nullptr;
     }
     auto get_spinners() const noexcept -> ml::test_tube_spinners::Simulation const* {
-        return &spinners_simulation;
+        return level_simulation_.IsSet() ? level_simulation_->get_spinners() : nullptr;
     }
 
-    auto get_entity_registry() noexcept -> FTestEntityRegistry& { return entity_registry; }
+    auto get_entity_registry() noexcept -> FTestEntityRegistry& {
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_entity_registry();
+    }
     auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
-        return entity_registry;
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_entity_registry();
     }
     auto get_level_telemetry_manager() const noexcept -> FLevelTelemetryManager const& {
-        return level_telemetry_manager;
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_level_telemetry_manager();
     }
     auto get_entity_type(FRegistryEntityHandle const handle) const -> ETestEntityType {
-        return entity_registry.get_entity_type(handle);
+        return get_entity_registry().get_entity_type(handle);
     }
-    auto get_spatial_query_manager() noexcept -> ml::FSpatialQueryManager& { return query_manager; }
+    auto get_spatial_query_manager() noexcept -> ml::FSpatialQueryManager& {
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_spatial_query_manager();
+    }
     auto get_spatial_query_manager() const noexcept -> ml::FSpatialQueryManager const& {
-        return query_manager;
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_spatial_query_manager();
     }
-    auto get_mission_manager() noexcept -> FTestMissionManager& { return mission_manager; }
+    auto get_mission_manager() noexcept -> FTestMissionManager& {
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_mission_manager();
+    }
     auto get_mission_manager() const noexcept -> FTestMissionManager const& {
-        return mission_manager;
+        check(level_simulation_.IsSet());
+        return level_simulation_->get_mission_manager();
     }
-    auto get_niagara_spawner() const -> ADelayedNiagaraSpawner const* { return niagara_spawner; }
     auto get_hud_manager() noexcept -> FHUDManager& { return hud_manager; }
     auto get_hud_manager() const noexcept -> FHUDManager const& { return hud_manager; }
     auto get_hud_update_frequencies() const noexcept -> FTestBatchGameUiUpdateFrequencies const& {
@@ -164,10 +149,26 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_end_tick_test_hook(FOrchestratorEndTickTestHook hook);
     void clear_end_tick_test_hook();
 
-    void spawn_missing_actors();
+    void prepare_level();
 
     static FOnProxyEntitiesBound on_proxy_entities_bound;
     FOnOrchestratorReset on_reset;
+    FOnTestMissionCompleted on_mission_completed;
+    auto get_mission_definition() -> FLevelMissionDefinition& { return mission_definition; }
+    auto get_level_simulation() -> FLevelSimulation* {
+        return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
+    }
+    auto get_level_simulation() const -> FLevelSimulation const* {
+        return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
+    }
+    auto get_world_collision() -> ml::ioj::FLevelCollisionHost& { return world_collision_; }
+    auto get_world_collision() const -> ml::ioj::FLevelCollisionHost const& {
+        return world_collision_;
+    }
+    auto add_static_geometry(UPrimitiveComponent& component) -> bool;
+    auto get_presentation_resources() const -> FLevelPresentationResources {
+        return make_presentation_resources();
+    }
   protected:
     void BeginPlay() override;
     void EndPlay(EEndPlayReason::Type end_play_reason) override;
@@ -177,19 +178,16 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void apply_level_config();
 
     UFUNCTION(CallInEditor, Category = "Sandbox")
-    void spawn_missing_actors_button();
+    void prepare_level_button();
 #endif
   private:
     void begin_play();
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void validate_proxy_handles();
-    void bind_simulation_dependencies();
-    void remove_presentation_actors();
-    void initialise_batch_geometry();
-    void register_capital_ship_proxies();
-    auto register_turret_proxies() -> TArray<FTransform>;
-    void register_spinner_proxies();
+    void initialise_simulation();
+    void process_mission_result();
+    auto make_presentation_resources() const -> FLevelPresentationResources;
     void bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities);
     void bind_and_destroy_proxies();
     void start_visual_logging();
@@ -204,8 +202,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     EOrchestratorStartMode start_mode{EOrchestratorStartMode::Automatic};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")
     bool presentation_enabled{true};
-    UPROPERTY(VisibleAnywhere, Transient, Category = "Sandbox")
-    EOrchestratorState state{EOrchestratorState::Uninitialised};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Visual Logger")
     bool enable_visual_logging{false};
@@ -218,46 +214,29 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FFixedTickLoop hud_tick_loop{};
 
-    tick_type completed_ticks{0};
-
     FHUDManager hud_manager;
-    FTestEntityRegistry entity_registry;
-    FLevelTelemetryManager level_telemetry_manager;
-    ml::FSpatialQueryManager query_manager;
+    TOptional<FLevelSimulation> level_simulation_;
+    ml::ioj::FLevelCollisionHost world_collision_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))
     FTestBatchGameUiUpdateFrequencies hud_update_frequencies{};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
-    TOptional<ml::test_space_ship::Simulation> player_ship_simulation;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestLasers> lasers{nullptr};
-    ml::test_lasers::Simulation lasers_simulation;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestCapitalShips> capital_ships{nullptr};
-    ml::test_capital_ships::Simulation capital_ships_simulation;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestCapitalShipFighters> capital_ship_fighters{nullptr};
-    ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestStaticTurrets> turrets{nullptr};
-    ml::test_static_turrets::Simulation turrets_simulation;
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ATestTubeSpinners> spinners{nullptr};
-    ml::test_tube_spinners::Simulation spinners_simulation;
-
-    ml::test_space_ship::PhaseInterface player_ship_phase;
-    ml::test_lasers::PhaseInterface lasers_phase;
-    ml::test_capital_ships::PhaseInterface capital_ships_phase;
-    ml::test_capital_ship_fighters::PhaseInterface capital_ship_fighters_phase;
-    ml::test_static_turrets::PhaseInterface turrets_phase;
-    ml::test_tube_spinners::PhaseInterface spinners_phase;
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    FTestMissionManager mission_manager{};
-    UPROPERTY(EditAnywhere, Category = "Sandbox")
-    TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
+    FLevelMissionDefinition mission_definition;
+    UPROPERTY(EditAnywhere, Category = "Presentation")
+    FLevelPresentationSettings presentation_settings;
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> laser_instances_;
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> capital_instances_;
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> fighter_instances_;
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> turret_instances_;
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> spinner_instances_;
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox")

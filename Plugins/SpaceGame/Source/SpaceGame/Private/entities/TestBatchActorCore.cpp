@@ -14,7 +14,8 @@
 namespace ml::batch {
 void configure_ismc(UInstancedStaticMeshComponent& instances, FIsmcConfig const& config) {
     instances.SetMobility(EComponentMobility::Movable);
-    check(instances.SetStaticMesh(config.mesh));
+    instances.SetStaticMesh(config.mesh);
+    check(instances.GetStaticMesh() == config.mesh);
     instances.SetMobility(EComponentMobility::Static);
 
     if (IsValid(config.material)) {

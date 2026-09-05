@@ -560,6 +560,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                         "bind_access",
                         "method_access",
                         "friends",
+                        "friend_kind",
                         "definitions_in_source"});
         std::vector<FacadeMethodSchema> methods;
         auto const& method_values{required_array(facade_value, "methods", facade_path)};
@@ -589,6 +590,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                     value_or<std::string>(facade_value, "method_access", "public", facade_path),
                 .friends =
                     value_or<std::vector<std::string>>(facade_value, "friends", {}, facade_path),
+                .friend_kind = value_or<std::string>(facade_value, "friend_kind", "class", facade_path),
                 .definitions_in_source =
                     value_or<bool>(facade_value, "definitions_in_source", false, facade_path),
             },

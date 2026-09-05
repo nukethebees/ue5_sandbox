@@ -9,7 +9,7 @@
 
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -121,7 +121,7 @@ void FTestMissionManagerScenario::configure_mission_manager(UWorld& world,
     }};
     auto* const first_capital{find_capital(FName{TEXT("hero_capital")})};
 
-    auto& manager{orchestrator.get_mission_manager()};
+    auto& manager{orchestrator.get_mission_definition()};
     manager.set_save_mission_results(false);
 
     switch (scenario) {
@@ -216,6 +216,7 @@ void FTestMissionManagerScenario::setup_scenario(EScenario const new_scenario) {
 void FTestMissionManagerScenario::start_scenario() {
     initialise_test_driver();
 
+    test_driver->orchestrator.start_simulation();
     auto* const manager{&test_driver->orchestrator.get_mission_manager()};
 
     test_driver->orchestrator.set_end_tick_test_hook(
@@ -240,8 +241,6 @@ void FTestMissionManagerScenario::start_scenario() {
             duplicate_completion_result_ = manager->complete_mission();
         });
     }
-    test_driver->orchestrator.start_simulation();
-
     TestRunner->TestEqual(
         TEXT("Mission starts running"), manager->get_mission_state(), ETestMissionState::Running);
     TestRunner->TestFalse(TEXT("Mission result saving is disabled"),
@@ -294,7 +293,8 @@ void FTestMissionManagerScenario::on_end_tick(ATestBatchOrchestrator&) {
     sample.kill_target = manager.get_kill_target();
     auto const surviving_handles{manager.get_entity_handles_that_must_survive()};
     sample.surviving_entity_alive =
-        !surviving_handles.IsEmpty() && test_driver->registry.is_valid_alive(surviving_handles[0]);
+        !surviving_handles.IsEmpty() &&
+        test_driver->get_registry().is_valid_alive(surviving_handles[0]);
     for (auto const& health : manager.get_entity_health_that_must_survive()) {
         sample.surviving_entity_health.Add(health.health);
     }

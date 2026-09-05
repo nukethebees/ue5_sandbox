@@ -1,4 +1,4 @@
-#include "SpaceGame/combat/lasers/TestLasers.h"
+#include "SpaceGame/presentation/LaserPresentation.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
@@ -15,38 +15,30 @@
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
-ATestLasers::ATestLasers()
-    : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
-    instances->SetupAttachment(RootComponent);
+FLaserPresentation::FLaserPresentation(UInstancedStaticMeshComponent& component)
+    : instances{&component} {}
 
-    PrimaryActorTick.bCanEverTick = false;
-    PrimaryActorTick.bStartWithTickEnabled = false;
-
-    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
-}
-
-void ATestLasers::bind_simulation(ml::test_lasers::Simulation& new_simulation) {
+void FLaserPresentation::bind_simulation(ml::test_lasers::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
 }
 
-auto ATestLasers::simulation() -> ml::test_lasers::Simulation& {
+auto FLaserPresentation::simulation() -> ml::test_lasers::Simulation& {
     check(bound_simulation);
     return *bound_simulation;
 }
 
-auto ATestLasers::simulation() const -> ml::test_lasers::Simulation const& {
-    return const_cast<ATestLasers*>(this)->simulation();
+auto FLaserPresentation::simulation() const -> ml::test_lasers::Simulation const& {
+    return const_cast<FLaserPresentation*>(this)->simulation();
 }
 
-void ATestLasers::clear_runtime_state_presentation() {
+void FLaserPresentation::clear_runtime_state_presentation() {
     instances->ClearInstances();
     ismc_data.Reset();
     dummy_transforms_spawn_buffer.Reset();
 }
 
-void ATestLasers::begin_play_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::begin_play_presentation);
+void FLaserPresentation::begin_play_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::begin_play_presentation);
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, 0);
 
     if (!actor_config) {
@@ -60,34 +52,35 @@ void ATestLasers::begin_play_presentation() {
     instances->PreAllocateInstancesMemory(actor_config->n_preallocated_instances);
 
 #if WITH_EDITOR
-    debug_drawer.world = GetWorld();
+    debug_drawer.world = instances->GetWorld();
 #endif
 
     validate_array_sizes();
 }
 
-void ATestLasers::update_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_visual_data);
+void FLaserPresentation::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
     apply_simulation_changes_to_ismc();
     prepare_ismc_transforms();
     update_ismc();
 }
 
-void ATestLasers::commit_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::commit_visual_data);
+void FLaserPresentation::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::commit_visual_data);
     instances->MarkRenderStateDirty();
     spawn_hit_effects();
 }
 
-void ATestLasers::end_tick_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::end_tick_presentation);
+void FLaserPresentation::end_tick_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::end_tick_presentation);
     TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
     validate_array_sizes();
 }
 
-void ATestLasers::configure_ismc() {
+void FLaserPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Movable);
-    check(instances->SetStaticMesh(actor_config->mesh));
+    instances->SetStaticMesh(actor_config->mesh);
+    check(instances->GetStaticMesh() == actor_config->mesh);
     instances->SetMobility(EComponentMobility::Static);
     instances->SetMaterial(0, actor_config->material);
 
@@ -102,7 +95,7 @@ void ATestLasers::configure_ismc() {
     instances->SetRemoveSwap();
 }
 
-void ATestLasers::apply_simulation_changes_to_ismc() {
+void FLaserPresentation::apply_simulation_changes_to_ismc() {
     auto const& laser_simulation{simulation()};
     for (auto const index : laser_simulation.presentation_indices_to_remove) {
         instances->RemoveInstance(index);
@@ -126,8 +119,8 @@ void ATestLasers::apply_simulation_changes_to_ismc() {
     check(instances->GetNumInstances() == laser_simulation.get_num_instances());
 }
 
-void ATestLasers::prepare_ismc_transforms() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::prepare_ismc_transforms);
+void FLaserPresentation::prepare_ismc_transforms() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::prepare_ismc_transforms);
 
     auto const& laser_simulation{simulation()};
     auto const n{laser_simulation.get_num_instances()};
@@ -153,8 +146,8 @@ void ATestLasers::prepare_ismc_transforms() {
     });
 }
 
-void ATestLasers::update_ismc() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::update_ismc);
+void FLaserPresentation::update_ismc() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
 
     constexpr bool mark_render_dirty{false};
     constexpr bool teleport{true};
@@ -162,8 +155,8 @@ void ATestLasers::update_ismc() {
         0, ismc_data.Num(), ismc_data.GetData(), mark_render_dirty, teleport);
 }
 
-void ATestLasers::spawn_hit_effects() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestLasers::spawn_hit_effects);
+void FLaserPresentation::spawn_hit_effects() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::spawn_hit_effects);
 
     static FName const colour_parameter{TEXT("User.Colour")};
     static FName const ribbon_colour_parameter{TEXT("User.Ribbon_Colour")};
@@ -171,8 +164,9 @@ void ATestLasers::spawn_hit_effects() {
     auto* const hit_effect{actor_config->hit_effect.Get()};
     if (!IsValid(hit_effect)) {
         if (!have_warned_hit_effect) {
-            UE_LOG(
-                LogSandbox, Warning, TEXT("ATestLasers::spawn_hit_effects: hit_effect is nullptr"));
+            UE_LOG(LogSandbox,
+                   Warning,
+                   TEXT("FLaserPresentation::spawn_hit_effects: hit_effect is nullptr"));
             have_warned_hit_effect = true;
         }
         return;
@@ -184,7 +178,7 @@ void ATestLasers::spawn_hit_effects() {
         return;
     }
 
-    auto* const world{GetWorld()};
+    auto* const world{instances->GetWorld()};
     for (int32 i{0}; i < n; ++i) {
         constexpr bool auto_destroy{true};
         constexpr bool auto_activate{false};
@@ -209,7 +203,7 @@ void ATestLasers::spawn_hit_effects() {
     }
 }
 
-void ATestLasers::validate_array_sizes() const {
+void FLaserPresentation::validate_array_sizes() const {
     simulation().validate_array_sizes();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(simulation().get_num_instances()),

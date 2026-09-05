@@ -1,9 +1,8 @@
 #include "TestTurrets.h"
 
-#include "SpaceGame/combat/lasers/TestLasers.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "TestTurretsConfig.h"
 
 #include <SandboxCore/array_utils.h>
@@ -199,7 +198,6 @@ void ATestTurrets::BeginPlay() {
     Super::BeginPlay();
 
     ml::fatal_if_uobject_ptrs_invalid({
-        SANDBOX_NAMED_UOBJECT_PTR(laser_actor),
         SANDBOX_NAMED_UOBJECT_PTR(turret_config),
     });
     if (!turret_config->is_ready()) {
@@ -404,7 +402,6 @@ void ATestTurrets::fire_when_aligned() {
         attacking.firing_cooldowns[i] = cooldown;
     }
 
-    // laser_actor->spawn_lasers(laser_transforms);
     check(false);
 }
 void ATestTurrets::tick_attacking_cooldowns(float const dt) {

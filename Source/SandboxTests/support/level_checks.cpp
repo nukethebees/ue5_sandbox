@@ -43,7 +43,7 @@ void check_radii(TConstArrayView<float> const radii,
 void check_radii(TestSimulationDriver const& driver,
                  FSoftTestAssertions& checks,
                  float const threshold) {
-    auto const& entity_data{driver.registry.get_entity_data()};
+    auto const& entity_data{driver.get_registry().get_entity_data()};
     check_radii(TConstArrayView<float>{entity_data.radii}, checks, threshold);
 }
 }

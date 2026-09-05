@@ -1,4 +1,4 @@
-#include "SpaceGame/ships/fighters/TestCapitalShipFighters.h"
+#include "SpaceGame/presentation/FighterPresentation.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGame/entities/TestBatchActorCore.h>
@@ -30,48 +30,39 @@ auto get_visual_logger_entity_colour(FSandboxVisualLoggerEntityStyle const& styl
 }
 } // namespace
 
-ATestCapitalShipFighters::ATestCapitalShipFighters()
-    : instances{CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("instances"))} {
-    RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
-    instances->SetupAttachment(RootComponent);
+FFighterPresentation::FFighterPresentation(UInstancedStaticMeshComponent& component)
+    : instances{&component} {}
 
-    PrimaryActorTick.bCanEverTick = false;
-    PrimaryActorTick.bStartWithTickEnabled = false;
-
-    ml::set_actor_component_mobility(*this, EComponentMobility::Static);
-}
-
-void ATestCapitalShipFighters::set_actor_config(FFighterConfig const* const new_config) noexcept {
+void FFighterPresentation::set_actor_config(FFighterConfig const* const new_config) noexcept {
     actor_config = new_config;
 }
 
-void ATestCapitalShipFighters::bind_simulation(
+void FFighterPresentation::bind_simulation(
     ml::test_capital_ship_fighters::Simulation& new_simulation) {
     bound_simulation = &new_simulation;
 }
 
-auto ATestCapitalShipFighters::simulation() -> ml::test_capital_ship_fighters::Simulation& {
+auto FFighterPresentation::simulation() -> ml::test_capital_ship_fighters::Simulation& {
     check(bound_simulation);
     return *bound_simulation;
 }
 
-auto ATestCapitalShipFighters::simulation() const
-    -> ml::test_capital_ship_fighters::Simulation const& {
-    return const_cast<ATestCapitalShipFighters*>(this)->simulation();
+auto FFighterPresentation::simulation() const -> ml::test_capital_ship_fighters::Simulation const& {
+    return const_cast<FFighterPresentation*>(this)->simulation();
 }
 
-void ATestCapitalShipFighters::clear_runtime_state_presentation() {
+void FFighterPresentation::clear_runtime_state_presentation() {
     instances->ClearInstances();
     ismc_transforms.Reset();
     dummy_transforms_spawn_buffer.Reset();
     custom_data_buffer.Reset();
 }
 
-void ATestCapitalShipFighters::begin_play_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::begin_play_presentation);
+void FFighterPresentation::begin_play_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::begin_play_presentation);
 
     if (!actor_config) {
-        UE_LOG(LogSandbox, Fatal, TEXT("ATestCapitalShipFighters actor_config is nullptr."));
+        UE_LOG(LogSandbox, Fatal, TEXT("FFighterPresentation actor_config is nullptr."));
     }
     ml::fatal_if_uobject_ptrs_invalid({
         SANDBOX_NAMED_UOBJECT_PTR(actor_config->mesh.Get()),
@@ -81,31 +72,31 @@ void ATestCapitalShipFighters::begin_play_presentation() {
     configure_ismc();
 
     debug_drawer = actor_config->debug_drawer;
-    debug_drawer.world = GetWorld();
+    debug_drawer.world = instances->GetWorld();
 }
 
-void ATestCapitalShipFighters::update_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_visual_data);
+void FFighterPresentation::update_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_visual_data);
     apply_simulation_changes_to_ismc();
     prepare_ismc_transforms();
     update_ismc();
 }
 
-void ATestCapitalShipFighters::commit_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::commit_visual_data);
+void FFighterPresentation::commit_visual_data() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::commit_visual_data);
     instances->MarkRenderStateDirty();
     if (enable_target_debug_drawing || enable_ship_location_debug_drawing) {
         draw_debug_shapes();
     }
 }
 
-void ATestCapitalShipFighters::end_tick_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::end_tick_presentation);
+void FFighterPresentation::end_tick_presentation() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::end_tick_presentation);
     validate_array_sizes();
     visual_log_state();
 }
 
-void ATestCapitalShipFighters::configure_ismc() {
+void FFighterPresentation::configure_ismc() {
     ml::batch::configure_ismc(*instances,
                               {
                                   .mesh = actor_config->mesh.Get(),
@@ -113,7 +104,7 @@ void ATestCapitalShipFighters::configure_ismc() {
                               });
 }
 
-void ATestCapitalShipFighters::apply_simulation_changes_to_ismc() {
+void FFighterPresentation::apply_simulation_changes_to_ismc() {
     auto const& fighter_simulation{simulation()};
     auto const& indices_to_remove{fighter_simulation.presentation_indices_to_remove};
     if (!indices_to_remove.IsEmpty()) {
@@ -136,8 +127,8 @@ void ATestCapitalShipFighters::apply_simulation_changes_to_ismc() {
     write_ismc_custom_data(0, fighter_simulation.get_num_instances());
 }
 
-void ATestCapitalShipFighters::prepare_ismc_transforms() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::prepare_ismc_transforms);
+void FFighterPresentation::prepare_ismc_transforms() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::prepare_ismc_transforms);
 
     auto const& data{simulation().entity_buffers.current()};
     auto const n{data.num()};
@@ -156,16 +147,16 @@ void ATestCapitalShipFighters::prepare_ismc_transforms() {
     });
 }
 
-void ATestCapitalShipFighters::update_ismc() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::update_ismc);
+void FFighterPresentation::update_ismc() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::update_ismc);
     constexpr bool mark_render_state_dirty{false};
     constexpr bool teleport{true};
     instances->BatchUpdateInstancesTransforms(
         0, ismc_transforms, is_world_space, mark_render_state_dirty, teleport);
 }
 
-void ATestCapitalShipFighters::draw_debug_shapes() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::draw_debug_shapes);
+void FFighterPresentation::draw_debug_shapes() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::draw_debug_shapes);
 
     auto const& data{simulation().entity_buffers.current()};
     auto const n{data.num()};
@@ -180,8 +171,8 @@ void ATestCapitalShipFighters::draw_debug_shapes() {
     }
 }
 
-void ATestCapitalShipFighters::write_ismc_custom_data(int32 const offset, int32 const count) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestCapitalShipFighters::write_ismc_custom_data);
+void FFighterPresentation::write_ismc_custom_data(int32 const offset, int32 const count) {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FFighterPresentation::write_ismc_custom_data);
     check(count >= 0);
     if (count == 0) {
         return;
@@ -204,7 +195,7 @@ void ATestCapitalShipFighters::write_ismc_custom_data(int32 const offset, int32 
     instances->SetCustomData(offset, offset + count - 1, custom_data_buffer, mark_render_dirty);
 }
 
-void ATestCapitalShipFighters::visual_log_state() const {
+void FFighterPresentation::visual_log_state() const {
 #if ENABLE_VISUAL_LOG
     if (!FVisualLogger::IsRecording()) {
         return;
@@ -218,13 +209,13 @@ void ATestCapitalShipFighters::visual_log_state() const {
     if (!entity_registry) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShipFighters::visual_log_state entity registry is null"));
+               TEXT("FFighterPresentation::visual_log_state entity registry is null"));
         return;
     }
     if (!actor_config) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShipFighters::visual_log_state actor_config is nullptr"));
+               TEXT("FFighterPresentation::visual_log_state actor_config is nullptr"));
         return;
     }
     if (auto const message{ml::report_invalid_uobject_ptrs({
@@ -232,7 +223,7 @@ void ATestCapitalShipFighters::visual_log_state() const {
         })}) {
         UE_LOG(LogSandboxEntities,
                Error,
-               TEXT("ATestCapitalShipFighters::visual_log_state UObject ptrs are invalid:\n%s"),
+               TEXT("FFighterPresentation::visual_log_state UObject ptrs are invalid:\n%s"),
                *message);
         return;
     }
@@ -248,7 +239,7 @@ void ATestCapitalShipFighters::visual_log_state() const {
         FVector const fighter_location{ml::get_vector3f(data.locations, fighter_index)};
         auto const fighter_colour{
             get_visual_logger_entity_colour(style.entities, data.teams[fighter_index])};
-        UE_VLOG_SPHERE(this,
+        UE_VLOG_SPHERE(instances->GetOwner(),
                        LogSandboxEntities,
                        Log,
                        fighter_location,
@@ -259,14 +250,14 @@ void ATestCapitalShipFighters::visual_log_state() const {
 
         FVector const desired_move_location{
             ml::get_vector3f(data.desired_move_locations, fighter_index)};
-        UE_VLOG_WIRESPHERE(this,
+        UE_VLOG_WIRESPHERE(instances->GetOwner(),
                            LogSandboxNavigation,
                            Log,
                            desired_move_location,
                            style.entities.fighter_entity_radius,
                            style.navigation.movement_destination_colour,
                            TEXT("Move destination"));
-        UE_VLOG_SEGMENT_THICK(this,
+        UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
                               LogSandboxNavigation,
                               Log,
                               fighter_location,
@@ -280,7 +271,7 @@ void ATestCapitalShipFighters::visual_log_state() const {
             continue;
         }
         FVector const target_location{ml::get_vector3f(data.target_locations, fighter_index)};
-        UE_VLOG_WIRESPHERE(this,
+        UE_VLOG_WIRESPHERE(instances->GetOwner(),
                            LogSandboxTargeting,
                            Log,
                            target_location,
@@ -288,7 +279,7 @@ void ATestCapitalShipFighters::visual_log_state() const {
                            style.combat.selected_target_colour,
                            TEXT("Target %d"),
                            target_handle.index);
-        UE_VLOG_SEGMENT_THICK(this,
+        UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
                               LogSandboxTargeting,
                               Log,
                               fighter_location,
@@ -300,7 +291,7 @@ void ATestCapitalShipFighters::visual_log_state() const {
     }
 }
 
-void ATestCapitalShipFighters::validate_array_sizes() const {
+void FFighterPresentation::validate_array_sizes() const {
     simulation().validate_array_sizes();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(simulation().get_num_instances()),

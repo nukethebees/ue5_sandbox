@@ -4,22 +4,19 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 
+#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
-#include <GameFramework/Actor.h>
-
-#include "TestStaticTurrets.generated.h"
 
 class UInstancedStaticMeshComponent;
 
-UCLASS()
-class SPACEGAME_API ATestStaticTurrets : public AActor {
-    GENERATED_BODY()
-    friend class ATestBatchOrchestrator;
+struct SPACEGAME_API FTurretPresentation {
+    friend struct FLevelPresentation;
+    friend struct FLevelSimulation;
   public:
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};
 
-    ATestStaticTurrets();
+    explicit FTurretPresentation(UInstancedStaticMeshComponent& component);
     void set_actor_config(FTurretConfig const* new_config) noexcept;
   private:
     void bind_simulation(ml::test_static_turrets::Simulation& new_simulation);
@@ -40,14 +37,10 @@ class SPACEGAME_API ATestStaticTurrets : public AActor {
     FTurretConfig const* actor_config{nullptr};
     ml::test_static_turrets::Simulation* bound_simulation{nullptr};
 
-    UPROPERTY(meta = (AllowPrivateAccess))
-    TObjectPtr<UInstancedStaticMeshComponent> instances;
+    UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;
 
-    UPROPERTY(EditAnywhere, meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool draw_target_arrows_enabled{false};
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool draw_debug_entity_info_enabled{false};
 };

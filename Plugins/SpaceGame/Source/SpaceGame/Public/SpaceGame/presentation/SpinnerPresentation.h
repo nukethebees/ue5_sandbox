@@ -3,21 +3,18 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
+#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
-#include <GameFramework/Actor.h>
-
-#include "TestTubeSpinners.generated.h"
 
 class UInstancedStaticMeshComponent;
 
-UCLASS()
-class ATestTubeSpinners : public AActor {
-    GENERATED_BODY()
-    friend class ATestBatchOrchestrator;
+struct SPACEGAME_API FSpinnerPresentation {
+    friend struct FLevelPresentation;
+    friend struct FLevelSimulation;
   public:
     static constexpr bool is_world_space{false};
 
-    ATestTubeSpinners();
+    explicit FSpinnerPresentation(UInstancedStaticMeshComponent& component);
     void set_actor_config(FTubeSpinnerConfig const* new_config) noexcept;
   private:
     void bind_simulation(ml::test_tube_spinners::Simulation& new_simulation);
@@ -38,8 +35,6 @@ class ATestTubeSpinners : public AActor {
     FTubeSpinnerConfig const* actor_config{nullptr};
     ml::test_tube_spinners::Simulation* bound_simulation{nullptr};
 
-    UPROPERTY(meta = (AllowPrivateAccess))
-    TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY(meta = (AllowPrivateAccess))
+    UInstancedStaticMeshComponent* instances{nullptr};
     TArray<FTransform> ismc_transforms;
 };

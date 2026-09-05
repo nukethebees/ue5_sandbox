@@ -1,8 +1,8 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
@@ -92,7 +92,7 @@ void FFightersStandbyTransitionScenario::sample_values() {
     sample.fighter_tasks.Append(fighters.get_tasks());
     sample.fighter_velocities.Reserve(fighter_handles.Num());
     for (auto const fighter_handle : fighter_handles) {
-        sample.fighter_velocities.Add(test_driver->registry.get_velocity(fighter_handle));
+        sample.fighter_velocities.Add(test_driver->get_registry().get_velocity(fighter_handle));
     }
 
     samples.add(test_driver->get_time(), MoveTemp(sample));

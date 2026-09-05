@@ -1,21 +1,19 @@
 #pragma once
 
+#include <UObject/GCObject.h>
 #include "CoreMinimal.h"
-#include "GameFramework/Actor.h"
 
-#include "DelayedNiagaraSpawner.generated.h"
+class UWorld;
 
 class UNiagaraSystem;
 
-UCLASS()
-class SPACEGAME_API ADelayedNiagaraSpawner : public AActor {
-    GENERATED_BODY()
+struct SPACEGAME_API FDelayedNiagaraSpawns : public FGCObject {
   public:
-    ADelayedNiagaraSpawner();
+    void AddReferencedObjects(FReferenceCollector& collector) override;
+    auto GetReferencerName() const -> FString override { return TEXT("FDelayedNiagaraSpawns"); }
 
-    void update_spawns(float const dt);
+    void update_spawns(float dt, UWorld& world);
 
-    UFUNCTION()
     void add_spawn(UNiagaraSystem* system,
                    FVector const& location,
                    FRotator const& rotation,
@@ -33,18 +31,13 @@ class SPACEGAME_API ADelayedNiagaraSpawner : public AActor {
     auto num() const -> int32;
     void remove_spawn_at(int32 index);
 
-    UPROPERTY()
-    TArray<UNiagaraSystem*> systems;
+    TArray<TObjectPtr<UNiagaraSystem>> systems;
 
-    UPROPERTY()
     TArray<FVector> locations;
 
-    UPROPERTY()
     TArray<FRotator> rotations;
 
-    UPROPERTY()
     TArray<FVector> scales;
 
-    UPROPERTY()
     TArray<float> times_remaining;
 };

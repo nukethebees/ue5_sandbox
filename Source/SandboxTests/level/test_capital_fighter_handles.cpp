@@ -3,10 +3,10 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
+#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
@@ -34,18 +34,13 @@ FCapitalFighterHandlesScenario::FCapitalFighterHandlesScenario(
 }
 
 void FCapitalFighterHandlesScenario::spawn_fixture() {
-    auto* const capital_actor{
-        const_cast<ATestCapitalShips*>(context_.orchestrator.get_capital_ships_actor())};
-    auto* const fighter_actor{const_cast<ATestCapitalShipFighters*>(
-        context_.orchestrator.get_capital_ship_fighters_actor())};
-    if (!checks.is_valid(capital_actor, TEXT("Capital batch actor is available")) ||
-        !checks.is_valid(fighter_actor, TEXT("Fighter batch actor is available"))) {
+    auto* const level_config{duplicate_level_config(context_.config, context_.orchestrator)};
+    if (!checks.not_nullptr(level_config, TEXT("Level config is duplicated"))) {
         return;
     }
 
-    auto* const capital_config{duplicate_capital_ships_config(context_.config, *capital_actor)};
-    auto* const fighter_config{
-        duplicate_capital_ship_fighters_config(context_.config, *fighter_actor)};
+    auto* const capital_config{&level_config->capital_ships};
+    auto* const fighter_config{&level_config->fighters};
     if (!checks.not_nullptr(capital_config, TEXT("Capital handles capital config is created")) ||
         !checks.not_nullptr(fighter_config, TEXT("Capital handles fighter config is created"))) {
         return;
@@ -56,8 +51,7 @@ void FCapitalFighterHandlesScenario::spawn_fixture() {
     fighter_config->speed = 2000.f;
     fighter_config->laser.max_distance = 15000.f;
     fighter_config->visual_logger_style = nullptr;
-    capital_actor->set_actor_config(capital_config);
-    fighter_actor->set_actor_config(fighter_config);
+    context_.orchestrator.set_level_config(*level_config);
 
     auto* const green{spawn_capital_proxy(
         context_.world,
@@ -219,7 +213,7 @@ void FCapitalFighterHandlesScenario::kill_capital_opponent() {
     }
 
     auto const target{capitals->get_target_handle(*main_capital_index)};
-    if (!checks.is_true(test_driver->registry.is_valid_alive(target),
+    if (!checks.is_true(test_driver->get_registry().is_valid_alive(target),
                         TEXT("Capital target is alive before kill"))) {
         return;
     }
@@ -355,12 +349,12 @@ void FCapitalFighterHandlesScenario::check_fighter_kill_state(
     }
 
     for (int32 fighter_index{0}; fighter_index < kept.Num(); ++fighter_index) {
-        checks.is_true(test_driver->registry.is_valid_alive(kept[fighter_index]),
+        checks.is_true(test_driver->get_registry().is_valid_alive(kept[fighter_index]),
                        TEXT("Kept fighter is alive"),
                        fighter_index);
     }
     for (int32 fighter_index{0}; fighter_index < destroyed.Num(); ++fighter_index) {
-        checks.is_true(test_driver->registry.is_valid_dead(destroyed[fighter_index]),
+        checks.is_true(test_driver->get_registry().is_valid_dead(destroyed[fighter_index]),
                        TEXT("Destroyed fighter is dead"),
                        fighter_index);
     }

@@ -39,8 +39,8 @@ ATestSpaceShip::ATestSpaceShip()
     configure_ship_mesh();
 }
 
-auto ATestSpaceShip::make_simulation() const -> ml::test_space_ship::Simulation {
-    ml::test_space_ship::Simulation result;
+auto ATestSpaceShip::make_spawn_data() const -> ml::test_space_ship::FPlayerSpawnData {
+    ml::test_space_ship::FPlayerSpawnData result;
     result.team = team;
     result.transform = GetActorTransform();
     result.visual_transform = ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity;
@@ -51,7 +51,7 @@ auto ATestSpaceShip::make_simulation() const -> ml::test_space_ship::Simulation 
     result.health = health;
 
     if (actor_config) {
-        result.set_config(*actor_config);
+        result.config = make_simulation_config(*actor_config);
     }
     if (ship_mesh) {
         result.left_socket = ship_mesh->GetSocketTransform(Sockets::left, RTS_Component);
@@ -63,12 +63,6 @@ auto ATestSpaceShip::make_simulation() const -> ml::test_space_ship::Simulation 
 }
 
 void ATestSpaceShip::bind_simulation(ml::test_space_ship::Simulation& new_simulation) {
-    if (standalone_simulation.IsSet()) {
-        new_simulation = MoveTemp(standalone_simulation.GetValue());
-        standalone_simulation.Reset();
-    } else {
-        new_simulation = make_simulation();
-    }
     bound_simulation = &new_simulation;
 }
 
@@ -77,13 +71,8 @@ void ATestSpaceShip::unbind_simulation() {
 }
 
 auto ATestSpaceShip::simulation() -> ml::test_space_ship::Simulation& {
-    if (bound_simulation) {
-        return *bound_simulation;
-    }
-    if (!standalone_simulation.IsSet()) {
-        standalone_simulation.Emplace(make_simulation());
-    }
-    return standalone_simulation.GetValue();
+    checkf(bound_simulation, TEXT("Player input requires a bound level simulation"));
+    return *bound_simulation;
 }
 
 auto ATestSpaceShip::simulation() const -> ml::test_space_ship::Simulation const& {
@@ -197,19 +186,19 @@ void ATestSpaceShip::draw_debug_shapes() {
 }
 
 auto ATestSpaceShip::get_entity_handle() const noexcept -> FRegistryEntityHandle {
-    return simulation().registry_handle;
+    return bound_simulation ? bound_simulation->registry_handle : FRegistryEntityHandle{};
 }
 
 auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
-    return simulation().unique_entity_id;
+    return bound_simulation ? bound_simulation->unique_entity_id : TestEntityUniqueId{};
 }
 
 auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle {
-    return simulation().registry_handle;
+    return get_entity_handle();
 }
 
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
-    return simulation().team;
+    return bound_simulation ? bound_simulation->team : team;
 }
 
 void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
@@ -217,18 +206,12 @@ void ATestSpaceShip::set_team(ETestTeam const new_team) noexcept {
     if (bound_simulation) {
         bound_simulation->team = new_team;
     }
-    if (standalone_simulation.IsSet()) {
-        standalone_simulation->team = new_team;
-    }
 }
 
 void ATestSpaceShip::set_actor_config(FPlayerShipConfig const* const new_config) noexcept {
     actor_config = new_config;
     if (new_config && bound_simulation) {
-        bound_simulation->set_config(*new_config);
-    }
-    if (new_config && standalone_simulation.IsSet()) {
-        standalone_simulation->set_config(*new_config);
+        bound_simulation->set_config(make_simulation_config(*new_config));
     }
 }
 
@@ -302,7 +285,7 @@ void ATestSpaceShip::stop_brake() {
 }
 
 auto ATestSpaceShip::get_velocity() const -> FVector {
-    return simulation().velocity;
+    return bound_simulation ? bound_simulation->velocity : FVector::ZeroVector;
 }
 
 auto ATestSpaceShip::GetVelocity() const -> FVector {
@@ -334,7 +317,10 @@ auto ATestSpaceShip::get_flight_mode() const -> ETestSpaceShipFlightMode {
 }
 
 void ATestSpaceShip::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode) noexcept {
-    simulation().set_flight_mode(new_flight_mode);
+    flight_mode = new_flight_mode;
+    if (bound_simulation) {
+        bound_simulation->set_flight_mode(new_flight_mode);
+    }
 }
 
 auto ATestSpaceShip::get_target_local_planar_velocity_scale() const -> FVector2D {
@@ -390,7 +376,10 @@ void ATestSpaceShip::select_previous_laser_fire_rate() noexcept {
 }
 
 void ATestSpaceShip::set_laser_fire_rate(ETestShipFireRate const value) noexcept {
-    simulation().set_laser_fire_rate(value);
+    laser_fire_rate = value;
+    if (bound_simulation) {
+        bound_simulation->set_laser_fire_rate(value);
+    }
 }
 
 void ATestSpaceShip::add_health(int32 const added_health) {
@@ -401,11 +390,11 @@ void ATestSpaceShip::add_health(int32 const added_health) {
 }
 
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
-    return simulation().health;
+    return bound_simulation ? bound_simulation->health : health;
 }
 
 auto ATestSpaceShip::is_alive() const noexcept -> bool {
-    return simulation().health.is_alive();
+    return get_health_info().is_alive();
 }
 
 auto ATestSpaceShip::get_collision_mesh() const -> UStaticMesh const* {

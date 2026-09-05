@@ -780,6 +780,9 @@ void validate_facade(FacadeModuleSchema const& module,
                                         "' access must be public or private"};
         }
     }
+    if (facade.friend_kind != "class" && facade.friend_kind != "struct") {
+        throw std::invalid_argument{"Facade '" + facade.name + "' friend_kind must be class or struct"};
+    }
     require_unique_names(facade.friends, "Facade '" + facade.name + "' friends");
     for (auto const& friend_name : facade.friends) {
         require_qualified_identifier(friend_name, "Facade '" + facade.name + "' friend");

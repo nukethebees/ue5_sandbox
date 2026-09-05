@@ -303,7 +303,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
 
     if (auto* const orchestrator{hud_orchestrator.Get()}; IsValid(orchestrator)) {
         orchestrator->on_reset.RemoveAll(this);
-        orchestrator->get_mission_manager().on_mission_completed.RemoveAll(this);
+        orchestrator->on_mission_completed.RemoveAll(this);
     }
 
     if (IsValid(hud_widget)) {
@@ -481,9 +481,8 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
     hud_orchestrator = orchestrator;
     orchestrator->on_reset.RemoveAll(this);
     orchestrator->on_reset.AddUObject(this, &ThisClass::on_orchestrator_reset);
-    auto& mission_manager{orchestrator->get_mission_manager()};
-    mission_manager.on_mission_completed.RemoveAll(this);
-    mission_manager.on_mission_completed.AddUObject(this, &ThisClass::on_mission_completed);
+    orchestrator->on_mission_completed.RemoveAll(this);
+    orchestrator->on_mission_completed.AddUObject(this, &ThisClass::on_mission_completed);
 }
 
 void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& orchestrator) {

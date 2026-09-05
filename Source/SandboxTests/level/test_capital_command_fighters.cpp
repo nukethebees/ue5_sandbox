@@ -1,10 +1,10 @@
 #include "test_capital_command_fighters_scenario.h"
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
 #include <SandboxGameShared/utilities/enums.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
@@ -107,7 +107,7 @@ void FCapitalCommandFightersScenario::kill_initial_targets() {
 }
 
 void FCapitalCommandFightersScenario::kill_all_not_on_main_team() {
-    auto const handles{test_driver->registry.get_handles_not_in_team(team_kept_alive)};
+    auto const handles{test_driver->get_registry().get_handles_not_in_team(team_kept_alive)};
     test_driver->queue_kills(handles);
 }
 

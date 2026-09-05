@@ -5,8 +5,7 @@
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
@@ -17,8 +16,8 @@
 #include <utility>
 
 namespace ml::test_space_ship {
-void Simulation::set_config(FPlayerShipConfig const& new_config) noexcept {
-    config = &new_config;
+void Simulation::set_config(FPlayerSimulationConfig const& new_config) noexcept {
+    config = new_config;
 }
 
 void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
@@ -33,21 +32,19 @@ void Simulation::set_lasers(ml::test_lasers::Simulation& new_lasers) noexcept {
     lasers = &new_lasers;
 }
 
-void Simulation::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) {
-    simulation_clock.bind(orchestrator);
+void Simulation::bind_simulation_clock(FSimulationClock const& clock) {
+    simulation_clock.bind(clock);
 }
 
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::begin_play);
-    check(config);
     check(entity_registry);
     check(spatial_query_manager);
     check(lasers);
-    check(IsValid(config->team_visual_data));
     check(simulation_clock.is_valid());
 
     velocity = FVector::ZeroVector;
-    thrust_energy = config->thrust_energy_max;
+    thrust_energy = config.thrust_energy_max;
     set_laser_mode(ELaserFiringState::idle);
     set_laser_fire_rate(laser_fire_rate);
     configure_speed_sampling();
@@ -83,8 +80,8 @@ void Simulation::move(float const dt) {
     update_visual_orientation(dt);
     integrate_velocity(dt);
 
-    auto const lateral_speed{planar_movement_direction.X * config->lateral_adjustment_speed};
-    auto const vertical_speed{planar_movement_direction.Y * config->vertical_adjustment_speed};
+    auto const lateral_speed{planar_movement_direction.X * config.lateral_adjustment_speed};
+    auto const vertical_speed{planar_movement_direction.Y * config.vertical_adjustment_speed};
     auto const local_adjustment{FVector{0.f, lateral_speed, vertical_speed}};
     velocity += transform.TransformVectorNoScale(local_adjustment);
     transform.AddToTranslation(velocity * dt);
@@ -179,10 +176,10 @@ void Simulation::integrate_velocity(float const dt) {
 }
 
 void Simulation::update_rotation(float const dt) {
-    auto const rotation_step{config->rotation_speed * dt};
+    auto const rotation_step{config.rotation_speed * dt};
     if (rotation_input != FVector2D::ZeroVector || !FMath::IsNearlyZero(roll_input)) {
         auto const yaw_strength{FMath::Abs(rotation_input.X)};
-        auto const yaw_step{config->rotation_speed * yaw_strength * dt};
+        auto const yaw_step{config.rotation_speed * yaw_strength * dt};
         auto const delta_rotation{FRotator{rotation_input.Y * rotation_step,
                                            rotation_input.X * yaw_step,
                                            roll_input * rotation_step}};
@@ -192,42 +189,42 @@ void Simulation::update_rotation(float const dt) {
         return;
     }
 
-    if (time_since_rotation_input >= config->auto_level_roll_delay) {
+    if (time_since_rotation_input >= config.auto_level_roll_delay) {
         auto const rotation{transform.Rotator()};
-        auto const roll{FMath::FInterpTo(rotation.Roll, 0.f, dt, config->auto_level_speed)};
+        auto const roll{FMath::FInterpTo(rotation.Roll, 0.f, dt, config.auto_level_speed)};
         transform.SetRotation(FRotator{rotation.Pitch, rotation.Yaw, roll}.Quaternion());
     }
 }
 
 void Simulation::update_visual_orientation(float const dt) {
     auto const current_rotation{visual_transform.Rotator()};
-    auto const target_pitch{rotation_input.Y * config->pitch_angle_max};
+    auto const target_pitch{rotation_input.Y * config.pitch_angle_max};
     auto const new_pitch{
-        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, config->pitch_speed)};
-    auto const target_yaw{rotation_input.X * config->yaw_angle_max};
-    auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, config->yaw_speed)};
-    auto const turn_target{rotation_input.X * config->turn_bank_angle_max};
-    auto const turn_speed{rotation_input.X * config->turn_bank_speed};
-    auto const roll_speed{FMath::Max(config->turn_bank_speed, FMath::Abs(turn_speed))};
+        FMath::FInterpTo(current_rotation.Pitch, target_pitch, dt, config.pitch_speed)};
+    auto const target_yaw{rotation_input.X * config.yaw_angle_max};
+    auto const new_yaw{FMath::FInterpTo(current_rotation.Yaw, target_yaw, dt, config.yaw_speed)};
+    auto const turn_target{rotation_input.X * config.turn_bank_angle_max};
+    auto const turn_speed{rotation_input.X * config.turn_bank_speed};
+    auto const roll_speed{FMath::Max(config.turn_bank_speed, FMath::Abs(turn_speed))};
     auto const new_roll{FMath::FInterpTo(current_rotation.Roll, turn_target, dt, roll_speed)};
     visual_transform.SetRotation(FRotator{new_pitch, new_yaw, new_roll}.Quaternion());
 }
 
 void Simulation::set_boost_brake_state(EBoostBrakeState const state) {
     auto const current_speed{get_speed()};
-    auto const& speed_responses{config->speed_responses};
+    auto const& speed_responses{config.speed_responses};
     FSpeedResponse response{speed_responses.accelerating_to_cruise};
 
     switch (state) {
         case EBoostBrakeState::Boost: {
-            target_speed = config->boost_speed;
-            thrust_change_rate = -(1.f / config->boost_depletion_time);
+            target_speed = config.boost_speed;
+            thrust_change_rate = -(1.f / config.boost_depletion_time);
             response = speed_responses.boost;
             break;
         }
         case EBoostBrakeState::Brake: {
-            target_speed = config->brake_speed;
-            thrust_change_rate = -(1.f / config->brake_depletion_time);
+            target_speed = config.brake_speed;
+            thrust_change_rate = -(1.f / config.brake_depletion_time);
             response = speed_responses.brake;
             break;
         }
@@ -236,8 +233,8 @@ void Simulation::set_boost_brake_state(EBoostBrakeState const state) {
             [[fallthrough]];
         }
         case EBoostBrakeState::None: {
-            target_speed = config->cruise_speed;
-            thrust_change_rate = 1.f / config->thrust_recharge_time;
+            target_speed = config.cruise_speed;
+            thrust_change_rate = 1.f / config.thrust_recharge_time;
             if (target_speed < current_speed) {
                 response = speed_responses.slowing_to_cruise;
             }
@@ -256,7 +253,7 @@ void Simulation::update_boost_brake(float const dt) {
     }
 
     thrust_energy += dt * thrust_change_rate;
-    thrust_energy = FMath::Clamp(thrust_energy, 0.f, config->thrust_energy_max);
+    thrust_energy = FMath::Clamp(thrust_energy, 0.f, config.thrust_energy_max);
 }
 
 void Simulation::set_move_input(FVector2D const input) noexcept {
@@ -314,8 +311,8 @@ void Simulation::stop_sampling() {
     auto const world_direction{
         transform.GetUnitAxis(EAxis::X) * target_local_planar_velocity_scale.Y +
         transform.GetUnitAxis(EAxis::Y) * target_local_planar_velocity_scale.X};
-    target_local_planar_velocity = world_direction * config->cruise_speed;
-    planar_flight_model.set_new_impulse(config->speed_responses.accelerating_to_cruise,
+    target_local_planar_velocity = world_direction * config.cruise_speed;
+    planar_flight_model.set_new_impulse(config.speed_responses.accelerating_to_cruise,
                                         planar_velocity,
                                         target_local_planar_velocity);
 }
@@ -373,9 +370,9 @@ void Simulation::update_laser_firing() {
         case ELaserFiringState::burst: {
             if (cooldown_finished) {
                 fire_laser();
-                laser_shot_cooldown = config->laser.fire_cooldown;
+                laser_shot_cooldown = config.laser.fire_cooldown;
                 if (lasers_fired_this_burst >= lasers_per_burst) {
-                    laser_shot_cooldown = config->laser_lock_on_transition_delay;
+                    laser_shot_cooldown = config.laser_lock_on_transition_delay;
                     set_laser_mode(ELaserFiringState::lock_on_transition);
                 }
             }
@@ -390,7 +387,7 @@ void Simulation::update_laser_firing() {
         case ELaserFiringState::lock_on_searching: {
             auto const middle{get_middle_socket()};
             auto const start{middle.GetLocation()};
-            auto const end{start + middle.GetUnitAxis(EAxis::X) * config->laser_lock_on_distance};
+            auto const end{start + middle.GetUnitAxis(EAxis::X) * config.laser_lock_on_distance};
             auto const hit{spatial_query_manager->trace_closest(
                 FVector3f{start}, FVector3f{end}, registry_handle)};
             if (hit.hit && hit.entity.is_valid()) {
@@ -441,12 +438,12 @@ void Simulation::fire_laser() {
     }
 
     ++lasers_fired_this_burst;
-    laser_shot_cooldown = config->laser.fire_cooldown;
+    laser_shot_cooldown = config.laser.fire_cooldown;
 }
 
 void Simulation::fire_lasers_from(TConstArrayView<FTransform> const fire_points) {
     ml::test_lasers::SpawnRequests new_lasers;
-    auto const colour_cache{UTestTeamVisualData::build_team_colour_cache(config->team_visual_data)};
+    auto const colour_cache{config.team_colours};
     auto const laser_count{fire_points.Num()};
     ml::add_uninitialised(laser_count, new_lasers);
 
@@ -456,9 +453,9 @@ void Simulation::fire_lasers_from(TConstArrayView<FTransform> const fire_points)
         ml::assign(new_lasers.base_velocities, i, FVector3f{velocity});
     }
 
-    new_lasers.set_damages(config->laser.damage);
-    new_lasers.set_speeds(config->laser.projectile_speed);
-    new_lasers.set_max_distances(config->laser.max_distance);
+    new_lasers.set_damages(config.laser.damage);
+    new_lasers.set_speeds(config.laser.projectile_speed);
+    new_lasers.set_max_distances(config.laser.max_distance);
     new_lasers.set_colours(colour_cache[team]);
     ml::fill(new_lasers.instigator_handles, registry_handle);
     lasers->queue_laser_spawns(new_lasers);
@@ -535,14 +532,12 @@ auto Simulation::get_speed() const noexcept -> float {
 }
 
 auto Simulation::energy_is_full() const -> bool {
-    check(config);
-    return thrust_energy == config->thrust_energy_max;
+    return thrust_energy == config.thrust_energy_max;
 }
 
 auto Simulation::get_energy() const -> float {
-    check(config);
-    check(config->thrust_energy_max > 0.f);
-    return thrust_energy / config->thrust_energy_max;
+    check(config.thrust_energy_max > 0.f);
+    return thrust_energy / config.thrust_energy_max;
 }
 
 auto Simulation::get_middle_socket() const -> FTransform {

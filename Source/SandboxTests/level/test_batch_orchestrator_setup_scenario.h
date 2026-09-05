@@ -35,7 +35,7 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
                                         EOrchestratorSetupScenario scenario);
     void run() override;
   private:
-    void spawn_missing_actors();
+    void prepare_level();
     void simulation_clock_conversions();
     void level_telemetry();
     void begin_level_telemetry();

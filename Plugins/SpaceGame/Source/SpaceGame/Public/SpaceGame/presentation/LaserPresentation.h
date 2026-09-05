@@ -6,19 +6,15 @@
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
-#include <GameFramework/Actor.h>
 
-#include "TestLasers.generated.h"
-
-UCLASS()
-class SPACEGAME_API ATestLasers : public AActor {
-    GENERATED_BODY()
-    friend class ATestBatchOrchestrator;
+struct SPACEGAME_API FLaserPresentation {
+    friend struct FLevelPresentation;
+    friend struct FLevelSimulation;
   public:
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{5};
 
-    ATestLasers();
+    explicit FLaserPresentation(UInstancedStaticMeshComponent& component);
 
     auto get_config() const noexcept -> FLaserProjectileConfig const* { return actor_config; }
     void set_actor_config(FLaserProjectileConfig const* new_config) noexcept {
@@ -44,8 +40,7 @@ class SPACEGAME_API ATestLasers : public AActor {
 
     FLaserProjectileConfig const* actor_config{nullptr};
 
-    UPROPERTY(meta = (AllowPrivateAccess))
-    TObjectPtr<UInstancedStaticMeshComponent> instances;
+    UInstancedStaticMeshComponent* instances{nullptr};
 
     TArray<FInstancedStaticMeshInstanceData> ismc_data;
     TArray<FTransform> dummy_transforms_spawn_buffer;
@@ -53,10 +48,8 @@ class SPACEGAME_API ATestLasers : public AActor {
     bool have_warned_hit_effect{false};
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "Lasers", meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
 
-    UPROPERTY(EditAnywhere, Category = "Lasers", meta = (AllowPrivateAccess))
     bool debugging_shapes_enabled{false};
 #endif
 

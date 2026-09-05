@@ -2,7 +2,6 @@
 
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
 #include "SpaceGame/entities/TestTeamVisualData.h"
-#include "SpaceGame/ships/capital/TestCapitalShips.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_components.h>

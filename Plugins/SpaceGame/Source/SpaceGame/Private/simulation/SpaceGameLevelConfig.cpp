@@ -1,11 +1,5 @@
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
-#include <SpaceGame/combat/lasers/TestLasers.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinners.h>
-#include <SpaceGame/defences/turrets/TestStaticTurrets.h>
-#include <SpaceGame/effects/DelayedNiagaraSpawner.h>
-#include <SpaceGame/ships/capital/TestCapitalShips.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFighters.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
@@ -70,12 +64,7 @@ auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> 
 
 FCollisionGridConfig::FCollisionGridConfig()
     : harvested_collision_actor_classes{AStaticMeshActor::StaticClass()}
-    , omitted_collision_actor_classes{ATestLasers::StaticClass(),
-                                      ATestSpaceShip::StaticClass(),
-                                      ATestCapitalShips::StaticClass(),
-                                      ATestCapitalShipFighters::StaticClass(),
-                                      ATestStaticTurrets::StaticClass(),
-                                      ATestTubeSpinners::StaticClass()} {}
+    , omitted_collision_actor_classes{ATestSpaceShip::StaticClass()} {}
 
 auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
     return {
@@ -104,13 +93,6 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
 
     if (require_presentation) {
         REQUIRE_CONFIG(classes.player_controller_class, "classes.player_controller_class is null");
-        REQUIRE_CONFIG(classes.lasers_class, "classes.lasers_class is null");
-        REQUIRE_CONFIG(classes.capital_ships_class, "classes.capital_ships_class is null");
-        REQUIRE_CONFIG(classes.capital_ship_fighters_class,
-                       "classes.capital_ship_fighters_class is null");
-        REQUIRE_CONFIG(classes.turrets_class, "classes.turrets_class is null");
-        REQUIRE_CONFIG(classes.spinners_class, "classes.spinners_class is null");
-        REQUIRE_CONFIG(classes.niagara_spawner_class, "classes.niagara_spawner_class is null");
         REQUIRE_CONFIG(player_ship.thrust_energy_max > 0.f,
                        "player_ship.thrust_energy_max must be positive");
         REQUIRE_CONFIG(player_ship.laser.projectile_speed > 0.f,

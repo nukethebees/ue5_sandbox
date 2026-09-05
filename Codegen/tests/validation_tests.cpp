@@ -858,6 +858,10 @@ TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
 
 TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
     auto module{valid_facade_module()};
+    module.facade.friend_kind = "union";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_facade_module();
     module.facade.friends = {"class"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 

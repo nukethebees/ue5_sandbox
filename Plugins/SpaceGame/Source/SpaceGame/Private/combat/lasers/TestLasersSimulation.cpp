@@ -32,8 +32,8 @@ void SpawnRequests::set_colours(FLinearColor const value) {
     ml::fill(colours, value);
 }
 
-void Simulation::bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept {
-    simulation_clock.bind(orchestrator);
+void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
+    simulation_clock.bind(clock);
 }
 
 void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {

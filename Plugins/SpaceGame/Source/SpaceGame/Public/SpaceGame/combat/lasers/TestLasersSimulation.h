@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGame/simulation/LevelSimulationConfig.h>
+
 #include <SpaceGame/combat/lasers/TestLasersSoA.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/simulation/LineTraces.h>
@@ -9,7 +11,8 @@
 #include <CoreMinimal.h>
 
 class ATestBatchOrchestrator;
-class ATestLasers;
+struct FLevelSimulation;
+struct FLaserPresentation;
 struct FTestEntityRegistry;
 
 namespace ml {
@@ -32,7 +35,7 @@ struct SPACEGAME_API Simulation {
     using Entities = ml::test_lasers::Entities;
     using HitDetails = ml::test_lasers::HitDetails;
 
-    void bind_simulation_clock(ATestBatchOrchestrator const& orchestrator) noexcept;
+    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager& new_query_manager) noexcept;
 
@@ -76,7 +79,7 @@ struct SPACEGAME_API Simulation {
     void clear_presentation_events();
 
     friend class PhaseInterface;
-    friend class ::ATestLasers;
+    friend struct ::FLaserPresentation;
 
     FTestEntityRegistry* entity_registry{nullptr};
     FSpatialQueryManager* query_manager{nullptr};

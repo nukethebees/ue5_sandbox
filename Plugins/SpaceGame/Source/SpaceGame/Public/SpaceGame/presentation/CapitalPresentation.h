@@ -4,30 +4,27 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 
+#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
-#include <GameFramework/Actor.h>
 
-#include "TestCapitalShips.generated.h"
-
-class ADelayedNiagaraSpawner;
+struct FDelayedNiagaraSpawns;
 class UInstancedStaticMeshComponent;
 
-UCLASS()
-class SPACEGAME_API ATestCapitalShips : public AActor {
-    GENERATED_BODY()
-    friend class ATestBatchOrchestrator;
+struct SPACEGAME_API FCapitalPresentation {
+    friend struct FLevelPresentation;
+    friend struct FLevelSimulation;
   public:
     static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{3};
 
-    ATestCapitalShips();
+    explicit FCapitalPresentation(UInstancedStaticMeshComponent& component);
 
     void set_actor_config(FCapitalShipConfig const* new_config) noexcept;
   private:
     void bind_simulation(ml::test_capital_ships::Simulation& new_simulation);
     auto simulation() -> ml::test_capital_ships::Simulation&;
     auto simulation() const -> ml::test_capital_ships::Simulation const&;
-    void set_niagara_spawner(ADelayedNiagaraSpawner& spawner);
+    void set_niagara_spawner(FDelayedNiagaraSpawns& spawner);
 
     void clear_runtime_state_presentation();
     void begin_play_presentation();
@@ -44,14 +41,10 @@ class SPACEGAME_API ATestCapitalShips : public AActor {
 
     FCapitalShipConfig const* actor_config{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<UInstancedStaticMeshComponent> instances;
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
-    TObjectPtr<ADelayedNiagaraSpawner> niagara_spawner{nullptr};
+    UInstancedStaticMeshComponent* instances{nullptr};
+    FDelayedNiagaraSpawns* niagara_spawner{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     FDrawDebugConfig debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (AllowPrivateAccess))
     bool debugging_shapes_enabled{false};
 
     ml::test_capital_ships::Simulation* bound_simulation{nullptr};

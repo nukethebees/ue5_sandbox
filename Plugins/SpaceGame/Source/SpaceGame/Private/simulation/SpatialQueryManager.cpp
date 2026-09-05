@@ -1,7 +1,6 @@
 #include "SpaceGame/simulation/SpatialQueryManager.h"
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <HAL/PlatformMisc.h>
@@ -53,14 +52,6 @@ void FSpatialQueryManager::reserve_thread_buffers(int32 const count) {
     }
 }
 
-void FSpatialQueryManager::initialise_static_geometry(
-    UWorld& world, FCollisionGridConfig const& collision_grid_config) {
-    collision.initialise_static_geometry(world, collision_grid_config);
-}
-auto FSpatialQueryManager::add_static_geometry(UPrimitiveComponent& component) -> bool {
-    return collision.add_static_geometry(component);
-}
-
 auto FSpatialQueryManager::acquire_thread_buffer() const -> int32 {
     std::lock_guard const lock{thread_buffers_mutex};
     if (free_thread_buffer_indices.IsEmpty()) {
@@ -84,17 +75,18 @@ void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
 }
 
 void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_registry,
-                                      FCollisionGridConfig const& collision_grid_config,
-                                      ioj::FCollisionSystem::EntityMeshes const& entity_meshes) {
+                                      FIntVector3 const grid_dimensions,
+                                      FVector3f const cell_size,
+                                      ioj::FEntityAABBs const& entity_bounds) {
     reserve_thread_buffers(1);
 
     entity_registry = &in_entity_registry;
     collision.set_entity_registry(in_entity_registry);
     auto& uniform_grid{collision.get_uniform_grid()};
-    uniform_grid.set_grid_dims(collision_grid_config.calculate_grid_dimensions());
-    uniform_grid.set_cell_dims(collision_grid_config.cell_size);
+    uniform_grid.set_grid_dims(grid_dimensions);
+    uniform_grid.set_cell_dims(cell_size);
 
-    collision.initialise(entity_meshes);
+    collision.initialise(entity_bounds);
 }
 
 void FSpatialQueryManager::trace_line_of_sight(
