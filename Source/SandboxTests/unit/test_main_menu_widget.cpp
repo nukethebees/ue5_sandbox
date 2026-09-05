@@ -78,7 +78,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                                   IsValid(level_select_widget))) {
             return;
         }
-        level_select_widget->prepare_for_open(TEXT("target-practice"));
+        level_select_widget->prepare_for_open(TEXT("turret-trial-0"));
         auto const level_select_slate{level_select_widget->TakeWidget()};
         (void)level_select_slate;
         level_select_widget->ActivateWidget();
@@ -156,26 +156,24 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                               ml::s7::format_level_row_title(TEXT("Border Skirmish"), true),
                               FString{TEXT("\u2713 Border Skirmish")});
 
-        ml::ioj::UMenuButtonWidget* target_practice_button{nullptr};
+        ml::ioj::UMenuButtonWidget* turret_trial_button{nullptr};
         auto const level_row_count{level_list->GetChildrenCount()};
         for (int32 i{0}; i < level_row_count; ++i) {
             auto* const candidate{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(i))};
-            if (IsValid(candidate) && candidate->get_text().ToString() == TEXT("Target Practice")) {
-                target_practice_button = candidate;
+            if (IsValid(candidate) && candidate->get_text().ToString() == TEXT("Turret Trial 0")) {
+                turret_trial_button = candidate;
                 break;
             }
         }
         TestRunner->TestTrue(TEXT("Uncompleted level row remains unchanged"),
-                             IsValid(target_practice_button));
+                             IsValid(turret_trial_button));
         TestRunner->TestTrue(TEXT("Preferred stable level id restores row focus"),
-                             level_select_widget->GetDesiredFocusTarget() ==
-                                 target_practice_button);
+                             level_select_widget->GetDesiredFocusTarget() == turret_trial_button);
         TestRunner->TestTrue(TEXT("Preferred stable level id restores row selection"),
-                             IsValid(target_practice_button) &&
-                                 target_practice_button->GetSelected());
+                             IsValid(turret_trial_button) && turret_trial_button->GetSelected());
         TestRunner->TestEqual(TEXT("Preferred level information is displayed immediately"),
                               title_text->GetText().ToString(),
-                              FString{TEXT("Target Practice")});
+                              FString{TEXT("Turret Trial 0")});
         TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
                              launch_button->GetIsEnabled());
 
