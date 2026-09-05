@@ -88,6 +88,16 @@ TEST(KernelStandardInvariants, AcceptsAliasedReadOnlyInputs) {
     EXPECT_EQ(out, input);
 }
 
+TEST(KernelStandardInvariants, RejectsAliasedReadOnlyInputsWhenPairwiseDisjoint) {
+    EXPECT_DEATH_IF_SUPPORTED(
+        ([] {
+            std::array<float, 2> input{2.0f, 4.0f};
+            std::array<float, 2> out{};
+            ml::kernel_lab::add_scaled(input, input, 0.5f, out);
+        }()),
+        "");
+}
+
 TEST(KernelStandardInvariants, RejectsUnequalLengths) {
     EXPECT_DEATH_IF_SUPPORTED(
         ([] {

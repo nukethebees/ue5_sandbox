@@ -17,6 +17,8 @@ public class SandboxCoreBenchmarks : TestModuleRules
     public SandboxCoreBenchmarks(ReadOnlyTargetRules Target) : base(Target, true)
     {
         CppStandard = CppStandardVersion.Latest;
+        FPSemantics = FPSemanticsMode.Precise;
+        MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
         bAllowUETypesInNamespaces = true;
 
         PrivateDependencyModuleNames.AddRange(new string[]

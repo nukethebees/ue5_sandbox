@@ -560,9 +560,71 @@ class Parser {
         }
     }
 
+    auto parse_selection(Form const& form) const -> VariantSelection {
+        if (head(form, "select") != "select") {
+            fail(form.token.span, "expected SIMD lab selection");
+        }
+
+        VariantSelection result{.variant = VariantKind::out_of_place, .span = form.token.span};
+        std::set<std::string> fields;
+        bool has_variant{false};
+        for (std::size_t index{1}; index < form.children.size(); ++index) {
+            auto const& field{form.children[index]};
+            auto const& field_name{head(field, "selection field")};
+            if (!fields.insert(field_name).second) {
+                fail(field.token.span, "duplicate selection field '" + field_name + "'");
+            }
+            if (field_name == "storage") {
+                if (field.children.size() < 2) {
+                    fail(field.token.span, "selection storage must not be empty");
+                }
+                for (std::size_t storage_index{1}; storage_index < field.children.size();
+                     ++storage_index) {
+                    auto const& value{
+                        atom(field.children[storage_index], "expected 'array' or 'scalar'")};
+                    if (value == "array") {
+                        result.storage.push_back(StorageKind::array);
+                    } else if (value == "scalar") {
+                        result.storage.push_back(StorageKind::scalar);
+                    } else {
+                        fail(field.children[storage_index].token.span,
+                             "unknown operand storage '" + value + "'");
+                    }
+                }
+                continue;
+            }
+
+            require_size(field, 2, "single-value selection field");
+            if (field_name == "operation") {
+                result.operation = atom(field.children[1], "expected operation name");
+            } else if (field_name == "type") {
+                result.type = atom(field.children[1], "expected concrete type");
+            } else if (field_name == "variant") {
+                auto const& value{atom(field.children[1], "expected variant kind")};
+                if (value == "out-of-place") {
+                    result.variant = VariantKind::out_of_place;
+                } else if (value == "in-place") {
+                    result.variant = VariantKind::in_place;
+                } else {
+                    fail(field.children[1].token.span, "unknown variant kind '" + value + "'");
+                }
+                has_variant = true;
+            } else {
+                fail(field.token.span, "unknown selection field '" + field_name + "'");
+            }
+        }
+        if (result.operation.empty() || result.type.empty() || result.storage.empty() ||
+            !has_variant) {
+            fail(form.token.span,
+                 "select requires operation, type, storage, and variant");
+        }
+        return result;
+    }
+
     auto parse_emission(Form const& form) const -> Emission {
         if (head(form, "emit") != "emit" || form.children.size() < 2) {
-            fail(form.token.span, "expected '(emit unreal|standard ...)'");
+            fail(form.token.span,
+                 "expected '(emit unreal|standard|unreal-avx2-lab|native-x86-simd-lab ...)'");
         }
         auto const& profile_name{atom(form.children[1], "expected emission profile")};
         Profile profile;
@@ -570,6 +632,10 @@ class Parser {
             profile = Profile::unreal;
         } else if (profile_name == "standard") {
             profile = Profile::standard;
+        } else if (profile_name == "unreal-avx2-lab") {
+            profile = Profile::unreal_avx2_lab;
+        } else if (profile_name == "native-x86-simd-lab") {
+            profile = Profile::native_x86_simd_lab;
         } else {
             fail(form.children[1].token.span, "unknown emission profile '" + profile_name + "'");
         }
@@ -582,11 +648,21 @@ class Parser {
             if (!fields.insert(field_name).second) {
                 fail(field.token.span, "duplicate emission field '" + field_name + "'");
             }
+            if (field_name == "select") {
+                result.selection = parse_selection(field);
+                continue;
+            }
             require_size(field, 2, "single-value emission field");
             if (field_name == "header") {
                 result.header = string_value(field.children[1], "expected header path string");
             } else if (field_name == "source") {
                 result.source = string_value(field.children[1], "expected source path string");
+            } else if (field_name == "avx512-source") {
+                result.avx512_source =
+                    string_value(field.children[1], "expected AVX-512 source path string");
+            } else if (field_name == "dispatch-source") {
+                result.dispatch_source =
+                    string_value(field.children[1], "expected dispatch source path string");
             } else if (field_name == "tests") {
                 result.tests = string_value(field.children[1], "expected test path string");
             } else if (field_name == "header-include") {
@@ -621,8 +697,35 @@ class Parser {
         if (profile == Profile::standard && !result.export_specifier.empty()) {
             fail(form.token.span, "export is supported only by the unreal profile");
         }
+        auto const is_simd_lab{profile == Profile::unreal_avx2_lab ||
+                               profile == Profile::native_x86_simd_lab};
+        if (!is_simd_lab && result.selection) {
+            fail(form.token.span, "select is supported only by SIMD lab profiles");
+        }
+        if (is_simd_lab && !result.selection) {
+            fail(form.token.span, "SIMD lab emission requires select");
+        }
+        if (is_simd_lab && (!result.export_specifier.empty() || result.tests)) {
+            fail(form.token.span, "SIMD lab emissions do not support export or tests");
+        }
+        if (profile == Profile::native_x86_simd_lab &&
+            (!result.avx512_source || !result.dispatch_source)) {
+            fail(form.token.span,
+                 "native-x86-simd-lab emission requires avx512-source and dispatch-source");
+        }
+        if (profile != Profile::native_x86_simd_lab &&
+            (result.avx512_source || result.dispatch_source)) {
+            fail(form.token.span,
+                 "avx512-source and dispatch-source are supported only by native-x86-simd-lab");
+        }
         validate_output_path(result.header, result.span);
         validate_output_path(result.source, result.span);
+        if (result.avx512_source) {
+            validate_output_path(*result.avx512_source, result.span);
+        }
+        if (result.dispatch_source) {
+            validate_output_path(*result.dispatch_source, result.span);
+        }
         if (result.tests) {
             validate_output_path(*result.tests, result.span);
         }
@@ -699,6 +802,45 @@ class Parser {
                 if (std::ranges::find(found->storage, StorageKind::array) == found->storage.end()) {
                     fail(variant.span, "in-place target must allow array storage");
                 }
+            }
+        }
+        for (auto const& emission : result.emissions) {
+            if (!emission.selection) {
+                continue;
+            }
+            auto const& selection{*emission.selection};
+            auto const operation{std::ranges::find_if(result.operations, [&](auto const& item) {
+                return item.name == selection.operation;
+            })};
+            if (operation == result.operations.end()) {
+                fail(selection.span,
+                     "selection references unknown operation '" + selection.operation + "'");
+            }
+            auto const type_set{std::ranges::find_if(result.type_sets, [&](auto const& item) {
+                return item.name == operation->type_set;
+            })};
+            if (std::ranges::find(type_set->types, selection.type) == type_set->types.end()) {
+                fail(selection.span,
+                     "selection type '" + selection.type + "' is not supported by operation '" +
+                         selection.operation + "'");
+            }
+            if (selection.storage.size() != operation->operands.size()) {
+                fail(selection.span, "selection storage count must match the operation operands");
+            }
+            for (std::size_t index{}; index < selection.storage.size(); ++index) {
+                if (std::ranges::find(operation->operands[index].storage,
+                                      selection.storage[index]) ==
+                    operation->operands[index].storage.end()) {
+                    fail(selection.span,
+                         "selection uses storage not supported by operand '" +
+                             operation->operands[index].name + "'");
+                }
+            }
+            auto const variant{std::ranges::find_if(operation->variants, [&](auto const& item) {
+                return item.kind == selection.variant;
+            })};
+            if (variant == operation->variants.end()) {
+                fail(selection.span, "selection variant is not generated by the operation");
             }
         }
         return result;

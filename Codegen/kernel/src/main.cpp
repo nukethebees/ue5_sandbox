@@ -41,6 +41,10 @@ auto parse_arguments(int argc, char const* const* argv) -> kernel_codegen::Compi
                 result.profile = kernel_codegen::Profile::unreal;
             } else if (value == "standard") {
                 result.profile = kernel_codegen::Profile::standard;
+            } else if (value == "unreal-avx2-lab") {
+                result.profile = kernel_codegen::Profile::unreal_avx2_lab;
+            } else if (value == "native-x86-simd-lab") {
+                result.profile = kernel_codegen::Profile::native_x86_simd_lab;
             } else {
                 throw std::invalid_argument{"Unknown kernel profile: " + value.string()};
             }

@@ -54,6 +54,31 @@ constexpr std::string_view standard_source = R"(
       (in-place lhs multiply_in_place))))
 )";
 
+constexpr std::string_view avx2_lab_source = R"(
+(kernel-module arithmetic
+  (emit unreal-avx2-lab
+    (header "generated/add_scaled_avx2_lab.h")
+    (source "generated/add_scaled_avx2_lab.cpp")
+    (header-include "generated/add_scaled_avx2_lab.h")
+    (namespace ml::kernel_benchmark)
+    (select
+      (operation add_scaled)
+      (type float)
+      (storage array array scalar)
+      (variant out-of-place)))
+  (type-set numeric float double)
+  (map add_scaled
+    (types numeric)
+    (operand base array)
+    (operand value array)
+    (operand scale scalar)
+    (output out)
+    (aliasing pairwise-disjoint)
+    (expression (+ base (* value scale)))
+    (variants
+      (out-of-place add_scaled))))
+)";
+
 auto occurrence_count(std::string_view text, std::string_view const value) -> std::size_t {
     std::size_t result{};
     while (true) {
@@ -140,6 +165,111 @@ TEST(KernelRenderer, GeneratesStandardLibraryBindingsAndTests) {
     EXPECT_TRUE(files[2].content.contains("std::array<float, Count> expected{"));
     EXPECT_TRUE(files[2].content.contains("EXPECT_FLOAT_EQ("));
     EXPECT_FALSE(files[2].content.contains("expected[i] ="));
+}
+
+TEST(KernelRenderer, GeneratesOneSelectedAvx2LabVariant) {
+    auto const document{
+        parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", avx2_lab_source))};
+    auto const files{render(document.modules[0], Profile::unreal_avx2_lab)};
+
+    ASSERT_EQ(files.size(), 2);
+    EXPECT_EQ(occurrence_count(files[0].content, "void add_scaled_autovec_avx2("), 1);
+    EXPECT_EQ(occurrence_count(files[0].content, "void add_scaled_avx2("), 1);
+    EXPECT_EQ(occurrence_count(files[0].content, "void add_scaled_avx2_unrolled("), 1);
+    EXPECT_TRUE(files[1].content.contains("_mm256_loadu_ps"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_mul_ps"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_add_ps"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_storeu_ps"));
+    EXPECT_FALSE(files[1].content.contains("_mm256_fmadd"));
+    EXPECT_FALSE(files[1].content.contains("_mm256_load_ps"));
+    EXPECT_TRUE(files[1].content.contains(
+        "float const* RESTRICT base, float const* RESTRICT value"));
+    EXPECT_TRUE(files[1].content.contains("float* RESTRICT out"));
+    EXPECT_TRUE(files[1].content.contains("for (; i < vectorized_count; i += 8)"));
+    EXPECT_TRUE(files[1].content.contains("for (; i < unrolled_count; i += 32)"));
+    EXPECT_FALSE(files[1].content.contains("double const*"));
+}
+
+TEST(KernelParser, ValidatesAvx2LabSelection) {
+    for (auto const& [needle, replacement] :
+         std::vector<std::pair<std::string_view, std::string_view>>{
+             {"(operation add_scaled)", "(operation unknown)"},
+             {"(type float)", "(type int32)"},
+             {"(storage array array scalar)", "(storage array scalar scalar)"},
+             {"(storage array array scalar)", "(storage array array)"},
+             {"(variant out-of-place)", "(variant in-place)"}}) {
+        auto source{std::string{avx2_lab_source}};
+        source.replace(source.find(needle), needle.size(), replacement);
+        EXPECT_THROW(static_cast<void>(
+                         parse("bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", source))),
+                     std::runtime_error);
+    }
+}
+
+TEST(KernelParser, RequiresSelectionOnlyForAvx2LabProfile) {
+    auto missing_selection{std::string{avx2_lab_source}};
+    auto const selection_begin{missing_selection.find("    (select")};
+    auto const selection_end{missing_selection.find("))\n  (type-set", selection_begin)};
+    missing_selection.erase(selection_begin, selection_end + 2 - selection_begin);
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", missing_selection))),
+                 std::runtime_error);
+
+    auto standard_with_selection{std::string{avx2_lab_source}};
+    standard_with_selection.replace(standard_with_selection.find("unreal-avx2-lab"),
+                                    std::string{"unreal-avx2-lab"}.size(),
+                                    "standard");
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.sbxkernel",
+                     codegen::sexpr::lex("bad.sbxkernel", standard_with_selection))),
+                 std::runtime_error);
+}
+
+TEST(KernelRenderer, RejectsOperationsOutsideTheAvx2LabBoundary) {
+    for (auto const& [needle, replacement] :
+         std::vector<std::pair<std::string_view, std::string_view>>{
+             {"(type float)", "(type double)"},
+             {"(expression (+ base (* value scale)))",
+              "(expression (- base (* value scale)))"},
+             {"(aliasing pairwise-disjoint)", "(aliasing output-disjoint)"}}) {
+        auto source{std::string{avx2_lab_source}};
+        source.replace(source.find(needle), needle.size(), replacement);
+        auto const document{
+            parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
+        EXPECT_THROW(static_cast<void>(render(document.modules[0], Profile::unreal_avx2_lab)),
+                     std::invalid_argument);
+    }
+}
+
+TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
+    auto source{std::string{avx2_lab_source}};
+    auto const insertion{source.find("  (type-set")};
+    source.insert(insertion,
+                  "  (emit native-x86-simd-lab\n"
+                  "    (header \"native/Kernels.h\")\n"
+                  "    (source \"native/KernelsAvx2.cpp\")\n"
+                  "    (avx512-source \"native/KernelsAvx512.cpp\")\n"
+                  "    (dispatch-source \"native/KernelsDispatch.cpp\")\n"
+                  "    (header-include \"native/Kernels.h\")\n"
+                  "    (namespace ml::lab)\n"
+                  "    (select\n"
+                  "      (operation add_scaled)\n"
+                  "      (type float)\n"
+                  "      (storage array array scalar)\n"
+                  "      (variant out-of-place)))\n");
+    auto const document{parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
+    auto const files{render(document.modules[0], Profile::native_x86_simd_lab)};
+
+    ASSERT_EQ(files.size(), 4);
+    EXPECT_TRUE(files[0].content.contains("enum class X86SimdBackend"));
+    EXPECT_TRUE(files[0].content.contains("add_scaled_dispatch"));
+    EXPECT_TRUE(files[1].content.contains("add_scaled_autovec_avx2"));
+    EXPECT_TRUE(files[1].content.contains("add_scaled_avx2_unrolled"));
+    EXPECT_TRUE(files[2].content.contains("_mm512_loadu_ps"));
+    EXPECT_TRUE(files[2].content.contains("add_scaled_autovec_avx512"));
+    EXPECT_TRUE(files[3].content.contains("cpu_features::GetX86Info()"));
+    EXPECT_FALSE(files[1].content.contains("_mm512"));
+    EXPECT_FALSE(files[3].content.contains("_mm512"));
 }
 
 TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {

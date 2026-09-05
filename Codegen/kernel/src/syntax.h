@@ -12,7 +12,7 @@ namespace kernel_codegen::detail {
 using codegen::sexpr::SourceSpan;
 
 enum class StorageKind { array, scalar };
-enum class Profile { unreal, standard };
+enum class Profile { unreal, standard, unreal_avx2_lab, native_x86_simd_lab };
 enum class ExpressionKind { reference, literal, constant, binary };
 enum class ConstantKind { nan, infinity, negative_infinity };
 enum class VariantKind { out_of_place, in_place };
@@ -56,14 +56,25 @@ struct TypeSet {
     SourceSpan span;
 };
 
+struct VariantSelection {
+    std::string operation;
+    std::string type;
+    std::vector<StorageKind> storage;
+    VariantKind variant;
+    SourceSpan span;
+};
+
 struct Emission {
     Profile profile;
     std::filesystem::path header;
     std::filesystem::path source;
+    std::optional<std::filesystem::path> avx512_source;
+    std::optional<std::filesystem::path> dispatch_source;
     std::optional<std::filesystem::path> tests;
     std::string header_include;
     std::string cpp_namespace;
     std::string export_specifier;
+    std::optional<VariantSelection> selection;
     SourceSpan span;
 };
 

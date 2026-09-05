@@ -135,5 +135,65 @@ TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
     EXPECT_FALSE(std::filesystem::exists(project.path("generated/ArrayKernels.h")));
 }
 
+TEST(KernelCompiler, EmitsOnlyTheSelectedAvx2LabKernel) {
+    TemporaryProject project{"avx2-lab-profile"};
+    project.write("manifest.json", R"({"entries":[{"input":"array_math.sbxkernel"}]})");
+    auto source{std::string{kernel_source}};
+    source.replace(source.find("    (variants"), 0, "    (aliasing pairwise-disjoint)\n");
+    auto const insertion{source.find("  (type-set")};
+    source.insert(insertion,
+                  "  (emit unreal-avx2-lab\n"
+                  "    (header \"lab/Kernels.h\")\n"
+                  "    (source \"lab/Kernels.cpp\")\n"
+                  "    (header-include \"lab/Kernels.h\")\n"
+                  "    (namespace ml::lab)\n"
+                  "    (select\n"
+                  "      (operation multiply)\n"
+                  "      (type float)\n"
+                  "      (storage array scalar)\n"
+                  "      (variant out-of-place)))\n");
+    project.write("array_math.sbxkernel", source);
+
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.json"),
+                                               .output_root = project.path("generated"),
+                                               .profile = Profile::unreal_avx2_lab}),
+              0);
+    EXPECT_TRUE(project.read("generated/lab/Kernels.h").contains("multiply_avx2"));
+    EXPECT_TRUE(project.read("generated/lab/Kernels.cpp").contains("_mm256_mul_ps"));
+    EXPECT_FALSE(std::filesystem::exists(project.path("generated/ArrayKernels.h")));
+}
+
+TEST(KernelCompiler, EmitsIsolatedNativeSimdLabSources) {
+    TemporaryProject project{"native-simd-lab-profile"};
+    project.write("manifest.json", R"({"entries":[{"input":"array_math.sbxkernel"}]})");
+    auto source{std::string{kernel_source}};
+    source.replace(source.find("    (variants"), 0, "    (aliasing pairwise-disjoint)\n");
+    auto const insertion{source.find("  (type-set")};
+    source.insert(insertion,
+                  "  (emit native-x86-simd-lab\n"
+                  "    (header \"native/Kernels.h\")\n"
+                  "    (source \"native/KernelsAvx2.cpp\")\n"
+                  "    (avx512-source \"native/KernelsAvx512.cpp\")\n"
+                  "    (dispatch-source \"native/KernelsDispatch.cpp\")\n"
+                  "    (header-include \"native/Kernels.h\")\n"
+                  "    (namespace ml::lab)\n"
+                  "    (select\n"
+                  "      (operation multiply)\n"
+                  "      (type float)\n"
+                  "      (storage array scalar)\n"
+                  "      (variant out-of-place)))\n");
+    project.write("array_math.sbxkernel", source);
+
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.json"),
+                                               .output_root = project.path("generated"),
+                                               .profile = Profile::native_x86_simd_lab}),
+              0);
+    EXPECT_TRUE(project.read("generated/native/Kernels.h").contains("X86SimdBackend"));
+    EXPECT_TRUE(project.read("generated/native/KernelsAvx2.cpp").contains("_mm256_mul_ps"));
+    EXPECT_TRUE(project.read("generated/native/KernelsAvx512.cpp").contains("_mm512_mul_ps"));
+    EXPECT_TRUE(project.read("generated/native/KernelsDispatch.cpp")
+                    .contains("cpu_features::GetX86Info"));
+}
+
 }
 }
