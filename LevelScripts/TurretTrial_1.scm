@@ -3,6 +3,9 @@
   (title "Turret Trial 1")
   (description "Destroy two widely separated turrets one at a time.")
 
+  (unlock
+    (level-completed 'turret-trial-0))
+
   (teams
     (team 'blue)
     (team 'red))

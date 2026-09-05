@@ -42,6 +42,33 @@ void validate_metadata(FLevelDefinition const& definition, FLevelValidationResul
     }
 }
 
+void validate_unlock_criteria(FLevelDefinition const& definition, FLevelValidationResult& result) {
+    TSet<FLevelId> referenced_levels;
+    for (auto const& criterion : definition.unlock_criteria) {
+        auto const& completed{criterion.Get<FLevelCompletedUnlockCriterion>()};
+        if (!completed.level_id.is_set()) {
+            add_error(result,
+                      ELevelValidationErrorCode::MissingUnlockLevelId,
+                      TEXT("Level-completed unlock criterion has no level id"));
+            continue;
+        }
+        if (completed.level_id == definition.metadata.id) {
+            add_error(result,
+                      ELevelValidationErrorCode::SelfUnlockDependency,
+                      FString::Printf(TEXT("Level '%s' requires itself to be completed"),
+                                      *completed.level_id.value.ToString()));
+        }
+        if (referenced_levels.Contains(completed.level_id)) {
+            add_error(result,
+                      ELevelValidationErrorCode::DuplicateUnlockCriterion,
+                      FString::Printf(TEXT("Level-completed criterion for '%s' is duplicated"),
+                                      *completed.level_id.value.ToString()));
+            continue;
+        }
+        referenced_levels.Add(completed.level_id);
+    }
+}
+
 auto validate_teams(FLevelDefinition const& definition, FLevelValidationResult& result)
     -> TSet<FLevelTeamId> {
     TSet<FLevelTeamId> declared_teams;
@@ -380,6 +407,10 @@ void FLevelBuilder::set_mission(FLevelMissionDefinition const& mission) {
     definition_.mission = mission;
 }
 
+void FLevelBuilder::add_unlock_criterion(FLevelUnlockCriterion criterion) {
+    definition_.unlock_criteria.Add(MoveTemp(criterion));
+}
+
 auto FLevelBuilder::add_team(FLevelTeamId const team) -> FLevelTeamId {
     definition_.teams.Add(team);
     return team;
@@ -399,6 +430,7 @@ auto FLevelBuilder::finish() -> FLevelDefinition {
 auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResult {
     FLevelValidationResult result;
     validate_metadata(definition, result);
+    validate_unlock_criteria(definition, result);
 
     if (!columns_have_equal_size(definition.entities)) {
         add_error(result,

@@ -397,4 +397,52 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Fractional kill count reports a decode error"),
                               fractional_count.decode_errors.IsEmpty());
     }
+
+    TEST_METHOD(DecodesDeclarativeUnlockCriteria)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const result{reader.read_source(LR"(
+(level
+  (id 'locked-level)
+  (title "Locked Level")
+  (unlock
+    (level-completed 'first-level)
+    (level-completed 'second-level))
+  (teams (team 'blue))
+  (player 'player)
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+
+        if (!TestRunner->TestTrue(TEXT("Unlock criteria are valid"), static_cast<bool>(result))) {
+            return;
+        }
+        auto const& criteria{result.definition->unlock_criteria};
+        TestRunner->TestEqual(TEXT("Both criteria are decoded"), criteria.Num(), 2);
+        TestRunner->TestTrue(TEXT("First prerequisite id is decoded"),
+                             criteria[0].Get<ml::FLevelCompletedUnlockCriterion>().level_id ==
+                                 ml::FLevelId{FName{TEXT("first-level")}});
+    }
+
+    TEST_METHOD(RejectsSelfUnlockDependency)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const result{reader.read_source(LR"(
+(level
+  (id 'self-locked)
+  (title "Self Locked")
+  (unlock (level-completed 'self-locked))
+  (teams (team 'blue))
+  (player 'player)
+  (entities
+    (entity 'player 'player-fighter 'blue
+      (position 0 0 0) (rotation 0 0 0))))
+)")};
+
+        TestRunner->TestFalse(TEXT("Self dependency is rejected"), static_cast<bool>(result));
+        TestRunner->TestTrue(
+            TEXT("Self dependency is reported"),
+            contains_error(result, ml::ELevelValidationErrorCode::SelfUnlockDependency));
+    }
 };

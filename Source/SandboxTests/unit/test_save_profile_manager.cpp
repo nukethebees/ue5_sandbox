@@ -1,4 +1,5 @@
 #include <SpaceGame/persistence/SaveProfileManager.h>
+#include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 
 #include <CQTest.h>
 
@@ -191,5 +192,28 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Failed completion is rolled back in memory"),
                               manager.get_active_records().Num(),
                               0);
+    }
+
+    TEST_METHOD(LevelCompletionPersistsAcrossManagerReload)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{};
+        FString profile_id;
+        {
+            ml::ioj::FSaveProfileManager manager{storage.make()};
+            TestRunner->TestTrue(TEXT("Profile manager initialises"), manager.initialise());
+            profile_id = manager.get_active_profile_id();
+            auto const record{save_profile_manager_test::make_record(
+                FDateTime{2026, 9, 5}, TEXT("asteroid-field"), 4)};
+            TestRunner->TestTrue(TEXT("Completion is saved"), manager.append_score_record(record));
+        }
+
+        ml::ioj::FSaveProfileManager reloaded{storage.make()};
+        TestRunner->TestTrue(TEXT("Profile manager reloads"), reloaded.initialise());
+        TestRunner->TestEqual(
+            TEXT("Active profile is restored"), reloaded.get_active_profile_id(), profile_id);
+        auto const progress{ml::ioj::summarize_level_progress(
+            ml::FLevelId{FName{TEXT("asteroid-field")}}, reloaded.get_active_records())};
+        TestRunner->TestTrue(TEXT("Reloaded level remains completed"),
+                             progress.state == ml::ioj::ELevelProgressState::Completed);
     }
 };

@@ -145,27 +145,39 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Restored preferred level enables Start Paused"),
                              start_paused_button->GetIsEnabled());
 
-        auto* const level_button{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(0))};
-        if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
-            return;
-        }
-        TestRunner->TestEqual(TEXT("Uncompleted level row contains its authored title"),
-                              level_button->get_text().ToString(),
-                              FString{TEXT("Border Skirmish")});
+        auto* const campaign_header{Cast<UTextBlock>(level_list->GetChildAt(0))};
+        TestRunner->TestTrue(TEXT("Campaign header is not a playable level"),
+                             IsValid(campaign_header));
+        TestRunner->TestEqual(TEXT("First campaign is labelled"),
+                              campaign_header->GetText().ToString(),
+                              FString{TEXT("Scenarios")});
         TestRunner->TestEqual(TEXT("Completed level rows receive a visible marker"),
-                              ml::s7::format_level_row_title(TEXT("Border Skirmish"), true),
+                              ml::s7::format_level_row_title(TEXT("Border Skirmish"),
+                                                             ml::s7::ELevelRowState::Completed),
                               FString{TEXT("\u2713 Border Skirmish")});
+        TestRunner->TestTrue(
+            TEXT("Locked level rows receive a visible marker"),
+            ml::s7::format_level_row_title(TEXT("Border Skirmish"), ml::s7::ELevelRowState::Locked)
+                .EndsWith(TEXT("Border Skirmish")));
 
+        ml::ioj::UMenuButtonWidget* level_button{nullptr};
         ml::ioj::UMenuButtonWidget* turret_trial_button{nullptr};
         auto const level_row_count{level_list->GetChildrenCount()};
         for (int32 i{0}; i < level_row_count; ++i) {
             auto* const candidate{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(i))};
-            if (IsValid(candidate) && candidate->get_text().ToString() == TEXT("Turret Trial 0")) {
+            if (!IsValid(candidate)) {
+                continue;
+            }
+            if (candidate->get_text().ToString().EndsWith(TEXT("Border Skirmish"))) {
+                level_button = candidate;
+            } else if (candidate->get_text().ToString().EndsWith(TEXT("Turret Trial 0"))) {
                 turret_trial_button = candidate;
-                break;
             }
         }
-        TestRunner->TestTrue(TEXT("Uncompleted level row remains unchanged"),
+        if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Unlocked level row remains selectable"),
                              IsValid(turret_trial_button));
         TestRunner->TestTrue(TEXT("Preferred stable level id restores row focus"),
                              level_select_widget->GetDesiredFocusTarget() == turret_trial_button);

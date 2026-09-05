@@ -1,5 +1,6 @@
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
+#include <SpaceGame/levels/LevelUnlock.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
@@ -14,10 +15,16 @@
 #include <UObject/ConstructorHelpers.h>
 
 namespace ml::s7 {
-auto format_level_row_title(FString title, bool const completed) -> FString {
-    if (completed) {
-        title = TEXT("\u2713 ") + title;
+auto format_level_row_title(FString title, ELevelRowState const state) -> FString {
+    switch (state) {
+        case ELevelRowState::Locked:
+            return TEXT("\U0001F512 ") + title;
+        case ELevelRowState::Unlocked:
+            return TEXT("\u25CB ") + title;
+        case ELevelRowState::Completed:
+            return TEXT("\u2713 ") + title;
     }
+    checkNoEntry();
     return title;
 }
 
@@ -64,6 +71,54 @@ auto level_details(FLevelScriptEntry const& entry, ml::ioj::FLevelProgressSummar
             FString::Printf(TEXT("    Best time: %.1f s"), progress.best_completion_time_seconds);
     }
     return details;
+}
+
+auto find_level_title(TArray<FLevelScriptEntry> const& entries, FLevelId const id) -> FText {
+    for (auto const& entry : entries) {
+        if (entry && entry.definition->metadata.id == id) {
+            return FText::FromString(entry.display_title);
+        }
+    }
+    return FText::FromName(id.value);
+}
+
+auto make_unlock_evaluator(TArray<FLevelScriptEntry> const& entries,
+                           USpaceSaveSubsystem const* const save_subsystem)
+    -> FLevelUnlockEvaluator {
+    return FLevelUnlockEvaluator{
+        [save_subsystem](FLevelId const id) {
+            return IsValid(save_subsystem) && save_subsystem->is_level_completed(id);
+        },
+        [&entries](FLevelId const id) { return find_level_title(entries, id); },
+    };
+}
+
+auto description_with_requirements(FLevelScriptEntry const& entry,
+                                   FLevelUnlockStatus const& unlock_status) -> FString {
+    auto description{entry.description};
+    if (unlock_status.criteria.IsEmpty()) {
+        return description;
+    }
+
+    if (!description.IsEmpty()) {
+        description += TEXT("\n\n");
+    }
+    description += TEXT("Unlock requirements:");
+    for (auto const& criterion : unlock_status.criteria) {
+        description += FString::Printf(TEXT("\n%s %s"),
+                                       criterion.satisfied ? TEXT("\u2713") : TEXT("\u2610"),
+                                       *criterion.description.ToString());
+    }
+    return description;
+}
+
+auto row_state(FLevelUnlockStatus const& unlock_status,
+               ml::ioj::FLevelProgressSummary const& progress) -> ELevelRowState {
+    if (!unlock_status.unlocked) {
+        return ELevelRowState::Locked;
+    }
+    return progress.state == ml::ioj::ELevelProgressState::Completed ? ELevelRowState::Completed
+                                                                     : ELevelRowState::Unlocked;
 }
 }
 
@@ -145,7 +200,8 @@ auto UScriptLevelSelectWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
 void UScriptLevelSelectWidget::refresh_levels() {
     if (!IsValid(level_list) || !IsValid(launch_button) || !IsValid(start_paused_button) ||
         !IsValid(status_text) || !IsValid(selected_file_text) || !IsValid(title_text) ||
-        !IsValid(description_text) || !IsValid(details_text) || !IsValid(script_preview_)) {
+        !IsValid(description_text) || !IsValid(details_text) || !IsValid(script_preview_) ||
+        !IsValid(WidgetTree)) {
         return;
     }
 
@@ -155,7 +211,8 @@ void UScriptLevelSelectWidget::refresh_levels() {
     level_list->ClearChildren();
     entries_.Reset();
     level_buttons_.Reset();
-    selected_index_ = INDEX_NONE;
+    level_entry_indices_.Reset();
+    selected_entry_index_ = INDEX_NONE;
     selected_level_id_ = NAME_None;
     desired_focus_target_ = nullptr;
     launch_button->SetIsEnabled(false);
@@ -169,13 +226,14 @@ void UScriptLevelSelectWidget::refresh_levels() {
 
     auto catalog{discover_level_scripts()};
     entries_ = MoveTemp(catalog.entries);
+    auto campaigns{MoveTemp(catalog.campaigns)};
     auto status{MoveTemp(catalog.error)};
 
     auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{
+    auto* const game_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
-    if (IsValid(subsystem) && subsystem->has_level_launch_error()) {
-        auto launch_error{subsystem->take_level_launch_error()};
+    if (IsValid(game_subsystem) && game_subsystem->has_level_launch_error()) {
+        auto launch_error{game_subsystem->take_level_launch_error()};
         status = status.IsEmpty() ? MoveTemp(launch_error)
                                   : status + TEXT("\n") + MoveTemp(launch_error);
     }
@@ -187,11 +245,38 @@ void UScriptLevelSelectWidget::refresh_levels() {
 
     auto* const save_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
+    auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
+    auto const entry_indices{[this] {
+        TMap<FLevelId, int32> result;
+        auto const count{entries_.Num()};
+        for (int32 i{0}; i < count; ++i) {
+            if (entries_[i]) {
+                result.Add(entries_[i].definition->metadata.id, i);
+            }
+        }
+        return result;
+    }()};
 
-    int32 preferred_index{INDEX_NONE};
-    auto const count{entries_.Num()};
-    for (int32 i{0}; i < count; ++i) {
-        auto const& entry{entries_[i]};
+    int32 preferred_button_index{INDEX_NONE};
+    auto add_header = [this](FString const& label) {
+        auto* const header{WidgetTree->ConstructWidget<UTextBlock>()};
+        if (!IsValid(header)) {
+            UE_LOG(LogSandboxUI,
+                   Error,
+                   TEXT("UScriptLevelSelectWidget::refresh_levels: Failed to create header."));
+            return;
+        }
+        header->SetText(FText::FromString(label));
+        header->SetColorAndOpacity(FSlateColor{FLinearColor{0.65f, 0.8f, 1.0f, 1.0f}});
+        header->SetAutoWrapText(true);
+        auto* const slot{level_list->AddChildToVerticalBox(header)};
+        if (IsValid(slot)) {
+            slot->SetPadding(FMargin{4.0f, 12.0f, 4.0f, 4.0f});
+        }
+    };
+    auto add_level = [this, &evaluator, save_subsystem, focus_level_id, &preferred_button_index](
+                         int32 const entry_index) {
+        auto const& entry{entries_[entry_index]};
         auto* const button{
             CreateWidget<ml::ioj::UMenuButtonWidget>(GetWorld(), menu_button_class_)};
         if (!IsValid(button)) {
@@ -200,23 +285,73 @@ void UScriptLevelSelectWidget::refresh_levels() {
                    TEXT("UScriptLevelSelectWidget::refresh_levels: Failed to create level row."));
             return;
         }
-        auto completed{false};
+
+        auto state{ELevelRowState::Unlocked};
+        auto unlocked{false};
         if (entry) {
-            auto const level_id{entry.definition->metadata.id.value};
-            auto const progress{IsValid(save_subsystem)
-                                    ? save_subsystem->get_level_progress(level_id)
-                                    : ml::ioj::FLevelProgressSummary{}};
-            completed = progress.state == ml::ioj::ELevelProgressState::Completed;
-            if (!focus_level_id.IsNone() && level_id == focus_level_id) {
-                preferred_index = i;
+            auto const id{entry.definition->metadata.id};
+            auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(id)
+                                                        : ml::ioj::FLevelProgressSummary{}};
+            auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
+            unlocked = unlock_status.unlocked;
+            state = row_state(unlock_status, progress);
+            if (preferred_button_index == INDEX_NONE && !focus_level_id.IsNone() &&
+                id.value == focus_level_id) {
+                preferred_button_index = level_buttons_.Num();
             }
         }
-        button->set_text(FText::FromString(format_level_row_title(entry.display_title, completed)));
+
+        button->set_text(FText::FromString(format_level_row_title(entry.display_title, state)));
         button->SetIsSelectable(true);
         button->SetIsToggleable(true);
-        button->OnClicked().AddWeakLambda(this, [this, i] { select_level(i); });
+        auto const button_index{level_buttons_.Num()};
+        button->OnClicked().AddWeakLambda(this,
+                                          [this, button_index] { select_level(button_index); });
+        if (unlocked) {
+            button->SetNavigationRuleExplicit(EUINavigation::Left, launch_button);
+        }
         level_list->AddChildToVerticalBox(button);
         level_buttons_.Add(button);
+        level_entry_indices_.Add(entry_index);
+    };
+
+    TSet<FLevelId> grouped_levels;
+    for (auto const& campaign : campaigns) {
+        if (!campaign) {
+            continue;
+        }
+        add_header(campaign.definition->title);
+        for (auto const level_id : campaign.definition->level_ids) {
+            auto const* const entry_index{entry_indices.Find(level_id)};
+            check(entry_index);
+            add_level(*entry_index);
+            grouped_levels.Add(level_id);
+        }
+    }
+
+    bool has_other_levels{};
+    auto const entry_count{entries_.Num()};
+    for (int32 i{0}; i < entry_count; ++i) {
+        if (!entries_[i] || grouped_levels.Contains(entries_[i].definition->metadata.id)) {
+            continue;
+        }
+        if (!has_other_levels) {
+            add_header(TEXT("Other Levels"));
+            has_other_levels = true;
+        }
+        add_level(i);
+    }
+
+    bool has_invalid_levels{};
+    for (int32 i{0}; i < entry_count; ++i) {
+        if (entries_[i]) {
+            continue;
+        }
+        if (!has_invalid_levels) {
+            add_header(TEXT("Invalid Level Scripts"));
+            has_invalid_levels = true;
+        }
+        add_level(i);
     }
 
     auto const button_count{level_buttons_.Num()};
@@ -229,12 +364,14 @@ void UScriptLevelSelectWidget::refresh_levels() {
         if (IsValid(next)) {
             level_buttons_[i]->SetNavigationRuleExplicit(EUINavigation::Down, next);
         }
-        level_buttons_[i]->SetNavigationRuleExplicit(EUINavigation::Left, launch_button);
     }
 
     if (status.IsEmpty()) {
-        status = count == 0 ? FString::Printf(TEXT("No .scm files found in %s"), *catalog.directory)
-                            : FString::Printf(TEXT("Found %d level script(s)."), count);
+        status = entry_count == 0
+                   ? FString::Printf(TEXT("No .scm files found in %s"), *catalog.directory)
+                   : FString::Printf(TEXT("Found %d level script(s) in %d campaign(s)."),
+                                     entry_count,
+                                     campaigns.Num());
     }
     status_text->SetText(FText::FromString(status));
 
@@ -243,67 +380,84 @@ void UScriptLevelSelectWidget::refresh_levels() {
             !level_buttons_.IsEmpty() ? level_buttons_[0].Get() : refresh_button;
     }
 
-    if (preferred_index != INDEX_NONE) {
-        restore_level_selection(preferred_index);
+    if (preferred_button_index != INDEX_NONE) {
+        restore_level_selection(preferred_button_index);
     }
 }
 
-void UScriptLevelSelectWidget::select_level(int32 const index) {
-    if (!IsValid(launch_button)) {
-        return;
-    }
-    apply_level_selection(index, *launch_button, true);
+void UScriptLevelSelectWidget::select_level(int32 const button_index) {
+    apply_level_selection(button_index, true);
 }
 
-void UScriptLevelSelectWidget::restore_level_selection(int32 const index) {
-    if (!level_buttons_.IsValidIndex(index) || !IsValid(level_buttons_[index])) {
-        return;
-    }
-    apply_level_selection(index, *level_buttons_[index], false);
+void UScriptLevelSelectWidget::restore_level_selection(int32 const button_index) {
+    apply_level_selection(button_index, false);
 }
 
-void UScriptLevelSelectWidget::apply_level_selection(int32 const index,
-                                                     UWidget& focus_target,
+void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index,
                                                      bool const refresh_focus) {
-    if (!entries_.IsValidIndex(index) || !IsValid(launch_button) || !IsValid(start_paused_button) ||
-        !IsValid(selected_file_text) || !IsValid(title_text) || !IsValid(description_text) ||
-        !IsValid(status_text) || !IsValid(details_text) || !IsValid(script_preview_)) {
+    if (!level_buttons_.IsValidIndex(button_index) ||
+        !level_entry_indices_.IsValidIndex(button_index) || !IsValid(launch_button) ||
+        !IsValid(start_paused_button) || !IsValid(selected_file_text) || !IsValid(title_text) ||
+        !IsValid(description_text) || !IsValid(status_text) || !IsValid(details_text) ||
+        !IsValid(script_preview_)) {
         return;
     }
 
-    selected_index_ = index;
+    auto const entry_index{level_entry_indices_[button_index]};
+    if (!entries_.IsValidIndex(entry_index)) {
+        return;
+    }
+    selected_entry_index_ = entry_index;
     selected_level_id_ =
-        entries_[index] ? entries_[index].definition->metadata.id.value : NAME_None;
+        entries_[entry_index] ? entries_[entry_index].definition->metadata.id.value : NAME_None;
     auto const button_count{level_buttons_.Num()};
     for (int32 i{0}; i < button_count; ++i) {
-        level_buttons_[i]->SetIsSelected(i == index);
+        level_buttons_[i]->SetIsSelected(i == button_index);
     }
 
-    auto const& entry{entries_[index]};
+    auto const& entry{entries_[entry_index]};
     selected_file_text->SetText(FText::FromString(entry.filename));
     title_text->SetText(FText::FromString(entry.display_title));
-    description_text->SetText(FText::FromString(entry.description));
     script_preview_->SetText(FText::FromString(entry.source_text));
-    launch_button->SetIsEnabled(static_cast<bool>(entry));
-    start_paused_button->SetIsEnabled(static_cast<bool>(entry));
+    launch_button->SetIsEnabled(false);
+    start_paused_button->SetIsEnabled(false);
     if (entry) {
         auto* const game_instance{GetGameInstance()};
         auto* const save_subsystem{
             IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
-        auto const progress{IsValid(save_subsystem) ? save_subsystem->get_level_progress(
-                                                          entry.definition->metadata.id.value)
-                                                    : ml::ioj::FLevelProgressSummary{}};
-        status_text->SetText(FText::FromString(
-            progress_label(entry.definition.GetValue(), progress) + TEXT(" - Ready to launch.")));
+        auto const progress{IsValid(save_subsystem)
+                                ? save_subsystem->get_level_progress(entry.definition->metadata.id)
+                                : ml::ioj::FLevelProgressSummary{}};
+        auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
+        auto const unlock_status{evaluator.evaluate(entry.definition.GetValue())};
+        description_text->SetText(
+            FText::FromString(description_with_requirements(entry, unlock_status)));
         details_text->SetText(FText::FromString(level_details(entry, progress)));
-        desired_focus_target_ = &focus_target;
-        launch_button->SetNavigationRuleExplicit(EUINavigation::Right, level_buttons_[index]);
+
+        if (unlock_status.unlocked) {
+            launch_button->SetIsEnabled(true);
+            start_paused_button->SetIsEnabled(true);
+            status_text->SetText(
+                FText::FromString(progress_label(entry.definition.GetValue(), progress) +
+                                  TEXT(" - Ready to launch.")));
+            desired_focus_target_ = refresh_focus
+                                      ? static_cast<UWidget*>(launch_button)
+                                      : static_cast<UWidget*>(level_buttons_[button_index]);
+            launch_button->SetNavigationRuleExplicit(EUINavigation::Right,
+                                                     level_buttons_[button_index]);
+        } else {
+            status_text->SetText(
+                FText::FromString(TEXT("Locked - Complete the unlock requirements below.")));
+            desired_focus_target_ = level_buttons_[button_index];
+        }
         if (refresh_focus) {
             RequestRefreshFocus();
         }
     } else {
+        description_text->SetText(FText::FromString(entry.description));
         status_text->SetText(FText::FromString(entry.error));
         details_text->SetText(FText::GetEmpty());
+        desired_focus_target_ = level_buttons_[button_index];
     }
 }
 
@@ -321,23 +475,35 @@ void UScriptLevelSelectWidget::handle_start_paused() {
 }
 
 void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode const launch_mode) {
-    if (!entries_.IsValidIndex(selected_index_) || !entries_[selected_index_] ||
+    if (!entries_.IsValidIndex(selected_entry_index_) || !entries_[selected_entry_index_] ||
         !IsValid(status_text) || !IsValid(launch_button) || !IsValid(start_paused_button)) {
         return;
     }
 
     auto* const game_instance{GetGameInstance()};
-    auto* const subsystem{
+    auto* const save_subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
+    auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
+    auto const& selected_entry{entries_[selected_entry_index_]};
+    if (!evaluator.evaluate(selected_entry.definition.GetValue()).unlocked) {
+        launch_button->SetIsEnabled(false);
+        start_paused_button->SetIsEnabled(false);
+        status_text->SetText(
+            FText::FromString(TEXT("Locked - Complete the unlock requirements below.")));
+        return;
+    }
+
+    auto* const game_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
-    if (!IsValid(subsystem)) {
+    if (!IsValid(game_subsystem)) {
         status_text->SetText(FText::FromString(TEXT("Game subsystem is unavailable.")));
         return;
     }
 
-    auto& entry{entries_[selected_index_]};
+    auto& entry{entries_[selected_entry_index_]};
     auto definition{MoveTemp(entry.definition.GetValue())};
     entry.definition.Reset();
-    subsystem->set_pending_level(MoveTemp(definition), entry.path, launch_mode);
+    game_subsystem->set_pending_level(MoveTemp(definition), entry.path, launch_mode);
     launch_button->SetIsEnabled(false);
     start_paused_button->SetIsEnabled(false);
     status_text->SetText(FText::FromString(launch_mode == ml::ioj::ELevelLaunchMode::Paused

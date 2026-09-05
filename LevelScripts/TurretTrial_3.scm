@@ -3,6 +3,9 @@
   (title "Turret Trial 3")
   (description "Attack a vertical stack of turrets and use all three dimensions.")
 
+  (unlock
+    (level-completed 'turret-trial-2))
+
   (teams
     (team 'blue)
     (team 'red))

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGame/levels/LevelTypes.h"
 #include "SpaceGame/persistence/SaveProfileManager.h"
 
 #include <CoreMinimal.h>
@@ -25,7 +26,8 @@ struct SPACEGAME_API FLevelProgressSummary {
     int32 best_kills{};
 };
 
-SPACEGAME_API auto summarize_level_progress(FName level_name, TConstArrayView<FScoreRecord> records)
+SPACEGAME_API auto summarize_level_progress(ml::FLevelId level_id,
+                                            TConstArrayView<FScoreRecord> records)
     -> FLevelProgressSummary;
 }
 
@@ -38,7 +40,9 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
 
     [[nodiscard]] auto get_profiles() const -> TConstArrayView<FSaveProfileMetadata>;
     [[nodiscard]] auto get_active_profile_id() const -> FString const&;
-    [[nodiscard]] auto get_level_progress(FName level_name) const -> ml::ioj::FLevelProgressSummary;
+    [[nodiscard]] auto get_level_progress(ml::FLevelId level_id) const
+        -> ml::ioj::FLevelProgressSummary;
+    [[nodiscard]] auto is_level_completed(ml::FLevelId level_id) const -> bool;
     bool load_profile_records(FString const& profile_id, TArray<FScoreRecord>& records) const;
 
     auto create_profile(FString display_name) -> ml::ioj::FCreateSaveProfileResponse;

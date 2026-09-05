@@ -14,6 +14,17 @@ inline auto GetTypeHash(FLevelId const& id) -> uint32 {
     return GetTypeHash(id.value);
 }
 
+struct SPACEGAME_API FCampaignId {
+    FName value{NAME_None};
+
+    auto operator==(FCampaignId const&) const -> bool = default;
+    auto is_set() const noexcept -> bool { return !value.IsNone(); }
+};
+
+inline auto GetTypeHash(FCampaignId const& id) -> uint32 {
+    return GetTypeHash(id.value);
+}
+
 struct SPACEGAME_API FLevelTeamId {
     FName value{NAME_None};
 

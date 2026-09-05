@@ -45,12 +45,12 @@ FAutoConsoleCommandWithWorldAndArgs reset_test_profile_console_command{
 #endif
 }
 
-auto ml::ioj::summarize_level_progress(FName const level_name,
+auto ml::ioj::summarize_level_progress(ml::FLevelId const level_id,
                                        TConstArrayView<FScoreRecord> const records)
     -> FLevelProgressSummary {
     FLevelProgressSummary summary;
     for (auto const& record : records) {
-        if (record.level_name != level_name) {
+        if (record.level_name != level_id.value) {
             continue;
         }
 
@@ -103,9 +103,13 @@ auto USpaceSaveSubsystem::get_active_profile_id() const -> FString const& {
     return profile_manager_.get_active_profile_id();
 }
 
-auto USpaceSaveSubsystem::get_level_progress(FName const level_name) const
+auto USpaceSaveSubsystem::get_level_progress(ml::FLevelId const level_id) const
     -> ml::ioj::FLevelProgressSummary {
-    return ml::ioj::summarize_level_progress(level_name, profile_manager_.get_active_records());
+    return ml::ioj::summarize_level_progress(level_id, profile_manager_.get_active_records());
+}
+
+auto USpaceSaveSubsystem::is_level_completed(ml::FLevelId const level_id) const -> bool {
+    return get_level_progress(level_id).state == ml::ioj::ELevelProgressState::Completed;
 }
 
 bool USpaceSaveSubsystem::load_profile_records(FString const& profile_id,

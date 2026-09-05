@@ -18,14 +18,18 @@ struct FTemporaryScriptDirectory {
     ~FTemporaryScriptDirectory() { IFileManager::Get().DeleteDirectory(*path, false, true); }
 };
 
-auto valid_level_script(FStringView const id, FStringView const title) -> FString {
+auto valid_level_script(FStringView const id,
+                        FStringView const title,
+                        FStringView const unlock = FStringView{}) -> FString {
     return FString::Printf(TEXT("(level (id '%s) (title \"%s\") "
                                 "(description \"Catalog test\") "
+                                "%s "
                                 "(teams (team 'blue)) (player 'player) "
                                 "(entities (entity 'player 'player-fighter 'blue "
                                 "(position 0 0 0) (rotation 0 0 0))))"),
                            *FString{id},
-                           *FString{title});
+                           *FString{title},
+                           *FString{unlock});
 }
 }
 
@@ -107,5 +111,87 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                              result.entries[0].error.Contains(TEXT("alpha.scm")));
         TestRunner->TestTrue(TEXT("Conflict identifies the second file"),
                              result.entries[0].error.Contains(TEXT("bravo.scm")));
+    }
+
+    TEST_METHOD(ParsesCampaignOrderingAndReferences)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
+        IFileManager::Get().MakeDirectory(*campaign_directory, true);
+        auto const files_written{
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
+                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("bravo"), TEXT("Bravo")),
+                                          *FPaths::Combine(directory.path, TEXT("bravo.scm"))) &&
+            FFileHelper::SaveStringToFile(TEXT("(campaign (id 'main) (title \"Main Campaign\") "
+                                               "(levels 'bravo 'alpha))"),
+                                          *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Campaign fixtures are written"), files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        TestRunner->TestTrue(TEXT("Catalog is valid"), result.error.IsEmpty());
+        if (!TestRunner->TestEqual(TEXT("One campaign is discovered"), result.campaigns.Num(), 1) ||
+            !TestRunner->TestTrue(TEXT("Campaign is valid"),
+                                  static_cast<bool>(result.campaigns[0]))) {
+            return;
+        }
+        auto const& campaign{result.campaigns[0].definition.GetValue()};
+        TestRunner->TestEqual(TEXT("Campaign order is retained"), campaign.level_ids.Num(), 2);
+        TestRunner->TestTrue(TEXT("First declared level remains first"),
+                             campaign.level_ids[0] == ml::FLevelId{FName{TEXT("bravo")}});
+        TestRunner->TestTrue(TEXT("Second declared level remains second"),
+                             campaign.level_ids[1] == ml::FLevelId{FName{TEXT("alpha")}});
+    }
+
+    TEST_METHOD(RejectsMissingCampaignAndUnlockReferences)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
+        IFileManager::Get().MakeDirectory(*campaign_directory, true);
+        auto const files_written{
+            FFileHelper::SaveStringToFile(
+                valid_level_script(
+                    TEXT("locked"), TEXT("Locked"), TEXT("(unlock (level-completed 'missing))")),
+                *FPaths::Combine(directory.path, TEXT("locked.scm"))) &&
+            FFileHelper::SaveStringToFile(TEXT("(campaign (id 'main) (title \"Main\") "
+                                               "(levels 'missing))"),
+                                          *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Invalid fixtures are written"), files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        TestRunner->TestFalse(TEXT("Missing references are reported"), result.error.IsEmpty());
+        TestRunner->TestFalse(TEXT("Level with missing prerequisite is invalid"),
+                              static_cast<bool>(result.entries[0]));
+        TestRunner->TestFalse(TEXT("Campaign with missing level is invalid"),
+                              static_cast<bool>(result.campaigns[0]));
+    }
+
+    TEST_METHOD(RejectsUnlockDependencyCycles)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const files_written{
+            FFileHelper::SaveStringToFile(
+                valid_level_script(
+                    TEXT("alpha"), TEXT("Alpha"), TEXT("(unlock (level-completed 'bravo))")),
+                *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
+            FFileHelper::SaveStringToFile(
+                valid_level_script(
+                    TEXT("bravo"), TEXT("Bravo"), TEXT("(unlock (level-completed 'alpha))")),
+                *FPaths::Combine(directory.path, TEXT("bravo.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Cycle fixtures are written"), files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        TestRunner->TestFalse(TEXT("Cycle is reported"), result.error.IsEmpty());
+        TestRunner->TestTrue(TEXT("Cycle path is readable"), result.error.Contains(TEXT("->")));
+        TestRunner->TestFalse(TEXT("First cycle member is invalid"),
+                              static_cast<bool>(result.entries[0]));
+        TestRunner->TestFalse(TEXT("Second cycle member is invalid"),
+                              static_cast<bool>(result.entries[1]));
     }
 };

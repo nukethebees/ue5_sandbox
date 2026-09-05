@@ -18,6 +18,8 @@ constexpr TCHAR level_prelude[]{LR"(
 (define (id value) (list 'id value))
 (define (title value) (list 'title value))
 (define (description value) (list 'description value))
+(define (unlock . criteria) (cons 'unlock criteria))
+(define (level-completed level-id) (list 'level-completed level-id))
 (define (teams . values) (cons 'teams values))
 (define (team id) (list 'team id))
 (define (player id) (list 'player id))
@@ -62,6 +64,7 @@ class FDefinitionDecoder final {
         bool has_id{false};
         bool has_title{false};
         bool has_description{false};
+        bool has_unlock{false};
         bool has_teams{false};
         bool has_player{false};
         bool has_camera{false};
@@ -107,6 +110,13 @@ class FDefinitionDecoder final {
                 }
                 has_description = true;
                 read_text_clause(clause, path, metadata.description);
+            } else if (tag_name == TEXT("unlock")) {
+                if (has_unlock) {
+                    add_error(path, TEXT("Duplicate unlock clause"));
+                    continue;
+                }
+                has_unlock = true;
+                read_unlock(clause, path, builder);
             } else if (tag_name == TEXT("teams")) {
                 if (has_teams) {
                     add_error(path, TEXT("Duplicate teams clause"));
@@ -261,6 +271,46 @@ class FDefinitionDecoder final {
     void read_text_clause(s7_native::FValue const clause, FString const& path, FString& output) {
         if (expect_length(clause, 2, path)) {
             read_string(list_value(clause, 1), path + TEXT(".value"), output);
+        }
+    }
+
+    void read_unlock(s7_native::FValue const clause, FString const& path, FLevelBuilder& builder) {
+        auto const count{list_length(clause) - 1};
+        if (count == 0) {
+            add_error(path, TEXT("Unlock clause must contain at least one criterion"));
+            return;
+        }
+
+        for (int64 i{0}; i < count; ++i) {
+            auto const value{list_value(clause, i + 1)};
+            auto const criterion_path{FString::Printf(TEXT("%s[%lld]"), *path, i)};
+            if (!is_non_empty_list(value)) {
+                add_error(criterion_path, TEXT("Expected an unlock criterion"));
+                continue;
+            }
+
+            auto const tag_value{list_value(value, 0)};
+            if (!s7_native::is_symbol(tag_value)) {
+                add_error(criterion_path, TEXT("Unlock criterion tag must be a symbol"));
+                continue;
+            }
+
+            auto const tag{to_fstring(s7_native::symbol_name(tag_value))};
+            if (tag != TEXT("level-completed")) {
+                add_error(criterion_path,
+                          FString::Printf(TEXT("Unknown unlock criterion '%s'"), *tag));
+                continue;
+            }
+            if (!expect_length(value, 2, criterion_path)) {
+                continue;
+            }
+
+            FName level_id;
+            if (read_symbol(list_value(value, 1), criterion_path + TEXT(".level-id"), level_id)) {
+                builder.add_unlock_criterion(FLevelUnlockCriterion{
+                    TInPlaceType<FLevelCompletedUnlockCriterion>{},
+                    FLevelCompletedUnlockCriterion{.level_id = FLevelId{level_id}}});
+            }
         }
     }
 

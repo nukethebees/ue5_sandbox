@@ -7,20 +7,20 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
 {
     TEST_METHOD(SummarisesOnlyTheRequestedAuthoredLevel)
     {
-        FName const level_id{TEXT("border-skirmish")};
+        ml::FLevelId const level_id{FName{TEXT("border-skirmish")}};
         TArray<FScoreRecord> const records{
             {.date = FDateTime{2026, 8, 20},
-             .level_name = level_id,
+             .level_name = level_id.value,
              .end_state = ETestMissionState::Failed,
              .kills = 12,
              .time_seconds = 90.0f},
             {.date = FDateTime{2026, 8, 21},
-             .level_name = level_id,
+             .level_name = level_id.value,
              .end_state = ETestMissionState::Succeeded,
              .kills = 8,
              .time_seconds = 75.0f},
             {.date = FDateTime{2026, 8, 22},
-             .level_name = level_id,
+             .level_name = level_id.value,
              .end_state = ETestMissionState::Succeeded,
              .kills = 10,
              .time_seconds = 60.0f},
@@ -50,7 +50,7 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
                                             .kills = 3}};
 
         auto const attempted{
-            ml::ioj::summarize_level_progress(FName{TEXT("failed-level")}, records)};
+            ml::ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("failed-level")}}, records)};
         TestRunner->TestTrue(TEXT("Failed level is attempted"),
                              attempted.state == ml::ioj::ELevelProgressState::Attempted);
         TestRunner->TestEqual(
@@ -60,7 +60,7 @@ TEST_CLASS(LevelProgress, "Sandbox.UnitTests")
                               -1.0f);
 
         auto const unknown{
-            ml::ioj::summarize_level_progress(FName{TEXT("unknown-level")}, records)};
+            ml::ioj::summarize_level_progress(ml::FLevelId{FName{TEXT("unknown-level")}}, records)};
         TestRunner->TestTrue(TEXT("Unknown level is not attempted"),
                              unknown.state == ml::ioj::ELevelProgressState::NotAttempted);
         TestRunner->TestEqual(TEXT("Unknown level has no attempts"), unknown.attempt_count, 0);
