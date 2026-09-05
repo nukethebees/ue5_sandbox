@@ -11,8 +11,6 @@
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 #include "Engine/EngineTypes.h"
-#include "GameFramework/Actor.h"
-#include "Math/Transform.h"
 
 #include <utility>
 
@@ -27,9 +25,7 @@ struct SPACEGAME_API FStaticCollisionSourcesConstView {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.actors,
             self.components,
-            self.harvested_transforms,
             self.original_collision_modes
         );
     }
@@ -45,9 +41,7 @@ struct SPACEGAME_API FStaticCollisionSourcesConstView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TConstArrayView<TWeakObjectPtr<AActor>> actors;
     TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>> components;
-    TConstArrayView<FTransform> harvested_transforms;
     TConstArrayView<ECollisionEnabled::Type> original_collision_modes;
 };
 
@@ -58,9 +52,7 @@ struct SPACEGAME_API FStaticCollisionSourcesView {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.actors,
             self.components,
-            self.harvested_transforms,
             self.original_collision_modes
         );
     }
@@ -81,9 +73,7 @@ struct SPACEGAME_API FStaticCollisionSourcesView {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArrayView<TWeakObjectPtr<AActor>> actors;
     TArrayView<TWeakObjectPtr<UPrimitiveComponent>> components;
-    TArrayView<FTransform> harvested_transforms;
     TArrayView<ECollisionEnabled::Type> original_collision_modes;
 };
 
@@ -91,7 +81,7 @@ struct SPACEGAME_API FStaticCollisionSources {
     using View = FStaticCollisionSourcesView;
     using ConstView = FStaticCollisionSourcesConstView;
 
-    void add(AActor* actor, UPrimitiveComponent* component, FTransform const& harvested_transform, ECollisionEnabled::Type const original_collision_mode);
+    void add(UPrimitiveComponent* component, ECollisionEnabled::Type const original_collision_mode);
 
     void reset();
 
@@ -126,9 +116,7 @@ struct SPACEGAME_API FStaticCollisionSources {
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.actors,
             self.components,
-            self.harvested_transforms,
             self.original_collision_modes
         );
     }
@@ -137,9 +125,7 @@ struct SPACEGAME_API FStaticCollisionSources {
     auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
-            self.actors, other.actors,
             self.components, other.components,
-            self.harvested_transforms, other.harvested_transforms,
             self.original_collision_modes, other.original_collision_modes
         );
     }
@@ -160,9 +146,7 @@ struct SPACEGAME_API FStaticCollisionSources {
     auto left(int32 const count) const -> ConstView;
     auto right(int32 const count) const -> ConstView;
 
-    TArray<TWeakObjectPtr<AActor>> actors;
     TArray<TWeakObjectPtr<UPrimitiveComponent>> components;
-    TArray<FTransform> harvested_transforms;
     TArray<ECollisionEnabled::Type> original_collision_modes;
 };
 } // namespace ml::ioj

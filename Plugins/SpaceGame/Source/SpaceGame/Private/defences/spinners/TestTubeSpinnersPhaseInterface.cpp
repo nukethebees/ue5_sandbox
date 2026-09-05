@@ -11,16 +11,8 @@ void PhaseInterface::bind(ml::test_tube_spinners::Simulation& new_target) {
     simulation = &new_target;
 }
 
-void PhaseInterface::clear_runtime_state() {
-    simulation->clear_runtime_state();
-}
-
 void PhaseInterface::begin_play() {
     simulation->begin_play();
-}
-
-void PhaseInterface::begin_tick() {
-    simulation->begin_tick();
 }
 
 void PhaseInterface::update_timers(float const dt) {
@@ -33,10 +25,6 @@ void PhaseInterface::move(float const dt) {
 
 void PhaseInterface::queue_commands() {
     simulation->queue_commands();
-}
-
-void PhaseInterface::update_entity_registry() {
-    simulation->update_entity_registry();
 }
 
 void PhaseInterface::end_tick() {

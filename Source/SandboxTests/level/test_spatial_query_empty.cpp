@@ -37,6 +37,9 @@ void FSpatialQueryEmptyScenario::run_queries() {
     queries.has_line_of_sight_to_targets(
         FVector3f::ZeroVector, ends.get_const_view(), handles, line_of_sight);
 
+    TArray<uint8> clear_lines;
+    queries.have_clear_lines(starts.get_const_view(), ends.get_const_view(), clear_lines);
+
     current_sample.entities_in_range = queries.collect_non_team_entities_in_range(
         FVector3f::ZeroVector, ETestTeam::Blue, 1000.f, handles);
     current_sample.any_entity_is_null = queries.get_any_non_team_entity(ETestTeam::Blue).is_null();

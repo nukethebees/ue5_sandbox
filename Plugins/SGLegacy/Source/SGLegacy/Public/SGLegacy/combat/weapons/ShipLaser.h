@@ -1,0 +1,56 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "GameFramework/Actor.h"
+
+#include "ShipLaser.generated.h"
+
+class UWorld;
+class UBoxComponent;
+class UProjectileMovementComponent;
+class UStaticMeshComponent;
+class UMaterialInterface;
+
+class UShipLaserConfig;
+
+DECLARE_DELEGATE(FOnShipLaserKilled);
+
+UCLASS()
+class SGLEGACY_API AShipLaser : public AActor {
+    GENERATED_BODY()
+  public:
+    AShipLaser();
+
+    void Tick(float dt) override;
+
+    void set_speed(float s) { speed = s; }
+    auto get_speed() const { return speed; }
+    void set_damage(int32 new_damage) { damage = new_damage; }
+    auto get_damage() const { return damage; }
+    void set_config(UShipLaserConfig const& config);
+
+    FOnShipLaserKilled on_killed;
+  protected:
+    void BeginPlay() override;
+    void OnConstruction(FTransform const& transform);
+
+    UFUNCTION()
+    void on_hit(UPrimitiveComponent* HitComponent,
+                AActor* other_actor,
+                UPrimitiveComponent* other_component,
+                FVector NormalImpulse,
+                FHitResult const& Hit);
+    void do_hit(AActor& actor, UPrimitiveComponent& other_component);
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Laser")
+    UStaticMeshComponent* mesh_component{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Laser")
+    UMaterialInterface* material{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Laser")
+    int32 damage{5};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Laser")
+    float speed{10000.f};
+};

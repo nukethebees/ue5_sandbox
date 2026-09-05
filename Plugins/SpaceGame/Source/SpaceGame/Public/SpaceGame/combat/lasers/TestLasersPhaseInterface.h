@@ -11,8 +11,6 @@ class SPACEGAME_API PhaseInterface {
     private:
     void bind(ml::test_lasers::Simulation& new_target);
 
-    void clear_runtime_state();
-
     void begin_play();
 
     void begin_tick();

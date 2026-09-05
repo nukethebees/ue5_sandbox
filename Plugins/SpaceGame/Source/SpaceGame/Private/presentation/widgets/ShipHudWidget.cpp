@@ -282,11 +282,13 @@ void UShipHudWidget::set_mission_enemies_remaining(int32 const enemies_remaining
     }
 }
 
+#if WITH_EDITOR
 void UShipHudWidget::update_sampled_speed(TConstArrayView<FVector2d> const samples,
                                           int32 const oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);
 }
+#endif
 
 void UShipHudWidget::set_crosshair_positions(FVector2d near, FVector2d far) {
     RETURN_IF_NULLPTR(far_crosshair_widget);

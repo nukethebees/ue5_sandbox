@@ -22,7 +22,6 @@ struct SPACEGAME_API FCollisionSystem {
   private:
     void rebuild_grid();
 
-    FTestEntityRegistry const* entity_registry_{nullptr};
     CollisionUniformGrid uniform_grid_{};
 
     FEntityAABBs entity_aabbs_{};

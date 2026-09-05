@@ -37,22 +37,6 @@ void Simulation::bind_fighters(ml::test_capital_ship_fighters::Simulation& fight
     fighters_interface.bind(fighters);
 }
 
-void Simulation::clear_runtime_state() {
-    ml::reset(entities,
-              local_indices_to_remove,
-              tick_buffers.current(),
-              tick_buffers.previous(),
-              entity_death_info,
-              entity_update_data,
-              fighter_handles,
-              fighter_handles_scratch,
-              fighter_reassignment_queue,
-              indices_without_targets_buffer,
-              fighter_order_queue);
-    fighters_spawned = 0;
-    clear_presentation_events();
-}
-
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);

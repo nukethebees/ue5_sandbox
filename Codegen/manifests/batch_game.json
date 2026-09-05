@@ -94,16 +94,6 @@
       ]
     },
     {
-      "kind":"soa", "name":"test_laser_collision_data_soa",
-      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLaserCollisionDataSoA.h",
-      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLaserCollisionDataSoA.cpp",
-      "header_include":"SpaceGame/combat/lasers/TestLaserCollisionDataSoA.h", "namespace":"ml::test_lasers",
-      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"], "structs":[{"name":"ComponentHitRanges","export_specifier":"SPACEGAME_API","operations":["reset"],"members":[
-        {"name":"components","kind":"array","type":"@primitive_component_const_ptr"}, {"name":"counts","kind":"array","type":"int32"},
-        {"name":"offsets","kind":"array","type":"int32"}, {"name":"next_write_indices","kind":"array","type":"int32"}
-      ]}]
-    },
-    {
       "kind":"soa", "name":"test_capital_ship_fighter_spawn_queue_soa",
       "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h",
       "source":"Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.cpp",

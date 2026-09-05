@@ -11,19 +11,13 @@ class SPACEGAME_API PhaseInterface {
     private:
     void bind(ml::test_tube_spinners::Simulation& new_target);
 
-    void clear_runtime_state();
-
     void begin_play();
-
-    void begin_tick();
 
     void update_timers(float const dt);
 
     void move(float const dt);
 
     void queue_commands();
-
-    void update_entity_registry();
 
     void end_tick();
 

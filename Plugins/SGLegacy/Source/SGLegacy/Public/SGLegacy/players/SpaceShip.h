@@ -1,10 +1,10 @@
 #pragma once
 
 #include "SandboxGameShared/players/SpeedResponse.h"
-#include "SpaceGame/combat/DamageableShip.h"
+#include "SGLegacy/combat/DamageableShip.h"
+#include "SGLegacy/players/ShipHealthComponent.h"
 #include "SpaceGame/ships/common/BarrelRoll.h"
 #include "SpaceGame/ships/common/LaserFiringState.h"
-#include "SpaceGame/ships/common/ShipHealthComponent.h"
 #include "SpaceGame/ships/common/ShipLaserMode.h"
 #include "SpaceGame/ships/common/SpaceShipCommon.h"
 #include "SpaceGame/ships/common/SpaceShipFlightModel.h"
@@ -24,6 +24,15 @@ class UNiagaraComponent;
 class AShipLaser;
 class UShipLaserConfig;
 class UShipHealthComponent;
+
+DECLARE_DELEGATE_OneParam(FOnShipSpeedChanged, float);
+DECLARE_DELEGATE_OneParam(FOnShipEnergyChanged, float);
+DECLARE_DELEGATE_OneParam(FOnShipGoldRingsChanged, int32);
+DECLARE_DELEGATE_OneParam(FOnShipPointsChanged, int32);
+DECLARE_DELEGATE_OneParam(FOnLivesChanged, int32);
+DECLARE_DELEGATE_TwoParams(FOnSpeedSampled, TConstArrayView<FVector2d>, int32);
+DECLARE_DELEGATE_OneParam(FOnLaserModeChanged, ELaserFiringState);
+DECLARE_DELEGATE_OneParam(FOnLockOnAcquired, AActor*);
 
 UCLASS(MinimalAPI)
 class ASpaceShip
@@ -75,7 +84,6 @@ class ASpaceShip
         return FMath::Clamp(value, -abs_max_value, abs_max_value);
     }
 
-    auto get_ship_forward_vector() const -> FVector;
     SGLEGACY_API auto get_middle_socket() const -> FTransform;
 
     // IDamageableShip

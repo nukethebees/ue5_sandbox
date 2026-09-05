@@ -5,7 +5,7 @@
 #include "FloatBounds.generated.h"
 
 USTRUCT()
-struct FFloatBounds {
+struct SANDBOX_API FFloatBounds {
     GENERATED_BODY()
 
     FFloatBounds() = default;

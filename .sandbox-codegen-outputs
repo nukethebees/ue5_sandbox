@@ -27,7 +27,6 @@ Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp
 Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h
 Plugins/SpaceGame/Source/SGCollision/Private/world_aabbs.cpp
 Plugins/SpaceGame/Source/SGCollision/Public/SGCollision/world_aabbs.h
-Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLaserCollisionDataSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLasersPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLasersSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/defences/spinners/TestTubeSpinnersPhaseInterface.cpp
@@ -56,7 +55,6 @@ Plugins/SpaceGame/Source/SpaceGame/Private/simulation/LineTraces.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/TraceHits.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ui/style/GameUiStyleTypes.cpp
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLaserCollisionDataSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/defences/spinners/TestTubeSpinnersPhaseInterface.h

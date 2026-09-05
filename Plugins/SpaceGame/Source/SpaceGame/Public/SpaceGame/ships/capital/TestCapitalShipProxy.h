@@ -26,14 +26,7 @@ class ATestCapitalShipProxy
     void set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
         actor_config = new_config;
     }
-  protected:
-    void OnConstruction(FTransform const& transform) override;
-  public:
-#if WITH_EDITOR
-    UFUNCTION(CallInEditor, Category = "Ship")
-    void apply_asset_configuration();
-    UFUNCTION(CallInEditor, Category = "Ship")
-    void apply_asset_configuration_to_all_instances();
+
     auto get_team() const noexcept { return team; }
     auto get_target_ship() const noexcept { return target_ship; }
     auto get_health() const noexcept { return health; }
@@ -50,16 +43,24 @@ class ATestCapitalShipProxy
         spawn_cooldown = new_cooldown;
     }
 
-    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
-
     // ITestEntity
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override {
         return entity_handle;
     }
-    auto get_test_name() const noexcept -> FName override { return test_name; }
     void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
+
+#if WITH_EDITOR
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void apply_asset_configuration();
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void apply_asset_configuration_to_all_instances();
+
+    void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
+    auto get_test_name() const noexcept -> FName override { return test_name; }
 #endif
   protected:
+    void OnConstruction(FTransform const& transform) override;
+
     FCapitalShipConfig const* actor_config{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")

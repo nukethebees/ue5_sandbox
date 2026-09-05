@@ -77,6 +77,76 @@ auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
                              geometry.MLLevelSetElems,
                              geometry.SkinnedTriangleMeshElems);
 }
+
+struct FStaticCollisionComponentData {
+    FVector3f min_point{FVector3f::ZeroVector};
+    FVector3f max_point{FVector3f::ZeroVector};
+    ECollisionEnabled::Type original_collision_mode{ECollisionEnabled::NoCollision};
+};
+
+auto extract_static_collision_component(UPrimitiveComponent& component,
+                                        CollisionUniformGrid const& uniform_grid,
+                                        AActor const* const expected_owner,
+                                        TCHAR const*& rejection_reason)
+    -> TOptional<FStaticCollisionComponentData> {
+    auto* const actor{component.GetOwner()};
+    if (!IsValid(actor)) {
+        rejection_reason = TEXT("component has no valid owner");
+        return {};
+    }
+    if (expected_owner && actor != expected_owner) {
+        rejection_reason = TEXT("component owner does not match the enumerated actor");
+        return {};
+    }
+    if (component.GetCollisionEnabled() == ECollisionEnabled::NoCollision ||
+        !component.IsQueryCollisionEnabled()) {
+        rejection_reason = TEXT("component has no query collision");
+        return {};
+    }
+    if (component.Mobility != EComponentMobility::Static) {
+        rejection_reason = TEXT("component mobility is not static");
+        return {};
+    }
+    if (component.IsA<UInstancedStaticMeshComponent>()) {
+        rejection_reason = TEXT("instanced static mesh components are not supported");
+        return {};
+    }
+
+    auto* const body_setup{component.GetBodySetup()};
+    if (!IsValid(body_setup)) {
+        rejection_reason = TEXT("component has no body setup");
+        return {};
+    }
+    if (body_setup->CollisionTraceFlag == CTF_UseComplexAsSimple) {
+        rejection_reason = TEXT("complex-as-simple collision is not supported");
+        return {};
+    }
+    if (has_unsupported_geometry(body_setup->AggGeom)) {
+        rejection_reason = TEXT("aggregate geometry contains unsupported shape types");
+        return {};
+    }
+
+    auto const aabb{ml::get_aabb(body_setup->AggGeom, component.GetComponentTransform())};
+    if (!aabb.IsValid) {
+        rejection_reason = TEXT("component has no query-enabled simple collision geometry");
+        return {};
+    }
+
+    FVector3f const min_point{aabb.Min};
+    FVector3f const max_point{aabb.Max};
+    auto const [min_coord, max_coord]{uniform_grid.to_cell_coord_bounds(min_point, max_point)};
+    if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
+        !uniform_grid.is_cell_coord_in_bounds(min_coord, max_coord)) {
+        rejection_reason = TEXT("world AABB is invalid or outside the collision grid");
+        return {};
+    }
+
+    return FStaticCollisionComponentData{
+        .min_point = min_point,
+        .max_point = max_point,
+        .original_collision_mode = component.GetCollisionEnabled(),
+    };
+}
 }
 
 auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes) -> FEntityAABBs {
@@ -156,59 +226,17 @@ void FLevelCollisionHost::initialise_static_geometry(UWorld& world,
                        reason);
             }};
 
-            if (component->GetOwner() != actor) {
-                reject_component(TEXT("component owner does not match the enumerated actor"));
-                continue;
-            }
-            if (component->Mobility != EComponentMobility::Static) {
-                reject_component(TEXT("component mobility is not static"));
-                continue;
-            }
-            if (!component->IsQueryCollisionEnabled()) {
-                reject_component(TEXT("component has no query collision"));
-                continue;
-            }
-            if (component->IsA<UInstancedStaticMeshComponent>()) {
-                reject_component(TEXT("instanced static mesh components are not supported"));
+            TCHAR const* rejection_reason{};
+            auto const data{extract_static_collision_component(
+                *component, uniform_grid_, actor, rejection_reason)};
+            if (!data) {
+                reject_component(rejection_reason);
                 continue;
             }
 
-            auto* const body_setup{component->GetBodySetup()};
-            if (!IsValid(body_setup)) {
-                reject_component(TEXT("component has no body setup"));
-                continue;
-            }
-            if (body_setup->CollisionTraceFlag == CTF_UseComplexAsSimple) {
-                reject_component(TEXT("complex-as-simple collision is not supported"));
-                continue;
-            }
-            if (has_unsupported_geometry(body_setup->AggGeom)) {
-                reject_component(TEXT("aggregate geometry contains unsupported shape types"));
-                continue;
-            }
-
-            auto const aabb{ml::get_aabb(body_setup->AggGeom, component->GetComponentTransform())};
-            if (!aabb.IsValid) {
-                reject_component(TEXT("component has no query-enabled simple collision geometry"));
-                continue;
-            }
-
-            FVector3f const min_point{aabb.Min};
-            FVector3f const max_point{aabb.Max};
-            auto const [min_coord,
-                        max_coord]{uniform_grid_.to_cell_coord_bounds(min_point, max_point)};
-            if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
-                !uniform_grid_.is_cell_coord_in_bounds(min_coord, max_coord)) {
-                reject_component(TEXT("world AABB is invalid or outside the collision grid"));
-                continue;
-            }
-
-            static_aabbs.mins.add(min_point);
-            static_aabbs.maxes.add(max_point);
-            static_collision_sources_.add(actor,
-                                          component,
-                                          component->GetComponentTransform(),
-                                          component->GetCollisionEnabled());
+            static_aabbs.mins.add(data->min_point);
+            static_aabbs.maxes.add(data->max_point);
+            static_collision_sources_.add(component, data->original_collision_mode);
         }
     }
 
@@ -245,50 +273,16 @@ auto FLevelCollisionHost::add_static_geometry(UPrimitiveComponent& component,
         return false;
     }};
 
-    if (!IsValid(actor)) {
-        return reject_component(TEXT("component has no valid owner"));
-    }
-    if (component.GetCollisionEnabled() == ECollisionEnabled::NoCollision ||
-        !component.IsQueryCollisionEnabled()) {
-        return reject_component(TEXT("component has no query collision"));
-    }
-    if (component.Mobility != EComponentMobility::Static) {
-        return reject_component(TEXT("component mobility is not static"));
-    }
-    if (component.IsA<UInstancedStaticMeshComponent>()) {
-        return reject_component(TEXT("instanced static mesh components are not supported"));
+    TCHAR const* rejection_reason{};
+    auto const data{
+        extract_static_collision_component(component, uniform_grid_, nullptr, rejection_reason)};
+    if (!data) {
+        return reject_component(rejection_reason);
     }
 
-    auto* const body_setup{component.GetBodySetup()};
-    if (!IsValid(body_setup)) {
-        return reject_component(TEXT("component has no body setup"));
-    }
-    if (body_setup->CollisionTraceFlag == CTF_UseComplexAsSimple) {
-        return reject_component(TEXT("complex-as-simple collision is not supported"));
-    }
-    if (has_unsupported_geometry(body_setup->AggGeom)) {
-        return reject_component(TEXT("aggregate geometry contains unsupported shape types"));
-    }
-
-    auto const transform{component.GetComponentTransform()};
-    auto const aabb{ml::get_aabb(body_setup->AggGeom, transform)};
-    if (!aabb.IsValid) {
-        return reject_component(TEXT("component has no query-enabled simple collision geometry"));
-    }
-
-    FVector3f const min_point{aabb.Min};
-    FVector3f const max_point{aabb.Max};
-    auto const& uniform_grid{uniform_grid_};
-    auto const [min_coord, max_coord]{uniform_grid.to_cell_coord_bounds(min_point, max_point)};
-    if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
-        !uniform_grid.is_cell_coord_in_bounds(min_coord, max_coord)) {
-        return reject_component(TEXT("world AABB is invalid or outside the collision grid"));
-    }
-
-    auto const original_collision_mode{component.GetCollisionEnabled()};
-    auto const static_index{uniform_grid_.add_static_aabb(min_point, max_point)};
+    auto const static_index{uniform_grid_.add_static_aabb(data->min_point, data->max_point)};
     check(static_index == static_collision_sources_.num());
-    static_collision_sources_.add(actor, &component, transform, original_collision_mode);
+    static_collision_sources_.add(&component, data->original_collision_mode);
     component.SetCollisionEnabled(ECollisionEnabled::NoCollision);
     return true;
 }

@@ -11,10 +11,6 @@ void PhaseInterface::bind(ml::test_capital_ships::Simulation& new_target) {
     simulation = &new_target;
 }
 
-void PhaseInterface::clear_runtime_state() {
-    simulation->clear_runtime_state();
-}
-
 void PhaseInterface::begin_play() {
     simulation->begin_play();
 }

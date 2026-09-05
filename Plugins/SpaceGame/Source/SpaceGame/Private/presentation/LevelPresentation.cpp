@@ -18,8 +18,10 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     , player_{resources.player} {
     auto const& config{*resources.config};
     auto const& settings{resources.settings};
+#if WITH_EDITORONLY_DATA
     lasers.debug_drawer = settings.laser_debug_drawer;
     lasers.debugging_shapes_enabled = settings.laser_debug_shapes;
+#endif
     capital_ships.debugging_shapes_enabled = settings.capital_debug_shapes;
     capital_ship_fighters.enable_target_debug_drawing = settings.fighter_debug_targets;
     capital_ship_fighters.enable_ship_location_debug_drawing = settings.fighter_debug_locations;

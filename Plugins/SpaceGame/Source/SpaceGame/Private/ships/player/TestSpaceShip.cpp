@@ -193,10 +193,6 @@ auto ATestSpaceShip::get_unique_id() const -> TestEntityUniqueId {
     return bound_simulation ? bound_simulation->unique_entity_id : TestEntityUniqueId{};
 }
 
-auto ATestSpaceShip::get_entity_registry_handle() const -> FRegistryEntityHandle {
-    return get_entity_handle();
-}
-
 auto ATestSpaceShip::get_team() const noexcept -> ETestTeam {
     return bound_simulation ? bound_simulation->team : team;
 }
@@ -399,10 +395,6 @@ auto ATestSpaceShip::is_alive() const noexcept -> bool {
 
 auto ATestSpaceShip::get_collision_mesh() const -> UStaticMesh const* {
     return ship_mesh ? ship_mesh->GetStaticMesh() : nullptr;
-}
-
-auto ATestSpaceShip::get_ship_forward_vector() const -> FVector {
-    return simulation().get_middle_socket().GetLocation();
 }
 
 auto ATestSpaceShip::get_middle_socket() const -> FTransform {
