@@ -49,6 +49,9 @@ struct SANDBOXUI_API FSettingsStyle {
     FTableRowStyle combo_row{};
 
     UPROPERTY(EditAnywhere, Category = "Panels")
+    FSlateBrush page_background{};
+
+    UPROPERTY(EditAnywhere, Category = "Panels")
     FSlateBrush section_background{};
 
     UPROPERTY(EditAnywhere, Category = "Layout")

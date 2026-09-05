@@ -117,7 +117,7 @@ void SGameOptionsView::Construct(FArguments const& args) {
     auto const body_padding{FMargin{0.0f}};
     auto const footer_padding{FMargin{0.0f, settings_style.footer_spacing, 0.0f, 0.0f}};
     auto panel{::SlateGenerated::ml::ioj::SGameOptionsViewBuilder{*this}.BuildPanel(
-        &style_->panel().background,
+        &style_->settings().page_background,
         settings_style.page_margin,
         settings_style.maximum_page_width,
         header_padding,

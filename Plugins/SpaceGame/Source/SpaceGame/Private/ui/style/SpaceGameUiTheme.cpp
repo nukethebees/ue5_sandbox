@@ -135,6 +135,7 @@ USpaceGameUiTheme::USpaceGameUiTheme() {
     settings_style_.value_text = text_styles_.body_secondary;
     settings_style_.disabled_text = text_styles_.disabled;
     settings_style_.empty_text = text_styles_.body_secondary;
+    settings_style_.page_background = make_brush(FLinearColor{0.018f, 0.028f, 0.045f, 0.99f});
 
     button_styles_.primary = make_button_style(FButtonPalette{
         .normal = FLinearColor{0.12f, 0.14f, 0.16f, 1.f},

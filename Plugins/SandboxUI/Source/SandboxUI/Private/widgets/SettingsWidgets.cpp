@@ -32,6 +32,8 @@ FSettingsStyle::FSettingsStyle() {
     toggle = core_style.GetWidgetStyle<FCheckBoxStyle>("Checkbox");
     combo_box = core_style.GetWidgetStyle<FComboBoxStyle>("ComboBox");
     combo_row = core_style.GetWidgetStyle<FTableRowStyle>("TableView.Row");
+    page_background.DrawAs = ESlateBrushDrawType::Box;
+    page_background.TintColor = FSlateColor{FLinearColor{0.018f, 0.028f, 0.045f, 0.99f}};
     section_background.DrawAs = ESlateBrushDrawType::Box;
     section_background.TintColor = FSlateColor{FLinearColor{0.04f, 0.05f, 0.065f, 0.96f}};
 }
