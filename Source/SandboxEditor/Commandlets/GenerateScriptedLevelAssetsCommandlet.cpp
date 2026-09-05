@@ -55,6 +55,7 @@
 namespace {
 constexpr TCHAR widget_object_path[]{
     TEXT("/SpaceGame/UI/MainMenu/WBP_LevelSelect.WBP_LevelSelect")};
+constexpr TCHAR widget_package_name[]{TEXT("/SpaceGame/UI/MainMenu/WBP_LevelSelect")};
 constexpr TCHAR main_menu_widget_object_path[]{
     TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu.WBP_MainMenu")};
 constexpr TCHAR main_menu_widget_package_name[]{TEXT("/SpaceGame/UI/MainMenu/WBP_MainMenu")};
@@ -550,125 +551,19 @@ auto configure_ui_data(UClass& root_class,
     return save_asset(*ui_data);
 }
 
-auto generate_level_select_widget(UClass& button_class) -> UClass* {
-    auto* const blueprint{LoadObject<UWidgetBlueprint>(nullptr, widget_object_path)};
-    if (!IsValid(blueprint) || !IsValid(blueprint->WidgetTree)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load %s"), widget_object_path);
+auto generate_level_select_widget() -> UClass* {
+    auto* const blueprint{
+        load_or_create_widget_blueprint(widget_object_path,
+                                        widget_package_name,
+                                        TEXT("WBP_LevelSelect"),
+                                        *ml::s7::UScriptLevelSelectWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
         return nullptr;
     }
 
-    blueprint->Modify();
-    blueprint->WidgetTree->Rename(
-        nullptr, GetTransientPackage(), REN_DontCreateRedirectors | REN_NonTransactional);
-    blueprint->WidgetTree = NewObject<UWidgetTree>(blueprint, TEXT("WidgetTree"), RF_Transactional);
-    auto& tree{*blueprint->WidgetTree};
-    tree.Modify();
-
-    auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
-    auto* const page{tree.ConstructWidget<UVerticalBox>()};
-    auto* const page_slot{root->AddChildToOverlay(page)};
-    page_slot->SetPadding(FMargin{32.0f});
-    page_slot->SetHorizontalAlignment(HAlign_Fill);
-    page_slot->SetVerticalAlignment(VAlign_Fill);
-    tree.RootWidget = root;
-
-    auto* const heading{tree.ConstructWidget<UTextBlock>()};
-    heading->SetText(FText::FromString(TEXT("Scripted Levels")));
-    auto heading_font{heading->GetFont()};
-    heading_font.Size = 28;
-    heading->SetFont(heading_font);
-    auto* const heading_slot{page->AddChildToVerticalBox(heading)};
-    heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
-
-    auto* const body{tree.ConstructWidget<UHorizontalBox>()};
-    auto* const body_slot{page->AddChildToVerticalBox(body)};
-    body_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
-
-    auto* const controls{tree.ConstructWidget<UVerticalBox>()};
-    auto* const controls_slot{body->AddChildToHorizontalBox(controls)};
-    controls_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
-    controls_slot->SetPadding(FMargin{0.0f, 0.0f, 20.0f, 0.0f});
-
-    auto* const controls_heading{tree.ConstructWidget<UTextBlock>()};
-    controls_heading->SetText(FText::FromString(TEXT("Controls")));
-    auto controls_heading_font{controls_heading->GetFont()};
-    controls_heading_font.Size = 20;
-    controls_heading->SetFont(controls_heading_font);
-    auto* const controls_heading_slot{controls->AddChildToVerticalBox(controls_heading)};
-    controls_heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
-
-    make_menu_button(tree, *controls, button_class, TEXT("launch_button"), TEXT("Launch"));
-    make_menu_button(
-        tree, *controls, button_class, TEXT("start_paused_button"), TEXT("Start Paused"));
-    make_menu_button(tree, *controls, button_class, TEXT("refresh_button"), TEXT("Refresh"));
-    make_menu_button(tree, *controls, button_class, TEXT("back_button"), TEXT("Back"));
-
-    auto* const levels{tree.ConstructWidget<UVerticalBox>()};
-    auto* const levels_slot{body->AddChildToHorizontalBox(levels)};
-    levels_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
-    levels_slot->SetPadding(FMargin{0.0f, 0.0f, 24.0f, 0.0f});
-
-    auto* const levels_heading{tree.ConstructWidget<UTextBlock>()};
-    levels_heading->SetText(FText::FromString(TEXT("Levels")));
-    auto levels_heading_font{levels_heading->GetFont()};
-    levels_heading_font.Size = 20;
-    levels_heading->SetFont(levels_heading_font);
-    auto* const levels_heading_slot{levels->AddChildToVerticalBox(levels_heading)};
-    levels_heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
-
-    auto* const scroll{tree.ConstructWidget<UScrollBox>()};
-    auto* const level_list{make_widget<UVerticalBox>(tree, TEXT("level_list"))};
-    scroll->AddChild(level_list);
-    auto* const scroll_slot{levels->AddChildToVerticalBox(scroll)};
-    scroll_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
-
-    auto* const details{tree.ConstructWidget<UVerticalBox>()};
-    auto* const details_slot{body->AddChildToHorizontalBox(details)};
-    details_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
-
-    auto* const title{make_widget<UTextBlock>(tree, TEXT("title_text"))};
-    auto title_font{title->GetFont()};
-    title_font.Size = 26;
-    title->SetFont(title_font);
-    auto* const title_slot{details->AddChildToVerticalBox(title)};
-    title_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 4.0f});
-    auto* const status{make_widget<UTextBlock>(tree, TEXT("status_text"))};
-    status->SetAutoWrapText(true);
-    auto* const status_slot{details->AddChildToVerticalBox(status)};
-    status_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
-    auto* const description{make_widget<UTextBlock>(tree, TEXT("description_text"))};
-    description->SetAutoWrapText(true);
-    auto* const description_slot{details->AddChildToVerticalBox(description)};
-    description_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
-    auto* const selected_file{make_widget<UTextBlock>(tree, TEXT("selected_file_text"))};
-    auto* const selected_file_slot{details->AddChildToVerticalBox(selected_file)};
-    selected_file_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-    auto* const details_text{make_widget<UTextBlock>(tree, TEXT("details_text"))};
-    details_text->SetAutoWrapText(true);
-    auto* const level_details_slot{details->AddChildToVerticalBox(details_text)};
-    level_details_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 16.0f});
-    auto* const script_heading{tree.ConstructWidget<UTextBlock>()};
-    script_heading->SetText(FText::FromString(TEXT("Script")));
-    auto script_heading_font{script_heading->GetFont()};
-    script_heading_font.Size = 20;
-    script_heading->SetFont(script_heading_font);
-    auto* const script_heading_slot{details->AddChildToVerticalBox(script_heading)};
-    script_heading_slot->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
-
-    blueprint->WidgetVariableNameToGuidMap.Reset();
-    tree.ForEachWidget(
-        [blueprint](UWidget* const widget) { blueprint->OnVariableAdded(widget->GetFName()); });
-
-    auto* const widget_class{ml::s7::UScriptLevelSelectWidget::StaticClass()};
-    if (blueprint->ParentClass != widget_class) {
-        UBlueprintEditorLibrary::ReparentBlueprint(blueprint, widget_class);
-    }
-    FKismetEditorUtilities::CompileBlueprint(blueprint);
-    if (blueprint->Status == BS_Error) {
-        UE_LOG(LogTemp, Error, TEXT("WBP_LevelSelect failed to compile"));
-        return nullptr;
-    }
-    return save_asset(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+    auto* const root{make_widget<UNativeWidgetHost>(*blueprint->WidgetTree, TEXT("view_host"))};
+    blueprint->WidgetTree->RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
 auto load_or_create_player_controller() -> UBlueprint* {
@@ -828,8 +723,7 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     auto* const completion_class{
         IsValid(button_class) ? generate_level_completion_widget(*button_class) : nullptr};
     auto* const main_class{generate_main_menu_widget()};
-    auto* const level_class{IsValid(button_class) ? generate_level_select_widget(*button_class)
-                                                  : nullptr};
+    auto* const level_class{generate_level_select_widget()};
     auto const ui_generated{IsValid(root_class) && IsValid(button_class) && IsValid(main_class) &&
                             IsValid(level_class) && IsValid(pause_class) &&
                             IsValid(completion_class) &&

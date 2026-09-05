@@ -20,7 +20,10 @@ public class SpaceGameS7 : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Engine",
+            "InputCore",
             "S7Lab",
+            "Slate",
+            "SlateCore",
         });
     }
 }

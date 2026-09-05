@@ -57,6 +57,10 @@ Unreal Engine 5.8 project.
 
 # UI Design
 
+* Tone north star: Build UI as if Lockheed Martin made command-and-control software for bees. Play the bee-military premise completely straight: austere, functional, bureaucratic, tactical, and internally serious. Avoid cute bee puns, self-aware jokes, or whimsical presentation unless explicitly requested.
+* The player is interacting with the bee military, not a bee police state. Military interfaces should feel disciplined, professional, bureaucratic, and operational, but must not imply an authoritarian or fascistic society unless the story specifically calls for it. Avoid gratuitous propaganda, loyalty slogans, ideological imagery, cult-of-leader language, and dystopian "obey the hive" tropes.
+* The bees are a civilization in space. They have armed forces because there are things worth defending and wars worth fighting. The UI represents their military infrastructure, not necessarily their wider culture.
+* Never acknowledge the premise as a joke. The world treats bee civilization, bee institutions, bee warfare, and the bee space navy as completely ordinary. Characters do not make bee puns, comment on the absurdity, or wink at the audience. Humor should emerge from situations, bureaucracy, personalities, incompetence, timing, and understatement—not from the setting explaining itself.
 * Always use `BindWidget` for UPROPERTY widgets. Do not use `BindWidgetOptional` unless the widget is explicitly generated in C++ every time.
 * When generating a UMG widget whose root node is a panel widget (for example, `UGridPanel`), use `meta=(GeneratorRoot)`.
 * Keep gameplay logic out of UI widgets.

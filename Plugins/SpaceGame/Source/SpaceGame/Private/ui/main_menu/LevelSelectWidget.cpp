@@ -1,32 +1,20 @@
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ui/common/MenuButtonWidget.h"
-
 namespace ml::ioj {
+ULevelSelectWidget::ULevelSelectWidget() {
+    SetIsFocusable(true);
+}
+
 void ULevelSelectWidget::prepare_for_open(FName const preferred_level_id) noexcept {
     preferred_level_id_ = preferred_level_id;
 }
 
-void ULevelSelectWidget::NativeOnInitialized() {
-    Super::NativeOnInitialized();
-
-    if (!IsValid(back_button)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("ULevelSelectWidget::NativeOnInitialized: One or more bound widgets are "
-                    "invalid."));
-        return;
-    }
-
-    back_button->OnClicked().AddUObject(this, &ThisClass::handle_back);
-}
-
 auto ULevelSelectWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
-    return back_button;
+    return const_cast<ULevelSelectWidget*>(this);
 }
 
-void ULevelSelectWidget::handle_back() {
+auto ULevelSelectWidget::NativeOnHandleBackAction() -> bool {
     DeactivateWidget();
+    return true;
 }
 }

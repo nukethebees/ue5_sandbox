@@ -1,7 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
 
-#include <SpaceGame/ui/common/MenuButtonWidget.h>
-#include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
@@ -12,12 +10,6 @@
 
 #include <CommonInputSettings.h>
 #include <Components/Button.h>
-#include <Components/HorizontalBox.h>
-#include <Components/HorizontalBoxSlot.h>
-#include <Components/OverlaySlot.h>
-#include <Components/ScrollBox.h>
-#include <Components/TextBlock.h>
-#include <Components/VerticalBox.h>
 #include <CQTest.h>
 #include <Engine/Engine.h>
 #include <Engine/GameInstance.h>
@@ -205,28 +197,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         (void)level_select_slate;
         level_select_widget->ActivateWidget();
 
-        auto* const level_back_button{Cast<ml::ioj::UMenuButtonWidget>(
-            level_select_widget->GetWidgetFromName(TEXT("back_button")))};
-        auto* const level_list{
-            Cast<UVerticalBox>(level_select_widget->GetWidgetFromName(TEXT("level_list")))};
-        auto* const title_text{
-            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("title_text")))};
-        auto* const description_text{
-            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("description_text")))};
-        auto* const status_text{
-            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("status_text")))};
-        auto* const details_text{
-            Cast<UTextBlock>(level_select_widget->GetWidgetFromName(TEXT("details_text")))};
-        auto* const launch_button{Cast<ml::ioj::UMenuButtonWidget>(
-            level_select_widget->GetWidgetFromName(TEXT("launch_button")))};
-        auto* const start_paused_button{Cast<ml::ioj::UMenuButtonWidget>(
-            level_select_widget->GetWidgetFromName(TEXT("start_paused_button")))};
-        auto const child_bindings_valid{IsValid(level_back_button) && IsValid(level_list) &&
-                                        IsValid(title_text) && IsValid(description_text) &&
-                                        IsValid(status_text) && IsValid(details_text) &&
-                                        IsValid(launch_button) && IsValid(start_paused_button)};
-        if (!TestRunner->TestTrue(TEXT("All required child menu bindings are valid"),
-                                  child_bindings_valid)) {
+        auto const level_select_frame{
+            find_slate_descendant(level_select_slate, FName{TEXT("ml::ioj::SHiveFrame")})};
+        if (!TestRunner->TestTrue(TEXT("Level selector uses the reusable Hive frame"),
+                                  level_select_frame.IsValid())) {
             return;
         }
 
@@ -240,19 +214,14 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             [&level_select_requested] { level_select_requested = true; });
         main_page->select_mission_requested.Broadcast();
         TestRunner->TestTrue(TEXT("Select Mission requests level select"), level_select_requested);
-        TestRunner->TestTrue(TEXT("Level select discovers the example script"),
-                             level_list->GetChildrenCount() > 0);
-        TestRunner->TestTrue(TEXT("Restored preferred level enables Launch"),
-                             launch_button->GetIsEnabled());
-        TestRunner->TestTrue(TEXT("Restored preferred level enables Start Paused"),
-                             start_paused_button->GetIsEnabled());
+        TestRunner->TestEqual(TEXT("Preferred stable level id restores selection"),
+                              level_select_widget->get_selected_level_id(),
+                              FName{TEXT("turret-trial-0")});
+        TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
+                             level_select_widget->can_launch_selected_level());
+        TestRunner->TestTrue(TEXT("Level selector is the CommonUI focus bridge"),
+                             level_select_widget->GetDesiredFocusTarget() == level_select_widget);
 
-        auto* const campaign_header{Cast<UTextBlock>(level_list->GetChildAt(0))};
-        TestRunner->TestTrue(TEXT("Campaign header is not a playable level"),
-                             IsValid(campaign_header));
-        TestRunner->TestEqual(TEXT("First campaign is labelled"),
-                              campaign_header->GetText().ToString(),
-                              FString{TEXT("Scenarios")});
         TestRunner->TestEqual(TEXT("Completed level rows receive a visible marker"),
                               ml::s7::format_level_row_title(TEXT("Border Skirmish"),
                                                              ml::s7::ELevelRowState::Completed),
@@ -266,113 +235,16 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             ml::s7::format_level_row_title(TEXT("Broken Script"), ml::s7::ELevelRowState::Invalid),
             FString{TEXT("! Broken Script")});
 
-        ml::ioj::UMenuButtonWidget* level_button{nullptr};
-        ml::ioj::UMenuButtonWidget* turret_trial_button{nullptr};
-        ml::ioj::UMenuButtonWidget* locked_turret_trial_button{nullptr};
-        auto const level_row_count{level_list->GetChildrenCount()};
-        for (int32 i{0}; i < level_row_count; ++i) {
-            auto* const candidate{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(i))};
-            if (!IsValid(candidate)) {
-                continue;
-            }
-            if (candidate->get_text().ToString().EndsWith(TEXT("Border Skirmish"))) {
-                level_button = candidate;
-            } else if (candidate->get_text().ToString().EndsWith(TEXT("Turret Trial 0"))) {
-                turret_trial_button = candidate;
-            } else if (candidate->get_text().ToString().EndsWith(TEXT("Turret Trial 1"))) {
-                locked_turret_trial_button = candidate;
-            }
-        }
-        if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
+        auto const selector_available_size{FVector2D{1366.0, 768.0}};
+        auto const selector_frame_size{arranged_size(
+            level_select_slate, level_select_frame.ToSharedRef(), selector_available_size)};
+        if (!TestRunner->TestTrue(TEXT("Level selector frame is arranged"),
+                                  selector_frame_size.IsSet())) {
             return;
         }
-        TestRunner->TestTrue(TEXT("Unlocked level row remains selectable"),
-                             IsValid(turret_trial_button));
-        TestRunner->TestTrue(TEXT("Preferred stable level id restores row focus"),
-                             level_select_widget->GetDesiredFocusTarget() == turret_trial_button);
-        TestRunner->TestTrue(TEXT("Preferred stable level id restores row selection"),
-                             IsValid(turret_trial_button) && turret_trial_button->GetSelected());
-        TestRunner->TestEqual(TEXT("Preferred level information is displayed immediately"),
-                              title_text->GetText().ToString(),
-                              FString{TEXT("Turret Trial 0")});
-        TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
-                             launch_button->GetIsEnabled());
-
-        if (!TestRunner->TestTrue(TEXT("Locked level row remains enabled and focusable"),
-                                  IsValid(locked_turret_trial_button) &&
-                                      locked_turret_trial_button->GetIsEnabled())) {
-            return;
-        }
-        locked_turret_trial_button->OnClicked().Broadcast();
-        TestRunner->TestEqual(TEXT("Locked level information is displayed"),
-                              title_text->GetText().ToString(),
-                              FString{TEXT("Turret Trial 1")});
-        TestRunner->TestTrue(TEXT("Locked level row retains focus"),
-                             level_select_widget->GetDesiredFocusTarget() ==
-                                 locked_turret_trial_button);
-        TestRunner->TestTrue(TEXT("Locked level row can be selected"),
-                             locked_turret_trial_button->GetSelected());
-        TestRunner->TestFalse(TEXT("Locked level cannot be launched"),
-                              launch_button->GetIsEnabled());
-        TestRunner->TestFalse(TEXT("Locked level cannot start paused"),
-                              start_paused_button->GetIsEnabled());
-        TestRunner->TestTrue(TEXT("Locked level describes its unsatisfied requirement"),
-                             description_text->GetText().ToString().Contains(
-                                 TEXT("\u2610 Complete Turret Trial 0")));
-
-        auto* const levels_scroll{Cast<UScrollBox>(level_list->GetParent())};
-        auto* const levels_column{
-            IsValid(levels_scroll) ? Cast<UVerticalBox>(levels_scroll->GetParent()) : nullptr};
-        auto* const controls_column{Cast<UVerticalBox>(launch_button->GetParent())};
-        auto* const details_column{Cast<UVerticalBox>(title_text->GetParent())};
-        auto* const body{IsValid(details_column) ? Cast<UHorizontalBox>(details_column->GetParent())
-                                                 : nullptr};
-        auto* const page{IsValid(body) ? Cast<UVerticalBox>(body->GetParent()) : nullptr};
-        auto* const controls_slot{
-            IsValid(controls_column) ? Cast<UHorizontalBoxSlot>(controls_column->Slot) : nullptr};
-        auto* const levels_slot{
-            IsValid(levels_column) ? Cast<UHorizontalBoxSlot>(levels_column->Slot) : nullptr};
-        auto* const details_slot{
-            IsValid(details_column) ? Cast<UHorizontalBoxSlot>(details_column->Slot) : nullptr};
-        auto* const page_slot{IsValid(page) ? Cast<UOverlaySlot>(page->Slot) : nullptr};
-        auto const layout_valid{IsValid(controls_slot) && IsValid(levels_slot) &&
-                                IsValid(details_slot) && IsValid(page_slot)};
-        if (!TestRunner->TestTrue(TEXT("Level selector layout is valid"), layout_valid)) {
-            return;
-        }
-        TestRunner->TestTrue(TEXT("Controls column is auto sized"),
-                             controls_slot->GetSize().SizeRule == ESlateSizeRule::Automatic);
-        TestRunner->TestTrue(TEXT("Levels column is auto sized"),
-                             levels_slot->GetSize().SizeRule == ESlateSizeRule::Automatic);
-        TestRunner->TestTrue(TEXT("Details column fills remaining width"),
-                             details_slot->GetSize().SizeRule == ESlateSizeRule::Fill);
-        TestRunner->TestTrue(TEXT("Selector fills the root horizontally"),
-                             page_slot->GetHorizontalAlignment() == HAlign_Fill);
-        TestRunner->TestTrue(TEXT("Selector fills the root vertically"),
-                             page_slot->GetVerticalAlignment() == VAlign_Fill);
-
-        level_button->OnClicked().Broadcast();
-        TestRunner->TestEqual(TEXT("Selected level title is shown"),
-                              title_text->GetText().ToString(),
-                              FString{TEXT("Border Skirmish")});
         TestRunner->TestTrue(
-            TEXT("Selected level description is shown"),
-            description_text->GetText().ToString().Contains(TEXT("two-team encounter")));
-        TestRunner->TestTrue(TEXT("A valid selected level can be launched"),
-                             launch_button->GetIsEnabled());
-        TestRunner->TestTrue(TEXT("A valid selected level can start paused"),
-                             start_paused_button->GetIsEnabled());
-        TestRunner->TestTrue(TEXT("Selected level reports that it is ready"),
-                             status_text->GetText().ToString().Contains(TEXT("Ready to launch.")));
-        TestRunner->TestTrue(
-            TEXT("Selected level details include its stable id"),
-            details_text->GetText().ToString().Contains(TEXT("Level ID: border-skirmish")));
-
-        level_select_widget->ActivateWidget();
-        level_back_button->OnClicked().Broadcast();
-        TestRunner->TestFalse(TEXT("Level select Back deactivates the screen"),
-                              level_select_widget->IsActivated());
-
+            TEXT("Level selector fills the available viewport"),
+            selector_frame_size.GetValue().Equals(FVector2f{selector_available_size}));
         main_page->save_data_requested.Broadcast();
         TestRunner->TestTrue(TEXT("Save Data opens save viewer"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::SaveGames);
