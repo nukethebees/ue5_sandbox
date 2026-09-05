@@ -101,6 +101,65 @@ TEST_CLASS(SandboxISMCComponent, "SandboxISMC.UnitTests")
                               transform_bytes + custom_data_bytes);
     }
 
+    TEST_METHOD(RetainsAllStagingBuffersThroughShrinkClearAndRegrow)
+    {
+        auto* component{NewObject<USandboxISMCComponent>()};
+        component->set_num_custom_data_floats(3);
+        constexpr int32 peak_count{4097};
+        constexpr int32 buffer_count{3};
+
+        auto const submit{[&](int32 count) {
+            auto written_count{0};
+            component->set_instances(
+                count,
+                ESandboxISMCParallelism::Sequential,
+                [&](FSandboxISMCInstanceChunkWriter& chunk) {
+                    auto const [first_index, chunk_count]{chunk.range()};
+                    written_count += chunk_count;
+                    for (auto local_index = 0; local_index < chunk_count; ++local_index) {
+                        auto const instance_index{first_index + local_index};
+                        chunk.set_transform(local_index,
+                                            {static_cast<float>(instance_index), 0.0f, 0.0f},
+                                            FQuat4f::Identity,
+                                            FVector3f::OneVector);
+                        auto custom_data{chunk.custom_data(local_index)};
+                        custom_data[0] = static_cast<float>(instance_index);
+                        custom_data[1] = 0.5f;
+                        custom_data[2] = 1.0f;
+                    }
+                });
+            TestRunner->TestEqual(TEXT("Only live instances are written"), written_count, count);
+            TestRunner->TestEqual(TEXT("Retained capacity does not affect the live count"),
+                                  component->get_instance_count(),
+                                  count);
+            auto const metrics{component->get_update_metrics()};
+            TestRunner->TestEqual(TEXT("Transform upload size follows the live count"),
+                                  metrics.transform_upload_bytes,
+                                  static_cast<uint64>(count) * sizeof(FSandboxISMCRenderInstance));
+            TestRunner->TestEqual(TEXT("Custom-data upload size follows the live count"),
+                                  metrics.custom_data_upload_bytes,
+                                  static_cast<uint64>(count) * 3 * sizeof(float));
+        }};
+
+        auto const initial_changes{component->get_update_metrics().staging_capacity_changes};
+        for (auto buffer_index = 0; buffer_index < buffer_count; ++buffer_index) {
+            submit(peak_count);
+        }
+        auto const warmed_changes{component->get_update_metrics().staging_capacity_changes};
+        TestRunner->TestEqual(TEXT("Both arrays in each of the three buffers are warmed"),
+                              warmed_changes - initial_changes,
+                              uint64{buffer_count * 2});
+
+        for (auto const count : {1, 0, peak_count}) {
+            for (auto buffer_index = 0; buffer_index < buffer_count; ++buffer_index) {
+                submit(count);
+                TestRunner->TestEqual(TEXT("Shrink, zero and regrow preserve staging capacity"),
+                                      component->get_update_metrics().staging_capacity_changes,
+                                      warmed_changes);
+            }
+        }
+    }
+
     TEST_METHOD(BuildsParallelCustomDataAcrossChunkBoundaries)
     {
         auto* component{NewObject<USandboxISMCComponent>()};

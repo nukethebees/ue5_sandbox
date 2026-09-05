@@ -668,8 +668,9 @@ auto USandboxISMCComponent::begin_instance_update(int32 instance_count)
 
     auto const transform_capacity{buffer.instances.Max()};
     auto const custom_data_capacity{buffer.custom_data.Max()};
-    buffer.instances.SetNumUninitialized(instance_count);
-    buffer.custom_data.SetNumUninitialized(instance_count * num_custom_data_floats_);
+    buffer.instances.SetNumUninitialized(instance_count, EAllowShrinking::No);
+    buffer.custom_data.SetNumUninitialized(instance_count * num_custom_data_floats_,
+                                           EAllowShrinking::No);
     metrics_->staging_capacity_changes += buffer.instances.Max() != transform_capacity;
     metrics_->staging_capacity_changes += buffer.custom_data.Max() != custom_data_capacity;
     buffer.num_custom_data_floats = num_custom_data_floats_;
