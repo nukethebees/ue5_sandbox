@@ -52,7 +52,6 @@ struct SPACEGAME_API Simulation {
     int32 n_preallocated_instances{5000};
     int32 collision_jobs{8};
   private:
-    void clear_runtime_state();
     void begin_play();
     void begin_tick();
     void commit_spawns();

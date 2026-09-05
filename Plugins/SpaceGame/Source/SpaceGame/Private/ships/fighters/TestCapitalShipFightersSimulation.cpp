@@ -107,22 +107,6 @@ void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulatio
     laser_simulation = &new_simulation;
 }
 
-void Simulation::clear_runtime_state() {
-    ml::reset(local_indices_to_remove,
-              entity_buffers.current(),
-              entity_buffers.previous(),
-              new_lasers,
-              spawn_queue,
-              order_queue,
-              new_spawn_entity_data,
-              new_spawn_entity_handles);
-    task_spans = {};
-    task_views = {};
-    const_task_views = {};
-    refresh_task_views();
-    clear_presentation_events();
-}
-
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);

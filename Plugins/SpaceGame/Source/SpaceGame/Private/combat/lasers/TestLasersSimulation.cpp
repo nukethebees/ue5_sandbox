@@ -44,13 +44,6 @@ void Simulation::set_spatial_query_manager(FSpatialQueryManager& new_query_manag
     query_manager = &new_query_manager;
 }
 
-void Simulation::clear_runtime_state() {
-    ml::reset(entities);
-    clear_spawn_buffers();
-    clear_hit_buffers();
-    clear_presentation_events();
-}
-
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);

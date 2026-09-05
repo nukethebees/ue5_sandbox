@@ -22,10 +22,6 @@ void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulatio
     laser_simulation = &new_simulation;
 }
 
-void Simulation::clear_runtime_state() {
-    ml::reset(entities, indices_ready_to_fire, new_lasers);
-}
-
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::begin_play);
     check(entity_registry);
@@ -40,10 +36,6 @@ void Simulation::begin_play() {
 
 void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
     simulation_clock.bind(clock);
-}
-
-void Simulation::begin_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::begin_tick);
 }
 
 void Simulation::update_timers(float const) {
@@ -62,10 +54,6 @@ void Simulation::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::queue_commands);
 
     fire_lasers();
-}
-
-void Simulation::update_entity_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::update_entity_registry);
 }
 
 void Simulation::end_tick() {

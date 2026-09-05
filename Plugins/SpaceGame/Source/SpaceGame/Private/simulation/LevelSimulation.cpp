@@ -150,14 +150,9 @@ void FLevelSimulation::advance(time_type const dt) {
             // Assume registry data is stable here
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLevelSimulation::advance::begin_tick);
 
-            if (player_simulation_is_active()) {
-                player_ship_phase_.begin_tick();
-            }
-
             capital_ships_phase_.begin_tick();
             capital_ship_fighters_phase_.begin_tick();
             turrets_phase_.begin_tick();
-            spinners_phase_.begin_tick();
             lasers_phase_.begin_tick();
         }
 
@@ -216,11 +211,6 @@ void FLevelSimulation::advance(time_type const dt) {
         }
 
         {
-            // Entity collision
-            TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLevelSimulation::advance::entity_collision);
-        }
-
-        {
             // Projectile simulation
             TRACE_CPUPROFILER_EVENT_SCOPE(
                 Sandbox::FLevelSimulation::advance::projectile_simulation);
@@ -262,7 +252,6 @@ void FLevelSimulation::advance(time_type const dt) {
             capital_ships_phase_.update_entity_registry();
             capital_ship_fighters_phase_.update_entity_registry();
             turrets_phase_.update_entity_registry();
-            spinners_phase_.update_entity_registry();
         }
 
         {
@@ -274,10 +263,6 @@ void FLevelSimulation::advance(time_type const dt) {
         {
             // Apply changes from the registry e.g. destroyed targets
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLevelSimulation::advance::sync_from_registry);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase_.sync_from_registry();
-            }
 
             capital_ships_phase_.sync_from_registry();
             capital_ship_fighters_phase_.sync_from_registry();
@@ -298,10 +283,6 @@ void FLevelSimulation::advance(time_type const dt) {
         /* -------------------------------------------------------------------------------- */
         {
             TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLevelSimulation::advance::end_tick);
-
-            if (player_simulation_is_active()) {
-                player_ship_phase_.end_tick();
-            }
 
             capital_ships_phase_.end_tick();
             if (presentation_.IsSet()) {

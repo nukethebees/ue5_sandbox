@@ -91,7 +91,6 @@ struct SPACEGAME_API Simulation {
     float fire_point_distance{0.f};
     float fire_dot_product_threshold{0.95f};
   private:
-    void clear_runtime_state();
     void begin_play();
     void begin_tick();
     void update_timers(float dt);

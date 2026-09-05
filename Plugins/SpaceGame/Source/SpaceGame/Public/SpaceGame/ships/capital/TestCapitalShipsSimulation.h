@@ -85,7 +85,6 @@ struct SPACEGAME_API Simulation {
 
     float entity_radius{0.f};
   private:
-    void clear_runtime_state();
     void begin_play();
     void begin_tick();
     void update_timers(float dt);

@@ -37,12 +37,6 @@ void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulatio
     laser_simulation = &new_simulation;
 }
 
-void Simulation::clear_runtime_state() {
-    entities.reset();
-    target_refresh_next_offset = 0;
-    clear_tick_buffers();
-}
-
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
