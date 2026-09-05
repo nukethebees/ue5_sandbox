@@ -39,6 +39,23 @@
             {"name": "Secondary"}
           ],
           "conversions": ["lex_to_string", "string_view", "display_string_view"]
+        },
+        {
+          "name": "EGameUiIcon",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "enum_array": true,
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "Hive"},
+            {"name": "Video"},
+            {"name": "Gameplay"},
+            {"name": "Audio"},
+            {"name": "Controls"},
+            {"name": "Accessibility"},
+            {"name": "System"}
+          ],
+          "conversions": ["lex_to_string", "string_view", "display_string_view"]
         }
       ]
     },

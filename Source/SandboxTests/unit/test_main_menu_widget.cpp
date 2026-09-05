@@ -18,6 +18,7 @@
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <CQTest.h>
+#include <HAL/FileManager.h>
 
 TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 {
@@ -29,6 +30,25 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
                              text_style.Font.CompositeFont.IsValid() ||
                                  IsValid(text_style.Font.FontObject));
+        auto const& palette{ui_style.palette()};
+        TestRunner->TestTrue(TEXT("Hive canvas remains dark"),
+                             palette.canvas.GetLuminance() < 0.02f);
+        TestRunner->TestTrue(TEXT("Honey is brighter than the raised surface"),
+                             palette.honey.GetLuminance() > palette.surface_raised.GetLuminance());
+        TestRunner->TestTrue(TEXT("Primary text remains readable against the canvas"),
+                             palette.text_primary.GetLuminance() - palette.canvas.GetLuminance() >
+                                 0.65f);
+        for (int32 index{}; index < TEnumTraits<EGameUiIcon>::count; ++index) {
+            auto const icon_role{static_cast<EGameUiIcon>(index)};
+            auto const& icon{ui_style.icon(icon_role)};
+            TestRunner->TestTrue(
+                *FString::Printf(TEXT("%s icon is vector-backed"), LexToString(icon_role)),
+                icon.ImageType == ESlateBrushImageType::Vector);
+            auto const resource_path{icon.GetResourceName().ToString()};
+            TestRunner->TestTrue(
+                *FString::Printf(TEXT("%s icon resource exists"), LexToString(icon_role)),
+                IFileManager::Get().FileExists(*resource_path));
+        }
 
         auto const* const ui_settings{GetDefault<ml::ioj::USpaceGameUiSettings>()};
         auto* const configured_theme{ui_settings->default_theme.LoadSynchronous()};

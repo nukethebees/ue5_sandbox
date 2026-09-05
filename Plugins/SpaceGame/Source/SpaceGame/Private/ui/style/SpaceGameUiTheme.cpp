@@ -1,32 +1,30 @@
 #include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 
+#include <Brushes/SlateImageBrush.h>
+#include <Interfaces/IPluginManager.h>
+#include <Misc/Paths.h>
 #include <Styling/CoreStyle.h>
 
 namespace ml::ioj {
 namespace {
-auto make_text_style(TCHAR const* const typeface, int32 const size, FLinearColor const& colour)
-    -> FTextBlockStyle {
-    return FTextBlockStyle{}
-        .SetFont(FCoreStyle::GetDefaultFontStyle(typeface, size))
-        .SetColorAndOpacity(FSlateColor{colour});
+auto srgb(TCHAR const* const value) -> FLinearColor {
+    return FLinearColor::FromSRGBColor(FColor::FromHex(value));
 }
 
-auto make_brush(FLinearColor const& colour) -> FSlateBrush {
+auto make_brush(FLinearColor const& colour, FVector2D const size = FVector2D{16.0f, 16.0f})
+    -> FSlateBrush {
     FSlateBrush brush;
     brush.DrawAs = ESlateBrushDrawType::Box;
+    brush.ImageSize = size;
     brush.TintColor = FSlateColor{colour};
     return brush;
 }
 
-struct FButtonPalette {
-    FLinearColor normal{};
-    FLinearColor hovered{};
-    FLinearColor pressed{};
-    FLinearColor selected{};
-    FLinearColor selected_hovered{};
-    FLinearColor selected_pressed{};
-    FLinearColor disabled{};
-};
+auto make_text_style(FSlateFontInfo font, int32 const size, FLinearColor const& colour)
+    -> FTextBlockStyle {
+    font.Size = size;
+    return FTextBlockStyle{}.SetFont(font).SetColorAndOpacity(FSlateColor{colour});
+}
 
 auto make_button_state_style(FLinearColor const& normal,
                              FLinearColor const& hovered,
@@ -37,143 +35,240 @@ auto make_button_state_style(FLinearColor const& normal,
         .SetHovered(make_brush(hovered))
         .SetPressed(make_brush(pressed))
         .SetDisabled(make_brush(disabled))
-        .SetNormalPadding(FMargin{10.f, 5.f})
-        .SetPressedPadding(FMargin{10.f, 5.f});
+        .SetNormalPadding(FMargin{14.0f, 7.0f})
+        .SetPressedPadding(FMargin{14.0f, 8.0f, 14.0f, 6.0f});
 }
 
-auto make_button_style(FButtonPalette const& palette,
-                       EGameTextStyle const normal_text = EGameTextStyle::Body)
-    -> FGameButtonStyleDefinition {
-    FGameButtonStyleDefinition result;
-    result.normal =
-        make_button_state_style(palette.normal, palette.hovered, palette.pressed, palette.disabled);
-    result.selected = make_button_state_style(
-        palette.selected, palette.selected_hovered, palette.selected_pressed, palette.disabled);
+auto make_button_style(FGameUiPalette const& palette,
+                       FTextBlockStyle const& normal_text,
+                       FTextBlockStyle const& hovered_text,
+                       FTextBlockStyle const& selected_text,
+                       FTextBlockStyle const& disabled_text,
+                       bool const primary) -> FGameButtonPresentationStyle {
+    auto result{FGameButtonPresentationStyle{}};
+    if (primary) {
+        result.normal = make_button_state_style(
+            palette.honey, palette.honey_hovered, palette.honey_pressed, palette.surface_raised);
+        result.selected = result.normal;
+    } else {
+        result.normal = make_button_state_style(
+            palette.surface_raised, palette.border, palette.surface, palette.surface_low);
+        result.selected = make_button_state_style(
+            palette.honey, palette.honey_hovered, palette.honey_pressed, palette.surface_low);
+    }
     result.normal_text = normal_text;
-    result.minimum_size = FVector2f{0.f, 28.f};
+    result.normal_hovered_text = hovered_text;
+    result.selected_text = selected_text;
+    result.selected_hovered_text = selected_text;
+    result.disabled_text = disabled_text;
+    result.focus = make_brush(palette.focus);
+    result.minimum_size = FVector2f{0.0f, primary ? 42.0f : 40.0f};
     return result;
 }
 
-auto compile_button_style(FGameButtonStyleDefinition const& source,
-                          FGameTextStyles const& text_styles) -> FGameButtonPresentationStyle {
-    return FGameButtonPresentationStyle{
-        .normal = source.normal,
-        .selected = source.selected,
-        .normal_text = text_styles.get(source.normal_text),
-        .normal_hovered_text = text_styles.get(source.normal_hovered_text),
-        .selected_text = text_styles.get(source.selected_text),
-        .selected_hovered_text = text_styles.get(source.selected_hovered_text),
-        .disabled_text = text_styles.get(source.disabled_text),
-        .custom_padding = source.custom_padding,
-        .minimum_size = source.minimum_size,
-        .maximum_size = source.maximum_size,
-    };
-}
-}
-
-auto FGameTextStyles::get(EGameTextStyle const role) const -> FTextBlockStyle const& {
-    switch (role) {
-        case EGameTextStyle::Body:
-            return body;
-        case EGameTextStyle::BodySecondary:
-            return body_secondary;
-        case EGameTextStyle::Caption:
-            return caption;
-        case EGameTextStyle::Heading1:
-            return heading_1;
-        case EGameTextStyle::Heading2:
-            return heading_2;
-        case EGameTextStyle::Heading3:
-            return heading_3;
-        case EGameTextStyle::Warning:
-            return warning;
-        case EGameTextStyle::HudPrimary:
-            return hud_primary;
-        case EGameTextStyle::HudSecondary:
-            return hud_secondary;
-        case EGameTextStyle::Disabled:
-            return disabled;
-    }
-
-    checkNoEntry();
-    return body;
+auto make_scroll_bar_style(FGameUiPalette const& palette) -> FScrollBarStyle {
+    auto const track{make_brush(palette.control, FVector2D{10.0f, 10.0f})};
+    auto const thumb{make_brush(palette.honey, FVector2D{10.0f, 10.0f})};
+    auto const hovered{make_brush(palette.honey_hovered, FVector2D{10.0f, 10.0f})};
+    return FScrollBarStyle{}
+        .SetHorizontalBackgroundImage(track)
+        .SetVerticalBackgroundImage(track)
+        .SetHorizontalTopSlotImage(track)
+        .SetHorizontalBottomSlotImage(track)
+        .SetVerticalTopSlotImage(track)
+        .SetVerticalBottomSlotImage(track)
+        .SetNormalThumbImage(thumb)
+        .SetHoveredThumbImage(hovered)
+        .SetDraggedThumbImage(hovered)
+        .SetThickness(10.0f);
 }
 
-auto FGameButtonStyles::get(EGameButtonStyle const role) const
-    -> FGameButtonStyleDefinition const& {
-    switch (role) {
-        case EGameButtonStyle::Primary:
-            return primary;
-        case EGameButtonStyle::Secondary:
-            return secondary;
-    }
+auto icon_path(EGameUiIcon const icon) -> FString {
+    auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SpaceGame"))};
+    auto const root{plugin.IsValid()
+                        ? plugin->GetBaseDir()
+                        : FPaths::Combine(FPaths::ProjectPluginsDir(), TEXT("SpaceGame"))};
+    return FPaths::Combine(
+        root, TEXT("Resources/UI/Hive"), FString::Printf(TEXT("%s.svg"), LexToString(icon)));
+}
 
-    checkNoEntry();
-    return primary;
+auto make_icon(EGameUiIcon const icon) -> FSlateBrush {
+    return FSlateVectorImageBrush{icon_path(icon), FVector2D{24.0f, 24.0f}, FLinearColor::White};
+}
 }
 
 USpaceGameUiTheme::USpaceGameUiTheme() {
-    text_styles_.body = make_text_style(TEXT("Regular"), 14, FLinearColor::White);
-    text_styles_.body_secondary =
-        make_text_style(TEXT("Regular"), 14, FLinearColor{0.72f, 0.76f, 0.82f, 1.f});
-    text_styles_.caption =
-        make_text_style(TEXT("Regular"), 12, FLinearColor{0.6f, 0.64f, 0.7f, 1.f});
-    text_styles_.heading_1 = make_text_style(TEXT("Bold"), 28, FLinearColor::White);
-    text_styles_.heading_2 = make_text_style(TEXT("Bold"), 22, FLinearColor::White);
-    text_styles_.heading_3 = make_text_style(TEXT("Bold"), 18, FLinearColor::White);
-    text_styles_.warning = make_text_style(TEXT("Bold"), 14, FLinearColor{1.f, 0.35f, 0.15f, 1.f});
-    text_styles_.hud_primary = make_text_style(TEXT("Bold"), 18, FLinearColor::White);
-    text_styles_.hud_secondary =
-        make_text_style(TEXT("Regular"), 14, FLinearColor{0.72f, 0.76f, 0.82f, 1.f});
-    text_styles_.disabled =
-        make_text_style(TEXT("Regular"), 14, FLinearColor{0.5f, 0.52f, 0.55f, 1.f});
+    palette_.canvas = srgb(TEXT("10130F"));
+    palette_.surface_low = srgb(TEXT("181B16"));
+    palette_.surface = srgb(TEXT("25271F"));
+    palette_.surface_raised = srgb(TEXT("33342A"));
+    palette_.control = srgb(TEXT("171914"));
+    palette_.border_shadow = srgb(TEXT("090A08"));
+    palette_.border = srgb(TEXT("6F7064"));
+    palette_.border_highlight = srgb(TEXT("A7A596"));
+    palette_.text_primary = srgb(TEXT("E5E0D2"));
+    palette_.text_secondary = srgb(TEXT("B7B2A4"));
+    palette_.text_muted = srgb(TEXT("7E7B70"));
+    palette_.text_disabled = srgb(TEXT("66645D"));
+    palette_.honey = srgb(TEXT("D6A73B"));
+    palette_.honey_hovered = srgb(TEXT("EBC45D"));
+    palette_.honey_pressed = srgb(TEXT("A87922"));
+    palette_.focus = srgb(TEXT("F3CD66"));
+    palette_.warning = srgb(TEXT("D98B37"));
+    palette_.danger = srgb(TEXT("C45D4C"));
+    palette_.success = srgb(TEXT("7E9E62"));
+    palette_.modal_overlay = srgb(TEXT("050604")).CopyWithNewOpacity(0.85f);
 
-    panel_background_ = make_brush(FLinearColor{0.035f, 0.045f, 0.065f, 0.78f});
-
-    settings_style_.section_text = text_styles_.heading_3;
-    settings_style_.label_text = text_styles_.body;
-    settings_style_.value_text = text_styles_.body_secondary;
-    settings_style_.disabled_text = text_styles_.disabled;
-    settings_style_.empty_text = text_styles_.body_secondary;
-    settings_style_.page_background = make_brush(FLinearColor{0.018f, 0.028f, 0.045f, 0.99f});
-
-    button_styles_.primary = make_button_style(FButtonPalette{
-        .normal = FLinearColor{0.12f, 0.14f, 0.16f, 1.f},
-        .hovered = FLinearColor{0.16f, 0.38f, 0.55f, 1.f},
-        .pressed = FLinearColor{0.08f, 0.3f, 0.65f, 1.f},
-        .selected = FLinearColor{0.08f, 0.3f, 0.65f, 1.f},
-        .selected_hovered = FLinearColor{0.12f, 0.4f, 0.78f, 1.f},
-        .selected_pressed = FLinearColor{0.06f, 0.24f, 0.52f, 1.f},
-        .disabled = FLinearColor{0.08f, 0.09f, 0.1f, 0.6f},
-    });
-    button_styles_.secondary = make_button_style(
-        FButtonPalette{
-            .normal = FLinearColor{0.1f, 0.11f, 0.12f, 1.f},
-            .hovered = FLinearColor{0.18f, 0.2f, 0.22f, 1.f},
-            .pressed = FLinearColor{0.07f, 0.08f, 0.09f, 1.f},
-            .selected = FLinearColor{0.14f, 0.18f, 0.22f, 1.f},
-            .selected_hovered = FLinearColor{0.22f, 0.26f, 0.3f, 1.f},
-            .selected_pressed = FLinearColor{0.1f, 0.14f, 0.18f, 1.f},
-            .disabled = FLinearColor{0.08f, 0.09f, 0.1f, 0.6f},
-        },
-        EGameTextStyle::BodySecondary);
+    typography_.body = FCoreStyle::GetDefaultFontStyle(TEXT("Mono"), 14);
+    typography_.display = FCoreStyle::GetDefaultFontStyle(TEXT("BoldCondensed"), 18);
 }
 
 auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
     FGameUiStyle compiled;
-    for (int32 index{}; index < TEnumTraits<EGameTextStyle>::count; ++index) {
-        auto const role{static_cast<EGameTextStyle>(index)};
-        compiled.text_styles_[role] = text_styles_.get(role);
+    compiled.palette_ = palette_;
+
+    compiled.text_styles_[EGameTextStyle::Body] =
+        make_text_style(typography_.body, 14, palette_.text_primary);
+    compiled.text_styles_[EGameTextStyle::BodySecondary] =
+        make_text_style(typography_.body, 14, palette_.text_secondary);
+    compiled.text_styles_[EGameTextStyle::Caption] =
+        make_text_style(typography_.body, 12, palette_.text_muted);
+    compiled.text_styles_[EGameTextStyle::Heading1] =
+        make_text_style(typography_.display, 30, palette_.text_primary);
+    compiled.text_styles_[EGameTextStyle::Heading2] =
+        make_text_style(typography_.display, 24, palette_.text_primary);
+    compiled.text_styles_[EGameTextStyle::Heading3] =
+        make_text_style(typography_.display, 19, palette_.text_primary);
+    compiled.text_styles_[EGameTextStyle::Warning] =
+        make_text_style(typography_.display, 14, palette_.warning);
+    compiled.text_styles_[EGameTextStyle::HudPrimary] =
+        make_text_style(typography_.display, 18, palette_.text_primary);
+    compiled.text_styles_[EGameTextStyle::HudSecondary] =
+        make_text_style(typography_.body, 14, palette_.text_secondary);
+    compiled.text_styles_[EGameTextStyle::Disabled] =
+        make_text_style(typography_.body, 14, palette_.text_disabled);
+
+    auto const dark_button_text{make_text_style(typography_.display, 16, palette_.control)};
+    auto const normal_button_text{make_text_style(typography_.display, 16, palette_.text_primary)};
+    auto const hovered_button_text{make_text_style(typography_.display, 16, palette_.text_primary)};
+    auto const disabled_button_text{
+        make_text_style(typography_.display, 16, palette_.text_disabled)};
+    compiled.button_styles_[EGameButtonStyle::Primary] = make_button_style(
+        palette_, dark_button_text, dark_button_text, dark_button_text, disabled_button_text, true);
+    compiled.button_styles_[EGameButtonStyle::Secondary] = make_button_style(palette_,
+                                                                             normal_button_text,
+                                                                             hovered_button_text,
+                                                                             dark_button_text,
+                                                                             disabled_button_text,
+                                                                             false);
+
+    auto settings{settings_style_};
+    settings.section_text = make_text_style(typography_.display, 19, palette_.text_primary);
+    settings.label_text = compiled.text_styles_[EGameTextStyle::Body];
+    settings.value_text = compiled.text_styles_[EGameTextStyle::BodySecondary];
+    settings.disabled_text = compiled.text_styles_[EGameTextStyle::Disabled];
+    settings.empty_text = compiled.text_styles_[EGameTextStyle::BodySecondary];
+    settings.page_background = make_brush(palette_.canvas);
+    settings.section_background = make_brush(palette_.surface);
+    settings.section_border = make_brush(palette_.border);
+    settings.value_background = make_brush(palette_.control);
+    settings.page_margin = FMargin{32.0f};
+    settings.body_padding = FMargin{16.0f};
+    settings.section_padding = FMargin{18.0f};
+    settings.section_border_thickness = FMargin{1.0f};
+    settings.section_title_padding = FMargin{0.0f, 0.0f, 0.0f, 14.0f};
+    settings.row_padding = FMargin{0.0f, 5.0f};
+    settings.section_spacing = 16.0f;
+    settings.header_spacing = 0.0f;
+    settings.footer_spacing = 0.0f;
+    settings.tab_spacing = 8.0f;
+    settings.button_spacing = 12.0f;
+    settings.maximum_page_width = 1240.0f;
+    settings.label_width = 280.0f;
+    settings.control_width = 440.0f;
+    settings.row_minimum_height = 38.0f;
+    settings.label_control_spacing = 28.0f;
+    settings.value_text_width = 72.0f;
+    settings.value_text_spacing = 12.0f;
+
+    auto const normal_bar{make_brush(palette_.border, FVector2D{8.0f, 4.0f})};
+    auto const hovered_bar{make_brush(palette_.border_highlight, FVector2D{8.0f, 4.0f})};
+    auto const disabled_bar{make_brush(palette_.text_disabled, FVector2D{8.0f, 4.0f})};
+    auto const normal_thumb{make_brush(palette_.honey, FVector2D{18.0f, 18.0f})};
+    auto const hovered_thumb{make_brush(palette_.honey_hovered, FVector2D{20.0f, 20.0f})};
+    auto const disabled_thumb{make_brush(palette_.text_disabled, FVector2D{18.0f, 18.0f})};
+    settings.slider = FSliderStyle{}
+                          .SetNormalBarImage(normal_bar)
+                          .SetHoveredBarImage(hovered_bar)
+                          .SetDisabledBarImage(disabled_bar)
+                          .SetNormalThumbImage(normal_thumb)
+                          .SetHoveredThumbImage(hovered_thumb)
+                          .SetDisabledThumbImage(disabled_thumb)
+                          .SetBarThickness(4.0f);
+
+    auto const unchecked{make_brush(palette_.control, FVector2D{22.0f, 22.0f})};
+    auto const unchecked_hovered{make_brush(palette_.border, FVector2D{22.0f, 22.0f})};
+    auto const checked{make_brush(palette_.honey, FVector2D{22.0f, 22.0f})};
+    auto const checked_hovered{make_brush(palette_.honey_hovered, FVector2D{22.0f, 22.0f})};
+    settings.toggle =
+        FCheckBoxStyle{}
+            .SetCheckBoxType(ESlateCheckBoxType::CheckBox)
+            .SetUncheckedImage(unchecked)
+            .SetUncheckedHoveredImage(unchecked_hovered)
+            .SetUncheckedPressedImage(unchecked_hovered)
+            .SetCheckedImage(checked)
+            .SetCheckedHoveredImage(checked_hovered)
+            .SetCheckedPressedImage(make_brush(palette_.honey_pressed, FVector2D{22.0f, 22.0f}));
+
+    auto combo_button{
+        FCoreStyle::Get().GetWidgetStyle<FComboBoxStyle>(TEXT("ComboBox")).ComboButtonStyle};
+    combo_button.SetButtonStyle(make_button_state_style(
+        palette_.control, palette_.surface_raised, palette_.surface, palette_.surface_low));
+    combo_button.DownArrowImage.TintColor = FSlateColor{palette_.text_secondary};
+    combo_button.SetMenuBorderBrush(make_brush(palette_.border));
+    combo_button.SetMenuBorderPadding(FMargin{1.0f});
+    settings.combo_box = FComboBoxStyle{}
+                             .SetComboButtonStyle(combo_button)
+                             .SetContentPadding(FMargin{10.0f, 5.0f})
+                             .SetMenuRowPadding(FMargin{10.0f, 5.0f});
+    auto const row{make_brush(palette_.surface)};
+    auto const row_hovered{make_brush(palette_.surface_raised)};
+    auto const row_selected{make_brush(palette_.honey_pressed)};
+    settings.combo_row = FTableRowStyle{}
+                             .SetEvenRowBackgroundBrush(row)
+                             .SetOddRowBackgroundBrush(row)
+                             .SetEvenRowBackgroundHoveredBrush(row_hovered)
+                             .SetOddRowBackgroundHoveredBrush(row_hovered)
+                             .SetActiveBrush(row_selected)
+                             .SetActiveHoveredBrush(row_selected)
+                             .SetInactiveBrush(row_selected)
+                             .SetInactiveHoveredBrush(row_selected)
+                             .SetSelectorFocusedBrush(make_brush(palette_.focus))
+                             .SetTextColor(FSlateColor{palette_.text_primary})
+                             .SetSelectedTextColor(FSlateColor{palette_.text_primary});
+    settings.scroll_bar = make_scroll_bar_style(palette_);
+    compiled.settings_ = MoveTemp(settings);
+
+    compiled.chrome_.canvas = make_brush(palette_.canvas);
+    compiled.chrome_.frame_border = make_brush(palette_.border_highlight);
+    compiled.chrome_.frame_background = make_brush(palette_.surface_low);
+    compiled.chrome_.header_background = make_brush(palette_.surface_raised);
+    compiled.chrome_.navigation_background = make_brush(palette_.surface_low);
+    compiled.chrome_.body_background = make_brush(palette_.surface);
+    compiled.chrome_.footer_background = make_brush(palette_.surface_raised);
+    compiled.chrome_.focus = make_brush(palette_.focus);
+    compiled.chrome_.modal_overlay = make_brush(palette_.modal_overlay);
+    compiled.chrome_.scroll_bar = make_scroll_bar_style(palette_);
+
+    for (int32 index{}; index < TEnumTraits<EGameUiIcon>::count; ++index) {
+        auto const icon{static_cast<EGameUiIcon>(index)};
+        compiled.icons_[icon] = make_icon(icon);
     }
 
-    for (int32 index{}; index < TEnumTraits<EGameButtonStyle>::count; ++index) {
-        auto const role{static_cast<EGameButtonStyle>(index)};
-        compiled.button_styles_[role] =
-            compile_button_style(button_styles_.get(role), text_styles_);
-    }
-
-    compiled.panel_ = FGamePanelStyle{.background = panel_background_, .padding = panel_padding_};
-    compiled.settings_ = settings_style_;
+    compiled.panel_ = FGamePanelStyle{
+        .background = make_brush(palette_.surface.CopyWithNewOpacity(0.88f)),
+        .padding = panel_padding_,
+    };
     compiled.health_bar_ = health_bar_;
     return compiled;
 }

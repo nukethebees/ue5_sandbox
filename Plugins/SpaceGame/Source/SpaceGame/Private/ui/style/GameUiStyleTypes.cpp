@@ -93,6 +93,41 @@ auto get_game_button_style_display_name(EGameButtonStyle const value) -> TCHAR c
     return get_game_button_style_name(value);
 }
 
+auto get_game_ui_icon_name(EGameUiIcon const value) -> TCHAR const* {
+    switch (value) {
+    case EGameUiIcon::Hive: {
+        return TEXT("Hive");
+    }
+    case EGameUiIcon::Video: {
+        return TEXT("Video");
+    }
+    case EGameUiIcon::Gameplay: {
+        return TEXT("Gameplay");
+    }
+    case EGameUiIcon::Audio: {
+        return TEXT("Audio");
+    }
+    case EGameUiIcon::Controls: {
+        return TEXT("Controls");
+    }
+    case EGameUiIcon::Accessibility: {
+        return TEXT("Accessibility");
+    }
+    case EGameUiIcon::System: {
+        return TEXT("System");
+    }
+    }
+
+    ensureMsgf(false,
+               TEXT("Unhandled EGameUiIcon value: %lld"),
+               static_cast<int64>(value));
+    return TEXT("<invalid EGameUiIcon>");
+}
+
+auto get_game_ui_icon_display_name(EGameUiIcon const value) -> TCHAR const* {
+    return get_game_ui_icon_name(value);
+}
+
 
 } // namespace
 
@@ -102,6 +137,10 @@ auto LexToString(EGameTextStyle const value) -> TCHAR const* {
 
 auto LexToString(EGameButtonStyle const value) -> TCHAR const* {
     return get_game_button_style_name(value);
+}
+
+auto LexToString(EGameUiIcon const value) -> TCHAR const* {
+    return get_game_ui_icon_name(value);
 }
 
 namespace ml::ioj {
@@ -119,6 +158,14 @@ auto to_string_view(EGameButtonStyle const value) -> FStringView {
 
 auto to_display_string_view(EGameButtonStyle const value) -> FStringView {
     return FStringView{get_game_button_style_display_name(value)};
+}
+
+auto to_string_view(EGameUiIcon const value) -> FStringView {
+    return FStringView{get_game_ui_icon_name(value)};
+}
+
+auto to_display_string_view(EGameUiIcon const value) -> FStringView {
+    return FStringView{get_game_ui_icon_display_name(value)};
 }
 
 

@@ -1,4 +1,5 @@
 using UnrealBuildTool;
+using System.IO;
 
 public class SpaceGame : ModuleRules
 {
@@ -38,7 +39,14 @@ public class SpaceGame : ModuleRules
             "Niagara",
             "Slate",
             "TraceLog",
+            "Projects",
         });
+
+        string hiveIconDirectory = Path.Combine(PluginDirectory, "Resources", "UI", "Hive");
+        foreach (string hiveIcon in Directory.GetFiles(hiveIconDirectory, "*.svg"))
+        {
+            RuntimeDependencies.Add(hiveIcon);
+        }
 
         if (Target.bBuildEditor)
         {
