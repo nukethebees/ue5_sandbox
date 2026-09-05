@@ -12,7 +12,8 @@ namespace kernel_codegen::detail {
 using codegen::sexpr::SourceSpan;
 
 enum class StorageKind { array, scalar };
-enum class ExpressionKind { reference, literal, binary };
+enum class ExpressionKind { reference, literal, constant, binary };
+enum class ConstantKind { nan, infinity, negative_infinity };
 enum class VariantKind { out_of_place, in_place };
 enum class Aliasing { output_disjoint, pairwise_disjoint };
 
@@ -21,6 +22,7 @@ struct Expression {
     std::string value;
     std::vector<Expression> arguments;
     SourceSpan span;
+    ConstantKind constant{ConstantKind::nan};
 };
 
 struct Operand {

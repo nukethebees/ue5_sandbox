@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 namespace kernel_codegen::detail {
 namespace {
@@ -46,6 +48,26 @@ auto occurrence_count(std::string_view text, std::string_view const value) -> st
 auto render_source(std::string_view const source) -> std::vector<codegen::GeneratedFile> {
     auto const document{parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
     return render(document.modules[0]);
+}
+
+auto literal_source(std::string_view const types, std::string_view const literal) -> std::string {
+    return std::string{R"((kernel-module literals
+  (header "ArrayKernels.h")
+  (source "ArrayKernels.cpp")
+  (header-include "ArrayKernels.h")
+  (namespace ml)
+  (export COMPILE_FIXTURE_API)
+  (type-set numeric )"} +
+           std::string{types} + R"()
+  (map add_literal
+    (types numeric)
+    (operand data array)
+    (output out)
+    (expression (+ data )" +
+           std::string{literal} + R"())
+    (variants
+      (out-of-place add_literal))))
+)";
 }
 
 TEST(KernelParser, ParsesTypedMapDeclaration) {
@@ -120,6 +142,71 @@ TEST(KernelRenderer, PairwiseDisjointRestrictsAndChecksEveryArray) {
     EXPECT_TRUE(files[1].content.contains("multiply: rhs and out must not overlap"));
 }
 
+TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
+    constexpr std::string_view source = R"(
+(kernel-module constants
+  (header "ArrayKernels.h")
+  (source "ArrayKernels.cpp")
+  (header-include "ArrayKernels.h")
+  (namespace ml)
+  (export COMPILE_FIXTURE_API)
+  (type-set floating float double)
+  (map classify
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (+ (constant nan)
+                           (+ (constant infinity) (constant negative-infinity)))))
+    (variants
+      (out-of-place classify))))
+)";
+
+    auto const files{render_source(source)};
+
+    EXPECT_TRUE(files[1].content.contains("#include <limits>"));
+    EXPECT_TRUE(files[1].content.contains("std::numeric_limits<float>::quiet_NaN()"));
+    EXPECT_TRUE(files[1].content.contains("std::numeric_limits<float>::infinity()"));
+    EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<float>::infinity()"));
+    EXPECT_TRUE(files[1].content.contains("std::numeric_limits<double>::quiet_NaN()"));
+    EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<double>::infinity()"));
+}
+
+TEST(KernelRenderer, TreatsBareNanAndInfAsOperandReferences) {
+    constexpr std::string_view source = R"(
+(kernel-module constants
+  (header "ArrayKernels.h")
+  (source "ArrayKernels.cpp")
+  (header-include "ArrayKernels.h")
+  (namespace ml)
+  (export COMPILE_FIXTURE_API)
+  (type-set floating float)
+  (map add
+    (types floating)
+    (operand nan array)
+    (operand inf scalar)
+    (output out)
+    (expression (+ nan inf))
+    (variants
+      (out-of-place add))))
+)";
+
+    auto const files{render_source(source)};
+
+    EXPECT_TRUE(files[1].content.contains("nan[i] + inf"));
+    EXPECT_FALSE(files[1].content.contains("#include <limits>"));
+}
+
+TEST(KernelRenderer, NormalizesAndTypesFiniteDecimalLiterals) {
+    for (auto const& [literal, normalized] :
+         std::vector<std::pair<std::string_view, std::string_view>>{
+             {"0", "0"}, {"-12", "-12"}, {"+2", "2"}, {".25", "0.25"},
+             {"1.", "1.0"}, {"1e-4", "1e-4"}}) {
+        auto const files{render_source(literal_source("float", literal))};
+        EXPECT_TRUE(files[1].content.contains("static_cast<float>(" +
+                                              std::string{normalized} + ")"));
+    }
+}
+
 TEST(KernelParser, RejectsUnknownExpressionOperatorWithLocation) {
     auto source{std::string{valid_source}};
     source.replace(source.find("(* lhs rhs)"), std::string{"(* lhs rhs)"}.size(), "(% lhs rhs)");
@@ -166,6 +253,31 @@ TEST(KernelParser, RejectsNonFiniteNumericLiterals) {
         static_cast<void>(
             parse("bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", source))),
         std::runtime_error);
+}
+
+TEST(KernelParser, RejectsUnknownAndMalformedConstants) {
+    for (auto const expression : {"(constant maximum)", "(constant nan extra)"}) {
+        EXPECT_THROW(
+            static_cast<void>(render_source(literal_source("float", expression))),
+            std::runtime_error);
+    }
+}
+
+TEST(KernelParser, RejectsNonFiniteConstantsForIntegralTypeSets) {
+    EXPECT_THROW(
+        static_cast<void>(render_source(literal_source("int32 float", "(constant nan)"))),
+        std::runtime_error);
+}
+
+TEST(KernelParser, RejectsInvalidOrUnrepresentableDecimalLiterals) {
+    for (auto const literal : {"08", "00", "1e", "1e100", "1e-100"}) {
+        EXPECT_THROW(static_cast<void>(render_source(literal_source("float", literal))),
+                     std::runtime_error);
+    }
+    for (auto const literal : {"0.5", "2147483648"}) {
+        EXPECT_THROW(static_cast<void>(render_source(literal_source("int32", literal))),
+                     std::runtime_error);
+    }
 }
 
 TEST(KernelRenderer, RejectsCollidingPublicSignatures) {

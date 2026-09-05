@@ -1,5 +1,6 @@
 #include "ArrayKernels.h"
 
+#include <cmath>
 #include <cstddef>
 #include <string_view>
 
@@ -43,6 +44,25 @@ auto test_size() -> bool {
     return true;
 }
 
+template <typename T>
+auto test_constants() -> bool {
+    T input[1]{static_cast<T>(1)};
+    T out[1]{};
+    auto const input_view{TConstArrayView<T>{input, 1}};
+    auto const out_view{TArrayView<T>{out, 1}};
+
+    ml::add_nan(input_view, out_view);
+    if (!std::isnan(out[0])) {
+        return false;
+    }
+    ml::add_infinity(input_view, out_view);
+    if (!std::isinf(out[0]) || out[0] < static_cast<T>(0)) {
+        return false;
+    }
+    ml::add_negative_infinity(input_view, out_view);
+    return std::isinf(out[0]) && out[0] < static_cast<T>(0);
+}
+
 void run_unequal_lengths() {
     float lhs[2]{};
     float rhs[1]{};
@@ -83,6 +103,7 @@ auto main(int const argc, char const* const* argv) -> int {
     auto const passed = test_size<int32, 0>() && test_size<int32, 1>() &&
                         test_size<int32, 7>() && test_size<int32, 8>() &&
                         test_size<int32, 9>() && test_size<float, 31>() &&
-                        test_size<double, 9>();
+                        test_size<double, 9>() && test_constants<float>() &&
+                        test_constants<double>();
     return passed ? 0 : 1;
 }

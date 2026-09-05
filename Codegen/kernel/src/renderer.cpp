@@ -178,9 +178,10 @@ auto raw_parameters(ExpandedVariant const& expanded) -> std::string {
 
 auto render_expression(Expression const& expression,
                        MapOperation const& operation,
-                       std::vector<StorageKind> const& storage) -> std::string {
+                       std::vector<StorageKind> const& storage,
+                       std::string const& type) -> std::string {
     if (expression.kind == ExpressionKind::literal) {
-        return expression.value;
+        return "static_cast<" + type + ">(" + expression.value + ")";
     }
     if (expression.kind == ExpressionKind::reference) {
         auto const found{std::ranges::find_if(operation.operands, [&](auto const& operand) {
@@ -189,9 +190,24 @@ auto render_expression(Expression const& expression,
         auto const index{static_cast<std::size_t>(found - operation.operands.begin())};
         return expression.value + (storage[index] == StorageKind::array ? "[i]" : "");
     }
-    return "(" + render_expression(expression.arguments[0], operation, storage) + " " +
+    if (expression.kind == ExpressionKind::constant) {
+        switch (expression.constant) {
+        case ConstantKind::nan:
+            return "std::numeric_limits<" + type + ">::quiet_NaN()";
+        case ConstantKind::infinity:
+            return "std::numeric_limits<" + type + ">::infinity()";
+        case ConstantKind::negative_infinity:
+            return "(-std::numeric_limits<" + type + ">::infinity())";
+        }
+    }
+    return "(" + render_expression(expression.arguments[0], operation, storage, type) + " " +
            expression.value + " " +
-           render_expression(expression.arguments[1], operation, storage) + ")";
+           render_expression(expression.arguments[1], operation, storage, type) + ")";
+}
+
+auto contains_constant(Expression const& expression) -> bool {
+    return expression.kind == ExpressionKind::constant ||
+           std::ranges::any_of(expression.arguments, contains_constant);
 }
 
 auto array_names(ExpandedVariant const& expanded) -> std::vector<std::string> {
@@ -354,7 +370,13 @@ auto render_source(KernelModule const& module,
     std::string result{generated_warning};
     result += "#include \"" + module.header_include + "\"\n\n";
     result += "#include \"CoreMinimal.h\"\n\n";
-    result += "#include <cstddef>\n#include <cstdint>\n\n";
+    result += "#include <cstddef>\n#include <cstdint>\n";
+    if (std::ranges::any_of(module.operations, [](auto const& operation) {
+            return contains_constant(operation.expression);
+        })) {
+        result += "#include <limits>\n";
+    }
+    result += "\n";
     result += "namespace {\n\n";
     result += "auto ranges_overlap(void const* const lhs, std::size_t const lhs_size,\n";
     result += "                    void const* const rhs, std::size_t const rhs_size) noexcept -> bool {\n";
@@ -373,7 +395,8 @@ auto render_source(KernelModule const& module,
         result += "        " + destination + "[i] = " +
                   render_expression(expanded.operation->expression,
                                     *expanded.operation,
-                                    expanded.storage) +
+                                    expanded.storage,
+                                    expanded.type) +
                   ";\n";
         result += "    }\n}\n\n";
     }

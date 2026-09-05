@@ -24,7 +24,10 @@ operand       := "(" "operand" identifier storage ")"
 storage       := "array" | "scalar" | "(" ("array" | "scalar")+ ")"
 output        := "(" "output" identifier ")"
 expression    := "(" "expression" expr ")"
-expr          := identifier | number | "(" ("+" | "-" | "*" | "/") expr expr ")"
+expr          := identifier | decimal | constant
+               | "(" ("+" | "-" | "*" | "/") expr expr ")"
+decimal       := signed decimal integer, fraction, or base-10 exponent
+constant      := "(" "constant" ("nan" | "infinity" | "negative-infinity") ")"
 variants      := "(" "variants" variant+ ")"
 variant       := "(" "out-of-place" identifier ")"
                | "(" "in-place" operand_name identifier ")"
@@ -38,6 +41,11 @@ Every array in one generated overload has the same length. Empty views are valid
 Storage choices form a Cartesian product. An all-scalar out-of-place combination is discarded, an
 in-place target is forced to array storage, and declaration order determines C++ argument order.
 No commutative or associative rewriting is performed.
+
+Finite decimal literals are validated against every concrete type used by the operation and are
+rendered with an explicit cast to that type. Non-finite values use the explicit `constant` form and
+require a type-set containing only `float` and/or `double`; bare `nan` and `inf` are ordinary operand
+identifiers.
 
 ## Commands
 

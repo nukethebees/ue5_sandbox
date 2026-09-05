@@ -6,6 +6,7 @@
   (export COMPILE_FIXTURE_API)
 
   (type-set numeric int32 float double)
+  (type-set floating float double)
 
   (map add
     (types numeric)
@@ -42,4 +43,28 @@
     (output out)
     (expression (/ data value))
     (variants
-      (in-place data divide_in_place))))
+      (in-place data divide_in_place)))
+
+  (map add_nan
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (constant nan)))
+    (variants
+      (out-of-place add_nan)))
+
+  (map add_infinity
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (constant infinity)))
+    (variants
+      (out-of-place add_infinity)))
+
+  (map add_negative_infinity
+    (types floating)
+    (operand data array)
+    (output out)
+    (expression (+ data (constant negative-infinity)))
+    (variants
+      (out-of-place add_negative_infinity))))

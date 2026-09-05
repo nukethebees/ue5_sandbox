@@ -1,12 +1,16 @@
 #include "parser.h"
 
 #include <algorithm>
+#include <charconv>
 #include <cctype>
 #include <cmath>
-#include <cstdlib>
+#include <cstdint>
+#include <limits>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 
 namespace kernel_codegen::detail {
@@ -23,6 +27,97 @@ struct Form {
 
     auto is_list() const -> bool { return token.kind == TokenKind::left_parenthesis; }
 };
+
+struct DecimalLiteral {
+    std::string spelling;
+    long double value;
+};
+
+auto parse_decimal_literal(std::string_view const source) -> std::optional<DecimalLiteral> {
+    if (source.empty()) {
+        return std::nullopt;
+    }
+
+    std::size_t index{};
+    if (source[index] == '+' || source[index] == '-') {
+        ++index;
+        if (index == source.size()) {
+            return std::nullopt;
+        }
+    }
+
+    auto const integer_start{index};
+    while (index < source.size() && std::isdigit(static_cast<unsigned char>(source[index])) != 0) {
+        ++index;
+    }
+    auto const integer_digits{index - integer_start};
+
+    bool has_decimal_point{};
+    if (index < source.size() && source[index] == '.') {
+        has_decimal_point = true;
+        ++index;
+        auto const fraction_start{index};
+        while (index < source.size() &&
+               std::isdigit(static_cast<unsigned char>(source[index])) != 0) {
+            ++index;
+        }
+        if (integer_digits == 0 && index == fraction_start) {
+            return std::nullopt;
+        }
+    } else if (integer_digits == 0) {
+        return std::nullopt;
+    }
+
+    bool has_exponent{};
+    if (index < source.size() && (source[index] == 'e' || source[index] == 'E')) {
+        has_exponent = true;
+        ++index;
+        if (index < source.size() && (source[index] == '+' || source[index] == '-')) {
+            ++index;
+        }
+        auto const exponent_start{index};
+        while (index < source.size() &&
+               std::isdigit(static_cast<unsigned char>(source[index])) != 0) {
+            ++index;
+        }
+        if (index == exponent_start) {
+            return std::nullopt;
+        }
+    }
+    if (index != source.size()) {
+        return std::nullopt;
+    }
+    if (!has_decimal_point && !has_exponent && integer_digits > 1 &&
+        source[integer_start] == '0') {
+        return std::nullopt;
+    }
+
+    std::string spelling{source};
+    if (spelling.front() == '+') {
+        spelling.erase(spelling.begin());
+    }
+    auto const sign_offset{spelling.front() == '-' ? std::size_t{1} : std::size_t{0}};
+    if (spelling[sign_offset] == '.') {
+        spelling.insert(sign_offset, 1, '0');
+    }
+    auto const decimal_point{spelling.find('.')};
+    if (decimal_point != std::string::npos &&
+        (decimal_point + 1 == spelling.size() || spelling[decimal_point + 1] == 'e' ||
+         spelling[decimal_point + 1] == 'E')) {
+        spelling.insert(decimal_point + 1, 1, '0');
+    }
+
+    long double value{};
+    auto const [end, error]{std::from_chars(spelling.data(),
+                                            spelling.data() + spelling.size(),
+                                            value,
+                                            std::chars_format::general)};
+    if (error != std::errc{} || end != spelling.data() + spelling.size() ||
+        !std::isfinite(value)) {
+        return std::nullopt;
+    }
+    return DecimalLiteral{std::move(spelling), value};
+}
 
 class Parser {
   public:
@@ -154,26 +249,41 @@ class Parser {
         }
     }
 
-    static auto is_literal(std::string const& value) -> bool {
-        if (value.empty()) {
-            return false;
-        }
-        char* end{};
-        auto const parsed{std::strtod(value.c_str(), &end)};
-        return end == value.c_str() + value.size() && std::isfinite(parsed);
-    }
-
     auto parse_expression(Form const& form) const -> Expression {
         if (!form.is_list()) {
             auto const& value{atom(form, "expected operand reference or numeric literal")};
-            return Expression{is_literal(value) ? ExpressionKind::literal
-                                                : ExpressionKind::reference,
-                              value,
+            if (is_identifier(value)) {
+                return Expression{ExpressionKind::reference, value, {}, form.token.span};
+            }
+            auto literal{parse_decimal_literal(value)};
+            if (!literal) {
+                fail(form.token.span,
+                     "expected operand reference or finite decimal literal, got '" + value + "'");
+            }
+            return Expression{ExpressionKind::literal,
+                              std::move(literal->spelling),
                               {},
                               form.token.span};
         }
+
+        auto const& operation{head(form, "expression")};
+        if (operation == "constant") {
+            require_size(form, 2, "'(constant nan|infinity|negative-infinity)'");
+            auto const& name{atom(form.children[1], "expected constant name")};
+            ConstantKind constant;
+            if (name == "nan") {
+                constant = ConstantKind::nan;
+            } else if (name == "infinity") {
+                constant = ConstantKind::infinity;
+            } else if (name == "negative-infinity") {
+                constant = ConstantKind::negative_infinity;
+            } else {
+                fail(form.children[1].token.span, "unknown constant '" + name + "'");
+            }
+            return Expression{ExpressionKind::constant, {}, {}, form.token.span, constant};
+        }
+
         require_size(form, 3, "binary expression '(operator lhs rhs)'");
-        auto const& operation{atom(form.children[0], "expected expression operator")};
         if (operation != "+" && operation != "-" && operation != "*" && operation != "/") {
             fail(form.children[0].token.span, "unsupported expression operator '" + operation + "'");
         }
@@ -360,6 +470,47 @@ class Parser {
         return result;
     }
 
+    void validate_expression_type(Expression const& expression, std::string const& type) const {
+        if (expression.kind == ExpressionKind::constant && type == "int32") {
+            fail(expression.span,
+                 "constant is not supported by integral concrete type 'int32'");
+        }
+        if (expression.kind == ExpressionKind::literal) {
+            auto const literal{parse_decimal_literal(expression.value)};
+            if (!literal) {
+                fail(expression.span, "invalid finite decimal literal '" + expression.value + "'");
+            }
+            auto const value{literal->value};
+            if (type == "int32") {
+                if (std::trunc(value) != value ||
+                    value < static_cast<long double>(std::numeric_limits<std::int32_t>::min()) ||
+                    value > static_cast<long double>(std::numeric_limits<std::int32_t>::max())) {
+                    fail(expression.span,
+                         "literal '" + expression.value + "' is not representable as int32");
+                }
+            } else if (type == "float") {
+                auto const magnitude{std::abs(value)};
+                if (magnitude > static_cast<long double>(std::numeric_limits<float>::max()) ||
+                    (magnitude != 0.0L &&
+                     magnitude < static_cast<long double>(std::numeric_limits<float>::denorm_min()))) {
+                    fail(expression.span,
+                         "literal '" + expression.value + "' is not representable as float");
+                }
+            } else if (type == "double") {
+                auto const magnitude{std::abs(value)};
+                if (magnitude > static_cast<long double>(std::numeric_limits<double>::max()) ||
+                    (magnitude != 0.0L && magnitude < static_cast<long double>(
+                                                           std::numeric_limits<double>::denorm_min()))) {
+                    fail(expression.span,
+                         "literal '" + expression.value + "' is not representable as double");
+                }
+            }
+        }
+        for (auto const& argument : expression.arguments) {
+            validate_expression_type(argument, type);
+        }
+    }
+
     auto parse_type_set(Form const& form) const -> TypeSet {
         if (head(form, "type-set") != "type-set" || form.children.size() < 3) {
             fail(form.token.span, "expected '(type-set name type ...)'");
@@ -455,8 +606,15 @@ class Parser {
             }
         }
         for (auto const& operation : result.operations) {
-            if (!type_sets.contains(operation.type_set)) {
+            auto const operation_types{
+                std::ranges::find_if(result.type_sets, [&](auto const& type_set) {
+                    return type_set.name == operation.type_set;
+                })};
+            if (operation_types == result.type_sets.end()) {
                 fail(operation.span, "unknown type-set '" + operation.type_set + "'");
+            }
+            for (auto const& type : operation_types->types) {
+                validate_expression_type(operation.expression, type);
             }
             for (auto const& variant : operation.variants) {
                 if (variant.kind != VariantKind::in_place) {
