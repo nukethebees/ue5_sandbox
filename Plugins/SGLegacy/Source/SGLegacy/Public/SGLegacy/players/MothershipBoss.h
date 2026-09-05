@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SandboxGameShared/core/Cooldown.h"
-#include "SpaceGame/combat/DamageableShip.h"
+#include "SGLegacy/combat/DamageableShip.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

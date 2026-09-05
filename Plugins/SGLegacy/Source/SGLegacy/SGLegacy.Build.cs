@@ -25,9 +25,16 @@ public class SGLegacy : ModuleRules
             "InputCore",
             "Niagara",
             "RenderCore",
+            "SandboxCore",
+            "SandboxNative",
             "Slate",
             "SlateCore",
             "UMG",
         });
+
+        if (Target.bBuildEditor)
+        {
+            PrivateDependencyModuleNames.Add("UnrealEd");
+        }
     }
 }

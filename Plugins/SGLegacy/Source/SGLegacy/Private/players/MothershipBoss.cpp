@@ -1,8 +1,8 @@
 #include "SGLegacy/players/MothershipBoss.h"
 
 #include "SandboxGameShared/constants/collision_channels.h"
-#include "SpaceGame/combat/DamageableShip.h"
-#include "SpaceGame/ships/common/ShipHealthComponent.h"
+#include "SGLegacy/combat/DamageableShip.h"
+#include "SGLegacy/players/ShipHealthComponent.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include "Components/PointLightComponent.h"
@@ -189,7 +189,7 @@ void AMothershipBoss::config_point_lights() {
     for (auto* pl : point_lights) {
         CONTINUE_IF_NULLPTR(pl);
         pl->SetLightColor(point_light_settings.colour);
-        pl->SetLightBrightness(point_light_settings.brightness);
+        pl->SetIntensity(point_light_settings.brightness);
         pl->SetAttenuationRadius(point_light_settings.attenuation_radius);
         pl->SetSourceRadius(point_light_settings.source_radius);
     }
@@ -198,7 +198,7 @@ void AMothershipBoss::config_hatch_lights() {
     for (auto* pl : hatch_lights) {
         CONTINUE_IF_NULLPTR(pl);
         pl->SetLightColor(hatch_light_settings.colour);
-        pl->SetLightBrightness(hatch_light_settings.brightness);
+        pl->SetIntensity(hatch_light_settings.brightness);
         pl->SetSourceRadius(hatch_light_settings.source_radius);
         pl->SetAttenuationRadius(hatch_light_settings.attenuation_radius);
         pl->SetInnerConeAngle(hatch_light_settings.inner_cone_angle);

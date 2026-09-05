@@ -59,7 +59,7 @@ struct FTestUniformFieldCell {
 };
 
 UCLASS()
-class ATestUniformField : public AActor {
+class SANDBOX_API ATestUniformField : public AActor {
     GENERATED_BODY()
   public:
     struct DirtyRun {

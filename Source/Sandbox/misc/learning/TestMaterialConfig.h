@@ -32,7 +32,7 @@ struct FTestMaterialConfig {
 };
 
 USTRUCT()
-struct FTestMaterialState {
+struct SANDBOX_API FTestMaterialState {
     GENERATED_BODY()
 
     FTestMaterialState() = default;

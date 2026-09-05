@@ -1,8 +1,8 @@
 #include "SGLegacy/players/SpaceShip.h"
 
 #include "SandboxGameShared/utilities/actor_utils.h"
-#include "SpaceGame/combat/weapons/ShipLaser.h"
-#include "SpaceGame/ships/common/ShipHealthComponent.h"
+#include "SGLegacy/combat/weapons/ShipLaser.h"
+#include "SGLegacy/players/ShipHealthComponent.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include "Camera/CameraComponent.h"
@@ -487,10 +487,6 @@ auto ASpaceShip::get_middle_socket(UStaticMeshComponent const& m) const -> FTran
     check(m.DoesSocketExist(Sockets::middle));
     return m.GetSocketTransform(Sockets::middle, RTS_World);
 }
-auto ASpaceShip::get_ship_forward_vector() const -> FVector {
-    return get_middle_socket().GetLocation();
-}
-
 auto ASpaceShip::apply_damage(ShipDamageContext context) -> FShipDamageResult {
     auto const original_health{health->get_health()};
     EDamageResult type{EDamageResult::NoEffect};
@@ -513,6 +509,7 @@ void ASpaceShip::add_life() {
     on_lives_changed.Execute(lives);
 }
 
+#if WITH_EDITOR
 void ASpaceShip::sample_speed() {
     speed_samples[speed_sample_index] = {FMath::Clamp(GetWorld()->GetTimeSeconds(), 0.0, 1e9),
                                          FMath::Clamp(velocity.Size(), 0.0, 100e3)};
@@ -523,3 +520,4 @@ void ASpaceShip::sample_speed() {
 
     on_speed_sampled.ExecuteIfBound(TConstArrayView<FVector2d>{speed_samples}, speed_sample_index);
 }
+#endif

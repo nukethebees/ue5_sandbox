@@ -7,7 +7,7 @@
 #include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/ships/common/LaserFiringState.h>
-#include <SpaceGame/ships/common/ShipHealthComponent.h>
+#include <SpaceGame/ships/common/ShipHealth.h>
 #include <SpaceGame/ships/common/ShipLaserMode.h>
 #include <SpaceGame/ships/common/SpaceShipCommon.h>
 #include <SpaceGame/ships/common/SpaceShipFlightModel.h>
@@ -143,14 +143,11 @@ struct SPACEGAME_API Simulation {
 #endif
   private:
     void begin_play();
-    void begin_tick();
     void update_timers(float dt);
     void move(float dt);
     void queue_commands();
     void resolve_damage_events();
     void update_entity_registry();
-    void sync_from_registry();
-    void end_tick();
 
     void register_with_entity_registry();
     auto get_entity_update_data() const -> RegistryEntityData;

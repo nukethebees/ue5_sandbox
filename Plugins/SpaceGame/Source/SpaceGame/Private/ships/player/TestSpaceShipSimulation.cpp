@@ -53,10 +53,6 @@ void Simulation::begin_play() {
     health.clamp_to_max();
 }
 
-void Simulation::begin_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::begin_tick);
-}
-
 void Simulation::update_timers(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::update_timers);
 
@@ -119,14 +115,6 @@ void Simulation::resolve_damage_events() {
 void Simulation::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::update_entity_registry);
     queue_entity_update(EntityDeathInfo{});
-}
-
-void Simulation::sync_from_registry() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::sync_from_registry);
-}
-
-void Simulation::end_tick() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::end_tick);
 }
 
 void Simulation::register_with_entity_registry() {

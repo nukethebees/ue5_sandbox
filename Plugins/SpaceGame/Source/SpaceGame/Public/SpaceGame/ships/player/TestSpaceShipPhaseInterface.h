@@ -13,8 +13,6 @@ class SPACEGAME_API PhaseInterface {
 
     void begin_play();
 
-    void begin_tick();
-
     void update_timers(float const dt);
 
     void move(float const dt);
@@ -24,10 +22,6 @@ class SPACEGAME_API PhaseInterface {
     void resolve_damage_events();
 
     void update_entity_registry();
-
-    void sync_from_registry();
-
-    void end_tick();
 
     friend struct FLevelSimulation;
     ml::test_space_ship::Simulation* simulation{nullptr};

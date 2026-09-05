@@ -41,11 +41,9 @@ class SPACEGAME_API ATestSpaceShip
     auto get_entity_handle() const noexcept -> FRegistryEntityHandle override;
     auto get_test_name() const noexcept -> FName { return TEXT("PlayerShip"); }
     auto get_unique_id() const -> TestEntityUniqueId;
-    auto get_entity_registry_handle() const -> FRegistryEntityHandle;
     auto get_team() const noexcept -> ETestTeam;
     void set_team(ETestTeam new_team) noexcept;
 
-    auto get_actor_config() const noexcept -> FPlayerShipConfig const* { return actor_config; }
     void set_actor_config(FPlayerShipConfig const* new_config) noexcept;
     auto get_kills() const -> int32;
 
@@ -94,7 +92,6 @@ class SPACEGAME_API ATestSpaceShip
     auto is_alive() const noexcept -> bool;
 
     auto get_collision_mesh() const -> UStaticMesh const*;
-    auto get_ship_forward_vector() const -> FVector;
     auto get_middle_socket() const -> FTransform;
 
     FOnPlayerShipDied on_player_ship_died;

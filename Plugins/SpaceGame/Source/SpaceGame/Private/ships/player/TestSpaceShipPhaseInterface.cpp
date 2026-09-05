@@ -15,10 +15,6 @@ void PhaseInterface::begin_play() {
     simulation->begin_play();
 }
 
-void PhaseInterface::begin_tick() {
-    simulation->begin_tick();
-}
-
 void PhaseInterface::update_timers(float const dt) {
     simulation->update_timers(dt);
 }
@@ -37,14 +33,6 @@ void PhaseInterface::resolve_damage_events() {
 
 void PhaseInterface::update_entity_registry() {
     simulation->update_entity_registry();
-}
-
-void PhaseInterface::sync_from_registry() {
-    simulation->sync_from_registry();
-}
-
-void PhaseInterface::end_tick() {
-    simulation->end_tick();
 }
 } // namespace ml::test_space_ship
 // clang-format on

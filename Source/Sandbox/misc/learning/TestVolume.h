@@ -11,7 +11,7 @@
 class UBoxComponent;
 
 UCLASS()
-class ATestVolume : public AActor {
+class SANDBOX_API ATestVolume : public AActor {
     GENERATED_BODY()
   public:
     ATestVolume();
