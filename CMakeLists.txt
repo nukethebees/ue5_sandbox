@@ -440,6 +440,25 @@ set_tests_properties(SandboxShaders.ShaderSmoke PROPERTIES
 )
 
 add_test(
+  NAME SandboxUI.EntityOverlayBenchmark
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=EntityOverlayBenchmark
+    -RenderOffscreen
+    -AllowCommandletRendering
+    -DDC-ForceMemoryCache
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+)
+set_tests_properties(SandboxUI.EntityOverlayBenchmark PROPERTIES
+  LABELS entity-overlay-benchmark
+  TIMEOUT 1200
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
   NAME SandboxShaders.GpuStarfieldBenchmark
   COMMAND "${Python3_EXECUTABLE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"

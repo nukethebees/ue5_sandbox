@@ -19,7 +19,7 @@
 		{
 			"Name": "SandboxUI",
 			"Type": "Runtime",
-			"LoadingPhase": "Default"
+			"LoadingPhase": "PostConfigInit"
 		},
 		{
 			"Name": "SbxUIExperiments",

@@ -26,6 +26,7 @@ public class SpaceGame : ModuleRules
             "GameplayTags",
             "InputCore",
             "RenderCore",
+            "SandboxUI",
             "SlateCore",
             "UMG",
             "SGCollision",
@@ -34,7 +35,6 @@ public class SpaceGame : ModuleRules
         PrivateDependencyModuleNames.AddRange(new string[]
         {
             "Niagara",
-            "SandboxUI",
             "Slate",
             "TraceLog",
         });

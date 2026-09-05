@@ -3,6 +3,7 @@
 #include <SpaceGame/presentation/HUDManager.h>
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
+#include "SandboxUI/EntityOverlay/SEntityOverlayWidget.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
 #include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/MissionStatusWidget.h"
@@ -21,8 +22,12 @@
 #include <Components/Image.h>
 #include <Components/PanelWidget.h>
 #include <Components/Widget.h>
+#include <Engine/GameViewportClient.h>
+#include <Engine/LocalPlayer.h>
 #include <Materials/MaterialInstanceDynamic.h>
 #include <Materials/MaterialInterface.h>
+#include <SceneView.h>
+#include <Widgets/SOverlay.h>
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
@@ -42,6 +47,71 @@ void set_font_size_on_widgets(int32 const font_size, WidgetTypes* const... widge
     }};
     (set_font_size(widgets), ...);
 }
+}
+
+auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
+    auto const hud_content{Super::RebuildWidget()};
+    auto const overlay{SAssignNew(entity_overlay_widget_, SEntityOverlayWidget)};
+    entity_overlay_widget_->SetVisibility(entity_overlay_frame_store_.IsValid()
+                                              ? EVisibility::HitTestInvisible
+                                              : EVisibility::Collapsed);
+    entity_overlay_widget_->set_frame_store(entity_overlay_frame_store_);
+    entity_overlay_widget_->set_style(entity_overlay_style_);
+    return SNew(SOverlay) + SOverlay::Slot()[overlay] + SOverlay::Slot()[hud_content];
+}
+
+void UShipHudWidget::ReleaseSlateResources(bool const release_children) {
+    Super::ReleaseSlateResources(release_children);
+    entity_overlay_widget_.Reset();
+}
+
+void UShipHudWidget::NativeTick(FGeometry const& geometry, float const delta_time) {
+    Super::NativeTick(geometry, delta_time);
+
+    if (!entity_overlay_widget_.IsValid() || !entity_overlay_frame_store_.IsValid()) {
+        return;
+    }
+
+    auto const* const local_player{GetOwningLocalPlayer()};
+    auto* const viewport{IsValid(local_player) && IsValid(local_player->ViewportClient)
+                             ? local_player->ViewportClient->Viewport
+                             : nullptr};
+    if (viewport == nullptr) {
+        UE_LOG(LogSandboxUI, Warning, TEXT("Entity overlay has no player viewport."));
+        return;
+    }
+
+    FSceneViewProjectionData projection_data;
+    if (!local_player->GetProjectionData(viewport, projection_data) ||
+        !projection_data.IsValidViewRectangle()) {
+        UE_LOG(LogSandboxUI, Warning, TEXT("Entity overlay projection data is invalid."));
+        return;
+    }
+
+    FEntityOverlayView view;
+    view.camera_origin = FVector3f{projection_data.ViewOrigin};
+    view.view_projection =
+        FMatrix44f{projection_data.ViewRotationMatrix * projection_data.ProjectionMatrix};
+    view.view_rect = projection_data.GetConstrainedViewRect();
+    view.output_size = viewport->GetSizeXY();
+    entity_overlay_widget_->render(view);
+}
+
+void UShipHudWidget::set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store) {
+    entity_overlay_frame_store_ = MoveTemp(frame_store);
+    if (entity_overlay_widget_.IsValid()) {
+        entity_overlay_widget_->set_frame_store(entity_overlay_frame_store_);
+        entity_overlay_widget_->SetVisibility(entity_overlay_frame_store_.IsValid()
+                                                  ? EVisibility::HitTestInvisible
+                                                  : EVisibility::Collapsed);
+    }
+}
+
+void UShipHudWidget::set_entity_overlay_style(FEntityOverlayStyle const& style) {
+    entity_overlay_style_ = style;
+    if (entity_overlay_widget_.IsValid()) {
+        entity_overlay_widget_->set_style(entity_overlay_style_);
+    }
 }
 
 void UShipHudWidget::NativeConstruct() {

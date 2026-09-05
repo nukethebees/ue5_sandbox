@@ -37,8 +37,10 @@ public class SandboxEditor : ModuleRules
             "MaterialEditor",
             "PropertyEditor",
             "RenderCore", // Often needed for material nodes
+            "RHI",
             "Sandbox", // Reference to runtime module
             "SandboxGameShared",
+            "SandboxUI",
             "SbxShadersExperiments",
             "SpaceGame",
             "SpaceGameS7",
