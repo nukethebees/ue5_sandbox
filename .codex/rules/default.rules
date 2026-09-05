@@ -1,0 +1,76 @@
+# Git
+# ---------------------------------------------
+prefix_rule(
+    pattern=["git", "status"], 
+    decision="allow"
+)
+prefix_rule(
+    pattern=["git", "diff"], 
+    decision="allow"
+)
+
+# CMake
+# ---------------------------------------------
+prefix_rule(
+    pattern=["cmake", "--workflow", "--preset"], 
+    decision="allow"
+)
+prefix_rule(
+    pattern=["cmake", "--build", "--preset"], 
+    decision="allow"
+)
+prefix_rule(
+    pattern=["ctest"], 
+    decision="allow"
+)
+
+# rg
+# ---------------------------------------------
+prefix_rule(
+    pattern=["rg", "--files"], 
+    decision="allow"
+)
+
+# Powershell
+# ---------------------------------------------
+prefix_rule(
+    pattern=["Get-Content"], 
+    decision="allow"
+)
+prefix_rule(
+    pattern=["Select-Object"], 
+    decision="allow"
+)
+prefix_rule(
+    pattern=["Get-ChildItem"], 
+    decision="allow"
+)
+
+# Clang Tools
+# ---------------------------------------------
+prefix_rule(
+    pattern=["clang-tidy"], 
+    decision="allow"
+)
+prefix_rule(
+    pattern=["clang-format", "-i"], 
+    decision="allow"
+)
+
+# vcpkg
+# ---------------------------------------------
+prefix_rule(
+    pattern=["vcpkg"], 
+    decision="allow"
+)
+
+# Python
+# ---------------------------------------------
+prefix_rule(
+    pattern=["python", "-m", "unittest"], 
+    decision="allow"
+)
+prefix_rule(
+    pattern=["pyright"], 
+    decision="allow"
+)
