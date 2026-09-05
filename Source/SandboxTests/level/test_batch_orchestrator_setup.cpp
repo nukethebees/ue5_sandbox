@@ -335,6 +335,12 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(final_observation.completed_ticks,
                      snapshot.cumulative_kill_count_data.last_time(),
                      TEXT("Snapshot extends kills to the completed tick"));
+    checks.are_equal(snapshot.active_entities,
+                     snapshot.active_entity_count_data.last_value(),
+                     TEXT("Terminal active-entity sample preserves the final count"));
+    checks.are_equal(snapshot.kills,
+                     snapshot.cumulative_kill_count_data.last_value(),
+                     TEXT("Terminal kill sample preserves the final count"));
     for (auto const value : snapshot.active_entity_count_data.values()) {
         checks.is_true(value >= 0, TEXT("Snapshot active-entity samples are nonnegative"));
     }
@@ -435,6 +441,12 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Snapshot extends kills to its terminal tick"),
               laser_snapshot.cumulative_kill_count_data.last_time(),
               uint64{5});
+    TestEqual(TEXT("Terminal active-entity sample preserves zero"),
+              laser_snapshot.active_entity_count_data.last_value(),
+              int32{0});
+    TestEqual(TEXT("Terminal kill sample preserves zero"),
+              laser_snapshot.cumulative_kill_count_data.last_value(),
+              int32{0});
 
     telemetry_manager.reset();
     TestTrue(TEXT("Reset clears active-count telemetry"), active_count_data.is_empty());
@@ -529,6 +541,12 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               entity_snapshot.destroyed_entities,
               int32{0});
     TestEqual(TEXT("Entity snapshot records no kills"), entity_snapshot.kills, int32{0});
+    TestEqual(TEXT("Entity snapshot terminal active count is preserved"),
+              entity_snapshot.active_entity_count_data.last_value(),
+              int32{3});
+    TestEqual(TEXT("Entity snapshot terminal kill count is preserved"),
+              entity_snapshot.cumulative_kill_count_data.last_value(),
+              int32{0});
     for (auto const value : entity_snapshot.active_entity_count_data.values()) {
         TestTrue(TEXT("Entity snapshot active counts are nonnegative"), value >= 0);
     }

@@ -33,7 +33,8 @@ auto snapshot_with_terminal_sample(Data const& source,
                                    FLevelTelemetryManager::tick_type const completed_tick) -> Data {
     auto result{source};
     if (!result.is_empty() && result.last_time() < completed_tick) {
-        result.add(completed_tick, result.last_value());
+        auto const terminal_value{result.last_value()};
+        result.add(completed_tick, terminal_value);
     }
     return result;
 }
