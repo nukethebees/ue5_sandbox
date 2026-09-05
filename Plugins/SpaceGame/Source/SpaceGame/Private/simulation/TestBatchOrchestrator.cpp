@@ -151,6 +151,7 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     }
     level_simulation_.Reset();
     world_collision_.restore_collision();
+    collision_grid_visualization->clear_collision_bounds();
     laser_instances_->clear_instances();
     for (auto* component : {capital_instances_.Get(),
                             fighter_instances_.Get(),
@@ -351,6 +352,7 @@ void ATestBatchOrchestrator::begin_play() {
     world_collision_.initialise_static_geometry(
         *world, level_config->collision_grid, get_spatial_query_manager().get_collision_system());
     level_simulation_->finish_initialisation();
+    update_collision_bounds_visualization();
     level_simulation_->on_mission_evaluated = [this] { process_mission_result(); };
     level_simulation_->on_end_tick = [this](FLevelSimulation&) {
         end_tick_test_hook.ExecuteIfBound(*this);
@@ -476,6 +478,28 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     }
 
     collision_grid_visualization->configure(level_config->collision_grid);
+    collision_grid_visualization->configure_collision_bounds(show_collision_bounds,
+                                                             collision_bounds_max_draw_distance);
+}
+
+void ATestBatchOrchestrator::update_collision_bounds_visualization() {
+    if (!IsValid(collision_grid_visualization)) {
+        UE_LOG(LogSandbox,
+               Error,
+               TEXT("Cannot update collision-bounds visualization: component is invalid"));
+        return;
+    }
+
+    auto const visible{presentation_enabled && show_collision_bounds && level_simulation_.IsSet()};
+    collision_grid_visualization->configure_collision_bounds(visible,
+                                                             collision_bounds_max_draw_distance);
+    if (!visible) {
+        collision_grid_visualization->clear_collision_bounds();
+        return;
+    }
+
+    collision_grid_visualization->update_collision_bounds(
+        get_entity_registry(), get_spatial_query_manager().get_collision_system());
 }
 
 void ATestBatchOrchestrator::validate_proxy_handles() {
@@ -496,6 +520,7 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         return;
     }
     level_simulation_->advance(dt);
+    update_collision_bounds_visualization();
     if (presentation_enabled) {
         hud_tick_loop.add_time(dt);
         while (hud_tick_loop.try_tick()) {
@@ -572,8 +597,12 @@ auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresen
 }
 auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component) -> bool {
     check(level_simulation_.IsSet());
-    return world_collision_.add_static_geometry(component,
-                                                get_spatial_query_manager().get_collision_system());
+    auto const added{world_collision_.add_static_geometry(
+        component, get_spatial_query_manager().get_collision_system())};
+    if (added) {
+        update_collision_bounds_visualization();
+    }
+    return added;
 }
 void ATestBatchOrchestrator::process_mission_result() {
     auto result{get_mission_manager().take_result()};
