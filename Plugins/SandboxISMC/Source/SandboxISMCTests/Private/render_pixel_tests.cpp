@@ -158,6 +158,13 @@ TEST_CLASS(SandboxISMCRenderPixels, "SandboxISMC.RenderTests")
             .Do([this] {
                 setup();
                 submit(3, -96.0f, 0);
+                spawner->GetWorld().SendAllEndOfFrameUpdates();
+                FlushRenderingCommands();
+                if (component_ != nullptr) {
+                    TestRunner->TestNotNull(
+                        TEXT("The initial scene proxy is created before capture"),
+                        component_->GetSceneProxy());
+                }
             })
             .Until(next_frame, FTimespan::FromSeconds(10))
             .Do([this] {
