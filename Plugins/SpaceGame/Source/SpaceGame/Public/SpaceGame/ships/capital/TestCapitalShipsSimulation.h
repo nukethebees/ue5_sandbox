@@ -24,6 +24,7 @@ struct FCapitalSimulationConfig;
 struct FTestEntityRegistry;
 
 namespace ml {
+class FLevelSpawnManager;
 struct FSpatialQueryManager;
 }
 
@@ -95,9 +96,9 @@ struct SPACEGAME_API Simulation {
     void sync_from_registry();
     void end_tick();
 
-    void register_ships(SpawnData const& spawn_data);
-    void bind_proxy_target(FRegistryEntityHandle ship_handle, FRegistryEntityHandle target_handle);
-    void spawn_ships(SpawnData const& spawn_data);
+    auto register_ships(SpawnDataConstView spawn_data) -> TArray<FRegistryEntityHandle>;
+    void set_target_handle(FRegistryEntityHandle ship_handle, FRegistryEntityHandle target_handle);
+    void spawn_ships(SpawnDataConstView spawn_data);
     void prepare_entity_update_data();
     void queue_fighter_spawns();
     void refresh_fighter_handles();
@@ -111,6 +112,7 @@ struct SPACEGAME_API Simulation {
     friend class ::ATestBatchOrchestrator;
     friend struct ::FLevelSimulation;
     friend struct ::FCapitalPresentation;
+    friend class ::ml::FLevelSpawnManager;
 
     FCapitalSimulationConfig config{};
     FTestEntityRegistry* entity_registry{nullptr};
@@ -133,5 +135,7 @@ struct SPACEGAME_API Simulation {
 
     TArray<int32> presentation_indices_to_remove;
     TArray<FVector3f> presentation_death_locations;
+    int32 presentation_spawn_start{};
+    int32 presentation_spawn_count{};
 };
 } // namespace ml::test_capital_ships

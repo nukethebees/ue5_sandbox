@@ -100,7 +100,6 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
         REQUIRE_CONFIG(player_ship.laser.max_distance > 0.f,
                        "player_ship.laser.max_distance must be positive");
     }
-    REQUIRE_CONFIG(classes.capital_ship_proxy_class, "classes.capital_ship_proxy_class is null");
     REQUIRE_CONFIG(laser_projectiles.max_cull_distance >= laser_projectiles.min_cull_distance,
                    "laser_projectiles cull distance range is invalid");
     REQUIRE_CONFIG(laser_projectiles.n_preallocated_instances >= 0,

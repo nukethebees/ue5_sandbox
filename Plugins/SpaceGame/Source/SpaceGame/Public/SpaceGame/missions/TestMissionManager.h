@@ -3,6 +3,7 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/entities/TestEntityUniqueId.h>
+#include <SpaceGame/levels/LevelMissionInitialisationData.h>
 #include <SpaceGame/missions/TestMissionFailReason.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
@@ -12,6 +13,10 @@
 #include <CoreMinimal.h>
 
 struct FTestEntityRegistry;
+
+namespace ml {
+struct FLevelMissionEventGroupsConstView;
+}
 
 struct SPACEGAME_API FTestMissionCompletion {
     FName level_id{NAME_None};
@@ -42,6 +47,12 @@ struct SPACEGAME_API FTestMissionManager {
     void mission_tick();
     auto complete_mission() -> bool;
 
+    void initialise_level_mission(ml::FLevelMissionInitialisationData const& data,
+                                  TConstArrayView<FRegistryEntityHandle> level_entity_handles);
+    void bind_level_event_data(TConstArrayView<int32> values,
+                               TConstArrayView<FRegistryEntityHandle> level_entity_handles);
+    void consume_level_events(ml::FLevelMissionEventGroupsConstView groups);
+
     void set_mission_mode(ETestMissionMode new_mode);
     void set_target_time(float new_target_time);
     void set_kill_target(int32 new_kill_target);
@@ -50,6 +61,9 @@ struct SPACEGAME_API FTestMissionManager {
     void add_hero_entity(FRegistryEntityHandle handle);
     void add_entity_that_must_survive(FRegistryEntityHandle handle);
     void add_entity_required_to_kill(FRegistryEntityHandle handle);
+    void increase_kill_target(int32 increase);
+    void set_pending_objective_events(int32 count);
+    void objective_event_dispatched();
 
     auto take_result() -> TOptional<FLevelMissionResult>;
 
@@ -108,6 +122,9 @@ struct SPACEGAME_API FTestMissionManager {
         return mission_state == ETestMissionState::Running;
     }
     auto is_ready() const noexcept -> bool;
+    auto has_pending_objective_events() const noexcept -> bool {
+        return pending_objective_events_ > 0;
+    }
 
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     auto get_entity_registry() -> FTestEntityRegistry* { return entity_registry; }
@@ -163,6 +180,12 @@ struct SPACEGAME_API FTestMissionManager {
     FString level_display_name{};
 
     int32 mission_kills{0};
+
+    int32 pending_objective_events_{};
+    TConstArrayView<int32> level_event_values_{};
+    TConstArrayView<FRegistryEntityHandle> level_entity_handles_{};
+    int32 kill_target_increase_before_level_initialisation_{};
+    bool level_initialisation_applied_{};
 
     float mission_elapsed_seconds{0.0f};
 

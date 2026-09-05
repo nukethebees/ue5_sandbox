@@ -17,6 +17,7 @@ struct FTurretSimulationConfig;
 struct FTestEntityRegistry;
 
 namespace ml {
+class FLevelSpawnManager;
 struct FSpatialQueryManager;
 }
 
@@ -57,7 +58,7 @@ struct SPACEGAME_API Simulation {
     void sync_from_registry();
     void end_tick();
 
-    void register_turrets(SpawnData const& spawn_data);
+    auto register_turrets(SpawnDataConstView spawn_data) -> TArray<FRegistryEntityHandle>;
     void prepare_entity_update_data();
     void perform_search();
     void perform_search_on_slice(int32 job_index,
@@ -73,6 +74,7 @@ struct SPACEGAME_API Simulation {
     friend class ::ATestBatchOrchestrator;
     friend struct ::FLevelSimulation;
     friend struct ::FTurretPresentation;
+    friend class ::ml::FLevelSpawnManager;
 
     FTurretSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
@@ -92,5 +94,8 @@ struct SPACEGAME_API Simulation {
     TArray<int32> local_indices_to_remove;
     TArray<int32> presentation_indices_to_remove;
     TArray<FVector3f> presentation_death_locations;
+    TArray<FTransform> presentation_spawn_transforms;
+    int32 presentation_spawn_start{};
+    int32 presentation_spawn_count{};
 };
 } // namespace ml::test_static_turrets

@@ -29,6 +29,7 @@ struct SPACEGAME_API FTurretPresentation {
     void end_tick_presentation();
 
     void add_initial_visual_instances();
+    void add_visual_instances(TArray<FTransform> const& transforms, int32 first_entity_index);
     void configure_ismc();
     void trigger_death_effects();
     void draw_debugging_shapes() const;

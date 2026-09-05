@@ -1,7 +1,18 @@
 #include "SpaceGame/missions/TestMissionManager.h"
 
 #include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/levels/LevelDefinitionSoA.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
+
+namespace {
+auto get_level_entity_handle(TConstArrayView<FRegistryEntityHandle> const level_entity_handles,
+                             int32 const entity_index) -> FRegistryEntityHandle {
+    check(level_entity_handles.IsValidIndex(entity_index));
+    auto const handle{level_entity_handles[entity_index]};
+    check(handle.is_valid());
+    return handle;
+}
+}
 
 void FTestMissionManager::begin_play() {
     check(entity_registry);
@@ -57,6 +68,102 @@ void FTestMissionManager::begin_play() {
 void FTestMissionManager::bind_simulation_clock(FSimulationClock const& clock) noexcept {
     simulation_clock.bind(clock);
 }
+
+void FTestMissionManager::initialise_level_mission(
+    ml::FLevelMissionInitialisationData const& data,
+    TConstArrayView<FRegistryEntityHandle> const level_entity_handles) {
+    check(!level_initialisation_applied_);
+    set_level_identity(data.level_id, data.level_title);
+
+    switch (data.mode) {
+        case ml::ELevelMissionMode::Unspecified: {
+            set_mission_mode(ETestMissionMode::None);
+            break;
+        }
+        case ml::ELevelMissionMode::SurviveTime: {
+            set_mission_mode(ETestMissionMode::SurviveTime);
+            break;
+        }
+        case ml::ELevelMissionMode::KillEnemies: {
+            set_mission_mode(ETestMissionMode::KillEnemies);
+            break;
+        }
+        case ml::ELevelMissionMode::KillEnemiesWithinTime: {
+            set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
+            break;
+        }
+    }
+
+    if (data.time_limit_seconds.IsSet()) {
+        set_target_time(data.time_limit_seconds.GetValue());
+    }
+    if (data.mode == ml::ELevelMissionMode::KillEnemies ||
+        data.mode == ml::ELevelMissionMode::KillEnemiesWithinTime) {
+        set_kill_target(data.kill_count.Get(0) + kill_target_increase_before_level_initialisation_);
+    }
+    for (auto const entity_index : data.hero_entity_indices) {
+        add_hero_entity(get_level_entity_handle(level_entity_handles, entity_index));
+    }
+    for (auto const entity_index : data.must_survive_entity_indices) {
+        add_entity_that_must_survive(get_level_entity_handle(level_entity_handles, entity_index));
+    }
+    for (auto const entity_index : data.required_kill_entity_indices) {
+        add_entity_required_to_kill(get_level_entity_handle(level_entity_handles, entity_index));
+    }
+
+    level_initialisation_applied_ = true;
+}
+
+void FTestMissionManager::bind_level_event_data(
+    TConstArrayView<int32> const values,
+    TConstArrayView<FRegistryEntityHandle> const level_entity_handles) {
+    check(mission_state == ETestMissionState::NotStarted);
+    level_event_values_ = values;
+    level_entity_handles_ = level_entity_handles;
+}
+
+void FTestMissionManager::consume_level_events(ml::FLevelMissionEventGroupsConstView const groups) {
+    auto const group_count{groups.num()};
+    for (int32 index{}; index < group_count; ++index) {
+        auto const values{level_event_values_.Slice(groups.offsets[index], groups.counts[index])};
+        switch (groups.types[index]) {
+            case ml::ELevelMissionEventType::MustSurvive: {
+                for (auto const entity_index : values) {
+                    add_entity_that_must_survive(
+                        get_level_entity_handle(level_entity_handles_, entity_index));
+                }
+                break;
+            }
+            case ml::ELevelMissionEventType::RequiredKill: {
+                for (auto const entity_index : values) {
+                    add_entity_required_to_kill(
+                        get_level_entity_handle(level_entity_handles_, entity_index));
+                }
+                break;
+            }
+            case ml::ELevelMissionEventType::IncreaseKillTarget: {
+                for (auto const increase : values) {
+                    increase_kill_target(increase);
+                    if (!level_initialisation_applied_) {
+                        kill_target_increase_before_level_initialisation_ += increase;
+                    }
+                }
+                break;
+            }
+            default: {
+                UE_LOG(LogSandbox,
+                       Fatal,
+                       TEXT("Unsupported level mission event type: %d"),
+                       static_cast<int32>(groups.types[index]));
+                break;
+            }
+        }
+    }
+    if (group_count != 0) {
+        objective_event_dispatched();
+    }
+}
+
 void FTestMissionManager::reset_runtime_state() {
     pending_result_.Reset();
     hero_entity_handles.Reset();
@@ -74,6 +181,11 @@ void FTestMissionManager::reset_runtime_state() {
     mission_kills = 0;
     mission_elapsed_seconds = 0.f;
     resolved_kill_target = kill_target;
+    pending_objective_events_ = 0;
+    level_event_values_ = {};
+    level_entity_handles_ = {};
+    kill_target_increase_before_level_initialisation_ = 0;
+    level_initialisation_applied_ = false;
 }
 
 void FTestMissionManager::set_mission_mode(ETestMissionMode const new_mode) {
@@ -112,7 +224,8 @@ void FTestMissionManager::add_hero_entity(FRegistryEntityHandle handle) {
 }
 
 void FTestMissionManager::add_entity_that_must_survive(FRegistryEntityHandle handle) {
-    check(mission_state == ETestMissionState::NotStarted);
+    check(mission_state == ETestMissionState::NotStarted ||
+          mission_state == ETestMissionState::Running);
     check(entity_registry->is_valid_handle(handle));
     if (entity_handles_that_must_survive.Contains(handle)) {
         return;
@@ -121,10 +234,14 @@ void FTestMissionManager::add_entity_that_must_survive(FRegistryEntityHandle han
     entity_handles_that_must_survive.Add(handle);
     entity_ids_that_must_survive.Add(id);
     entity_types_that_must_survive.Add(entity_registry->get_unique_entities().entity_types[id.id]);
+    if (mission_state == ETestMissionState::Running) {
+        entity_health_that_must_survive.Emplace(entity_registry->get_health(handle));
+    }
 }
 
 void FTestMissionManager::add_entity_required_to_kill(FRegistryEntityHandle handle) {
-    check(mission_state == ETestMissionState::NotStarted);
+    check(mission_state == ETestMissionState::NotStarted ||
+          mission_state == ETestMissionState::Running);
     check(entity_registry->is_valid_handle(handle));
     if (entity_handles_required_to_kill.Contains(handle)) {
         return;
@@ -133,6 +250,28 @@ void FTestMissionManager::add_entity_required_to_kill(FRegistryEntityHandle hand
     entity_handles_required_to_kill.Add(handle);
     entity_ids_required_to_kill.Add(id);
     entity_types_required_to_kill.Add(entity_registry->get_unique_entities().entity_types[id.id]);
+    if (mission_state == ETestMissionState::Running) {
+        entity_health_required_to_kill.Emplace(entity_registry->get_health(handle));
+    }
+}
+
+void FTestMissionManager::increase_kill_target(int32 const increase) {
+    check(increase >= 0);
+    check(mission_state == ETestMissionState::NotStarted ||
+          mission_state == ETestMissionState::Running);
+    kill_target += increase;
+    resolved_kill_target += increase;
+}
+
+void FTestMissionManager::set_pending_objective_events(int32 const count) {
+    check(mission_state == ETestMissionState::NotStarted);
+    check(count >= 0);
+    pending_objective_events_ = count;
+}
+
+void FTestMissionManager::objective_event_dispatched() {
+    check(pending_objective_events_ > 0);
+    --pending_objective_events_;
 }
 
 void FTestMissionManager::mission_tick() {
@@ -194,7 +333,7 @@ void FTestMissionManager::mission_tick() {
 }
 
 auto FTestMissionManager::complete_mission() -> bool {
-    if (mission_state != ETestMissionState::Running) {
+    if (mission_state != ETestMissionState::Running || has_pending_objective_events()) {
         return false;
     }
 
@@ -241,7 +380,7 @@ void FTestMissionManager::set_mission_state(ETestMissionState const new_state,
 
 void FTestMissionManager::mission_tick_survive_seconds() {
     if (mission_elapsed_seconds >= target_time) {
-        if (entities_required_to_kill_are_dead()) {
+        if (!has_pending_objective_events() && entities_required_to_kill_are_dead()) {
             complete_mission();
         } else {
             set_mission_state(ETestMissionState::Failed, ETestMissionFailReason::TimeElapsed);
@@ -251,14 +390,16 @@ void FTestMissionManager::mission_tick_survive_seconds() {
 void FTestMissionManager::mission_tick_kill_enemies() {
     update_mission_kills();
 
-    if (mission_kills >= resolved_kill_target && entities_required_to_kill_are_dead()) {
+    if (!has_pending_objective_events() && mission_kills >= resolved_kill_target &&
+        entities_required_to_kill_are_dead()) {
         complete_mission();
     }
 }
 void FTestMissionManager::mission_tick_kill_enemies_within_time() {
     update_mission_kills();
 
-    if (mission_kills >= resolved_kill_target && entities_required_to_kill_are_dead()) {
+    if (!has_pending_objective_events() && mission_kills >= resolved_kill_target &&
+        entities_required_to_kill_are_dead()) {
         complete_mission();
         return;
     }
