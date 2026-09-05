@@ -1984,11 +1984,11 @@ void FCollisionUniformGridTraceScenario::test_static_harvesting() {
     int32 source_index{INDEX_NONE};
     int32 harvested_actor_source_count{};
     for (int32 i{}; i < source_count; ++i) {
-        if (sources.actors[i].Get() == harvested_actor) {
+        auto* const component{sources.components[i].Get()};
+        if (IsValid(component) && component->GetOwner() == harvested_actor) {
             ++harvested_actor_source_count;
         }
-        if (sources.actors[i].Get() == harvested_actor &&
-            sources.components[i].Get() == harvested_actor->get_collision_component()) {
+        if (component == harvested_actor->get_collision_component()) {
             source_index = i;
         }
     }

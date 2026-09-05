@@ -9,7 +9,6 @@ void FCollisionSystem::update() {
     rebuild_grid();
 }
 void FCollisionSystem::set_entity_registry(FTestEntityRegistry const& registry) {
-    entity_registry_ = &registry;
     uniform_grid_.set_entity_registry(registry);
 }
 void FCollisionSystem::rebuild_grid() {

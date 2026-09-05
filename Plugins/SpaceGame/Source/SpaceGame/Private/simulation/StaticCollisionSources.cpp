@@ -12,14 +12,10 @@
 #include "Containers/ArrayView.h"
 #include "CoreMinimal.h"
 #include "Engine/EngineTypes.h"
-#include "GameFramework/Actor.h"
-#include "Math/Transform.h"
 
 namespace ml::ioj {
-void FStaticCollisionSources::add(AActor* actor, UPrimitiveComponent* component, FTransform const& harvested_transform, ECollisionEnabled::Type const original_collision_mode) {
-    actors.Add(actor);
+void FStaticCollisionSources::add(UPrimitiveComponent* component, ECollisionEnabled::Type const original_collision_mode) {
     components.Add(component);
-    harvested_transforms.Add(harvested_transform);
     original_collision_modes.Add(original_collision_mode);
 }
 
@@ -29,9 +25,7 @@ auto FStaticCollisionSourcesConstView::get_view() const -> ConstView {
 
 auto FStaticCollisionSourcesConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
@@ -42,15 +36,13 @@ auto FStaticCollisionSourcesConstView::get_const_view() const -> ConstView {
 
 auto FStaticCollisionSourcesConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
 
 auto FStaticCollisionSourcesConstView::num() const noexcept -> int32 {
-    return ml::num(actors);
+    return ml::num(components);
 }
 
 auto FStaticCollisionSourcesConstView::is_empty() const noexcept -> bool {
@@ -59,9 +51,7 @@ auto FStaticCollisionSourcesConstView::is_empty() const noexcept -> bool {
 
 void FStaticCollisionSourcesConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(actors),
         ml::num(components),
-        ml::num(harvested_transforms),
         ml::num(original_collision_modes),
     });
 }
@@ -84,9 +74,7 @@ auto FStaticCollisionSourcesView::get_view() -> View {
 
 auto FStaticCollisionSourcesView::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
@@ -97,9 +85,7 @@ auto FStaticCollisionSourcesView::get_view() const -> ConstView {
 
 auto FStaticCollisionSourcesView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
@@ -110,15 +96,13 @@ auto FStaticCollisionSourcesView::get_const_view() const -> ConstView {
 
 auto FStaticCollisionSourcesView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
 
 auto FStaticCollisionSourcesView::num() const noexcept -> int32 {
-    return ml::num(actors);
+    return ml::num(components);
 }
 
 auto FStaticCollisionSourcesView::is_empty() const noexcept -> bool {
@@ -127,9 +111,7 @@ auto FStaticCollisionSourcesView::is_empty() const noexcept -> bool {
 
 void FStaticCollisionSourcesView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(actors),
         ml::num(components),
-        ml::num(harvested_transforms),
         ml::num(original_collision_modes),
     });
 }
@@ -159,18 +141,14 @@ auto FStaticCollisionSourcesView::right(int32 const count) const -> ConstView {
 }
 
 void FStaticCollisionSources::reset() {
-    ml::reset(actors);
     ml::reset(components);
-    ml::reset(harvested_transforms);
     ml::reset(original_collision_modes);
 }
 
 void FStaticCollisionSources::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
-    ml::apply_permutation(actors, indices);
     ml::apply_permutation(components, indices);
-    ml::apply_permutation(harvested_transforms, indices);
     ml::apply_permutation(original_collision_modes, indices);
 }
 
@@ -180,9 +158,7 @@ auto FStaticCollisionSources::get_view() -> View {
 
 auto FStaticCollisionSources::get_view(int32 const offset, int32 const count) -> View {
     return View{
-        TArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
@@ -193,9 +169,7 @@ auto FStaticCollisionSources::get_view() const -> ConstView {
 
 auto FStaticCollisionSources::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
@@ -206,15 +180,13 @@ auto FStaticCollisionSources::get_const_view() const -> ConstView {
 
 auto FStaticCollisionSources::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
-        TConstArrayView<TWeakObjectPtr<AActor>>{actors}.Slice(offset, count),
         TConstArrayView<TWeakObjectPtr<UPrimitiveComponent>>{components}.Slice(offset, count),
-        TConstArrayView<FTransform>{harvested_transforms}.Slice(offset, count),
         TConstArrayView<ECollisionEnabled::Type>{original_collision_modes}.Slice(offset, count),
     };
 }
 
 auto FStaticCollisionSources::num() const noexcept -> int32 {
-    return ml::num(actors);
+    return ml::num(components);
 }
 
 auto FStaticCollisionSources::is_empty() const noexcept -> bool {
@@ -223,9 +195,7 @@ auto FStaticCollisionSources::is_empty() const noexcept -> bool {
 
 void FStaticCollisionSources::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
-        ml::num(actors),
         ml::num(components),
-        ml::num(harvested_transforms),
         ml::num(original_collision_modes),
     });
 }

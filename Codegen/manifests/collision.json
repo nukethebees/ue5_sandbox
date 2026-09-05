@@ -56,9 +56,7 @@
           "name": "FStaticCollisionSources",
           "export_specifier": "SPACEGAME_API",
           "members": [
-            {"name": "actors", "kind": "array", "type": "@actor_weak_ptr"},
             {"name": "components", "kind": "array", "type": "@primitive_component_weak_ptr"},
-            {"name": "harvested_transforms", "kind": "array", "type": "@transform"},
             {"name": "original_collision_modes", "kind": "array", "type": "@collision_enabled"}
           ],
           "operations": ["reset"],
@@ -68,15 +66,11 @@
               "return_type": "void",
               "definition_in_source": true,
               "parameters": [
-                {"type": "@actor_ptr", "name": "actor"},
                 {"type": "@primitive_component_ptr", "name": "component"},
-                {"type": {"name": "@transform", "suffix": " const&"}, "name": "harvested_transform"},
                 {"type": {"name": "@collision_enabled", "suffix": " const"}, "name": "original_collision_mode"}
               ],
               "body": [
-                "actors.Add(actor);",
                 "components.Add(component);",
-                "harvested_transforms.Add(harvested_transform);",
                 "original_collision_modes.Add(original_collision_mode);"
               ]
             }
