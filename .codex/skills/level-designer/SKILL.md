@@ -22,3 +22,4 @@ For legacy or configuration migration context, consult `docs/level_config_migrat
 Keep this section deliberately small. Add rules only as the project accumulates evidence about what works.
 
 - When enemies can attack the player at level start, spawn the player outside their weapon range with enough approach distance that they cannot be hit in the first one or two seconds.
+- Keep each spawned entity's complete world AABB inside the collision grid configured by the level's `USpaceGameLevelConfig`; checking only the spawn position is insufficient.
