@@ -4,6 +4,7 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
+#include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/mesh.h>
@@ -14,35 +15,7 @@
 namespace ml {
 auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
     -> FLevelSimulationInitData {
-    FLevelSimulationInitData data;
-    data.lasers = make_simulation_config(config.laser_projectiles);
-    data.capital_ships = make_simulation_config(config.capital_ships);
-    data.capital_ships.fighter_spawn_slots_relative_transforms.SetNum(
-        data.capital_ships.fighter_spawn_slots);
-    data.fighters = make_simulation_config(config.fighters);
-    data.turrets = make_simulation_config(config.turrets);
-    data.spinners = make_simulation_config(config.tube_spinners);
-    data.capital_radius = ml::get_mesh_sphere_bounds(*config.capital_ships.mesh);
-    data.fighter_radius = ml::get_mesh_sphere_bounds(*config.fighters.mesh);
-    data.turret_radius = ml::get_mesh_sphere_bounds(*config.turrets.mesh);
-    data.spinner_radius = ml::get_mesh_sphere_bounds(*config.tube_spinners.mesh);
-    auto const* socket{config.fighters.mesh->FindSocket(TEXT("Gun"))};
-    data.fighter_fire_point_distance =
-        IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
-    data.grid_dimensions = config.collision_grid.calculate_grid_dimensions();
-    data.cell_size = config.collision_grid.cell_size;
-
-    ml::ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    if (IsValid(config.classes.player_ship_class)) {
-        auto const* player{config.classes.player_ship_class->GetDefaultObject<ATestSpaceShip>()};
-        meshes[ETestEntityType::PlayerShip] = player ? player->get_collision_mesh() : nullptr;
-    }
-    meshes[ETestEntityType::CapitalShip] = config.capital_ships.mesh;
-    meshes[ETestEntityType::CapitalShipFighter] = config.fighters.mesh;
-    meshes[ETestEntityType::Turret] = config.turrets.mesh;
-    meshes[ETestEntityType::TubeSpinner] = config.tube_spinners.mesh;
-    data.entity_bounds = ml::ioj::FLevelCollisionHost::extract_entity_bounds(meshes);
-    return data;
+    return make_level_simulation_init_data(config);
 }
 
 auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform const& transform)

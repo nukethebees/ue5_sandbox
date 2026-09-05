@@ -24,8 +24,7 @@ namespace ml {
 TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator& orchestrator)
     : world{world}
     , orchestrator{orchestrator} {
-    time_scale = get_space_game_level_test_time_scale(get_space_game_test_execution_mode() ==
-                                                      ESpaceGameTestExecutionMode::Level);
+    time_scale = get_space_game_level_test_time_scale();
     orchestrator.set_time_scale(time_scale);
 }
 

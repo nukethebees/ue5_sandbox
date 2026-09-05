@@ -31,14 +31,6 @@ function(add_unreal_automation_test test_name)
   list(JOIN automation_filters "+" automation_filter_expression)
 
   set(space_game_test_arguments)
-  if(SANDBOX_SPACE_GAME_TEST_MODE)
-    if(NOT SANDBOX_SPACE_GAME_TEST_MODE MATCHES "^(Headless|Level)$")
-      message(FATAL_ERROR
-        "SANDBOX_SPACE_GAME_TEST_MODE must be empty, Headless, or Level.")
-    endif()
-    list(APPEND space_game_test_arguments
-      "-SpaceGameTestMode=${SANDBOX_SPACE_GAME_TEST_MODE}")
-  endif()
   if(SANDBOX_SPACE_GAME_TEST_TIME_SCALE)
     if(NOT SANDBOX_SPACE_GAME_TEST_TIME_SCALE MATCHES "^[0-9]+([.][0-9]+)?$")
       message(FATAL_ERROR

@@ -71,9 +71,7 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             test_name.EndsWith(TEXT(".Fighters_InterceptCapital")) ||
             test_name.EndsWith(TEXT(".Fighters_StandbyTransition")) ||
             test_name.EndsWith(TEXT(".Fighters_AttackCapital"))};
-        level_used =
-            ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level ||
-            !headless_capable;
+        level_used = !headless_capable;
         if (level_used) {
             level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
         }
@@ -116,11 +114,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
 
     void run_mission_scenario(ml::EMissionManagerScenario const mission_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FTestMissionManagerScenario>(mission_scenario);
-            return;
-        }
-
         TestCommandBuilder.Do([this, mission_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -159,10 +152,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
     TEST_METHOD(Fighters_LineOfSightFailureHandling)
     {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FFighterLosFailureScenario>();
-            return;
-        }
         TestCommandBuilder.Do([this] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -172,11 +161,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
 
     void run_entity_registry_scenario(ml::EEntityRegistryScenario const registry_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FEntityRegistryScenario>(registry_scenario);
-            return;
-        }
-
         TestCommandBuilder.Do([this, registry_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -188,11 +172,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
     template <typename Scenario, typename WorldlessRunner>
     void run_worldless_capable_scenario(WorldlessRunner && worldless_runner) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<Scenario>();
-            return;
-        }
-
         TestCommandBuilder.Do([this, runner = Forward<WorldlessRunner>(worldless_runner)] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -202,11 +181,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
 
     void run_laser_lifecycle(ml::ELaserLifecycleScenario const laser_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FLaserLifecycleScenario>(laser_scenario);
-            return;
-        }
-
         TestCommandBuilder.Do([this, laser_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -217,11 +191,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
     void run_turret_acquisition(
         ml::ETurretAcquisitionRegressionScenario const acquisition_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FTurretAcquisitionRegressionScenario>(acquisition_scenario);
-            return;
-        }
-
         TestCommandBuilder.Do([this, acquisition_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -232,10 +201,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
 
     void run_turret_combat(ml::ETurretCombatScenario const combat_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FTurretCombatScenario>(combat_scenario);
-            return;
-        }
         TestCommandBuilder.Do([this, combat_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -246,10 +211,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
     void run_capital_fighter_handles(
         ml::ECapitalFighterHandlesScenario const fighter_handles_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FCapitalFighterHandlesScenario>(fighter_handles_scenario);
-            return;
-        }
         TestCommandBuilder.Do([this, fighter_handles_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -260,11 +221,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
 
     void run_hud_manager(ml::EHUDManagerScenario const hud_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FTestHUDManagerScenario>(hud_scenario);
-            return;
-        }
-
         TestCommandBuilder.Do([this, hud_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -274,10 +230,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
 
     void run_core_regression(ml::ESimulationCoreRegressionScenario const regression_scenario) {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FSimulationCoreRegressionScenario>(regression_scenario);
-            return;
-        }
         TestCommandBuilder.Do([this, regression_scenario] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
@@ -301,10 +253,6 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     }
     TEST_METHOD(Fighters_InterceptCapital)
     {
-        if (ml::get_space_game_test_execution_mode() == ESpaceGameTestExecutionMode::Level) {
-            run_scenario<ml::FFightersInterceptCapitalScenario>();
-            return;
-        }
         TestCommandBuilder.Do([this] {
             auto const* config{ml::get_default_level_config(checks)};
             if (config) {
