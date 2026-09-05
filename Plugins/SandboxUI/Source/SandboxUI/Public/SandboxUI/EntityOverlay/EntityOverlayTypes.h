@@ -30,10 +30,12 @@ struct SANDBOXUI_API FEntityOverlaySourceView {
 struct SANDBOXUI_API FEntityOverlayStyle {
     FVector2f bar_size_pixels{64.0f, 8.0f};
     FVector2f screen_offset_pixels{0.0f, -24.0f};
-    float reference_world_radius{200.0f};
+    float minimum_world_radius{100.0f};
+    float maximum_world_radius{1000.0f};
     float minimum_bar_scale{0.5f};
     float maximum_bar_scale{2.0f};
     float inset_pixels{1.0f};
+    float maximum_inset_height_ratio{0.4f};
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
 };

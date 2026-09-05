@@ -29,7 +29,8 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(FIntVector4, ViewRect)
     SHADER_PARAMETER(FVector2f, BarSizePixels)
     SHADER_PARAMETER(FVector2f, ScreenOffsetPixels)
-    SHADER_PARAMETER(float, ReferenceWorldRadius)
+    SHADER_PARAMETER(float, MinimumWorldRadius)
+    SHADER_PARAMETER(float, MaximumWorldRadius)
     SHADER_PARAMETER(float, MinimumBarScale)
     SHADER_PARAMETER(float, MaximumBarScale)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
@@ -48,6 +49,7 @@ class FEntityOverlayPS final : public FGlobalShader {
 
     BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
     SHADER_PARAMETER(float, InsetPixels)
+    SHADER_PARAMETER(float, MaximumInsetHeightRatio)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
     END_SHADER_PARAMETER_STRUCT()
@@ -105,12 +107,15 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
         view.view_rect.Min.X, view.view_rect.Min.Y, view.view_rect.Max.X, view.view_rect.Max.Y};
     parameters->VS.BarSizePixels = style.bar_size_pixels;
     parameters->VS.ScreenOffsetPixels = style.screen_offset_pixels;
-    parameters->VS.ReferenceWorldRadius = FMath::Max(style.reference_world_radius, 0.001f);
+    parameters->VS.MinimumWorldRadius = FMath::Max(style.minimum_world_radius, 0.0f);
+    parameters->VS.MaximumWorldRadius =
+        FMath::Max(style.maximum_world_radius, parameters->VS.MinimumWorldRadius + 0.001f);
     parameters->VS.MinimumBarScale = FMath::Max(style.minimum_bar_scale, 0.01f);
     parameters->VS.MaximumBarScale =
         FMath::Max(style.maximum_bar_scale, parameters->VS.MinimumBarScale);
     parameters->VS.Instances = graph_builder.CreateSRV(instance_buffer);
     parameters->PS.InsetPixels = style.inset_pixels;
+    parameters->PS.MaximumInsetHeightRatio = FMath::Max(style.maximum_inset_height_ratio, 0.0f);
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
     parameters->RenderTargets[0] =

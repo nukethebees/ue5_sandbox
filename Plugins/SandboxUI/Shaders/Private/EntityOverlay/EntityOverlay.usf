@@ -13,10 +13,12 @@ int2 OutputSize;
 int4 ViewRect;
 float2 BarSizePixels;
 float2 ScreenOffsetPixels;
-float ReferenceWorldRadius;
+float MinimumWorldRadius;
+float MaximumWorldRadius;
 float MinimumBarScale;
 float MaximumBarScale;
 float InsetPixels;
+float MaximumInsetHeightRatio;
 float4 BackgroundColor;
 float4 FillColor;
 
@@ -54,8 +56,10 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     float2 const projected_pixel =
         view_min + float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * view_size;
     float2 const corner = quad_corner(vertex_id);
-    float const bar_scale = clamp(
-        instance.world_radius / max(ReferenceWorldRadius, 0.001), MinimumBarScale, MaximumBarScale);
+    float const radius_range = max(MaximumWorldRadius - MinimumWorldRadius, 0.001);
+    float const radius_alpha =
+        saturate((instance.world_radius - MinimumWorldRadius) / radius_range);
+    float const bar_scale = lerp(MinimumBarScale, MaximumBarScale, radius_alpha);
     float2 const instance_bar_size = BarSizePixels * bar_scale;
     float2 pixel_position =
         projected_pixel + ScreenOffsetPixels + (corner - float2(0.5, 1.0)) * instance_bar_size;
@@ -77,7 +81,9 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
     : SV_Target0 {
     clip(input.visible - 0.5);
 
-    float2 const inset_uv = InsetPixels / max(input.bar_size_pixels, float2(1.0, 1.0));
+    float const inset_height_ratio = InsetPixels * 2.0 / max(input.bar_size_pixels.y, 1.0);
+    float const effective_inset = inset_height_ratio >= MaximumInsetHeightRatio ? 0.0 : InsetPixels;
+    float2 const inset_uv = effective_inset / max(input.bar_size_pixels, float2(1.0, 1.0));
     bool const inside = all(input.local_uv >= inset_uv) && all(input.local_uv <= 1.0 - inset_uv);
     bool const filled =
         inside && input.local_uv.x <= lerp(inset_uv.x, 1.0 - inset_uv.x, input.health);

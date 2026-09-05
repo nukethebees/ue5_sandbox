@@ -5,6 +5,7 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/support/mesh.h"
 
 #include <SandboxCore/timing.h>
 
@@ -62,16 +63,19 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     entity_registry = &new_entity_registry;
     player_ship = new_player_ship;
     entity_overlay_settings_ = entity_overlay_settings;
+    auto const fighter_radius{ml::get_mesh_sphere_bounds(*level_config.fighters.mesh)};
+    auto const capital_radius{ml::get_mesh_sphere_bounds(*level_config.capital_ships.mesh)};
     entity_overlay_style_ = {
         .bar_size_pixels = FVector2f{entity_overlay_settings.bar_size_pixels},
         .screen_offset_pixels = FVector2f{entity_overlay_settings.screen_offset_pixels},
-        .reference_world_radius =
-            FMath::Max(entity_overlay_settings.reference_world_radius, 0.001f),
+        .minimum_world_radius = FMath::Min(fighter_radius, capital_radius),
+        .maximum_world_radius = FMath::Max(fighter_radius, capital_radius),
         .minimum_bar_scale = FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f),
         .maximum_bar_scale =
             FMath::Max(entity_overlay_settings.maximum_bar_scale,
                        FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f)),
         .inset_pixels = entity_overlay_settings.inset_pixels,
+        .maximum_inset_height_ratio = entity_overlay_settings.maximum_inset_height_ratio,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,
     };
