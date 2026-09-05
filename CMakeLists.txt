@@ -104,6 +104,12 @@ set(CACHE{SANDBOX_ISMC_BENCHMARK_SHADOWS}
   VALUE 0
 )
 
+set(CACHE{SANDBOX_SPACE_GAME_TEST_TIME_SCALE}
+  TYPE STRING
+  HELP "Optional positive time scale for level-backed SpaceGame automation"
+  VALUE ""
+)
+
 if(NOT CMAKE_HOST_WIN32)
   message(FATAL_ERROR
     "This initial CMake build layer supports Windows hosts only. "

@@ -9,6 +9,11 @@
 namespace ml {
 enum class EEntityRegistryScenario : uint8 { TeamCounts, OnePlayerKill, TwoPlayerKills };
 
+void run_worldless_entity_registry_scenario(FAutomationTestBase& test,
+                                            FSoftTestAssertions& checks,
+                                            USpaceGameLevelConfig const& config,
+                                            EEntityRegistryScenario scenario);
+
 class FEntityRegistryScenario final : public FSimulationTestScenario {
 
     struct FVariableKillSample {

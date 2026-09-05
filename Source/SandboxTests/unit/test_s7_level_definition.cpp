@@ -42,6 +42,24 @@ constexpr TCHAR valid_camera_level[]{LR"(
       (position 1000 0 0) (rotation 0 180 0))))
 )"};
 
+constexpr TCHAR scheduled_level[]{LR"(
+(level
+  (id 'scheduled-example)
+  (title "Scheduled Example")
+  (teams (team 'blue) (team 'red))
+  (camera (look-at 'hero) (distance 1000) (offset-direction -1 0 0))
+  (mission (mode 'kill-enemies) (kill-count 1) (heroes 'hero))
+  (mission-events
+    (mission-event (at 1.25)
+      (add-required-kills 'enemy)
+      (increase-kill-count 2)))
+  (entities
+    (entity 'hero 'capital-ship 'blue
+      (position 0 0 0) (rotation 0 0 0))
+    (entity 'enemy 'capital-ship 'red
+      (position 1000 0 0) (rotation 0 180 0) (spawn-at 1.25))))
+)"};
+
 auto contains_error(ml::s7::FLevelDefinitionReadResult const& result,
                     ml::ELevelValidationErrorCode const code) -> bool {
     return result.validation_errors.ContainsByPredicate(
@@ -51,6 +69,29 @@ auto contains_error(ml::s7::FLevelDefinitionReadResult const& result,
 
 TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
 {
+    TEST_METHOD(DecodesScheduledSpawnsAndMissionObjectives)
+    {
+        ml::s7::FLevelDefinitionReader reader;
+        auto const result{reader.read_source(scheduled_level)};
+        if (!TestRunner->TestTrue(TEXT("Scheduled script produces a definition"),
+                                  static_cast<bool>(result))) {
+            TestRunner->AddError(result.script_error);
+            return;
+        }
+
+        auto const& definition{result.definition.GetValue()};
+        TestRunner->TestEqual(
+            TEXT("Spawn time is decoded"), definition.entities.spawn_times_seconds[1], 1.25);
+        TestRunner->TestEqual(
+            TEXT("One objective event is decoded"), definition.mission_events.Num(), 1);
+        auto const& event{definition.mission_events[0]};
+        TestRunner->TestEqual(TEXT("Objective event time is decoded"), event.time_seconds, 1.25);
+        TestRunner->TestEqual(
+            TEXT("Kill target increase is decoded"), event.kill_target_increase, 2);
+        TestRunner->TestEqual(
+            TEXT("Required kill is decoded"), event.required_kill_entity_ids.Num(), 1);
+    }
+
     TEST_METHOD(DecodesSchemeDataIntoAValidatedNativeSoA)
     {
         ml::s7::FLevelDefinitionReader reader;

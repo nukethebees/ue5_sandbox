@@ -9,6 +9,10 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+void run_worldless_capital_command_fighters(FAutomationTestBase& test,
+                                            FSoftTestAssertions& checks,
+                                            USpaceGameLevelConfig const& config);
+
 class FCapitalCommandFightersScenario final : public FSimulationTestScenario {
     using Task = test_capital_ship_fighters::Simulation::Task;
 

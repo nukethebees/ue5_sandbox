@@ -8,6 +8,10 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+void run_worldless_fighter_los_failure(FAutomationTestBase& test,
+                                       FSoftTestAssertions& checks,
+                                       USpaceGameLevelConfig const& config);
+
 class FFighterLosFailureScenario final : public FSimulationTestScenario {
     struct FSimulationSample {
         TArray<ETestTeam> fighter_teams;

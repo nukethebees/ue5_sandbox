@@ -51,6 +51,9 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
     void set_start_mode(EOrchestratorStartMode mode);
     void set_presentation_enabled(bool enabled);
+    void set_level_definition(ml::FLevelDefinition definition) {
+        level_definition_ = MoveTemp(definition);
+    }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
     void set_time_scale(time_type scale) noexcept;
 
@@ -224,6 +227,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FHUDManager hud_manager;
     TOptional<FLevelSimulation> level_simulation_;
+    TOptional<ml::FLevelDefinition> level_definition_;
     ml::ioj::FLevelCollisionHost world_collision_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))

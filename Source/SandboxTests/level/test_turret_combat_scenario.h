@@ -11,6 +11,11 @@
 namespace ml {
 enum class ETurretCombatScenario : uint8 { KillEnemy, ZeroDamage };
 
+void run_worldless_turret_combat(FAutomationTestBase& test,
+                                 FSoftTestAssertions& checks,
+                                 USpaceGameLevelConfig const& config,
+                                 ETurretCombatScenario scenario);
+
 class FTurretCombatScenario final : public FSimulationTestScenario {
     static constexpr time_type test_time{3.0};
     static constexpr ETestTeam hero_team{ETestTeam::Blue};

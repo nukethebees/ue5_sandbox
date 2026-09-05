@@ -13,6 +13,11 @@ class ASandboxTestCollisionActor;
 namespace ml {
 enum class ELaserLifecycleScenario : uint8 { Hit, SimultaneousLethalHits, Miss, WorldBlocker };
 
+void run_worldless_laser_lifecycle(FAutomationTestBase& test,
+                                   FSoftTestAssertions& checks,
+                                   USpaceGameLevelConfig const& config,
+                                   ELaserLifecycleScenario scenario);
+
 class FLaserLifecycleScenario final : public FSimulationTestScenario {
     struct FSample {
         int32 active_lasers{0};

@@ -55,12 +55,12 @@ void FLevelLoaderCameraScenario::load_fixture() {
 
     checks.are_equal(
         0, count_actors<ATestSpaceShip>(context_.world), TEXT("Loader spawns no player"));
-    checks.are_equal(2,
+    checks.are_equal(0,
                      count_actors<ATestCapitalShipProxy>(context_.world),
-                     TEXT("Loader spawns two capital proxies"));
-    checks.are_equal(2,
+                     TEXT("Loader does not create capital proxies"));
+    checks.are_equal(0,
                      count_actors<ATestStaticTurretsProxy>(context_.world),
-                     TEXT("Loader spawns two turret proxies"));
+                     TEXT("Loader does not create turret proxies"));
     checks.is_true(!IsValid(context_.orchestrator.get_player_ship()),
                    TEXT("Orchestrator has no player ship"));
 
@@ -240,12 +240,12 @@ void FLevelLoaderScenario::load_fixture() {
 
     checks.are_equal(
         1, count_actors<ATestSpaceShip>(context_.world), TEXT("Loader spawns one player"));
-    checks.are_equal(2,
+    checks.are_equal(0,
                      count_actors<ATestCapitalShipProxy>(context_.world),
-                     TEXT("Loader spawns two capital proxies"));
-    checks.are_equal(1,
+                     TEXT("Loader does not create capital proxies"));
+    checks.are_equal(0,
                      count_actors<ATestStaticTurretsProxy>(context_.world),
-                     TEXT("Loader spawns one turret proxy"));
+                     TEXT("Loader does not create turret proxies"));
 
     auto const* const player{context_.orchestrator.get_player_ship()};
     if (checks.is_valid(player, TEXT("Loader binds the player to the orchestrator"))) {

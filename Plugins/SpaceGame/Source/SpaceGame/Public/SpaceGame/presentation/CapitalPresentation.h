@@ -34,6 +34,7 @@ struct SPACEGAME_API FCapitalPresentation {
 
     void configure_ismc();
     void add_initial_visual_instances();
+    void add_visual_instances(int32 first_index, int32 count);
     void trigger_death_effects();
     void draw_debugging_shapes() const;
     void visual_log_state() const;

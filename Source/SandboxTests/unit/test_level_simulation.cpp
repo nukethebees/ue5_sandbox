@@ -1,6 +1,8 @@
 #include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
+#include <SpaceGame/levels/LevelDefinition.h>
+#include <SpaceGame/levels/LevelEventManager.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
@@ -28,6 +30,52 @@ auto make_battle() -> FLevelSimulationInitData {
         data.entity_bounds.half_extent_ys[index] = 10.f;
         data.entity_bounds.half_extent_zs[index] = 10.f;
     }
+    return data;
+}
+
+auto make_scheduled_battle() -> FLevelSimulationInitData {
+    auto data{make_battle()};
+    data.capital_spawns.reset();
+    data.capital_target_spawn_indices.Reset();
+    data.clock_settings.tick_rate = 10.0;
+
+    ml::FLevelBuilder builder;
+    builder.set_metadata(
+        {.id = ml::FLevelId{FName{TEXT("scheduled-battle")}}, .title = TEXT("Scheduled Battle")});
+    builder.add_team(ml::level_teams::blue);
+    builder.add_team(ml::level_teams::red);
+    auto const hero{builder.add_entity({
+        .id = ml::FLevelEntityId{FName{TEXT("hero")}},
+        .archetype = ml::level_archetypes::capital_ship,
+        .team = ml::level_teams::blue,
+        .position = FVector{-1000.0, 0.0, 0.0},
+    })};
+    auto const enemy{builder.add_entity({
+        .id = ml::FLevelEntityId{FName{TEXT("enemy")}},
+        .archetype = ml::level_archetypes::capital_ship,
+        .team = ml::level_teams::red,
+        .position = FVector{1000.0, 0.0, 0.0},
+        .spawn_time_seconds = 0.21,
+    })};
+    builder.set_camera({
+        .target_entity_ids = {hero},
+        .offset_direction = FVector{-1.0, 0.0, 0.0},
+        .distance = 1000.0,
+    });
+    builder.set_mission({
+        .mode = ml::ELevelMissionMode::KillEnemies,
+        .kill_count = 1,
+        .hero_entity_ids = {hero},
+    });
+    builder.add_mission_event({
+        .time_seconds = 0.21,
+        .required_kill_entity_ids = {enemy},
+    });
+    auto const definition{builder.finish()};
+    FSimulationClock clock;
+    clock.initialise(data.clock_settings);
+    data.level_events =
+        ml::compile_level_events(definition, clock, data.capital_ships, data.turrets);
     return data;
 }
 
@@ -128,6 +176,40 @@ auto FLevelSimulationReconstructionTest::RunTest(FString const&) -> bool {
               2);
     TestFalse(TEXT("No pending result survives reconstruction"),
               simulation->get_mission_manager().take_result().IsSet());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationScheduledEventsTest,
+    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnsAndObjectivesUseSimulationTicks",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
+    FLevelSimulation simulation{make_scheduled_battle()};
+    simulation.finish_initialisation();
+    TestEqual(TEXT("Only tick-zero entities exist initially"),
+              simulation.get_capital_ships()->get_num_instances(),
+              1);
+    TestTrue(TEXT("Future objectives prevent early completion"),
+             simulation.get_mission_manager().has_pending_objective_events());
+
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    simulation.advance(dt);
+    simulation.advance(dt);
+    TestEqual(TEXT("A fractional authoring time rounds up to the next tick"),
+              simulation.get_capital_ships()->get_num_instances(),
+              1);
+
+    simulation.advance(dt);
+    TestEqual(TEXT("The delayed entity spawns on its compiled tick"),
+              simulation.get_capital_ships()->get_num_instances(),
+              2);
+    TestEqual(TEXT("The same-tick objective resolves the spawned entity handle"),
+              simulation.get_mission_manager().get_entity_handles_required_to_kill().Num(),
+              1);
+    TestFalse(TEXT("All authored objective events have been dispatched"),
+              simulation.get_mission_manager().has_pending_objective_events());
     return true;
 }
 

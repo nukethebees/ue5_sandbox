@@ -7,6 +7,7 @@
 #include <SpaceGame/defences/turrets/TestStaticTurretsPhaseInterface.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/levels/LevelEventManager.h>
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
@@ -22,6 +23,8 @@
 #include <SpaceGame/simulation/LevelSimulationState.h>
 
 struct FLevelSimulationInitData {
+    static constexpr int32 player_target_spawn_index{-2};
+
     FFixedTickLoop clock_settings{};
     FLaserSimulationConfig lasers;
     FCapitalSimulationConfig capital_ships;
@@ -30,7 +33,9 @@ struct FLevelSimulationInitData {
     FSpinnerSimulationConfig spinners;
     TOptional<ml::test_space_ship::FPlayerSpawnData> player;
     ml::test_capital_ships::SpawnData capital_spawns;
+    TArray<int32> capital_target_spawn_indices;
     ml::test_static_turrets::SpawnData turret_spawns;
+    ml::FCompiledLevelEvents level_events;
     FVectors3f spinner_locations;
     TArray<float> spinner_yaws;
     TArray<int32> spinner_fire_points;
@@ -120,6 +125,7 @@ struct SPACEGAME_API FLevelSimulation {
     FTestEntityRegistry entity_registry_;
     FTestMissionManager mission_manager_;
     ml::FSpatialQueryManager query_manager_;
+    ml::FLevelEventManager event_manager_;
     FLevelTelemetryManager level_telemetry_manager_;
     TOptional<ml::test_space_ship::Simulation> player_ship_simulation_;
     ml::test_space_ship::PhaseInterface player_ship_phase_;

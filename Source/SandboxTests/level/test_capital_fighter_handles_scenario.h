@@ -13,6 +13,11 @@
 namespace ml {
 enum class ECapitalFighterHandlesScenario : uint8 { KillFightersOnly, KillCapital, All };
 
+void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
+                                           FSoftTestAssertions& checks,
+                                           USpaceGameLevelConfig const& config,
+                                           ECapitalFighterHandlesScenario scenario);
+
 class FCapitalFighterHandlesScenario final : public FSimulationTestScenario {
     using Task = test_capital_ship_fighters::Simulation::Task;
 

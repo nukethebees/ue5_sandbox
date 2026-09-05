@@ -13,6 +13,11 @@ enum class ETurretAcquisitionRegressionScenario : uint8 {
     EnemyOutsideRadius,
 };
 
+void run_worldless_turret_acquisition_regression(FAutomationTestBase& test,
+                                                 FSoftTestAssertions& checks,
+                                                 USpaceGameLevelConfig const& config,
+                                                 ETurretAcquisitionRegressionScenario scenario);
+
 class FTurretAcquisitionRegressionScenario final : public FSimulationTestScenario {
   public:
     FTurretAcquisitionRegressionScenario(FSimulationTestContext& context,

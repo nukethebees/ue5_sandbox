@@ -73,6 +73,11 @@ void FCapitalPresentation::begin_play_presentation() {
 void FCapitalPresentation::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCapitalPresentation::update_visual_data);
 
+    if (simulation().presentation_spawn_count > 0) {
+        add_visual_instances(simulation().presentation_spawn_start,
+                             simulation().presentation_spawn_count);
+    }
+
     auto const& indices_to_remove{simulation().presentation_indices_to_remove};
     if (!indices_to_remove.IsEmpty()) {
         trigger_death_effects();
@@ -108,6 +113,11 @@ void FCapitalPresentation::configure_ismc() {
 void FCapitalPresentation::add_initial_visual_instances() {
     auto const& entities{simulation().entities};
     auto const n_to_add{entities.num()};
+    add_visual_instances(0, n_to_add);
+}
+
+void FCapitalPresentation::add_visual_instances(int32 const first_index, int32 const n_to_add) {
+    auto const& entities{simulation().entities};
     if (n_to_add == 0) {
         return;
     }
@@ -118,18 +128,21 @@ void FCapitalPresentation::add_initial_visual_instances() {
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[entities.teams[i]]};
+        auto const& colour{colour_cache[entities.teams[first_index + i]]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
     }
 
-    auto const transforms{ml::make_transforms(entities.locations, entities.rotations)};
+    auto const transforms{
+        ml::make_transforms(entities.locations.get_const_view(first_index, n_to_add),
+                            entities.rotations.get_const_view(first_index, n_to_add))};
     constexpr bool return_indices{false};
     constexpr bool update_navigation{false};
     instances->AddInstances(transforms, return_indices, is_world_space, update_navigation);
     constexpr bool mark_render_state_dirty{false};
-    instances->SetCustomData(0, n_to_add - 1, custom_data, mark_render_state_dirty);
+    instances->SetCustomData(
+        first_index, first_index + n_to_add - 1, custom_data, mark_render_state_dirty);
 }
 
 void FCapitalPresentation::trigger_death_effects() {

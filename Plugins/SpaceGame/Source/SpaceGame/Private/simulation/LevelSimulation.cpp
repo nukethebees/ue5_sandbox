@@ -2,6 +2,65 @@
 #include <SpaceGame/simulation/LevelSimulation.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
+#include <SandboxCore/soa_rotator_utils.h>
+#include <SandboxCore/soa_vector_utils.h>
+
+namespace {
+auto make_legacy_level_events(FLevelSimulationInitData const& data) -> ml::FCompiledLevelEvents {
+    ml::FCompiledLevelEvents compiled;
+    auto& initialisation{compiled.initialisation};
+    auto& schedule{compiled.schedule};
+    auto const player_offset{data.player.IsSet() ? 1 : 0};
+    auto const capital_count{data.capital_spawns.num()};
+    auto const turret_count{data.turret_spawns.num()};
+    initialisation.entity_count = player_offset + capital_count + turret_count;
+    initialisation.player_entity_index = data.player.IsSet() ? 0 : INDEX_NONE;
+
+    schedule.capital_spawns.add_uninitialised(capital_count);
+    for (int32 i{}; i < capital_count; ++i) {
+        auto const entity_index{player_offset + i};
+        schedule.capital_spawns.entity_indices[i] = entity_index;
+        auto const target_index{data.capital_target_spawn_indices.IsValidIndex(i)
+                                    ? data.capital_target_spawn_indices[i]
+                                    : INDEX_NONE};
+        schedule.capital_spawns.target_entity_indices[i] =
+            target_index == FLevelSimulationInitData::player_target_spawn_index
+                ? initialisation.player_entity_index
+                : (target_index == INDEX_NONE ? INDEX_NONE : player_offset + target_index);
+        ml::assign_from(schedule.capital_spawns.locations, i, data.capital_spawns.locations, i);
+        ml::assign(schedule.capital_spawns.rotations,
+                   i,
+                   ml::get_rotator3d(data.capital_spawns.rotations, i));
+        schedule.capital_spawns.teams[i] = data.capital_spawns.teams[i];
+        schedule.capital_spawns.healths[i] = data.capital_spawns.healths[i];
+        schedule.capital_spawns.initial_fighter_spawn_delays[i] =
+            data.capital_spawns.initial_spawn_delays[i];
+        schedule.capital_spawns.fighter_spawn_cooldowns[i] = data.capital_spawns.spawn_cooldowns[i];
+    }
+
+    schedule.turret_spawns.add_uninitialised(turret_count);
+    for (int32 i{}; i < turret_count; ++i) {
+        auto const entity_index{player_offset + capital_count + i};
+        schedule.turret_spawns.entity_indices[i] = entity_index;
+        ml::assign_from(schedule.turret_spawns.locations, i, data.turret_spawns.locations, i);
+        auto const rotation{data.turret_transforms.IsValidIndex(i)
+                                ? data.turret_transforms[i].Rotator()
+                                : FRotator::ZeroRotator};
+        ml::assign(schedule.turret_spawns.rotations, i, rotation);
+        schedule.turret_spawns.teams[i] = data.turret_spawns.teams[i];
+        schedule.turret_spawns.healths[i] = data.turret_spawns.healths[i];
+        schedule.turret_spawns.laser_damages[i] = data.turret_spawns.laser_damages[i];
+    }
+    if (capital_count > 0 || turret_count > 0) {
+        schedule.execution_ticks.Add(0);
+        schedule.event_group_counts.AddDefaulted();
+        schedule.add_spawn_group(ETestEntityType::CapitalShip, 0, capital_count);
+        schedule.add_spawn_group(ETestEntityType::Turret, 0, turret_count);
+    }
+    return compiled;
+}
+}
+
 FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data,
                                    FLevelPresentationResources const* presentation) {
     clock_.initialise(data.clock_settings);
@@ -46,15 +105,28 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data,
     if (player_ship_simulation_.IsSet()) {
         player_ship_phase_.begin_play();
     }
-    capital_ships_simulation_.register_ships(data.capital_spawns);
     capital_ships_phase_.begin_play();
     capital_ship_fighters_phase_.begin_play();
-    turrets_simulation_.register_turrets(data.turret_spawns);
     turrets_phase_.begin_play();
     spinners_simulation_.spawn_instances(
         data.spinner_locations.get_const_view(), data.spinner_yaws, data.spinner_fire_points);
     spinners_phase_.begin_play();
     lasers_phase_.begin_play();
+
+    if (!data.level_events.initialisation.mission.IsSet() &&
+        data.level_events.initialisation.entity_count == 0 &&
+        (!data.capital_spawns.is_empty() || !data.turret_spawns.is_empty())) {
+        data.level_events = make_legacy_level_events(data);
+    }
+    auto const player_handle{player_ship_simulation_.IsSet()
+                                 ? player_ship_simulation_->registry_handle
+                                 : FRegistryEntityHandle{}};
+    event_manager_.initialise(MoveTemp(data.level_events),
+                              capital_ships_simulation_,
+                              turrets_simulation_,
+                              mission_manager_,
+                              player_handle);
+    event_manager_.dispatch_tick(0);
     if (presentation) {
         check(presentation->is_valid());
         presentation_.Emplace(*presentation, *this, MoveTemp(data.turret_transforms));
@@ -67,6 +139,7 @@ void FLevelSimulation::finish_initialisation() {
     entity_registry_.end_tick();
     query_manager_.update();
     level_telemetry_manager_.initialise(entity_registry_);
+    event_manager_.configure_mission();
     mission_manager_.begin_play();
     state_ = EOrchestratorState::Paused;
 }
@@ -154,6 +227,10 @@ void FLevelSimulation::advance(time_type const dt) {
             capital_ship_fighters_phase_.begin_tick();
             turrets_phase_.begin_tick();
             lasers_phase_.begin_tick();
+
+            if (event_manager_.dispatch_tick(clock_.completed_ticks + 1)) {
+                query_manager_.update();
+            }
         }
 
         /* -------------------------------------------------------------------------------- */

@@ -14,6 +14,7 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestResultAssetIO.h>
 #include <SandboxTests/support/time_series_test_data.h>
+#include <SandboxTests/support/WorldlessSimulationTest.h>
 
 #include <SandboxCore/time_series_data.h>
 
@@ -26,6 +27,118 @@ The assumption is that there is one wave of fighters total.
 */
 
 namespace ml {
+void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
+                                           FSoftTestAssertions& checks,
+                                           USpaceGameLevelConfig const& config,
+                                           ECapitalFighterHandlesScenario const scenario) {
+    auto data{make_worldless_simulation_test_data(config)};
+    data.capital_ships.spawn_delay = 10.f;
+    data.capital_ships.max_health = 10000;
+    data.fighters.speed = 2000.f;
+    data.fighters.laser.max_distance = 15000.f;
+    auto const green_index{add_worldless_capital_spawn(
+        data, {-260800.f, -5060.f, 4360.f}, ETestTeam::Green, 1, 0.f, 6000.f)};
+    add_worldless_capital_spawn(
+        data, {245260.f, -451630.f, 4360.f}, ETestTeam::Red, green_index, 0.f, 6000.f);
+    add_worldless_capital_spawn(
+        data, {300450.f, 214000.f, 4360.f}, ETestTeam::Red, green_index, 0.f, 6000.f);
+
+    FWorldlessSimulationTest harness{MoveTemp(data)};
+    harness.finish_initialisation();
+    auto const* capitals{harness.get_simulation().get_capital_ships()};
+    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    TArray<FRegistryEntityHandle> destroyed;
+    TArray<FRegistryEntityHandle> kept;
+    TArray<FRegistryEntityHandle> green_fighters_before_capital_kill;
+    auto initial_checked{false};
+    auto fighter_kill_checked{scenario == ECapitalFighterHandlesScenario::KillCapital};
+    auto capital_kill_checked{scenario == ECapitalFighterHandlesScenario::KillFightersOnly};
+
+    harness.timeline.at(0.2, [&] {
+        checks.are_equal(3, capitals->get_num_instances(), TEXT("Three capitals are registered"));
+        auto const expected_fighters{3 * capitals->get_fighter_spawn_slots()};
+        checks.are_equal(expected_fighters,
+                         fighters->get_num_instances(),
+                         TEXT("Every capital spawns its fighter slots"));
+        checks.are_equal(expected_fighters,
+                         capitals->get_fighter_handles().Num(),
+                         TEXT("Capital-owned and simulation fighter counts match"));
+        for (int32 i{}; i < capitals->get_num_instances(); ++i) {
+            checks.not_equal(capitals->get_handle(i),
+                             capitals->get_target_handle(i),
+                             TEXT("Capital does not target itself"),
+                             i);
+        }
+        for (auto const target : fighters->get_target_handles()) {
+            checks.is_true(target.is_valid(), TEXT("Spawned fighter has a target"));
+        }
+        initial_checked = true;
+    });
+
+    auto next_time{0.4};
+    if (scenario != ECapitalFighterHandlesScenario::KillCapital) {
+        harness.timeline.at(next_time, [&] {
+            auto const handles{capitals->get_fighter_handles()};
+            for (int32 i{}; i < handles.Num(); ++i) {
+                (i % 2 == 0 ? destroyed : kept).Add(handles[i]);
+            }
+            harness.queue_kills(destroyed);
+        });
+        next_time += 0.2;
+        harness.timeline.at(next_time, [&] {
+            checks.are_equal(kept.Num(),
+                             fighters->get_num_instances(),
+                             TEXT("Killed fighters are removed from the simulation"));
+            checks.are_equal(kept.Num(),
+                             capitals->get_fighter_handles().Num(),
+                             TEXT("Killed fighters are removed from capital ownership"));
+            for (auto const handle : destroyed) {
+                checks.is_true(harness.get_registry().is_valid_dead(handle),
+                               TEXT("Destroyed fighter is dead"));
+            }
+            fighter_kill_checked = true;
+        });
+    }
+
+    if (scenario != ECapitalFighterHandlesScenario::KillFightersOnly) {
+        next_time += 0.2;
+        harness.timeline.at(next_time, [&] {
+            auto const main_index{capitals->find_first_index_on_team(ETestTeam::Green)};
+            check(main_index.has_value());
+            green_fighters_before_capital_kill =
+                TArray<FRegistryEntityHandle>{capitals->get_fighter_handles(*main_index)};
+            harness.queue_kills(TArray{capitals->get_target_handle(*main_index)});
+        });
+        next_time += 0.5;
+        harness.timeline.at(next_time, [&] {
+            checks.are_equal(2,
+                             capitals->get_num_instances(),
+                             TEXT("Killed capital is removed from the simulation"));
+            auto const main_index{capitals->find_first_index_on_team(ETestTeam::Green)};
+            checks.is_true(main_index.has_value(), TEXT("Green capital survives"));
+            if (main_index.has_value()) {
+                auto const remaining{capitals->get_fighter_handles(*main_index)};
+                checks.are_equal(green_fighters_before_capital_kill.Num(),
+                                 remaining.Num(),
+                                 TEXT("Surviving capital keeps its fighters"));
+                for (auto const handle : remaining) {
+                    checks.is_true(green_fighters_before_capital_kill.Contains(handle),
+                                   TEXT("Surviving fighter retains capital ownership"));
+                    checks.is_true(fighters->get_target_handle(handle).is_valid(),
+                                   TEXT("Surviving fighter retargets"));
+                }
+            }
+            capital_kill_checked = true;
+        });
+    }
+    harness.timeline.finish_at(next_time + 0.1);
+    test.TestTrue(TEXT("Capital fighter handle timeline completes"),
+                  harness.run_until_timeline_finished(next_time + 0.2));
+    checks.is_true(initial_checked, TEXT("Initial fighter ownership is checked"));
+    checks.is_true(fighter_kill_checked, TEXT("Fighter removal is checked"));
+    checks.is_true(capital_kill_checked, TEXT("Capital removal is checked"));
+}
+
 FCapitalFighterHandlesScenario::FCapitalFighterHandlesScenario(
     FSimulationTestContext& context, ECapitalFighterHandlesScenario const scenario)
     : FSimulationTestScenario{context}

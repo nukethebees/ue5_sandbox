@@ -9,6 +9,10 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+void run_worldless_turret_line_of_sight_blocking(FAutomationTestBase& test,
+                                                 FSoftTestAssertions& checks,
+                                                 USpaceGameLevelConfig const& config);
+
 class FTurretLineOfSightBlockingScenario final : public FSimulationTestScenario {
 
     static constexpr time_type initial_enemy_check_time{1.0};

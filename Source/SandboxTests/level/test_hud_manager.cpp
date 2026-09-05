@@ -4,6 +4,7 @@
 #include <SandboxTests/support/level_checks.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/time_series_test_data.h>
+#include <SandboxTests/support/WorldlessSimulationTest.h>
 #include "test_hud_manager_scenario.h"
 
 #include <SandboxCore/time_series_data.h>
@@ -27,6 +28,129 @@
 #include <Misc/Optional.h>
 
 namespace ml {
+namespace {
+auto count_worldless_hud_entities(FHUDManager const& manager) -> int32 {
+    int32 count{};
+    for (auto const& team : manager.get_entity_count_data().alive_per_team_and_type) {
+        for (auto const value : team) {
+            count += value;
+        }
+    }
+    return count;
+}
+}
+
+void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
+                                        FSoftTestAssertions& checks,
+                                        USpaceGameLevelConfig const& config,
+                                        EHUDManagerScenario const scenario) {
+    check(scenario != EHUDManagerScenario::LateHUDRegistrationSynchronisesAndUnregisters);
+    auto data{make_worldless_simulation_test_data(config)};
+    data.capital_ships.fighter_spawn_slots = 0;
+    data.capital_ships.fighter_spawn_slots_relative_transforms.Reset();
+    auto const needs_defence{
+        scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD ||
+        scenario == EHUDManagerScenario::MissionTimeUsesSimulationClockWithoutHUD};
+    auto const needs_player{scenario == EHUDManagerScenario::PlayerStateAndKillsUpdateWithoutHUD};
+    if (needs_player) {
+        data.player.Emplace(make_worldless_player_spawn(config));
+    }
+    int32 first_capital_index{INDEX_NONE};
+    int32 second_capital_index{INDEX_NONE};
+    if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD || needs_player) {
+        first_capital_index = add_worldless_capital_spawn(
+            data, FVector3f{2000.f, 0.f, 0.f}, ETestTeam::Red, INDEX_NONE, 60.f, 60.f);
+    } else if (needs_defence) {
+        first_capital_index = add_worldless_capital_spawn(
+            data, FVector3f::ZeroVector, ETestTeam::Blue, INDEX_NONE, 60.f, 60.f);
+        second_capital_index = add_worldless_capital_spawn(
+            data, FVector3f{2000.f, 0.f, 0.f}, ETestTeam::Red, INDEX_NONE, 60.f, 60.f);
+    }
+
+    FWorldlessSimulationTest harness{MoveTemp(data)};
+    auto& simulation{harness.get_simulation()};
+    auto& mission{simulation.get_mission_manager()};
+    auto const* capitals{simulation.get_capital_ships()};
+    auto const first_capital{first_capital_index == INDEX_NONE
+                                 ? FRegistryEntityHandle{}
+                                 : capitals->get_handle(first_capital_index)};
+    auto const second_capital{second_capital_index == INDEX_NONE
+                                  ? FRegistryEntityHandle{}
+                                  : capitals->get_handle(second_capital_index)};
+    if (needs_defence) {
+        mission.set_save_mission_results(false);
+        mission.set_mission_mode(ETestMissionMode::SurviveTime);
+        mission.set_target_time(10.f);
+        mission.add_entity_that_must_survive(first_capital);
+        mission.add_entity_required_to_kill(second_capital);
+    } else {
+        mission.set_mission_mode(ETestMissionMode::None);
+        mission.set_save_mission_results(true);
+    }
+    harness.finish_initialisation();
+
+    FHUDManager hud;
+    hud.initialise(FTestBatchGameUiUpdateFrequencies{},
+                   mission,
+                   harness.get_registry(),
+                   60.0,
+                   simulation.get_player_ship_simulation());
+    checks.are_equal(0, hud.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
+    checks.are_equal(EHUDManagerState::Active, hud.get_state(), TEXT("HUD manager is active"));
+    checks.are_equal(harness.get_registry().get_num_alive_active_entities(),
+                     count_worldless_hud_entities(hud),
+                     TEXT("Initial entity cache matches registry"));
+    checks.are_equal(mission.get_mission_state(),
+                     hud.get_mission_data().status_data.mission_state,
+                     TEXT("Mission state is cached"));
+    if (scenario == EHUDManagerScenario::InitialCachesPopulateWithoutHUD) {
+        return;
+    }
+
+    auto const initial_count{count_worldless_hud_entities(hud)};
+    if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD) {
+        harness.timeline.then_after(0.1, [&] { harness.queue_kills(TArray{first_capital}); });
+    } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
+        harness.timeline.then_after(0.1, [&] {
+            harness.queue_kills(TArray{second_capital});
+            harness.queue_kills(TArray{first_capital});
+        });
+    } else if (needs_player) {
+        auto const player_handle{simulation.get_player_ship_simulation()->registry_handle};
+        harness.timeline.then_after(
+            0.1, [&] { harness.queue_kills(TArray{first_capital}, player_handle); });
+    }
+    harness.on_end_tick = [&](FLevelSimulation&) { hud.force_sample(); };
+    harness.timeline.finish_at(0.35);
+    test.TestTrue(TEXT("HUD cache timeline completes"), harness.run_until_timeline_finished(1.0));
+
+    if (scenario == EHUDManagerScenario::EntityCountPollingContinuesWithoutHUD) {
+        checks.are_equal(initial_count - 1,
+                         count_worldless_hud_entities(hud),
+                         TEXT("Entity cache updates without a HUD"));
+    } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
+        auto const& status{hud.get_mission_data().status_data};
+        checks.are_equal(
+            ETestMissionState::Failed, status.mission_state, TEXT("Defence failure is cached"));
+        checks.is_true(status.surviving_entity_health[0].health <= 0,
+                       TEXT("Destroyed survivor health is cached"));
+        checks.is_true(status.required_kill_entity_health[0].health <= 0,
+                       TEXT("Destroyed required-kill health is cached"));
+    } else if (needs_player) {
+        auto const& player_status{hud.get_player_status_data()};
+        checks.is_true(player_status.has_player_ship, TEXT("Player HUD state is available"));
+        checks.are_equal(1, player_status.points, TEXT("Player kill count is cached"));
+        checks.are_equal(1,
+                         harness.get_registry().count_kills(),
+                         TEXT("Kill data source records the player kill"));
+    } else {
+        auto const cached_time{hud.get_mission_data().status_data.mission_stopwatch};
+        checks.is_true(cached_time > 0.f, TEXT("Cached mission time advances"));
+        checks.is_true(mission.get_mission_stopwatch() - cached_time <= 0.05f,
+                       TEXT("Cached mission time follows simulation time"));
+    }
+}
+
 FTestHUDManagerScenario::FTestHUDManagerScenario(FSimulationTestContext& context,
                                                  EHUDManagerScenario const scenario)
     : FSimulationTestScenario{context}
@@ -507,7 +631,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
                                      orchestrator->get_mission_manager(),
                                      entity_registry,
                                      orchestrator->get_hud_tick_loop().tick_rate,
-                                     orchestrator->get_player_ship());
+                                     orchestrator->get_player_ship_simulation());
     return true;
 }
 

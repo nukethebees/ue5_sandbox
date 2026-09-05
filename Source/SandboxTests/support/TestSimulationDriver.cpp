@@ -1,6 +1,7 @@
 #include "TestSimulationDriver.h"
 
 #include <SandboxTests/SandboxTestLogCategories.h>
+#include <SandboxTests/support/SpaceGameTestSettings.h>
 
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
@@ -23,6 +24,7 @@ namespace ml {
 TestSimulationDriver::TestSimulationDriver(UWorld& world, ATestBatchOrchestrator& orchestrator)
     : world{world}
     , orchestrator{orchestrator} {
+    time_scale = get_space_game_level_test_time_scale();
     orchestrator.set_time_scale(time_scale);
 }
 

@@ -8,6 +8,8 @@
 #include <SandboxCore/time_series_data.h>
 
 struct FTestMissionManager;
+class FAutomationTestBase;
+class USpaceGameLevelConfig;
 
 namespace ml {
 enum class EMissionManagerScenario : uint8 {
@@ -21,6 +23,10 @@ enum class EMissionManagerScenario : uint8 {
     SuccessIsTerminal,
     ExplicitCompletionIsLatched,
 };
+
+void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
+                                            USpaceGameLevelConfig const& config,
+                                            EMissionManagerScenario scenario);
 
 class FTestMissionManagerScenario final : public FSimulationTestScenario {
     using EScenario = EMissionManagerScenario;

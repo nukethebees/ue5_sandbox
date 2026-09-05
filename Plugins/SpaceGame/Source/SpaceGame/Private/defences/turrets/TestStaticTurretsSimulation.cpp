@@ -52,13 +52,13 @@ void Simulation::begin_play() {
     validate_array_sizes();
 }
 
-void Simulation::register_turrets(SpawnData const& spawn_data) {
+auto Simulation::register_turrets(SpawnDataConstView const spawn_data)
+    -> TArray<FRegistryEntityHandle> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::register_turrets);
-    check(entities.num() == 0);
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
     if (n_to_add == 0) {
-        return;
+        return {};
     }
 
     check(config.target_refresh_frequency > 0.f);
@@ -68,19 +68,28 @@ void Simulation::register_turrets(SpawnData const& spawn_data) {
     auto const target_refresh_tick_period{
         static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_tick_period_unsigned)};
 
+    auto const first_new_index{entities.num()};
+    presentation_spawn_start = first_new_index;
+    presentation_spawn_count = n_to_add;
     entities.add_uninitialised(n_to_add);
-    entities.locations = spawn_data.locations;
-    entities.teams = spawn_data.teams;
-    entities.healths = spawn_data.healths;
-    entities.laser_damages = spawn_data.laser_damages;
+    ml::assign_from(entities.locations.get_view(first_new_index, n_to_add), spawn_data.locations);
+    for (int32 local_index{}; local_index < n_to_add; ++local_index) {
+        auto const i{first_new_index + local_index};
+        entities.teams[i] = spawn_data.teams[local_index];
+        entities.healths[i] = spawn_data.healths[local_index];
+        entities.laser_damages[i] = spawn_data.laser_damages[local_index];
+    }
     entities.target_refresh_countdowns.initialise_last(target_refresh_tick_period, n_to_add);
-    ml::fill(entities.target_handles, FRegistryEntityHandle{});
-    ml::fill(entities.target_locations, 0.f);
-    ml::fill(entities.target_velocities, 0.f);
+    ml::fill(
+        TArrayView<FRegistryEntityHandle>{entities.target_handles}.Slice(first_new_index, n_to_add),
+        FRegistryEntityHandle{});
+    ml::fill(entities.target_locations.get_view(first_new_index, n_to_add), 0.f);
+    ml::fill(entities.target_velocities.get_view(first_new_index, n_to_add), 0.f);
     entities.laser_cooldowns.zero_last(n_to_add);
 
     FVector3f const fire_point_offset{config.fire_point_offset.GetLocation()};
-    for (int32 i{0}; i < n_to_add; ++i) {
+    for (int32 local_index{}; local_index < n_to_add; ++local_index) {
+        auto const i{first_new_index + local_index};
         ml::assign(entities.fire_point_locations,
                    i,
                    entities.locations.xs[i] + fire_point_offset.X,
@@ -95,12 +104,27 @@ void Simulation::register_turrets(SpawnData const& spawn_data) {
         }
     }
 
-    prepare_entity_update_data();
-    auto const new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
-    entities.handles = new_entities.registry_handles.to_array();
-    ml::make_deterministic_biases(TConstArrayView<FRegistryEntityHandle>{entities.handles},
-                                  TArrayView<uint32>{entities.integral_biases});
+    RegistryEntityData new_entity_data;
+    new_entity_data.add_uninitialised(n_to_add);
+    ml::assign_from(new_entity_data.locations, spawn_data.locations);
+    ml::fill(new_entity_data.velocities, 0.f);
+    ml::fill(new_entity_data.radii, entity_radius);
+    new_entity_data.set_all_entity_types(ETestEntityType::Turret);
+    for (int32 i{}; i < n_to_add; ++i) {
+        new_entity_data.healths[i] = spawn_data.healths[i];
+        new_entity_data.teams[i] = spawn_data.teams[i];
+        new_entity_data.alive[i] = static_cast<uint8>(spawn_data.healths[i] > 0);
+    }
+    auto const new_entities{entity_registry->add_entities(new_entity_data.get_const_view())};
+    auto new_handles{new_entities.registry_handles.to_array()};
+    for (int32 local_index{}; local_index < n_to_add; ++local_index) {
+        entities.handles[first_new_index + local_index] = new_handles[local_index];
+    }
+    ml::make_deterministic_biases(
+        TConstArrayView<FRegistryEntityHandle>{entities.handles}.Slice(first_new_index, n_to_add),
+        TArrayView<uint32>{entities.integral_biases}.Slice(first_new_index, n_to_add));
     validate_array_sizes();
+    return new_handles;
 }
 
 void Simulation::handle_dead_entities() {
@@ -419,6 +443,9 @@ void Simulation::clear_tick_buffers() {
               new_lasers,
               presentation_indices_to_remove,
               presentation_death_locations);
+    presentation_spawn_transforms.Reset();
+    presentation_spawn_start = 0;
+    presentation_spawn_count = 0;
 }
 
 void Simulation::validate_proxy_handles() const {

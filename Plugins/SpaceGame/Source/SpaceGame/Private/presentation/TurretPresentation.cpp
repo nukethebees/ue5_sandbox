@@ -63,6 +63,11 @@ void FTurretPresentation::begin_play_presentation(TArray<FTransform> initial_tra
 
 void FTurretPresentation::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTurretPresentation::update_visual_data);
+    if (simulation().presentation_spawn_count > 0) {
+        auto const& transforms{simulation().presentation_spawn_transforms};
+        ismc_transforms.Append(transforms);
+        add_visual_instances(transforms, simulation().presentation_spawn_start);
+    }
     auto const& indices_to_remove{simulation().presentation_indices_to_remove};
     if (!indices_to_remove.IsEmpty()) {
         trigger_death_effects();
@@ -101,8 +106,14 @@ void FTurretPresentation::configure_ismc() {
 }
 
 void FTurretPresentation::add_initial_visual_instances() {
+    add_visual_instances(ismc_transforms, 0);
+    validate_array_sizes();
+}
+
+void FTurretPresentation::add_visual_instances(TArray<FTransform> const& transforms,
+                                               int32 const first_entity_index) {
     auto const& entities{simulation().entities};
-    auto const n_to_add{entities.num()};
+    auto const n_to_add{transforms.Num()};
     if (n_to_add == 0) {
         return;
     }
@@ -113,15 +124,15 @@ void FTurretPresentation::add_initial_visual_instances() {
     custom_data.SetNumUninitialized(n_to_add * n_custom_ismc_floats, EAllowShrinking::No);
     for (int32 i{0}; i < n_to_add; ++i) {
         auto const base{i * n_custom_ismc_floats};
-        auto const& colour{colour_cache[entities.teams[i]]};
+        auto const& colour{colour_cache[entities.teams[first_entity_index + i]]};
         custom_data[base + 0] = colour.R;
         custom_data[base + 1] = colour.G;
         custom_data[base + 2] = colour.B;
     }
 
-    instances->AddInstances(ismc_transforms, false);
-    instances->SetCustomData(0, n_to_add - 1, custom_data, false);
-    validate_array_sizes();
+    instances->AddInstances(transforms, false);
+    instances->SetCustomData(
+        first_entity_index, first_entity_index + n_to_add - 1, custom_data, false);
 }
 
 void FTurretPresentation::trigger_death_effects() {

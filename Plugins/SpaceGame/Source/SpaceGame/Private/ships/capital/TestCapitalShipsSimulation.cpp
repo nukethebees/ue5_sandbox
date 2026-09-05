@@ -156,23 +156,42 @@ auto Simulation::find_first_handle_on_team(ETestTeam const team) const noexcept
     return result ? std::optional<FRegistryEntityHandle>{entities.handles[*result]} : std::nullopt;
 }
 
-void Simulation::register_ships(SpawnData const& spawn_data) {
+auto Simulation::register_ships(SpawnDataConstView const spawn_data)
+    -> TArray<FRegistryEntityHandle> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::register_ships);
-    check(entities.handles.IsEmpty());
-
     auto const n_to_add{spawn_data.num()};
+    if (n_to_add == 0) {
+        return {};
+    }
+
+    auto const first_new_index{entities.num()};
     entities.handles.AddDefaulted(n_to_add);
     spawn_ships(spawn_data);
-    prepare_entity_update_data();
-    auto const new_entities{entity_registry->add_entities(entity_update_data.get_const_view())};
-    entities.handles = new_entities.registry_handles.to_array();
-    for (auto& target_handle : entities.target_handles) {
-        target_handle.reset();
+    presentation_spawn_start = first_new_index;
+    presentation_spawn_count = n_to_add;
+
+    RegistryEntityData new_entity_data;
+    new_entity_data.add_uninitialised(n_to_add);
+    ml::assign_from(new_entity_data.locations, spawn_data.locations);
+    ml::fill(new_entity_data.velocities, 0.f);
+    ml::fill(new_entity_data.radii, entity_radius);
+    new_entity_data.set_all_entity_types(ETestEntityType::CapitalShip);
+    for (int32 i{}; i < n_to_add; ++i) {
+        new_entity_data.healths[i] = spawn_data.healths[i];
+        new_entity_data.teams[i] = spawn_data.teams[i];
+        new_entity_data.alive[i] = spawn_data.healths[i] > 0;
+    }
+
+    auto const new_entities{entity_registry->add_entities(new_entity_data.get_const_view())};
+    auto new_handles{new_entities.registry_handles.to_array()};
+    for (int32 i{}; i < n_to_add; ++i) {
+        entities.handles[first_new_index + i] = new_handles[i];
     }
     validate_array_sizes();
+    return new_handles;
 }
 
-void Simulation::bind_proxy_target(FRegistryEntityHandle const ship_handle,
+void Simulation::set_target_handle(FRegistryEntityHandle const ship_handle,
                                    FRegistryEntityHandle const target_handle) {
     check(entity_registry->is_valid_handle(ship_handle));
     check(entity_registry->is_valid_handle(target_handle));
@@ -181,7 +200,7 @@ void Simulation::bind_proxy_target(FRegistryEntityHandle const ship_handle,
     entities.target_handles[entity_index] = target_handle;
 }
 
-void Simulation::spawn_ships(SpawnData const& spawn_data) {
+void Simulation::spawn_ships(SpawnDataConstView const spawn_data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::spawn_ships);
     spawn_data.validate_array_sizes();
     auto const n_to_add{spawn_data.num()};
@@ -444,6 +463,8 @@ void Simulation::clear_tick_buffers() {
 void Simulation::clear_presentation_events() {
     presentation_indices_to_remove.Reset();
     presentation_death_locations.Reset();
+    presentation_spawn_start = 0;
+    presentation_spawn_count = 0;
 }
 
 void Simulation::validate_array_sizes() const {
