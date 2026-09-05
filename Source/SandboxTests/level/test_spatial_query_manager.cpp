@@ -122,6 +122,41 @@ void FSpatialQueryLineOfSightScenario::run_queries() {
         checks.are_equal(
             uint8{0}, has_los[i + 2 * n_names], TEXT("Other target past first hit is blocked"), i);
     }
+
+    TArray<uint8> clear_lines;
+    clear_lines.SetNumUninitialized(ends.num());
+    test_driver->orchestrator.get_spatial_query_manager().have_clear_lines(
+        starts.get_const_view(), ends.get_const_view(), clear_lines);
+
+    for (int32 i{}; i < n_names; ++i) {
+        checks.are_equal(uint8{1}, clear_lines[i], TEXT("Half-distance line is clear"), i);
+        checks.are_equal(
+            uint8{0}, clear_lines[i + n_names], TEXT("Line ending at ship is blocked"), i);
+        checks.are_equal(
+            uint8{0}, clear_lines[i + 2 * n_names], TEXT("Line passing ship is blocked"), i);
+    }
+
+    TArray<FRegistryEntityHandle> ignored_entities;
+    ignored_entities.Reserve(ends.num());
+    for (int32 scale_index{}; scale_index < n_scales; ++scale_index) {
+        ignored_entities.Append(expected);
+    }
+    test_driver->orchestrator.get_spatial_query_manager().have_clear_lines(
+        starts.get_const_view(), ends.get_const_view(), clear_lines, ignored_entities);
+    for (int32 i{}; i < n_endpoints; ++i) {
+        checks.are_equal(uint8{1}, clear_lines[i], TEXT("Ignored entity does not block line"), i);
+    }
+
+    auto const& queries{test_driver->orchestrator.get_spatial_query_manager()};
+    auto const scalar_hit{queries.trace_closest(FVector3f::ZeroVector, locations[0] * 2.f)};
+    checks.is_true(scalar_hit.hit, TEXT("Scalar closest trace reports a hit"));
+    checks.are_equal(expected[0], scalar_hit.entity, TEXT("Scalar closest trace resolves handle"));
+    checks.is_true(queries.has_clear_line(FVector3f::ZeroVector, locations[0] * 0.5f),
+                   TEXT("Scalar half-distance line is clear"));
+    checks.is_true(!queries.has_clear_line(FVector3f::ZeroVector, locations[0] * 2.f),
+                   TEXT("Scalar line passing ship is blocked"));
+    checks.is_true(queries.has_clear_line(FVector3f::ZeroVector, locations[0] * 2.f, expected[0]),
+                   TEXT("Scalar ignored entity does not block line"));
 }
 
 void FSpatialQueryLineOfSightScenario::on_end_tick(ATestBatchOrchestrator&) {

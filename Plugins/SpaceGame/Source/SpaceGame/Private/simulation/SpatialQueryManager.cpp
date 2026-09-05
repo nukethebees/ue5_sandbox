@@ -11,6 +11,111 @@
 #include <mutex>
 #include <utility>
 
+namespace {
+enum class EQueryMode : uint8 {
+    HitEntity,
+    ClearLine,
+    TargetLineOfSight,
+    ClosestHit,
+};
+
+struct FTraceRequest {
+    FVectors3f::ConstView start_locations;
+    FVectors3f::ConstView end_locations;
+    FVector3f scalar_start{FVector3f::ZeroVector};
+    FVector3f scalar_end{FVector3f::ZeroVector};
+    TConstArrayView<FRegistryEntityHandle> targets;
+    TConstArrayView<FRegistryEntityHandle> ignored_entities;
+    TArrayView<FRegistryEntityHandle> out_entity_handles;
+    TArrayView<uint8> out_flags;
+};
+
+template <EQueryMode Mode>
+auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& request)
+    -> ml::FLineTraceResult {
+    auto const count{[&request] {
+        if constexpr (Mode == EQueryMode::ClosestHit) {
+            return 1;
+        } else {
+            return request.end_locations.num();
+        }
+    }()};
+
+    if constexpr (Mode == EQueryMode::HitEntity) {
+        check(count == request.start_locations.num());
+        check(count == request.out_entity_handles.Num());
+        ml::fill(request.out_entity_handles, FRegistryEntityHandle{});
+    } else if constexpr (Mode == EQueryMode::ClearLine) {
+        check(count == request.start_locations.num());
+        check(count == request.out_flags.Num());
+        check(request.ignored_entities.IsEmpty() || request.ignored_entities.Num() == count);
+        ml::fill(request.out_flags, uint8{0});
+    } else if constexpr (Mode == EQueryMode::TargetLineOfSight) {
+        check(count == request.targets.Num());
+        check(count == request.out_flags.Num());
+        ml::fill(request.out_flags, uint8{0});
+    } else {
+        check(request.ignored_entities.Num() == 1);
+    }
+
+    if (count == 0) {
+        return {};
+    }
+
+    ml::query_manager::FThreadBufferLease const buffer_lease{manager};
+    auto& buffers{buffer_lease.get()};
+    auto& traces{buffers.line_traces};
+    auto& hits{buffers.trace_hits};
+    traces.set_num(count, EAllowShrinking::No);
+    hits.set_num(count, EAllowShrinking::No);
+
+    for (int32 i{}; i < count; ++i) {
+        if constexpr (Mode == EQueryMode::TargetLineOfSight) {
+            traces.starts.set(i, request.scalar_start);
+        } else if constexpr (Mode == EQueryMode::ClosestHit) {
+            traces.starts.set(i, request.scalar_start);
+        } else {
+            traces.starts.set(i, ml::get_vector3f(request.start_locations, i));
+        }
+
+        if constexpr (Mode == EQueryMode::ClosestHit) {
+            traces.ends.set(i, request.scalar_end);
+        } else {
+            traces.ends.set(i, ml::get_vector3f(request.end_locations, i));
+        }
+    }
+
+    manager.get_collision_system().get_uniform_grid().trace_aabbs(
+        traces.get_const_view(), hits.get_view(), request.ignored_entities);
+
+    if constexpr (Mode == EQueryMode::ClosestHit) {
+        return {
+            .location = ml::get_vector3f(hits.locations, 0),
+            .entity = hits.entities[0],
+            .static_geometry_index = hits.static_geometry_indices[0],
+            .hit = hits.hits[0] != 0,
+        };
+    } else {
+        if constexpr (Mode == EQueryMode::HitEntity) {
+            for (int32 i{}; i < count; ++i) {
+                request.out_entity_handles[i] = hits.entities[i];
+            }
+        } else if constexpr (Mode == EQueryMode::ClearLine) {
+            for (int32 i{}; i < count; ++i) {
+                request.out_flags[i] = static_cast<uint8>(hits.hits[i] == 0);
+            }
+        } else if constexpr (Mode == EQueryMode::TargetLineOfSight) {
+            for (int32 i{}; i < count; ++i) {
+                request.out_flags[i] =
+                    static_cast<uint8>(hits.hits[i] == 0 || hits.entities[i] == request.targets[i]);
+            }
+        }
+
+        return {};
+    }
+}
+}
+
 namespace ml::query_manager {
 FThreadBufferLease::FThreadBufferLease(FSpatialQueryManager const& in_manager)
     : manager{&in_manager}
@@ -95,30 +200,10 @@ void FSpatialQueryManager::trace_line_of_sight(
     TArrayView<FRegistryEntityHandle> const out_entity_handles) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::trace_line_of_sight);
 
-    auto const n{start_locations.num()};
-    check(n == end_locations.num());
-    check(n == out_entity_handles.Num());
-    ml::fill(out_entity_handles, FRegistryEntityHandle{});
-
-    if (n == 0) {
-        return;
-    }
-
-    query_manager::FThreadBufferLease const buffer_lease{*this};
-    auto& buffers{buffer_lease.get()};
-    auto& traces{buffers.line_traces};
-    auto& hits{buffers.trace_hits};
-    traces.set_num(n, EAllowShrinking::No);
-    hits.set_num(n, EAllowShrinking::No);
-    for (int32 i{}; i < n; ++i) {
-        traces.starts.set(i, ml::get_vector3f(start_locations, i));
-        traces.ends.set(i, ml::get_vector3f(end_locations, i));
-    }
-
-    collision.get_uniform_grid().trace_aabbs(traces.get_const_view(), hits.get_view());
-    for (int32 i{}; i < n; ++i) {
-        out_entity_handles[i] = hits.entities[i];
-    }
+    trace_impl<EQueryMode::HitEntity>(*this,
+                                      {.start_locations = start_locations,
+                                       .end_locations = end_locations,
+                                       .out_entity_handles = out_entity_handles});
 }
 
 void FSpatialQueryManager::has_line_of_sight_to_targets(
@@ -128,29 +213,11 @@ void FSpatialQueryManager::has_line_of_sight_to_targets(
     TArrayView<uint8> const has_los) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::has_line_of_sight_to_targets);
 
-    auto const n{end_locations.num()};
-    check(n == targets.Num());
-    check(n == has_los.Num());
-    ml::fill(has_los, uint8{0});
-    if (n == 0) {
-        return;
-    }
-
-    query_manager::FThreadBufferLease const buffer_lease{*this};
-    auto& buffers{buffer_lease.get()};
-    auto& traces{buffers.line_traces};
-    auto& hits{buffers.trace_hits};
-    traces.set_num(n, EAllowShrinking::No);
-    hits.set_num(n, EAllowShrinking::No);
-    for (int32 i{}; i < n; ++i) {
-        traces.starts.set(i, start_location);
-        traces.ends.set(i, ml::get_vector3f(end_locations, i));
-    }
-
-    collision.get_uniform_grid().trace_aabbs(traces.get_const_view(), hits.get_view());
-    for (int32 i{}; i < n; ++i) {
-        has_los[i] = static_cast<uint8>(hits.hits[i] == 0 || hits.entities[i] == targets[i]);
-    }
+    trace_impl<EQueryMode::TargetLineOfSight>(*this,
+                                              {.end_locations = end_locations,
+                                               .scalar_start = start_location,
+                                               .targets = targets,
+                                               .out_flags = has_los});
 }
 
 void FSpatialQueryManager::have_clear_lines(
@@ -158,31 +225,11 @@ void FSpatialQueryManager::have_clear_lines(
     FVectors3f::ConstView const end_locations,
     TArrayView<uint8> const clear_lines,
     TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
-    auto const n{start_locations.num()};
-    check(n == end_locations.num());
-    check(n == clear_lines.Num());
-    check(ignored_entities.IsEmpty() || ignored_entities.Num() == n);
-
-    if (n == 0) {
-        return;
-    }
-
-    query_manager::FThreadBufferLease const buffer_lease{*this};
-    auto& buffers{buffer_lease.get()};
-    auto& traces{buffers.line_traces};
-    auto& hits{buffers.trace_hits};
-    traces.set_num(n, EAllowShrinking::No);
-    hits.set_num(n, EAllowShrinking::No);
-    for (int32 i{}; i < n; ++i) {
-        traces.starts.set(i, ml::get_vector3f(start_locations, i));
-        traces.ends.set(i, ml::get_vector3f(end_locations, i));
-    }
-
-    collision.get_uniform_grid().trace_aabbs(
-        traces.get_const_view(), hits.get_view(), ignored_entities);
-    for (int32 i{}; i < n; ++i) {
-        clear_lines[i] = static_cast<uint8>(hits.hits[i] == 0);
-    }
+    trace_impl<EQueryMode::ClearLine>(*this,
+                                      {.start_locations = start_locations,
+                                       .end_locations = end_locations,
+                                       .ignored_entities = ignored_entities,
+                                       .out_flags = clear_lines});
 }
 
 auto FSpatialQueryManager::has_clear_line(FVector3f const start_location,
@@ -196,23 +243,11 @@ auto FSpatialQueryManager::trace_closest(FVector3f const start_location,
                                          FVector3f const end_location,
                                          FRegistryEntityHandle const ignored_entity) const
     -> FLineTraceResult {
-    FVectors3f starts;
-    FVectors3f ends;
-    starts.add(start_location);
-    ends.add(end_location);
-    FTraceHits hits;
-    hits.add_uninitialised(1);
     TStaticArray<FRegistryEntityHandle, 1> ignored_entities{ignored_entity};
-    collision.get_uniform_grid().trace_aabbs(
-        FLineTracesConstView{starts.get_const_view(), ends.get_const_view()},
-        hits.get_view(),
-        ignored_entities);
-    return {
-        .location = ml::get_vector3f(hits.locations, 0),
-        .entity = hits.entities[0],
-        .static_geometry_index = hits.static_geometry_indices[0],
-        .hit = hits.hits[0] != 0,
-    };
+    return trace_impl<EQueryMode::ClosestHit>(*this,
+                                              {.scalar_start = start_location,
+                                               .scalar_end = end_location,
+                                               .ignored_entities = ignored_entities});
 }
 
 auto FSpatialQueryManager::collect_non_team_entities_in_range(
