@@ -128,6 +128,8 @@ USpaceGameUiTheme::USpaceGameUiTheme() {
     text_styles_.disabled =
         make_text_style(TEXT("Regular"), 14, FLinearColor{0.5f, 0.52f, 0.55f, 1.f});
 
+    panel_background_ = make_brush(FLinearColor{0.035f, 0.045f, 0.065f, 0.78f});
+
     button_styles_.primary = make_button_style(FButtonPalette{
         .normal = FLinearColor{0.12f, 0.14f, 0.16f, 1.f},
         .hovered = FLinearColor{0.16f, 0.38f, 0.55f, 1.f},

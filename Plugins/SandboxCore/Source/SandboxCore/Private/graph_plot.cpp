@@ -347,15 +347,35 @@ void FGraphRenderCache::build_series(int32 const series_index, FVector2f const p
 void FGraphRenderCache::transform_series(FGraphCachedSeries& series,
                                          FVector2f const plot_size) const {
     series.render_points.Reset(series.data_points.Num());
-    series.render_points.Reserve(series.data_points.Num());
+    auto const point_count{series.data_points.Num()};
+    auto const render_point_count{
+        series.style.interpolation == EGraphSeriesInterpolation::StepAfter && point_count > 1
+            ? point_count * 2 - 1
+            : point_count};
+    series.render_points.Reserve(render_point_count);
 
     auto const x_span{x_range_.max - x_range_.min};
     auto const y_span{y_range_.max - y_range_.min};
-    for (auto const& point : series.data_points) {
+    auto const transform_point{[&](FVector2d const& point) {
         auto const x_alpha{(point.X - x_range_.min) / x_span};
         auto const y_alpha{(point.Y - y_range_.min) / y_span};
-        series.render_points.Emplace(static_cast<float>(x_alpha * plot_size.X),
-                                     static_cast<float>((1.0 - y_alpha) * plot_size.Y));
+        return FVector2f{static_cast<float>(x_alpha * plot_size.X),
+                         static_cast<float>((1.0 - y_alpha) * plot_size.Y)};
+    }};
+
+    if (series.style.interpolation == EGraphSeriesInterpolation::StepAfter && point_count > 1) {
+        series.render_points.Add(transform_point(series.data_points[0]));
+        for (int32 i{1}; i < point_count; ++i) {
+            auto const& previous{series.data_points[i - 1]};
+            auto const& current{series.data_points[i]};
+            series.render_points.Add(transform_point({current.X, previous.Y}));
+            series.render_points.Add(transform_point(current));
+        }
+        return;
+    }
+
+    for (auto const& point : series.data_points) {
+        series.render_points.Add(transform_point(point));
     }
 }
 

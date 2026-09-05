@@ -29,6 +29,7 @@ struct SANDBOXUI_API FGraphPlotStyle {
     FLinearColor axis_color{0.5f, 0.52f, 0.56f, 0.9f};
     FLinearColor label_color{0.75f, 0.77f, 0.8f, 1.0f};
     FSlateFontInfo label_font;
+    FText empty_text;
     int32 target_x_ticks{6};
     int32 target_y_ticks{5};
     bool show_legend{true};
@@ -47,13 +48,12 @@ class SANDBOXUI_API SGraphPlot : public SLeafWidget {
     void set_series(TArray<FGraphSeries> series);
     void clear_series();
     [[nodiscard]] bool set_axis_settings(FGraphAxisSettings x_axis, FGraphAxisSettings y_axis);
-    void set_style(FGraphPlotStyle style);
+    [[nodiscard]] bool set_style(FGraphPlotStyle style);
 
     auto get_series() const noexcept -> TConstArrayView<FGraphSeries> { return series_; }
     auto get_cache_stats() const noexcept -> FGraphCacheStats const& { return cache_.get_stats(); }
 
     FVector2D ComputeDesiredSize(float layout_scale_multiplier) const override;
-    void Tick(FGeometry const& allotted_geometry, double current_time, float delta_time) override;
     int32 OnPaint(FPaintArgs const& args,
                   FGeometry const& allotted_geometry,
                   FSlateRect const& culling_rect,
@@ -67,18 +67,20 @@ class SANDBOXUI_API SGraphPlot : public SLeafWidget {
         float position{0.0f};
     };
 
-    void rebuild_ticks();
+    void update_layout(FVector2f local_size) const;
+    void rebuild_ticks() const;
     void refresh_cache_series();
+    static bool is_valid_style(FGraphPlotStyle const& style);
     static void build_ticks(
         FGraphRange range, float extent, int32 target_count, bool invert, TArray<FTick>& out_ticks);
 
     TArray<FGraphSeries> series_;
-    FGraphRenderCache cache_;
+    mutable FGraphRenderCache cache_;
     FGraphPlotStyle style_;
-    TArray<FTick> x_ticks_;
-    TArray<FTick> y_ticks_;
-    FVector2f plot_origin_{0.0f, 0.0f};
-    FVector2f plot_size_{0.0f, 0.0f};
+    mutable TArray<FTick> x_ticks_;
+    mutable TArray<FTick> y_ticks_;
+    mutable FVector2f plot_origin_{0.0f, 0.0f};
+    mutable FVector2f plot_size_{0.0f, 0.0f};
     uint64 data_revision_{0};
-    bool ticks_dirty_{true};
+    mutable bool ticks_dirty_{true};
 };

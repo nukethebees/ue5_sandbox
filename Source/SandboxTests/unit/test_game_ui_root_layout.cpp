@@ -97,7 +97,8 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
 
         auto* const pause_action{LoadObject<UInputAction>(
             nullptr, TEXT("/SpaceGame/Input/SpaceShip/IA_pause.IA_pause"))};
-        auto* pause_menu{IsValid(pause_action) ? root->show_pause_menu(*pause_action) : nullptr};
+        auto* pause_menu{IsValid(pause_action) ? root->show_pause_menu(*pause_action, {})
+                                               : nullptr};
         if (!TestRunner->TestTrue(TEXT("Pause menu is pushed"), IsValid(pause_menu))) {
             return;
         }
@@ -112,7 +113,7 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
         pause_menu->DeactivateWidget();
         TestRunner->TestEqual(
             TEXT("Closing pause empties the modal stack"), root->get_modal_count(), 0);
-        pause_menu = root->show_pause_menu(*pause_action);
+        pause_menu = root->show_pause_menu(*pause_action, {});
         TestRunner->TestTrue(TEXT("Pause can be reopened"), IsValid(pause_menu));
         TestRunner->TestEqual(
             TEXT("Reopening pause does not accumulate widgets"), root->get_modal_count(), 1);

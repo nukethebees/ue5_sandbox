@@ -12,6 +12,11 @@ enum class EGraphRangeMode : uint8 {
     Fixed,
 };
 
+enum class EGraphSeriesInterpolation : uint8 {
+    Linear,
+    StepAfter,
+};
+
 struct SANDBOXCORE_API FGraphRange {
     double min{0.0};
     double max{1.0};
@@ -30,6 +35,7 @@ struct SANDBOXCORE_API FGraphSeriesStyle {
     FLinearColor color{FLinearColor::White};
     float thickness{1.0f};
     bool antialias{false};
+    EGraphSeriesInterpolation interpolation{EGraphSeriesInterpolation::Linear};
 
     bool operator==(FGraphSeriesStyle const&) const = default;
 };

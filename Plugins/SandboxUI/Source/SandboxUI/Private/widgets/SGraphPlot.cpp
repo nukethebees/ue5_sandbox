@@ -9,6 +9,7 @@ void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
                          FGeometry const& geometry,
                          FVector2f position,
                          FVector2f size,
+                         ESlateDrawEffect draw_effect,
                          FLinearColor color) {
     if (size.X <= 0.0f || size.Y <= 0.0f) {
         return;
@@ -19,18 +20,21 @@ void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
                                layer_id,
                                paint_geometry,
                                FCoreStyle::Get().GetBrush("WhiteBrush"),
-                               ESlateDrawEffect::None,
+                               draw_effect,
                                color);
 }
 } // namespace
 
 FGraphPlotStyle::FGraphPlotStyle()
-    : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)} {}
+    : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)}
+    , empty_text{NSLOCTEXT("SandboxUI", "GraphPlotEmpty", "No data")} {}
 
 void SGraphPlot::Construct(FArguments const& args) {
     style_ = args._Style;
+    if (!is_valid_style(style_)) {
+        style_ = FGraphPlotStyle{};
+    }
     (void)cache_.set_axis_settings(args._XAxis, args._YAxis);
-    SetCanTick(true);
 }
 
 void SGraphPlot::set_series(TArray<FGraphSeries> series) {
@@ -58,22 +62,22 @@ bool SGraphPlot::set_axis_settings(FGraphAxisSettings const x_axis,
     return changed;
 }
 
-void SGraphPlot::set_style(FGraphPlotStyle style) {
+bool SGraphPlot::set_style(FGraphPlotStyle style) {
+    if (!is_valid_style(style)) {
+        return false;
+    }
+
     style_ = MoveTemp(style);
     ticks_dirty_ = true;
     Invalidate(EInvalidateWidgetReason::LayoutAndVolatility);
+    return true;
 }
 
 FVector2D SGraphPlot::ComputeDesiredSize(float) const {
     return FVector2D{style_.desired_size};
 }
 
-void SGraphPlot::Tick(FGeometry const& allotted_geometry,
-                      double const current_time,
-                      float const delta_time) {
-    SLeafWidget::Tick(allotted_geometry, current_time, delta_time);
-
-    auto const local_size{FVector2f{allotted_geometry.GetLocalSize()}};
+void SGraphPlot::update_layout(FVector2f const local_size) const {
     plot_origin_ = {style_.left_margin, style_.top_margin};
     plot_size_ = {FMath::Max(0.0f, local_size.X - style_.left_margin - style_.right_margin),
                   FMath::Max(0.0f, local_size.Y - style_.top_margin - style_.bottom_margin)};
@@ -82,7 +86,6 @@ void SGraphPlot::Tick(FGeometry const& allotted_geometry,
     if (cache_rebuilt || ticks_dirty_) {
         rebuild_ticks();
         ticks_dirty_ = false;
-        Invalidate(EInvalidateWidgetReason::Paint);
     }
 }
 
@@ -91,21 +94,32 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                           FSlateRect const&,
                           FSlateWindowElementList& out_draw_elements,
                           int32 layer_id,
-                          FWidgetStyle const&,
-                          bool) const {
+                          FWidgetStyle const& widget_style,
+                          bool const parent_enabled) const {
     auto const local_size{FVector2f{allotted_geometry.GetLocalSize()}};
+    update_layout(local_size);
+
+    auto const enabled{ShouldBeEnabled(parent_enabled)};
+    auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
+    auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
+    auto const widget_geometry{
+        allotted_geometry.ToPaintGeometry(local_size, FSlateLayoutTransform{})};
+    out_draw_elements.PushClip(FSlateClippingZone{widget_geometry});
+
     draw_graph_plot_box(out_draw_elements,
                         layer_id,
                         allotted_geometry,
                         FVector2f::ZeroVector,
                         local_size,
-                        style_.background_color);
+                        draw_effect,
+                        style_.background_color * inherited_tint);
     draw_graph_plot_box(out_draw_elements,
                         layer_id,
                         allotted_geometry,
                         plot_origin_,
                         plot_size_,
-                        style_.plot_color);
+                        draw_effect,
+                        style_.plot_color * inherited_tint);
 
     auto const grid_layer{layer_id + 1};
     for (auto const& tick : x_ticks_) {
@@ -114,7 +128,8 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                             allotted_geometry,
                             plot_origin_ + FVector2f{tick.position, 0.0f},
                             FVector2f{1.0f, plot_size_.Y},
-                            style_.grid_color);
+                            draw_effect,
+                            style_.grid_color * inherited_tint);
     }
     for (auto const& tick : y_ticks_) {
         draw_graph_plot_box(out_draw_elements,
@@ -122,7 +137,8 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                             allotted_geometry,
                             plot_origin_ + FVector2f{0.0f, tick.position},
                             FVector2f{plot_size_.X, 1.0f},
-                            style_.grid_color);
+                            draw_effect,
+                            style_.grid_color * inherited_tint);
     }
 
     auto const axis_layer{grid_layer + 1};
@@ -131,19 +147,22 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                         allotted_geometry,
                         plot_origin_,
                         FVector2f{plot_size_.X, 1.0f},
-                        style_.axis_color);
+                        draw_effect,
+                        style_.axis_color * inherited_tint);
     draw_graph_plot_box(out_draw_elements,
                         axis_layer,
                         allotted_geometry,
                         plot_origin_ + FVector2f{0.0f, plot_size_.Y - 1.0f},
                         FVector2f{plot_size_.X, 1.0f},
-                        style_.axis_color);
+                        draw_effect,
+                        style_.axis_color * inherited_tint);
     draw_graph_plot_box(out_draw_elements,
                         axis_layer,
                         allotted_geometry,
                         plot_origin_,
                         FVector2f{1.0f, plot_size_.Y},
-                        style_.axis_color);
+                        draw_effect,
+                        style_.axis_color * inherited_tint);
 
     auto const x_range{cache_.get_x_range()};
     if (x_range.min < 0.0 && x_range.max > 0.0) {
@@ -153,7 +172,8 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                             allotted_geometry,
                             plot_origin_ + FVector2f{x, 0.0f},
                             FVector2f{1.0f, plot_size_.Y},
-                            style_.axis_color);
+                            draw_effect,
+                            style_.axis_color * inherited_tint);
     }
     auto const y_range{cache_.get_y_range()};
     if (y_range.min < 0.0 && y_range.max > 0.0) {
@@ -163,14 +183,16 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                             allotted_geometry,
                             plot_origin_ + FVector2f{0.0f, y},
                             FVector2f{plot_size_.X, 1.0f},
-                            style_.axis_color);
+                            draw_effect,
+                            style_.axis_color * inherited_tint);
     }
     draw_graph_plot_box(out_draw_elements,
                         axis_layer,
                         allotted_geometry,
                         plot_origin_ + FVector2f{plot_size_.X - 1.0f, 0.0f},
                         FVector2f{1.0f, plot_size_.Y},
-                        style_.axis_color);
+                        draw_effect,
+                        style_.axis_color * inherited_tint);
 
     auto const plot_geometry{
         allotted_geometry.ToPaintGeometry(plot_size_, FSlateLayoutTransform(plot_origin_))};
@@ -182,8 +204,8 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                                          series_layer,
                                          plot_geometry,
                                          series.render_points,
-                                         ESlateDrawEffect::None,
-                                         series.style.color,
+                                         draw_effect,
+                                         series.style.color * inherited_tint,
                                          series.style.antialias,
                                          series.style.thickness);
         } else if (series.render_points.Num() == 1) {
@@ -193,7 +215,8 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                                 allotted_geometry,
                                 plot_origin_ + point - FVector2f{1.5f, 1.5f},
                                 FVector2f{3.0f, 3.0f},
-                                series.style.color);
+                                draw_effect,
+                                series.style.color * inherited_tint);
         }
     }
     out_draw_elements.PopClip();
@@ -209,8 +232,8 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                                     paint_geometry,
                                     tick.label,
                                     style_.label_font,
-                                    ESlateDrawEffect::None,
-                                    style_.label_color);
+                                    draw_effect,
+                                    style_.label_color * inherited_tint);
     }
     for (auto const& tick : y_ticks_) {
         auto const paint_geometry{allotted_geometry.ToPaintGeometry(
@@ -221,13 +244,30 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                                     paint_geometry,
                                     tick.label,
                                     style_.label_font,
-                                    ESlateDrawEffect::None,
-                                    style_.label_color);
+                                    draw_effect,
+                                    style_.label_color * inherited_tint);
     }
 
-    if (style_.show_legend) {
+    bool has_render_points{false};
+    for (auto const& series : cache_.get_series()) {
+        if (!series.render_points.IsEmpty()) {
+            has_render_points = true;
+            break;
+        }
+    }
+
+    if (has_render_points && style_.show_legend && plot_size_.X >= 100.0f &&
+        plot_size_.Y >= 32.0f) {
         float legend_y{plot_origin_.Y + 4.0f};
+        auto const legend_bottom{plot_origin_.Y + plot_size_.Y - 4.0f};
         for (auto const& series : cache_.get_series()) {
+            if (series.name.IsEmpty()) {
+                continue;
+            }
+            if (legend_y + 14.0f > legend_bottom) {
+                break;
+            }
+
             auto const paint_geometry{allotted_geometry.ToPaintGeometry(
                 FVector2f{120.0f, 16.0f},
                 FSlateLayoutTransform{FVector2f{plot_origin_.X + 6.0f, legend_y}})};
@@ -236,18 +276,44 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                                         paint_geometry,
                                         series.name,
                                         style_.label_font,
-                                        ESlateDrawEffect::None,
-                                        series.style.color);
+                                        draw_effect,
+                                        series.style.color * inherited_tint);
             legend_y += 14.0f;
         }
     }
 
+    if (!has_render_points && !style_.empty_text.IsEmpty() && plot_size_.X > 0.0f &&
+        plot_size_.Y > 0.0f) {
+        auto const empty_geometry{allotted_geometry.ToPaintGeometry(
+            FVector2f{FMath::Max(plot_size_.X - 12.0f, 0.0f), 18.0f},
+            FSlateLayoutTransform{plot_origin_ + FVector2f{6.0f, plot_size_.Y * 0.5f - 9.0f}})};
+        FSlateDrawElement::MakeText(out_draw_elements,
+                                    text_layer,
+                                    empty_geometry,
+                                    style_.empty_text,
+                                    style_.label_font,
+                                    draw_effect,
+                                    style_.label_color * inherited_tint);
+    }
+
+    out_draw_elements.PopClip();
+
     return text_layer;
 }
 
-void SGraphPlot::rebuild_ticks() {
+void SGraphPlot::rebuild_ticks() const {
     build_ticks(cache_.get_x_range(), plot_size_.X, style_.target_x_ticks, false, x_ticks_);
     build_ticks(cache_.get_y_range(), plot_size_.Y, style_.target_y_ticks, true, y_ticks_);
+}
+
+bool SGraphPlot::is_valid_style(FGraphPlotStyle const& style) {
+    return FMath::IsFinite(style.desired_size.X) && FMath::IsFinite(style.desired_size.Y) &&
+           style.desired_size.X >= 0.0f && style.desired_size.Y >= 0.0f &&
+           FMath::IsFinite(style.left_margin) && style.left_margin >= 0.0f &&
+           FMath::IsFinite(style.right_margin) && style.right_margin >= 0.0f &&
+           FMath::IsFinite(style.top_margin) && style.top_margin >= 0.0f &&
+           FMath::IsFinite(style.bottom_margin) && style.bottom_margin >= 0.0f &&
+           style.target_x_ticks >= 0 && style.target_y_ticks >= 0;
 }
 
 void SGraphPlot::refresh_cache_series() {

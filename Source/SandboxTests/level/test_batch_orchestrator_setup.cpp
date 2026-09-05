@@ -316,6 +316,31 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.is_greater_than(final_observation.completed_ticks,
                            final_observation.last_telemetry_tick,
                            TEXT("Simulation continues after the last changed sample"));
+
+    auto const snapshot{test_driver->orchestrator.get_level_telemetry_manager().make_snapshot(
+        final_observation.completed_ticks, test_driver->orchestrator.get_tick_period())};
+    checks.are_equal(final_observation.telemetry_entity_count,
+                     snapshot.active_entities,
+                     TEXT("Snapshot records the final active entity count"));
+    checks.are_equal(initial_issued_unique_id_count,
+                     snapshot.spawned_entities,
+                     TEXT("Snapshot records issued entities as spawned"));
+    checks.are_equal(snapshot.spawned_entities - snapshot.active_entities,
+                     snapshot.destroyed_entities,
+                     TEXT("Snapshot derives destroyed entities from spawned and active counts"));
+    checks.are_equal(int32{1}, snapshot.kills, TEXT("Snapshot records the observed kill"));
+    checks.are_equal(final_observation.completed_ticks,
+                     snapshot.active_entity_count_data.last_time(),
+                     TEXT("Snapshot extends active entities to the completed tick"));
+    checks.are_equal(final_observation.completed_ticks,
+                     snapshot.cumulative_kill_count_data.last_time(),
+                     TEXT("Snapshot extends kills to the completed tick"));
+    for (auto const value : snapshot.active_entity_count_data.values()) {
+        checks.is_true(value >= 0, TEXT("Snapshot active-entity samples are nonnegative"));
+    }
+    for (auto const value : snapshot.cumulative_kill_count_data.values()) {
+        checks.is_true(value >= 0, TEXT("Snapshot kill samples are nonnegative"));
+    }
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 }
@@ -329,12 +354,15 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     FTestEntityRegistry entity_registry;
     FLevelTelemetryManager telemetry_manager;
 
-    telemetry_manager.initialise(entity_registry);
+    telemetry_manager.initialise(entity_registry, {});
     auto const& active_count_data{telemetry_manager.get_active_entity_count_data()};
     auto const& active_counts_data{telemetry_manager.get_active_entity_counts_data()};
     auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
     auto const& slot_count_data{telemetry_manager.get_registry_slot_count_data()};
     auto const& issued_unique_id_count_data{telemetry_manager.get_issued_unique_id_count_data()};
+    auto const& active_laser_count_data{telemetry_manager.get_active_laser_count_data()};
+    auto const& cumulative_laser_spawn_count_data{
+        telemetry_manager.get_cumulative_laser_spawn_count_data()};
     TestEqual(
         TEXT("Initialisation records one active-count sample"), active_count_data.num(), int32{1});
     TestEqual(TEXT("Initial active-count sample uses tick zero"),
@@ -359,8 +387,20 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               int32{1});
     TestEqual(
         TEXT("Initial issued-ID sample records zero"), issued_unique_id_count_data.last_value(), 0);
+    TestEqual(TEXT("Initialisation records one active-laser sample"),
+              active_laser_count_data.num(),
+              int32{1});
+    TestEqual(TEXT("Initial active-laser sample records zero"),
+              active_laser_count_data.last_value(),
+              int32{0});
+    TestEqual(TEXT("Initialisation records one fired-laser sample"),
+              cumulative_laser_spawn_count_data.num(),
+              int32{1});
+    TestEqual(TEXT("Initial fired-laser sample records zero"),
+              cumulative_laser_spawn_count_data.last_value(),
+              int32{0});
 
-    telemetry_manager.tick(1, entity_registry);
+    telemetry_manager.tick(1, entity_registry, {});
     TestEqual(
         TEXT("Unchanged active count does not add a sample"), active_count_data.num(), int32{1});
     TestEqual(
@@ -370,6 +410,31 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Unchanged issued IDs do not add a sample"),
               issued_unique_id_count_data.num(),
               int32{1});
+    TestEqual(TEXT("Unchanged active lasers do not add a sample"),
+              active_laser_count_data.num(),
+              int32{1});
+    TestEqual(TEXT("Unchanged fired lasers do not add a sample"),
+              cumulative_laser_spawn_count_data.num(),
+              int32{1});
+
+    telemetry_manager.tick(2, entity_registry, {.active_count = 3, .cumulative_spawn_count = 11});
+    TestEqual(
+        TEXT("Active laser changes are sampled"), active_laser_count_data.last_value(), int32{3});
+    TestEqual(TEXT("Fired laser changes are sampled"),
+              cumulative_laser_spawn_count_data.last_value(),
+              int32{11});
+
+    auto const laser_snapshot{telemetry_manager.make_snapshot(5, 0.25)};
+    TestEqual(
+        TEXT("Snapshot records elapsed simulation time"), laser_snapshot.elapsed_seconds, 1.25);
+    TestEqual(TEXT("Snapshot records active lasers"), laser_snapshot.active_lasers, int32{3});
+    TestEqual(TEXT("Snapshot records fired lasers"), laser_snapshot.lasers_fired, int32{11});
+    TestEqual(TEXT("Snapshot extends active entities to its terminal tick"),
+              laser_snapshot.active_entity_count_data.last_time(),
+              uint64{5});
+    TestEqual(TEXT("Snapshot extends kills to its terminal tick"),
+              laser_snapshot.cumulative_kill_count_data.last_time(),
+              uint64{5});
 
     telemetry_manager.reset();
     TestTrue(TEXT("Reset clears active-count telemetry"), active_count_data.is_empty());
@@ -377,8 +442,11 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("Reset clears kill telemetry"), kill_count_data.is_empty());
     TestTrue(TEXT("Reset clears slot telemetry"), slot_count_data.is_empty());
     TestTrue(TEXT("Reset clears issued-ID telemetry"), issued_unique_id_count_data.is_empty());
+    TestTrue(TEXT("Reset clears active-laser telemetry"), active_laser_count_data.is_empty());
+    TestTrue(TEXT("Reset clears fired-laser telemetry"),
+             cumulative_laser_spawn_count_data.is_empty());
 
-    telemetry_manager.initialise(entity_registry);
+    telemetry_manager.initialise(entity_registry, {});
     TestEqual(TEXT("Reinitialisation records one active-count sample"),
               active_count_data.num(),
               int32{1});
@@ -412,7 +480,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     };
     entity_registry.add_entities(fixture_entity_data);
 
-    telemetry_manager.tick(2, entity_registry);
+    telemetry_manager.tick(2, entity_registry, {});
     TestEqual(TEXT("Entity additions update active-count telemetry"),
               active_count_data.last_value(),
               int32{3});
@@ -437,7 +505,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               issued_unique_id_count_data.last_value(),
               int32{3});
 
-    telemetry_manager.tick(3, entity_registry);
+    telemetry_manager.tick(3, entity_registry, {});
     TestEqual(TEXT("Unchanged fixture does not add active-count telemetry"),
               active_count_data.num(),
               int32{2});
@@ -449,6 +517,24 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     TestEqual(TEXT("Unchanged fixture does not add issued-ID telemetry"),
               issued_unique_id_count_data.num(),
               int32{2});
+
+    auto const entity_snapshot{telemetry_manager.make_snapshot(3, 0.5)};
+    TestEqual(TEXT("Entity snapshot records elapsed time"), entity_snapshot.elapsed_seconds, 1.5);
+    TestEqual(TEXT("Entity snapshot records spawned entities"),
+              entity_snapshot.spawned_entities,
+              int32{3});
+    TestEqual(
+        TEXT("Entity snapshot records active entities"), entity_snapshot.active_entities, int32{3});
+    TestEqual(TEXT("Entity snapshot records no destroyed entities"),
+              entity_snapshot.destroyed_entities,
+              int32{0});
+    TestEqual(TEXT("Entity snapshot records no kills"), entity_snapshot.kills, int32{0});
+    for (auto const value : entity_snapshot.active_entity_count_data.values()) {
+        TestTrue(TEXT("Entity snapshot active counts are nonnegative"), value >= 0);
+    }
+    for (auto const value : entity_snapshot.cumulative_kill_count_data.values()) {
+        TestTrue(TEXT("Entity snapshot kill counts are nonnegative"), value >= 0);
+    }
 
     return true;
 }
