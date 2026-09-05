@@ -123,6 +123,7 @@ auto register_benchmarks() -> bool {
                                     ? "dispatch-avx512"
                                     : "dispatch-avx2"};
     std::array const backends{
+        Backend{"scalar", ml::kernel_benchmark::add_scaled_scalar, false},
         Backend{"autovec-avx2", ml::kernel_benchmark::add_scaled_autovec_avx2, false},
         Backend{"avx2", ml::kernel_benchmark::add_scaled_avx2, false},
         Backend{"avx2-unrolled", ml::kernel_benchmark::add_scaled_avx2_unrolled, false},

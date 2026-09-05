@@ -355,7 +355,7 @@ class Parser {
         fail(form.token.span, "unknown variant '" + form_head + "'");
     }
 
-    auto parse_operation(Form const& form) const -> MapOperation {
+    auto parse_operation(Form const& form) const -> Operation {
         if (head(form, "map") != "map" || form.children.size() < 2) {
             fail(form.token.span, "expected '(map name ...)'");
         }
@@ -364,9 +364,10 @@ class Parser {
             fail(form.children[1].token.span, "map name must be a C++ identifier");
         }
 
-        MapOperation result{.name = name,
-                            .expression = Expression{ExpressionKind::literal, {}, {}, {}},
-                            .span = form.token.span};
+        Operation result{.kind = OperationKind::map,
+                         .name = name,
+                         .expression = Expression{ExpressionKind::literal, {}, {}, {}},
+                         .span = form.token.span};
         std::set<std::string> fields;
         std::set<std::string> operand_names;
         bool has_expression{false};
@@ -460,7 +461,9 @@ class Parser {
         for (auto const& variant : result.variants) {
             auto const shape{variant.kind == VariantKind::out_of_place
                                  ? std::string{"out-of-place"}
-                                 : "in-place:" + *variant.target};
+                             : variant.kind == VariantKind::in_place
+                                 ? "in-place:" + *variant.target
+                                 : std::string{"sum"}};
             if (!variant_shapes.insert(shape).second) {
                 fail(variant.span, "duplicate generated variant '" + shape + "'");
             }
@@ -477,6 +480,98 @@ class Parser {
                 fail(variant.span, "unknown in-place target '" + *variant.target + "'");
             }
         }
+        return result;
+    }
+
+    auto parse_sum_operation(Form const& form) const -> Operation {
+        if (head(form, "sum") != "sum" || form.children.size() < 2) {
+            fail(form.token.span, "expected '(sum name ...)'");
+        }
+        auto const& name{atom(form.children[1], "expected sum name")};
+        if (!is_identifier(name)) {
+            fail(form.children[1].token.span, "sum name must be a C++ identifier");
+        }
+
+        Operation result{.kind = OperationKind::sum,
+                         .name = name,
+                         .expression = Expression{ExpressionKind::literal, {}, {}, {}},
+                         .aliasing = Aliasing::pairwise_disjoint,
+                         .span = form.token.span};
+        std::set<std::string> fields;
+        std::set<std::string> operand_names;
+        bool has_expression{false};
+        for (std::size_t index{2}; index < form.children.size(); ++index) {
+            auto const& field{form.children[index]};
+            auto const& field_name{head(field, "sum field")};
+            if (field_name == "operand") {
+                require_size(field, 3, "'(operand name array)'");
+                auto operand_name{atom(field.children[1], "expected operand name")};
+                if (!is_identifier(operand_name)) {
+                    fail(field.children[1].token.span, "operand name must be a C++ identifier");
+                }
+                if (!operand_names.insert(operand_name).second) {
+                    fail(field.children[1].token.span,
+                         "duplicate operand '" + operand_name + "'");
+                }
+                auto const storage{parse_storage(field.children[2])};
+                if (storage != std::vector{StorageKind::array}) {
+                    fail(field.children[2].token.span,
+                         "sum operands must use array storage");
+                }
+                result.operands.push_back(
+                    Operand{std::move(operand_name), storage, field.token.span});
+                continue;
+            }
+            if (!fields.insert(field_name).second) {
+                fail(field.token.span, "duplicate sum field '" + field_name + "'");
+            }
+            if (field_name == "types") {
+                require_size(field, 2, "'(types type_set)'");
+                result.type_set = atom(field.children[1], "expected type-set name");
+            } else if (field_name == "expression") {
+                require_size(field, 2, "'(expression expression)'");
+                result.expression = parse_expression(field.children[1]);
+                has_expression = true;
+            } else if (field_name == "aliasing") {
+                require_size(field, 2, "'(aliasing pairwise-disjoint)'");
+                auto const& policy{atom(field.children[1], "expected aliasing policy")};
+                if (policy != "pairwise-disjoint") {
+                    fail(field.children[1].token.span,
+                         "sum supports only pairwise-disjoint aliasing");
+                }
+            } else {
+                fail(field.token.span, "unknown sum field '" + field_name + "'");
+            }
+        }
+
+        if (result.type_set.empty() || result.operands.empty() || !has_expression) {
+            fail(form.token.span, "sum requires types, operands, and expression");
+        }
+
+        std::set<std::string> references;
+        auto collect_references = [&](auto const& self, Expression const& expression) -> void {
+            if (expression.kind == ExpressionKind::reference) {
+                references.insert(expression.value);
+            }
+            for (auto const& argument : expression.arguments) {
+                self(self, argument);
+            }
+        };
+        collect_references(collect_references, result.expression);
+        for (auto const& reference : references) {
+            if (!operand_names.contains(reference)) {
+                fail(result.expression.span,
+                     "expression references unknown operand '" + reference + "'");
+            }
+        }
+        for (auto const& operand : result.operands) {
+            if (!references.contains(operand.name)) {
+                fail(operand.span, "unused operand '" + operand.name + "'");
+            }
+        }
+
+        result.variants.push_back(
+            Variant{VariantKind::sum, result.name, std::nullopt, form.token.span});
         return result;
     }
 
@@ -605,6 +700,8 @@ class Parser {
                     result.variant = VariantKind::out_of_place;
                 } else if (value == "in-place") {
                     result.variant = VariantKind::in_place;
+                } else if (value == "sum") {
+                    result.variant = VariantKind::sum;
                 } else {
                     fail(field.children[1].token.span, "unknown variant kind '" + value + "'");
                 }
@@ -759,7 +856,15 @@ class Parser {
             if (field_name == "map") {
                 auto operation{parse_operation(field)};
                 if (!operation_names.insert(operation.name).second) {
-                    fail(operation.span, "duplicate map '" + operation.name + "'");
+                    fail(operation.span, "duplicate operation '" + operation.name + "'");
+                }
+                result.operations.push_back(std::move(operation));
+                continue;
+            }
+            if (field_name == "sum") {
+                auto operation{parse_sum_operation(field)};
+                if (!operation_names.insert(operation.name).second) {
+                    fail(operation.span, "duplicate operation '" + operation.name + "'");
                 }
                 result.operations.push_back(std::move(operation));
                 continue;
@@ -779,7 +884,16 @@ class Parser {
         }
         if (result.emissions.empty() || result.type_sets.empty() || result.operations.empty()) {
             fail(form.token.span,
-                 "kernel-module requires emissions, type sets, and maps");
+                 "kernel-module requires emissions, type sets, and operations");
+        }
+        auto const has_sum{std::ranges::any_of(result.operations, [](auto const& operation) {
+            return operation.kind == OperationKind::sum;
+        })};
+        if (has_sum && std::ranges::any_of(result.emissions, [](auto const& emission) {
+                return emission.profile != Profile::native_x86_simd_lab;
+            })) {
+            fail(form.token.span,
+                 "sum operations are supported only by native-x86-simd-lab emissions");
         }
         for (auto const& operation : result.operations) {
             auto const operation_types{

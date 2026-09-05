@@ -15,7 +15,8 @@ enum class StorageKind { array, scalar };
 enum class Profile { unreal, standard, unreal_avx2_lab, native_x86_simd_lab };
 enum class ExpressionKind { reference, literal, constant, binary };
 enum class ConstantKind { nan, infinity, negative_infinity };
-enum class VariantKind { out_of_place, in_place };
+enum class OperationKind { map, sum };
+enum class VariantKind { out_of_place, in_place, sum };
 enum class Aliasing { output_disjoint, pairwise_disjoint };
 
 struct Expression {
@@ -39,7 +40,8 @@ struct Variant {
     SourceSpan span;
 };
 
-struct MapOperation {
+struct Operation {
+    OperationKind kind;
     std::string name;
     std::string type_set;
     std::vector<Operand> operands;
@@ -82,7 +84,7 @@ struct KernelModule {
     std::string name;
     std::vector<Emission> emissions;
     std::vector<TypeSet> type_sets;
-    std::vector<MapOperation> operations;
+    std::vector<Operation> operations;
     SourceSpan span;
 };
 

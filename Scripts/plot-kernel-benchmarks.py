@@ -72,7 +72,7 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("results", type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--baseline", default="autovec-avx2")
+    parser.add_argument("--baseline", default="scalar")
     parser.add_argument("--format", choices=("svg", "png"), default="png")
     return parser.parse_args()
 

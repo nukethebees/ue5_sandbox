@@ -16,7 +16,7 @@ auto type_set(KernelModule const& module, std::string const& name) -> TypeSet co
     return *found;
 }
 
-void expand_storage(MapOperation const& operation,
+void expand_storage(Operation const& operation,
                     Variant const& variant,
                     std::size_t const operand_index,
                     std::vector<StorageKind>& storage,
@@ -71,7 +71,13 @@ auto raw_name(ExpandedVariant const& expanded) -> std::string {
     for (auto const storage : expanded.storage) {
         result += storage == StorageKind::array ? "_array" : "_scalar";
     }
-    result += expanded.variant->kind == VariantKind::in_place ? "_in_place_raw" : "_raw";
+    if (expanded.variant->kind == VariantKind::in_place) {
+        result += "_in_place_raw";
+    } else if (expanded.variant->kind == VariantKind::sum) {
+        result += "_sum_raw";
+    } else {
+        result += "_raw";
+    }
     return result;
 }
 
@@ -116,7 +122,7 @@ auto standard_type(std::string_view const type) -> std::string {
 }
 
 auto render_expression(Expression const& expression,
-                       MapOperation const& operation,
+                       Operation const& operation,
                        std::vector<StorageKind> const& storage,
                        std::string const& concrete_type) -> std::string {
     if (expression.kind == ExpressionKind::literal) {

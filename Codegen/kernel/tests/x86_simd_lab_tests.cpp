@@ -1,4 +1,5 @@
 #include "native/generated/add_scaled_x86_simd_lab.h"
+#include "native/generated/dot_product_x86_simd_lab.h"
 
 #include <cpuinfo_x86.h>
 #include <gtest/gtest.h>
@@ -14,6 +15,7 @@
 namespace {
 
 using Kernel = void (*)(float const*, float const*, float, float*, std::int32_t) noexcept;
+using DotKernel = float (*)(float const*, float const*, std::int32_t) noexcept;
 
 struct AlignedBuffer {
     explicit AlignedBuffer(std::int32_t const count, std::int32_t const offset = 0)
@@ -101,6 +103,7 @@ TEST(KernelNativeSimdLab, EveryBackendMatchesAcrossTailsAlignmentAndSpecialValue
     };
     auto const avx512_available{has_avx512()};
     std::array const backends{
+        Backend{"scalar", ml::kernel_benchmark::add_scaled_scalar, false},
         Backend{"autovec-avx2", ml::kernel_benchmark::add_scaled_autovec_avx2, false},
         Backend{"avx2", ml::kernel_benchmark::add_scaled_avx2, false},
         Backend{"avx2-unrolled", ml::kernel_benchmark::add_scaled_avx2_unrolled, false},
@@ -147,6 +150,99 @@ TEST(KernelNativeSimdLab, HasAnIndependentSemanticAnchor) {
     EXPECT_EQ(out[0], 7.0f);
     EXPECT_EQ(out[1], 5.0f);
     EXPECT_EQ(out[2], -23.5f);
+}
+
+void fill_dot_values(float* const lhs, float* const rhs, std::int32_t const count) {
+    for (std::int32_t index{}; index < count; ++index) {
+        lhs[index] = static_cast<float>((index * 13) % 127 - 63) * 0.0078125f;
+        rhs[index] = static_cast<float>((index * 29) % 113 - 56) * 0.015625f;
+    }
+}
+
+struct DotReference {
+    double value;
+    double absolute_sum;
+};
+
+auto dot_reference(float const* const lhs,
+                   float const* const rhs,
+                   std::int32_t const count) -> DotReference {
+    double result{};
+    double absolute_sum{};
+    for (std::int32_t index{}; index < count; ++index) {
+        auto const product{static_cast<double>(lhs[index]) * static_cast<double>(rhs[index])};
+        result += product;
+        absolute_sum += std::abs(product);
+    }
+    return {result, absolute_sum};
+}
+
+void run_dot_case(DotKernel const kernel,
+                  std::string_view const name,
+                  std::int32_t const count,
+                  std::int32_t const offset) {
+    AlignedBuffer lhs{count, offset};
+    AlignedBuffer rhs{count, offset};
+    fill_dot_values(lhs.data, rhs.data, count);
+
+    auto const reference{dot_reference(lhs.data, rhs.data, count)};
+    auto const expected{static_cast<float>(reference.value)};
+    auto const actual{kernel(lhs.data, rhs.data, count)};
+    auto const tolerance{
+        std::max(1.0e-6f, static_cast<float>(reference.absolute_sum) * 1.0e-5f)};
+
+    SCOPED_TRACE(name);
+    EXPECT_NEAR(actual, expected, tolerance);
+}
+
+TEST(KernelNativeDotProductLab, EveryBackendMatchesAHighPrecisionReference) {
+    namespace dot = ml::kernel_benchmark::dot_product_lab;
+
+    struct Backend {
+        std::string_view name;
+        DotKernel kernel;
+        bool requires_avx512;
+    };
+    auto const avx512_available{has_avx512()};
+    std::array const backends{
+        Backend{"scalar", dot::dot_product_scalar, false},
+        Backend{"autovec-avx2", dot::dot_product_autovec_avx2, false},
+        Backend{"avx2", dot::dot_product_avx2, false},
+        Backend{"avx2-unrolled", dot::dot_product_avx2_unrolled, false},
+        Backend{"autovec-avx512", dot::dot_product_autovec_avx512, true},
+        Backend{"avx512", dot::dot_product_avx512, true},
+        Backend{"dispatch", dot::dot_product_dispatch, false},
+    };
+    constexpr std::array counts{0,  1,  2,  7,   8,   9,   15, 16, 17,
+                                31, 32, 33, 63, 64, 65, 127, 257, 4097};
+
+    for (auto const& backend : backends) {
+        if (backend.requires_avx512 && !avx512_available) {
+            continue;
+        }
+        for (auto const count : counts) {
+            for (std::int32_t const offset : {0, 1}) {
+                run_dot_case(backend.kernel, backend.name, count, offset);
+            }
+        }
+    }
+}
+
+TEST(KernelNativeDotProductLab, DispatchReportsTheDetectedBackend) {
+    namespace dot = ml::kernel_benchmark::dot_product_lab;
+
+    auto const expected{has_avx512() ? dot::X86SimdBackend::avx512
+                                    : dot::X86SimdBackend::avx2};
+    EXPECT_EQ(dot::get_dot_product_backend(), expected);
+}
+
+TEST(KernelNativeDotProductLab, HasAnIndependentSemanticAnchor) {
+    namespace dot = ml::kernel_benchmark::dot_product_lab;
+
+    float const lhs[]{1.0f, 2.0f, 3.0f};
+    float const rhs[]{4.0f, 5.0f, 6.0f};
+
+    EXPECT_EQ(dot::dot_product_dispatch(lhs, rhs, 3), 32.0f);
 }
 
 }

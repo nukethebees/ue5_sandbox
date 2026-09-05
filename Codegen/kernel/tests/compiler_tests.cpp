@@ -79,6 +79,29 @@ constexpr std::string_view avx2_lab_source = R"(
       (out-of-place add_scaled))))
 )";
 
+constexpr std::string_view sum_lab_source = R"(
+(kernel-module reductions
+  (emit native-x86-simd-lab
+    (header "native/DotProduct.h")
+    (source "native/DotProductAvx2.cpp")
+    (avx512-source "native/DotProductAvx512.cpp")
+    (dispatch-source "native/DotProductDispatch.cpp")
+    (header-include "native/DotProduct.h")
+    (namespace ml::lab)
+    (select
+      (operation dot_product)
+      (type float)
+      (storage array array)
+      (variant sum)))
+  (type-set floating float)
+  (sum dot_product
+    (types floating)
+    (operand lhs array)
+    (operand rhs array)
+    (aliasing pairwise-disjoint)
+    (expression (* lhs rhs))))
+)";
+
 auto occurrence_count(std::string_view text, std::string_view const value) -> std::size_t {
     std::size_t result{};
     while (true) {
@@ -262,7 +285,9 @@ TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
 
     ASSERT_EQ(files.size(), 4);
     EXPECT_TRUE(files[0].content.contains("enum class X86SimdBackend"));
+    EXPECT_TRUE(files[0].content.contains("add_scaled_scalar"));
     EXPECT_TRUE(files[0].content.contains("add_scaled_dispatch"));
+    EXPECT_TRUE(files[1].content.contains("#pragma clang loop vectorize(disable)"));
     EXPECT_TRUE(files[1].content.contains("add_scaled_autovec_avx2"));
     EXPECT_TRUE(files[1].content.contains("add_scaled_avx2_unrolled"));
     EXPECT_TRUE(files[2].content.contains("_mm512_loadu_ps"));
@@ -270,6 +295,59 @@ TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
     EXPECT_TRUE(files[3].content.contains("cpu_features::GetX86Info()"));
     EXPECT_FALSE(files[1].content.contains("_mm512"));
     EXPECT_FALSE(files[3].content.contains("_mm512"));
+}
+
+TEST(KernelRenderer, GeneratesNativeSumReduction) {
+    auto const document{
+        parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", sum_lab_source))};
+    auto const files{render(document.modules[0], Profile::native_x86_simd_lab)};
+
+    ASSERT_EQ(files.size(), 4);
+    EXPECT_TRUE(files[0].content.contains("float dot_product_scalar("));
+    EXPECT_TRUE(files[0].content.contains("float dot_product_dispatch("));
+    EXPECT_TRUE(files[0].content.contains(
+        "float const* ML_KERNEL_LAB_RESTRICT lhs, float const* ML_KERNEL_LAB_RESTRICT rhs"));
+    EXPECT_TRUE(files[1].content.contains("float dot_product_autovec_avx2("));
+    EXPECT_TRUE(files[1].content.contains("float dot_product_scalar("));
+    EXPECT_TRUE(files[1].content.contains(
+        "#pragma clang loop vectorize(disable) interleave(disable) unroll(disable)"));
+    EXPECT_TRUE(files[1].content.contains("result += (lhs[i] * rhs[i])"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_setzero_ps"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_mul_ps"));
+    EXPECT_TRUE(files[1].content.contains("accumulator_3"));
+    EXPECT_TRUE(files[2].content.contains("_mm512_setzero_ps"));
+    EXPECT_TRUE(files[2].content.contains("_mm512_mul_ps"));
+    EXPECT_TRUE(files[3].content.contains("return selection().kernel(lhs, rhs, count)"));
+}
+
+TEST(KernelParser, KeepsSumReductionsInsideTheNarrowNativeLabBoundary) {
+    auto scalar_operand{std::string{sum_lab_source}};
+    auto const array_operand{scalar_operand.find("(operand rhs array)")};
+    scalar_operand.replace(array_operand,
+                           std::string{"(operand rhs array)"}.size(),
+                           "(operand rhs scalar)");
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", scalar_operand))),
+                 std::runtime_error);
+
+    constexpr std::string_view standard_emission = R"(
+(kernel-module reductions
+  (emit standard
+    (header "DotProduct.h")
+    (source "DotProduct.cpp")
+    (header-include "DotProduct.h")
+    (namespace ml::lab))
+  (type-set floating float)
+  (sum dot_product
+    (types floating)
+    (operand lhs array)
+    (operand rhs array)
+    (aliasing pairwise-disjoint)
+    (expression (* lhs rhs))))
+)";
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", standard_emission))),
+                 std::runtime_error);
 }
 
 TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {

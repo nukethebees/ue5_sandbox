@@ -10,7 +10,7 @@ arbitrary C++ bodies or ABI spellings.
 ```text
 document      := kernel_module+ EOF
 kernel_module := "(" "kernel-module" identifier module_item+ ")"
-module_item   := emit | type_set | map
+module_item   := emit | type_set | map | sum
 emit          := "(" "emit" ("unreal" | "standard" | "unreal-avx2-lab" | "native-x86-simd-lab") emit_item+ ")"
 emit_item     := header | source | avx512_source | dispatch_source | tests | header_include | namespace | export | select
 header        := "(" "header" quoted_path ")"
@@ -25,11 +25,13 @@ select        := "(" "select" selection_item+ ")"
 selection_item := "(" "operation" identifier ")"
                 | "(" "type" concrete_type ")"
                 | "(" "storage" ("array" | "scalar")+ ")"
-                | "(" "variant" ("out-of-place" | "in-place") ")"
+                | "(" "variant" ("out-of-place" | "in-place" | "sum") ")"
 type_set      := "(" "type-set" identifier concrete_type+ ")"
 concrete_type := "int32" | "uint32" | "float" | "double"
 map           := "(" "map" identifier map_item+ ")"
 map_item      := types | operand | output | expression | variants | aliasing
+sum           := "(" "sum" identifier sum_item+ ")"
+sum_item      := types | operand | expression | aliasing
 types         := "(" "types" identifier ")"
 operand       := "(" "operand" identifier storage ")"
 storage       := "array" | "scalar" | "(" ("array" | "scalar")+ ")"
@@ -44,6 +46,13 @@ variant       := "(" "out-of-place" identifier ")"
                | "(" "in-place" operand_name identifier ")"
 aliasing      := "(" "aliasing" ("output-disjoint" | "pairwise-disjoint") ")"
 ```
+
+A `map` evaluates its expression once per element and writes an output element. A `sum` evaluates
+its expression once per element and adds the values into one scalar result, starting at zero. The
+initial reduction form is intentionally narrow: it accepts only `float` array operands, requires
+`pairwise-disjoint`, and is available only to `native-x86-simd-lab`. It is enough to describe a dot
+product without introducing arbitrary loop bodies, configurable identities, or a general reduction
+language.
 
 The default aliasing policy is `output-disjoint`: a separate output may not overlap an input, and
 an in-place target may not overlap another array operand. Read-only inputs may alias each other.
@@ -66,23 +75,30 @@ exercised at empty, scalar, SIMD-boundary, and larger lengths against values pro
 AST evaluator that is independent of C++ expression rendering. Profile selection is fixed in the
 generator rather than configurable through arbitrary C++ strings.
 
-The SIMD lab profiles are deliberately test-only. They select one concrete, pairwise-disjoint,
-out-of-place `float` variant. `unreal-avx2-lab` emits an AVX2 autovectorized baseline plus
-single-loop and four-way-unrolled intrinsic implementations for the private Unreal benchmark
-module.
+The SIMD lab profiles are deliberately test-only. They select one concrete, pairwise-disjoint
+`float` variant. `unreal-avx2-lab` accepts only out-of-place maps and emits an AVX2 autovectorized
+baseline plus single-loop and four-way-unrolled intrinsic implementations for the private Unreal
+benchmark module.
 `native-x86-simd-lab` additionally emits isolated AVX-512 and runtime-dispatch translation units for
-the opt-in native CMake benchmark. The vector renderer accepts only operand references, addition,
-and multiplication, uses unaligned loads and stores, and preserves the expression-tree order
-without FMA contraction. These profiles exist to measure whether explicit backends add value before
-any SIMD surface is added to SandboxCore.
+the opt-in native CMake benchmark, accepts the narrow `sum` reduction described above, and emits a
+forced-scalar reference loop. The vector renderer accepts only operand references, addition, and
+multiplication, uses unaligned loads and stores, and disables FMA contraction. These profiles exist
+to measure whether explicit backends add value before any SIMD surface is added to SandboxCore.
 
 ## Native SIMD benchmark
 
-The native benchmark measures the generated `add_scaled` kernel:
+The native benchmark measures two generated kernels:
 
 ```text
 out[i] = base[i] + value[i] * scale
+dot_product = sum(lhs[i] * rhs[i])
 ```
+
+Dot product is a useful second target because it combines vector arithmetic with a reduction. A
+single accumulator forms a dependency chain; the four-way-unrolled AVX2 version uses four
+independent vector accumulators to test whether breaking that chain repays the extra code. SIMD
+reductions change the order of floating-point additions, so the dot-product correctness tests use a
+high-precision scalar reference and a relative tolerance rather than requiring bitwise equality.
 
 Google Benchmark is the timing harness. The executable registers each case with
 `benchmark::RegisterBenchmark`, links `benchmark::benchmark_main`, and lets Google Benchmark
@@ -102,17 +118,22 @@ out/build/<preset>/Codegen/kernel/native-simd-generated/native/generated/
   add_scaled_x86_simd_lab_avx2.cpp
   add_scaled_x86_simd_lab_avx512.cpp
   add_scaled_x86_simd_lab_dispatch.cpp
+  dot_product_x86_simd_lab.h
+  dot_product_x86_simd_lab_avx2.cpp
+  dot_product_x86_simd_lab_avx512.cpp
+  dot_product_x86_simd_lab_dispatch.cpp
 ```
 
 For the plotting preset, `<preset>` is `kernel-benchmark-plots`. The AVX2 translation unit contains
-the `autovec-avx2`, `avx2`, and `avx2-unrolled` functions. The AVX-512 translation unit contains the
-`autovec-avx512` and `avx512` functions, including the `_mm512_*` intrinsic loop. The dispatch
-translation unit contains the `cpu-features` selection and cached forwarding function.
+the `scalar`, `autovec-avx2`, `avx2`, and `avx2-unrolled` functions. The AVX-512 translation unit
+contains the `autovec-avx512` and `avx512` functions, including the `_mm512_*` intrinsic loop. The
+dispatch translation unit contains the `cpu-features` selection and cached forwarding function.
 
 CMake compiles those exact generated files into separate AVX2, AVX-512, and dispatch object
-libraries and links the objects into `kernel-native-benchmarks`. The benchmark harness in
-`Codegen/kernel/benchmarks/add_scaled_benchmarks.cpp` calls the resulting functions. The semantic
-declaration in `Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.sbxkernel` and the
+libraries and links the objects into `kernel-native-benchmarks`. The harnesses in
+`Codegen/kernel/benchmarks/add_scaled_benchmarks.cpp` and
+`Codegen/kernel/benchmarks/dot_product_benchmarks.cpp` call the resulting functions. The semantic
+declarations in `Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.sbxkernel` and the
 renderer in `Codegen/kernel/src/avx2_lab_renderer.cpp` are the committed sources of truth.
 
 Native output is kept under `out/` because it depends on the CMake compiler and ISA configuration;
@@ -124,7 +145,7 @@ consumes that checked generated source directly.
 Benchmark names have the form:
 
 ```text
-add_scaled/<backend>/<value-set>/<alignment>/<element-count>
+<operation>/<backend>/<value-set>/<alignment>/<element-count>
 ```
 
 For example, `add_scaled/avx2/ordinary/unaligned/4096` runs the explicit AVX2 kernel on
@@ -133,6 +154,10 @@ a 64-byte boundary.
 
 The backends are:
 
+* `scalar`: the generated scalar reference loop. With Clang, loop vectorization, interleaving, and
+  unrolling are explicitly disabled for this loop; with MSVC, vectorization is explicitly disabled.
+  It is compiled in the same AVX2 translation unit as the AVX2 comparisons, so this controls loop
+  structure rather than forcing an obsolete x86 instruction encoding;
 * `autovec-avx2`: the generated scalar loop, compiled in an AVX2 translation unit and left to the
   compiler's vectorizer;
 * `avx2`: the generated single-loop AVX2 intrinsic implementation;
@@ -144,11 +169,12 @@ The backends are:
   backend selected once through `cpu-features`. This includes the cached indirect-call overhead.
 
 The `autovec` names describe the source and compilation target, not a guarantee that the compiler
-selected a particular vector width. Inspect the optimized assembly when the exact emitted
-instructions matter.
+selected a particular vector width. The separate `scalar` backend makes that distinction measurable
+even if a compiler changes its vectorization decisions. Inspect the optimized assembly when the
+exact emitted instructions matter.
 
 All kernel pointer arguments are `RESTRICT` and the benchmark supplies separate allocations for
-`base`, `value`, and `out`. The two alignment cases are:
+every array argument. The two alignment cases are:
 
 * `aligned`: each array begins on a 64-byte boundary;
 * `unaligned`: each array begins one `float`, or four bytes, past a 64-byte boundary.
@@ -163,28 +189,34 @@ The value sets are deterministic:
 * `extreme` cycles through positive and negative zero, `1`, `-1`, minimum normal values, maximum
   finite values, denormals, positive and negative infinity, and NaN.
 
+Dot product uses its own finite `ordinary` sequences. It deliberately omits `extreme`: a reduction
+quickly collapses most mixtures containing infinity and NaN to NaN, which adds cases without giving
+a useful performance comparison.
+
 Deterministic values make runs reproducible. Input values are not randomized because `add_scaled`
 has no data-dependent branches. The full report instead enables Google Benchmark's random
 interleaving, which changes the order in which benchmark cases are sampled across repetitions and
 helps reduce systematic frequency, temperature, and ordering bias.
 
 Ordinary cases cover element counts around the AVX2 and AVX-512 widths, larger cache regimes, and
-arrays up to 1,048,576 elements. Extreme-value cases use 32, 256, 4,096, 65,536, and 1,048,576
-elements to sample small, L1, L2, and shared-cache regimes without duplicating the entire matrix.
-Every case is run for seven randomly interleaved repetitions with a minimum of 0.05 seconds per
-repetition. On an AVX-512-capable machine this currently produces 276 cases and takes roughly 100
-seconds; timing varies with the CPU and machine load. Unsupported AVX-512 cases are reported as
-skipped.
+arrays up to 1,048,576 elements. Extreme-value `add_scaled` cases use 32, 256, 4,096, 65,536, and
+1,048,576 elements to sample small, L1, L2, and shared-cache regimes without duplicating the entire
+matrix. Every case is run for seven randomly interleaved repetitions with a minimum of 0.05 seconds
+per repetition. On an AVX-512-capable machine this currently produces 574 cases: 322 for
+`add_scaled` and 252 for dot product. The lower bound from the configured minimum alone is about
+201 seconds, so allow roughly four minutes plus build and plotting time; timing varies with the CPU
+and machine load. Unsupported AVX-512 cases are reported as skipped.
 
 Allocation and input initialization occur outside the timed loop. The timed body calls the kernel,
-prevents the output from being optimized away, and uses real elapsed time. Reported byte throughput
-counts two `float` reads and one `float` write per element; the scalar `scale` is not included.
+prevents its result from being optimized away, and uses real elapsed time. Reported `add_scaled`
+byte throughput counts two `float` reads and one `float` write per element; the scalar `scale` is
+not included. Dot-product throughput counts its two `float` reads per element.
 
 The plotting script uses repetition medians for the curves and repetition standard deviation for
 the time error bars. It writes an aligned comparison, an unaligned comparison, and an
 unaligned-to-aligned time-ratio plot for each value set. A ratio above `1.0` on an alignment plot
-means the unaligned case was slower. Speedup plots use `autovec-avx2` as the baseline, so a value
-above `1.0` means that backend was faster than the AVX2 autovectorized loop.
+means the unaligned case was slower. Speedup plots use `scalar` as the baseline, so a value above
+`1.0` means that backend was faster than the forced-scalar reference loop.
 
 ## Commands
 

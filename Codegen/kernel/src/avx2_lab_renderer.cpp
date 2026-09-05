@@ -9,6 +9,7 @@ namespace {
 
 struct VectorIntrinsics {
     int width;
+    std::string_view set_zero;
     std::string_view set1;
     std::string_view load;
     std::string_view add;
@@ -17,12 +18,14 @@ struct VectorIntrinsics {
 };
 
 constexpr VectorIntrinsics Avx2{8,
+                                "_mm256_setzero_ps",
                                 "_mm256_set1_ps",
                                 "_mm256_loadu_ps",
                                 "_mm256_add_ps",
                                 "_mm256_mul_ps",
                                 "_mm256_storeu_ps"};
 constexpr VectorIntrinsics Avx512{16,
+                                  "_mm512_setzero_ps",
                                   "_mm512_set1_ps",
                                   "_mm512_loadu_ps",
                                   "_mm512_add_ps",
@@ -30,10 +33,14 @@ constexpr VectorIntrinsics Avx512{16,
                                   "_mm512_storeu_ps"};
 
 auto validate_lab_variant(ExpandedVariant const& expanded) -> void {
-    if (expanded.type != "float" || expanded.variant->kind != VariantKind::out_of_place ||
+    auto const kind_matches{(expanded.operation->kind == OperationKind::map &&
+                             expanded.variant->kind == VariantKind::out_of_place) ||
+                            (expanded.operation->kind == OperationKind::sum &&
+                             expanded.variant->kind == VariantKind::sum)};
+    if (expanded.type != "float" || !kind_matches ||
         expanded.operation->aliasing != Aliasing::pairwise_disjoint) {
         throw std::invalid_argument{
-            "SIMD lab supports only pairwise-disjoint, out-of-place float variants"};
+            "SIMD lab supports only pairwise-disjoint float maps and sums"};
     }
 }
 
@@ -54,9 +61,12 @@ auto raw_parameters(ExpandedVariant const& expanded,
             result += "float const " + name;
         }
     }
-    result += ", float* ";
-    result += restriction;
-    result += expanded.operation->output + ", ";
+    if (expanded.operation->kind == OperationKind::map) {
+        result += ", float* ";
+        result += restriction;
+        result += expanded.operation->output;
+    }
+    result += ", ";
     result += count_type;
     return result + " const count";
 }
@@ -74,7 +84,10 @@ auto function_pointer_parameters(ExpandedVariant const& expanded) -> std::string
         }
         result += storage == StorageKind::array ? "float const*" : "float";
     }
-    return result + ", float*, std::int32_t";
+    if (expanded.operation->kind == OperationKind::map) {
+        result += ", float*";
+    }
+    return result + ", std::int32_t";
 }
 
 auto raw_arguments(ExpandedVariant const& expanded) -> std::string {
@@ -85,7 +98,10 @@ auto raw_arguments(ExpandedVariant const& expanded) -> std::string {
         }
         result += operand.name;
     }
-    return result + ", " + expanded.operation->output + ", count";
+    if (expanded.operation->kind == OperationKind::map) {
+        result += ", " + expanded.operation->output;
+    }
+    return result + ", count";
 }
 
 class VectorExpressionRenderer {
@@ -144,8 +160,8 @@ class VectorExpressionRenderer {
 
     ExpandedVariant const& expanded_;
     VectorIntrinsics const& intrinsics_;
-    std::string const& indentation_;
-    std::string const& offset_;
+    std::string indentation_;
+    std::string offset_;
     int next_value_{};
     std::string statements_;
 };
@@ -212,10 +228,10 @@ auto render_scalar_tail(ExpandedVariant const& expanded, int const width) -> std
                     "    }\n";
 }
 
-auto render_autovec_function(ExpandedVariant const& expanded,
-                             std::string_view const suffix,
-                             std::string_view const count_type,
-                             std::string_view const restriction) -> std::string {
+auto render_map_autovec_function(ExpandedVariant const& expanded,
+                                 std::string_view const suffix,
+                                 std::string_view const count_type,
+                                 std::string_view const restriction) -> std::string {
     return "void " + implementation_name(expanded, suffix) + "(" +
            raw_parameters(expanded, count_type, restriction) + ") noexcept {\n"
            "    for (" +
@@ -231,12 +247,38 @@ auto render_autovec_function(ExpandedVariant const& expanded,
            "}\n\n";
 }
 
-auto render_vector_function(ExpandedVariant const& expanded,
-                            VectorIntrinsics const& intrinsics,
-                            std::string_view const suffix,
-                            int const unroll,
-                            std::string_view const count_type,
-                            std::string_view const restriction) -> std::string {
+auto scalar_loop_controls() -> std::string_view {
+    return "#if defined(__clang__)\n"
+           "    #pragma clang loop vectorize(disable) interleave(disable) unroll(disable)\n"
+           "#elif defined(_MSC_VER)\n"
+           "    #pragma loop(no_vector)\n"
+           "#endif\n";
+}
+
+auto render_map_scalar_function(ExpandedVariant const& expanded,
+                                std::string_view const count_type,
+                                std::string_view const restriction) -> std::string {
+    return "void " + implementation_name(expanded, "_scalar") + "(" +
+           raw_parameters(expanded, count_type, restriction) + ") noexcept {\n" +
+           std::string{scalar_loop_controls()} + "    for (" + std::string{count_type} +
+           " i{0}; i < count; ++i) {\n"
+           "        " +
+           expanded.operation->output + "[i] = " +
+           render_expression(expanded.operation->expression,
+                             *expanded.operation,
+                             expanded.storage,
+                             expanded.type) +
+           ";\n"
+           "    }\n"
+           "}\n\n";
+}
+
+auto render_map_vector_function(ExpandedVariant const& expanded,
+                                VectorIntrinsics const& intrinsics,
+                                std::string_view const suffix,
+                                int const unroll,
+                                std::string_view const count_type,
+                                std::string_view const restriction) -> std::string {
     auto result{"void " + implementation_name(expanded, suffix) + "(" +
                 raw_parameters(expanded, count_type, restriction) + ") noexcept {\n"};
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
@@ -268,6 +310,106 @@ auto render_vector_function(ExpandedVariant const& expanded,
     return result;
 }
 
+auto render_sum_autovec_function(ExpandedVariant const& expanded,
+                                 std::string_view const suffix,
+                                 std::string_view const count_type,
+                                 std::string_view const restriction) -> std::string {
+    return "float " + implementation_name(expanded, suffix) + "(" +
+           raw_parameters(expanded, count_type, restriction) + ") noexcept {\n"
+           "    float result{};\n"
+           "    for (" +
+           std::string{count_type} + " i{0}; i < count; ++i) {\n"
+           "        result += " +
+           render_expression(expanded.operation->expression,
+                             *expanded.operation,
+                             expanded.storage,
+                             expanded.type) +
+           ";\n"
+           "    }\n"
+           "    return result;\n"
+           "}\n\n";
+}
+
+auto render_sum_scalar_function(ExpandedVariant const& expanded,
+                                std::string_view const count_type,
+                                std::string_view const restriction) -> std::string {
+    return "float " + implementation_name(expanded, "_scalar") + "(" +
+           raw_parameters(expanded, count_type, restriction) + ") noexcept {\n"
+           "    float result{};\n" +
+           std::string{scalar_loop_controls()} + "    for (" + std::string{count_type} +
+           " i{0}; i < count; ++i) {\n"
+           "        result += " +
+           render_expression(expanded.operation->expression,
+                             *expanded.operation,
+                             expanded.storage,
+                             expanded.type) +
+           ";\n"
+           "    }\n"
+           "    return result;\n"
+           "}\n\n";
+}
+
+auto render_sum_vector_function(ExpandedVariant const& expanded,
+                                VectorIntrinsics const& intrinsics,
+                                std::string_view const suffix,
+                                int const unroll,
+                                std::string_view const count_type,
+                                std::string_view const restriction) -> std::string {
+    auto result{"float " + implementation_name(expanded, suffix) + "(" +
+                raw_parameters(expanded, count_type, restriction) + ") noexcept {\n"};
+    for (int accumulator{}; accumulator < unroll; ++accumulator) {
+        result += "    auto accumulator_" + std::to_string(accumulator) + "{" +
+                  std::string{intrinsics.set_zero} + "()};\n";
+    }
+    result += "    " + std::string{count_type} + " i{};\n";
+    auto const chunk_width{intrinsics.width * unroll};
+    result += "    " + std::string{count_type} + " const vectorized_count{count - (count % " +
+              std::to_string(chunk_width) + ")};\n"
+              "    for (; i < vectorized_count; i += " +
+              std::to_string(chunk_width) + ") {\n";
+    for (int accumulator{}; accumulator < unroll; ++accumulator) {
+        auto const offset{accumulator * intrinsics.width};
+        auto const offset_expression{offset == 0 ? std::string{}
+                                                 : " + " + std::to_string(offset)};
+        result += "        {\n";
+        VectorExpressionRenderer expression_renderer{
+            expanded, intrinsics, "            ", offset_expression};
+        auto const value{expression_renderer.render(expanded.operation->expression)};
+        result += expression_renderer.statements() + "            accumulator_" +
+                  std::to_string(accumulator) + " = " + std::string{intrinsics.add} +
+                  "(accumulator_" + std::to_string(accumulator) + ", " + value + ");\n"
+                  "        }\n";
+    }
+    result += "    }\n\n";
+    for (int stride{1}; stride < unroll; stride *= 2) {
+        for (int accumulator{}; accumulator + stride < unroll; accumulator += stride * 2) {
+            result += "    accumulator_" + std::to_string(accumulator) + " = " +
+                      std::string{intrinsics.add} + "(accumulator_" +
+                      std::to_string(accumulator) + ", accumulator_" +
+                      std::to_string(accumulator + stride) + ");\n";
+        }
+    }
+    result += "    float lanes[" + std::to_string(intrinsics.width) + "]{};\n"
+              "    " +
+              std::string{intrinsics.store} + "(lanes, accumulator_0);\n"
+              "    float result{};\n"
+              "    for (int lane{}; lane < " +
+              std::to_string(intrinsics.width) + "; ++lane) {\n"
+              "        result += lanes[lane];\n"
+              "    }\n"
+              "    for (; i < count; ++i) {\n"
+              "        result += " +
+              render_expression(expanded.operation->expression,
+                                *expanded.operation,
+                                expanded.storage,
+                                expanded.type) +
+              ";\n"
+              "    }\n"
+              "    return result;\n"
+              "}\n\n";
+    return result;
+}
+
 auto native_restrict_definition() -> std::string_view {
     return "#if defined(_MSC_VER)\n"
            "#define ML_KERNEL_LAB_RESTRICT __restrict\n"
@@ -280,7 +422,8 @@ auto render_declaration(ExpandedVariant const& expanded,
                         std::string_view const suffix,
                         std::string_view const count_type,
                         std::string_view const restriction) -> std::string {
-    return "void " + implementation_name(expanded, suffix) + "(" +
+    auto const return_type{expanded.operation->kind == OperationKind::sum ? "float " : "void "};
+    return std::string{return_type} + implementation_name(expanded, suffix) + "(" +
            raw_parameters(expanded, count_type, restriction) + ") noexcept;\n\n";
 }
 
@@ -289,6 +432,9 @@ auto render_declaration(ExpandedVariant const& expanded,
 auto render_avx2_lab_header(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
+    if (expanded.operation->kind != OperationKind::map) {
+        throw std::invalid_argument{"unreal-avx2-lab supports only map operations"};
+    }
     return generated_warning + std::string{"#pragma once\n\n#include \"CoreTypes.h\"\n\nnamespace "} +
            emission.cpp_namespace + " {\n\n" +
            render_declaration(expanded, "_autovec_avx2", "int32", "RESTRICT ") +
@@ -299,11 +445,14 @@ auto render_avx2_lab_header(Emission const& emission, ExpandedVariant const& exp
 auto render_avx2_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
+    if (expanded.operation->kind != OperationKind::map) {
+        throw std::invalid_argument{"unreal-avx2-lab supports only map operations"};
+    }
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <immintrin.h>\n\nnamespace " + emission.cpp_namespace + " {\n\n" +
-           render_autovec_function(expanded, "_autovec_avx2", "int32", "RESTRICT ") +
-           render_vector_function(expanded, Avx2, "_avx2", 1, "int32", "RESTRICT ") +
-           render_vector_function(
+           render_map_autovec_function(expanded, "_autovec_avx2", "int32", "RESTRICT ") +
+           render_map_vector_function(expanded, Avx2, "_avx2", 1, "int32", "RESTRICT ") +
+           render_map_vector_function(
                expanded, Avx2, "_avx2_unrolled", 4, "int32", "RESTRICT ") +
            "}\n";
 }
@@ -317,6 +466,8 @@ auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant con
            "    avx2,\n"
            "    avx512,\n"
            "};\n\n" +
+           render_declaration(
+               expanded, "_scalar", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
            render_declaration(
                expanded, "_autovec_avx2", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
            render_declaration(
@@ -336,32 +487,78 @@ auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant con
 auto render_native_avx2_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
+    auto const functions{expanded.operation->kind == OperationKind::sum
+                             ? render_sum_scalar_function(expanded,
+                                                          "std::int32_t",
+                                                          "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_sum_autovec_function(expanded,
+                                                            "_autovec_avx2",
+                                                            "std::int32_t",
+                                                            "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_sum_vector_function(expanded,
+                                                              Avx2,
+                                                              "_avx2",
+                                                              1,
+                                                              "std::int32_t",
+                                                              "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_sum_vector_function(expanded,
+                                                              Avx2,
+                                                              "_avx2_unrolled",
+                                                              4,
+                                                              "std::int32_t",
+                                                              "ML_KERNEL_LAB_RESTRICT ")
+                             : render_map_scalar_function(expanded,
+                                                          "std::int32_t",
+                                                          "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_map_autovec_function(expanded,
+                                                           "_autovec_avx2",
+                                                           "std::int32_t",
+                                                           "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_map_vector_function(expanded,
+                                                              Avx2,
+                                                              "_avx2",
+                                                              1,
+                                                              "std::int32_t",
+                                                              "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_map_vector_function(expanded,
+                                                              Avx2,
+                                                              "_avx2_unrolled",
+                                                              4,
+                                                              "std::int32_t",
+                                                              "ML_KERNEL_LAB_RESTRICT ")};
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <immintrin.h>\n\n" + std::string{native_restrict_definition()} +
-           "namespace " + emission.cpp_namespace + " {\n\n" +
-           render_autovec_function(
-               expanded, "_autovec_avx2", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_vector_function(
-               expanded, Avx2, "_avx2", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_vector_function(expanded,
-                                  Avx2,
-                                  "_avx2_unrolled",
-                                  4,
-                                  "std::int32_t",
-                                  "ML_KERNEL_LAB_RESTRICT ") +
+           "namespace " + emission.cpp_namespace + " {\n\n" + functions +
            "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
 auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
+    auto const functions{expanded.operation->kind == OperationKind::sum
+                             ? render_sum_autovec_function(expanded,
+                                                            "_autovec_avx512",
+                                                            "std::int32_t",
+                                                            "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_sum_vector_function(expanded,
+                                                              Avx512,
+                                                              "_avx512",
+                                                              1,
+                                                              "std::int32_t",
+                                                              "ML_KERNEL_LAB_RESTRICT ")
+                             : render_map_autovec_function(expanded,
+                                                           "_autovec_avx512",
+                                                           "std::int32_t",
+                                                           "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_map_vector_function(expanded,
+                                                              Avx512,
+                                                              "_avx512",
+                                                              1,
+                                                              "std::int32_t",
+                                                              "ML_KERNEL_LAB_RESTRICT ")};
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <immintrin.h>\n\n" + std::string{native_restrict_definition()} +
-           "namespace " + emission.cpp_namespace + " {\n\n" +
-           render_autovec_function(
-               expanded, "_autovec_avx512", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_vector_function(
-               expanded, Avx512, "_avx512", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+           "namespace " + emission.cpp_namespace + " {\n\n" + functions +
            "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
@@ -371,9 +568,12 @@ auto render_native_simd_dispatch_source(Emission const& emission, ExpandedVarian
     auto const dispatch_name{implementation_name(expanded, "_dispatch")};
     auto const avx2_name{implementation_name(expanded, "_avx2")};
     auto const avx512_name{implementation_name(expanded, "_avx512")};
+    auto const return_type{expanded.operation->kind == OperationKind::sum ? "float" : "void"};
+    auto const return_prefix{expanded.operation->kind == OperationKind::sum ? "return " : ""};
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <cpuinfo_x86.h>\n\n" + std::string{native_restrict_definition()} +
-           "namespace " + emission.cpp_namespace + " {\nnamespace {\n\nusing Kernel = void (*)(" +
+           "namespace " + emission.cpp_namespace + " {\nnamespace {\n\nusing Kernel = " +
+           std::string{return_type} + " (*)(" +
            function_pointer_parameters(expanded) + ") noexcept;\n\n"
            "struct Selection {\n"
            "    X86SimdBackend backend;\n"
@@ -391,10 +591,11 @@ auto render_native_simd_dispatch_source(Emission const& emission, ExpandedVarian
            "    static auto const value{select_backend()};\n"
            "    return value;\n"
            "}\n\n}\n\n"
-           "void " + dispatch_name + "(" +
+           + std::string{return_type} + " " + dispatch_name + "(" +
            raw_parameters(expanded, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
            ") noexcept {\n"
-           "    selection().kernel(" + raw_arguments(expanded) + ");\n"
+           "    " + std::string{return_prefix} + "selection().kernel(" + raw_arguments(expanded) +
+           ");\n"
            "}\n\n"
            "auto get_" + expanded.operation->name +
            "_backend() noexcept -> X86SimdBackend {\n"

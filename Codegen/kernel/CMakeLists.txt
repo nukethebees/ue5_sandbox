@@ -247,11 +247,27 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_SIMD_DISPATCH_SOURCE
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_dispatch.cpp"
   )
+  set(KERNEL_NATIVE_DOT_HEADER
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab.h"
+  )
+  set(KERNEL_NATIVE_DOT_AVX2_SOURCE
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx2.cpp"
+  )
+  set(KERNEL_NATIVE_DOT_AVX512_SOURCE
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx512.cpp"
+  )
+  set(KERNEL_NATIVE_DOT_DISPATCH_SOURCE
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_dispatch.cpp"
+  )
   set(KERNEL_NATIVE_SIMD_FILES
     "${KERNEL_NATIVE_SIMD_HEADER}"
     "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
     "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
     "${KERNEL_NATIVE_SIMD_DISPATCH_SOURCE}"
+    "${KERNEL_NATIVE_DOT_HEADER}"
+    "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
+    "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
+    "${KERNEL_NATIVE_DOT_DISPATCH_SOURCE}"
   )
   add_custom_command(
     OUTPUT ${KERNEL_NATIVE_SIMD_FILES}
@@ -267,9 +283,18 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     VERBATIM
   )
 
-  add_library(kernel-native-simd-avx2 OBJECT "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}")
-  add_library(kernel-native-simd-avx512 OBJECT "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}")
-  add_library(kernel-native-simd-dispatch OBJECT "${KERNEL_NATIVE_SIMD_DISPATCH_SOURCE}")
+  add_library(kernel-native-simd-avx2 OBJECT
+    "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
+    "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
+  )
+  add_library(kernel-native-simd-avx512 OBJECT
+    "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
+    "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
+  )
+  add_library(kernel-native-simd-dispatch OBJECT
+    "${KERNEL_NATIVE_SIMD_DISPATCH_SOURCE}"
+    "${KERNEL_NATIVE_DOT_DISPATCH_SOURCE}"
+  )
   foreach(TARGET IN ITEMS
       kernel-native-simd-avx2
       kernel-native-simd-avx512
@@ -335,6 +360,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
 
   add_executable(kernel-native-benchmarks
     benchmarks/add_scaled_benchmarks.cpp
+    benchmarks/dot_product_benchmarks.cpp
     ${KERNEL_NATIVE_SIMD_OBJECTS}
   )
   target_compile_features(kernel-native-benchmarks PRIVATE cxx_std_23)
