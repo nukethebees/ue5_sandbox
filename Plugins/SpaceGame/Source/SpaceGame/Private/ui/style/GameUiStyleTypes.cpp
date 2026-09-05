@@ -34,6 +34,9 @@ auto get_game_text_style_name(EGameTextStyle const value) -> TCHAR const* {
     case EGameTextStyle::HudSecondary: {
         return TEXT("HudSecondary");
     }
+    case EGameTextStyle::Disabled: {
+        return TEXT("Disabled");
+    }
     }
 
     ensureMsgf(false,

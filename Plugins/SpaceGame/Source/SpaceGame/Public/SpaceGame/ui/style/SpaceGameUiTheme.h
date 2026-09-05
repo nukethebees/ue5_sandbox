@@ -31,6 +31,8 @@ struct SPACEGAME_API FGameTextStyles {
     FTextBlockStyle hud_primary{};
     UPROPERTY(EditAnywhere, Category = "Text")
     FTextBlockStyle hud_secondary{};
+    UPROPERTY(EditAnywhere, Category = "Text")
+    FTextBlockStyle disabled{};
 };
 
 USTRUCT(BlueprintType)
@@ -56,7 +58,7 @@ struct SPACEGAME_API FGameButtonStyleDefinition {
     EGameTextStyle selected_hovered_text{EGameTextStyle::Body};
 
     UPROPERTY(EditAnywhere, Category = "Text")
-    EGameTextStyle disabled_text{EGameTextStyle::BodySecondary};
+    EGameTextStyle disabled_text{EGameTextStyle::Disabled};
 
     UPROPERTY(EditAnywhere, Category = "Layout")
     FMargin custom_padding{};

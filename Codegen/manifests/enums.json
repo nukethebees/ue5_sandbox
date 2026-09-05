@@ -23,7 +23,8 @@
             {"name": "Heading3", "display_name": "Heading 3"},
             {"name": "Warning"},
             {"name": "HudPrimary", "display_name": "HUD Primary"},
-            {"name": "HudSecondary", "display_name": "HUD Secondary"}
+            {"name": "HudSecondary", "display_name": "HUD Secondary"},
+            {"name": "Disabled"}
           ],
           "conversions": ["lex_to_string", "string_view", "display_string_view"]
         },

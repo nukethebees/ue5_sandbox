@@ -91,6 +91,8 @@ auto FGameTextStyles::get(EGameTextStyle const role) const -> FTextBlockStyle co
             return hud_primary;
         case EGameTextStyle::HudSecondary:
             return hud_secondary;
+        case EGameTextStyle::Disabled:
+            return disabled;
     }
 
     checkNoEntry();
@@ -123,6 +125,8 @@ USpaceGameUiTheme::USpaceGameUiTheme() {
     text_styles_.hud_primary = make_text_style(TEXT("Bold"), 18, FLinearColor::White);
     text_styles_.hud_secondary =
         make_text_style(TEXT("Regular"), 14, FLinearColor{0.72f, 0.76f, 0.82f, 1.f});
+    text_styles_.disabled =
+        make_text_style(TEXT("Regular"), 14, FLinearColor{0.5f, 0.52f, 0.55f, 1.f});
 
     button_styles_.primary = make_button_style(FButtonPalette{
         .normal = FLinearColor{0.12f, 0.14f, 0.16f, 1.f},

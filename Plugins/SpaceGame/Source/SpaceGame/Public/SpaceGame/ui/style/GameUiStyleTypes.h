@@ -21,6 +21,7 @@ enum class EGameTextStyle : uint8 {
     Warning,
     HudPrimary UMETA(DisplayName = "HUD Primary"),
     HudSecondary UMETA(DisplayName = "HUD Secondary"),
+    Disabled,
 };
 
 UENUM()
@@ -31,7 +32,7 @@ enum class EGameButtonStyle : uint8 {
 
 template <>
 struct TEnumTraits<EGameTextStyle> {
-    static constexpr int32 count{9};
+    static constexpr int32 count{10};
 };
 
 template <>
