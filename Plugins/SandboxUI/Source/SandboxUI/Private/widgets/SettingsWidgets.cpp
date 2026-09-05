@@ -32,10 +32,13 @@ FSettingsStyle::FSettingsStyle() {
     toggle = core_style.GetWidgetStyle<FCheckBoxStyle>("Checkbox");
     combo_box = core_style.GetWidgetStyle<FComboBoxStyle>("ComboBox");
     combo_row = core_style.GetWidgetStyle<FTableRowStyle>("TableView.Row");
+    scroll_bar = core_style.GetWidgetStyle<FScrollBarStyle>("ScrollBar");
     page_background.DrawAs = ESlateBrushDrawType::Box;
     page_background.TintColor = FSlateColor{FLinearColor{0.018f, 0.028f, 0.045f, 0.99f}};
     section_background.DrawAs = ESlateBrushDrawType::Box;
     section_background.TintColor = FSlateColor{FLinearColor{0.04f, 0.05f, 0.065f, 0.96f}};
+    section_border = section_background;
+    value_background = section_background;
 }
 
 auto default_settings_style() -> FSettingsStyle const& {
@@ -70,9 +73,14 @@ void SSettingsRow::Construct(FArguments const& args) {
 
 void SSettingsSection::Construct(FArguments const& args) {
     auto const& style{valid_style(args._Style)};
-    auto title{SNew(STextBlock).Text(args._Title).TextStyle(&style.section_text)};
+    TSharedRef<SWidget> title{args._Header.Widget};
+    if (title == SNullWidget::NullWidget) {
+        title = SNew(STextBlock).Text(args._Title).TextStyle(&style.section_text);
+    }
     ChildSlot[SlateGenerated::SSettingsSectionBuilder{*this}.Build(style.section_padding,
                                                                    &style.section_background,
+                                                                   &style.section_border,
+                                                                   style.section_border_thickness,
                                                                    style.section_title_padding,
                                                                    title,
                                                                    args._Content.Widget)];
@@ -96,10 +104,12 @@ void SSettingsSlider::Construct(FArguments const& args) {
                     .MouseUsesStep(true)
                     .RequiresControllerLock(false)
                     .OnValueChanged(this, &SSettingsSlider::handle_value_changed)};
-    auto value_text{SNew(STextBlock)
-                        .Text(args._ValueText)
-                        .TextStyle(&style.value_text)
-                        .Justification(ETextJustify::Right)};
+    auto value_text{SNew(SBorder)
+                        .BorderImage(&style.value_background)
+                        .Padding(FMargin{6.0f, 2.0f})[SNew(STextBlock)
+                                                          .Text(args._ValueText)
+                                                          .TextStyle(&style.value_text)
+                                                          .Justification(ETextJustify::Center)]};
 
     auto const value_padding{FMargin{style.value_text_spacing, 0.0f}};
     ChildSlot[SlateGenerated::SSettingsSliderBuilder{*this}.Build(args._Style,

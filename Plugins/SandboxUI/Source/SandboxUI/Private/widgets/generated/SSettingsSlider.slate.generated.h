@@ -16,7 +16,7 @@ struct SSettingsSliderBuilder {
 
     auto Build(auto&& style, auto&& label, auto&& tool_tip_text, auto&& control_enabled, auto&& value_padding, auto&& value_width, auto&& slider, auto&& value_text) {
         return
-#line 142 "CoreWidgets.sbxslate"
+#line 147 "CoreWidgets.sbxslate"
             SNew(SSettingsRow)
                 .Style(style)
                 .Label(label)

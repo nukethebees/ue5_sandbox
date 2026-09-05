@@ -14,22 +14,27 @@ struct SSettingsSectionBuilder {
 
     explicit SSettingsSectionBuilder(ThisClass& self) : self_{self} {}
 
-    auto Build(auto&& padding, auto&& background, auto&& title_padding, auto&& title, auto&& content) {
+    auto Build(auto&& padding, auto&& background, auto&& border, auto&& border_thickness, auto&& title_padding, auto&& title, auto&& content) {
         return
-#line 124 "CoreWidgets.sbxslate"
+#line 126 "CoreWidgets.sbxslate"
             SNew(SBorder)
-                .Padding(padding)
-                .BorderImage(background)
+                .Padding(border_thickness)
+                .BorderImage(border)
                 [
-                    SNew(SVerticalBox)
-                        + SandboxUI::Slate::vbox_auto_slot(FMargin{title_padding})
-                            [
-                                std::forward<decltype(title)>(title)
-                            ]
-                        + SandboxUI::Slate::vbox_auto_slot()
-                            [
-                                std::forward<decltype(content)>(content)
-                            ]
+                    SNew(SBorder)
+                        .Padding(padding)
+                        .BorderImage(background)
+                        [
+                            SNew(SVerticalBox)
+                                + SandboxUI::Slate::vbox_auto_slot(FMargin{title_padding})
+                                    [
+                                        std::forward<decltype(title)>(title)
+                                    ]
+                                + SandboxUI::Slate::vbox_auto_slot()
+                                    [
+                                        std::forward<decltype(content)>(content)
+                                    ]
+                        ]
                 ];
     }
 

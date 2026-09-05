@@ -118,15 +118,20 @@
     (params
       (value padding)
       (value background)
+      (value border)
+      (value border_thickness)
       (value title_padding)
       (existing title)
       (existing content))
     (SBorder
-      :Padding padding
-      :BorderImage background
-      (vbox
-        (auto :padding title_padding (existing title))
-        (auto (existing content))))))
+      :Padding border_thickness
+      :BorderImage border
+      (SBorder
+        :Padding padding
+        :BorderImage background
+        (vbox
+          (auto :padding title_padding (existing title))
+          (auto (existing content)))))))
 
 (widget-class SSettingsSlider
   (function Build

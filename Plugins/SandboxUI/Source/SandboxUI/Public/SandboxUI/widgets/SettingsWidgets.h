@@ -48,11 +48,20 @@ struct SANDBOXUI_API FSettingsStyle {
     UPROPERTY(EditAnywhere, Category = "Controls")
     FTableRowStyle combo_row{};
 
+    UPROPERTY(EditAnywhere, Category = "Controls")
+    FScrollBarStyle scroll_bar{};
+
     UPROPERTY(EditAnywhere, Category = "Panels")
     FSlateBrush page_background{};
 
     UPROPERTY(EditAnywhere, Category = "Panels")
     FSlateBrush section_background{};
+
+    UPROPERTY(EditAnywhere, Category = "Panels")
+    FSlateBrush section_border{};
+
+    UPROPERTY(EditAnywhere, Category = "Panels")
+    FSlateBrush value_background{};
 
     UPROPERTY(EditAnywhere, Category = "Layout")
     FMargin page_margin{48.0f};
@@ -62,6 +71,9 @@ struct SANDBOXUI_API FSettingsStyle {
 
     UPROPERTY(EditAnywhere, Category = "Layout")
     FMargin section_padding{20.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Layout")
+    FMargin section_border_thickness{1.0f};
 
     UPROPERTY(EditAnywhere, Category = "Layout")
     FMargin section_title_padding{0.0f, 0.0f, 0.0f, 14.0f};
@@ -134,6 +146,7 @@ class SANDBOXUI_API SSettingsSection : public SCompoundWidget {
         , _Title() {}
     SLATE_ARGUMENT(FSettingsStyle const*, Style)
     SLATE_ATTRIBUTE(FText, Title)
+    SLATE_NAMED_SLOT(FArguments, Header)
     SLATE_DEFAULT_SLOT(FArguments, Content)
     SLATE_END_ARGS()
 
