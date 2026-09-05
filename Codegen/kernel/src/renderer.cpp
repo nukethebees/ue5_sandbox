@@ -47,14 +47,26 @@ auto render(KernelModule const& module, Profile const profile)
     }
     if (profile == Profile::native_x86_simd_lab) {
         auto const& selected{selected_variant(variants, *emission)};
-        return {codegen::GeneratedFile{emission->header,
-                                       render_native_simd_lab_header(*emission, selected)},
-                codegen::GeneratedFile{emission->source,
-                                       render_native_avx2_lab_source(*emission, selected)},
-                codegen::GeneratedFile{*emission->avx512_source,
-                                       render_native_avx512_lab_source(*emission, selected)},
-                codegen::GeneratedFile{*emission->dispatch_source,
-                                       render_native_simd_dispatch_source(*emission, selected)}};
+        std::vector<codegen::GeneratedFile> result{
+            codegen::GeneratedFile{emission->header,
+                                   render_native_simd_lab_header(*emission, selected)},
+            codegen::GeneratedFile{emission->source,
+                                   render_native_avx2_lab_source(*emission, selected)},
+            codegen::GeneratedFile{*emission->avx512_source,
+                                   render_native_avx512_lab_source(*emission, selected)},
+            codegen::GeneratedFile{*emission->dispatch_source,
+                                   render_native_simd_dispatch_source(*emission, selected)}};
+        if (emission->relaxed_avx2_source) {
+            result.push_back(codegen::GeneratedFile{
+                *emission->relaxed_avx2_source,
+                render_native_relaxed_autovec_source(
+                    *emission, selected, "_autovec_relaxed_avx2")});
+            result.push_back(codegen::GeneratedFile{
+                *emission->relaxed_avx512_source,
+                render_native_relaxed_autovec_source(
+                    *emission, selected, "_autovec_relaxed_avx512")});
+        }
+        return result;
     }
     if (profile == Profile::standard) {
         std::vector<codegen::GeneratedFile> result{

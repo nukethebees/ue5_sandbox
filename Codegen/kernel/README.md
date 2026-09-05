@@ -85,6 +85,12 @@ forced-scalar reference loop. The vector renderer accepts only operand reference
 multiplication, uses unaligned loads and stores, and disables FMA contraction. These profiles exist
 to measure whether explicit backends add value before any SIMD surface is added to SandboxCore.
 
+Sum reductions default to `(floating-point-modes strict)`. A reduction may explicitly request
+`(floating-point-modes strict relaxed)` to generate both an ordered source loop and a second source
+loop that may be reassociated by the compiler. Relaxed loops are emitted into dedicated translation
+units so the build applies the relaxed policy only to those functions. FMA contraction remains
+disabled in both modes, keeping reassociation separate from contraction as a benchmark dimension.
+
 ## Native SIMD benchmark
 
 The native benchmark measures two generated kernels:
@@ -122,15 +128,20 @@ out/build/<preset>/Codegen/kernel/native-simd-generated/native/generated/
   dot_product_x86_simd_lab_avx2.cpp
   dot_product_x86_simd_lab_avx512.cpp
   dot_product_x86_simd_lab_dispatch.cpp
+  dot_product_x86_simd_lab_relaxed_avx2.cpp
+  dot_product_x86_simd_lab_relaxed_avx512.cpp
 ```
 
 For the plotting preset, `<preset>` is `kernel-benchmark-plots`. The AVX2 translation unit contains
-the `scalar`, `autovec-avx2`, `avx2`, and `avx2-unrolled` functions. The AVX-512 translation unit
-contains the `autovec-avx512` and `avx512` functions, including the `_mm512_*` intrinsic loop. The
-dispatch translation unit contains the `cpu-features` selection and cached forwarding function.
+the `scalar`, strict-autovec, `avx2`, and `avx2-unrolled` functions. The AVX-512 translation unit
+contains the strict-autovec and `avx512` functions, including the `_mm512_*` intrinsic loop. The two
+relaxed translation units contain only their respective relaxed-autovec loops. The dispatch
+translation unit contains the `cpu-features` selection and cached forwarding function.
 
-CMake compiles those exact generated files into separate AVX2, AVX-512, and dispatch object
-libraries and links the objects into `kernel-native-benchmarks`. The harnesses in
+CMake compiles those exact generated files into separate strict AVX2, strict AVX-512, relaxed AVX2,
+relaxed AVX-512, and dispatch object libraries and links the objects into
+`kernel-native-benchmarks`. The relaxed targets enable reassociation while disabling contraction;
+the remaining targets retain source-order floating-point compilation. The harnesses in
 `Codegen/kernel/benchmarks/add_scaled_benchmarks.cpp` and
 `Codegen/kernel/benchmarks/dot_product_benchmarks.cpp` call the resulting functions. The semantic
 declarations in `Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.sbxkernel` and the
@@ -158,20 +169,27 @@ The backends are:
   unrolling are explicitly disabled for this loop; with MSVC, vectorization is explicitly disabled.
   It is compiled in the same AVX2 translation unit as the AVX2 comparisons, so this controls loop
   structure rather than forcing an obsolete x86 instruction encoding;
-* `autovec-avx2`: the generated scalar loop, compiled in an AVX2 translation unit and left to the
-  compiler's vectorizer;
+* `autovec-avx2`: the generated `add_scaled` scalar loop, compiled in an AVX2 translation unit and
+  left to the compiler's vectorizer;
+* `autovec-strict-avx2` and `autovec-strict-avx512`: the generated dot-product source loop compiled
+  without floating-point reassociation. These preserve source accumulation order and may therefore
+  remain scalar;
+* `autovec-relaxed-avx2` and `autovec-relaxed-avx512`: the same generated dot-product source loop in
+  dedicated translation units that permit reassociation but prohibit FMA contraction;
 * `avx2`: the generated single-loop AVX2 intrinsic implementation;
 * `avx2-unrolled`: the generated AVX2 implementation with four vector operations emitted per loop
   iteration;
-* `autovec-avx512`: the same scalar source loop compiled in an AVX-512 translation unit;
+* `autovec-avx512`: the generated `add_scaled` scalar loop compiled in an AVX-512 translation unit;
 * `avx512`: the generated single-loop AVX-512 intrinsic implementation;
 * `dispatch-avx2` or `dispatch-avx512`: the generated runtime-dispatch entry point, named for the
   backend selected once through `cpu-features`. This includes the cached indirect-call overhead.
 
 The `autovec` names describe the source and compilation target, not a guarantee that the compiler
 selected a particular vector width. The separate `scalar` backend makes that distinction measurable
-even if a compiler changes its vectorization decisions. Inspect the optimized assembly when the
-exact emitted instructions matter.
+even if a compiler changes its vectorization decisions. The benchmark JSON records
+`absolute_error` and `relative_error` counters for every dot-product result against a
+double-precision reference. Inspect the optimized assembly when the exact emitted instructions
+matter.
 
 All kernel pointer arguments are `RESTRICT` and the benchmark supplies separate allocations for
 every array argument. The two alignment cases are:
@@ -205,13 +223,13 @@ matrix. Every case is run for seven randomly interleaved repetitions with a mini
 per repetition.
 
 The routine `kernel-benchmark-plots` report selects ordinary, aligned cases at 32, 256, 4,096,
-65,536, 262,144, and 1,048,576 elements. It currently contains 84 cases, has a configured timing
-floor of about 30 seconds, and should normally finish in 30 to 45 seconds plus build and plotting
+65,536, 262,144, and 1,048,576 elements. It currently contains 96 cases, has a configured timing
+floor of about 34 seconds, and should normally finish in under a minute plus build and plotting
 time. Use it while iterating.
 
-The `kernel-benchmark-plots-full` report runs all 574 cases: 322 for `add_scaled` and 252 for dot
-product. Its configured timing floor is about 201 seconds, so allow roughly four minutes plus build
-and plotting time. It covers SIMD-width boundaries, scalar tails, both alignments, and the
+The `kernel-benchmark-plots-full` report runs all 646 cases: 322 for `add_scaled` and 324 for dot
+product. Its configured timing floor is about 226 seconds, so allow roughly four and a half minutes
+plus build and plotting time. It covers SIMD-width boundaries, scalar tails, both alignments, and the
 `add_scaled` extreme set. Run it before accepting a backend or dispatch change. Unsupported AVX-512
 cases are reported as skipped.
 

@@ -3,8 +3,11 @@
 #include <benchmark/benchmark.h>
 #include <cpuinfo_x86.h>
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstdint>
+#include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -33,9 +36,19 @@ auto has_avx512() -> bool {
 
 void fill_values(float* const lhs, float* const rhs, std::int32_t const count) {
     for (std::int32_t index{}; index < count; ++index) {
-        lhs[index] = static_cast<float>((index * 13) % 257) * 0.03125f - 4.0f;
-        rhs[index] = static_cast<float>((index * 29) % 251) * 0.015625f - 2.0f;
+        lhs[index] = static_cast<float>((index * 13) % 257) * 0.031f - 4.0f;
+        rhs[index] = static_cast<float>((index * 29) % 251) * 0.017f - 2.0f;
     }
+}
+
+auto reference_dot_product(float const* const lhs,
+                           float const* const rhs,
+                           std::int32_t const count) -> double {
+    double result{};
+    for (std::int32_t index{}; index < count; ++index) {
+        result += static_cast<double>(lhs[index]) * static_cast<double>(rhs[index]);
+    }
+    return result;
 }
 
 void run_benchmark(benchmark::State& state,
@@ -51,10 +64,12 @@ void run_benchmark(benchmark::State& state,
     AlignedBuffer lhs{count, offset};
     AlignedBuffer rhs{count, offset};
     fill_values(lhs.data, rhs.data, count);
+    auto const reference{reference_dot_product(lhs.data, rhs.data, count)};
 
+    float result{};
     for (auto _ : state) {
         static_cast<void>(_);
-        auto result{kernel(lhs.data, rhs.data, count)};
+        result = kernel(lhs.data, rhs.data, count);
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
@@ -62,6 +77,11 @@ void run_benchmark(benchmark::State& state,
     auto const operations{state.iterations() * static_cast<std::int64_t>(count)};
     state.SetItemsProcessed(operations);
     state.SetBytesProcessed(operations * static_cast<std::int64_t>(sizeof(float) * 2));
+    auto const absolute_error{std::abs(static_cast<double>(result) - reference)};
+    auto const relative_error{
+        absolute_error / std::max(std::abs(reference), std::numeric_limits<double>::min())};
+    state.counters["absolute_error"] = absolute_error;
+    state.counters["relative_error"] = relative_error;
 }
 
 struct Backend {
@@ -89,10 +109,12 @@ auto register_benchmarks() -> bool {
                                     : "dispatch-avx2"};
     std::array const backends{
         Backend{"scalar", dot::dot_product_scalar, false},
-        Backend{"autovec-avx2", dot::dot_product_autovec_avx2, false},
+        Backend{"autovec-strict-avx2", dot::dot_product_autovec_strict_avx2, false},
+        Backend{"autovec-relaxed-avx2", dot::dot_product_autovec_relaxed_avx2, false},
         Backend{"avx2", dot::dot_product_avx2, false},
         Backend{"avx2-unrolled", dot::dot_product_avx2_unrolled, false},
-        Backend{"autovec-avx512", dot::dot_product_autovec_avx512, true},
+        Backend{"autovec-strict-avx512", dot::dot_product_autovec_strict_avx512, true},
+        Backend{"autovec-relaxed-avx512", dot::dot_product_autovec_relaxed_avx512, true},
         Backend{"avx512", dot::dot_product_avx512, true},
         Backend{dispatch_backend, dot::dot_product_dispatch, false},
     };

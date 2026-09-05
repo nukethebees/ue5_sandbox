@@ -86,6 +86,8 @@ constexpr std::string_view sum_lab_source = R"(
     (source "native/DotProductAvx2.cpp")
     (avx512-source "native/DotProductAvx512.cpp")
     (dispatch-source "native/DotProductDispatch.cpp")
+    (relaxed-avx2-source "native/DotProductRelaxedAvx2.cpp")
+    (relaxed-avx512-source "native/DotProductRelaxedAvx512.cpp")
     (header-include "native/DotProduct.h")
     (namespace ml::lab)
     (select
@@ -99,6 +101,7 @@ constexpr std::string_view sum_lab_source = R"(
     (operand lhs array)
     (operand rhs array)
     (aliasing pairwise-disjoint)
+    (floating-point-modes strict relaxed)
     (expression (* lhs rhs))))
 )";
 
@@ -302,12 +305,16 @@ TEST(KernelRenderer, GeneratesNativeSumReduction) {
         parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", sum_lab_source))};
     auto const files{render(document.modules[0], Profile::native_x86_simd_lab)};
 
-    ASSERT_EQ(files.size(), 4);
+    ASSERT_EQ(files.size(), 6);
     EXPECT_TRUE(files[0].content.contains("float dot_product_scalar("));
     EXPECT_TRUE(files[0].content.contains("float dot_product_dispatch("));
+    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_strict_avx2("));
+    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_relaxed_avx2("));
+    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_strict_avx512("));
+    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_relaxed_avx512("));
     EXPECT_TRUE(files[0].content.contains(
         "float const* ML_KERNEL_LAB_RESTRICT lhs, float const* ML_KERNEL_LAB_RESTRICT rhs"));
-    EXPECT_TRUE(files[1].content.contains("float dot_product_autovec_avx2("));
+    EXPECT_TRUE(files[1].content.contains("float dot_product_autovec_strict_avx2("));
     EXPECT_TRUE(files[1].content.contains("float dot_product_scalar("));
     EXPECT_TRUE(files[1].content.contains(
         "#pragma clang loop vectorize(disable) interleave(disable) unroll(disable)"));
@@ -318,6 +325,24 @@ TEST(KernelRenderer, GeneratesNativeSumReduction) {
     EXPECT_TRUE(files[2].content.contains("_mm512_setzero_ps"));
     EXPECT_TRUE(files[2].content.contains("_mm512_mul_ps"));
     EXPECT_TRUE(files[3].content.contains("return selection().kernel(lhs, rhs, count)"));
+    EXPECT_TRUE(files[4].content.contains("#pragma fp_contract(off)"));
+    EXPECT_TRUE(files[4].content.contains("float dot_product_autovec_relaxed_avx2("));
+    EXPECT_TRUE(files[5].content.contains("#pragma fp_contract(off)"));
+    EXPECT_TRUE(files[5].content.contains("float dot_product_autovec_relaxed_avx512("));
+}
+
+TEST(KernelParser, RequiresRelaxedSourcesForRelaxedFloatingPointMode) {
+    auto source{std::string{sum_lab_source}};
+    auto const relaxed_avx2{source.find("    (relaxed-avx2-source")};
+    auto const relaxed_avx2_end{source.find('\n', relaxed_avx2) + 1};
+    source.erase(relaxed_avx2, relaxed_avx2_end - relaxed_avx2);
+    auto const relaxed_avx512{source.find("    (relaxed-avx512-source")};
+    auto const relaxed_avx512_end{source.find('\n', relaxed_avx512) + 1};
+    source.erase(relaxed_avx512, relaxed_avx512_end - relaxed_avx512);
+
+    EXPECT_THROW(static_cast<void>(
+                     parse("bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", source))),
+                 std::runtime_error);
 }
 
 TEST(KernelParser, KeepsSumReductionsInsideTheNarrowNativeLabBoundary) {

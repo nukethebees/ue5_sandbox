@@ -259,6 +259,12 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_DOT_DISPATCH_SOURCE
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_dispatch.cpp"
   )
+  set(KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx2.cpp"
+  )
+  set(KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx512.cpp"
+  )
   set(KERNEL_NATIVE_SIMD_FILES
     "${KERNEL_NATIVE_SIMD_HEADER}"
     "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
@@ -268,6 +274,8 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
     "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
     "${KERNEL_NATIVE_DOT_DISPATCH_SOURCE}"
+    "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
+    "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
   )
   add_custom_command(
     OUTPUT ${KERNEL_NATIVE_SIMD_FILES}
@@ -295,10 +303,18 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     "${KERNEL_NATIVE_SIMD_DISPATCH_SOURCE}"
     "${KERNEL_NATIVE_DOT_DISPATCH_SOURCE}"
   )
+  add_library(kernel-native-dot-relaxed-avx2 OBJECT
+    "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
+  )
+  add_library(kernel-native-dot-relaxed-avx512 OBJECT
+    "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
+  )
   foreach(TARGET IN ITEMS
       kernel-native-simd-avx2
       kernel-native-simd-avx512
-      kernel-native-simd-dispatch)
+      kernel-native-simd-dispatch
+      kernel-native-dot-relaxed-avx2
+      kernel-native-dot-relaxed-avx512)
     target_compile_features(${TARGET} PRIVATE cxx_std_23)
     target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
   endforeach()
@@ -307,6 +323,12 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     target_compile_options(kernel-native-simd-avx2 PRIVATE /W4 /WX /arch:AVX2 /fp:strict)
     target_compile_options(kernel-native-simd-avx512 PRIVATE /W4 /WX /arch:AVX512 /fp:strict)
     target_compile_options(kernel-native-simd-dispatch PRIVATE /W4 /WX /arch:AVX2 /fp:strict)
+    target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
+      /W4 /WX /arch:AVX2 /fp:fast
+    )
+    target_compile_options(kernel-native-dot-relaxed-avx512 PRIVATE
+      /W4 /WX /arch:AVX512 /fp:fast
+    )
   else()
     target_compile_options(kernel-native-simd-avx2 PRIVATE
       ${SANDBOX_CODEGEN_WARNINGS}
@@ -328,12 +350,35 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       -mavx2
       -ffp-contract=off
     )
+    target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
+      ${SANDBOX_CODEGEN_WARNINGS}
+      -mavx2
+      -fno-signed-zeros
+      -fno-trapping-math
+      -fassociative-math
+      -ffp-contract=off
+    )
+    target_compile_options(kernel-native-dot-relaxed-avx512 PRIVATE
+      ${SANDBOX_CODEGEN_WARNINGS}
+      -mavx2
+      -mavx512f
+      -mavx512cd
+      -mavx512bw
+      -mavx512dq
+      -mavx512vl
+      -fno-signed-zeros
+      -fno-trapping-math
+      -fassociative-math
+      -ffp-contract=off
+    )
   endif()
 
   set(KERNEL_NATIVE_SIMD_OBJECTS
     $<TARGET_OBJECTS:kernel-native-simd-avx2>
     $<TARGET_OBJECTS:kernel-native-simd-avx512>
     $<TARGET_OBJECTS:kernel-native-simd-dispatch>
+    $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx2>
+    $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx512>
   )
   add_executable(kernel-native-simd-tests
     tests/x86_simd_lab_tests.cpp

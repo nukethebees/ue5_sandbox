@@ -76,6 +76,19 @@ auto implementation_name(ExpandedVariant const& expanded, std::string_view const
     return expanded.operation->name + std::string{suffix};
 }
 
+auto has_floating_point_mode(ExpandedVariant const& expanded,
+                             FloatingPointMode const mode) -> bool {
+    return std::ranges::find(expanded.operation->floating_point_modes, mode) !=
+           expanded.operation->floating_point_modes.end();
+}
+
+auto strict_autovec_suffix(ExpandedVariant const& expanded,
+                           std::string_view const instruction_set) -> std::string {
+    auto const policy{expanded.operation->kind == OperationKind::sum ? "_autovec_strict_"
+                                                                     : "_autovec_"};
+    return std::string{policy} + std::string{instruction_set};
+}
+
 auto function_pointer_parameters(ExpandedVariant const& expanded) -> std::string {
     std::string result;
     for (auto const storage : expanded.storage) {
@@ -460,24 +473,45 @@ auto render_avx2_lab_source(Emission const& emission, ExpandedVariant const& exp
 auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
-    return std::string{generated_warning} +
-           "#pragma once\n\n#include <cstdint>\n\n" + std::string{native_restrict_definition()} +
-           "namespace " + emission.cpp_namespace + " {\n\nenum class X86SimdBackend : std::uint8_t {\n"
-           "    avx2,\n"
-           "    avx512,\n"
-           "};\n\n" +
-           render_declaration(
-               expanded, "_scalar", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_declaration(
-               expanded, "_autovec_avx2", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_declaration(
-               expanded, "_avx2", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_declaration(
-               expanded, "_avx2_unrolled", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_declaration(
-               expanded, "_autovec_avx512", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           render_declaration(
-               expanded, "_avx512", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+    auto result{std::string{generated_warning} +
+                "#pragma once\n\n#include <cstdint>\n\n" +
+                std::string{native_restrict_definition()} + "namespace " +
+                emission.cpp_namespace + " {\n\nenum class X86SimdBackend : std::uint8_t {\n"
+                                         "    avx2,\n"
+                                         "    avx512,\n"
+                                         "};\n\n" +
+                render_declaration(
+                    expanded, "_scalar", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ")};
+    if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
+        result += render_declaration(expanded,
+                                     strict_autovec_suffix(expanded, "avx2"),
+                                     "std::int32_t",
+                                     "ML_KERNEL_LAB_RESTRICT ");
+    }
+    if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
+        result += render_declaration(expanded,
+                                     "_autovec_relaxed_avx2",
+                                     "std::int32_t",
+                                     "ML_KERNEL_LAB_RESTRICT ");
+    }
+    result += render_declaration(
+        expanded, "_avx2", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ");
+    result += render_declaration(
+        expanded, "_avx2_unrolled", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ");
+    if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
+        result += render_declaration(expanded,
+                                     strict_autovec_suffix(expanded, "avx512"),
+                                     "std::int32_t",
+                                     "ML_KERNEL_LAB_RESTRICT ");
+    }
+    if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
+        result += render_declaration(expanded,
+                                     "_autovec_relaxed_avx512",
+                                     "std::int32_t",
+                                     "ML_KERNEL_LAB_RESTRICT ");
+    }
+    return result +
+           render_declaration(expanded, "_avx512", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
            render_declaration(
                expanded, "_dispatch", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
            "auto get_" + expanded.operation->name +
@@ -491,10 +525,13 @@ auto render_native_avx2_lab_source(Emission const& emission, ExpandedVariant con
                              ? render_sum_scalar_function(expanded,
                                                           "std::int32_t",
                                                           "ML_KERNEL_LAB_RESTRICT ") +
-                                   render_sum_autovec_function(expanded,
-                                                            "_autovec_avx2",
-                                                            "std::int32_t",
-                                                            "ML_KERNEL_LAB_RESTRICT ") +
+                                   (has_floating_point_mode(expanded, FloatingPointMode::strict)
+                                        ? render_sum_autovec_function(
+                                              expanded,
+                                              strict_autovec_suffix(expanded, "avx2"),
+                                              "std::int32_t",
+                                              "ML_KERNEL_LAB_RESTRICT ")
+                                        : std::string{}) +
                                    render_sum_vector_function(expanded,
                                                               Avx2,
                                                               "_avx2",
@@ -536,10 +573,13 @@ auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant c
     -> std::string {
     validate_lab_variant(expanded);
     auto const functions{expanded.operation->kind == OperationKind::sum
-                             ? render_sum_autovec_function(expanded,
-                                                            "_autovec_avx512",
-                                                            "std::int32_t",
-                                                            "ML_KERNEL_LAB_RESTRICT ") +
+                             ? (has_floating_point_mode(expanded, FloatingPointMode::strict)
+                                    ? render_sum_autovec_function(
+                                          expanded,
+                                          strict_autovec_suffix(expanded, "avx512"),
+                                          "std::int32_t",
+                                          "ML_KERNEL_LAB_RESTRICT ")
+                                    : std::string{}) +
                                    render_sum_vector_function(expanded,
                                                               Avx512,
                                                               "_avx512",
@@ -559,6 +599,24 @@ auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant c
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <immintrin.h>\n\n" + std::string{native_restrict_definition()} +
            "namespace " + emission.cpp_namespace + " {\n\n" + functions +
+           "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
+}
+
+auto render_native_relaxed_autovec_source(Emission const& emission,
+                                          ExpandedVariant const& expanded,
+                                          std::string_view const suffix) -> std::string {
+    validate_lab_variant(expanded);
+    if (expanded.operation->kind != OperationKind::sum ||
+        !has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
+        throw std::invalid_argument{
+            "relaxed native autovectorization supports only opted-in sum operations"};
+    }
+    return std::string{generated_warning} + "#include \"" + emission.header_include +
+           "\"\n\n#if defined(_MSC_VER) && !defined(__clang__)\n#pragma fp_contract(off)\n#endif\n\n" +
+           std::string{native_restrict_definition()} + "namespace " + emission.cpp_namespace +
+           " {\n\n" +
+           render_sum_autovec_function(
+               expanded, suffix, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
            "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 

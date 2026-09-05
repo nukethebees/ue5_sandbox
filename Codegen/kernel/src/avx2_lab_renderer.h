@@ -3,6 +3,7 @@
 #include "lowering.h"
 
 #include <string>
+#include <string_view>
 
 namespace kernel_codegen::detail {
 
@@ -16,6 +17,9 @@ auto render_native_avx2_lab_source(Emission const& emission, ExpandedVariant con
     -> std::string;
 auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string;
+auto render_native_relaxed_autovec_source(Emission const& emission,
+                                          ExpandedVariant const& expanded,
+                                          std::string_view suffix) -> std::string;
 auto render_native_simd_dispatch_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string;
 

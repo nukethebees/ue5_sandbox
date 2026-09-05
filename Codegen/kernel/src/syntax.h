@@ -18,6 +18,7 @@ enum class ConstantKind { nan, infinity, negative_infinity };
 enum class OperationKind { map, sum };
 enum class VariantKind { out_of_place, in_place, sum };
 enum class Aliasing { output_disjoint, pairwise_disjoint };
+enum class FloatingPointMode { strict, relaxed };
 
 struct Expression {
     ExpressionKind kind;
@@ -49,6 +50,7 @@ struct Operation {
     Expression expression;
     std::vector<Variant> variants;
     Aliasing aliasing{Aliasing::output_disjoint};
+    std::vector<FloatingPointMode> floating_point_modes{FloatingPointMode::strict};
     SourceSpan span;
 };
 
@@ -72,6 +74,8 @@ struct Emission {
     std::filesystem::path source;
     std::optional<std::filesystem::path> avx512_source;
     std::optional<std::filesystem::path> dispatch_source;
+    std::optional<std::filesystem::path> relaxed_avx2_source;
+    std::optional<std::filesystem::path> relaxed_avx512_source;
     std::optional<std::filesystem::path> tests;
     std::string header_include;
     std::string cpp_namespace;
