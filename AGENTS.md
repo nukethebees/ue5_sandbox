@@ -49,6 +49,7 @@ Unreal Engine 5.8 project.
 * Group functions by category
 * Use blank lines to separate logical sections of C++ code for visual readability.
 * When UObject types live in a dedicated plugin and C++ namespace, prefer concise names; the plugin and namespace provide the necessary context and collision isolation.
+* Avoid constants in anonymous namespaces in `.cpp` files because Unreal unity builds can merge translation units and create name collisions. Prefer `inline static constexpr` members on the owning type or `inline constexpr` constants in a suitably specific named namespace.
 
 # Formatting
 
