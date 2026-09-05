@@ -260,6 +260,19 @@ struct SPACEGAME_API FFighterConfig {
     UPROPERTY(EditAnywhere, Category = "Movement")
     float turn_speed_unitless{1.f};
 
+    UPROPERTY(EditAnywhere,
+              Category = "Movement|Avoidance",
+              meta = (ClampMin = "0.001", Units = "Hz"))
+    float avoidance_update_frequency{5.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Avoidance", meta = (ClampMin = "0.0", Units = "s"))
+    float avoidance_lookahead_time{1.f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Movement|Avoidance",
+              meta = (ClampMin = "0.0", Units = "cm"))
+    float avoidance_clearance_buffer{100.f};
+
     UPROPERTY(EditAnywhere, Category = "Combat")
     FLaserWeaponConfig laser{};
 

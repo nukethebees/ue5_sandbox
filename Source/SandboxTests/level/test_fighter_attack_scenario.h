@@ -12,6 +12,9 @@ namespace ml {
 void run_worldless_fighter_attack(FAutomationTestBase& test,
                                   FSoftTestAssertions& checks,
                                   USpaceGameLevelConfig const& config);
+void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
+                                              FSoftTestAssertions& checks,
+                                              USpaceGameLevelConfig const& config);
 
 class FFighterAttackScenario final : public FSimulationTestScenario {
 

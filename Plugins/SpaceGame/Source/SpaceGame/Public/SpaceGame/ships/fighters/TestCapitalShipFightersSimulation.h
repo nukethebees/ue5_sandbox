@@ -14,6 +14,7 @@
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSoA.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersTask.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
+#include <SpaceGame/simulation/TraceHits.h>
 #include <SpaceGame/support/IndexSpan.h>
 
 #include <SandboxCore/multi_buffer.h>
@@ -91,6 +92,38 @@ struct SPACEGAME_API Simulation {
     float fire_point_distance{0.f};
     float fire_dot_product_threshold{0.95f};
   private:
+    struct AvoidanceFrame {
+        FVector3f preferred_direction;
+        FVector3f first_lateral;
+        FVector3f second_lateral;
+        float roll_sin;
+        float roll_cos;
+    };
+
+    inline static constexpr int8 direct_movement_choice{-1};
+    inline static constexpr int8 stop_movement_choice{-2};
+    inline static constexpr int32 n_avoidance_choices{8};
+    inline static constexpr uint8 clear_scans_to_end_avoidance{2};
+    inline static constexpr float half_weight{0.5f};
+    inline static constexpr float sqrt_three_over_two{0.8660254f};
+
+    static auto is_avoidance_direction_choice(int8 choice) -> bool;
+    static auto make_avoidance_frame(FVector3f preferred_direction, float float_bias)
+        -> AvoidanceFrame;
+    static auto make_avoidance_direction(AvoidanceFrame const& frame, int8 choice) -> FVector3f;
+    static auto make_avoidance_directions(AvoidanceFrame const& frame)
+        -> TStaticArray<FVector3f, n_avoidance_choices>;
+    static auto make_avoidance_choice_order(uint32 integral_bias, int8 previous_choice)
+        -> TStaticArray<int8, n_avoidance_choices>;
+    static auto find_appropriate_fire_point(FSpatialQueryManager const& spatial_query_manager,
+                                            FVector3f target_location,
+                                            FVector3f reference_location,
+                                            float fire_point_distance,
+                                            float trace_end_offset,
+                                            float desired_attack_distance,
+                                            uint32 integral_bias,
+                                            float float_bias) -> TOptional<FVector3f>;
+
     void begin_play();
     void begin_tick();
     void update_timers(float dt);
@@ -122,6 +155,7 @@ struct SPACEGAME_API Simulation {
     auto get_task_counts() const -> TaskCounts;
 
     void move(float dt, TaskView const& task_span);
+    void update_navigation_steering();
     void handle_firing(TaskView const& data);
     void commit_spawns();
     void prepare_entity_update_data();
@@ -141,6 +175,7 @@ struct SPACEGAME_API Simulation {
     FFighterSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
+    float navigation_update_interval{0.f};
 
     EntityBuffers entity_buffers{};
     FTestEntityRegistry* entity_registry{nullptr};
@@ -167,6 +202,11 @@ struct SPACEGAME_API Simulation {
     FVectors3f line_of_sight_starts;
     FVectors3f line_of_sight_ends;
     TArray<uint8> line_of_sight_results;
+    FTraceHits navigation_trace_hits;
+    TArray<FRegistryEntityHandle> navigation_trace_ignored_entities;
+    TArray<int32> navigation_blocked_fighter_indices;
+    TArray<int32> navigation_trace_fighter_indices;
+    TArray<int8> navigation_trace_choice_indices;
 
     TArray<int32> presentation_indices_to_remove;
     int32 presentation_spawn_offset{0};

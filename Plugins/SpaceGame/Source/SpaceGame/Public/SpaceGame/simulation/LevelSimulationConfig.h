@@ -71,6 +71,9 @@ struct SPACEGAME_API FFighterSimulationConfig {
     float fire_dot_product_threshold{0.95f};
     float speed{2000.f};
     float turn_speed_unitless{1.f};
+    float avoidance_update_frequency{5.f};
+    float avoidance_lookahead_time{1.f};
+    float avoidance_clearance_buffer{100.f};
     FSimulationLaserWeaponConfig laser{};
     int32 health{50};
     float attack_retry_cooldown{0.15f};

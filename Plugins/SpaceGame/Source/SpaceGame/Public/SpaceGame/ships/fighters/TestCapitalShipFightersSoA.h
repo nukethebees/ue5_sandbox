@@ -47,6 +47,9 @@ struct SPACEGAME_API EntityDataConstView {
             self.teams,
             self.healths,
             self.awareness_scan_countdowns,
+            self.navigation_update_countdowns,
+            self.avoidance_choice_indices,
+            self.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns,
             self.attack_cooldowns,
             self.target_handles,
@@ -86,6 +89,9 @@ struct SPACEGAME_API EntityDataConstView {
     TConstArrayView<ETestTeam> teams;
     TConstArrayView<int32> healths;
     FTickCountdown8::ConstView awareness_scan_countdowns;
+    FTickCountdown8::ConstView navigation_update_countdowns;
+    TConstArrayView<int8> avoidance_choice_indices;
+    TConstArrayView<uint8> avoidance_clear_scan_counts;
     FTickCountdown16::ConstView attack_reposition_countdowns;
     FTickCountdown16::ConstView attack_cooldowns;
     TConstArrayView<FRegistryEntityHandle> target_handles;
@@ -120,6 +126,9 @@ struct SPACEGAME_API EntityDataView {
             self.teams,
             self.healths,
             self.awareness_scan_countdowns,
+            self.navigation_update_countdowns,
+            self.avoidance_choice_indices,
+            self.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns,
             self.attack_cooldowns,
             self.target_handles,
@@ -164,6 +173,9 @@ struct SPACEGAME_API EntityDataView {
     TArrayView<ETestTeam> teams;
     TArrayView<int32> healths;
     FTickCountdown8::View awareness_scan_countdowns;
+    FTickCountdown8::View navigation_update_countdowns;
+    TArrayView<int8> avoidance_choice_indices;
+    TArrayView<uint8> avoidance_clear_scan_counts;
     FTickCountdown16::View attack_reposition_countdowns;
     FTickCountdown16::View attack_cooldowns;
     TArrayView<FRegistryEntityHandle> target_handles;
@@ -204,6 +216,9 @@ struct SPACEGAME_API EntityData {
         teams.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
         awareness_scan_countdowns.remove_at_swap(index, count, allow_shrinking);
+        navigation_update_countdowns.remove_at_swap(index, count, allow_shrinking);
+        avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
+        avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
         attack_reposition_countdowns.remove_at_swap(index, count, allow_shrinking);
         attack_cooldowns.remove_at_swap(index, count, allow_shrinking);
         target_handles.RemoveAtSwap(index, count, allow_shrinking);
@@ -235,6 +250,9 @@ struct SPACEGAME_API EntityData {
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(healths, dst_i, other.healths, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
+        ml::copy_element(navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
+        ml::copy_element(avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i);
+        ml::copy_element(avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i);
         ml::copy_element(attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
         ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
         ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
@@ -264,6 +282,9 @@ struct SPACEGAME_API EntityData {
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
         ml::copy_elements(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
+        ml::copy_elements(navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i, count);
+        ml::copy_elements(avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i, count);
+        ml::copy_elements(avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i, count);
         ml::copy_elements(attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
         ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
         ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
@@ -301,6 +322,9 @@ struct SPACEGAME_API EntityData {
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
         ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
+        ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
+        ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
+        ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
         ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
         ml::append_from(attack_cooldowns, other.attack_cooldowns);
         ml::append_from(target_handles, other.target_handles);
@@ -359,6 +383,9 @@ struct SPACEGAME_API EntityData {
             self.teams,
             self.healths,
             self.awareness_scan_countdowns,
+            self.navigation_update_countdowns,
+            self.avoidance_choice_indices,
+            self.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns,
             self.attack_cooldowns,
             self.target_handles,
@@ -391,6 +418,9 @@ struct SPACEGAME_API EntityData {
             self.teams, other.teams,
             self.healths, other.healths,
             self.awareness_scan_countdowns, other.awareness_scan_countdowns,
+            self.navigation_update_countdowns, other.navigation_update_countdowns,
+            self.avoidance_choice_indices, other.avoidance_choice_indices,
+            self.avoidance_clear_scan_counts, other.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns, other.attack_reposition_countdowns,
             self.attack_cooldowns, other.attack_cooldowns,
             self.target_handles, other.target_handles,
@@ -435,6 +465,9 @@ struct SPACEGAME_API EntityData {
     TArray<ETestTeam> teams;
     TArray<int32> healths;
     FTickCountdown8 awareness_scan_countdowns;
+    FTickCountdown8 navigation_update_countdowns;
+    TArray<int8> avoidance_choice_indices;
+    TArray<uint8> avoidance_clear_scan_counts;
     FTickCountdown16 attack_reposition_countdowns;
     FTickCountdown16 attack_cooldowns;
     TArray<FRegistryEntityHandle> target_handles;

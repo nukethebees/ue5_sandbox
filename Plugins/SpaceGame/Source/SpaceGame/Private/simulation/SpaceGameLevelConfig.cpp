@@ -111,6 +111,15 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
                        fighters.fire_dot_product_threshold >= -1.f &&
                        fighters.fire_dot_product_threshold <= 1.f,
                    "fighters.fire_dot_product_threshold must be finite and between -1 and 1");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_update_frequency) &&
+                       fighters.avoidance_update_frequency > 0.f,
+                   "fighters.avoidance_update_frequency must be finite and positive");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_lookahead_time) &&
+                       fighters.avoidance_lookahead_time >= 0.f,
+                   "fighters.avoidance_lookahead_time must be finite and non-negative");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_clearance_buffer) &&
+                       fighters.avoidance_clearance_buffer >= 0.f,
+                   "fighters.avoidance_clearance_buffer must be finite and non-negative");
     REQUIRE_CONFIG(capital_ships.fighter_spawn_slots >= 0,
                    "capital_ships.fighter_spawn_slots must not be negative");
     REQUIRE_CONFIG(capital_ships.fighter_spawn_slots ==

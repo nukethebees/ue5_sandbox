@@ -19,16 +19,118 @@
 #include <array>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
+TRACE_DECLARE_INT_COUNTER(SandboxFightersAvoiding, TEXT("Sandbox/FightersAvoiding"));
+TRACE_DECLARE_INT_COUNTER(SandboxFighterNavigationTraces, TEXT("Sandbox/FighterNavigationTraces"));
 
-namespace {
-auto find_appropriate_fire_point(ml::FSpatialQueryManager const& spatial_query_manager,
-                                 FVector3f const target_location,
-                                 FVector3f const reference_location,
-                                 float const fire_point_distance,
-                                 float const trace_end_offset,
-                                 float const desired_attack_distance,
-                                 uint32 const integral_bias,
-                                 float const float_bias) -> TOptional<FVector3f> {
+namespace ml::test_capital_ship_fighters {
+auto Simulation::is_avoidance_direction_choice(int8 const choice) -> bool {
+    return choice >= 0 && choice < n_avoidance_choices;
+}
+
+auto Simulation::make_avoidance_frame(FVector3f const preferred_direction, float const float_bias)
+    -> AvoidanceFrame {
+    auto const reference_axis{FMath::Abs(preferred_direction.Z) < 0.9f ? FVector3f::UpVector
+                                                                       : FVector3f::RightVector};
+    auto const first_lateral{
+        FVector3f::CrossProduct(reference_axis, preferred_direction).GetSafeNormal()};
+    auto const second_lateral{
+        FVector3f::CrossProduct(preferred_direction, first_lateral).GetSafeNormal()};
+
+    float roll_sin;
+    float roll_cos;
+    FMath::SinCos(&roll_sin, &roll_cos, float_bias * 2.f * UE_PI);
+
+    return {
+        preferred_direction,
+        first_lateral,
+        second_lateral,
+        roll_sin,
+        roll_cos,
+    };
+}
+
+auto Simulation::make_avoidance_direction(AvoidanceFrame const& frame, int8 const choice)
+    -> FVector3f {
+    check(is_avoidance_direction_choice(choice));
+
+    auto const ring{choice / 4};
+    auto const ring_index{choice % 4};
+    FVector3f lateral_direction;
+    switch (ring_index) {
+        case 0:
+            lateral_direction =
+                frame.first_lateral * frame.roll_cos + frame.second_lateral * frame.roll_sin;
+            break;
+        case 1:
+            lateral_direction =
+                frame.first_lateral * -frame.roll_sin + frame.second_lateral * frame.roll_cos;
+            break;
+        case 2:
+            lateral_direction =
+                frame.first_lateral * -frame.roll_cos + frame.second_lateral * -frame.roll_sin;
+            break;
+        default:
+            lateral_direction =
+                frame.first_lateral * frame.roll_sin + frame.second_lateral * -frame.roll_cos;
+            break;
+    }
+
+    auto const forward_weight{ring == 0 ? sqrt_three_over_two : half_weight};
+    auto const lateral_weight{ring == 0 ? half_weight : sqrt_three_over_two};
+    return frame.preferred_direction * forward_weight + lateral_direction * lateral_weight;
+}
+
+auto Simulation::make_avoidance_directions(AvoidanceFrame const& frame)
+    -> TStaticArray<FVector3f, n_avoidance_choices> {
+    TStaticArray<FVector3f, 4> const lateral_directions{
+        frame.first_lateral * frame.roll_cos + frame.second_lateral * frame.roll_sin,
+        frame.first_lateral * -frame.roll_sin + frame.second_lateral * frame.roll_cos,
+        frame.first_lateral * -frame.roll_cos + frame.second_lateral * -frame.roll_sin,
+        frame.first_lateral * frame.roll_sin + frame.second_lateral * -frame.roll_cos,
+    };
+    auto const shallow_forward{frame.preferred_direction * sqrt_three_over_two};
+    auto const steep_forward{frame.preferred_direction * half_weight};
+
+    TStaticArray<FVector3f, n_avoidance_choices> directions;
+    for (int32 ring_index{}; ring_index < 4; ++ring_index) {
+        directions[ring_index] = shallow_forward + lateral_directions[ring_index] * half_weight;
+        directions[ring_index + 4] =
+            steep_forward + lateral_directions[ring_index] * sqrt_three_over_two;
+    }
+    return directions;
+}
+
+auto Simulation::make_avoidance_choice_order(uint32 const integral_bias, int8 const previous_choice)
+    -> TStaticArray<int8, n_avoidance_choices> {
+    TStaticArray<int8, n_avoidance_choices> result;
+    int32 write_index{};
+    if (is_avoidance_direction_choice(previous_choice)) {
+        result[write_index++] = previous_choice;
+    }
+
+    auto const first_ring_index{static_cast<int32>(integral_bias % 4)};
+    auto const direction{(integral_bias & 4u) == 0 ? 1 : -1};
+    for (int32 ring{}; ring < 2; ++ring) {
+        for (int32 offset{}; offset < 4; ++offset) {
+            auto const ring_index{(first_ring_index + direction * offset + 4) % 4};
+            auto const choice{static_cast<int8>(ring * 4 + ring_index)};
+            if (choice != previous_choice) {
+                result[write_index++] = choice;
+            }
+        }
+    }
+    check(write_index == n_avoidance_choices);
+    return result;
+}
+
+auto Simulation::find_appropriate_fire_point(ml::FSpatialQueryManager const& spatial_query_manager,
+                                             FVector3f const target_location,
+                                             FVector3f const reference_location,
+                                             float const fire_point_distance,
+                                             float const trace_end_offset,
+                                             float const desired_attack_distance,
+                                             uint32 const integral_bias,
+                                             float const float_bias) -> TOptional<FVector3f> {
     struct Offset {
         float X;
         float Y;
@@ -84,9 +186,6 @@ auto find_appropriate_fire_point(ml::FSpatialQueryManager const& spatial_query_m
 
     return NullOpt;
 }
-} // namespace
-
-namespace ml::test_capital_ship_fighters {
 void Simulation::set_config(FFighterSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
@@ -110,6 +209,8 @@ void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulatio
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
+    TRACE_COUNTER_SET(SandboxFightersAvoiding, 0);
+    TRACE_COUNTER_SET(SandboxFighterNavigationTraces, 0);
     check(entity_registry);
     check(spatial_query_manager);
     check(laser_simulation);
@@ -128,6 +229,15 @@ void Simulation::begin_play() {
     entity_buffers.for_each([=](auto& data) {
         data.attack_reposition_countdowns.set_tick_value(attack_reposition_tick_period);
     });
+
+    auto const navigation_update_tick_period{
+        simulation_clock.frequency_to_tick_period(config.avoidance_update_frequency)};
+    check(FTickCountdown8::tick_can_fit(navigation_update_tick_period));
+    entity_buffers.for_each([=](auto& data) {
+        data.navigation_update_countdowns.set_tick_value(navigation_update_tick_period);
+    });
+    navigation_update_interval =
+        static_cast<float>(navigation_update_tick_period) * simulation_clock.get_tick_period();
 
     auto const fire_cooldown_tick_period{
         simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
@@ -149,6 +259,7 @@ void Simulation::begin_tick() {
     auto& data{entity_buffers.current()};
     data.awareness_scan_countdowns.tick();
     data.attack_reposition_countdowns.tick();
+    data.navigation_update_countdowns.tick();
     ml::fill(data.velocities, 0.f);
     clear_tick_buffers();
     clear_presentation_events();
@@ -260,12 +371,20 @@ void Simulation::move(float const dt) {
 
     ml::direction_and_distance(
         data.movement_directions, data.move_distances, data.locations, data.desired_move_locations);
+    update_navigation_steering();
     if (do_move) {
         ml::lerp_in_place(move_view.aim_directions, move_view.movement_directions, d_turn);
     }
     if (do_attack) {
-        ml::lerp_in_place(
-            attack_view.aim_directions, attack_view.desired_aiming_directions, d_turn);
+        for (int32 i{}; i < n_attack; ++i) {
+            auto const desired_direction{
+                is_avoidance_direction_choice(attack_view.avoidance_choice_indices[i])
+                    ? ml::get_vector3f(attack_view.movement_directions, i)
+                    : ml::get_vector3f(attack_view.desired_aiming_directions, i)};
+            auto const aim_direction{FMath::Lerp(
+                ml::get_vector3f(attack_view.aim_directions, i), desired_direction, d_turn)};
+            ml::assign(attack_view.aim_directions, i, aim_direction);
+        }
     }
 
     move(dt, move_view);
@@ -352,6 +471,231 @@ void Simulation::move(float const dt, TaskView const& fighters) {
                             1.f);
 }
 
+void Simulation::update_navigation_steering() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(
+        Sandbox::test_capital_ship_fighters::Simulation::update_navigation_steering);
+
+    auto& data{entity_buffers.current()};
+    auto& ready_fighter_indices{scratch_int_buffer};
+    auto const clearance{collision_radius + config.avoidance_clearance_buffer};
+    auto const minimum_lookahead_distance{collision_radius * 2.f};
+    auto const avoidance_lookahead_time{config.avoidance_lookahead_time};
+    auto const safe_progress_time{navigation_update_interval * 1.25f};
+    FVector3f const moving_half_extent{clearance, clearance, clearance};
+    int32 trace_count{};
+    auto const trace_is_blocked{[this, &line_of_sight_starts = line_of_sight_starts](
+                                    FTraceHits const& hits, int32 const trace_index) {
+        if (hits.hits[trace_index] == 0) {
+            return false;
+        }
+
+        auto const trace_start{ml::get_vector3f(line_of_sight_starts, trace_index)};
+        auto const hit_location{ml::get_vector3f(hits.locations, trace_index)};
+        if (trace_start.Equals(hit_location, UE_KINDA_SMALL_NUMBER)) {
+            return false;
+        }
+
+        auto const hit_entity{hits.entities[trace_index]};
+        return !hit_entity.is_valid() ||
+               entity_registry->get_entity_type(hit_entity) != ETestEntityType::CapitalShipFighter;
+    }};
+
+    ml::reset(ready_fighter_indices,
+              navigation_blocked_fighter_indices,
+              navigation_trace_fighter_indices,
+              navigation_trace_choice_indices,
+              navigation_trace_ignored_entities,
+              line_of_sight_starts,
+              line_of_sight_ends,
+              line_of_sight_results,
+              navigation_trace_hits);
+
+    auto const collect_ready_fighters{[&](Task const task) {
+        auto const span{get_task_span(task)};
+        for (int32 local_index{}; local_index < span.count; ++local_index) {
+            auto const fighter_index{span.offset + local_index};
+            if (data.navigation_update_countdowns.try_consume(fighter_index)) {
+                ready_fighter_indices.Add(fighter_index);
+            }
+        }
+    }};
+    collect_ready_fighters(Task::MoveToDestination);
+    collect_ready_fighters(Task::Attack);
+
+    for (auto const fighter_index : ready_fighter_indices) {
+        auto const preferred_direction{ml::get_vector3f(data.movement_directions, fighter_index)};
+        auto const move_distance{data.move_distances[fighter_index]};
+        if (preferred_direction.IsNearlyZero() || move_distance <= 0.f) {
+            data.avoidance_choice_indices[fighter_index] = direct_movement_choice;
+            data.avoidance_clear_scan_counts[fighter_index] = 0;
+            continue;
+        }
+
+        auto const lookahead_distance{
+            FMath::Min(move_distance,
+                       FMath::Max(data.speeds[fighter_index] * avoidance_lookahead_time,
+                                  minimum_lookahead_distance))};
+        auto const start{ml::get_vector3f(data.locations, fighter_index)};
+        auto const end{start + preferred_direction * lookahead_distance};
+        line_of_sight_starts.add(start);
+        line_of_sight_ends.add(end);
+        navigation_trace_ignored_entities.Add(data.entity_handles[fighter_index]);
+        navigation_trace_fighter_indices.Add(fighter_index);
+    }
+
+    auto const n_direct_traces{navigation_trace_fighter_indices.Num()};
+    if (n_direct_traces > 0) {
+        line_of_sight_results.SetNumUninitialized(n_direct_traces, EAllowShrinking::No);
+        spatial_query_manager->are_spheres_in_bounds(
+            line_of_sight_ends.get_const_view(), clearance, line_of_sight_results);
+        navigation_trace_hits.set_num(n_direct_traces, EAllowShrinking::No);
+        spatial_query_manager->sweep_closest_aabbs(line_of_sight_starts.get_const_view(),
+                                                   line_of_sight_ends.get_const_view(),
+                                                   moving_half_extent,
+                                                   navigation_trace_hits.get_view(),
+                                                   navigation_trace_ignored_entities);
+        trace_count += n_direct_traces;
+
+        for (int32 trace_index{}; trace_index < n_direct_traces; ++trace_index) {
+            auto const fighter_index{navigation_trace_fighter_indices[trace_index]};
+            if (line_of_sight_results[trace_index] == 0 ||
+                trace_is_blocked(navigation_trace_hits, trace_index)) {
+                navigation_blocked_fighter_indices.Add(fighter_index);
+                data.avoidance_clear_scan_counts[fighter_index] = 0;
+                continue;
+            }
+
+            auto const current_choice{data.avoidance_choice_indices[fighter_index]};
+            if (current_choice == direct_movement_choice) {
+                data.avoidance_clear_scan_counts[fighter_index] = 0;
+                continue;
+            }
+
+            auto& clear_scan_count{data.avoidance_clear_scan_counts[fighter_index]};
+            ++clear_scan_count;
+            if (clear_scan_count >= clear_scans_to_end_avoidance) {
+                data.avoidance_choice_indices[fighter_index] = direct_movement_choice;
+                clear_scan_count = 0;
+            }
+        }
+    }
+
+    ml::reset(navigation_trace_fighter_indices,
+              navigation_trace_choice_indices,
+              navigation_trace_ignored_entities,
+              line_of_sight_starts,
+              line_of_sight_ends,
+              line_of_sight_results,
+              navigation_trace_hits);
+
+    for (auto const fighter_index : navigation_blocked_fighter_indices) {
+        auto const preferred_direction{ml::get_vector3f(data.movement_directions, fighter_index)};
+        auto const lookahead_distance{
+            FMath::Min(data.move_distances[fighter_index],
+                       FMath::Max(data.speeds[fighter_index] * avoidance_lookahead_time,
+                                  minimum_lookahead_distance))};
+        auto const start{ml::get_vector3f(data.locations, fighter_index)};
+        auto const fighter_handle{data.entity_handles[fighter_index]};
+        auto const avoidance_frame{
+            make_avoidance_frame(preferred_direction, data.float_biases[fighter_index])};
+        auto const avoidance_directions{make_avoidance_directions(avoidance_frame)};
+        auto const choice_order{make_avoidance_choice_order(
+            data.integral_biases[fighter_index], data.avoidance_choice_indices[fighter_index])};
+
+        for (auto const choice : choice_order) {
+            auto const direction{avoidance_directions[choice]};
+            auto const end{start + direction * lookahead_distance};
+            line_of_sight_starts.add(start);
+            line_of_sight_ends.add(end);
+            navigation_trace_ignored_entities.Add(fighter_handle);
+            navigation_trace_choice_indices.Add(choice);
+        }
+    }
+
+    auto const n_candidate_traces{line_of_sight_ends.num()};
+    check(n_candidate_traces == navigation_blocked_fighter_indices.Num() * n_avoidance_choices);
+    if (n_candidate_traces > 0) {
+        line_of_sight_results.SetNumUninitialized(n_candidate_traces, EAllowShrinking::No);
+        spatial_query_manager->are_spheres_in_bounds(
+            line_of_sight_ends.get_const_view(), clearance, line_of_sight_results);
+        navigation_trace_hits.set_num(n_candidate_traces, EAllowShrinking::No);
+        spatial_query_manager->sweep_closest_aabbs(line_of_sight_starts.get_const_view(),
+                                                   line_of_sight_ends.get_const_view(),
+                                                   moving_half_extent,
+                                                   navigation_trace_hits.get_view(),
+                                                   navigation_trace_ignored_entities);
+        trace_count += n_candidate_traces;
+    }
+
+    auto const n_blocked_fighters{navigation_blocked_fighter_indices.Num()};
+    for (int32 blocked_index{}; blocked_index < n_blocked_fighters; ++blocked_index) {
+        auto const fighter_index{navigation_blocked_fighter_indices[blocked_index]};
+        auto const fighter_location{ml::get_vector3f(data.locations, fighter_index)};
+        auto chosen_choice{stop_movement_choice};
+        auto farthest_blocked_choice{stop_movement_choice};
+        float farthest_blocked_distance_sq{-1.f};
+
+        auto const candidate_begin{blocked_index * n_avoidance_choices};
+        auto const candidate_end{candidate_begin + n_avoidance_choices};
+        for (int32 candidate_trace_index{candidate_begin}; candidate_trace_index < candidate_end;
+             ++candidate_trace_index) {
+            auto const choice{navigation_trace_choice_indices[candidate_trace_index]};
+            auto const is_in_bounds{line_of_sight_results[candidate_trace_index] != 0};
+            if (is_in_bounds && !trace_is_blocked(navigation_trace_hits, candidate_trace_index)) {
+                if (chosen_choice == stop_movement_choice) {
+                    chosen_choice = choice;
+                }
+            } else if (is_in_bounds) {
+                auto const hit_location{
+                    ml::get_vector3f(navigation_trace_hits.locations, candidate_trace_index)};
+                auto const blocked_distance_sq{
+                    FVector3f::DistSquared(fighter_location, hit_location)};
+                if (blocked_distance_sq > farthest_blocked_distance_sq) {
+                    farthest_blocked_distance_sq = blocked_distance_sq;
+                    farthest_blocked_choice = choice;
+                }
+            }
+        }
+
+        if (chosen_choice == stop_movement_choice) {
+            auto const safe_progress_distance{data.speeds[fighter_index] * safe_progress_time};
+            if (farthest_blocked_distance_sq > safe_progress_distance * safe_progress_distance) {
+                chosen_choice = farthest_blocked_choice;
+            }
+        }
+
+        data.avoidance_choice_indices[fighter_index] = chosen_choice;
+        data.avoidance_clear_scan_counts[fighter_index] = 0;
+    }
+
+    int32 avoiding_count{};
+    auto const apply_held_steering{[&](Task const task) {
+        auto const span{get_task_span(task)};
+        for (int32 local_index{}; local_index < span.count; ++local_index) {
+            auto const fighter_index{span.offset + local_index};
+            auto const choice{data.avoidance_choice_indices[fighter_index]};
+            if (is_avoidance_direction_choice(choice)) {
+                auto const preferred_direction{
+                    ml::get_vector3f(data.movement_directions, fighter_index)};
+                auto const avoidance_frame{
+                    make_avoidance_frame(preferred_direction, data.float_biases[fighter_index])};
+                ml::assign(data.movement_directions,
+                           fighter_index,
+                           make_avoidance_direction(avoidance_frame, choice));
+                ++avoiding_count;
+            } else if (choice == stop_movement_choice) {
+                ml::assign(data.movement_directions, fighter_index, FVector3f::ZeroVector);
+                ++avoiding_count;
+            }
+        }
+    }};
+    apply_held_steering(Task::MoveToDestination);
+    apply_held_steering(Task::Attack);
+
+    TRACE_COUNTER_SET(SandboxFightersAvoiding, avoiding_count);
+    TRACE_COUNTER_SET(SandboxFighterNavigationTraces, trace_count);
+}
+
 auto Simulation::get_num_instances() const noexcept -> int32 {
     return entity_buffers.current().num();
 }
@@ -429,7 +773,15 @@ void Simulation::set_target_handle(FRegistryEntityHandle const fighter_handle,
 }
 
 void Simulation::set_task_unchecked(int32 const index, Task const task) noexcept {
-    entity_buffers.current().tasks[index] = task;
+    auto& data{entity_buffers.current()};
+    if (data.tasks[index] == task) {
+        return;
+    }
+
+    data.tasks[index] = task;
+    data.avoidance_choice_indices[index] = direct_movement_choice;
+    data.avoidance_clear_scan_counts[index] = 0;
+    data.navigation_update_countdowns.zero_counter(index);
 }
 
 void Simulation::set_task(FRegistryEntityHandle const handle, Task const task) noexcept {
@@ -481,7 +833,17 @@ bool Simulation::tasks_are_contiguous() const noexcept {
             return false;
         }
     }
-    return false;
+
+    auto const task_counts{get_task_counts()};
+    int32 expected_offset{};
+    for (int32 i{}; i < n_task_types; ++i) {
+        auto const& span{task_spans[i]};
+        if (span.offset != expected_offset || span.count != task_counts[i]) {
+            return false;
+        }
+        expected_offset += task_counts[i];
+    }
+    return true;
 }
 
 void Simulation::refresh_layout() {
@@ -553,6 +915,9 @@ void Simulation::commit_spawns() {
     data.teams.Append(new_teams);
     ml::append_n(data.healths, config.health, n_new);
     data.awareness_scan_countdowns.add_zeroed(n_new);
+    data.navigation_update_countdowns.add_zeroed(n_new);
+    ml::append_n(data.avoidance_choice_indices, direct_movement_choice, n_new);
+    data.avoidance_clear_scan_counts.AddZeroed(n_new);
     data.attack_reposition_countdowns.add_zeroed(n_new);
     data.target_handles.Append(new_targets);
     data.target_locations.add_zeroed(n_new);
@@ -588,6 +953,15 @@ void Simulation::commit_spawns() {
         TConstArrayView<int32>{new_spawn_entity_handles.registry_handles.generations},
         TArrayView<uint32>{data.integral_biases}.Slice(n_cur, n_new),
         TArrayView<float>{data.float_biases}.Slice(n_cur, n_new));
+    auto const navigation_tick_period{
+        simulation_clock.frequency_to_tick_period(config.avoidance_update_frequency)};
+    for (int32 i{}; i < n_new; ++i) {
+        auto const fighter_index{n_cur + i};
+        data.navigation_update_countdowns.set_counter(
+            fighter_index,
+            static_cast<FTickCountdown8::counter_type>(data.integral_biases[fighter_index] %
+                                                       navigation_tick_period));
+    }
 
     presentation_spawn_offset = n_cur;
     presentation_spawn_count = n_new;
@@ -763,6 +1137,9 @@ void Simulation::commit_orders() {
             auto const old_task{data.tasks[fighter_index]};
             auto const new_task{order_queue.tasks[i]};
             data.tasks[fighter_index] = new_task;
+            data.avoidance_choice_indices[fighter_index] = direct_movement_choice;
+            data.avoidance_clear_scan_counts[fighter_index] = 0;
+            data.navigation_update_countdowns.zero_counter(fighter_index);
             if (old_task != Task::Attack && new_task == Task::Attack) {
                 ml::assign_from(
                     data.desired_move_locations, fighter_index, data.locations, fighter_index);
