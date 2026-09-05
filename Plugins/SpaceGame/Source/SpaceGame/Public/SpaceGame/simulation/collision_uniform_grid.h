@@ -17,6 +17,11 @@ struct FTraceHitsView;
 }
 
 namespace ml::ioj {
+enum class ETraceEntityFilter : uint8 {
+    None,
+    ExcludeCapitalShipFighters,
+};
+
 struct FCellCoordBounds {
     FIntVector3 min;
     FIntVector3 max;
@@ -72,11 +77,13 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     void trace_aabbs(FLineTracesConstView const& traces,
                      FTraceHitsView const& hits,
-                     TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
+                     TConstArrayView<FRegistryEntityHandle> ignored_entities = {},
+                     ETraceEntityFilter entity_filter = ETraceEntityFilter::None) const;
     void sweep_aabbs(FLineTracesConstView const& centre_paths,
                      FVector3f moving_half_extent,
                      FTraceHitsView const& hits,
-                     TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
+                     TConstArrayView<FRegistryEntityHandle> ignored_entities = {},
+                     ETraceEntityFilter entity_filter = ETraceEntityFilter::None) const;
   private:
     template <bool ExpandBounds>
     static auto trace_aabb(WorldAABBs::ConstView const& aabbs,
@@ -86,7 +93,7 @@ struct SPACEGAME_API CollisionUniformGrid {
                            FVector3f trace_delta,
                            FVector3f expansion) -> float;
 
-    template <bool UsePaddedTraversal>
+    template <bool UsePaddedTraversal, ETraceEntityFilter EntityFilter>
     void trace_aabbs_impl(FLineTracesConstView const& traces,
                           FTraceHitsView const& hits,
                           TConstArrayView<FRegistryEntityHandle> ignored_entities,

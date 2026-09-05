@@ -25,6 +25,8 @@
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
 
+#include <array>
+
 class ATestBatchOrchestrator;
 struct FLevelSimulation;
 struct FFighterPresentation;
@@ -99,6 +101,15 @@ struct SPACEGAME_API Simulation {
         float roll_sin;
         float roll_cos;
     };
+    struct FirePointAngleOffset {
+        float yaw;
+        float pitch;
+    };
+    struct FirePointCandidate {
+        FVector3f location;
+        FVector3f trace_start;
+        FVector3f trace_end;
+    };
 
     inline static constexpr int8 direct_movement_choice{-1};
     inline static constexpr int8 stop_movement_choice{-2};
@@ -106,6 +117,24 @@ struct SPACEGAME_API Simulation {
     inline static constexpr uint8 clear_scans_to_end_avoidance{2};
     inline static constexpr float half_weight{0.5f};
     inline static constexpr float sqrt_three_over_two{0.8660254f};
+    inline static constexpr std::array<FirePointAngleOffset, 16> fire_point_angle_offsets{{
+        {0.f, 0.f},
+        {45.f, 0.f},
+        {-45.f, 0.f},
+        {90.f, 0.f},
+        {-90.f, 0.f},
+        {135.f, 0.f},
+        {-135.f, 0.f},
+        {180.f, 0.f},
+        {0.f, 35.f},
+        {90.f, 35.f},
+        {180.f, 35.f},
+        {-90.f, 35.f},
+        {45.f, -35.f},
+        {135.f, -35.f},
+        {-135.f, -35.f},
+        {-45.f, -35.f},
+    }};
 
     static auto is_avoidance_direction_choice(int8 choice) -> bool;
     static auto make_avoidance_frame(FVector3f preferred_direction, float float_bias)
@@ -115,14 +144,14 @@ struct SPACEGAME_API Simulation {
         -> TStaticArray<FVector3f, n_avoidance_choices>;
     static auto make_avoidance_choice_order(uint32 integral_bias, int8 previous_choice)
         -> TStaticArray<int8, n_avoidance_choices>;
-    static auto find_appropriate_fire_point(FSpatialQueryManager const& spatial_query_manager,
-                                            FVector3f target_location,
-                                            FVector3f reference_location,
-                                            float fire_point_distance,
-                                            float trace_end_offset,
-                                            float desired_attack_distance,
-                                            uint32 integral_bias,
-                                            float float_bias) -> TOptional<FVector3f>;
+    static auto make_fire_point_candidate(FVector3f target_location,
+                                          FVector3f reference_location,
+                                          float fire_point_distance,
+                                          float trace_end_offset,
+                                          float desired_attack_distance,
+                                          uint32 integral_bias,
+                                          float float_bias,
+                                          uint32 candidate_order) -> FirePointCandidate;
 
     void begin_play();
     void begin_tick();
@@ -202,6 +231,8 @@ struct SPACEGAME_API Simulation {
     FVectors3f line_of_sight_starts;
     FVectors3f line_of_sight_ends;
     TArray<uint8> line_of_sight_results;
+    TArray<int32> firing_position_fighter_indices;
+    FVectors3f firing_position_candidates;
     FTraceHits navigation_trace_hits;
     TArray<FRegistryEntityHandle> navigation_trace_ignored_entities;
     TArray<int32> navigation_blocked_fighter_indices;

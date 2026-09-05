@@ -16,8 +16,6 @@
 #include <Misc/Optional.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
-#include <array>
-
 TRACE_DECLARE_INT_COUNTER(SandboxTestFighterCount, TEXT("Sandbox/TestFighterCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxFightersAvoiding, TEXT("Sandbox/FightersAvoiding"));
 TRACE_DECLARE_INT_COUNTER(SandboxFighterNavigationTraces, TEXT("Sandbox/FighterNavigationTraces"));
@@ -123,68 +121,36 @@ auto Simulation::make_avoidance_choice_order(uint32 const integral_bias, int8 co
     return result;
 }
 
-auto Simulation::find_appropriate_fire_point(ml::FSpatialQueryManager const& spatial_query_manager,
-                                             FVector3f const target_location,
-                                             FVector3f const reference_location,
-                                             float const fire_point_distance,
-                                             float const trace_end_offset,
-                                             float const desired_attack_distance,
-                                             uint32 const integral_bias,
-                                             float const float_bias) -> TOptional<FVector3f> {
-    struct Offset {
-        float X;
-        float Y;
-    };
-    static constexpr std::array<Offset, 16> fire_point_angle_offsets{{
-        {0.f, 0.f},
-        {45.f, 0.f},
-        {-45.f, 0.f},
-        {90.f, 0.f},
-        {-90.f, 0.f},
-        {135.f, 0.f},
-        {-135.f, 0.f},
-        {180.f, 0.f},
-        {0.f, 35.f},
-        {90.f, 35.f},
-        {180.f, 35.f},
-        {-90.f, 35.f},
-        {45.f, -35.f},
-        {135.f, -35.f},
-        {-135.f, -35.f},
-        {-45.f, -35.f},
-    }};
-
+auto Simulation::make_fire_point_candidate(FVector3f const target_location,
+                                           FVector3f const reference_location,
+                                           float const fire_point_distance,
+                                           float const trace_end_offset,
+                                           float const desired_attack_distance,
+                                           uint32 const integral_bias,
+                                           float const float_bias,
+                                           uint32 const candidate_order) -> FirePointCandidate {
     auto const base_direction{(reference_location - target_location).GetSafeNormal()};
     auto const base_candidate_rotation{base_direction.ToOrientationRotator()};
     auto const pattern_yaw_offset{float_bias * 360.f};
     auto const n_offsets{static_cast<uint32>(fire_point_angle_offsets.size())};
     auto const first_offset_index{integral_bias % n_offsets};
+    auto const offset_index{(first_offset_index + candidate_order) % n_offsets};
+    auto const angle_offset{fire_point_angle_offsets[offset_index]};
     FVector3d const trace_target{target_location};
 
-    for (uint32 offset{}; offset < n_offsets; ++offset) {
-        auto const offset_index{(first_offset_index + offset) % n_offsets};
-        auto const angle_offset{fire_point_angle_offsets[offset_index]};
+    auto candidate_rotation{base_candidate_rotation};
+    candidate_rotation.Yaw += pattern_yaw_offset + angle_offset.yaw;
+    candidate_rotation.Pitch += angle_offset.pitch;
 
-        auto candidate_rotation{base_candidate_rotation};
-        candidate_rotation.Yaw += pattern_yaw_offset + angle_offset.X;
-        candidate_rotation.Pitch += angle_offset.Y;
-
-        auto const candidate_direction{candidate_rotation.Vector()};
-        auto const candidate_location{target_location +
-                                      candidate_direction * desired_attack_distance};
-        auto const candidate_aim_direction{
-            (trace_target - FVector3d{candidate_location}).GetSafeNormal()};
-        auto const trace_start{FVector3d{candidate_location} +
-                               candidate_aim_direction * fire_point_distance};
-        auto const trace_direction{(trace_target - trace_start).GetSafeNormal()};
-        auto const trace_end{trace_target - trace_direction * trace_end_offset};
-
-        if (spatial_query_manager.has_clear_line(FVector3f{trace_start}, FVector3f{trace_end})) {
-            return candidate_location;
-        }
-    }
-
-    return NullOpt;
+    auto const candidate_direction{candidate_rotation.Vector()};
+    auto const candidate_location{target_location + candidate_direction * desired_attack_distance};
+    auto const candidate_aim_direction{
+        (trace_target - FVector3d{candidate_location}).GetSafeNormal()};
+    auto const trace_start{FVector3d{candidate_location} +
+                           candidate_aim_direction * fire_point_distance};
+    auto const trace_direction{(trace_target - trace_start).GetSafeNormal()};
+    auto const trace_end{trace_target - trace_direction * trace_end_offset};
+    return {candidate_location, FVector3f{trace_start}, FVector3f{trace_end}};
 }
 void Simulation::set_config(FFighterSimulationConfig const& new_config) noexcept {
     config = new_config;
@@ -549,11 +515,13 @@ void Simulation::update_navigation_steering() {
         spatial_query_manager->are_spheres_in_bounds(
             line_of_sight_ends.get_const_view(), clearance, line_of_sight_results);
         navigation_trace_hits.set_num(n_direct_traces, EAllowShrinking::No);
-        spatial_query_manager->sweep_closest_aabbs(line_of_sight_starts.get_const_view(),
-                                                   line_of_sight_ends.get_const_view(),
-                                                   moving_half_extent,
-                                                   navigation_trace_hits.get_view(),
-                                                   navigation_trace_ignored_entities);
+        spatial_query_manager->sweep_closest_aabbs(
+            line_of_sight_starts.get_const_view(),
+            line_of_sight_ends.get_const_view(),
+            moving_half_extent,
+            navigation_trace_hits.get_view(),
+            navigation_trace_ignored_entities,
+            ioj::ETraceEntityFilter::ExcludeCapitalShipFighters);
         trace_count += n_direct_traces;
 
         for (int32 trace_index{}; trace_index < n_direct_traces; ++trace_index) {
@@ -619,11 +587,13 @@ void Simulation::update_navigation_steering() {
         spatial_query_manager->are_spheres_in_bounds(
             line_of_sight_ends.get_const_view(), clearance, line_of_sight_results);
         navigation_trace_hits.set_num(n_candidate_traces, EAllowShrinking::No);
-        spatial_query_manager->sweep_closest_aabbs(line_of_sight_starts.get_const_view(),
-                                                   line_of_sight_ends.get_const_view(),
-                                                   moving_half_extent,
-                                                   navigation_trace_hits.get_view(),
-                                                   navigation_trace_ignored_entities);
+        spatial_query_manager->sweep_closest_aabbs(
+            line_of_sight_starts.get_const_view(),
+            line_of_sight_ends.get_const_view(),
+            moving_half_extent,
+            navigation_trace_hits.get_view(),
+            navigation_trace_ignored_entities,
+            ioj::ETraceEntityFilter::ExcludeCapitalShipFighters);
         trace_count += n_candidate_traces;
     }
 
@@ -1004,7 +974,11 @@ void Simulation::handle_firing(TaskView const& data) {
     auto const colour_cache{config.team_colours};
     auto& can_fire{scratch_int_buffer};
 
-    ml::reset(new_lasers, aiming_dot_product_buffer, can_fire);
+    ml::reset(new_lasers,
+              aiming_dot_product_buffer,
+              can_fire,
+              firing_position_fighter_indices,
+              firing_position_candidates);
     ml::add_uninitialised(n_ships, new_lasers, aiming_dot_product_buffer);
     ml::dot_product(aiming_dot_product_buffer, data.aim_directions, data.desired_aiming_directions);
 
@@ -1048,7 +1022,6 @@ void Simulation::handle_firing(TaskView const& data) {
 
     for (int32 i{n_can_fire_before_los - 1}; i >= 0; --i) {
         auto const ship_index{can_fire[i]};
-        auto const trace_end_offset{los_check_buffer + data.target_radii[ship_index]};
         if (line_of_sight_results[i] != 0) {
             continue;
         }
@@ -1063,17 +1036,49 @@ void Simulation::handle_firing(TaskView const& data) {
             continue;
         }
 
-        auto const candidate{
-            find_appropriate_fire_point(*spatial_query_manager,
-                                        ml::get_vector3f(data.target_locations, ship_index),
-                                        desired_move_location,
-                                        fire_point_distance,
-                                        trace_end_offset,
-                                        desired_attack_distance,
-                                        data.integral_biases[ship_index],
-                                        data.float_biases[ship_index])};
-        if (candidate.IsSet()) {
-            ml::assign(data.desired_move_locations, ship_index, *candidate);
+        firing_position_fighter_indices.Add(ship_index);
+    }
+
+    auto const n_fire_point_candidates{static_cast<uint32>(fire_point_angle_offsets.size())};
+    for (uint32 candidate_order{};
+         candidate_order < n_fire_point_candidates && !firing_position_fighter_indices.IsEmpty();
+         ++candidate_order) {
+        auto const n_fighters{firing_position_fighter_indices.Num()};
+        line_of_sight_starts.set_num(n_fighters, EAllowShrinking::No);
+        line_of_sight_ends.set_num(n_fighters, EAllowShrinking::No);
+        line_of_sight_results.SetNumUninitialized(n_fighters, EAllowShrinking::No);
+        firing_position_candidates.set_num(n_fighters, EAllowShrinking::No);
+
+        for (int32 i{}; i < n_fighters; ++i) {
+            auto const ship_index{firing_position_fighter_indices[i]};
+            auto const candidate{
+                make_fire_point_candidate(ml::get_vector3f(data.target_locations, ship_index),
+                                          ml::get_vector3f(data.desired_move_locations, ship_index),
+                                          fire_point_distance,
+                                          los_check_buffer + data.target_radii[ship_index],
+                                          desired_attack_distance,
+                                          data.integral_biases[ship_index],
+                                          data.float_biases[ship_index],
+                                          candidate_order)};
+            line_of_sight_starts.set(i, candidate.trace_start);
+            line_of_sight_ends.set(i, candidate.trace_end);
+            firing_position_candidates.set(i, candidate.location);
+        }
+
+        spatial_query_manager->have_clear_lines(line_of_sight_starts.get_const_view(),
+                                                line_of_sight_ends.get_const_view(),
+                                                line_of_sight_results);
+
+        for (int32 i{n_fighters - 1}; i >= 0; --i) {
+            if (line_of_sight_results[i] == 0) {
+                continue;
+            }
+
+            auto const ship_index{firing_position_fighter_indices[i]};
+            ml::assign(data.desired_move_locations,
+                       ship_index,
+                       ml::get_vector3f(firing_position_candidates, i));
+            firing_position_fighter_indices.RemoveAtSwap(i, EAllowShrinking::No);
         }
     }
 

@@ -78,11 +78,13 @@ struct SPACEGAME_API FSpatialQueryManager {
                              FVectors3f::ConstView end_locations,
                              FTraceHitsView out_hits,
                              TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
-    void sweep_closest_aabbs(FVectors3f::ConstView start_locations,
-                             FVectors3f::ConstView end_locations,
-                             FVector3f moving_half_extent,
-                             FTraceHitsView out_hits,
-                             TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
+    void sweep_closest_aabbs(
+        FVectors3f::ConstView start_locations,
+        FVectors3f::ConstView end_locations,
+        FVector3f moving_half_extent,
+        FTraceHitsView out_hits,
+        TConstArrayView<FRegistryEntityHandle> ignored_entities = {},
+        ioj::ETraceEntityFilter entity_filter = ioj::ETraceEntityFilter::None) const;
     auto has_clear_line(FVector3f start_location,
                         FVector3f end_location,
                         FRegistryEntityHandle ignored_entity = {}) const -> bool;

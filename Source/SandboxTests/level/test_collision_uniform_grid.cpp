@@ -251,13 +251,18 @@ auto run_sweeps(FTraceFixture const& fixture,
                 TConstArrayView<FVector3f> const starts,
                 TConstArrayView<FVector3f> const ends,
                 FVector3f const moving_half_extent,
-                TConstArrayView<FRegistryEntityHandle> const ignored_entities = {}) -> FTraceHits {
+                TConstArrayView<FRegistryEntityHandle> const ignored_entities = {},
+                ioj::ETraceEntityFilter const entity_filter = ioj::ETraceEntityFilter::None)
+    -> FTraceHits {
     auto const traces{make_line_traces(starts, ends)};
 
     FTraceHits hits;
     hits.add_defaulted(traces.num());
-    fixture.grid.sweep_aabbs(
-        traces.get_const_view(), moving_half_extent, hits.get_view(), ignored_entities);
+    fixture.grid.sweep_aabbs(traces.get_const_view(),
+                             moving_half_extent,
+                             hits.get_view(),
+                             ignored_entities,
+                             entity_filter);
     return hits;
 }
 
@@ -1935,6 +1940,42 @@ void FCollisionUniformGridTraceScenario::test_static_geometry() {
                      sweep_hits.locations[0],
                      hit_location_tolerance,
                      TEXT("AABB sweep reports expanded entry point"));
+
+    TArray<FVector3f> const fighter_locations{{-100.f, 0.f, 0.f}};
+    TArray<ETestEntityType> const fighter_types{ETestEntityType::CapitalShipFighter};
+    FTraceFixture fighter_fixture{fighter_locations,
+                                  half_extents,
+                                  FVector3f::ZeroVector,
+                                  trace_grid_dims,
+                                  trace_cell_dims,
+                                  fighter_types};
+    fighter_fixture.set_entity_aabb(
+        ETestEntityType::CapitalShipFighter, FVector3f::ZeroVector, half_extents);
+    WorldAABBs blocked_static_aabbs;
+    blocked_static_aabbs.mins.add({50.f, -10.f, -10.f});
+    blocked_static_aabbs.maxes.add({70.f, 10.f, 10.f});
+    fighter_fixture.grid.set_static_aabbs(MoveTemp(blocked_static_aabbs));
+
+    auto const fighter_masked_hits{
+        run_sweeps(fighter_fixture, starts, ends, FVector3f{20.f, 20.f, 20.f})};
+    checks.are_equal(fighter_fixture.handles[0],
+                     fighter_masked_hits.entities[0],
+                     TEXT("Fighter is the closest sweep hit before static geometry"));
+    auto const static_geometry_hits{
+        run_sweeps(fighter_fixture,
+                   starts,
+                   ends,
+                   FVector3f{20.f, 20.f, 20.f},
+                   {},
+                   ioj::ETraceEntityFilter::ExcludeCapitalShipFighters)};
+    checks.are_equal(uint8{1},
+                     static_geometry_hits.hits[0],
+                     TEXT("Static geometry remains after fighter exclusion"));
+    checks.is_true(!static_geometry_hits.entities[0].is_valid(),
+                   TEXT("Fighter exclusion returns the static obstacle"));
+    checks.are_equal(0,
+                     static_geometry_hits.static_geometry_indices[0],
+                     TEXT("Fighter exclusion keeps the static obstacle identity"));
 
     set_static_aabb({-60.f, -10.f, -10.f}, {-40.f, 10.f, 10.f});
     fixture.grid.rebuild_grid(fixture.aabbs);
