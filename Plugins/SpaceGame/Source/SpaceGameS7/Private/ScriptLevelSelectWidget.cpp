@@ -17,6 +17,8 @@
 namespace ml::s7 {
 auto format_level_row_title(FString title, ELevelRowState const state) -> FString {
     switch (state) {
+        case ELevelRowState::Invalid:
+            return TEXT("! ") + title;
         case ELevelRowState::Locked:
             return TEXT("\U0001F512 ") + title;
         case ELevelRowState::Unlocked:
@@ -286,7 +288,7 @@ void UScriptLevelSelectWidget::refresh_levels() {
             return;
         }
 
-        auto state{ELevelRowState::Unlocked};
+        auto state{ELevelRowState::Invalid};
         auto unlocked{false};
         if (entry) {
             auto const id{entry.definition->metadata.id};

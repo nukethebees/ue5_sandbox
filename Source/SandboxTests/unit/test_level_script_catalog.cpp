@@ -170,6 +170,101 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                               static_cast<bool>(result.campaigns[0]));
     }
 
+    TEST_METHOD(RejectsDuplicateCampaignIds)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
+        IFileManager::Get().MakeDirectory(*campaign_directory, true);
+        auto const files_written{
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
+                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign (id 'shared) (title \"First\") "
+                     "(levels 'alpha))"),
+                *FPaths::Combine(campaign_directory, TEXT("first.scm"))) &&
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign (id 'shared) (title \"Second\") "
+                     "(levels 'alpha))"),
+                *FPaths::Combine(campaign_directory, TEXT("second.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Duplicate campaign fixtures are written"), files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        if (!TestRunner->TestEqual(
+                TEXT("Both campaigns remain visible"), result.campaigns.Num(), 2)) {
+            return;
+        }
+        TestRunner->TestFalse(TEXT("First duplicate campaign is invalid"),
+                              static_cast<bool>(result.campaigns[0]));
+        TestRunner->TestFalse(TEXT("Second duplicate campaign is invalid"),
+                              static_cast<bool>(result.campaigns[1]));
+        TestRunner->TestTrue(TEXT("Duplicate error identifies both campaign files"),
+                             result.error.Contains(TEXT("first.scm")) &&
+                                 result.error.Contains(TEXT("second.scm")));
+    }
+
+    TEST_METHOD(RejectsDuplicateLevelsWithinCampaign)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
+        IFileManager::Get().MakeDirectory(*campaign_directory, true);
+        auto const files_written{
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
+                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
+            FFileHelper::SaveStringToFile(TEXT("(campaign (id 'main) (title \"Main\") "
+                                               "(levels 'alpha 'alpha))"),
+                                          *FPaths::Combine(campaign_directory, TEXT("main.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Duplicate level fixtures are written"), files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        if (!TestRunner->TestEqual(TEXT("Campaign remains visible"), result.campaigns.Num(), 1)) {
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Campaign with duplicate levels is invalid"),
+                              static_cast<bool>(result.campaigns[0]));
+        TestRunner->TestTrue(TEXT("Duplicate level error is useful"),
+                             result.campaigns[0].error.Contains(TEXT("duplicated")));
+    }
+
+    TEST_METHOD(AllowsLevelsInMultipleCampaigns)
+    {
+        FTemporaryScriptDirectory directory;
+        auto const campaign_directory{FPaths::Combine(directory.path, TEXT("Campaigns"))};
+        IFileManager::Get().MakeDirectory(*campaign_directory, true);
+        auto const files_written{
+            FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha")),
+                                          *FPaths::Combine(directory.path, TEXT("alpha.scm"))) &&
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign (id 'first) (title \"First\") "
+                     "(levels 'alpha))"),
+                *FPaths::Combine(campaign_directory, TEXT("first.scm"))) &&
+            FFileHelper::SaveStringToFile(
+                TEXT("(campaign (id 'second) (title \"Second\") "
+                     "(levels 'alpha))"),
+                *FPaths::Combine(campaign_directory, TEXT("second.scm")))};
+        if (!TestRunner->TestTrue(TEXT("Cross-list campaign fixtures are written"),
+                                  files_written)) {
+            return;
+        }
+
+        auto const result{ml::s7::discover_level_scripts(directory.path)};
+        if (!TestRunner->TestEqual(
+                TEXT("Both campaigns are discovered"), result.campaigns.Num(), 2)) {
+            return;
+        }
+        for (auto const& campaign : result.campaigns) {
+            TestRunner->TestTrue(TEXT("Cross-list campaign is valid"), static_cast<bool>(campaign));
+            if (campaign) {
+                TestRunner->TestTrue(TEXT("Cross-listed level reference is retained"),
+                                     campaign.definition->level_ids ==
+                                         TArray<ml::FLevelId>{ml::FLevelId{FName{TEXT("alpha")}}});
+            }
+        }
+    }
+
     TEST_METHOD(RejectsUnlockDependencyCycles)
     {
         FTemporaryScriptDirectory directory;

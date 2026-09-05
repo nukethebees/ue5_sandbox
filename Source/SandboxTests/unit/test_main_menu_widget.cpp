@@ -159,9 +159,14 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             TEXT("Locked level rows receive a visible marker"),
             ml::s7::format_level_row_title(TEXT("Border Skirmish"), ml::s7::ELevelRowState::Locked)
                 .EndsWith(TEXT("Border Skirmish")));
+        TestRunner->TestEqual(
+            TEXT("Invalid level rows receive an error marker"),
+            ml::s7::format_level_row_title(TEXT("Broken Script"), ml::s7::ELevelRowState::Invalid),
+            FString{TEXT("! Broken Script")});
 
         ml::ioj::UMenuButtonWidget* level_button{nullptr};
         ml::ioj::UMenuButtonWidget* turret_trial_button{nullptr};
+        ml::ioj::UMenuButtonWidget* locked_turret_trial_button{nullptr};
         auto const level_row_count{level_list->GetChildrenCount()};
         for (int32 i{0}; i < level_row_count; ++i) {
             auto* const candidate{Cast<ml::ioj::UMenuButtonWidget>(level_list->GetChildAt(i))};
@@ -172,6 +177,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                 level_button = candidate;
             } else if (candidate->get_text().ToString().EndsWith(TEXT("Turret Trial 0"))) {
                 turret_trial_button = candidate;
+            } else if (candidate->get_text().ToString().EndsWith(TEXT("Turret Trial 1"))) {
+                locked_turret_trial_button = candidate;
             }
         }
         if (!TestRunner->TestTrue(TEXT("Level row is selectable"), IsValid(level_button))) {
@@ -188,6 +195,28 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
                               FString{TEXT("Turret Trial 0")});
         TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
                              launch_button->GetIsEnabled());
+
+        if (!TestRunner->TestTrue(TEXT("Locked level row remains enabled and focusable"),
+                                  IsValid(locked_turret_trial_button) &&
+                                      locked_turret_trial_button->GetIsEnabled())) {
+            return;
+        }
+        locked_turret_trial_button->OnClicked().Broadcast();
+        TestRunner->TestEqual(TEXT("Locked level information is displayed"),
+                              title_text->GetText().ToString(),
+                              FString{TEXT("Turret Trial 1")});
+        TestRunner->TestTrue(TEXT("Locked level row retains focus"),
+                             level_select_widget->GetDesiredFocusTarget() ==
+                                 locked_turret_trial_button);
+        TestRunner->TestTrue(TEXT("Locked level row can be selected"),
+                             locked_turret_trial_button->GetSelected());
+        TestRunner->TestFalse(TEXT("Locked level cannot be launched"),
+                              launch_button->GetIsEnabled());
+        TestRunner->TestFalse(TEXT("Locked level cannot start paused"),
+                              start_paused_button->GetIsEnabled());
+        TestRunner->TestTrue(TEXT("Locked level describes its unsatisfied requirement"),
+                             description_text->GetText().ToString().Contains(
+                                 TEXT("\u2610 Complete Turret Trial 0")));
 
         auto* const levels_scroll{Cast<UScrollBox>(level_list->GetParent())};
         auto* const levels_column{

@@ -16,6 +16,7 @@ enum class ELevelLaunchMode : uint8;
 
 namespace ml::s7 {
 enum class ELevelRowState : uint8 {
+    Invalid,
     Locked,
     Unlocked,
     Completed,
