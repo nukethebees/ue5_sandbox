@@ -228,6 +228,8 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                     result.push_back(detail::lower_static_table_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, FacadeModuleSchema>) {
                     result.push_back(detail::lower_facade_module(module, manifest.types));
+                } else if constexpr (std::is_same_v<T, SettingsModuleSchema>) {
+                    result.push_back(detail::lower_settings_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, HomogeneousModuleSchema>) {
                     result.push_back(detail::lower_homogeneous_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, VectorModuleSchema>) {

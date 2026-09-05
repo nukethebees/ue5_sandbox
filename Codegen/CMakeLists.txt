@@ -16,6 +16,7 @@ add_library(codegen-lib
   src/json.cpp
   src/lowering_utils.cpp
   src/schema.cpp
+  src/settings_lowering.cpp
   src/soa_lowering.cpp
   src/soa_member_resolution.cpp
   src/soa_storage_lowering.cpp

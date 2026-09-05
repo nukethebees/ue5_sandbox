@@ -41,6 +41,7 @@ Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityTypeEnum.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityUniqueEntityDataSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/levels/LevelDefinitionSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionMode.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsSoA.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFighterOrderQueue.cpp
@@ -68,6 +69,7 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityType.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityUniqueEntityDataSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelDefinitionSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h

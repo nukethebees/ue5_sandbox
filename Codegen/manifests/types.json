@@ -172,6 +172,18 @@
       "spelling": "FIntPoint",
       "header": "CoreMinimal.h"
     },
+    "game_window_mode": {
+      "spelling": "EGameWindowMode",
+      "header": "SpaceGame/settings/GameSettingsTypes.h"
+    },
+    "game_anti_aliasing_method": {
+      "spelling": "EGameAntiAliasingMethod",
+      "header": "SpaceGame/settings/GameSettingsTypes.h"
+    },
+    "game_quality_level": {
+      "spelling": "EGameQualityLevel",
+      "header": "SpaceGame/settings/GameSettingsTypes.h"
+    },
     "uint_point": {
       "spelling": "FUintPoint",
       "header": "CoreMinimal.h"

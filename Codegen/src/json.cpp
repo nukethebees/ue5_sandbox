@@ -464,6 +464,69 @@ auto parse_static_table(Json const& value, std::string const& path) -> StaticTab
     };
 }
 
+auto parse_setting_apply_mode(std::string const& value, std::string const& path)
+    -> SettingApplyMode {
+    if (value == "immediate") {
+        return SettingApplyMode::immediate;
+    }
+    if (value == "deferred") {
+        return SettingApplyMode::deferred;
+    }
+    if (value == "confirm") {
+        return SettingApplyMode::confirm;
+    }
+    throw ManifestError{path + ": unknown settings apply mode '" + value + "'"};
+}
+
+auto parse_setting_control_kind(std::string const& value, std::string const& path)
+    -> SettingControlKind {
+    if (value == "toggle") {
+        return SettingControlKind::toggle;
+    }
+    if (value == "choice") {
+        return SettingControlKind::choice;
+    }
+    if (value == "float_range") {
+        return SettingControlKind::float_range;
+    }
+    if (value == "integer_range") {
+        return SettingControlKind::integer_range;
+    }
+    if (value == "custom") {
+        return SettingControlKind::custom;
+    }
+    throw ManifestError{path + ": unknown setting control kind '" + value + "'"};
+}
+
+auto parse_setting(Json const& value, std::string const& path) -> SettingSchema {
+    reject_unknown(value,
+                   path,
+                   {"name", "label", "tooltip", "category", "value_type", "backend", "apply", "control"});
+    auto const& control_value{required_object(value, "control", path)};
+    auto const control_path{path + "/control"};
+    reject_unknown(control_value,
+                   control_path,
+                   {"kind", "options_provider", "availability_provider", "min", "max", "step", "custom_row"});
+    return SettingSchema{
+        .name = required<std::string>(value, "name", path),
+        .label = required<std::string>(value, "label", path),
+        .tooltip = optional<std::string>(value, "tooltip", path),
+        .category = required<std::string>(value, "category", path),
+        .value_type = parse_type_ref(required_value(value, "value_type", path), path + "/value_type"),
+        .backend = required<std::string>(value, "backend", path),
+        .apply_mode = parse_setting_apply_mode(required<std::string>(value, "apply", path), path + "/apply"),
+        .control = SettingControlSchema{
+            .kind = parse_setting_control_kind(required<std::string>(control_value, "kind", control_path), control_path + "/kind"),
+            .options_provider = optional<std::string>(control_value, "options_provider", control_path),
+            .availability_provider = optional<std::string>(control_value, "availability_provider", control_path),
+            .minimum = optional<double>(control_value, "min", control_path),
+            .maximum = optional<double>(control_value, "max", control_path),
+            .step = optional<double>(control_value, "step", control_path),
+            .custom_row = optional<std::string>(control_value, "custom_row", control_path),
+        },
+    };
+}
+
 auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
     auto const kind{required<std::string>(value, "kind", path)};
     auto settings{parse_settings(value, path)};
@@ -594,6 +657,48 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                 .definitions_in_source =
                     value_or<bool>(facade_value, "definitions_in_source", false, facade_path),
             },
+        };
+    }
+    if (kind == "settings") {
+        reject_unknown(value,
+                       path,
+                       {"kind",
+                        "name",
+                        "header",
+                        "source",
+                        "header_include",
+                        "namespace",
+                        "include_order",
+                        "prelude",
+                        "api_name",
+                        "state_name",
+                        "export_specifier",
+                        "categories",
+                        "settings"});
+        std::vector<SettingCategorySchema> categories;
+        auto const& category_values{required_array(value, "categories", path)};
+        for (std::size_t index{}; index < category_values.size(); ++index) {
+            auto const category_path{path + "/categories/" + std::to_string(index)};
+            auto const& category{category_values[index]};
+            reject_unknown(category, category_path, {"name", "label"});
+            categories.push_back(SettingCategorySchema{
+                .name = required<std::string>(category, "name", category_path),
+                .label = required<std::string>(category, "label", category_path),
+            });
+        }
+        std::vector<SettingSchema> settings_list;
+        auto const& setting_values{required_array(value, "settings", path)};
+        for (std::size_t index{}; index < setting_values.size(); ++index) {
+            settings_list.push_back(parse_setting(setting_values[index],
+                                                  path + "/settings/" + std::to_string(index)));
+        }
+        return SettingsModuleSchema{
+            .settings = std::move(settings),
+            .api_name = required<std::string>(value, "api_name", path),
+            .state_name = required<std::string>(value, "state_name", path),
+            .export_specifier = optional<std::string>(value, "export_specifier", path),
+            .categories = std::move(categories),
+            .settings_list = std::move(settings_list),
         };
     }
     if (kind == "umbrella") {

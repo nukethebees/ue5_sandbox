@@ -1,0 +1,179 @@
+{
+  "modules": [
+    {
+      "kind": "settings",
+      "name": "game_settings",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp",
+      "header_include": "SpaceGame/settings/GameSettings.generated.h",
+      "namespace": "ml::ioj",
+      "api_name": "TGameSettingsAccess",
+      "state_name": "FGameSettingsState",
+      "export_specifier": "SPACEGAME_API",
+      "categories": [
+        {"name": "video", "label": "Video"},
+        {"name": "gameplay", "label": "Gameplay"},
+        {"name": "audio", "label": "Audio"},
+        {"name": "controls", "label": "Controls"},
+        {"name": "accessibility", "label": "Accessibility"}
+      ],
+      "settings": [
+        {
+          "name": "resolution",
+          "label": "Resolution",
+          "tooltip": "Display resolution.",
+          "category": "video",
+          "value_type": "@int_point",
+          "backend": "game_user_settings",
+          "apply": "confirm",
+          "control": {"kind": "choice", "options_provider": "supported_resolutions"}
+        },
+        {
+          "name": "window_mode",
+          "label": "Window Mode",
+          "category": "video",
+          "value_type": "@game_window_mode",
+          "backend": "game_user_settings",
+          "apply": "confirm",
+          "control": {"kind": "choice", "options_provider": "window_modes"}
+        },
+        {
+          "name": "vsync",
+          "label": "VSync",
+          "category": "video",
+          "value_type": "bool",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "toggle"}
+        },
+        {
+          "name": "frame_rate_limit",
+          "label": "Frame Rate Limit",
+          "category": "video",
+          "value_type": "float",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "frame_rate_limits"}
+        },
+        {
+          "name": "resolution_scale",
+          "label": "Resolution Scale",
+          "category": "video",
+          "value_type": "float",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "float_range", "min": 50, "max": 100, "step": 1}
+        },
+        {
+          "name": "aa_method",
+          "label": "Anti-Aliasing Method",
+          "category": "video",
+          "value_type": "@game_anti_aliasing_method",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "aa_methods"}
+        },
+        {
+          "name": "aa_quality",
+          "label": "Anti-Aliasing Quality",
+          "category": "video",
+          "value_type": "@game_quality_level",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "quality_levels", "availability_provider": "aa_quality"}
+        },
+        {
+          "name": "shadow_quality",
+          "label": "Shadow Quality",
+          "category": "video",
+          "value_type": "@game_quality_level",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "quality_levels"}
+        },
+        {
+          "name": "texture_quality",
+          "label": "Texture Quality",
+          "category": "video",
+          "value_type": "@game_quality_level",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "quality_levels"}
+        },
+        {
+          "name": "effects_quality",
+          "label": "Effects Quality",
+          "category": "video",
+          "value_type": "@game_quality_level",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "quality_levels"}
+        },
+        {
+          "name": "reflections_quality",
+          "label": "Reflections Quality",
+          "category": "video",
+          "value_type": "@game_quality_level",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "quality_levels"}
+        },
+        {
+          "name": "shading_quality",
+          "label": "Shading Quality",
+          "category": "video",
+          "value_type": "@game_quality_level",
+          "backend": "game_user_settings",
+          "apply": "deferred",
+          "control": {"kind": "choice", "options_provider": "quality_levels"}
+        },
+        {
+          "name": "master_volume",
+          "label": "Master Volume",
+          "category": "audio",
+          "value_type": "float",
+          "backend": "audio",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0, "max": 1, "step": 0.01}
+        },
+        {
+          "name": "music_volume",
+          "label": "Music Volume",
+          "category": "audio",
+          "value_type": "float",
+          "backend": "audio",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0, "max": 1, "step": 0.01}
+        },
+        {
+          "name": "sfx_volume",
+          "label": "SFX Volume",
+          "category": "audio",
+          "value_type": "float",
+          "backend": "audio",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0, "max": 1, "step": 0.01}
+        },
+        {
+          "name": "ui_volume",
+          "label": "UI Volume",
+          "category": "audio",
+          "value_type": "float",
+          "backend": "audio",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0, "max": 1, "step": 0.01}
+        },
+        {
+          "name": "bees",
+          "label": "Bees",
+          "tooltip": "Number of bees.",
+          "category": "gameplay",
+          "value_type": "int32",
+          "backend": "custom",
+          "apply": "immediate",
+          "control": {"kind": "integer_range", "min": 0, "max": 5, "step": 1}
+        }
+      ]
+    }
+  ]
+}

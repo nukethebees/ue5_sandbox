@@ -903,5 +903,33 @@ TEST(Validation, RejectsUnsupportedUmbrellaSourceAndNamespaceSettings) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsInvalidSettingsDefinitions) {
+    auto module = SettingsModuleSchema{
+        .settings =
+            ModuleSettings{.name = "settings", .header = "Settings.h", .source = "Settings.cpp"},
+        .api_name = "TSettingsAccess",
+        .state_name = "FSettingsState",
+        .categories = {{"video", "Video"}},
+        .settings_list =
+            {SettingSchema{
+                .name = "vsync",
+                .label = "VSync",
+                .category = "missing",
+                .value_type = TypeRef{"bool"},
+                .backend = "engine",
+                .apply_mode = SettingApplyMode::deferred,
+                .control = SettingControlSchema{.kind = SettingControlKind::toggle},
+            }},
+    };
+    EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
+
+    module.settings_list.front().category = "video";
+    module.settings_list.front().control.kind = SettingControlKind::choice;
+    EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
+
+    module.settings_list.front().control.kind = SettingControlKind::custom;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 } // namespace
 } // namespace codegen

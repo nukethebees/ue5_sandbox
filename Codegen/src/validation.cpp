@@ -820,6 +820,99 @@ void validate_facade(FacadeModuleSchema const& module,
     }
 }
 
+void validate_settings_module(SettingsModuleSchema const& module,
+                              std::map<std::string, CppType> const& types) {
+    auto const context{"Settings module '" + module.settings.name + "'"};
+    if (!module.settings.source.has_value()) {
+        throw std::invalid_argument{context + " must have a source output"};
+    }
+    require_identifier(module.api_name, context + " API name");
+    require_identifier(module.state_name, context + " state name");
+    validate_export_specifier(module.export_specifier, context + " export specifier");
+    if (module.categories.empty()) {
+        throw std::invalid_argument{context + " must have categories"};
+    }
+    if (module.settings_list.empty()) {
+        throw std::invalid_argument{context + " must have settings"};
+    }
+
+    std::set<std::string> category_names;
+    for (auto const& category : module.categories) {
+        require_identifier(category.name, context + " category name");
+        require_value(category.label, context + " category label");
+        if (!category_names.insert(category.name).second) {
+            throw std::invalid_argument{context + " has duplicate category: " + category.name};
+        }
+    }
+
+    std::set<std::string> setting_names;
+    for (auto const& setting : module.settings_list) {
+        auto const setting_context{context + " setting '" + setting.name + "'"};
+        require_identifier(setting.name, setting_context + " name");
+        if (!setting_names.insert(setting.name).second) {
+            throw std::invalid_argument{context + " has duplicate setting: " + setting.name};
+        }
+        require_value(setting.label, setting_context + " label");
+        if (setting.tooltip.has_value()) {
+            require_value(*setting.tooltip, setting_context + " tooltip");
+        }
+        if (!category_names.contains(setting.category)) {
+            throw std::invalid_argument{setting_context + " has unknown category: " +
+                                        setting.category};
+        }
+        validate_type(setting.value_type, types, setting_context + " value");
+        require_identifier(setting.backend, setting_context + " backend");
+        if (setting.control.options_provider.has_value()) {
+            require_identifier(*setting.control.options_provider,
+                               setting_context + " options provider");
+        }
+        if (setting.control.availability_provider.has_value()) {
+            require_identifier(*setting.control.availability_provider,
+                               setting_context + " availability provider");
+        }
+
+        auto const has_range{setting.control.minimum.has_value() ||
+                             setting.control.maximum.has_value() || setting.control.step.has_value()};
+        auto const is_range{setting.control.kind == SettingControlKind::float_range ||
+                            setting.control.kind == SettingControlKind::integer_range};
+        if (is_range) {
+            if (!setting.control.minimum.has_value() || !setting.control.maximum.has_value() ||
+                !setting.control.step.has_value()) {
+                throw std::invalid_argument{setting_context + " range requires min, max, and step"};
+            }
+            if (*setting.control.minimum >= *setting.control.maximum ||
+                *setting.control.step <= 0.0) {
+                throw std::invalid_argument{setting_context + " has an invalid range"};
+            }
+        } else if (has_range) {
+            throw std::invalid_argument{setting_context + " non-range control has range values"};
+        }
+        if (setting.control.kind == SettingControlKind::choice &&
+            !setting.control.options_provider.has_value()) {
+            throw std::invalid_argument{setting_context + " choice requires an options provider"};
+        }
+        if (setting.control.kind == SettingControlKind::custom) {
+            if (!setting.control.custom_row.has_value()) {
+                throw std::invalid_argument{setting_context + " custom control requires custom_row"};
+            }
+            require_identifier(*setting.control.custom_row, setting_context + " custom row");
+        } else if (setting.control.custom_row.has_value()) {
+            throw std::invalid_argument{setting_context + " non-custom control has custom_row"};
+        }
+        auto const type{resolve_type(setting.value_type, types).spelling};
+        if (setting.control.kind == SettingControlKind::toggle && type != "bool") {
+            throw std::invalid_argument{setting_context + " toggle value type must be bool"};
+        }
+        if (setting.control.kind == SettingControlKind::float_range && type != "float") {
+            throw std::invalid_argument{setting_context + " float range value type must be float"};
+        }
+        if (setting.control.kind == SettingControlKind::integer_range && type != "int32") {
+            throw std::invalid_argument{setting_context +
+                                        " integer range value type must be int32"};
+        }
+    }
+}
+
 } // namespace
 
 void validate_manifest(Manifest const& manifest) {
@@ -871,6 +964,8 @@ void validate_manifest(Manifest const& manifest) {
                     validate_vector(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, FacadeModuleSchema>) {
                     validate_facade(module, manifest.types);
+                } else if constexpr (std::is_same_v<T, SettingsModuleSchema>) {
+                    validate_settings_module(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, UmbrellaModuleSchema>) {
                     if (module.settings.source.has_value()) {
                         throw std::invalid_argument{"Umbrella module '" + module.settings.name +

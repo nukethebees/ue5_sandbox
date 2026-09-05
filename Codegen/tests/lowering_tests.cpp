@@ -43,6 +43,15 @@ auto render_enum(EnumModuleSchema module) -> RenderedModule {
     return RenderedModule{files[0].content, files[1].content};
 }
 
+auto render_settings(SettingsModuleSchema module) -> RenderedModule {
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {std::move(module)},
+    }))};
+    EXPECT_EQ(files.size(), 2);
+    return RenderedModule{files[0].content, files[1].content};
+}
+
 auto basic_schema() -> SoaSchema {
     return SoaSchema{
         .name = "FData",
@@ -345,6 +354,56 @@ TEST(Lowering, FixedContainersOwnOneSizeAndImplementValueSemantics) {
     EXPECT_NE(output.header.find("auto operator=(TFixedData const& other)"), std::string::npos);
     EXPECT_NE(output.header.find("requires (Capacity >= 0)"), std::string::npos);
     EXPECT_EQ(occurrences(output.header, "size_type size_{};"), 1);
+}
+
+TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
+    auto const output{render_settings(SettingsModuleSchema{
+        .settings =
+            ModuleSettings{
+                .name = "settings",
+                .header = "Settings.h",
+                .source = "Settings.cpp",
+                .namespace_name = "game",
+            },
+        .api_name = "TSettingsAccess",
+        .state_name = "FSettingsState",
+        .categories = {{"video", "Video"}},
+        .settings_list =
+            {
+                SettingSchema{
+                    .name = "vsync",
+                    .label = "VSync",
+                    .category = "video",
+                    .value_type = TypeRef{"bool"},
+                    .backend = "engine",
+                    .apply_mode = SettingApplyMode::deferred,
+                    .control = SettingControlSchema{.kind = SettingControlKind::toggle},
+                },
+                SettingSchema{
+                    .name = "frame_limit",
+                    .label = "Frame Limit",
+                    .category = "video",
+                    .value_type = TypeRef{"float"},
+                    .backend = "engine",
+                    .apply_mode = SettingApplyMode::immediate,
+                    .control = SettingControlSchema{
+                        .kind = SettingControlKind::choice,
+                        .options_provider = "frame_limits",
+                    },
+                },
+            },
+    })};
+
+    EXPECT_NE(output.header.find("enum class EGameSetting : uint8"), std::string::npos);
+    EXPECT_NE(output.header.find("using FGameSettingValue = std::variant<bool, float>"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("void set_vsync(bool const value)"), std::string::npos);
+    EXPECT_NE(output.header.find("auto operator==(FSettingsState const&) const -> bool = default"),
+              std::string::npos);
+    EXPECT_NE(output.source.find("ESettingApplyMode::Deferred"), std::string::npos);
+    EXPECT_NE(output.source.find("EGameSettingOptionProvider::FrameLimits"),
+              std::string::npos);
+    EXPECT_NE(output.source.find("std::get_if<float>"), std::string::npos);
 }
 
 } // namespace

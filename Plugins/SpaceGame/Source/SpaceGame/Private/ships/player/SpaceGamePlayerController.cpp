@@ -23,6 +23,7 @@
 #include <InputAction.h>
 #include <InputMappingContext.h>
 #include <Kismet/KismetSystemLibrary.h>
+#include <TimerManager.h>
 #include <UnrealClient.h>
 
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
@@ -400,8 +401,21 @@ void ASpaceGamePlayerController::initialise_main_menu() {
         return;
     }
 
+    apply_main_menu_input_mode();
+    GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::apply_main_menu_input_mode);
     select_main_menu_camera();
     SetActorTickEnabled(false);
+}
+
+void ASpaceGamePlayerController::apply_main_menu_input_mode() {
+    if (!main_menu_requested_ || !IsValid(ui_root) || !IsValid(ui_root->get_active_screen())) {
+        return;
+    }
+
+    FInputModeUIOnly input_mode{};
+    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(input_mode);
+    SetShowMouseCursor(true);
 }
 
 auto ASpaceGamePlayerController::initialise_ui_root() -> bool {

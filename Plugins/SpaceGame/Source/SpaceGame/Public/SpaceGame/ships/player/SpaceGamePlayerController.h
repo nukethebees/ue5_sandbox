@@ -62,6 +62,7 @@ class ASpaceGamePlayerController : public APlayerController {
 
     // UI and simulation transitions
     void initialise_main_menu();
+    void apply_main_menu_input_mode();
     void initialise_gameplay();
     auto initialise_ui_root() -> bool;
     void shutdown_ui_root();
