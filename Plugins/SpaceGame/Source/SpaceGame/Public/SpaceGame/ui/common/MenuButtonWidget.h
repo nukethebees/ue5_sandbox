@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SpaceGame/ui/style/GameUiStyleTypes.h"
+
 #include <CommonButtonBase.h>
 #include <CommonTextBlock.h>
 
@@ -34,6 +36,12 @@ class SPACEGAME_API UMenuButtonWidget : public UCommonButtonBase {
 
     UPROPERTY(EditAnywhere, Category = "Menu Button")
     FText text_{};
+
+    UPROPERTY(EditAnywhere, Category = "Menu Button|Style")
+    EGameButtonStyle style_role_{EGameButtonStyle::Primary};
+
+    UPROPERTY(EditAnywhere, Category = "Menu Button|Style")
+    TSubclassOf<UCommonButtonStyle> style_override_{};
 
     UPROPERTY(meta = (BindWidget))
     UCommonTextBlock* label_text{nullptr};

@@ -1,5 +1,9 @@
 #include "SpaceGame/ui/common/MenuButtonWidget.h"
 
+#include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+
+#include <Engine/GameInstance.h>
 #include <Styling/CoreStyle.h>
 
 namespace ml::ioj {
@@ -51,6 +55,21 @@ auto UMenuButtonWidget::get_text() const -> FText {
 }
 
 void UMenuButtonWidget::NativePreConstruct() {
+    auto style{style_override_};
+    if (!style) {
+        auto const* const game_instance{GetGameInstance()};
+        auto const* const subsystem{
+            IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr};
+        if (IsValid(subsystem)) {
+            style = subsystem->get_ui_theme().get_common_button_style(style_role_);
+        }
+    }
+    if (style) {
+        SetStyle(style);
+    } else {
+        SetStyle(UMenuButtonStyle::StaticClass());
+    }
+
     Super::NativePreConstruct();
     if (IsValid(label_text)) {
         label_text->SetText(text_);

@@ -6,6 +6,7 @@
 #include "ShipSpeedWidget.generated.h"
 
 class UValueWidget;
+struct FTextBlockStyle;
 
 UCLASS()
 class SPACEGAME_API UShipSpeedWidget : public UUserWidget {
@@ -14,6 +15,7 @@ class SPACEGAME_API UShipSpeedWidget : public UUserWidget {
 
     void set_speed(float speed);
     void set_font_size(int32 const new_font_size);
+    void set_text_style(FTextBlockStyle const& style);
     auto get_font_size() const noexcept -> int32;
   protected:
     UPROPERTY(meta = (BindWidget))

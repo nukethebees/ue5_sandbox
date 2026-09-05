@@ -1,11 +1,11 @@
 #pragma once
 
 #include "SpaceGame/entities/TestEntityRegistry.h"
-#include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/entities/TestTeamVisualData.h"
-#include "SpaceGame/ships/common/ShipHealth.h"
+#include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/presentation/HudCrosshairDistances.h"
 #include "SpaceGame/presentation/widgets/ShipHudKillData.h"
+#include "SpaceGame/ships/common/ShipHealth.h"
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -30,6 +30,9 @@ class UTopKillersWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
 }
+namespace ml::ioj {
+class FGameUiStyle;
+}
 
 UCLASS()
 class SPACEGAME_API UShipHudWidget : public UUserWidget {
@@ -37,6 +40,7 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_speed(float value);
+    void apply_ui_style(ml::ioj::FGameUiStyle const& style);
     void set_speed_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_health(FShipHealth value);

@@ -2,6 +2,47 @@
   "modules": [
     {
       "kind": "enum",
+      "name": "game_ui_style_types",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ui/style/GameUiStyleTypes.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/ui/style/GameUiStyleTypes.cpp",
+      "header_include": "SpaceGame/ui/style/GameUiStyleTypes.h",
+      "helper_namespace": "ml::ioj",
+      "enums": [
+        {
+          "name": "EGameTextStyle",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "enum_array": true,
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "Body"},
+            {"name": "BodySecondary", "display_name": "Body Secondary"},
+            {"name": "Caption"},
+            {"name": "Heading1", "display_name": "Heading 1"},
+            {"name": "Heading2", "display_name": "Heading 2"},
+            {"name": "Heading3", "display_name": "Heading 3"},
+            {"name": "Warning"},
+            {"name": "HudPrimary", "display_name": "HUD Primary"},
+            {"name": "HudSecondary", "display_name": "HUD Secondary"}
+          ],
+          "conversions": ["lex_to_string", "string_view", "display_string_view"]
+        },
+        {
+          "name": "EGameButtonStyle",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "enum_array": true,
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "Primary"},
+            {"name": "Secondary"}
+          ],
+          "conversions": ["lex_to_string", "string_view", "display_string_view"]
+        }
+      ]
+    },
+    {
+      "kind": "enum",
       "name": "mission_modes",
       "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h",
       "source": "Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionMode.cpp",

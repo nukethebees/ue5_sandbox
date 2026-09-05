@@ -53,6 +53,7 @@ Plugins/SpaceGame/Source/SpaceGame/Private/simulation/EntityCellData.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/LineTraces.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/TraceHits.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/ui/style/GameUiStyleTypes.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLaserCollisionDataSoA.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersSoA.h
@@ -83,3 +84,4 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityCellData.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/LineTraces.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/TraceHits.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ui/style/GameUiStyleTypes.h

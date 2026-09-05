@@ -19,22 +19,22 @@ public class SpaceGame : ModuleRules
             "CommonUI",
             "Core",
             "CoreUObject",
+            "DeveloperSettings",
             "EnhancedInput",
             "Engine",
             "GameplayTags",
             "InputCore",
             "RenderCore",
+            "SlateCore",
             "UMG",
             "SGCollision",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]
         {
-            "DeveloperSettings",
             "Niagara",
             "SandboxUI",
             "Slate",
-            "SlateCore",
             "TraceLog",
         });
 

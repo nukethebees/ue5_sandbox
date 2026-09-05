@@ -14,6 +14,11 @@ void UShipSpeedWidget::set_font_size(int32 const new_font_size) {
     widget->set_font_size(new_font_size);
 }
 
+void UShipSpeedWidget::set_text_style(FTextBlockStyle const& style) {
+    RETURN_IF_NULLPTR(widget);
+    widget->set_text_style(style);
+}
+
 auto UShipSpeedWidget::get_font_size() const noexcept -> int32 {
     return widget->get_font_size();
 }

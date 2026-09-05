@@ -590,6 +590,14 @@ void ASpaceGamePlayerController::initialise_hud() {
     }
 
     hud_widget = created_widget;
+    auto* const game_subsystem{GetGameInstance()->GetSubsystem<ml::ioj::UGameSubsystem>()};
+    if (IsValid(game_subsystem)) {
+        created_widget->apply_ui_style(game_subsystem->get_ui_style());
+    } else {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("ASpaceGamePlayerController::initialise_hud: Game subsystem is invalid."));
+    }
     created_widget->AddToViewport();
     created_widget->set_entity_colours(team_visual_data->build_team_colour_cache());
     created_widget->set_crosshair_distances(ui_data->crosshair_distances);
