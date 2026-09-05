@@ -2,8 +2,9 @@
 
 #include <SpaceGame/presentation/HUDManager.h>
 
+#include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/MissionStatusWidget.h"
 #include "SpaceGame/presentation/widgets/ShipHealthWidget.h"
 #include "SpaceGame/presentation/widgets/ShipPointsWidget.h"
@@ -11,9 +12,8 @@
 #include "SpaceGame/presentation/widgets/ShipThrusterEnergyWidget.h"
 #include "SpaceGame/presentation/widgets/TeamEntityTableWidget.h"
 #include "SpaceGame/presentation/widgets/TopKillersWidget.h"
-#include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/Vector2DWidget.h"
-#include "SandboxGameShared/ui/widgets/ValueWidget.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/CanvasPanelSlot.h>
@@ -272,11 +272,13 @@ void UShipHudWidget::set_mission_enemies_remaining(int32 const enemies_remaining
     }
 }
 
+#if WITH_EDITOR
 void UShipHudWidget::update_sampled_speed(TConstArrayView<FVector2d> const samples,
                                           int32 const oldest_index) {
     RETURN_IF_NULLPTR(speed_graph);
     speed_graph->set_samples(samples, oldest_index);
 }
+#endif
 
 void UShipHudWidget::set_crosshair_positions(FVector2d near, FVector2d far) {
     RETURN_IF_NULLPTR(far_crosshair_widget);
