@@ -9,6 +9,9 @@
 #include "Math/Vector.h"
 #include "Templates/SharedPointer.h"
 
+#include <cstddef>
+#include <type_traits>
+
 struct SANDBOXUI_API FEntityOverlayInstance {
     FVector3f world_position{FVector3f::ZeroVector};
     float health{0.0f};
@@ -16,6 +19,11 @@ struct SANDBOXUI_API FEntityOverlayInstance {
 };
 
 static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 5);
+static_assert(std::is_standard_layout_v<FEntityOverlayInstance>);
+static_assert(std::is_trivially_copyable_v<FEntityOverlayInstance>);
+static_assert(offsetof(FEntityOverlayInstance, world_position) == 0);
+static_assert(offsetof(FEntityOverlayInstance, health) == sizeof(float) * 3);
+static_assert(offsetof(FEntityOverlayInstance, world_radius) == sizeof(float) * 4);
 
 struct SANDBOXUI_API FEntityOverlaySourceView {
     TConstArrayView<FVector3f> positions;

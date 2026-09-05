@@ -41,7 +41,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     };
     int32 const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
     float const radii[]{
-        50.0f, 100.0f, 200.0f, 400.0f, 800.0f, 200.0f, 200.0f, 200.0f, 200.0f, 400.0f};
+        50.0f, 100.0f, 200.0f, 400.0f, 1000.0f, 200.0f, 200.0f, 200.0f, 200.0f, 400.0f};
     auto const count{UE_ARRAY_COUNT(positions)};
     for (int32 index{0}; index < count; ++index) {
         entities.locations.add(positions[index]);

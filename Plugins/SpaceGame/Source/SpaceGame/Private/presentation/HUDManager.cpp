@@ -20,6 +20,8 @@ TRACE_DECLARE_INT_COUNTER(SandboxEntityOverlayCandidateCount,
                           TEXT("Sandbox/EntityOverlay/CandidateCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxEntityOverlayInvalidHealthCount,
                           TEXT("Sandbox/EntityOverlay/InvalidHealthCount"));
+TRACE_DECLARE_INT_COUNTER(SandboxEntityOverlayUploadBytes,
+                          TEXT("Sandbox/EntityOverlay/UploadBytes"));
 
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              FTestMissionManager const& new_mission_manager,
@@ -102,20 +104,28 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     for (auto const& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
         check(IsValid(hud));
+        hud->set_entity_overlay_style(entity_overlay_style_);
+        if (entity_overlay_settings_.enabled) {
+            hud->set_entity_overlay_frame_store(registration.frame_store);
+        } else {
+            hud->set_entity_overlay_frame_store({});
+        }
         synchronise_hud(*hud);
     }
     update_entity_overlays();
 }
 void FHUDManager::deactivate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::deactivate);
+    TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, 0);
+    TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, 0);
+    TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes, 0);
     update_timers.reset();
     for (auto& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
         if (!IsValid(hud)) {
             continue;
         }
-        auto empty_frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
-        hud->set_entity_overlay_frame_store(MoveTemp(empty_frame_store));
+        hud->set_entity_overlay_frame_store({});
     }
     registered_huds.Reset();
     player_ship.Reset();
@@ -182,11 +192,17 @@ void FHUDManager::register_hud(UShipHudWidget& hud) {
     auto& registration{registered_huds.Emplace_GetRef()};
     registration.hud = &hud;
     registration.frame_store = MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>();
-    hud.set_entity_overlay_frame_store(registration.frame_store);
     hud.set_entity_overlay_style(entity_overlay_style_);
+    if (state == EHUDManagerState::Active && entity_overlay_settings_.enabled) {
+        hud.set_entity_overlay_frame_store(registration.frame_store);
+    } else {
+        hud.set_entity_overlay_frame_store({});
+    }
     if (state == EHUDManagerState::Active) {
         synchronise_hud(hud);
-        update_entity_overlay(registration);
+        if (entity_overlay_settings_.enabled) {
+            update_entity_overlay(registration);
+        }
     }
 }
 void FHUDManager::unregister_hud(UShipHudWidget& hud) {
@@ -235,6 +251,13 @@ auto FHUDManager::collect_data(FPeriodicTickCountdown8::counter_type const num_t
 
 void FHUDManager::update_entity_overlays() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_overlays);
+    TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, 0);
+    TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, 0);
+    TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes, 0);
+    if (!entity_overlay_settings_.enabled) {
+        return;
+    }
+
     for (auto& registration : registered_huds) {
         update_entity_overlay(registration);
     }
@@ -262,24 +285,20 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     }
     controller->GetPlayerViewPoint(camera_location, camera_rotation);
 
-    FEntityOverlayCollectionResult result;
-    if (entity_overlay_settings_.enabled) {
-        check(entity_registry);
-        result =
-            collect_entity_overlay_instances(entity_registry->get_entity_data().get_const_view(),
-                                             entity_overlay_maximum_health_,
-                                             FVector3f{camera_location},
-                                             entity_overlay_settings_.maximum_range,
-                                             frame.instances,
-                                             registration.collector);
-    } else {
-        registration.collector.begin(FVector3f{camera_location}, 0.0f, frame.instances);
-    }
+    check(entity_registry);
+    auto const result{
+        collect_entity_overlay_instances(entity_registry->get_entity_data().get_const_view(),
+                                         entity_overlay_maximum_health_,
+                                         FVector3f{camera_location},
+                                         entity_overlay_settings_.maximum_range,
+                                         frame.instances,
+                                         registration.collector)};
     registration.frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, result.candidate_count);
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, result.invalid_health_count);
-    hud->set_entity_overlay_style(entity_overlay_style_);
+    TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes,
+                      static_cast<int64>(result.candidate_count) * sizeof(FEntityOverlayInstance));
 }
 bool FHUDManager::collect_mission_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_mission_data);

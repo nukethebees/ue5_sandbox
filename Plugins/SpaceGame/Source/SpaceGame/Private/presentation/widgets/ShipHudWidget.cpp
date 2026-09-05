@@ -51,7 +51,9 @@ void set_font_size_on_widgets(int32 const font_size, WidgetTypes* const... widge
 auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
     auto const overlay{SAssignNew(entity_overlay_widget_, SEntityOverlayWidget)};
-    entity_overlay_widget_->SetVisibility(EVisibility::HitTestInvisible);
+    entity_overlay_widget_->SetVisibility(entity_overlay_frame_store_.IsValid()
+                                              ? EVisibility::HitTestInvisible
+                                              : EVisibility::Collapsed);
     entity_overlay_widget_->set_frame_store(entity_overlay_frame_store_);
     entity_overlay_widget_->set_style(entity_overlay_style_);
     return SNew(SOverlay) + SOverlay::Slot()[overlay] + SOverlay::Slot()[hud_content];
@@ -98,6 +100,9 @@ void UShipHudWidget::set_entity_overlay_frame_store(FEntityOverlayFrameStoreCons
     entity_overlay_frame_store_ = MoveTemp(frame_store);
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_frame_store(entity_overlay_frame_store_);
+        entity_overlay_widget_->SetVisibility(entity_overlay_frame_store_.IsValid()
+                                                  ? EVisibility::HitTestInvisible
+                                                  : EVisibility::Collapsed);
     }
 }
 
@@ -107,6 +112,7 @@ void UShipHudWidget::set_entity_overlay_style(FEntityOverlayStyle const& style) 
         entity_overlay_widget_->set_style(entity_overlay_style_);
     }
 }
+
 void UShipHudWidget::NativeConstruct() {
     Super::NativeConstruct();
     set_common_widget_properties();
