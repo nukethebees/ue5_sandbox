@@ -80,6 +80,16 @@ void copy_box_slot_layout(UWidget const& source, UWidget& target) {
     }
 }
 
+auto category_label(EGameSettingCategory const category) -> FText {
+    for (auto const& descriptor : game_setting_category_descriptors()) {
+        if (descriptor.id == category) {
+            return descriptor.label;
+        }
+    }
+    checkNoEntry();
+    return FText::GetEmpty();
+}
+
 #if PLATFORM_WINDOWS
 auto format_large_page_access(ELargePageAccessStatus const status) -> FText {
     switch (status) {
@@ -142,12 +152,34 @@ void UOptionsWidget::NativeOnInitialized() {
 void UOptionsWidget::NativeConstruct() {
     Super::NativeConstruct();
     if (IsValid(settings_)) {
-        settings_->begin_edit();
         build_settings_pages();
         refresh_settings_ui();
     }
     build_system_page();
     set_active_tab(EOptionsTab::Video);
+}
+
+void UOptionsWidget::prepare_for_open() {
+    if (IsValid(settings_)) {
+        settings_->begin_edit();
+    }
+    if (IsValid(dirty_modal_)) {
+        dirty_modal_->SetVisibility(ESlateVisibility::Collapsed);
+    }
+    refresh_settings_ui();
+}
+
+void UOptionsWidget::request_back() {
+    if (IsValid(settings_) && settings_->is_dirty()) {
+        if (IsValid(dirty_modal_)) {
+            dirty_modal_->SetVisibility(ESlateVisibility::Visible);
+        }
+        return;
+    }
+    if (IsValid(settings_)) {
+        settings_->cancel();
+    }
+    back_requested.Broadcast();
 }
 
 void UOptionsWidget::focus_active_tab() {
@@ -211,16 +243,7 @@ void UOptionsWidget::handle_system() {
 }
 
 void UOptionsWidget::handle_back() {
-    if (IsValid(settings_) && settings_->is_dirty()) {
-        if (IsValid(dirty_modal_)) {
-            dirty_modal_->SetVisibility(ESlateVisibility::Visible);
-        }
-        return;
-    }
-    if (IsValid(settings_)) {
-        settings_->cancel();
-    }
-    back_requested.Broadcast();
+    request_back();
 }
 
 void UOptionsWidget::handle_apply() {
@@ -336,6 +359,24 @@ void UOptionsWidget::set_active_tab(EOptionsTab const tab) {
 
 void UOptionsWidget::set_tab_button_state(UButton& button, bool const selected) {
     button.SetBackgroundColor(selected ? options_selected_tab_colour : options_inactive_tab_colour);
+}
+
+void UOptionsWidget::set_tab_dirty_state(UButton& button, EGameSettingCategory const category) {
+    auto* const label{button.GetChildrenCount() > 0 ? Cast<UTextBlock>(button.GetChildAt(0))
+                                                    : nullptr};
+    if (!IsValid(label)) {
+        UE_LOG(LogSandboxUI,
+               Warning,
+               TEXT("UOptionsWidget::set_tab_dirty_state: Tab label is invalid."));
+        return;
+    }
+
+    auto const base_label{category_label(category)};
+    auto const text{
+        settings_->is_dirty(category)
+            ? FText::Format(NSLOCTEXT("OptionsMenu", "DirtyTabLabel", "{0} *"), base_label)
+            : base_label};
+    label->SetText(text);
 }
 
 void UOptionsWidget::build_system_tab() {
@@ -583,6 +624,11 @@ void UOptionsWidget::refresh_settings_ui() {
                                  !settings_->is_awaiting_display_confirmation());
         }
     }
+    set_tab_dirty_state(*video_button, EGameSettingCategory::Video);
+    set_tab_dirty_state(*gameplay_button, EGameSettingCategory::Gameplay);
+    set_tab_dirty_state(*audio_button, EGameSettingCategory::Audio);
+    set_tab_dirty_state(*controls_button, EGameSettingCategory::Controls);
+    set_tab_dirty_state(*accessibility_button, EGameSettingCategory::Accessibility);
     if (IsValid(display_countdown_) && settings_->is_awaiting_display_confirmation()) {
         display_countdown_->SetText(FText::FromString(
             FString::Printf(TEXT("Keep these display settings? Reverting in %d seconds."),

@@ -35,6 +35,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto options(EGameSetting setting) const -> TArray<FGameSettingOption>;
     auto is_available(EGameSetting setting) const -> bool;
     auto is_dirty() const -> bool;
+    auto is_dirty(EGameSettingCategory category) const -> bool;
     auto is_awaiting_display_confirmation() const -> bool;
     auto display_confirmation_seconds_remaining() const -> int32;
 

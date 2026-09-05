@@ -8,6 +8,16 @@ namespace {
 
 constexpr double display_confirmation_duration_seconds{15.0};
 
+auto setting_values_equal(FGameSettingValue const& left, FGameSettingValue const& right) -> bool {
+    if (auto const* const left_float{std::get_if<float>(&left)}) {
+        auto const* const right_float{std::get_if<float>(&right)};
+        return right_float != nullptr &&
+               (*left_float == *right_float ||
+                (FMath::IsNaN(*left_float) && FMath::IsNaN(*right_float)));
+    }
+    return left == right;
+}
+
 } // namespace
 
 void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
@@ -167,7 +177,24 @@ auto UGameSettingsSubsystem::is_available(EGameSetting const setting) const -> b
 }
 
 auto UGameSettingsSubsystem::is_dirty() const -> bool {
-    return pending_ != baseline_;
+    for (auto const& descriptor : game_setting_descriptors()) {
+        if (!setting_values_equal(game_setting_value(pending_, descriptor.id),
+                                  game_setting_value(baseline_, descriptor.id))) {
+            return true;
+        }
+    }
+    return false;
+}
+
+auto UGameSettingsSubsystem::is_dirty(EGameSettingCategory const category) const -> bool {
+    for (auto const& descriptor : game_setting_descriptors()) {
+        if (descriptor.category == category &&
+            !setting_values_equal(game_setting_value(pending_, descriptor.id),
+                                  game_setting_value(baseline_, descriptor.id))) {
+            return true;
+        }
+    }
+    return false;
 }
 
 auto UGameSettingsSubsystem::is_awaiting_display_confirmation() const -> bool {

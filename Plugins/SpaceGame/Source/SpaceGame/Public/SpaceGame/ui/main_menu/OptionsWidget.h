@@ -33,6 +33,8 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
   public:
     [[nodiscard]] auto get_active_tab() const noexcept -> EOptionsTab { return active_tab_; }
 
+    void prepare_for_open();
+    void request_back();
     void focus_active_tab();
     [[nodiscard]] auto get_focus_target() const -> UWidget*;
 
@@ -102,6 +104,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
 
     void set_active_tab(EOptionsTab tab);
     void set_tab_button_state(UButton& button, bool selected);
+    void set_tab_dirty_state(UButton& button, EGameSettingCategory category);
     void build_system_tab();
     void build_settings_pages();
     void build_category_page(UWidget& page, EGameSettingCategory category);

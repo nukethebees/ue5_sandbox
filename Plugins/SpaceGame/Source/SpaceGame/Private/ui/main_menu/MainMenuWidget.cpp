@@ -55,7 +55,7 @@ auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
             break;
         }
         case EMainMenuPage::Options: {
-            return_from_options();
+            options_widget->request_back();
             break;
         }
         case EMainMenuPage::Main: {
@@ -75,6 +75,7 @@ void UMainMenuWidget::handle_save_games() {
 }
 
 void UMainMenuWidget::handle_options() {
+    options_widget->prepare_for_open();
     set_active_page(EMainMenuPage::Options);
 }
 
