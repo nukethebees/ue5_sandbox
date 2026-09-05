@@ -16,7 +16,10 @@ add_executable(sandbox-kernelc src/main.cpp)
 set_target_properties(sandbox-kernelc PROPERTIES OUTPUT_NAME kernelc)
 target_link_libraries(sandbox-kernelc PRIVATE kernel-codegen-lib)
 
-add_executable(kernel-codegen-tests tests/compiler_tests.cpp)
+add_executable(kernel-codegen-tests
+  tests/compiler_io_tests.cpp
+  tests/compiler_tests.cpp
+)
 target_include_directories(kernel-codegen-tests PRIVATE src)
 target_link_libraries(kernel-codegen-tests PRIVATE
   codegen-lib
@@ -59,7 +62,7 @@ add_executable(kernel-generated-compile-tests
   ${KERNEL_COMPILE_FILES}
 )
 target_compile_features(kernel-generated-compile-tests PRIVATE cxx_std_23)
-target_compile_definitions(kernel-generated-compile-tests PRIVATE CODEGEN_CHECK_ABORT)
+target_compile_definitions(kernel-generated-compile-tests PRIVATE CODEGEN_CHECK_EXIT)
 target_include_directories(kernel-generated-compile-tests PRIVATE
   "${KERNEL_COMPILE_OUTPUT}"
   "${CMAKE_SOURCE_DIR}/Codegen/tests/compile_fixture/stubs"
@@ -72,6 +75,18 @@ endif()
 add_dependencies(kernel-codegen-tests kernel-generated-compile-tests)
 add_test(NAME KernelGeneratedCompileSmoke COMMAND kernel-generated-compile-tests)
 set_tests_properties(KernelGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
+foreach(INVARIANT_CASE IN ITEMS unequal-lengths overlapping-output overlapping-in-place)
+  add_test(
+    NAME "KernelGeneratedInvariant.${INVARIANT_CASE}"
+    COMMAND kernel-generated-compile-tests "${INVARIANT_CASE}"
+  )
+  set_tests_properties(
+    "KernelGeneratedInvariant.${INVARIANT_CASE}"
+    PROPERTIES
+      LABELS "unit;all;codegen"
+      WILL_FAIL TRUE
+  )
+endforeach()
 
 set(KERNEL_PRODUCTION_ROOT
   "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore"

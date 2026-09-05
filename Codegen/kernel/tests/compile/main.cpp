@@ -1,6 +1,7 @@
 #include "ArrayKernels.h"
 
 #include <cstddef>
+#include <string_view>
 
 template <typename T, std::size_t Count>
 auto test_size() -> bool {
@@ -30,10 +31,55 @@ auto test_size() -> bool {
             return false;
         }
     }
+
+    ml::divide_in_place(TArrayView<T>{lhs, count}, static_cast<T>(3));
+    ml::add_in_place(TArrayView<T>{lhs, count}, static_cast<T>(5));
+    ml::subtract_in_place(TArrayView<T>{lhs, count}, static_cast<T>(5));
+    for (std::size_t index{}; index < Count; ++index) {
+        if (lhs[index] != static_cast<T>(index + 1)) {
+            return false;
+        }
+    }
     return true;
 }
 
-auto main() -> int {
+void run_unequal_lengths() {
+    float lhs[2]{};
+    float rhs[1]{};
+    float out[2]{};
+    ml::multiply(TConstArrayView<float>{lhs, 2},
+                 TConstArrayView<float>{rhs, 1},
+                 TArrayView<float>{out, 2});
+}
+
+void run_overlapping_output() {
+    float storage[3]{};
+    ml::multiply(TConstArrayView<float>{storage, 2},
+                 2.0f,
+                 TArrayView<float>{storage + 1, 2});
+}
+
+void run_overlapping_in_place() {
+    float storage[3]{};
+    ml::multiply_in_place(TArrayView<float>{storage, 2},
+                          TConstArrayView<float>{storage + 1, 2});
+}
+
+auto main(int const argc, char const* const* argv) -> int {
+    if (argc == 2) {
+        auto const invariant{std::string_view{argv[1]}};
+        if (invariant == "unequal-lengths") {
+            run_unequal_lengths();
+        } else if (invariant == "overlapping-output") {
+            run_overlapping_output();
+        } else if (invariant == "overlapping-in-place") {
+            run_overlapping_in_place();
+        } else {
+            return 2;
+        }
+        return 0;
+    }
+
     auto const passed = test_size<int32, 0>() && test_size<int32, 1>() &&
                         test_size<int32, 7>() && test_size<int32, 8>() &&
                         test_size<int32, 9>() && test_size<float, 31>() &&

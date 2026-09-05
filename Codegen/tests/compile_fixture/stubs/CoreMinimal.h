@@ -24,11 +24,11 @@ auto ensureMsgf(bool const expression, TCHAR const*, Args&&...) -> bool {
     return expression;
 }
 
-#if defined(CODEGEN_CHECK_ABORT)
+#if defined(CODEGEN_CHECK_EXIT)
 #define check(expression)                                                                        \
     do {                                                                                         \
         if (!(expression)) {                                                                     \
-            std::abort();                                                                         \
+            std::exit(1);                                                                        \
         }                                                                                        \
     } while (false)
 #else

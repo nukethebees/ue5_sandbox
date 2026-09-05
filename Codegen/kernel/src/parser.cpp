@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <cstdlib>
 #include <map>
 #include <set>
@@ -158,8 +159,8 @@ class Parser {
             return false;
         }
         char* end{};
-        std::strtod(value.c_str(), &end);
-        return end == value.c_str() + value.size();
+        auto const parsed{std::strtod(value.c_str(), &end)};
+        return end == value.c_str() + value.size() && std::isfinite(parsed);
     }
 
     auto parse_expression(Form const& form) const -> Expression {
