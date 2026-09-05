@@ -421,32 +421,54 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       "${KERNEL_BENCHMARK_TEST_TEMP}"
     )
 
-    add_custom_target(kernel-benchmark-report
-      COMMAND "${CMAKE_COMMAND}" -E make_directory
-        "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
-      COMMAND kernel-native-benchmarks
-        --benchmark_repetitions=7
-        --benchmark_min_time=0.05s
-        --benchmark_enable_random_interleaving=true
-        --benchmark_display_aggregates_only=true
-        "--benchmark_out=${KERNEL_BENCHMARK_RESULTS}"
-        --benchmark_out_format=json
-      COMMAND "${CMAKE_COMMAND}" -E env
-        "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE}"
-        "MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
-        "${UV_EXECUTABLE}" run --locked
-          "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
+    function(add_kernel_benchmark_report target_name)
+      cmake_parse_arguments(REPORT "" "FILTER;COMMENT" "" ${ARGN})
+      set(filter_argument)
+      if(REPORT_FILTER)
+        set(filter_argument "--benchmark_filter=${REPORT_FILTER}")
+      endif()
+
+      add_custom_target(${target_name}
+        COMMAND "${CMAKE_COMMAND}" -E remove_directory
+          "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
+        COMMAND "${CMAKE_COMMAND}" -E rm -f
           "${KERNEL_BENCHMARK_RESULTS}"
-          "--output=${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-          --format=png
-      DEPENDS
-        kernel-native-benchmarks
-        "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
-        "${KERNEL_BENCHMARK_SCRIPT_LOCK}"
-      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-      COMMENT "Benchmarking generated kernels and plotting the results"
-      USES_TERMINAL
-      VERBATIM
+        COMMAND "${CMAKE_COMMAND}" -E make_directory
+          "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
+          "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
+        COMMAND kernel-native-benchmarks
+          --benchmark_repetitions=7
+          --benchmark_min_time=0.05s
+          --benchmark_enable_random_interleaving=true
+          --benchmark_display_aggregates_only=true
+          ${filter_argument}
+          "--benchmark_out=${KERNEL_BENCHMARK_RESULTS}"
+          --benchmark_out_format=json
+        COMMAND "${CMAKE_COMMAND}" -E env
+          "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE}"
+          "MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
+          "${UV_EXECUTABLE}" run --locked
+            "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
+            "${KERNEL_BENCHMARK_RESULTS}"
+            "--output=${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
+            --format=png
+        DEPENDS
+          kernel-native-benchmarks
+          "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
+          "${KERNEL_BENCHMARK_SCRIPT_LOCK}"
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+        COMMENT "${REPORT_COMMENT}"
+        USES_TERMINAL
+        VERBATIM
+      )
+    endfunction()
+
+    add_kernel_benchmark_report(kernel-benchmark-report
+      FILTER "^(add_scaled|dot_product)/[^/]+/ordinary/aligned/(32|256|4096|65536|262144|1048576)/real_time$"
+      COMMENT "Benchmarking happy-path generated kernels and plotting the results"
+    )
+    add_kernel_benchmark_report(kernel-benchmark-report-full
+      COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"
     )
 
     add_test(

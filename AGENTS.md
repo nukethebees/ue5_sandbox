@@ -31,7 +31,8 @@ Unreal Engine 5.8 project.
 * Prefer the smallest coherent change that fully implements the requested design. Measure scope by conceptual and behavioural completeness, not by minimizing edited lines.
 * Do not preserve an architecture the user asked to replace by adding wrappers, adapters, compatibility layers, or other indirection solely to reduce the diff. Do not perform unrelated refactors.
 * If the user says "engage in freedom", "use your judgement", or otherwise grants autonomy, resolve reasonable ambiguities yourself while keeping scope controlled.
-* Store disposable local session hand-offs under `.local/handoffs/`; this directory is git-ignored and its contents must not be committed.
+* Store local development roadmaps under `.local/plans/`. Plans describe intended future work, ordering, and decision points across sessions; this directory is git-ignored and its contents must not be committed.
+* Store disposable local session hand-offs under `.local/handoffs/`. Hand-offs describe transient execution state needed to resume an interrupted task; this directory is git-ignored and its contents must not be committed.
 
 # Coding Style
 

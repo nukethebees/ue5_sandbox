@@ -194,18 +194,26 @@ quickly collapses most mixtures containing infinity and NaN to NaN, which adds c
 a useful performance comparison.
 
 Deterministic values make runs reproducible. Input values are not randomized because `add_scaled`
-has no data-dependent branches. The full report instead enables Google Benchmark's random
-interleaving, which changes the order in which benchmark cases are sampled across repetitions and
-helps reduce systematic frequency, temperature, and ordering bias.
+has no data-dependent branches. Both timed reports enable Google Benchmark's random interleaving,
+which changes the order in which benchmark cases are sampled across repetitions and helps reduce
+systematic frequency, temperature, and ordering bias.
 
 Ordinary cases cover element counts around the AVX2 and AVX-512 widths, larger cache regimes, and
 arrays up to 1,048,576 elements. Extreme-value `add_scaled` cases use 32, 256, 4,096, 65,536, and
 1,048,576 elements to sample small, L1, L2, and shared-cache regimes without duplicating the entire
 matrix. Every case is run for seven randomly interleaved repetitions with a minimum of 0.05 seconds
-per repetition. On an AVX-512-capable machine this currently produces 574 cases: 322 for
-`add_scaled` and 252 for dot product. The lower bound from the configured minimum alone is about
-201 seconds, so allow roughly four minutes plus build and plotting time; timing varies with the CPU
-and machine load. Unsupported AVX-512 cases are reported as skipped.
+per repetition.
+
+The routine `kernel-benchmark-plots` report selects ordinary, aligned cases at 32, 256, 4,096,
+65,536, 262,144, and 1,048,576 elements. It currently contains 84 cases, has a configured timing
+floor of about 30 seconds, and should normally finish in 30 to 45 seconds plus build and plotting
+time. Use it while iterating.
+
+The `kernel-benchmark-plots-full` report runs all 574 cases: 322 for `add_scaled` and 252 for dot
+product. Its configured timing floor is about 201 seconds, so allow roughly four minutes plus build
+and plotting time. It covers SIMD-width boundaries, scalar tails, both alignments, and the
+`add_scaled` extreme set. Run it before accepting a backend or dispatch change. Unsupported AVX-512
+cases are reported as skipped.
 
 Allocation and input initialization occur outside the timed loop. The timed body calls the kernel,
 prevents its result from being optimized away, and uses real elapsed time. Reported `add_scaled`
@@ -228,14 +236,17 @@ cmake --build --preset codegen --target generate-kernel-avx2-lab
 cmake --build --preset codegen --target check-generated-kernel-avx2-lab
 cmake --workflow --preset kernel-benchmark
 cmake --workflow --preset kernel-benchmark-plots
+cmake --workflow --preset kernel-benchmark-plots-full
 out/build/kernel-benchmark/Codegen/kernel/kernel-native-benchmarks.exe --benchmark_repetitions=5 --benchmark_enable_random_interleaving=true
 ```
 
 The `kernel-benchmark` workflow builds the native benchmark and runs its SIMD correctness tests and
-Google Benchmark dry run. It does not run the full timed matrix. The `kernel-benchmark-plots`
-workflow requires `uv`; it builds and tests the same targets, runs the full timed matrix, writes the
-Google Benchmark JSON to `out/benchmarks/kernel/results.json`, and uses the locked Matplotlib
+Google Benchmark dry run. It does not run a timed matrix. Both plotting workflows require `uv`,
+write Google Benchmark JSON to `out/benchmarks/kernel/results.json`, and use the locked Matplotlib
 environment declared by `Scripts/plot-kernel-benchmarks.py` to write headless PNG reports under
-`out/benchmarks/kernel/plots`. Matplotlib and its dependencies are not part of the native or Unreal
-build graphs. PNG is also the plotter's default for direct invocations; pass `--format=svg` when a
-vector report is preferred.
+`out/benchmarks/kernel/plots`. The most recently run workflow owns this single canonical report.
+Each workflow clears the old results and plots before timing, which prevents stale full-report plots
+from surviving a happy-path run and makes an open-image file lock fail before the benchmark starts.
+Do not run the two report workflows concurrently. Matplotlib and its dependencies are not part of
+the native or Unreal build graphs. PNG is also the plotter's default for direct invocations; pass
+`--format=svg` when a vector report is preferred.

@@ -115,6 +115,11 @@
       "targets": ["kernel-native-simd-tests", "kernel-benchmark-report"]
     },
     {
+      "name": "kernel-benchmark-plots-full",
+      "configurePreset": "kernel-benchmark-plots",
+      "targets": ["kernel-native-simd-tests", "kernel-benchmark-report-full"]
+    },
+    {
       "name": "generate-code",
       "configurePreset": "codegen",
       "targets": ["generate-code"]
@@ -346,6 +351,14 @@
       "steps": [
         { "type": "configure", "name": "kernel-benchmark-plots" },
         { "type": "build", "name": "kernel-benchmark-plots" },
+        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+      ]
+    },
+    {
+      "name": "kernel-benchmark-plots-full",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark-plots" },
+        { "type": "build", "name": "kernel-benchmark-plots-full" },
         { "type": "test", "name": "kernel-benchmark-plot-tests" }
       ]
     },
