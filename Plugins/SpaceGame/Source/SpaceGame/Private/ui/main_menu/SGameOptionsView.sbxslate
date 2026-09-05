@@ -1,0 +1,23 @@
+(widget-class ml::ioj::SGameOptionsView
+  (function BuildPanel
+    (params
+      (value background)
+      (value page_margin)
+      (value maximum_width)
+      (value header_padding)
+      (value body_padding)
+      (value footer_padding)
+      (existing header)
+      (existing body)
+      (existing footer))
+    (SBorder
+      :BorderImage background
+      :Padding page_margin
+      :HAlign HAlign_Center
+      (SBox
+        :MaxDesiredWidth maximum_width
+        :HAlign HAlign_Fill
+        (vbox
+          (auto :padding header_padding (existing header))
+          (fill :padding body_padding (existing body))
+          (auto :padding footer_padding (existing footer)))))))
