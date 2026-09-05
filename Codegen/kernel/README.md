@@ -67,8 +67,9 @@ AST evaluator that is independent of C++ expression rendering. Profile selection
 generator rather than configurable through arbitrary C++ strings.
 
 The SIMD lab profiles are deliberately test-only. They select one concrete, pairwise-disjoint,
-out-of-place `float` variant. `unreal-avx2-lab` emits an AVX2 autovectorized baseline plus single-loop and
-four-way-unrolled intrinsic implementations for the private Unreal benchmark module.
+out-of-place `float` variant. `unreal-avx2-lab` emits an AVX2 autovectorized baseline plus
+single-loop and four-way-unrolled intrinsic implementations for the private Unreal benchmark
+module.
 `native-x86-simd-lab` additionally emits isolated AVX-512 and runtime-dispatch translation units for
 the opt-in native CMake benchmark. The vector renderer accepts only operand references, addition,
 and multiplication, uses unaligned loads and stores, and preserves the expression-tree order
@@ -88,6 +89,37 @@ Google Benchmark is the timing harness. The executable registers each case with
 calibrate iteration counts, run repetitions, interleave cases, and write the result JSON. The
 Python/Matplotlib script does not execute or time kernels; it only reads that JSON and produces the
 plots.
+
+### Generated implementation locations
+
+The native implementations being benchmarked are concrete generated `.cpp` files. They are not
+committed source files. CMake runs `sandbox-kernelc --profile native-x86-simd-lab` and writes them
+under the selected preset's build tree:
+
+```text
+out/build/<preset>/Codegen/kernel/native-simd-generated/native/generated/
+  add_scaled_x86_simd_lab.h
+  add_scaled_x86_simd_lab_avx2.cpp
+  add_scaled_x86_simd_lab_avx512.cpp
+  add_scaled_x86_simd_lab_dispatch.cpp
+```
+
+For the plotting preset, `<preset>` is `kernel-benchmark-plots`. The AVX2 translation unit contains
+the `autovec-avx2`, `avx2`, and `avx2-unrolled` functions. The AVX-512 translation unit contains the
+`autovec-avx512` and `avx512` functions, including the `_mm512_*` intrinsic loop. The dispatch
+translation unit contains the `cpu-features` selection and cached forwarding function.
+
+CMake compiles those exact generated files into separate AVX2, AVX-512, and dispatch object
+libraries and links the objects into `kernel-native-benchmarks`. The benchmark harness in
+`Codegen/kernel/benchmarks/add_scaled_benchmarks.cpp` calls the resulting functions. The semantic
+declaration in `Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.sbxkernel` and the
+renderer in `Codegen/kernel/src/avx2_lab_renderer.cpp` are the committed sources of truth.
+
+Native output is kept under `out/` because it depends on the CMake compiler and ISA configuration;
+the directory is Git-ignored. Run either native benchmark workflow before inspecting it. By
+contrast, the Unreal AVX2 lab output is committed under
+`Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/generated/` because UnrealBuildTool
+consumes that checked generated source directly.
 
 Benchmark names have the form:
 
