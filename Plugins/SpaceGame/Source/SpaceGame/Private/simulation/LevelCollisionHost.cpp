@@ -52,12 +52,11 @@ void set_mesh_aabb(FEntityAABBs& aabbs,
     auto const aabb{ml::get_aabb(*mesh)};
     if (!aabb.IsValid) {
         UE_LOG(LogSandbox,
-               Warning,
-               TEXT("Cannot initialise collision bounds for %s: mesh %s has no valid collision "
-                    "AABB"),
+               Fatal,
+               TEXT("Cannot initialise collision bounds for %s: mesh %s has no query-enabled "
+                    "simple collision geometry"),
                entity_name,
                *mesh->GetName());
-        return;
     }
 
     FVector3f const centre{aabb.GetCenter()};
