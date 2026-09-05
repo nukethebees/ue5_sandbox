@@ -3,6 +3,9 @@
   (title "Turret Trial 8")
   (description "Clear two interlocking turret layers within 105 seconds.")
 
+  (unlock
+    (level-completed 'turret-trial-7))
+
   (teams
     (team 'blue)
     (team 'red))

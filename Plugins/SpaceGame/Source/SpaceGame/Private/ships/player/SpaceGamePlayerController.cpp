@@ -269,6 +269,10 @@ void ASpaceGamePlayerController::BeginPlay() {
 }
 
 void ASpaceGamePlayerController::initialise_gameplay() {
+    FInputModeGameOnly input_mode{};
+    SetInputMode(input_mode);
+    SetShowMouseCursor(false);
+
     bind_orchestrator_events();
     initialise_hud();
 

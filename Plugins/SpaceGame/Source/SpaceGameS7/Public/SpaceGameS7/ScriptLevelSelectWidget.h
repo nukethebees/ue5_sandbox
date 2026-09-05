@@ -15,7 +15,14 @@ enum class ELevelLaunchMode : uint8;
 }
 
 namespace ml::s7 {
-SPACEGAMES7_API auto format_level_row_title(FString title, bool completed) -> FString;
+enum class ELevelRowState : uint8 {
+    Invalid,
+    Locked,
+    Unlocked,
+    Completed,
+};
+
+SPACEGAMES7_API auto format_level_row_title(FString title, ELevelRowState state) -> FString;
 
 UCLASS()
 class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWidget {
@@ -30,9 +37,9 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     auto create_script_preview() -> bool;
     void launch_selected_level(ml::ioj::ELevelLaunchMode launch_mode);
     void refresh_levels();
-    void select_level(int32 index);
-    void restore_level_selection(int32 index);
-    void apply_level_selection(int32 index, UWidget& focus_target, bool refresh_focus);
+    void select_level(int32 button_index);
+    void restore_level_selection(int32 button_index);
+    void apply_level_selection(int32 button_index, bool refresh_focus);
 
     void handle_refresh();
     void handle_launch();
@@ -59,13 +66,14 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     TArray<FLevelScriptEntry> entries_{};
     UPROPERTY(Transient)
     TArray<TObjectPtr<ml::ioj::UMenuButtonWidget>> level_buttons_{};
+    TArray<int32> level_entry_indices_{};
     UPROPERTY(Transient)
     TObjectPtr<UMultiLineEditableTextBox> script_preview_{nullptr};
     UPROPERTY()
     TSubclassOf<ml::ioj::UMenuButtonWidget> menu_button_class_{nullptr};
     UPROPERTY(Transient)
     TObjectPtr<UWidget> desired_focus_target_{nullptr};
-    int32 selected_index_{INDEX_NONE};
+    int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
 };
 }

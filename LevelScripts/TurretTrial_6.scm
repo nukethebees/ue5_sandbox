@@ -3,6 +3,9 @@
   (title "Turret Trial 6")
   (description "Choose which of two mutually supporting turret clusters to attack first.")
 
+  (unlock
+    (level-completed 'turret-trial-5))
+
   (teams
     (team 'blue)
     (team 'red))

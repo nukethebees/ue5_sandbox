@@ -3,6 +3,9 @@
   (title "Turret Trial 2")
   (description "Break a shallow defensive line before its fields of fire overlap.")
 
+  (unlock
+    (level-completed 'turret-trial-1))
+
   (teams
     (team 'blue)
     (team 'red))

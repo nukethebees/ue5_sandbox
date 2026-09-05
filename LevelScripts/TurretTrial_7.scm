@@ -3,6 +3,9 @@
   (title "Turret Trial 7")
   (description "Break an eight-turret ring before the 120-second limit expires.")
 
+  (unlock
+    (level-completed 'turret-trial-6))
+
   (teams
     (team 'blue)
     (team 'red))

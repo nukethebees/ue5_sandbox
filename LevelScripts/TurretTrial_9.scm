@@ -3,6 +3,9 @@
   (title "Turret Trial 9")
   (description "Destroy a dense double ring of twelve turrets within 90 seconds.")
 
+  (unlock
+    (level-completed 'turret-trial-8))
+
   (teams
     (team 'blue)
     (team 'red))

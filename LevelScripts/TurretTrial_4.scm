@@ -3,6 +3,9 @@
   (title "Turret Trial 4")
   (description "Dismantle a diamond formation with overlapping coverage.")
 
+  (unlock
+    (level-completed 'turret-trial-3))
+
   (teams
     (team 'blue)
     (team 'red))

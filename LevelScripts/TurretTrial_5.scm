@@ -3,6 +3,9 @@
   (title "Turret Trial 5")
   (description "Push through a staggered turret corridor without becoming boxed in.")
 
+  (unlock
+    (level-completed 'turret-trial-4))
+
   (teams
     (team 'blue)
     (team 'red))

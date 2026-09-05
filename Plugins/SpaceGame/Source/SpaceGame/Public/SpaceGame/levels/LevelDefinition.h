@@ -4,6 +4,7 @@
 #include <SpaceGame/levels/LevelTypes.h>
 
 #include <CoreMinimal.h>
+#include <Misc/TVariant.h>
 
 namespace ml {
 struct SPACEGAME_API FLevelMetadata {
@@ -42,8 +43,17 @@ struct SPACEGAME_API FLevelMissionDefinition {
     TArray<FLevelEntityId> required_kill_entity_ids{};
 };
 
+struct SPACEGAME_API FLevelCompletedUnlockCriterion {
+    FLevelId level_id{};
+
+    auto operator==(FLevelCompletedUnlockCriterion const&) const -> bool = default;
+};
+
+using FLevelUnlockCriterion = TVariant<FLevelCompletedUnlockCriterion>;
+
 struct SPACEGAME_API FLevelDefinition {
     FLevelMetadata metadata{};
+    TArray<FLevelUnlockCriterion> unlock_criteria{};
     FLevelEntityId player_entity_id{};
     TOptional<FLevelCameraDefinition> camera{NullOpt};
     TOptional<FLevelMissionDefinition> mission{NullOpt};
@@ -57,6 +67,7 @@ class SPACEGAME_API FLevelBuilder {
     void set_player_entity(FLevelEntityId id);
     void set_camera(FLevelCameraDefinition const& camera);
     void set_mission(FLevelMissionDefinition const& mission);
+    void add_unlock_criterion(FLevelUnlockCriterion criterion);
     auto add_team(FLevelTeamId team) -> FLevelTeamId;
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
     auto finish() -> FLevelDefinition;
@@ -97,6 +108,9 @@ enum class ELevelValidationErrorCode : uint8 {
     DuplicateMissionEntityReference,
     ConflictingMissionEntityRoles,
     AmbiguousAutomaticKillTeams,
+    MissingUnlockLevelId,
+    DuplicateUnlockCriterion,
+    SelfUnlockDependency,
 };
 
 struct SPACEGAME_API FLevelValidationError {
