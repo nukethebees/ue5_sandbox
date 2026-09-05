@@ -55,7 +55,8 @@ auto collect_entity_overlay_instances(ml::entity_registry::EntityData::ConstView
 
         static_cast<void>(
             collector.try_add(entities.locations[index],
-                              static_cast<float>(entities.healths[index]) * inverse_health));
+                              static_cast<float>(entities.healths[index]) * inverse_health,
+                              entities.radii[index]));
     }
 
     return {.candidate_count = output_instances.Num(),

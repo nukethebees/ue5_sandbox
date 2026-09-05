@@ -14,7 +14,9 @@ void FEntityOverlayCollector::begin(FVector3f const origin,
     invalid_health_count_ = 0;
 }
 
-auto FEntityOverlayCollector::try_add(FVector3f const position, float normalized_health) -> bool {
+auto FEntityOverlayCollector::try_add(FVector3f const position,
+                                      float normalized_health,
+                                      float world_radius) -> bool {
     check(output_instances_);
 
     if (FVector3f::DistSquared(origin_, position) > maximum_range_squared_) {
@@ -25,9 +27,13 @@ auto FEntityOverlayCollector::try_add(FVector3f const position, float normalized
         normalized_health = 0.0f;
         ++invalid_health_count_;
     }
+    if (!FMath::IsFinite(world_radius)) {
+        world_radius = 0.0f;
+    }
 
-    output_instances_->Add(
-        {.world_position = position, .health = FMath::Clamp(normalized_health, 0.0f, 1.0f)});
+    output_instances_->Add({.world_position = position,
+                            .health = FMath::Clamp(normalized_health, 0.0f, 1.0f),
+                            .world_radius = FMath::Max(world_radius, 0.0f)});
     return true;
 }
 
@@ -41,7 +47,8 @@ auto FEntityOverlayCollector::append(FEntityOverlaySourceView const source) -> i
     auto const count{source.positions.Num()};
     output_instances_->Reserve(previous_count + count);
     for (int32 index{0}; index < count; ++index) {
-        static_cast<void>(try_add(source.positions[index], source.health_values[index]));
+        static_cast<void>(try_add(
+            source.positions[index], source.health_values[index], source.world_radii[index]));
     }
     return output_instances_->Num() - previous_count;
 }

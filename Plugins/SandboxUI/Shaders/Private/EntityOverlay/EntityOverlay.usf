@@ -3,6 +3,7 @@
 struct EntityOverlayInstance {
     float3 world_position;
     float health;
+    float world_radius;
 };
 
 StructuredBuffer<EntityOverlayInstance> Instances;
@@ -12,6 +13,9 @@ int2 OutputSize;
 int4 ViewRect;
 float2 BarSizePixels;
 float2 ScreenOffsetPixels;
+float ReferenceWorldRadius;
+float MinimumBarScale;
+float MaximumBarScale;
 float InsetPixels;
 float4 BackgroundColor;
 float4 FillColor;
@@ -30,10 +34,11 @@ float4 pixel_to_clip(float2 const pixel_position, float const depth) {
 }
 
 struct EntityOverlayVertexOutput {
-    float4 position               : SV_Position;
-    float2 local_uv               : ENTITY_OVERLAY_UV;
-    nointerpolation float health  : ENTITY_OVERLAY_HEALTH;
-    nointerpolation float visible : ENTITY_OVERLAY_VISIBLE;
+    float4 position                        : SV_Position;
+    float2 local_uv                        : ENTITY_OVERLAY_UV;
+    nointerpolation float health           : ENTITY_OVERLAY_HEALTH;
+    nointerpolation float visible          : ENTITY_OVERLAY_VISIBLE;
+    nointerpolation float2 bar_size_pixels : ENTITY_OVERLAY_BAR_SIZE;
 };
 
 EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
@@ -49,10 +54,13 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     float2 const projected_pixel =
         view_min + float2(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5) * view_size;
     float2 const corner = quad_corner(vertex_id);
+    float const bar_scale = clamp(
+        instance.world_radius / max(ReferenceWorldRadius, 0.001), MinimumBarScale, MaximumBarScale);
+    float2 const instance_bar_size = BarSizePixels * bar_scale;
     float2 pixel_position =
-        projected_pixel + ScreenOffsetPixels + (corner - float2(0.5, 1.0)) * BarSizePixels;
+        projected_pixel + ScreenOffsetPixels + (corner - float2(0.5, 1.0)) * instance_bar_size;
     if (!visible) {
-        pixel_position = float2(-BarSizePixels.x * 2.0, -BarSizePixels.y * 2.0);
+        pixel_position = float2(-instance_bar_size.x * 2.0, -instance_bar_size.y * 2.0);
     }
 
     EntityOverlayVertexOutput output;
@@ -61,6 +69,7 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     output.local_uv = corner;
     output.health = saturate(instance.health);
     output.visible = visible ? 1.0 : 0.0;
+    output.bar_size_pixels = instance_bar_size;
     return output;
 }
 
@@ -68,7 +77,7 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
     : SV_Target0 {
     clip(input.visible - 0.5);
 
-    float2 const inset_uv = InsetPixels / max(BarSizePixels, float2(1.0, 1.0));
+    float2 const inset_uv = InsetPixels / max(input.bar_size_pixels, float2(1.0, 1.0));
     bool const inside = all(input.local_uv >= inset_uv) && all(input.local_uv <= 1.0 - inset_uv);
     bool const filled =
         inside && input.local_uv.x <= lerp(inset_uv.x, 1.0 - inset_uv.x, input.health);

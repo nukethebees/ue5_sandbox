@@ -65,6 +65,12 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     entity_overlay_style_ = {
         .bar_size_pixels = FVector2f{entity_overlay_settings.bar_size_pixels},
         .screen_offset_pixels = FVector2f{entity_overlay_settings.screen_offset_pixels},
+        .reference_world_radius =
+            FMath::Max(entity_overlay_settings.reference_world_radius, 0.001f),
+        .minimum_bar_scale = FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f),
+        .maximum_bar_scale =
+            FMath::Max(entity_overlay_settings.maximum_bar_scale,
+                       FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f)),
         .inset_pixels = entity_overlay_settings.inset_pixels,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,

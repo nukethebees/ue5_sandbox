@@ -20,6 +20,17 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FVector2D screen_offset_pixels{0.0, -24.0};
 
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Size Scaling",
+              meta = (ClampMin = "0.001", Units = "cm"))
+    float reference_world_radius{200.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Size Scaling", meta = (ClampMin = "0.01"))
+    float minimum_bar_scale{0.5f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Size Scaling", meta = (ClampMin = "0.01"))
+    float maximum_bar_scale{2.0f};
+
     UPROPERTY(EditAnywhere, Category = "Entity Overlay", meta = (ClampMin = "0.0"))
     float inset_pixels{1.0f};
 

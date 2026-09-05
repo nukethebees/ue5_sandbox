@@ -21,10 +21,11 @@ void add_entity(ml::entity_registry::EntityData& entities,
                 FVector3f const position,
                 int32 const health,
                 ETestEntityType const type,
+                float const radius = 1.0f,
                 bool const alive = true) {
     entities.locations.add(position);
     entities.velocities.add(FVector3f::ZeroVector);
-    entities.radii.Add(1.0f);
+    entities.radii.Add(radius);
     entities.healths.Add(health);
     entities.teams.Add(ETestTeam::White);
     entities.entity_types.Add(type);
@@ -37,10 +38,10 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
     TEST_METHOD(FiltersEligibilityRangeAndNormalizesHealth)
     {
         ml::entity_registry::EntityData entities;
-        add_entity(entities, {10.0f, 0.0f, 0.0f}, 10, ETestEntityType::Turret);
-        add_entity(entities, {20.0f, 0.0f, 0.0f}, 25, ETestEntityType::CapitalShipFighter);
-        add_entity(entities, {30.0f, 0.0f, 0.0f}, 2500, ETestEntityType::CapitalShip);
-        add_entity(entities, {40.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret, false);
+        add_entity(entities, {10.0f, 0.0f, 0.0f}, 10, ETestEntityType::Turret, 50.0f);
+        add_entity(entities, {20.0f, 0.0f, 0.0f}, 25, ETestEntityType::CapitalShipFighter, 100.0f);
+        add_entity(entities, {30.0f, 0.0f, 0.0f}, 2500, ETestEntityType::CapitalShip, 1000.0f);
+        add_entity(entities, {40.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret, 50.0f, false);
         add_entity(entities, {50.0f, 0.0f, 0.0f}, 100, ETestEntityType::PlayerShip);
         add_entity(entities, {60.0f, 0.0f, 0.0f}, 100, ETestEntityType::TubeSpinner);
         add_entity(entities, {101.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
@@ -56,6 +57,9 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Turret health is normalized"), output[0].health, 0.5f);
         TestRunner->TestEqual(TEXT("Fighter health is normalized"), output[1].health, 0.5f);
         TestRunner->TestEqual(TEXT("Capital health is normalized"), output[2].health, 0.5f);
+        TestRunner->TestEqual(TEXT("Turret radius is retained"), output[0].world_radius, 50.0f);
+        TestRunner->TestEqual(TEXT("Fighter radius is retained"), output[1].world_radius, 100.0f);
+        TestRunner->TestEqual(TEXT("Capital radius is retained"), output[2].world_radius, 1000.0f);
     }
 
     TEST_METHOD(ClampsHealthFromRegistry)

@@ -31,18 +31,29 @@ auto summarize(FString stage, int32 const count, TArray<double> samples)
             .maximum_microseconds = samples.Last()};
 }
 
-auto make_source(int32 const count) -> TPair<TArray<FVector3f>, TArray<float>> {
+struct FBenchmarkSource {
     TArray<FVector3f> positions;
     TArray<float> health;
+    TArray<float> world_radii;
+};
+
+auto make_source(int32 const count) -> FBenchmarkSource {
+    TArray<FVector3f> positions;
+    TArray<float> health;
+    TArray<float> world_radii;
     positions.SetNumUninitialized(count);
     health.SetNumUninitialized(count);
+    world_radii.SetNumUninitialized(count);
     for (int32 index{0}; index < count; ++index) {
         positions[index] = {1000.0f + static_cast<float>(index % 100) * 10.0f,
                             static_cast<float>((index / 100) % 100) * 10.0f,
                             static_cast<float>(index % 17) * 5.0f};
         health[index] = static_cast<float>(index % 101) / 100.0f;
+        world_radii[index] = 200.0f;
     }
-    return {MoveTemp(positions), MoveTemp(health)};
+    return {.positions = MoveTemp(positions),
+            .health = MoveTemp(health),
+            .world_radii = MoveTemp(world_radii)};
 }
 } // namespace
 
@@ -94,7 +105,8 @@ auto run_entity_overlay_benchmark(int32 const warmup_iterations, int32 const mea
         for (int32 iteration{0}; iteration < total_iterations; ++iteration) {
             auto const start{FPlatformTime::Seconds()};
             collector.begin(FVector3f::ZeroVector, 100000.0f, collected);
-            static_cast<void>(collector.append({source.Key, source.Value}));
+            static_cast<void>(
+                collector.append({source.positions, source.health, source.world_radii}));
             auto const elapsed{(FPlatformTime::Seconds() - start) * 1'000'000.0};
             if (iteration >= warmup_iterations) {
                 collection_samples.Add(elapsed);

@@ -14,7 +14,7 @@
 DEFINE_LOG_CATEGORY_STATIC(LogEntityOverlayRenderer, Log, All);
 
 namespace ml::ui::entity_overlay {
-static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 4,
+static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 5,
               "FEntityOverlayInstance must match EntityOverlayInstance in EntityOverlay.usf.");
 
 class FEntityOverlayVS final : public FGlobalShader {
@@ -29,6 +29,9 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(FIntVector4, ViewRect)
     SHADER_PARAMETER(FVector2f, BarSizePixels)
     SHADER_PARAMETER(FVector2f, ScreenOffsetPixels)
+    SHADER_PARAMETER(float, ReferenceWorldRadius)
+    SHADER_PARAMETER(float, MinimumBarScale)
+    SHADER_PARAMETER(float, MaximumBarScale)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
     END_SHADER_PARAMETER_STRUCT()
 
@@ -44,7 +47,6 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_USE_PARAMETER_STRUCT(FEntityOverlayPS, FGlobalShader);
 
     BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-    SHADER_PARAMETER(FVector2f, BarSizePixels)
     SHADER_PARAMETER(float, InsetPixels)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
@@ -103,8 +105,11 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
         view.view_rect.Min.X, view.view_rect.Min.Y, view.view_rect.Max.X, view.view_rect.Max.Y};
     parameters->VS.BarSizePixels = style.bar_size_pixels;
     parameters->VS.ScreenOffsetPixels = style.screen_offset_pixels;
+    parameters->VS.ReferenceWorldRadius = FMath::Max(style.reference_world_radius, 0.001f);
+    parameters->VS.MinimumBarScale = FMath::Max(style.minimum_bar_scale, 0.01f);
+    parameters->VS.MaximumBarScale =
+        FMath::Max(style.maximum_bar_scale, parameters->VS.MinimumBarScale);
     parameters->VS.Instances = graph_builder.CreateSRV(instance_buffer);
-    parameters->PS.BarSizePixels = style.bar_size_pixels;
     parameters->PS.InsetPixels = style.inset_pixels;
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
