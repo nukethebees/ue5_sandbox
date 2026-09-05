@@ -58,10 +58,9 @@ class SPACEGAME_API UMenuButtonWidget : public UCommonButtonBase {
     UPROPERTY(meta = (BindWidget))
     UCommonTextBlock* label_text{nullptr};
   private:
-    void resolve_style();
+    auto resolve_style() const -> FGameButtonPresentationStyle;
     void update_visual_style();
 
     FGameButtonPresentationStyle resolved_style_{};
-    bool style_resolved_{false};
 };
 }

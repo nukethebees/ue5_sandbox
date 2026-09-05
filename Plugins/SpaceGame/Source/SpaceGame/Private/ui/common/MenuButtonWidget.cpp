@@ -70,7 +70,7 @@ auto UMenuButtonWidget::get_text() const -> FText {
 }
 
 void UMenuButtonWidget::NativePreConstruct() {
-    resolve_style();
+    resolved_style_ = resolve_style();
     Super::NativePreConstruct();
 
     if (!IsValid(background) || !IsValid(label_text)) {
@@ -99,31 +99,25 @@ void UMenuButtonWidget::NativeOnCurrentTextStyleChanged() {
     update_visual_style();
 }
 
-void UMenuButtonWidget::resolve_style() {
+auto UMenuButtonWidget::resolve_style() const -> FGameButtonPresentationStyle {
     if (has_style_override_) {
-        resolved_style_ = style_override_;
-        style_resolved_ = true;
-        return;
+        return style_override_;
     }
 
     auto const* const game_instance{GetGameInstance()};
     auto const* const subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr};
     if (IsValid(subsystem)) {
-        resolved_style_ = subsystem->get_ui_style().button(style_role_);
-        style_resolved_ = true;
-        return;
+        return subsystem->get_ui_style().button(style_role_);
     }
 
     auto const* const default_theme{GetDefault<USpaceGameUiTheme>()};
-    if (IsValid(default_theme)) {
-        resolved_style_ = default_theme->compile().button(style_role_);
-        style_resolved_ = true;
-    }
+    check(IsValid(default_theme));
+    return default_theme->compile().button(style_role_);
 }
 
 void UMenuButtonWidget::update_visual_style() {
-    if (!style_resolved_ || !IsValid(background) || !IsValid(label_text)) {
+    if (!IsValid(background) || !IsValid(label_text)) {
         return;
     }
 

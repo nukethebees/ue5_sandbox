@@ -34,15 +34,50 @@ struct SPACEGAME_API FGameTextStyles {
 };
 
 USTRUCT(BlueprintType)
+struct SPACEGAME_API FGameButtonStyleDefinition {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Button")
+    FButtonStyle normal{};
+
+    UPROPERTY(EditAnywhere, Category = "Button")
+    FButtonStyle selected{};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
+    EGameTextStyle normal_text{EGameTextStyle::Body};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
+    EGameTextStyle normal_hovered_text{EGameTextStyle::Body};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
+    EGameTextStyle selected_text{EGameTextStyle::Body};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
+    EGameTextStyle selected_hovered_text{EGameTextStyle::Body};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
+    EGameTextStyle disabled_text{EGameTextStyle::BodySecondary};
+
+    UPROPERTY(EditAnywhere, Category = "Layout")
+    FMargin custom_padding{};
+
+    UPROPERTY(EditAnywhere, Category = "Layout")
+    FVector2f minimum_size{};
+
+    UPROPERTY(EditAnywhere, Category = "Layout")
+    FVector2f maximum_size{};
+};
+
+USTRUCT(BlueprintType)
 struct SPACEGAME_API FGameButtonStyles {
     GENERATED_BODY()
 
-    auto get(EGameButtonStyle role) const -> FGameButtonPresentationStyle const&;
+    auto get(EGameButtonStyle role) const -> FGameButtonStyleDefinition const&;
 
     UPROPERTY(EditAnywhere, Category = "Buttons")
-    FGameButtonPresentationStyle primary{};
+    FGameButtonStyleDefinition primary{};
     UPROPERTY(EditAnywhere, Category = "Buttons")
-    FGameButtonPresentationStyle secondary{};
+    FGameButtonStyleDefinition secondary{};
 };
 
 UCLASS(BlueprintType)

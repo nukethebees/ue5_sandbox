@@ -18,38 +18,56 @@ auto make_brush(FLinearColor const& colour) -> FSlateBrush {
     return brush;
 }
 
-auto make_button_style(FSlateBrush const& normal,
-                       FSlateBrush const& hovered,
-                       FSlateBrush const& pressed,
-                       FSlateBrush const& selected,
-                       FSlateBrush const& selected_hovered,
-                       FSlateBrush const& selected_pressed,
-                       FSlateBrush const& disabled,
-                       FTextBlockStyle const& normal_text,
-                       FTextBlockStyle const& hovered_text,
-                       FTextBlockStyle const& selected_text,
-                       FTextBlockStyle const& selected_hovered_text,
-                       FTextBlockStyle const& disabled_text) -> FGameButtonPresentationStyle {
-    FGameButtonPresentationStyle result;
-    result.normal.SetNormal(normal)
-        .SetHovered(hovered)
-        .SetPressed(pressed)
-        .SetDisabled(disabled)
+struct FButtonPalette {
+    FLinearColor normal{};
+    FLinearColor hovered{};
+    FLinearColor pressed{};
+    FLinearColor selected{};
+    FLinearColor selected_hovered{};
+    FLinearColor selected_pressed{};
+    FLinearColor disabled{};
+};
+
+auto make_button_state_style(FLinearColor const& normal,
+                             FLinearColor const& hovered,
+                             FLinearColor const& pressed,
+                             FLinearColor const& disabled) -> FButtonStyle {
+    return FButtonStyle{}
+        .SetNormal(make_brush(normal))
+        .SetHovered(make_brush(hovered))
+        .SetPressed(make_brush(pressed))
+        .SetDisabled(make_brush(disabled))
         .SetNormalPadding(FMargin{10.f, 5.f})
         .SetPressedPadding(FMargin{10.f, 5.f});
-    result.selected.SetNormal(selected)
-        .SetHovered(selected_hovered)
-        .SetPressed(selected_pressed)
-        .SetDisabled(disabled)
-        .SetNormalPadding(FMargin{10.f, 5.f})
-        .SetPressedPadding(FMargin{10.f, 5.f});
+}
+
+auto make_button_style(FButtonPalette const& palette,
+                       EGameTextStyle const normal_text = EGameTextStyle::Body)
+    -> FGameButtonStyleDefinition {
+    FGameButtonStyleDefinition result;
+    result.normal =
+        make_button_state_style(palette.normal, palette.hovered, palette.pressed, palette.disabled);
+    result.selected = make_button_state_style(
+        palette.selected, palette.selected_hovered, palette.selected_pressed, palette.disabled);
     result.normal_text = normal_text;
-    result.normal_hovered_text = hovered_text;
-    result.selected_text = selected_text;
-    result.selected_hovered_text = selected_hovered_text;
-    result.disabled_text = disabled_text;
     result.minimum_size = FVector2f{0.f, 28.f};
     return result;
+}
+
+auto compile_button_style(FGameButtonStyleDefinition const& source,
+                          FGameTextStyles const& text_styles) -> FGameButtonPresentationStyle {
+    return FGameButtonPresentationStyle{
+        .normal = source.normal,
+        .selected = source.selected,
+        .normal_text = text_styles.get(source.normal_text),
+        .normal_hovered_text = text_styles.get(source.normal_hovered_text),
+        .selected_text = text_styles.get(source.selected_text),
+        .selected_hovered_text = text_styles.get(source.selected_hovered_text),
+        .disabled_text = text_styles.get(source.disabled_text),
+        .custom_padding = source.custom_padding,
+        .minimum_size = source.minimum_size,
+        .maximum_size = source.maximum_size,
+    };
 }
 }
 
@@ -80,7 +98,7 @@ auto FGameTextStyles::get(EGameTextStyle const role) const -> FTextBlockStyle co
 }
 
 auto FGameButtonStyles::get(EGameButtonStyle const role) const
-    -> FGameButtonPresentationStyle const& {
+    -> FGameButtonStyleDefinition const& {
     switch (role) {
         case EGameButtonStyle::Primary:
             return primary;
@@ -106,32 +124,26 @@ USpaceGameUiTheme::USpaceGameUiTheme() {
     text_styles_.hud_secondary =
         make_text_style(TEXT("Regular"), 14, FLinearColor{0.72f, 0.76f, 0.82f, 1.f});
 
-    auto const disabled_text{
-        make_text_style(TEXT("Regular"), 14, FLinearColor{0.5f, 0.52f, 0.55f, 1.f})};
-    button_styles_.primary = make_button_style(make_brush(FLinearColor{0.12f, 0.14f, 0.16f, 1.f}),
-                                               make_brush(FLinearColor{0.16f, 0.38f, 0.55f, 1.f}),
-                                               make_brush(FLinearColor{0.08f, 0.3f, 0.65f, 1.f}),
-                                               make_brush(FLinearColor{0.08f, 0.3f, 0.65f, 1.f}),
-                                               make_brush(FLinearColor{0.12f, 0.4f, 0.78f, 1.f}),
-                                               make_brush(FLinearColor{0.06f, 0.24f, 0.52f, 1.f}),
-                                               make_brush(FLinearColor{0.08f, 0.09f, 0.1f, 0.6f}),
-                                               text_styles_.body,
-                                               text_styles_.body,
-                                               text_styles_.body,
-                                               text_styles_.body,
-                                               disabled_text);
-    button_styles_.secondary = make_button_style(make_brush(FLinearColor{0.1f, 0.11f, 0.12f, 1.f}),
-                                                 make_brush(FLinearColor{0.18f, 0.2f, 0.22f, 1.f}),
-                                                 make_brush(FLinearColor{0.07f, 0.08f, 0.09f, 1.f}),
-                                                 make_brush(FLinearColor{0.14f, 0.18f, 0.22f, 1.f}),
-                                                 make_brush(FLinearColor{0.22f, 0.26f, 0.3f, 1.f}),
-                                                 make_brush(FLinearColor{0.1f, 0.14f, 0.18f, 1.f}),
-                                                 make_brush(FLinearColor{0.08f, 0.09f, 0.1f, 0.6f}),
-                                                 text_styles_.body_secondary,
-                                                 text_styles_.body,
-                                                 text_styles_.body,
-                                                 text_styles_.body,
-                                                 disabled_text);
+    button_styles_.primary = make_button_style(FButtonPalette{
+        .normal = FLinearColor{0.12f, 0.14f, 0.16f, 1.f},
+        .hovered = FLinearColor{0.16f, 0.38f, 0.55f, 1.f},
+        .pressed = FLinearColor{0.08f, 0.3f, 0.65f, 1.f},
+        .selected = FLinearColor{0.08f, 0.3f, 0.65f, 1.f},
+        .selected_hovered = FLinearColor{0.12f, 0.4f, 0.78f, 1.f},
+        .selected_pressed = FLinearColor{0.06f, 0.24f, 0.52f, 1.f},
+        .disabled = FLinearColor{0.08f, 0.09f, 0.1f, 0.6f},
+    });
+    button_styles_.secondary = make_button_style(
+        FButtonPalette{
+            .normal = FLinearColor{0.1f, 0.11f, 0.12f, 1.f},
+            .hovered = FLinearColor{0.18f, 0.2f, 0.22f, 1.f},
+            .pressed = FLinearColor{0.07f, 0.08f, 0.09f, 1.f},
+            .selected = FLinearColor{0.14f, 0.18f, 0.22f, 1.f},
+            .selected_hovered = FLinearColor{0.22f, 0.26f, 0.3f, 1.f},
+            .selected_pressed = FLinearColor{0.1f, 0.14f, 0.18f, 1.f},
+            .disabled = FLinearColor{0.08f, 0.09f, 0.1f, 0.6f},
+        },
+        EGameTextStyle::BodySecondary);
 }
 
 auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
@@ -143,7 +155,8 @@ auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
 
     for (int32 index{}; index < TEnumTraits<EGameButtonStyle>::count; ++index) {
         auto const role{static_cast<EGameButtonStyle>(index)};
-        compiled.button_styles_[role] = button_styles_.get(role);
+        compiled.button_styles_[role] =
+            compile_button_style(button_styles_.get(role), text_styles_);
     }
 
     compiled.panel_ = FGamePanelStyle{.background = panel_background_, .padding = panel_padding_};
