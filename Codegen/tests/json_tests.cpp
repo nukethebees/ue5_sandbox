@@ -288,7 +288,7 @@ TEST(Json, LoadsEnumArrayCount) {
         "modules.json",
         R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","enums":[{"name":"EMode","underlying_type":"uint8","reflection":"uenum","enum_array":true,"count":"COUNT","values":[{"name":"First"},{"name":"COUNT","hidden":true}]}]}]})");
     files.write("manifest.json",
-                R"({"schema_version":5,"types":"types.json","modules":["modules.json"]})");
+                R"({"schema_version":6,"types":"types.json","modules":["modules.json"]})");
 
     auto const manifest{load_manifest(files.path("manifest.json"))};
 
