@@ -1,4 +1,7 @@
 sandbox-codegen-outputs-v1
 SLabeledRow.slate.generated.h
 SSectionPanel.slate.generated.h
+SSettingsRow.slate.generated.h
+SSettingsSection.slate.generated.h
+SSettingsSlider.slate.generated.h
 SValueSlider.slate.generated.h
