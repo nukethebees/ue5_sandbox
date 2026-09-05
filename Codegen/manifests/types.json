@@ -39,6 +39,14 @@
       "spelling": "ETestEntityType",
       "header": "SpaceGame/entities/TestEntityType.h"
     },
+    "level_event_count": {
+      "spelling": "ml::FLevelEventCount",
+      "header": "SpaceGame/levels/LevelEventGroupCounts.h"
+    },
+    "level_mission_event_type": {
+      "spelling": "ml::ELevelMissionEventType",
+      "header": "SpaceGame/levels/LevelMissionEventType.h"
+    },
     "fighter_order": {
       "spelling": "TestCapitalShipFighterOrder",
       "header": "SpaceGame/ships/fighters/TestCapitalShipFighterOrder.h"

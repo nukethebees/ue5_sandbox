@@ -24,6 +24,7 @@ auto FLevelEntityTableConstView::get_view(int32 const offset, int32 const count)
         TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
+        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -38,6 +39,7 @@ auto FLevelEntityTableConstView::get_const_view(int32 const offset, int32 const 
         TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
+        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -56,6 +58,7 @@ void FLevelEntityTableConstView::validate_array_sizes() const {
         ml::num(teams),
         ml::num(positions),
         ml::num(rotations),
+        ml::num(spawn_times_seconds),
     });
 }
 
@@ -82,6 +85,7 @@ auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) -> V
         TArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_view(offset, count),
         rotations.get_view(offset, count),
+        TArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -96,6 +100,7 @@ auto FLevelEntityTableView::get_view(int32 const offset, int32 const count) cons
         TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
+        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -110,6 +115,7 @@ auto FLevelEntityTableView::get_const_view(int32 const offset, int32 const count
         TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
+        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -128,6 +134,7 @@ void FLevelEntityTableView::validate_array_sizes() const {
         ml::num(teams),
         ml::num(positions),
         ml::num(rotations),
+        ml::num(spawn_times_seconds),
     });
 }
 
@@ -161,6 +168,7 @@ void FLevelEntityTable::reset() {
     ml::reset(teams);
     ml::reset(positions);
     ml::reset(rotations);
+    ml::reset(spawn_times_seconds);
 }
 
 void FLevelEntityTable::reserve(int32 const count) {
@@ -169,6 +177,7 @@ void FLevelEntityTable::reserve(int32 const count) {
     ml::reserve(teams, count);
     ml::reserve(positions, count);
     ml::reserve(rotations, count);
+    ml::reserve(spawn_times_seconds, count);
 }
 
 void FLevelEntityTable::add_uninitialised(int32 const count) {
@@ -177,6 +186,7 @@ void FLevelEntityTable::add_uninitialised(int32 const count) {
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(positions, count);
     ml::add_uninitialised(rotations, count);
+    ml::add_uninitialised(spawn_times_seconds, count);
 }
 
 void FLevelEntityTable::add_defaulted(int32 const count) {
@@ -185,6 +195,7 @@ void FLevelEntityTable::add_defaulted(int32 const count) {
     ml::add_defaulted(teams, count);
     ml::add_defaulted(positions, count);
     ml::add_defaulted(rotations, count);
+    ml::add_defaulted(spawn_times_seconds, count);
 }
 
 void FLevelEntityTable::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
@@ -193,6 +204,7 @@ void FLevelEntityTable::set_num(int32 const count, EAllowShrinking const allow_s
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(positions, count, allow_shrinking);
     ml::set_num(rotations, count, allow_shrinking);
+    ml::set_num(spawn_times_seconds, count, allow_shrinking);
 }
 
 void FLevelEntityTable::apply_permutation(TArrayView<int32> indices) {
@@ -203,6 +215,7 @@ void FLevelEntityTable::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(positions, indices);
     ml::apply_permutation(rotations, indices);
+    ml::apply_permutation(spawn_times_seconds, indices);
 }
 
 auto FLevelEntityTable::get_view() -> View {
@@ -216,6 +229,7 @@ auto FLevelEntityTable::get_view(int32 const offset, int32 const count) -> View 
         TArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_view(offset, count),
         rotations.get_view(offset, count),
+        TArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -230,6 +244,7 @@ auto FLevelEntityTable::get_view(int32 const offset, int32 const count) const ->
         TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
+        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -244,6 +259,7 @@ auto FLevelEntityTable::get_const_view(int32 const offset, int32 const count) co
         TConstArrayView<ml::FLevelTeamId>{teams}.Slice(offset, count),
         positions.get_const_view(offset, count),
         rotations.get_const_view(offset, count),
+        TConstArrayView<double>{spawn_times_seconds}.Slice(offset, count),
     };
 }
 
@@ -262,6 +278,7 @@ void FLevelEntityTable::validate_array_sizes() const {
         ml::num(teams),
         ml::num(positions),
         ml::num(rotations),
+        ml::num(spawn_times_seconds),
     });
 }
 
@@ -286,6 +303,1110 @@ auto FLevelEntityTable::left(int32 const count) const -> ConstView {
 }
 
 auto FLevelEntityTable::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelSpawnGroupsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelSpawnGroupsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroupsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelSpawnGroupsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroupsConstView::num() const noexcept -> int32 {
+    return ml::num(types);
+}
+
+auto FLevelSpawnGroupsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelSpawnGroupsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(types),
+        ml::num(offsets),
+        ml::num(counts),
+    });
+}
+
+auto FLevelSpawnGroupsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelSpawnGroupsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelSpawnGroupsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelSpawnGroupsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelSpawnGroupsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TArrayView<int32>{offsets}.Slice(offset, count),
+        TArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroupsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelSpawnGroupsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroupsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelSpawnGroupsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroupsView::num() const noexcept -> int32 {
+    return ml::num(types);
+}
+
+auto FLevelSpawnGroupsView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelSpawnGroupsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(types),
+        ml::num(offsets),
+        ml::num(counts),
+    });
+}
+
+auto FLevelSpawnGroupsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelSpawnGroupsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelSpawnGroupsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelSpawnGroupsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelSpawnGroupsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelSpawnGroupsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void FLevelSpawnGroups::reset() {
+    ml::reset(types);
+    ml::reset(offsets);
+    ml::reset(counts);
+}
+
+void FLevelSpawnGroups::reserve(int32 const count) {
+    ml::reserve(types, count);
+    ml::reserve(offsets, count);
+    ml::reserve(counts, count);
+}
+
+void FLevelSpawnGroups::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(types, count);
+    ml::add_uninitialised(offsets, count);
+    ml::add_uninitialised(counts, count);
+}
+
+void FLevelSpawnGroups::add_defaulted(int32 const count) {
+    ml::add_defaulted(types, count);
+    ml::add_defaulted(offsets, count);
+    ml::add_defaulted(counts, count);
+}
+
+void FLevelSpawnGroups::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(types, count, allow_shrinking);
+    ml::set_num(offsets, count, allow_shrinking);
+    ml::set_num(counts, count, allow_shrinking);
+}
+
+void FLevelSpawnGroups::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(types, indices);
+    ml::apply_permutation(offsets, indices);
+    ml::apply_permutation(counts, indices);
+}
+
+auto FLevelSpawnGroups::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelSpawnGroups::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TArrayView<int32>{offsets}.Slice(offset, count),
+        TArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroups::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelSpawnGroups::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroups::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelSpawnGroups::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ETestEntityType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelSpawnGroups::num() const noexcept -> int32 {
+    return ml::num(types);
+}
+
+auto FLevelSpawnGroups::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelSpawnGroups::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(types),
+        ml::num(offsets),
+        ml::num(counts),
+    });
+}
+
+auto FLevelSpawnGroups::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelSpawnGroups::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelSpawnGroups::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelSpawnGroups::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelSpawnGroups::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelSpawnGroups::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelCapitalSpawnEventsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelCapitalSpawnEventsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        TConstArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TConstArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEventsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelCapitalSpawnEventsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        TConstArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TConstArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEventsConstView::num() const noexcept -> int32 {
+    return ml::num(entity_indices);
+}
+
+auto FLevelCapitalSpawnEventsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelCapitalSpawnEventsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_indices),
+        ml::num(target_entity_indices),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(initial_fighter_spawn_delays),
+        ml::num(fighter_spawn_cooldowns),
+    });
+}
+
+auto FLevelCapitalSpawnEventsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelCapitalSpawnEventsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelCapitalSpawnEventsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelCapitalSpawnEventsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelCapitalSpawnEventsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int32>{entity_indices}.Slice(offset, count),
+        TArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEventsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelCapitalSpawnEventsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        TConstArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TConstArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEventsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelCapitalSpawnEventsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        TConstArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TConstArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEventsView::num() const noexcept -> int32 {
+    return ml::num(entity_indices);
+}
+
+auto FLevelCapitalSpawnEventsView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelCapitalSpawnEventsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_indices),
+        ml::num(target_entity_indices),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(initial_fighter_spawn_delays),
+        ml::num(fighter_spawn_cooldowns),
+    });
+}
+
+auto FLevelCapitalSpawnEventsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelCapitalSpawnEventsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelCapitalSpawnEventsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelCapitalSpawnEventsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelCapitalSpawnEventsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelCapitalSpawnEventsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void FLevelCapitalSpawnEvents::reset() {
+    ml::reset(entity_indices);
+    ml::reset(target_entity_indices);
+    ml::reset(locations);
+    ml::reset(rotations);
+    ml::reset(teams);
+    ml::reset(healths);
+    ml::reset(initial_fighter_spawn_delays);
+    ml::reset(fighter_spawn_cooldowns);
+}
+
+void FLevelCapitalSpawnEvents::reserve(int32 const count) {
+    ml::reserve(entity_indices, count);
+    ml::reserve(target_entity_indices, count);
+    ml::reserve(locations, count);
+    ml::reserve(rotations, count);
+    ml::reserve(teams, count);
+    ml::reserve(healths, count);
+    ml::reserve(initial_fighter_spawn_delays, count);
+    ml::reserve(fighter_spawn_cooldowns, count);
+}
+
+void FLevelCapitalSpawnEvents::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(entity_indices, count);
+    ml::add_uninitialised(target_entity_indices, count);
+    ml::add_uninitialised(locations, count);
+    ml::add_uninitialised(rotations, count);
+    ml::add_uninitialised(teams, count);
+    ml::add_uninitialised(healths, count);
+    ml::add_uninitialised(initial_fighter_spawn_delays, count);
+    ml::add_uninitialised(fighter_spawn_cooldowns, count);
+}
+
+void FLevelCapitalSpawnEvents::add_defaulted(int32 const count) {
+    ml::add_defaulted(entity_indices, count);
+    ml::add_defaulted(target_entity_indices, count);
+    ml::add_defaulted(locations, count);
+    ml::add_defaulted(rotations, count);
+    ml::add_defaulted(teams, count);
+    ml::add_defaulted(healths, count);
+    ml::add_defaulted(initial_fighter_spawn_delays, count);
+    ml::add_defaulted(fighter_spawn_cooldowns, count);
+}
+
+void FLevelCapitalSpawnEvents::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(entity_indices, count, allow_shrinking);
+    ml::set_num(target_entity_indices, count, allow_shrinking);
+    ml::set_num(locations, count, allow_shrinking);
+    ml::set_num(rotations, count, allow_shrinking);
+    ml::set_num(teams, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
+    ml::set_num(initial_fighter_spawn_delays, count, allow_shrinking);
+    ml::set_num(fighter_spawn_cooldowns, count, allow_shrinking);
+}
+
+void FLevelCapitalSpawnEvents::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(entity_indices, indices);
+    ml::apply_permutation(target_entity_indices, indices);
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(rotations, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(healths, indices);
+    ml::apply_permutation(initial_fighter_spawn_delays, indices);
+    ml::apply_permutation(fighter_spawn_cooldowns, indices);
+}
+
+auto FLevelCapitalSpawnEvents::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelCapitalSpawnEvents::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int32>{entity_indices}.Slice(offset, count),
+        TArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEvents::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelCapitalSpawnEvents::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        TConstArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TConstArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEvents::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelCapitalSpawnEvents::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        TConstArrayView<int32>{target_entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<float>{initial_fighter_spawn_delays}.Slice(offset, count),
+        TConstArrayView<float>{fighter_spawn_cooldowns}.Slice(offset, count),
+    };
+}
+
+auto FLevelCapitalSpawnEvents::num() const noexcept -> int32 {
+    return ml::num(entity_indices);
+}
+
+auto FLevelCapitalSpawnEvents::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelCapitalSpawnEvents::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_indices),
+        ml::num(target_entity_indices),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(initial_fighter_spawn_delays),
+        ml::num(fighter_spawn_cooldowns),
+    });
+}
+
+auto FLevelCapitalSpawnEvents::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelCapitalSpawnEvents::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelCapitalSpawnEvents::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelCapitalSpawnEvents::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelCapitalSpawnEvents::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelCapitalSpawnEvents::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelTurretSpawnEventsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelTurretSpawnEventsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEventsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelTurretSpawnEventsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEventsConstView::num() const noexcept -> int32 {
+    return ml::num(entity_indices);
+}
+
+auto FLevelTurretSpawnEventsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelTurretSpawnEventsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_indices),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(laser_damages),
+    });
+}
+
+auto FLevelTurretSpawnEventsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelTurretSpawnEventsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelTurretSpawnEventsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelTurretSpawnEventsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelTurretSpawnEventsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEventsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelTurretSpawnEventsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEventsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelTurretSpawnEventsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEventsView::num() const noexcept -> int32 {
+    return ml::num(entity_indices);
+}
+
+auto FLevelTurretSpawnEventsView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelTurretSpawnEventsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_indices),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(laser_damages),
+    });
+}
+
+auto FLevelTurretSpawnEventsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelTurretSpawnEventsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelTurretSpawnEventsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelTurretSpawnEventsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelTurretSpawnEventsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelTurretSpawnEventsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void FLevelTurretSpawnEvents::reset() {
+    ml::reset(entity_indices);
+    ml::reset(locations);
+    ml::reset(rotations);
+    ml::reset(teams);
+    ml::reset(healths);
+    ml::reset(laser_damages);
+}
+
+void FLevelTurretSpawnEvents::reserve(int32 const count) {
+    ml::reserve(entity_indices, count);
+    ml::reserve(locations, count);
+    ml::reserve(rotations, count);
+    ml::reserve(teams, count);
+    ml::reserve(healths, count);
+    ml::reserve(laser_damages, count);
+}
+
+void FLevelTurretSpawnEvents::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(entity_indices, count);
+    ml::add_uninitialised(locations, count);
+    ml::add_uninitialised(rotations, count);
+    ml::add_uninitialised(teams, count);
+    ml::add_uninitialised(healths, count);
+    ml::add_uninitialised(laser_damages, count);
+}
+
+void FLevelTurretSpawnEvents::add_defaulted(int32 const count) {
+    ml::add_defaulted(entity_indices, count);
+    ml::add_defaulted(locations, count);
+    ml::add_defaulted(rotations, count);
+    ml::add_defaulted(teams, count);
+    ml::add_defaulted(healths, count);
+    ml::add_defaulted(laser_damages, count);
+}
+
+void FLevelTurretSpawnEvents::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(entity_indices, count, allow_shrinking);
+    ml::set_num(locations, count, allow_shrinking);
+    ml::set_num(rotations, count, allow_shrinking);
+    ml::set_num(teams, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
+    ml::set_num(laser_damages, count, allow_shrinking);
+}
+
+void FLevelTurretSpawnEvents::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(entity_indices, indices);
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(rotations, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(healths, indices);
+    ml::apply_permutation(laser_damages, indices);
+}
+
+auto FLevelTurretSpawnEvents::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelTurretSpawnEvents::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_view(offset, count),
+        rotations.get_view(offset, count),
+        TArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEvents::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelTurretSpawnEvents::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEvents::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelTurretSpawnEvents::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int32>{entity_indices}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
+        TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<int32>{laser_damages}.Slice(offset, count),
+    };
+}
+
+auto FLevelTurretSpawnEvents::num() const noexcept -> int32 {
+    return ml::num(entity_indices);
+}
+
+auto FLevelTurretSpawnEvents::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelTurretSpawnEvents::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_indices),
+        ml::num(locations),
+        ml::num(rotations),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(laser_damages),
+    });
+}
+
+auto FLevelTurretSpawnEvents::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelTurretSpawnEvents::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelTurretSpawnEvents::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelTurretSpawnEvents::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelTurretSpawnEvents::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelTurretSpawnEvents::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelMissionEventGroupsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelMissionEventGroupsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroupsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelMissionEventGroupsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroupsConstView::num() const noexcept -> int32 {
+    return ml::num(types);
+}
+
+auto FLevelMissionEventGroupsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelMissionEventGroupsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(types),
+        ml::num(offsets),
+        ml::num(counts),
+    });
+}
+
+auto FLevelMissionEventGroupsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelMissionEventGroupsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelMissionEventGroupsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto FLevelMissionEventGroupsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelMissionEventGroupsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TArrayView<int32>{offsets}.Slice(offset, count),
+        TArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroupsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelMissionEventGroupsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroupsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelMissionEventGroupsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroupsView::num() const noexcept -> int32 {
+    return ml::num(types);
+}
+
+auto FLevelMissionEventGroupsView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelMissionEventGroupsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(types),
+        ml::num(offsets),
+        ml::num(counts),
+    });
+}
+
+auto FLevelMissionEventGroupsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelMissionEventGroupsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelMissionEventGroupsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelMissionEventGroupsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelMissionEventGroupsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelMissionEventGroupsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void FLevelMissionEventGroups::reset() {
+    ml::reset(types);
+    ml::reset(offsets);
+    ml::reset(counts);
+}
+
+void FLevelMissionEventGroups::reserve(int32 const count) {
+    ml::reserve(types, count);
+    ml::reserve(offsets, count);
+    ml::reserve(counts, count);
+}
+
+void FLevelMissionEventGroups::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(types, count);
+    ml::add_uninitialised(offsets, count);
+    ml::add_uninitialised(counts, count);
+}
+
+void FLevelMissionEventGroups::add_defaulted(int32 const count) {
+    ml::add_defaulted(types, count);
+    ml::add_defaulted(offsets, count);
+    ml::add_defaulted(counts, count);
+}
+
+void FLevelMissionEventGroups::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(types, count, allow_shrinking);
+    ml::set_num(offsets, count, allow_shrinking);
+    ml::set_num(counts, count, allow_shrinking);
+}
+
+void FLevelMissionEventGroups::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(types, indices);
+    ml::apply_permutation(offsets, indices);
+    ml::apply_permutation(counts, indices);
+}
+
+auto FLevelMissionEventGroups::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto FLevelMissionEventGroups::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TArrayView<int32>{offsets}.Slice(offset, count),
+        TArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroups::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto FLevelMissionEventGroups::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroups::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto FLevelMissionEventGroups::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<ml::ELevelMissionEventType>{types}.Slice(offset, count),
+        TConstArrayView<int32>{offsets}.Slice(offset, count),
+        TConstArrayView<ml::FLevelEventCount>{counts}.Slice(offset, count),
+    };
+}
+
+auto FLevelMissionEventGroups::num() const noexcept -> int32 {
+    return ml::num(types);
+}
+
+auto FLevelMissionEventGroups::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void FLevelMissionEventGroups::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(types),
+        ml::num(offsets),
+        ml::num(counts),
+    });
+}
+
+auto FLevelMissionEventGroups::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto FLevelMissionEventGroups::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto FLevelMissionEventGroups::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto FLevelMissionEventGroups::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto FLevelMissionEventGroups::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto FLevelMissionEventGroups::right(int32 const count) const -> ConstView {
     return slice(num() - count, count);
 }
 } // namespace ml

@@ -4,6 +4,10 @@
 
 #pragma once
 
+#include "SpaceGame/entities/TestEntityType.h"
+#include "SpaceGame/entities/TestTeam.h"
+#include "SpaceGame/levels/LevelEventGroupCounts.h"
+#include "SpaceGame/levels/LevelMissionEventType.h"
 #include "SpaceGame/levels/LevelTypes.h"
 
 #include "SandboxCore/array_utils.h"
@@ -11,6 +15,7 @@
 #include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors_3d.h"
+#include "SandboxCore/soa_vectors_3f.h"
 
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
@@ -34,7 +39,8 @@ struct SPACEGAME_API FLevelEntityTableConstView {
             self.archetypes,
             self.teams,
             self.positions,
-            self.rotations
+            self.rotations,
+            self.spawn_times_seconds
         );
     }
 
@@ -54,6 +60,7 @@ struct SPACEGAME_API FLevelEntityTableConstView {
     TConstArrayView<ml::FLevelTeamId> teams;
     FVectors3d::ConstView positions;
     FRotatorsd::ConstView rotations;
+    TConstArrayView<double> spawn_times_seconds;
 };
 
 struct SPACEGAME_API FLevelEntityTableView {
@@ -67,7 +74,8 @@ struct SPACEGAME_API FLevelEntityTableView {
             self.archetypes,
             self.teams,
             self.positions,
-            self.rotations
+            self.rotations,
+            self.spawn_times_seconds
         );
     }
 
@@ -92,6 +100,7 @@ struct SPACEGAME_API FLevelEntityTableView {
     TArrayView<ml::FLevelTeamId> teams;
     FVectors3d::View positions;
     FRotatorsd::View rotations;
+    TArrayView<double> spawn_times_seconds;
 };
 
 struct SPACEGAME_API FLevelEntityTable {
@@ -112,6 +121,7 @@ struct SPACEGAME_API FLevelEntityTable {
         teams.RemoveAtSwap(index, count, allow_shrinking);
         positions.remove_at_swap(index, count, allow_shrinking);
         rotations.remove_at_swap(index, count, allow_shrinking);
+        spawn_times_seconds.RemoveAtSwap(index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -123,6 +133,7 @@ struct SPACEGAME_API FLevelEntityTable {
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(positions, dst_i, other.positions, src_i);
         ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ml::copy_element(spawn_times_seconds, dst_i, other.spawn_times_seconds, src_i);
     }
 
     template <typename Other>
@@ -132,6 +143,7 @@ struct SPACEGAME_API FLevelEntityTable {
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(positions, dst_i, other.positions, src_i, count);
         ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(spawn_times_seconds, dst_i, other.spawn_times_seconds, src_i, count);
     }
 
     template <typename Other>
@@ -149,6 +161,7 @@ struct SPACEGAME_API FLevelEntityTable {
         ml::append_from(teams, other.teams);
         ml::append_from(positions, other.positions);
         ml::append_from(rotations, other.rotations);
+        ml::append_from(spawn_times_seconds, other.spawn_times_seconds);
     }
 
     void apply_permutation(TArrayView<int32> indices);
@@ -186,7 +199,8 @@ struct SPACEGAME_API FLevelEntityTable {
             self.archetypes,
             self.teams,
             self.positions,
-            self.rotations
+            self.rotations,
+            self.spawn_times_seconds
         );
     }
 
@@ -198,7 +212,8 @@ struct SPACEGAME_API FLevelEntityTable {
             self.archetypes, other.archetypes,
             self.teams, other.teams,
             self.positions, other.positions,
-            self.rotations, other.rotations
+            self.rotations, other.rotations,
+            self.spawn_times_seconds, other.spawn_times_seconds
         );
     }
 
@@ -223,6 +238,827 @@ struct SPACEGAME_API FLevelEntityTable {
     TArray<ml::FLevelTeamId> teams;
     FVectors3d positions;
     FRotatorsd rotations;
+    TArray<double> spawn_times_seconds;
+};
+
+struct FLevelSpawnGroupsView;
+struct FLevelSpawnGroupsConstView;
+
+struct SPACEGAME_API FLevelSpawnGroupsConstView {
+    using View = FLevelSpawnGroupsView;
+    using ConstView = FLevelSpawnGroupsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types,
+            self.offsets,
+            self.counts
+        );
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<ETestEntityType> types;
+    TConstArrayView<int32> offsets;
+    TConstArrayView<ml::FLevelEventCount> counts;
+};
+
+struct SPACEGAME_API FLevelSpawnGroupsView {
+    using View = FLevelSpawnGroupsView;
+    using ConstView = FLevelSpawnGroupsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types,
+            self.offsets,
+            self.counts
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<ETestEntityType> types;
+    TArrayView<int32> offsets;
+    TArrayView<ml::FLevelEventCount> counts;
+};
+
+struct SPACEGAME_API FLevelSpawnGroups {
+    using View = FLevelSpawnGroupsView;
+    using ConstView = FLevelSpawnGroupsConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        types.RemoveAtSwap(index, count, allow_shrinking);
+        offsets.RemoveAtSwap(index, count, allow_shrinking);
+        counts.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(types, dst_i, other.types, src_i);
+        ml::copy_element(offsets, dst_i, other.offsets, src_i);
+        ml::copy_element(counts, dst_i, other.counts, src_i);
+    }
+
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(types, dst_i, other.types, src_i, count);
+        ml::copy_elements(offsets, dst_i, other.offsets, src_i, count);
+        ml::copy_elements(counts, dst_i, other.counts, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<FLevelSpawnGroups, Other> {
+        ml::append_from(types, other.types);
+        ml::append_from(offsets, other.offsets);
+        ml::append_from(counts, other.counts);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {
+            return Compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types,
+            self.offsets,
+            self.counts
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types, other.types,
+            self.offsets, other.offsets,
+            self.counts, other.counts
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<ETestEntityType> types;
+    TArray<int32> offsets;
+    TArray<ml::FLevelEventCount> counts;
+};
+
+struct FLevelCapitalSpawnEventsView;
+struct FLevelCapitalSpawnEventsConstView;
+
+struct SPACEGAME_API FLevelCapitalSpawnEventsConstView {
+    using View = FLevelCapitalSpawnEventsView;
+    using ConstView = FLevelCapitalSpawnEventsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices,
+            self.target_entity_indices,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.initial_fighter_spawn_delays,
+            self.fighter_spawn_cooldowns
+        );
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int32> entity_indices;
+    TConstArrayView<int32> target_entity_indices;
+    FVectors3f::ConstView locations;
+    FRotatorsf::ConstView rotations;
+    TConstArrayView<ETestTeam> teams;
+    TConstArrayView<int32> healths;
+    TConstArrayView<float> initial_fighter_spawn_delays;
+    TConstArrayView<float> fighter_spawn_cooldowns;
+};
+
+struct SPACEGAME_API FLevelCapitalSpawnEventsView {
+    using View = FLevelCapitalSpawnEventsView;
+    using ConstView = FLevelCapitalSpawnEventsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices,
+            self.target_entity_indices,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.initial_fighter_spawn_delays,
+            self.fighter_spawn_cooldowns
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int32> entity_indices;
+    TArrayView<int32> target_entity_indices;
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    TArrayView<ETestTeam> teams;
+    TArrayView<int32> healths;
+    TArrayView<float> initial_fighter_spawn_delays;
+    TArrayView<float> fighter_spawn_cooldowns;
+};
+
+struct SPACEGAME_API FLevelCapitalSpawnEvents {
+    using View = FLevelCapitalSpawnEventsView;
+    using ConstView = FLevelCapitalSpawnEventsConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        entity_indices.RemoveAtSwap(index, count, allow_shrinking);
+        target_entity_indices.RemoveAtSwap(index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        initial_fighter_spawn_delays.RemoveAtSwap(index, count, allow_shrinking);
+        fighter_spawn_cooldowns.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(entity_indices, dst_i, other.entity_indices, src_i);
+        ml::copy_element(target_entity_indices, dst_i, other.target_entity_indices, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(initial_fighter_spawn_delays, dst_i, other.initial_fighter_spawn_delays, src_i);
+        ml::copy_element(fighter_spawn_cooldowns, dst_i, other.fighter_spawn_cooldowns, src_i);
+    }
+
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(entity_indices, dst_i, other.entity_indices, src_i, count);
+        ml::copy_elements(target_entity_indices, dst_i, other.target_entity_indices, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(initial_fighter_spawn_delays, dst_i, other.initial_fighter_spawn_delays, src_i, count);
+        ml::copy_elements(fighter_spawn_cooldowns, dst_i, other.fighter_spawn_cooldowns, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<FLevelCapitalSpawnEvents, Other> {
+        ml::append_from(entity_indices, other.entity_indices);
+        ml::append_from(target_entity_indices, other.target_entity_indices);
+        ml::append_from(locations, other.locations);
+        ml::append_from(rotations, other.rotations);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(initial_fighter_spawn_delays, other.initial_fighter_spawn_delays);
+        ml::append_from(fighter_spawn_cooldowns, other.fighter_spawn_cooldowns);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {
+            return Compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices,
+            self.target_entity_indices,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.initial_fighter_spawn_delays,
+            self.fighter_spawn_cooldowns
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices, other.entity_indices,
+            self.target_entity_indices, other.target_entity_indices,
+            self.locations, other.locations,
+            self.rotations, other.rotations,
+            self.teams, other.teams,
+            self.healths, other.healths,
+            self.initial_fighter_spawn_delays, other.initial_fighter_spawn_delays,
+            self.fighter_spawn_cooldowns, other.fighter_spawn_cooldowns
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int32> entity_indices;
+    TArray<int32> target_entity_indices;
+    FVectors3f locations;
+    FRotatorsf rotations;
+    TArray<ETestTeam> teams;
+    TArray<int32> healths;
+    TArray<float> initial_fighter_spawn_delays;
+    TArray<float> fighter_spawn_cooldowns;
+};
+
+struct FLevelTurretSpawnEventsView;
+struct FLevelTurretSpawnEventsConstView;
+
+struct SPACEGAME_API FLevelTurretSpawnEventsConstView {
+    using View = FLevelTurretSpawnEventsView;
+    using ConstView = FLevelTurretSpawnEventsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.laser_damages
+        );
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int32> entity_indices;
+    FVectors3f::ConstView locations;
+    FRotatorsf::ConstView rotations;
+    TConstArrayView<ETestTeam> teams;
+    TConstArrayView<int32> healths;
+    TConstArrayView<int32> laser_damages;
+};
+
+struct SPACEGAME_API FLevelTurretSpawnEventsView {
+    using View = FLevelTurretSpawnEventsView;
+    using ConstView = FLevelTurretSpawnEventsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.laser_damages
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int32> entity_indices;
+    FVectors3f::View locations;
+    FRotatorsf::View rotations;
+    TArrayView<ETestTeam> teams;
+    TArrayView<int32> healths;
+    TArrayView<int32> laser_damages;
+};
+
+struct SPACEGAME_API FLevelTurretSpawnEvents {
+    using View = FLevelTurretSpawnEventsView;
+    using ConstView = FLevelTurretSpawnEventsConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        entity_indices.RemoveAtSwap(index, count, allow_shrinking);
+        locations.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        laser_damages.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(entity_indices, dst_i, other.entity_indices, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(laser_damages, dst_i, other.laser_damages, src_i);
+    }
+
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(entity_indices, dst_i, other.entity_indices, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(laser_damages, dst_i, other.laser_damages, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<FLevelTurretSpawnEvents, Other> {
+        ml::append_from(entity_indices, other.entity_indices);
+        ml::append_from(locations, other.locations);
+        ml::append_from(rotations, other.rotations);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(laser_damages, other.laser_damages);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {
+            return Compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices,
+            self.locations,
+            self.rotations,
+            self.teams,
+            self.healths,
+            self.laser_damages
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.entity_indices, other.entity_indices,
+            self.locations, other.locations,
+            self.rotations, other.rotations,
+            self.teams, other.teams,
+            self.healths, other.healths,
+            self.laser_damages, other.laser_damages
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int32> entity_indices;
+    FVectors3f locations;
+    FRotatorsf rotations;
+    TArray<ETestTeam> teams;
+    TArray<int32> healths;
+    TArray<int32> laser_damages;
+};
+
+struct FLevelMissionEventGroupsView;
+struct FLevelMissionEventGroupsConstView;
+
+struct SPACEGAME_API FLevelMissionEventGroupsConstView {
+    using View = FLevelMissionEventGroupsView;
+    using ConstView = FLevelMissionEventGroupsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types,
+            self.offsets,
+            self.counts
+        );
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<ml::ELevelMissionEventType> types;
+    TConstArrayView<int32> offsets;
+    TConstArrayView<ml::FLevelEventCount> counts;
+};
+
+struct SPACEGAME_API FLevelMissionEventGroupsView {
+    using View = FLevelMissionEventGroupsView;
+    using ConstView = FLevelMissionEventGroupsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types,
+            self.offsets,
+            self.counts
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<ml::ELevelMissionEventType> types;
+    TArrayView<int32> offsets;
+    TArrayView<ml::FLevelEventCount> counts;
+};
+
+struct SPACEGAME_API FLevelMissionEventGroups {
+    using View = FLevelMissionEventGroupsView;
+    using ConstView = FLevelMissionEventGroupsConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
+        types.RemoveAtSwap(index, count, allow_shrinking);
+        offsets.RemoveAtSwap(index, count, allow_shrinking);
+        counts.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(types, dst_i, other.types, src_i);
+        ml::copy_element(offsets, dst_i, other.offsets, src_i);
+        ml::copy_element(counts, dst_i, other.counts, src_i);
+    }
+
+    template <typename Other>
+    void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(types, dst_i, other.types, src_i, count);
+        ml::copy_elements(offsets, dst_i, other.offsets, src_i, count);
+        ml::copy_elements(counts, dst_i, other.counts, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<FLevelMissionEventGroups, Other> {
+        ml::append_from(types, other.types);
+        ml::append_from(offsets, other.offsets);
+        ml::append_from(counts, other.counts);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {
+            return Compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types,
+            self.offsets,
+            self.counts
+        );
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func)
+        -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.types, other.types,
+            self.offsets, other.offsets,
+            self.counts, other.counts
+        );
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<ml::ELevelMissionEventType> types;
+    TArray<int32> offsets;
+    TArray<ml::FLevelEventCount> counts;
 };
 } // namespace ml
 // clang-format on

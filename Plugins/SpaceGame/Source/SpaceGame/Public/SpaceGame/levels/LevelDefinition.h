@@ -18,6 +18,7 @@ struct SPACEGAME_API FEntitySpawnDefinition {
     FLevelTeamId team{};
     FVector position{FVector::ZeroVector};
     FRotator rotation{FRotator::ZeroRotator};
+    double spawn_time_seconds{};
 };
 
 struct SPACEGAME_API FLevelCameraDefinition {
@@ -42,11 +43,19 @@ struct SPACEGAME_API FLevelMissionDefinition {
     TArray<FLevelEntityId> required_kill_entity_ids{};
 };
 
+struct SPACEGAME_API FLevelMissionObjectiveEvent {
+    double time_seconds{};
+    TArray<FLevelEntityId> must_survive_entity_ids{};
+    TArray<FLevelEntityId> required_kill_entity_ids{};
+    int32 kill_target_increase{};
+};
+
 struct SPACEGAME_API FLevelDefinition {
     FLevelMetadata metadata{};
     FLevelEntityId player_entity_id{};
     TOptional<FLevelCameraDefinition> camera{NullOpt};
     TOptional<FLevelMissionDefinition> mission{NullOpt};
+    TArray<FLevelMissionObjectiveEvent> mission_events{};
     TArray<FLevelTeamId> teams{};
     FLevelEntityTable entities{};
 };
@@ -57,6 +66,7 @@ class SPACEGAME_API FLevelBuilder {
     void set_player_entity(FLevelEntityId id);
     void set_camera(FLevelCameraDefinition const& camera);
     void set_mission(FLevelMissionDefinition const& mission);
+    void add_mission_event(FLevelMissionObjectiveEvent const& event);
     auto add_team(FLevelTeamId team) -> FLevelTeamId;
     auto add_entity(FEntitySpawnDefinition const& entity) -> FLevelEntityId;
     auto finish() -> FLevelDefinition;
@@ -80,6 +90,8 @@ enum class ELevelValidationErrorCode : uint8 {
     ArchetypeRoleMismatch,
     DuplicateEntityId,
     InvalidPlacement,
+    InvalidSpawnTime,
+    DelayedPlayerSpawn,
     MissingCameraTarget,
     DuplicateCameraTarget,
     CameraTargetNotFound,
@@ -97,6 +109,10 @@ enum class ELevelValidationErrorCode : uint8 {
     DuplicateMissionEntityReference,
     ConflictingMissionEntityRoles,
     AmbiguousAutomaticKillTeams,
+    UnexpectedMissionEvent,
+    InvalidMissionEventTime,
+    InvalidMissionKillIncrease,
+    MissionEventBeforeEntitySpawn,
 };
 
 struct SPACEGAME_API FLevelValidationError {

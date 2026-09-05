@@ -18,7 +18,56 @@
             {"name": "archetypes", "kind": "array", "type": "@entity_archetype_id"},
             {"name": "teams", "kind": "array", "type": "@level_team_id"},
             {"name": "positions", "kind": "nested", "type": "@vectors_3d"},
-            {"name": "rotations", "kind": "nested", "type": "@rotators_d"}
+            {"name": "rotations", "kind": "nested", "type": "@rotators_d"},
+            {"name": "spawn_times_seconds", "kind": "array", "type": "double"}
+          ]
+        },
+        {
+          "name": "FLevelSpawnGroups",
+          "export_specifier": "SPACEGAME_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "types", "kind": "array", "type": "@entity_type"},
+            {"name": "offsets", "kind": "array", "type": "int32"},
+            {"name": "counts", "kind": "array", "type": "@level_event_count"}
+          ]
+        },
+        {
+          "name": "FLevelCapitalSpawnEvents",
+          "export_specifier": "SPACEGAME_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "entity_indices", "kind": "array", "type": "int32"},
+            {"name": "target_entity_indices", "kind": "array", "type": "int32"},
+            {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "rotations", "kind": "nested", "type": "@rotators_f"},
+            {"name": "teams", "kind": "array", "type": "@team"},
+            {"name": "healths", "kind": "array", "type": "int32"},
+            {"name": "initial_fighter_spawn_delays", "kind": "array", "type": "float"},
+            {"name": "fighter_spawn_cooldowns", "kind": "array", "type": "float"}
+          ]
+        },
+        {
+          "name": "FLevelTurretSpawnEvents",
+          "export_specifier": "SPACEGAME_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "entity_indices", "kind": "array", "type": "int32"},
+            {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
+            {"name": "rotations", "kind": "nested", "type": "@rotators_f"},
+            {"name": "teams", "kind": "array", "type": "@team"},
+            {"name": "healths", "kind": "array", "type": "int32"},
+            {"name": "laser_damages", "kind": "array", "type": "int32"}
+          ]
+        },
+        {
+          "name": "FLevelMissionEventGroups",
+          "export_specifier": "SPACEGAME_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "types", "kind": "array", "type": "@level_mission_event_type"},
+            {"name": "offsets", "kind": "array", "type": "int32"},
+            {"name": "counts", "kind": "array", "type": "@level_event_count"}
           ]
         }
       ]

@@ -22,7 +22,8 @@ void add_error(FLevelValidationResult& result,
 auto columns_have_equal_size(FLevelEntityTable const& entities) -> bool {
     auto const count{entities.ids.Num()};
     return entities.archetypes.Num() == count && entities.teams.Num() == count &&
-           entities.positions.num() == count && entities.rotations.num() == count;
+           entities.positions.num() == count && entities.rotations.num() == count &&
+           entities.spawn_times_seconds.Num() == count;
 }
 
 auto entity_owner(FLevelEntityId const id, int32 const index) -> FString {
@@ -125,6 +126,7 @@ void validate_archetype(FEntityArchetypeId const archetype,
 struct FEntityValidationState {
     TSet<FLevelEntityId> ids{};
     TMap<FLevelEntityId, FLevelTeamId> teams_by_id{};
+    TMap<FLevelEntityId, double> spawn_times_by_id{};
     bool player_found{false};
 };
 
@@ -137,6 +139,7 @@ auto validate_entities(FLevelDefinition const& definition,
     auto const entity_count{entities.num()};
     state.ids.Reserve(entity_count);
     state.teams_by_id.Reserve(entity_count);
+    state.spawn_times_by_id.Reserve(entity_count);
     for (int32 i{0}; i < entity_count; ++i) {
         auto const entity{level_entity_table_detail::get(entities, i)};
         auto const owner{entity_owner(entity.id, i)};
@@ -152,6 +155,7 @@ auto validate_entities(FLevelDefinition const& definition,
             } else {
                 state.ids.Add(entity.id);
                 state.teams_by_id.Add(entity.id, entity.team);
+                state.spawn_times_by_id.Add(entity.id, entity.spawn_time_seconds);
             }
         }
 
@@ -170,6 +174,16 @@ auto validate_entities(FLevelDefinition const& definition,
             add_error(result,
                       ELevelValidationErrorCode::InvalidPlacement,
                       FString::Printf(TEXT("%s has a non-finite position or rotation"), *owner));
+        }
+        if (!FMath::IsFinite(entity.spawn_time_seconds) || entity.spawn_time_seconds < 0.0) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidSpawnTime,
+                      FString::Printf(TEXT("%s has an invalid spawn time"), *owner));
+        }
+        if (is_player && entity.spawn_time_seconds != 0.0) {
+            add_error(result,
+                      ELevelValidationErrorCode::DelayedPlayerSpawn,
+                      TEXT("The player entity must spawn at time zero"));
         }
     }
 
@@ -334,6 +348,22 @@ void validate_mission(FLevelMissionDefinition const& mission,
     auto const required_kills{validate_mission_references(
         mission.required_kill_entity_ids, TEXTVIEW("required-kill"), entities.ids, result)};
 
+    auto validate_initial_spawn = [&](TSet<FLevelEntityId> const& ids) {
+        for (auto const id : ids) {
+            auto const* const spawn_time{entities.spawn_times_by_id.Find(id)};
+            if (spawn_time && *spawn_time > 0.0) {
+                add_error(result,
+                          ELevelValidationErrorCode::MissionEventBeforeEntitySpawn,
+                          FString::Printf(TEXT("Initial mission objective entity '%s' does not "
+                                               "spawn at time zero"),
+                                          *id.value.ToString()));
+            }
+        }
+    };
+    validate_initial_spawn(heroes);
+    validate_initial_spawn(survivors);
+    validate_initial_spawn(required_kills);
+
     for (auto const id : required_kills) {
         if (heroes.Contains(id) || survivors.Contains(id)) {
             add_error(result,
@@ -362,6 +392,97 @@ void validate_mission(FLevelMissionDefinition const& mission,
         }
     }
 }
+
+void validate_mission_events(FLevelDefinition const& definition,
+                             FEntityValidationState const& entities,
+                             FLevelValidationResult& result) {
+    if (definition.mission_events.IsEmpty()) {
+        return;
+    }
+    if (!definition.mission.IsSet()) {
+        add_error(result,
+                  ELevelValidationErrorCode::UnexpectedMissionEvent,
+                  TEXT("Mission objective events require a mission definition"));
+        return;
+    }
+
+    auto const& mission{definition.mission.GetValue()};
+    auto must_survive_ids{validate_mission_references(
+        mission.must_survive_entity_ids, TEXTVIEW("must-survive"), entities.ids, result)};
+    auto required_kill_ids{validate_mission_references(
+        mission.required_kill_entity_ids, TEXTVIEW("required-kill"), entities.ids, result)};
+
+    for (auto const& event : definition.mission_events) {
+        if (!FMath::IsFinite(event.time_seconds) || event.time_seconds < 0.0) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidMissionEventTime,
+                      TEXT("Mission objective event time must be finite and non-negative"));
+        }
+        if (event.kill_target_increase < 0 ||
+            (event.kill_target_increase > 0 && !mission.kill_count.IsSet())) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidMissionKillIncrease,
+                      TEXT("Mission kill target increases require an explicit kill count and "
+                           "must be non-negative"));
+        }
+        if (mission.time_limit_seconds.IsSet() &&
+            event.time_seconds > mission.time_limit_seconds.GetValue()) {
+            add_error(result,
+                      ELevelValidationErrorCode::InvalidMissionEventTime,
+                      TEXT("Mission objective event occurs after the mission time limit"));
+        }
+
+        auto validate_event_references = [&](TConstArrayView<FLevelEntityId> const references,
+                                             TSet<FLevelEntityId>& same_role,
+                                             TSet<FLevelEntityId> const& conflicting_role,
+                                             FStringView const role) {
+            for (auto const id : references) {
+                auto const* const spawn_time{entities.spawn_times_by_id.Find(id)};
+                if (!spawn_time) {
+                    add_error(
+                        result,
+                        ELevelValidationErrorCode::MissionEntityNotFound,
+                        FString::Printf(TEXT("Mission event %.*s entity '%s' is not declared"),
+                                        role.Len(),
+                                        role.GetData(),
+                                        *id.value.ToString()));
+                    continue;
+                }
+                if (*spawn_time > event.time_seconds) {
+                    add_error(result,
+                              ELevelValidationErrorCode::MissionEventBeforeEntitySpawn,
+                              FString::Printf(TEXT("Mission event references entity '%s' before "
+                                                   "it spawns"),
+                                              *id.value.ToString()));
+                }
+                if (same_role.Contains(id)) {
+                    add_error(result,
+                              ELevelValidationErrorCode::DuplicateMissionEntityReference,
+                              FString::Printf(TEXT("Mission event %.*s entity '%s' is duplicated"),
+                                              role.Len(),
+                                              role.GetData(),
+                                              *id.value.ToString()));
+                } else if (conflicting_role.Contains(id)) {
+                    add_error(result,
+                              ELevelValidationErrorCode::ConflictingMissionEntityRoles,
+                              FString::Printf(TEXT("Mission entity '%s' has conflicting roles"),
+                                              *id.value.ToString()));
+                } else {
+                    same_role.Add(id);
+                }
+            }
+        };
+
+        validate_event_references(event.must_survive_entity_ids,
+                                  must_survive_ids,
+                                  required_kill_ids,
+                                  TEXTVIEW("must-survive"));
+        validate_event_references(event.required_kill_entity_ids,
+                                  required_kill_ids,
+                                  must_survive_ids,
+                                  TEXTVIEW("required-kill"));
+    }
+}
 }
 
 void FLevelBuilder::set_metadata(FLevelMetadata const& metadata) {
@@ -378,6 +499,10 @@ void FLevelBuilder::set_camera(FLevelCameraDefinition const& camera) {
 
 void FLevelBuilder::set_mission(FLevelMissionDefinition const& mission) {
     definition_.mission = mission;
+}
+
+void FLevelBuilder::add_mission_event(FLevelMissionObjectiveEvent const& event) {
+    definition_.mission_events.Add(event);
 }
 
 auto FLevelBuilder::add_team(FLevelTeamId const team) -> FLevelTeamId {
@@ -416,6 +541,7 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
     if (definition.mission.IsSet()) {
         validate_mission(definition.mission.GetValue(), entities, result);
     }
+    validate_mission_events(definition, entities, result);
 
     return result;
 }

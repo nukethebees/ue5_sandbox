@@ -1,6 +1,5 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
-#include "LevelArchetypeResolution.h"
 #include "LevelEntityTableOperations.h"
 #include "LevelTeamResolution.h"
 
@@ -11,7 +10,6 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <Camera/CameraActor.h>
-#include <Containers/Map.h>
 #include <Engine/World.h>
 #include <EngineUtils.h>
 #include <GameFramework/PlayerController.h>
@@ -33,11 +31,6 @@ auto world_contains(UWorld& world) -> bool {
 
 auto finish_spawn(AActor& actor, FTransform const& transform) -> bool {
     return IsValid(UGameplayStatics::FinishSpawningActor(&actor, transform));
-}
-
-auto entity_label(FEntitySpawnDefinition const& entity, int32 const index) -> FString {
-    return entity.id.is_set() ? FString::Printf(TEXT("'%s'"), *entity.id.value.ToString())
-                              : FString::Printf(TEXT("at row %d"), index);
 }
 
 class FSpawnedActorTransaction final {
@@ -98,65 +91,6 @@ auto spawn_player(UWorld& world,
     return player;
 }
 
-auto spawn_entity(UWorld& world,
-                  USpaceGameLevelConfig const& config,
-                  FLevelEntityTableConstView const& entities,
-                  int32 const index,
-                  FSpawnedActorTransaction& transaction,
-                  FLevelLoadResult& result) -> AActor* {
-    auto const entity{level_entity_table_detail::get(entities, index)};
-    auto const team{level_team_detail::resolve(entity.team)};
-    auto const archetype{level_archetype_detail::resolve(entity.archetype)};
-    check(team.IsSet());
-    check(archetype.IsSet());
-
-    auto const transform{FTransform{entity.rotation, entity.position}};
-    AActor* spawned_actor{nullptr};
-    switch (archetype.GetValue()) {
-        case level_archetype_detail::EResolvedArchetype::CapitalShip: {
-            auto* const capital{world.SpawnActorDeferred<ATestCapitalShipProxy>(
-                config.classes.capital_ship_proxy_class, transform)};
-            if (IsValid(capital)) {
-                capital->set_actor_config(&config.capital_ships);
-                capital->set_team(team.GetValue());
-                spawned_actor = capital;
-            }
-            break;
-        }
-        case level_archetype_detail::EResolvedArchetype::StaticTurret: {
-            auto* const turret{world.SpawnActorDeferred<ATestStaticTurretsProxy>(
-                ATestStaticTurretsProxy::StaticClass(), transform)};
-            if (IsValid(turret)) {
-                turret->set_actor_config(&config.turrets);
-                turret->set_team(team.GetValue());
-                spawned_actor = turret;
-            }
-            break;
-        }
-        case level_archetype_detail::EResolvedArchetype::PlayerFighter:
-            checkNoEntry();
-            return nullptr;
-    }
-
-    if (!IsValid(spawned_actor)) {
-        add_error(result,
-                  ELevelLoadErrorCode::ActorSpawnFailed,
-                  FString::Printf(TEXT("Failed to begin spawning entity %s"),
-                                  *entity_label(entity, index)));
-        return nullptr;
-    }
-
-    transaction.add(*spawned_actor);
-    if (!finish_spawn(*spawned_actor, transform)) {
-        add_error(result,
-                  ELevelLoadErrorCode::ActorSpawnFailed,
-                  FString::Printf(TEXT("Failed to finish spawning entity %s"),
-                                  *entity_label(entity, index)));
-        return nullptr;
-    }
-    return spawned_actor;
-}
-
 auto initial_camera_transform(FLevelDefinition const& definition,
                               FLevelEntityTableConstView const& entities) -> FTransform {
     auto const& camera{definition.camera.GetValue()};
@@ -200,61 +134,6 @@ auto spawn_initial_camera(UWorld& world,
     return true;
 }
 
-void configure_mission(FLevelDefinition const& definition,
-                       TMap<FLevelEntityId, AActor*> const& spawned_entities,
-                       ATestBatchOrchestrator& orchestrator) {
-    auto& manager{orchestrator.get_mission_definition()};
-    manager.set_level_identity(definition.metadata.id.value, definition.metadata.title);
-    if (!definition.mission.IsSet()) {
-        manager.set_mission_mode(ETestMissionMode::None);
-        return;
-    }
-
-    auto const& mission{definition.mission.GetValue()};
-    switch (mission.mode) {
-        case ELevelMissionMode::SurviveTime: {
-            manager.set_mission_mode(ETestMissionMode::SurviveTime);
-            break;
-        }
-        case ELevelMissionMode::KillEnemies: {
-            manager.set_mission_mode(ETestMissionMode::KillEnemies);
-            break;
-        }
-        case ELevelMissionMode::KillEnemiesWithinTime: {
-            manager.set_mission_mode(ETestMissionMode::KillEnemiesWithinTime);
-            break;
-        }
-        case ELevelMissionMode::Unspecified:
-        default: {
-            checkNoEntry();
-            return;
-        }
-    }
-
-    if (mission.time_limit_seconds.IsSet()) {
-        manager.set_target_time(mission.time_limit_seconds.GetValue());
-    }
-    if (mission.mode == ELevelMissionMode::KillEnemies ||
-        mission.mode == ELevelMissionMode::KillEnemiesWithinTime) {
-        manager.set_kill_target(mission.kill_count.IsSet() ? mission.kill_count.GetValue() : 0);
-    }
-    manager.set_save_mission_results(true);
-
-    auto const resolve_actor{[&spawned_entities](FLevelEntityId const id) -> AActor& {
-        auto* const* const actor{spawned_entities.Find(id)};
-        check(actor && IsValid(*actor));
-        return **actor;
-    }};
-    for (auto const id : mission.hero_entity_ids) {
-        manager.add_hero_entity(resolve_actor(id));
-    }
-    for (auto const id : mission.must_survive_entity_ids) {
-        manager.add_entity_that_must_survive(resolve_actor(id));
-    }
-    for (auto const id : mission.required_kill_entity_ids) {
-        manager.add_entity_required_to_kill(resolve_actor(id));
-    }
-}
 }
 
 auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadResult {
@@ -291,8 +170,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         return result;
     }
     if (!IsValid(config) || !config->is_valid(presentation_enabled) ||
-        (has_player && !IsValid(config->classes.player_ship_class)) ||
-        !IsValid(config->classes.capital_ship_proxy_class)) {
+        (has_player && !IsValid(config->classes.player_ship_class))) {
         add_error(result,
                   ELevelLoadErrorCode::InvalidLevelConfig,
                   TEXT("Level configuration or required actor classes are invalid"));
@@ -327,9 +205,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
 
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
-    FSpawnedActorTransaction transaction{entity_count + (definition.camera.IsSet() ? 1 : 0)};
-    TMap<FLevelEntityId, AActor*> spawned_entities;
-    spawned_entities.Reserve(entity_count);
+    FSpawnedActorTransaction transaction{1 + (definition.camera.IsSet() ? 1 : 0)};
 
     auto const player_index{
         has_player ? level_entity_table_detail::find_index(entities, definition.player_entity_id)
@@ -340,21 +216,6 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         player = spawn_player(*world, *config, entities, player_index, transaction, result);
         if (!IsValid(player)) {
             return result;
-        }
-        spawned_entities.Add(definition.player_entity_id, player);
-    }
-
-    for (int32 i{0}; i < entity_count; ++i) {
-        if (i == player_index) {
-            continue;
-        }
-
-        auto* const actor{spawn_entity(*world, *config, entities, i, transaction, result)};
-        if (!IsValid(actor)) {
-            return result;
-        }
-        if (entities.ids[i].is_set()) {
-            spawned_entities.Add(entities.ids[i], actor);
         }
     }
 
@@ -369,7 +230,7 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
         player_controller->Possess(player);
     }
 
-    configure_mission(definition, spawned_entities, orchestrator_);
+    orchestrator_.set_level_definition(definition);
     transaction.commit();
     return result;
 }

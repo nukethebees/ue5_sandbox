@@ -33,11 +33,18 @@ constexpr TCHAR level_prelude[]{LR"(
 (define (heroes . ids) (cons 'heroes ids))
 (define (must-survive . ids) (cons 'must-survive ids))
 (define (required-kills . ids) (cons 'required-kills ids))
+(define (mission-events . values) (cons 'mission-events values))
+(define (mission-event event-time . clauses) (cons 'mission-event (cons event-time clauses)))
+(define (at seconds) (list 'at seconds))
+(define (add-must-survive . ids) (cons 'add-must-survive ids))
+(define (add-required-kills . ids) (cons 'add-required-kills ids))
+(define (increase-kill-count value) (list 'increase-kill-count value))
 (define (entities . values) (cons 'entities values))
-(define (entity id archetype team position rotation)
-  (list 'entity id archetype team position rotation))
+(define (entity id archetype team position rotation . clauses)
+  (append (list 'entity id archetype team position rotation) clauses))
 (define (position x y z) (list 'position x y z))
 (define (rotation pitch yaw roll) (list 'rotation pitch yaw roll))
+(define (spawn-at seconds) (list 'spawn-at seconds))
 )"};
 
 auto to_fstring(ANSICHAR const* const value) -> FString {
@@ -66,6 +73,7 @@ class FDefinitionDecoder final {
         bool has_player{false};
         bool has_camera{false};
         bool has_mission{false};
+        bool has_mission_events{false};
         bool has_entities{false};
         for (int64 i{0}; i < clause_count; ++i) {
             auto const clause{list_value(root_, i + 1)};
@@ -139,6 +147,13 @@ class FDefinitionDecoder final {
                 }
                 has_mission = true;
                 read_mission(clause, path, builder);
+            } else if (tag_name == TEXT("mission-events")) {
+                if (has_mission_events) {
+                    add_error(path, TEXT("Duplicate mission-events clause"));
+                    continue;
+                }
+                has_mission_events = true;
+                read_mission_events(clause, path, builder);
             } else if (tag_name == TEXT("entities")) {
                 if (has_entities) {
                     add_error(path, TEXT("Duplicate entities clause"));
@@ -459,6 +474,74 @@ class FDefinitionDecoder final {
         builder.set_mission(mission);
     }
 
+    void read_mission_events(s7_native::FValue const clause,
+                             FString const& path,
+                             FLevelBuilder& builder) {
+        auto const event_count{list_length(clause) - 1};
+        for (int64 event_index{}; event_index < event_count; ++event_index) {
+            auto const value{list_value(clause, event_index + 1)};
+            auto const event_path{FString::Printf(TEXT("%s[%lld]"), *path, event_index)};
+            if (!expect_tagged_list(value, TEXT("mission-event"), event_path) ||
+                list_length(value) < 2) {
+                continue;
+            }
+
+            FLevelMissionObjectiveEvent event;
+            auto const time{list_value(value, 1)};
+            if (!expect_tagged_list(time, TEXT("at"), event_path + TEXT(".at")) ||
+                !expect_length(time, 2, event_path + TEXT(".at")) ||
+                !read_number(
+                    list_value(time, 1), event_path + TEXT(".at.seconds"), event.time_seconds)) {
+                continue;
+            }
+
+            bool valid{true};
+            auto const clause_count{list_length(value) - 2};
+            for (int64 i{}; i < clause_count; ++i) {
+                auto const event_clause{list_value(value, i + 2)};
+                auto const clause_path{FString::Printf(TEXT("%s[%lld]"), *event_path, i)};
+                if (!is_non_empty_list(event_clause)) {
+                    add_error(clause_path, TEXT("Expected a mission event clause"));
+                    valid = false;
+                    continue;
+                }
+                auto const tag_value{list_value(event_clause, 0)};
+                if (!s7_native::is_symbol(tag_value)) {
+                    add_error(clause_path, TEXT("Mission event clause tag must be a symbol"));
+                    valid = false;
+                    continue;
+                }
+                auto const tag{to_fstring(s7_native::symbol_name(tag_value))};
+                if (tag == TEXT("add-must-survive")) {
+                    read_entity_id_list(event_clause,
+                                        TEXT("add-must-survive"),
+                                        clause_path,
+                                        event.must_survive_entity_ids);
+                } else if (tag == TEXT("add-required-kills")) {
+                    read_entity_id_list(event_clause,
+                                        TEXT("add-required-kills"),
+                                        clause_path,
+                                        event.required_kill_entity_ids);
+                } else if (tag == TEXT("increase-kill-count")) {
+                    valid = expect_length(event_clause, 2, clause_path) && valid;
+                    if (valid) {
+                        valid = read_int32(list_value(event_clause, 1),
+                                           clause_path + TEXT(".value"),
+                                           event.kill_target_increase) &&
+                                valid;
+                    }
+                } else {
+                    add_error(clause_path,
+                              FString::Printf(TEXT("Unknown mission event clause '%s'"), *tag));
+                    valid = false;
+                }
+            }
+            if (valid) {
+                builder.add_mission_event(event);
+            }
+        }
+    }
+
     auto read_vector(s7_native::FValue const value,
                      FString const& tag,
                      FString const& path,
@@ -483,8 +566,12 @@ class FDefinitionDecoder final {
         for (int64 i{0}; i < count; ++i) {
             auto const value{list_value(clause, i + 1)};
             auto const entity_path{FString::Printf(TEXT("%s[%lld]"), *path, i)};
-            if (!expect_tagged_list(value, TEXT("entity"), entity_path) ||
-                !expect_length(value, 6, entity_path)) {
+            if (!expect_tagged_list(value, TEXT("entity"), entity_path)) {
+                continue;
+            }
+            auto const entity_length{list_length(value)};
+            if (entity_length != 6 && entity_length != 7) {
+                add_error(entity_path, TEXT("Expected an entity with zero or one spawn clause"));
                 continue;
             }
 
@@ -493,6 +580,7 @@ class FDefinitionDecoder final {
             FName team;
             double position[3]{};
             double rotation[3]{};
+            double spawn_time_seconds{};
             auto valid{read_symbol(list_value(value, 1), entity_path + TEXT(".id"), id)};
             valid =
                 read_symbol(list_value(value, 2), entity_path + TEXT(".archetype"), archetype) &&
@@ -508,6 +596,18 @@ class FDefinitionDecoder final {
                                 entity_path + TEXT(".rotation"),
                                 rotation) &&
                     valid;
+            if (entity_length == 7) {
+                auto const spawn_at{list_value(value, 6)};
+                auto const spawn_path{entity_path + TEXT(".spawn-at")};
+                valid = expect_tagged_list(spawn_at, TEXT("spawn-at"), spawn_path) && valid;
+                valid = expect_length(spawn_at, 2, spawn_path) && valid;
+                if (valid) {
+                    valid = read_number(list_value(spawn_at, 1),
+                                        spawn_path + TEXT(".seconds"),
+                                        spawn_time_seconds) &&
+                            valid;
+                }
+            }
             if (!valid) {
                 continue;
             }
@@ -518,6 +618,7 @@ class FDefinitionDecoder final {
                 .team = FLevelTeamId{team},
                 .position = FVector{position[0], position[1], position[2]},
                 .rotation = FRotator{rotation[0], rotation[1], rotation[2]},
+                .spawn_time_seconds = spawn_time_seconds,
             });
         }
     }

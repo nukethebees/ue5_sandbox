@@ -9,6 +9,7 @@ inline void append(FLevelEntityTable& entities, FEntitySpawnDefinition const& en
     entities.teams.Add(entity.team);
     entities.positions.add(entity.position);
     entities.rotations.add(entity.rotation.Pitch, entity.rotation.Yaw, entity.rotation.Roll);
+    entities.spawn_times_seconds.Add(entity.spawn_time_seconds);
 }
 
 inline auto get(FLevelEntityTableConstView const entities, int32 const index)
@@ -21,6 +22,7 @@ inline auto get(FLevelEntityTableConstView const entities, int32 const index)
         .rotation = FRotator{entities.rotations.pitches[index],
                              entities.rotations.yaws[index],
                              entities.rotations.rolls[index]},
+        .spawn_time_seconds = entities.spawn_times_seconds[index],
     };
 }
 
