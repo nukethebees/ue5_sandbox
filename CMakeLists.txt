@@ -377,6 +377,8 @@ add_custom_target(dev-core
   DEPENDS
     editor
     codegen-tests
+    kernel-codegen-tests
+    slate-codegen-tests
 )
 
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")

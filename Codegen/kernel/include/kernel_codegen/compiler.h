@@ -5,9 +5,12 @@
 
 namespace kernel_codegen {
 
+enum class Profile { unreal, standard };
+
 struct CompileOptions {
     std::filesystem::path manifest;
     std::optional<std::filesystem::path> output_root;
+    Profile profile{Profile::unreal};
     bool check{false};
 };
 

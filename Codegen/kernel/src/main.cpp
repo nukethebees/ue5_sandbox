@@ -34,12 +34,25 @@ auto parse_arguments(int argc, char const* const* argv) -> kernel_codegen::Compi
             std::filesystem::path output_root;
             read_path(output_root);
             result.output_root = std::move(output_root);
+        } else if (argument == "--profile") {
+            std::filesystem::path value;
+            read_path(value);
+            if (value == "unreal") {
+                result.profile = kernel_codegen::Profile::unreal;
+            } else if (value == "standard") {
+                result.profile = kernel_codegen::Profile::standard;
+            } else {
+                throw std::invalid_argument{"Unknown kernel profile: " + value.string()};
+            }
         } else {
             throw std::invalid_argument{"Unknown argument: " + argument};
         }
     }
     if (result.manifest.empty()) {
         throw std::invalid_argument{"--manifest is required"};
+    }
+    if (!seen.contains("--profile")) {
+        throw std::invalid_argument{"--profile is required"};
     }
     return result;
 }

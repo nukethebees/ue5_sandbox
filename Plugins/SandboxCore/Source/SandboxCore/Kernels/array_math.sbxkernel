@@ -1,9 +1,16 @@
 (kernel-module array_math
-  (header "Public/SandboxCore/array_math_kernels.h")
-  (source "Private/array_math_kernels.cpp")
-  (header-include "SandboxCore/array_math_kernels.h")
-  (namespace ml)
-  (export SANDBOXCORE_API)
+  (emit unreal
+    (header "Public/SandboxCore/array_math_kernels.h")
+    (source "Private/array_math_kernels.cpp")
+    (header-include "SandboxCore/array_math_kernels.h")
+    (namespace ml)
+    (export SANDBOXCORE_API))
+  (emit standard
+    (header "standard/array_math_kernels.h")
+    (source "standard/array_math_kernels.cpp")
+    (tests "standard/array_math_kernels_tests.cpp")
+    (header-include "standard/array_math_kernels.h")
+    (namespace ml))
 
   (type-set numeric int32 float double)
 

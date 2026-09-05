@@ -1,8 +1,12 @@
 add_library(kernel-codegen-lib
   src/compiler.cpp
+  src/lowering.cpp
   src/manifest.cpp
   src/parser.cpp
   src/renderer.cpp
+  src/standard_renderer.cpp
+  src/test_renderer.cpp
+  src/unreal_renderer.cpp
 )
 target_compile_features(kernel-codegen-lib PUBLIC cxx_std_23)
 target_include_directories(kernel-codegen-lib PUBLIC include)
@@ -51,6 +55,7 @@ add_custom_command(
   COMMAND sandbox-kernelc
     --manifest "${KERNEL_COMPILE_FIXTURE}/manifest.json"
     --output-root "${KERNEL_COMPILE_OUTPUT}"
+    --profile unreal
   DEPENDS
     sandbox-kernelc
     "${KERNEL_COMPILE_FIXTURE}/manifest.json"
@@ -93,15 +98,56 @@ set(KERNEL_PRODUCTION_ROOT
 )
 set(KERNEL_PRODUCTION_MANIFEST "${KERNEL_PRODUCTION_ROOT}/Kernels/manifest.json")
 set(KERNEL_PRODUCTION_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/array_math.sbxkernel")
+set(KERNEL_CANDIDATE_DOCUMENT "${KERNEL_PRODUCTION_ROOT}/Kernels/candidate_math.sbxkernel")
+
+set(KERNEL_STANDARD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/standard-generated")
+set(KERNEL_STANDARD_FILES
+  "${KERNEL_STANDARD_OUTPUT}/standard/array_math_kernels.h"
+  "${KERNEL_STANDARD_OUTPUT}/standard/array_math_kernels.cpp"
+  "${KERNEL_STANDARD_OUTPUT}/standard/array_math_kernels_tests.cpp"
+  "${KERNEL_STANDARD_OUTPUT}/standard/candidate_math_kernels.h"
+  "${KERNEL_STANDARD_OUTPUT}/standard/candidate_math_kernels.cpp"
+  "${KERNEL_STANDARD_OUTPUT}/standard/candidate_math_kernels_tests.cpp"
+)
+add_custom_command(
+  OUTPUT ${KERNEL_STANDARD_FILES}
+  COMMAND sandbox-kernelc
+    --manifest "${KERNEL_PRODUCTION_MANIFEST}"
+    --output-root "${KERNEL_STANDARD_OUTPUT}"
+    --profile standard
+  DEPENDS
+    sandbox-kernelc
+    "${KERNEL_PRODUCTION_MANIFEST}"
+    "${KERNEL_PRODUCTION_DOCUMENT}"
+    "${KERNEL_CANDIDATE_DOCUMENT}"
+  COMMENT "Generating standard C++ kernel tests"
+  VERBATIM
+)
+add_executable(kernel-generated-standard-tests
+  tests/standard_anchor_tests.cpp
+  ${KERNEL_STANDARD_FILES}
+)
+target_compile_features(kernel-generated-standard-tests PRIVATE cxx_std_23)
+target_include_directories(kernel-generated-standard-tests PRIVATE "${KERNEL_STANDARD_OUTPUT}")
+target_link_libraries(kernel-generated-standard-tests PRIVATE GTest::gtest_main)
+if(MSVC)
+  target_compile_options(kernel-generated-standard-tests PRIVATE /W4 /WX)
+else()
+  target_compile_options(kernel-generated-standard-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
+endif()
+gtest_discover_tests(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;codegen")
+add_dependencies(kernel-codegen-tests kernel-generated-standard-tests)
 
 add_custom_target(generate-kernel-code
   COMMAND sandbox-kernelc
     --manifest "${KERNEL_PRODUCTION_MANIFEST}"
     --output-root "${KERNEL_PRODUCTION_ROOT}"
+    --profile unreal
   DEPENDS
     sandbox-kernelc
     "${KERNEL_PRODUCTION_MANIFEST}"
     "${KERNEL_PRODUCTION_DOCUMENT}"
+    "${KERNEL_CANDIDATE_DOCUMENT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating committed SandboxCore kernel code"
   USES_TERMINAL
@@ -112,11 +158,13 @@ add_custom_target(check-generated-kernel-code
   COMMAND sandbox-kernelc
     --manifest "${KERNEL_PRODUCTION_MANIFEST}"
     --output-root "${KERNEL_PRODUCTION_ROOT}"
+    --profile unreal
     --check
   DEPENDS
     sandbox-kernelc
     "${KERNEL_PRODUCTION_MANIFEST}"
     "${KERNEL_PRODUCTION_DOCUMENT}"
+    "${KERNEL_CANDIDATE_DOCUMENT}"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking committed SandboxCore kernel code"
   USES_TERMINAL

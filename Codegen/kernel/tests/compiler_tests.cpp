@@ -16,12 +16,33 @@ namespace {
 
 constexpr std::string_view valid_source = R"(
 (kernel-module arithmetic
-  (header "ArrayKernels.h")
-  (source "ArrayKernels.cpp")
-  (header-include "ArrayKernels.h")
-  (namespace ml)
-  (export COMPILE_FIXTURE_API)
+  (emit unreal
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml)
+    (export COMPILE_FIXTURE_API))
   (type-set numeric int32 float double)
+  (map multiply
+    (types numeric)
+    (operand lhs array)
+    (operand rhs (array scalar))
+    (output out)
+    (expression (* lhs rhs))
+    (variants
+      (out-of-place multiply)
+      (in-place lhs multiply_in_place))))
+)";
+
+constexpr std::string_view standard_source = R"(
+(kernel-module arithmetic
+  (emit standard
+    (header "standard/ArrayKernels.h")
+    (source "standard/ArrayKernels.cpp")
+    (tests "standard/ArrayKernelsTests.cpp")
+    (header-include "standard/ArrayKernels.h")
+    (namespace ml::standard))
+  (type-set numeric uint32 float)
   (map multiply
     (types numeric)
     (operand lhs array)
@@ -47,16 +68,17 @@ auto occurrence_count(std::string_view text, std::string_view const value) -> st
 
 auto render_source(std::string_view const source) -> std::vector<codegen::GeneratedFile> {
     auto const document{parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
-    return render(document.modules[0]);
+    return render(document.modules[0], Profile::unreal);
 }
 
 auto literal_source(std::string_view const types, std::string_view const literal) -> std::string {
     return std::string{R"((kernel-module literals
-  (header "ArrayKernels.h")
-  (source "ArrayKernels.cpp")
-  (header-include "ArrayKernels.h")
-  (namespace ml)
-  (export COMPILE_FIXTURE_API)
+  (emit unreal
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml)
+    (export COMPILE_FIXTURE_API))
   (type-set numeric )"} +
            std::string{types} + R"()
   (map add_literal
@@ -100,14 +122,65 @@ TEST(KernelRenderer, GeneratesConcreteOverloadsAndSourceLoops) {
               std::string::npos);
 }
 
+TEST(KernelRenderer, GeneratesStandardLibraryBindingsAndTests) {
+    auto const document{
+        parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", standard_source))};
+    auto const files{render(document.modules[0], Profile::standard)};
+
+    ASSERT_EQ(files.size(), 3);
+    EXPECT_TRUE(files[0].content.contains("std::span<std::uint32_t const> lhs"));
+    EXPECT_TRUE(files[0].content.contains("std::span<float> out"));
+    EXPECT_FALSE(files[0].content.contains("TArray"));
+    EXPECT_FALSE(files[1].content.contains("CoreMinimal"));
+    EXPECT_FALSE(files[1].content.contains("RESTRICT"));
+    EXPECT_TRUE(files[1].content.contains("for (std::size_t i{}; i < count; ++i)"));
+    EXPECT_TRUE(files[1].content.contains("std::abort()"));
+    EXPECT_TRUE(files[2].content.contains("#include <gtest/gtest.h>"));
+    EXPECT_TRUE(files[2].content.contains("run.template operator()<31>()"));
+}
+
+TEST(KernelRenderer, SkipsModulesWithoutTheSelectedProfile) {
+    auto const document{parse("test.sbxkernel",
+                              codegen::sexpr::lex("test.sbxkernel", valid_source))};
+
+    EXPECT_TRUE(render(document.modules[0], Profile::standard).empty());
+}
+
+TEST(KernelParser, RejectsInvalidEmissionProfiles) {
+    auto unknown{std::string{valid_source}};
+    unknown.replace(unknown.find("emit unreal"),
+                    std::string{"emit unreal"}.size(),
+                    "emit portable");
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", unknown))),
+        std::runtime_error);
+
+    auto duplicate{std::string{valid_source}};
+    auto const emission_begin{duplicate.find("  (emit unreal")};
+    auto const emission_end{duplicate.find("\n  (type-set", emission_begin)};
+    duplicate.insert(emission_end, duplicate.substr(emission_begin, emission_end - emission_begin));
+    EXPECT_THROW(
+        static_cast<void>(parse("bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", duplicate))),
+        std::runtime_error);
+
+    auto ignored_export{std::string{standard_source}};
+    ignored_export.replace(ignored_export.find("    (namespace ml::standard)"),
+                           std::string{"    (namespace ml::standard)"}.size(),
+                           "    (namespace ml::standard)\n    (export UNUSED_API)");
+    EXPECT_THROW(static_cast<void>(
+                     parse("bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", ignored_export))),
+                 std::runtime_error);
+}
+
 TEST(KernelRenderer, ExpandsStorageCartesianProductWithoutRewritingExpression) {
     constexpr std::string_view source = R"(
 (kernel-module arithmetic
-  (header "ArrayKernels.h")
-  (source "ArrayKernels.cpp")
-  (header-include "ArrayKernels.h")
-  (namespace ml)
-  (export COMPILE_FIXTURE_API)
+  (emit unreal
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml)
+    (export COMPILE_FIXTURE_API))
   (type-set numeric float)
   (map difference
     (types numeric)
@@ -142,14 +215,35 @@ TEST(KernelRenderer, PairwiseDisjointRestrictsAndChecksEveryArray) {
     EXPECT_TRUE(files[1].content.contains("multiply: rhs and out must not overlap"));
 }
 
+TEST(KernelRenderer, StandardPairwiseDisjointChecksEveryArray) {
+    auto source{std::string{standard_source}};
+    source.replace(source.find("(variants"), 0, "(aliasing pairwise-disjoint)\n    ");
+    auto const document{parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
+    auto const files{render(document.modules[0], Profile::standard)};
+
+    EXPECT_TRUE(files[1].content.contains(
+        "require(!ranges_overlap(lhs.data(), lhs.size_bytes(), rhs.data(), rhs.size_bytes()))"));
+    EXPECT_TRUE(files[1].content.contains(
+        "require(!ranges_overlap(lhs.data(), lhs.size_bytes(), out.data(), out.size_bytes()))"));
+    EXPECT_TRUE(files[1].content.contains(
+        "require(!ranges_overlap(rhs.data(), rhs.size_bytes(), out.data(), out.size_bytes()))"));
+}
+
 TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
     constexpr std::string_view source = R"(
 (kernel-module constants
-  (header "ArrayKernels.h")
-  (source "ArrayKernels.cpp")
-  (header-include "ArrayKernels.h")
-  (namespace ml)
-  (export COMPILE_FIXTURE_API)
+  (emit unreal
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml)
+    (export COMPILE_FIXTURE_API))
+  (emit standard
+    (header "standard/ArrayKernels.h")
+    (source "standard/ArrayKernels.cpp")
+    (tests "standard/ArrayKernelsTests.cpp")
+    (header-include "standard/ArrayKernels.h")
+    (namespace ml))
   (type-set floating float double)
   (map classify
     (types floating)
@@ -169,16 +263,25 @@ TEST(KernelRenderer, RendersNamedConstantsForEachConcreteFloatingType) {
     EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<float>::infinity()"));
     EXPECT_TRUE(files[1].content.contains("std::numeric_limits<double>::quiet_NaN()"));
     EXPECT_TRUE(files[1].content.contains("-std::numeric_limits<double>::infinity()"));
+
+    auto const document{parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
+    auto const standard_files{render(document.modules[0], Profile::standard)};
+
+    EXPECT_TRUE(standard_files[1].content.contains("#include <limits>"));
+    EXPECT_TRUE(
+        standard_files[1].content.contains("std::numeric_limits<float>::quiet_NaN()"));
+    EXPECT_TRUE(standard_files[2].content.contains("std::isnan(expected[i])"));
 }
 
 TEST(KernelRenderer, TreatsBareNanAndInfAsOperandReferences) {
     constexpr std::string_view source = R"(
 (kernel-module constants
-  (header "ArrayKernels.h")
-  (source "ArrayKernels.cpp")
-  (header-include "ArrayKernels.h")
-  (namespace ml)
-  (export COMPILE_FIXTURE_API)
+  (emit unreal
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml)
+    (export COMPILE_FIXTURE_API))
   (type-set floating float)
   (map add
     (types floating)
@@ -266,6 +369,17 @@ TEST(KernelParser, RejectsUnknownAndMalformedConstants) {
 TEST(KernelParser, RejectsNonFiniteConstantsForIntegralTypeSets) {
     EXPECT_THROW(
         static_cast<void>(render_source(literal_source("int32 float", "(constant nan)"))),
+        std::runtime_error);
+}
+
+TEST(KernelParser, ValidatesUnsignedIntegerLiterals) {
+    EXPECT_NO_THROW(static_cast<void>(render_source(literal_source("uint32", "4294967295"))));
+    for (auto const literal : {"-1", "4294967296", "0.5"}) {
+        EXPECT_THROW(static_cast<void>(render_source(literal_source("uint32", literal))),
+                     std::runtime_error);
+    }
+    EXPECT_THROW(
+        static_cast<void>(render_source(literal_source("uint32", "(constant infinity)"))),
         std::runtime_error);
 }
 

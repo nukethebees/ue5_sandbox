@@ -21,6 +21,8 @@ auto compile_manifest(CompileOptions const& options) -> int {
                                ? std::filesystem::absolute(*options.output_root).lexically_normal()
                                : manifest_directory / "generated"};
     auto const manifest{detail::load_manifest(manifest_path)};
+    auto const profile{options.profile == Profile::unreal ? detail::Profile::unreal
+                                                          : detail::Profile::standard};
     std::vector<codegen::GeneratedFile> files;
     for (auto const& entry : manifest.entries) {
         auto const input_path{manifest_directory / entry.input};
@@ -28,7 +30,7 @@ auto compile_manifest(CompileOptions const& options) -> int {
         auto const document{detail::parse(entry.input.generic_string(),
                                           codegen::sexpr::lex(entry.input.generic_string(), source))};
         for (auto const& module : document.modules) {
-            auto rendered{detail::render(module)};
+            auto rendered{detail::render(module, profile)};
             files.insert(files.end(),
                          std::make_move_iterator(rendered.begin()),
                          std::make_move_iterator(rendered.end()));

@@ -1,0 +1,90 @@
+(kernel-module candidate_math
+  (emit standard
+    (header "standard/candidate_math_kernels.h")
+    (source "standard/candidate_math_kernels.cpp")
+    (tests "standard/candidate_math_kernels_tests.cpp")
+    (header-include "standard/candidate_math_kernels.h")
+    (namespace ml::kernel_lab))
+
+  (type-set numeric int32 uint32 float double)
+  (type-set floating float double)
+
+  (map lerp
+    (types floating)
+    (operand from array)
+    (operand to array)
+    (operand alpha (array scalar))
+    (output out)
+    (expression (+ from (* alpha (- to from))))
+    (variants
+      (out-of-place lerp)
+      (in-place from lerp_in_place)))
+
+  (map add_scaled
+    (types floating)
+    (operand base array)
+    (operand value array)
+    (operand scale (array scalar))
+    (output out)
+    (expression (+ base (* value scale)))
+    (variants
+      (out-of-place add_scaled)
+      (in-place base add_scaled_in_place)))
+
+  (map subtract_scaled
+    (types floating)
+    (operand base array)
+    (operand value array)
+    (operand scale (array scalar))
+    (output out)
+    (expression (- base (* value scale)))
+    (variants
+      (out-of-place subtract_scaled)
+      (in-place base subtract_scaled_in_place)))
+
+  (map square
+    (types numeric)
+    (operand value array)
+    (output out)
+    (expression (* value value))
+    (variants
+      (out-of-place square)
+      (in-place value square_in_place)))
+
+  (map size_squared_3d
+    (types floating)
+    (operand x array)
+    (operand y array)
+    (operand z array)
+    (output out)
+    (expression (+ (* x x) (+ (* y y) (* z z))))
+    (variants
+      (out-of-place size_squared_3d)))
+
+  (map distance_squared_3d
+    (types floating)
+    (operand ax array)
+    (operand ay array)
+    (operand az array)
+    (operand bx array)
+    (operand by array)
+    (operand bz array)
+    (output out)
+    (expression (+ (* (- bx ax) (- bx ax))
+                   (+ (* (- by ay) (- by ay))
+                      (* (- bz az) (- bz az)))))
+    (variants
+      (out-of-place distance_squared_3d)))
+
+  (map dot_product_3d
+    (types floating)
+    (operand ax array)
+    (operand ay array)
+    (operand az array)
+    (operand bx array)
+    (operand by array)
+    (operand bz array)
+    (output out)
+    (expression (+ (* ax bx) (+ (* ay by) (* az bz))))
+    (variants
+      (out-of-place dot_product_3d))))

@@ -8,6 +8,6 @@
 
 namespace kernel_codegen::detail {
 
-auto render(KernelModule const& module) -> std::vector<codegen::GeneratedFile>;
+auto render(KernelModule const& module, Profile profile) -> std::vector<codegen::GeneratedFile>;
 
 }

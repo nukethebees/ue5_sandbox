@@ -13,11 +13,12 @@ namespace {
 
 constexpr std::string_view kernel_source = R"(
 (kernel-module arithmetic
-  (header "ArrayKernels.h")
-  (source "ArrayKernels.cpp")
-  (header-include "ArrayKernels.h")
-  (namespace ml)
-  (export COMPILE_FIXTURE_API)
+  (emit unreal
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml)
+    (export COMPILE_FIXTURE_API))
   (type-set numeric float)
   (map multiply
     (types numeric)
@@ -109,6 +110,29 @@ TEST(KernelCompiler, RejectsOutputCollisionsAcrossManifestEntries) {
                      .manifest = project.path("manifest.json"),
                      .output_root = project.path("generated")})),
                  std::invalid_argument);
+}
+
+TEST(KernelCompiler, EmitsOnlyTheSelectedProfile) {
+    TemporaryProject project{"profile-selection"};
+    project.write("manifest.json", R"({"entries":[{"input":"array_math.sbxkernel"}]})");
+    auto source{std::string{kernel_source}};
+    auto const insertion{source.find("  (type-set")};
+    source.insert(insertion,
+                  "  (emit standard\n"
+                  "    (header \"standard/Kernels.h\")\n"
+                  "    (source \"standard/Kernels.cpp\")\n"
+                  "    (tests \"standard/KernelsTests.cpp\")\n"
+                  "    (header-include \"standard/Kernels.h\")\n"
+                  "    (namespace ml))\n");
+    project.write("array_math.sbxkernel", source);
+
+    ASSERT_EQ(compile_manifest(CompileOptions{.manifest = project.path("manifest.json"),
+                                               .output_root = project.path("generated"),
+                                               .profile = Profile::standard}),
+              0);
+    EXPECT_TRUE(project.read("generated/standard/Kernels.h").contains("std::span<float const>"));
+    EXPECT_TRUE(project.read("generated/standard/KernelsTests.cpp").contains("TEST("));
+    EXPECT_FALSE(std::filesystem::exists(project.path("generated/ArrayKernels.h")));
 }
 
 }

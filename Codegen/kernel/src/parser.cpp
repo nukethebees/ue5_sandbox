@@ -134,9 +134,19 @@ class Parser {
             if (!names.insert(module.name).second) {
                 fail(module.span, "duplicate kernel module '" + module.name + "'");
             }
-            for (auto const& path : {module.header.generic_string(), module.source.generic_string()}) {
-                if (!output_paths.insert(path).second) {
-                    fail(module.span, "duplicate generated output path '" + path + "'");
+            for (auto const& emission : module.emissions) {
+                std::vector<std::filesystem::path> paths{emission.header, emission.source};
+                if (emission.tests) {
+                    paths.push_back(*emission.tests);
+                }
+                for (auto const& output_path : paths) {
+                    auto const key{std::to_string(static_cast<int>(emission.profile)) + ":" +
+                                   output_path.generic_string()};
+                    if (!output_paths.insert(key).second) {
+                        fail(emission.span,
+                             "duplicate generated output path '" +
+                                 output_path.generic_string() + "'");
+                    }
                 }
             }
             result.modules.push_back(std::move(module));
@@ -471,9 +481,10 @@ class Parser {
     }
 
     void validate_expression_type(Expression const& expression, std::string const& type) const {
-        if (expression.kind == ExpressionKind::constant && type == "int32") {
+        if (expression.kind == ExpressionKind::constant &&
+            (type == "int32" || type == "uint32")) {
             fail(expression.span,
-                 "constant is not supported by integral concrete type 'int32'");
+                 "constant is not supported by integral concrete type '" + type + "'");
         }
         if (expression.kind == ExpressionKind::literal) {
             auto const literal{parse_decimal_literal(expression.value)};
@@ -487,6 +498,12 @@ class Parser {
                     value > static_cast<long double>(std::numeric_limits<std::int32_t>::max())) {
                     fail(expression.span,
                          "literal '" + expression.value + "' is not representable as int32");
+                }
+            } else if (type == "uint32") {
+                if (std::trunc(value) != value || value < 0.0L ||
+                    value > static_cast<long double>(std::numeric_limits<std::uint32_t>::max())) {
+                    fail(expression.span,
+                         "literal '" + expression.value + "' is not representable as uint32");
                 }
             } else if (type == "float") {
                 auto const magnitude{std::abs(value)};
@@ -523,13 +540,91 @@ class Parser {
         std::set<std::string> types;
         for (std::size_t index{2}; index < form.children.size(); ++index) {
             auto const& type{atom(form.children[index], "expected concrete type")};
-            if (type != "int32" && type != "float" && type != "double") {
+            if (type != "int32" && type != "uint32" && type != "float" && type != "double") {
                 fail(form.children[index].token.span, "unsupported concrete type '" + type + "'");
             }
             if (!types.insert(type).second) {
                 fail(form.children[index].token.span, "duplicate concrete type '" + type + "'");
             }
             result.types.push_back(type);
+        }
+        return result;
+    }
+
+    void validate_output_path(std::filesystem::path const& path, SourceSpan const span) const {
+        auto const escapes{std::ranges::any_of(path.lexically_normal(), [](auto const& part) {
+            return part == "..";
+        })};
+        if (path.empty() || path.is_absolute() || path.has_root_path() || escapes) {
+            fail(span, "generated output paths must remain inside the output root");
+        }
+    }
+
+    auto parse_emission(Form const& form) const -> Emission {
+        if (head(form, "emit") != "emit" || form.children.size() < 2) {
+            fail(form.token.span, "expected '(emit unreal|standard ...)'");
+        }
+        auto const& profile_name{atom(form.children[1], "expected emission profile")};
+        Profile profile;
+        if (profile_name == "unreal") {
+            profile = Profile::unreal;
+        } else if (profile_name == "standard") {
+            profile = Profile::standard;
+        } else {
+            fail(form.children[1].token.span, "unknown emission profile '" + profile_name + "'");
+        }
+
+        Emission result{.profile = profile, .span = form.token.span};
+        std::set<std::string> fields;
+        for (std::size_t index{2}; index < form.children.size(); ++index) {
+            auto const& field{form.children[index]};
+            auto const& field_name{head(field, "emission field")};
+            if (!fields.insert(field_name).second) {
+                fail(field.token.span, "duplicate emission field '" + field_name + "'");
+            }
+            require_size(field, 2, "single-value emission field");
+            if (field_name == "header") {
+                result.header = string_value(field.children[1], "expected header path string");
+            } else if (field_name == "source") {
+                result.source = string_value(field.children[1], "expected source path string");
+            } else if (field_name == "tests") {
+                result.tests = string_value(field.children[1], "expected test path string");
+            } else if (field_name == "header-include") {
+                result.header_include =
+                    string_value(field.children[1], "expected header include string");
+            } else if (field_name == "namespace") {
+                result.cpp_namespace = atom(field.children[1], "expected C++ namespace");
+                if (!is_qualified_identifier(result.cpp_namespace)) {
+                    fail(field.children[1].token.span,
+                         "namespace must be a qualified C++ identifier");
+                }
+            } else if (field_name == "export") {
+                result.export_specifier = atom(field.children[1], "expected export specifier");
+                if (!is_identifier(result.export_specifier)) {
+                    fail(field.children[1].token.span, "export specifier must be an identifier");
+                }
+            } else {
+                fail(field.token.span, "unknown emission field '" + field_name + "'");
+            }
+        }
+        if (result.header.empty() || result.source.empty() || result.header_include.empty() ||
+            result.cpp_namespace.empty()) {
+            fail(form.token.span,
+                 "emit requires header, source, header-include, and namespace");
+        }
+        if (profile == Profile::unreal && result.export_specifier.empty()) {
+            fail(form.token.span, "unreal emission requires export");
+        }
+        if (profile == Profile::unreal && result.tests) {
+            fail(form.token.span, "generated tests are supported only by the standard profile");
+        }
+        if (profile == Profile::standard && !result.export_specifier.empty()) {
+            fail(form.token.span, "export is supported only by the unreal profile");
+        }
+        validate_output_path(result.header, result.span);
+        validate_output_path(result.source, result.span);
+        if (result.tests) {
+            validate_output_path(*result.tests, result.span);
         }
         return result;
     }
@@ -544,6 +639,7 @@ class Parser {
         }
         KernelModule result{.name = name, .span = form.token.span};
         std::set<std::string> fields;
+        std::set<Profile> profiles;
         std::set<std::string> type_sets;
         std::set<std::string> operation_names;
         for (std::size_t index{2}; index < form.children.size(); ++index) {
@@ -565,45 +661,22 @@ class Parser {
                 result.operations.push_back(std::move(operation));
                 continue;
             }
+            if (field_name == "emit") {
+                auto emission{parse_emission(field)};
+                if (!profiles.insert(emission.profile).second) {
+                    fail(emission.span, "duplicate emission profile");
+                }
+                result.emissions.push_back(std::move(emission));
+                continue;
+            }
             if (!fields.insert(field_name).second) {
                 fail(field.token.span, "duplicate kernel module field '" + field_name + "'");
             }
-            require_size(field, 2, "single-value kernel module field");
-            if (field_name == "header") {
-                result.header = string_value(field.children[1], "expected header path string");
-            } else if (field_name == "source") {
-                result.source = string_value(field.children[1], "expected source path string");
-            } else if (field_name == "header-include") {
-                result.header_include =
-                    string_value(field.children[1], "expected header include string");
-            } else if (field_name == "namespace") {
-                result.cpp_namespace = atom(field.children[1], "expected C++ namespace");
-                if (!is_qualified_identifier(result.cpp_namespace)) {
-                    fail(field.children[1].token.span, "namespace must be a qualified C++ identifier");
-                }
-            } else if (field_name == "export") {
-                result.export_specifier = atom(field.children[1], "expected export specifier");
-                if (!is_identifier(result.export_specifier)) {
-                    fail(field.children[1].token.span, "export specifier must be an identifier");
-                }
-            } else {
-                fail(field.token.span, "unknown kernel module field '" + field_name + "'");
-            }
+            fail(field.token.span, "unknown kernel module field '" + field_name + "'");
         }
-        if (result.header.empty() || result.source.empty() || result.header_include.empty() ||
-            result.cpp_namespace.empty() || result.export_specifier.empty() ||
-            result.type_sets.empty() || result.operations.empty()) {
+        if (result.emissions.empty() || result.type_sets.empty() || result.operations.empty()) {
             fail(form.token.span,
-                 "kernel-module requires header, source, header-include, namespace, export, "
-                 "type sets, and maps");
-        }
-        for (auto const& path : {result.header, result.source}) {
-            auto const escapes{std::ranges::any_of(path.lexically_normal(), [](auto const& part) {
-                return part == "..";
-            })};
-            if (path.empty() || path.is_absolute() || path.has_root_path() || escapes) {
-                fail(form.token.span, "generated output paths must remain inside the output root");
-            }
+                 "kernel-module requires emissions, type sets, and maps");
         }
         for (auto const& operation : result.operations) {
             auto const operation_types{

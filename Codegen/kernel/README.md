@@ -2,21 +2,25 @@
 
 `kernelc` generates concrete array-kernel overloads from deliberately narrow S-expression
 declarations. The language describes operation semantics, operand storage, concrete types, public
-variants, and aliasing contracts. It does not evaluate Lisp or accept arbitrary C++ bodies.
+variants, aliasing contracts, and named C++ emission profiles. It does not evaluate Lisp or accept
+arbitrary C++ bodies or ABI spellings.
 
 ## Grammar
 
 ```text
 document      := kernel_module+ EOF
 kernel_module := "(" "kernel-module" identifier module_item+ ")"
-module_item   := header | source | header_include | namespace | export | type_set | map
+module_item   := emit | type_set | map
+emit          := "(" "emit" ("unreal" | "standard") emit_item+ ")"
+emit_item     := header | source | tests | header_include | namespace | export
 header        := "(" "header" quoted_path ")"
 source        := "(" "source" quoted_path ")"
+tests         := "(" "tests" quoted_path ")"
 header_include := "(" "header-include" quoted_path ")"
 namespace     := "(" "namespace" qualified_identifier ")"
 export        := "(" "export" identifier ")"
 type_set      := "(" "type-set" identifier concrete_type+ ")"
-concrete_type := "int32" | "float" | "double"
+concrete_type := "int32" | "uint32" | "float" | "double"
 map           := "(" "map" identifier map_item+ ")"
 map_item      := types | operand | output | expression | variants | aliasing
 types         := "(" "types" identifier ")"
@@ -47,10 +51,17 @@ rendered with an explicit cast to that type. Non-finite values use the explicit 
 require a type-set containing only `float` and/or `double`; bare `nan` and `inf` are ordinary operand
 identifiers.
 
+The `unreal` profile emits `TArrayView`/`TConstArrayView`, Unreal integer names, checks, owning
+`TArray` conveniences, and `RESTRICT` raw kernels. The `standard` profile emits `std::span`, maps
+`int32` and `uint32` to the corresponding `<cstdint>` types, and has no Unreal dependencies. A
+standard emission may also request a generated GoogleTest source. Each generated overload is
+exercised at empty, scalar, SIMD-boundary, and larger lengths against a scalar reference. Profile
+selection is fixed in the generator rather than configurable through arbitrary C++ strings.
+
 ## Commands
 
 ```text
-kernelc --manifest <path> [--output-root <directory>] [--check]
+kernelc --manifest <path> --profile <unreal|standard> [--output-root <directory>] [--check]
 cmake --build --preset codegen --target generate-kernel-code
 cmake --build --preset codegen --target check-generated-kernel-code
 ```

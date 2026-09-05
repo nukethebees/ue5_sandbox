@@ -12,6 +12,7 @@ namespace kernel_codegen::detail {
 using codegen::sexpr::SourceSpan;
 
 enum class StorageKind { array, scalar };
+enum class Profile { unreal, standard };
 enum class ExpressionKind { reference, literal, constant, binary };
 enum class ConstantKind { nan, infinity, negative_infinity };
 enum class VariantKind { out_of_place, in_place };
@@ -55,13 +56,20 @@ struct TypeSet {
     SourceSpan span;
 };
 
-struct KernelModule {
-    std::string name;
+struct Emission {
+    Profile profile;
     std::filesystem::path header;
     std::filesystem::path source;
+    std::optional<std::filesystem::path> tests;
     std::string header_include;
     std::string cpp_namespace;
     std::string export_specifier;
+    SourceSpan span;
+};
+
+struct KernelModule {
+    std::string name;
+    std::vector<Emission> emissions;
     std::vector<TypeSet> type_sets;
     std::vector<MapOperation> operations;
     SourceSpan span;
