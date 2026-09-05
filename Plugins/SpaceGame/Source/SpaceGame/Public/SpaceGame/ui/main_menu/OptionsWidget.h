@@ -9,6 +9,7 @@ class UButton;
 class UBorder;
 class UOverlay;
 class UTextBlock;
+class UVerticalBox;
 class UWidget;
 class UWidgetSwitcher;
 
@@ -23,6 +24,7 @@ enum class EOptionsTab : uint8 {
     Audio,
     Controls,
     Accessibility,
+    System,
 };
 
 UCLASS()
@@ -80,6 +82,8 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     UFUNCTION()
     void handle_accessibility();
     UFUNCTION()
+    void handle_system();
+    UFUNCTION()
     void handle_back();
     UFUNCTION()
     void handle_apply();
@@ -98,8 +102,10 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
 
     void set_active_tab(EOptionsTab tab);
     void set_tab_button_state(UButton& button, bool selected);
+    void build_system_tab();
     void build_settings_pages();
     void build_category_page(UWidget& page, EGameSettingCategory category);
+    void build_system_page();
     void build_modals();
     void refresh_settings_ui();
     void handle_display_confirmation_changed(bool visible);
@@ -123,7 +129,14 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     UPROPERTY(Transient)
     UTextBlock* display_countdown_{nullptr};
 
+    UPROPERTY(Transient)
+    UButton* system_button_{nullptr};
+
+    UPROPERTY(Transient)
+    UVerticalBox* system_page_{nullptr};
+
     EOptionsTab active_tab_{EOptionsTab::Video};
     bool settings_pages_built_{};
+    bool system_page_built_{};
 };
 }

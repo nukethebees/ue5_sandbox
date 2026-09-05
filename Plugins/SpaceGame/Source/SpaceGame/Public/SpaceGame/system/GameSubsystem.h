@@ -8,8 +8,35 @@
 #include "GameSubsystem.generated.h"
 
 namespace ml::ioj {
+#if PLATFORM_WINDOWS
+enum class ELargePageAccessStatus : uint8 {
+    Unsupported,
+    Enabled,
+    PrivilegeUnavailable,
+    QueryFailed,
+};
+
+struct SPACEGAME_API FWindowsGameCapabilities {
+    uint64 large_page_minimum_bytes{};
+    ELargePageAccessStatus large_page_access_status{ELargePageAccessStatus::QueryFailed};
+};
+#endif
+
 struct SPACEGAME_API FGameCapabilities {
-    bool supports_large_pages{false};
+    FString platform_name{};
+    FString host_architecture{};
+    FString operating_system_version{};
+    FString operating_system_subversion{};
+    FString cpu_vendor{};
+    FString cpu_brand{};
+    FString primary_gpu_brand{};
+    int32 physical_core_count{};
+    int32 logical_core_count{};
+    uint64 total_physical_memory_bytes{};
+
+#if PLATFORM_WINDOWS
+    FWindowsGameCapabilities windows{};
+#endif
 };
 
 enum class ELevelLaunchMode : uint8 {

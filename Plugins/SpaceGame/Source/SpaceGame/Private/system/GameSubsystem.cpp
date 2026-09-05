@@ -7,6 +7,9 @@
 
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
+#include <HAL/PlatformMemory.h>
+#include <HAL/PlatformMisc.h>
+#include <HAL/PlatformProperties.h>
 #include <Kismet/GameplayStatics.h>
 #include <Subsystems/SubsystemCollection.h>
 
@@ -15,6 +18,28 @@
 #endif
 
 namespace ml::ioj {
+namespace {
+auto query_platform_capabilities() -> FGameCapabilities {
+    FGameCapabilities capabilities;
+    capabilities.platform_name = ANSI_TO_TCHAR(FPlatformProperties::PlatformName());
+    capabilities.host_architecture = FPlatformMisc::GetHostArchitecture();
+    FPlatformMisc::GetOSVersions(capabilities.operating_system_version,
+                                 capabilities.operating_system_subversion);
+    capabilities.cpu_vendor = FPlatformMisc::GetCPUVendor();
+    capabilities.cpu_brand = FPlatformMisc::GetCPUBrand();
+    capabilities.primary_gpu_brand = FPlatformMisc::GetPrimaryGPUBrand();
+    capabilities.physical_core_count = FPlatformMisc::NumberOfCores();
+    capabilities.logical_core_count = FPlatformMisc::NumberOfCoresIncludingHyperthreads();
+    capabilities.total_physical_memory_bytes = FPlatformMemory::GetConstants().TotalPhysical;
+
+#if PLATFORM_WINDOWS
+    capabilities.windows = detail::query_windows_platform_capabilities();
+#endif
+
+    return capabilities;
+}
+}
+
 void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
 
@@ -33,9 +58,7 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
             return detail::load_existing_save_profile(*save_subsystem, profile_id);
         }};
 
-#if PLATFORM_WINDOWS
-    platform_capabilities_ = detail::query_windows_platform_capabilities();
-#endif
+    platform_capabilities_ = query_platform_capabilities();
 
     save_game_browser_.refresh();
 }
