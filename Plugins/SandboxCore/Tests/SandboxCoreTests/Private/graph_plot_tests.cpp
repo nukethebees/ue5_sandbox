@@ -91,6 +91,38 @@ TEST_CASE("SandboxCore.GraphPlot.One sample is retained for marker rendering") {
     CHECK(FMath::IsFinite(cache.get_series()[0].render_points[0].Y));
 }
 
+TEST_CASE("SandboxCore.GraphPlot.Step-after interpolation holds values until each change") {
+    TArray<float> const x{0.0f, 2.0f, 5.0f};
+    TArray<float> const y{3.0f, 7.0f, 4.0f};
+    auto series{make_series(x, y)};
+    series.style.interpolation = EGraphSeriesInterpolation::StepAfter;
+    FGraphRenderCache cache;
+    set_one_series(cache, series, 1);
+
+    REQUIRE(cache.update({100.0f, 100.0f}));
+    auto const points{cache.get_series()[0].render_points};
+    REQUIRE(points.Num() == 5);
+    CHECK(points[0].Equals({0.0f, 100.0f}));
+    CHECK(points[1].Equals({40.0f, 100.0f}));
+    CHECK(points[2].Equals({40.0f, 0.0f}));
+    CHECK(points[3].Equals({100.0f, 0.0f}));
+    CHECK(points[4].Equals({100.0f, 75.0f}));
+}
+
+TEST_CASE("SandboxCore.GraphPlot.Step-after interpolation preserves one constant sample") {
+    TArray<float> const x{42.0f};
+    TArray<float> const y{-7.0f};
+    auto series{make_series(x, y)};
+    series.style.interpolation = EGraphSeriesInterpolation::StepAfter;
+    FGraphRenderCache cache;
+    set_one_series(cache, series, 1);
+
+    REQUIRE(cache.update({320.0f, 180.0f}));
+    REQUIRE(cache.get_series()[0].render_points.Num() == 1);
+    CHECK(FMath::IsFinite(cache.get_series()[0].render_points[0].X));
+    CHECK(FMath::IsFinite(cache.get_series()[0].render_points[0].Y));
+}
+
 TEST_CASE("SandboxCore.GraphPlot.Pixel extrema decimation preserves a narrow spike") {
     int32 constexpr sample_count{10000};
     int32 constexpr pixel_width{100};
@@ -106,6 +138,24 @@ TEST_CASE("SandboxCore.GraphPlot.Pixel extrema decimation preserves a narrow spi
     auto const points{cache.get_series()[0].render_points};
     CHECK(cache.get_stats().decimated);
     CHECK(points.Num() <= pixel_width * 2 + 2);
+    CHECK(points.ContainsByPredicate([](FVector2f const point) { return point.Y == 0.0f; }));
+}
+
+TEST_CASE("SandboxCore.GraphPlot.Decimated step series remains resolution bounded") {
+    int32 constexpr sample_count{10000};
+    int32 constexpr pixel_width{100};
+    TArray<float> y;
+    y.Init(0.0f, sample_count);
+    y[4321] = 100.0f;
+    auto series{make_series({}, y)};
+    series.style.interpolation = EGraphSeriesInterpolation::StepAfter;
+    FGraphRenderCache cache;
+    set_one_series(cache, series, 1);
+
+    REQUIRE(cache.update({static_cast<float>(pixel_width), 100.0f}));
+    auto const points{cache.get_series()[0].render_points};
+    CHECK(cache.get_stats().decimated);
+    CHECK(points.Num() <= pixel_width * 4 + 3);
     CHECK(points.ContainsByPredicate([](FVector2f const point) { return point.Y == 0.0f; }));
 }
 

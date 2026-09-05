@@ -5,6 +5,7 @@
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
+#include <SpaceGame/ui/style/SpaceGameUiSettings.h>
 #include <SpaceGame/ui/style/SpaceGameUiTheme.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
@@ -28,6 +29,18 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
                              text_style.Font.CompositeFont.IsValid() ||
                                  IsValid(text_style.Font.FontObject));
+
+        auto const* const ui_settings{GetDefault<ml::ioj::USpaceGameUiSettings>()};
+        auto* const configured_theme{ui_settings->default_theme.LoadSynchronous()};
+        if (!TestRunner->TestTrue(TEXT("Configured UI theme loads"), IsValid(configured_theme))) {
+            return;
+        }
+        auto const configured_style{configured_theme->compile()};
+        auto const panel_color{configured_style.panel().background.TintColor.GetSpecifiedColor()};
+        TestRunner->TestTrue(TEXT("Configured panel background is dark"),
+                             panel_color.GetLuminance() < 0.25f);
+        TestRunner->TestTrue(TEXT("Configured panel background remains translucent"),
+                             panel_color.A > 0.0f && panel_color.A < 0.95f);
 
         auto const world_result{ml::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {

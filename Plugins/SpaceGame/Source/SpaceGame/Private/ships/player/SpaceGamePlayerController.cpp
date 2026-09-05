@@ -220,7 +220,10 @@ void ASpaceGamePlayerController::toggle_pause_game() {
                 return;
             }
 
-            pause_menu = ui_root->show_pause_menu(*global_input.toggle_menu);
+            auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot(
+                orchestrator->get_completed_ticks(), orchestrator->get_tick_period())};
+            pause_menu =
+                ui_root->show_pause_menu(*global_input.toggle_menu, MoveTemp(stats_snapshot));
             if (!IsValid(pause_menu)) {
                 resume_game();
                 return;

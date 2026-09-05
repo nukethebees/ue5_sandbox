@@ -21,11 +21,16 @@
 #include <Components/Border.h>
 #include <Components/Button.h>
 #include <Components/ButtonSlot.h>
+#include <Components/GridPanel.h>
+#include <Components/GridSlot.h>
 #include <Components/HorizontalBox.h>
 #include <Components/HorizontalBoxSlot.h>
+#include <Components/NativeWidgetHost.h>
 #include <Components/Overlay.h>
 #include <Components/OverlaySlot.h>
 #include <Components/ScrollBox.h>
+#include <Components/ScrollBoxSlot.h>
+#include <Components/SizeBox.h>
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <Components/VerticalBoxSlot.h>
@@ -185,6 +190,29 @@ auto make_menu_button(UWidgetTree& tree,
     return button;
 }
 
+auto add_pause_stat_row(UWidgetTree& tree,
+                        UGridPanel& grid,
+                        int32 const row,
+                        FName const label_name,
+                        FText const& label,
+                        FName const value_name) -> UTextBlock* {
+    auto* const label_widget{make_widget<UTextBlock>(tree, label_name)};
+    label_widget->SetText(label);
+    label_widget->SetAutoWrapText(true);
+    auto* const label_slot{grid.AddChildToGrid(label_widget, row, 0)};
+    label_slot->SetPadding(FMargin{0.0f, 4.0f, 16.0f, 4.0f});
+    label_slot->SetVerticalAlignment(VAlign_Center);
+
+    auto* const value_widget{make_widget<UTextBlock>(tree, value_name)};
+    value_widget->SetText(FText::AsNumber(0));
+    value_widget->SetJustification(ETextJustify::Right);
+    auto* const value_slot{grid.AddChildToGrid(value_widget, row, 1)};
+    value_slot->SetPadding(FMargin{0.0f, 4.0f});
+    value_slot->SetHorizontalAlignment(HAlign_Fill);
+    value_slot->SetVerticalAlignment(VAlign_Center);
+    return value_widget;
+}
+
 auto generate_menu_button_widget() -> UClass* {
     auto* const blueprint{
         load_or_create_widget_blueprint(menu_button_object_path,
@@ -249,11 +277,8 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     auto* const actions_slot{panel->AddChildToHorizontalBox(actions)};
     actions_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
     actions_slot->SetPadding(FMargin{0.0f, 0.0f, 40.0f, 0.0f});
-    auto* const paused{tree.ConstructWidget<UTextBlock>()};
+    auto* const paused{make_widget<UTextBlock>(tree, TEXT("paused_heading"))};
     paused->SetText(FText::FromString(TEXT("Paused")));
-    auto paused_font{paused->GetFont()};
-    paused_font.Size = 32;
-    paused->SetFont(paused_font);
     actions->AddChildToVerticalBox(paused)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 18.0f});
     make_menu_button(tree, *actions, button_class, TEXT("resume_button"), TEXT("Resume"));
     make_menu_button(tree, *actions, button_class, TEXT("overview_button"), TEXT("Overview"));
@@ -269,13 +294,99 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     auto* const page{tree.ConstructWidget<UVerticalBox>()};
     panel->AddChildToHorizontalBox(page)->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
     auto* const heading{make_widget<UTextBlock>(tree, TEXT("page_heading"))};
-    auto heading_font{heading->GetFont()};
-    heading_font.Size = 28;
-    heading->SetFont(heading_font);
     page->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 16.0f});
-    auto* const placeholder{make_widget<UTextBlock>(tree, TEXT("page_placeholder"))};
-    placeholder->SetAutoWrapText(true);
-    page->AddChildToVerticalBox(placeholder);
+
+    auto* const switcher{make_widget<UWidgetSwitcher>(tree, TEXT("page_switcher"))};
+    page->AddChildToVerticalBox(switcher)->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+
+    auto* const overview{make_widget<UTextBlock>(tree, TEXT("overview_placeholder"))};
+    overview->SetText(FText::FromString(TEXT("Overview placeholder content")));
+    overview->SetAutoWrapText(true);
+    switcher->AddChild(overview);
+
+    auto* const stats_scroll{tree.ConstructWidget<UScrollBox>()};
+    auto* const stats_contents{tree.ConstructWidget<UVerticalBox>()};
+    auto* const stats_contents_slot{
+        CastChecked<UScrollBoxSlot>(stats_scroll->AddChild(stats_contents))};
+    stats_contents_slot->SetHorizontalAlignment(HAlign_Fill);
+
+    auto* const summary_heading{make_widget<UTextBlock>(tree, TEXT("stats_summary_heading"))};
+    summary_heading->SetText(FText::FromString(TEXT("Level Summary")));
+    stats_contents->AddChildToVerticalBox(summary_heading)
+        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
+
+    auto* const summary_panel{make_widget<UBorder>(tree, TEXT("stats_summary_panel"))};
+    auto* const summary_grid{tree.ConstructWidget<UGridPanel>()};
+    summary_grid->SetColumnFill(0, 0.7f);
+    summary_grid->SetColumnFill(1, 0.3f);
+    add_pause_stat_row(tree,
+                       *summary_grid,
+                       0,
+                       TEXT("stats_label_elapsed_time"),
+                       FText::FromString(TEXT("Elapsed Time")),
+                       TEXT("elapsed_time_value"));
+    add_pause_stat_row(tree,
+                       *summary_grid,
+                       1,
+                       TEXT("stats_label_entities_spawned"),
+                       FText::FromString(TEXT("Entities Spawned")),
+                       TEXT("entities_spawned_value"));
+    add_pause_stat_row(tree,
+                       *summary_grid,
+                       2,
+                       TEXT("stats_label_entities_active"),
+                       FText::FromString(TEXT("Entities Active")),
+                       TEXT("entities_active_value"));
+    add_pause_stat_row(tree,
+                       *summary_grid,
+                       3,
+                       TEXT("stats_label_entities_destroyed"),
+                       FText::FromString(TEXT("Entities Destroyed")),
+                       TEXT("entities_destroyed_value"));
+    add_pause_stat_row(tree,
+                       *summary_grid,
+                       4,
+                       TEXT("stats_label_kills"),
+                       FText::FromString(TEXT("Kills")),
+                       TEXT("kills_value"));
+    add_pause_stat_row(tree,
+                       *summary_grid,
+                       5,
+                       TEXT("stats_label_lasers_fired"),
+                       FText::FromString(TEXT("Lasers Fired")),
+                       TEXT("lasers_fired_value"));
+    add_pause_stat_row(tree,
+                       *summary_grid,
+                       6,
+                       TEXT("stats_label_lasers_active"),
+                       FText::FromString(TEXT("Lasers Active")),
+                       TEXT("lasers_active_value"));
+    summary_panel->SetContent(summary_grid);
+    stats_contents->AddChildToVerticalBox(summary_panel)
+        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 20.0f});
+
+    auto* const graph_heading{make_widget<UTextBlock>(tree, TEXT("stats_graph_heading"))};
+    graph_heading->SetText(FText::FromString(TEXT("Entity Activity")));
+    stats_contents->AddChildToVerticalBox(graph_heading)
+        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 4.0f});
+    auto* const graph_description{make_widget<UTextBlock>(tree, TEXT("stats_graph_description"))};
+    graph_description->SetText(
+        FText::FromString(TEXT("Active entities and kills over simulation time (seconds).")));
+    graph_description->SetAutoWrapText(true);
+    stats_contents->AddChildToVerticalBox(graph_description)
+        ->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 8.0f});
+    auto* const graph_size{tree.ConstructWidget<USizeBox>()};
+    graph_size->SetHeightOverride(260.0f);
+    auto* const graph_host{make_widget<UNativeWidgetHost>(tree, TEXT("stats_graph_host"))};
+    graph_size->SetContent(graph_host);
+    stats_contents->AddChildToVerticalBox(graph_size)->SetHorizontalAlignment(HAlign_Fill);
+    switcher->AddChild(stats_scroll);
+
+    auto* const options{make_widget<UTextBlock>(tree, TEXT("options_placeholder"))};
+    options->SetText(FText::FromString(TEXT("Options placeholder content")));
+    options->SetAutoWrapText(true);
+    switcher->AddChild(options);
+
     tree.RootWidget = root;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }

@@ -196,7 +196,10 @@ auto make_time_series_graph(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     throughput.style = {.color = {0.1f, 0.85f, 1.0f, 1.0f}, .thickness = 1.5f, .antialias = true};
     FGraphSeries latency;
     latency.name = NSLOCTEXT("SandboxUIShowcase", "Latency", "Latency");
-    latency.style = {.color = {1.0f, 0.45f, 0.12f, 1.0f}, .thickness = 1.5f, .antialias = true};
+    latency.style = {.color = {1.0f, 0.45f, 0.12f, 1.0f},
+                     .thickness = 1.5f,
+                     .antialias = true,
+                     .interpolation = EGraphSeriesInterpolation::StepAfter};
 
     int32 constexpr sample_count{240};
     throughput.x.Reserve(sample_count);
@@ -447,14 +450,14 @@ void USandboxUIShowcase::build_widget_tree() {
         FText::FromString(TEXT("SRadar2D - Dense field and clipping")),
         FText::FromString(TEXT("A dense spiral extending beyond the configured radar range.")),
         320.0f);
-    add_showcase_card(
-        *WidgetTree,
-        *gallery,
-        TEXT("graph_series_card"),
-        graph_series_host_name,
-        FText::FromString(TEXT("SGraphPlot - Multiple time series")),
-        FText::FromString(TEXT("Two labelled series sharing automatically resolved axes.")),
-        260.0f);
+    add_showcase_card(*WidgetTree,
+                      *gallery,
+                      TEXT("graph_series_card"),
+                      graph_series_host_name,
+                      FText::FromString(TEXT("SGraphPlot - Multiple time series")),
+                      FText::FromString(TEXT(
+                          "Linear and step-after series sharing automatically resolved axes.")),
+                      260.0f);
     add_showcase_card(
         *WidgetTree,
         *gallery,
