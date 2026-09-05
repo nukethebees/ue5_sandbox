@@ -1,3 +1,4 @@
+#include <SandboxISMCComponent.h>
 #include <SpaceGame/presentation/LevelPresentation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulation.h>

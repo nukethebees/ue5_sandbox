@@ -31,6 +31,10 @@
 			"Enabled": true
 		},
 		{
+			"Name": "SandboxISMC",
+			"Enabled": true
+		},
+		{
 			"Name": "SandboxShaders",
 			"Enabled": true
 		},

@@ -1,3 +1,4 @@
+#include <SandboxISMCComponent.h>
 #include <SandboxTests/support/test_setup.h>
 #include "test_batch_orchestrator_reset_scenario.h"
 
@@ -142,11 +143,10 @@ void FTestBatchOrchestratorResetScenario::reset_simulation() {
             resources.fighters == retained.fighters && resources.turrets == retained.turrets &&
             resources.spinners == retained.spinners,
         TEXT("Reset retains the orchestrator's presentation components"));
-    for (auto const* component : {retained.lasers,
-                                  retained.capital_ships,
-                                  retained.fighters,
-                                  retained.turrets,
-                                  retained.spinners}) {
+    checks.are_equal(
+        0, retained.lasers->get_instance_count(), TEXT("Reset clears laser instances"));
+    for (auto const* component :
+         {retained.capital_ships, retained.fighters, retained.turrets, retained.spinners}) {
         checks.are_equal(
             0, component->GetInstanceCount(), TEXT("Reset clears presentation instances"));
     }

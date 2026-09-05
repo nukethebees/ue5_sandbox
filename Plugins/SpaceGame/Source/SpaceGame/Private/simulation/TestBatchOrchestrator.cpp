@@ -18,6 +18,7 @@
 #include <SandboxCore/invoke.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SandboxISMCComponent.h>
 
 #include <CoreGlobals.h>
 #include <Engine/GameInstance.h>
@@ -66,7 +67,7 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     collision_grid_visualization = CreateDefaultSubobject<UCollisionGridVisualizationComponent>(
         TEXT("CollisionGridVisualization"));
     RootComponent = collision_grid_visualization;
-    laser_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Lasers"));
+    laser_instances_ = CreateDefaultSubobject<USandboxISMCComponent>(TEXT("Lasers"));
     laser_instances_->SetupAttachment(RootComponent);
     capital_instances_ =
         CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("CapitalShips"));
@@ -150,8 +151,8 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     }
     level_simulation_.Reset();
     world_collision_.restore_collision();
-    for (auto* component : {laser_instances_.Get(),
-                            capital_instances_.Get(),
+    laser_instances_->clear_instances();
+    for (auto* component : {capital_instances_.Get(),
                             fighter_instances_.Get(),
                             turret_instances_.Get(),
                             spinner_instances_.Get()}) {

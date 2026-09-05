@@ -13,6 +13,7 @@
 
 class ATestSpaceShip;
 class UCollisionGridVisualizationComponent;
+class USandboxISMCComponent;
 
 class ATestBatchOrchestrator;
 
@@ -228,7 +229,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Presentation")
     FLevelPresentationSettings presentation_settings;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
-    TObjectPtr<UInstancedStaticMeshComponent> laser_instances_;
+    TObjectPtr<USandboxISMCComponent> laser_instances_;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<UInstancedStaticMeshComponent> capital_instances_;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")

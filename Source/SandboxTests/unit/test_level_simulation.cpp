@@ -1,3 +1,4 @@
+#include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
@@ -148,11 +149,11 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
         owner->Destroy();
     };
     FLevelPresentationResources resources;
-    for (auto** slot : {&resources.lasers,
-                        &resources.capital_ships,
-                        &resources.fighters,
-                        &resources.turrets,
-                        &resources.spinners}) {
+    resources.lasers = NewObject<USandboxISMCComponent>(owner);
+    owner->AddInstanceComponent(resources.lasers);
+    resources.lasers->RegisterComponent();
+    for (auto** slot :
+         {&resources.capital_ships, &resources.fighters, &resources.turrets, &resources.spinners}) {
         *slot = NewObject<UInstancedStaticMeshComponent>(owner);
         owner->AddInstanceComponent(*slot);
         (*slot)->RegisterComponent();

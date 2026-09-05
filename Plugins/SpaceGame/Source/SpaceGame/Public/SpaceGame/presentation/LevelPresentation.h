@@ -11,7 +11,7 @@ class ATestSpaceShip;
 struct FLevelSimulation;
 
 struct SPACEGAME_API FLevelPresentationResources {
-    UInstancedStaticMeshComponent* lasers{nullptr};
+    USandboxISMCComponent* lasers{nullptr};
     UInstancedStaticMeshComponent* capital_ships{nullptr};
     UInstancedStaticMeshComponent* fighters{nullptr};
     UInstancedStaticMeshComponent* turrets{nullptr};

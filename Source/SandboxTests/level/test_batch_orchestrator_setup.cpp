@@ -18,6 +18,7 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxISMCComponent.h>
 
 #include <Misc/AutomationTest.h>
 
@@ -57,11 +58,10 @@ void FTestBatchOrchestratorSetupScenario::prepare_level() {
 
         auto const resources{orchestrator->get_presentation_resources()};
         TestRunner->TestTrue(TEXT("Batch components are available"), resources.is_valid());
-        for (auto* component : {resources.lasers,
-                                resources.capital_ships,
-                                resources.fighters,
-                                resources.turrets,
-                                resources.spinners}) {
+        TestRunner->TestTrue(TEXT("Orchestrator owns the laser batch component"),
+                             resources.lasers->GetOwner() == orchestrator);
+        for (auto* component :
+             {resources.capital_ships, resources.fighters, resources.turrets, resources.spinners}) {
             TestRunner->TestTrue(TEXT("Orchestrator owns each batch component"),
                                  component->GetOwner() == orchestrator);
         }
