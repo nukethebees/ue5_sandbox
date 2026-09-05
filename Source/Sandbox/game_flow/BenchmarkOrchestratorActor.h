@@ -1,5 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
-
 #pragma once
 
 #include "CoreMinimal.h"
@@ -26,8 +24,8 @@ class SANDBOX_API ABenchmarkOrchestratorActor
   public:
     ABenchmarkOrchestratorActor();
   protected:
-    void BeginPlay() override;
-    virtual void EndPlay(EEndPlayReason::Type const EndPlayReason) override;
+    auto BeginPlay() -> void override;
+    auto EndPlay(EEndPlayReason::Type const end_play_reason) -> void override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark")
     FName benchmark_name{NAME_None};
@@ -39,7 +37,7 @@ class SANDBOX_API ABenchmarkOrchestratorActor
     float benchmark_print_update_seconds{5.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark")
-    ACameraActor* benchmark_camera;
+    TObjectPtr<ACameraActor> benchmark_camera{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Benchmark")
     bool enabled{true};
@@ -71,12 +69,12 @@ class SANDBOX_API ABenchmarkOrchestratorActor
                                    TEXT("Slate"),
                                    TEXT("SlateWidgets")};
   private:
-    void start_trace();
-    void stop_trace();
-    void log_time();
+    auto start_trace() -> void;
+    auto stop_trace() -> void;
+    auto log_time() -> void;
 
     FTimerHandle trace_timer_handle;
     FTimerHandle log_timer_handle;
     float time_elapsed{0.0f};
-    FString channels{};
+    bool benchmark_running_{false};
 };

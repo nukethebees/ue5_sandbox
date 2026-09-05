@@ -1,0 +1,25 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "sandbox_ismc_instance_data",
+      "header": "Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h",
+      "source": "Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp",
+      "header_include": "SandboxISMCInstanceData.h",
+      "namespace": "ml::sandbox_ismc",
+      "include_order": ["SandboxISMC/", "SandboxCore/"],
+      "structs": [
+        {
+          "name": "InstanceData",
+          "export_specifier": "SANDBOXISMC_API",
+          "operations": ["all"],
+          "members": [
+            {"name": "positions", "kind": "array", "type": "FVector3f"},
+            {"name": "rotations", "kind": "array", "type": "FQuat4f"},
+            {"name": "scales", "kind": "array", "type": "FVector3f"}
+          ]
+        }
+      ]
+    }
+  ]
+}

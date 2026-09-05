@@ -6,16 +6,15 @@
 #include <SandboxCore/array_checks.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
+#include <SandboxISMCComponent.h>
 
-#include <Async/ParallelFor.h>
-#include <Components/InstancedStaticMeshComponent.h>
 #include <Components/SceneComponent.h>
 #include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
-FLaserPresentation::FLaserPresentation(UInstancedStaticMeshComponent& component)
+FLaserPresentation::FLaserPresentation(USandboxISMCComponent& component)
     : instances{&component} {}
 
 void FLaserPresentation::bind_simulation(ml::test_lasers::Simulation& new_simulation) {
@@ -32,9 +31,8 @@ auto FLaserPresentation::simulation() const -> ml::test_lasers::Simulation const
 }
 
 void FLaserPresentation::clear_runtime_state_presentation() {
-    instances->ClearInstances();
-    ismc_data.Reset();
-    dummy_transforms_spawn_buffer.Reset();
+    instances->clear_instances();
+    material_data.Reset();
 }
 
 void FLaserPresentation::begin_play_presentation() {
@@ -49,7 +47,7 @@ void FLaserPresentation::begin_play_presentation() {
     }
 
     configure_ismc();
-    instances->PreAllocateInstancesMemory(actor_config->n_preallocated_instances);
+    material_data.Reserve(actor_config->n_preallocated_instances);
 
 #if WITH_EDITOR
     debug_drawer.world = instances->GetWorld();
@@ -60,27 +58,25 @@ void FLaserPresentation::begin_play_presentation() {
 
 void FLaserPresentation::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
-    apply_simulation_changes_to_ismc();
-    prepare_ismc_transforms();
+    synchronize_material_data();
     update_ismc();
 }
 
 void FLaserPresentation::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::commit_visual_data);
-    instances->MarkRenderStateDirty();
     spawn_hit_effects();
 }
 
 void FLaserPresentation::end_tick_presentation() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::end_tick_presentation);
-    TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->GetNumInstances());
+    TRACE_COUNTER_SET(SandboxTestLaserISMCCount, instances->get_instance_count());
     validate_array_sizes();
 }
 
 void FLaserPresentation::configure_ismc() {
     instances->SetMobility(EComponentMobility::Movable);
-    instances->SetStaticMesh(actor_config->mesh);
-    check(instances->GetStaticMesh() == actor_config->mesh);
+    instances->set_static_mesh(*actor_config->mesh);
+    check(instances->get_static_mesh() == actor_config->mesh);
     instances->SetMobility(EComponentMobility::Static);
     instances->SetMaterial(0, actor_config->material);
 
@@ -90,69 +86,58 @@ void FLaserPresentation::configure_ismc() {
     instances->SetCastShadow(false);
     instances->SetAffectDistanceFieldLighting(false);
     instances->SetReceivesDecals(false);
-    instances->SetCullDistances(actor_config->min_cull_distance, actor_config->max_cull_distance);
-    instances->SetNumCustomDataFloats(n_custom_ismc_floats);
-    instances->SetRemoveSwap();
+    instances->set_num_custom_data_floats(n_custom_ismc_floats);
 }
 
-void FLaserPresentation::apply_simulation_changes_to_ismc() {
+void FLaserPresentation::synchronize_material_data() {
     auto const& laser_simulation{simulation()};
     for (auto const index : laser_simulation.presentation_indices_to_remove) {
-        instances->RemoveInstance(index);
+        material_data.RemoveAtSwap(index, EAllowShrinking::No);
     }
 
     auto const spawn_count{laser_simulation.presentation_spawn_count};
-    if (spawn_count > 0) {
-        auto const offset{instances->GetNumInstances()};
-        dummy_transforms_spawn_buffer.SetNum(spawn_count, EAllowShrinking::No);
-
-        constexpr bool return_indices{false};
-        constexpr bool update_navigation{false};
-        instances->AddInstances(
-            dummy_transforms_spawn_buffer, return_indices, is_world_space, update_navigation);
-        instances->SetCustomData(offset,
-                                 offset + spawn_count - 1,
-                                 laser_simulation.presentation_custom_data_to_add,
-                                 false);
+    auto const& custom_data{laser_simulation.presentation_custom_data_to_add};
+    check(custom_data.Num() == spawn_count * n_custom_ismc_floats);
+    for (int32 index{0}; index < spawn_count; ++index) {
+        auto const offset{index * n_custom_ismc_floats};
+        material_data.Add(
+            {.colour = {custom_data[offset], custom_data[offset + 1], custom_data[offset + 2]},
+             .initial_lifetime = custom_data[offset + 3],
+             .spawn_time = custom_data[offset + 4]});
     }
 
-    check(instances->GetNumInstances() == laser_simulation.get_num_instances());
-}
-
-void FLaserPresentation::prepare_ismc_transforms() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::prepare_ismc_transforms);
-
-    auto const& laser_simulation{simulation()};
-    auto const n{laser_simulation.get_num_instances()};
-    ismc_data.SetNumUninitialized(n, EAllowShrinking::No);
-    if (n <= 0) {
-        return;
-    }
-
-    constexpr int32 n_jobs{8};
-    auto const updates_per_slice{FMath::DivideAndRoundUp(n, n_jobs)};
-    ParallelFor(n_jobs, [this, &laser_simulation, updates_per_slice, n](int32 const job_index) {
-        auto const begin{job_index * updates_per_slice};
-        auto const end{FMath::Min(begin + updates_per_slice, n)};
-        for (int32 i{begin}; i < end; ++i) {
-            auto const rotation{ml::get_rotator3d(laser_simulation.entities.rotations, i)};
-            ismc_data[i] =
-                FTransform{
-                    rotation.Quaternion(),
-                    ml::get_vector3d(laser_simulation.entities.locations, i),
-                }
-                    .ToMatrixWithScale();
-        }
-    });
+    check(material_data.Num() == laser_simulation.get_num_instances());
 }
 
 void FLaserPresentation::update_ismc() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_ismc);
 
-    constexpr bool mark_render_dirty{false};
-    constexpr bool teleport{true};
-    instances->BatchUpdateInstancesData(
-        0, ismc_data.Num(), ismc_data.GetData(), mark_render_dirty, teleport);
+    auto const& laser_simulation{simulation()};
+    auto const count{laser_simulation.get_num_instances()};
+    instances->set_instances(
+        count, ESandboxISMCParallelism::Auto, [this, &laser_simulation](auto& chunk) {
+            auto const first_index{chunk.first_index()};
+            auto const chunk_count{chunk.num()};
+            for (int32 local_index{0}; local_index < chunk_count; ++local_index) {
+                auto const index{first_index + local_index};
+                auto const& locations{laser_simulation.entities.locations};
+                auto const location{
+                    FVector3f{locations.xs[index], locations.ys[index], locations.zs[index]}};
+                auto const& rotations{laser_simulation.entities.rotations};
+                auto const rotation{FRotator3f{
+                    rotations.pitches[index], rotations.yaws[index], rotations.rolls[index]}
+                                        .Quaternion()};
+                chunk.set_transform(local_index, location, rotation, FVector3f::OneVector);
+
+                auto custom_data{chunk.custom_data(local_index)};
+                auto const& data{material_data[index]};
+                custom_data[0] = data.colour.X;
+                custom_data[1] = data.colour.Y;
+                custom_data[2] = data.colour.Z;
+                custom_data[3] = data.initial_lifetime;
+                custom_data[4] = data.spawn_time;
+            }
+        });
 }
 
 void FLaserPresentation::spawn_hit_effects() {
@@ -207,6 +192,7 @@ void FLaserPresentation::validate_array_sizes() const {
     simulation().validate_array_sizes();
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(simulation().get_num_instances()),
-        SANDBOX_NAMED_NUM(instances->GetNumInstances()),
+        SANDBOX_NAMED_NUM(material_data.Num()),
+        SANDBOX_NAMED_NUM(instances->get_instance_count()),
     });
 }

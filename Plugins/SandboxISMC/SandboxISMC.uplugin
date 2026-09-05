@@ -1,0 +1,35 @@
+{
+	"FileVersion": 3,
+	"Version": 1,
+	"VersionName": "0.1",
+	"FriendlyName": "Sandbox ISMC",
+	"Description": "Experimental minimal static-mesh instance renderer.",
+	"Category": "Sandbox",
+	"CanContainContent": true,
+	"IsBetaVersion": false,
+	"IsExperimentalVersion": true,
+	"Installed": false,
+	"Plugins": [
+		{
+			"Name": "SandboxCore",
+			"Enabled": true
+		}
+	],
+	"Modules": [
+		{
+			"Name": "SandboxISMC",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		},
+		{
+			"Name": "SandboxISMCLab",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SandboxISMCTests",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
+		}
+	]
+}

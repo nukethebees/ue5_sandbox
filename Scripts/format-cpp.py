@@ -168,6 +168,7 @@ def main() -> None:
         project_root / "Plugins" / "USFLoader",
         project_root / "Plugins" / "SandboxCore",
         project_root / "Plugins" / "SandboxEditorTools",
+        project_root / "Plugins" / "SandboxISMC",
         project_root / "Plugins" / "SandboxMaterialExprs",
         project_root / "Plugins" / "SandboxUI",
         project_root / "Plugins" / "SbxLangLab",

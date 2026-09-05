@@ -55,6 +55,14 @@
       }
     },
     {
+      "name": "sandbox-ismc-benchmark",
+      "displayName": "SandboxISMC benchmark",
+      "inherits": "development",
+      "cacheVariables": {
+        "SANDBOX_TEST_SUITE": "editor-only"
+      }
+    },
+    {
       "name": "shipping",
       "displayName": "Shipping",
       "inherits": "base",
@@ -136,6 +144,11 @@
       "name": "gpu-starfield-benchmark",
       "configurePreset": "development",
       "targets": ["editor"]
+    },
+    {
+      "name": "sandbox-ismc-benchmark",
+      "configurePreset": "sandbox-ismc-benchmark",
+      "targets": ["editor"]
     }
   ],
   "testPresets": [
@@ -208,6 +221,21 @@
       "filter": {
         "include": {
           "label": "gpu-starfield-matrix"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "sandbox-ismc-benchmark",
+      "configurePreset": "sandbox-ismc-benchmark",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "sandbox-ismc-benchmark"
         }
       },
       "execution": {
@@ -354,6 +382,14 @@
         { "type": "configure", "name": "development" },
         { "type": "build", "name": "gpu-starfield-benchmark" },
         { "type": "test", "name": "gpu-starfield-matrix-tests" }
+      ]
+    },
+    {
+      "name": "sandbox-ismc-benchmark",
+      "steps": [
+        { "type": "configure", "name": "sandbox-ismc-benchmark" },
+        { "type": "build", "name": "sandbox-ismc-benchmark" },
+        { "type": "test", "name": "sandbox-ismc-benchmark" }
       ]
     },
     {

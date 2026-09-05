@@ -4,17 +4,19 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 
-#include <Components/InstancedStaticMeshComponent.h>
 #include <CoreMinimal.h>
+
+class USandboxISMCComponent;
+class FLaserPresentationIndexingTest;
 
 struct SPACEGAME_API FLaserPresentation {
     friend struct FLevelPresentation;
     friend struct FLevelSimulation;
+    friend class FLaserPresentationIndexingTest;
   public:
-    static constexpr bool is_world_space{false};
     static constexpr int32 n_custom_ismc_floats{5};
 
-    explicit FLaserPresentation(UInstancedStaticMeshComponent& component);
+    explicit FLaserPresentation(USandboxISMCComponent& component);
 
     auto get_config() const noexcept -> FLaserProjectileConfig const* { return actor_config; }
     void set_actor_config(FLaserProjectileConfig const* new_config) noexcept {
@@ -32,18 +34,21 @@ struct SPACEGAME_API FLaserPresentation {
     void end_tick_presentation();
 
     void configure_ismc();
-    void apply_simulation_changes_to_ismc();
-    void prepare_ismc_transforms();
+    void synchronize_material_data();
     void update_ismc();
     void spawn_hit_effects();
     void validate_array_sizes() const;
 
     FLaserProjectileConfig const* actor_config{nullptr};
 
-    UInstancedStaticMeshComponent* instances{nullptr};
+    struct FMaterialData {
+        FVector3f colour;
+        float initial_lifetime;
+        float spawn_time;
+    };
 
-    TArray<FInstancedStaticMeshInstanceData> ismc_data;
-    TArray<FTransform> dummy_transforms_spawn_buffer;
+    USandboxISMCComponent* instances{nullptr};
+    TArray<FMaterialData> material_data;
 
     bool have_warned_hit_effect{false};
 

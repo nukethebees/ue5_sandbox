@@ -1,6 +1,9 @@
+#include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
+
+#include <SandboxCore/soa_rotator_utils.h>
 
 #include <Engine/World.h>
 #include <Misc/AutomationTest.h>
@@ -148,11 +151,11 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
         owner->Destroy();
     };
     FLevelPresentationResources resources;
-    for (auto** slot : {&resources.lasers,
-                        &resources.capital_ships,
-                        &resources.fighters,
-                        &resources.turrets,
-                        &resources.spinners}) {
+    resources.lasers = NewObject<USandboxISMCComponent>(owner);
+    owner->AddInstanceComponent(resources.lasers);
+    resources.lasers->RegisterComponent();
+    for (auto** slot :
+         {&resources.capital_ships, &resources.fighters, &resources.turrets, &resources.spinners}) {
         *slot = NewObject<UInstancedStaticMeshComponent>(owner);
         owner->AddInstanceComponent(*slot);
         (*slot)->RegisterComponent();
@@ -212,5 +215,108 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
         TestEqual(TEXT("Mission kill totals match"), a->kills, b->kills);
         TestEqual(TEXT("Mission completion times match"), a->elapsed_seconds, b->elapsed_seconds);
     }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLaserPresentationIndexingTest,
+    "Sandbox.UnitTests.LaserPresentation.MaterialRowsTrackSimulationThroughChurn",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
+    struct FExpectedMaterialData {
+        FLinearColor colour;
+        float initial_lifetime{};
+        float spawn_time{};
+    };
+
+    auto* const component{NewObject<USandboxISMCComponent>()};
+    component->set_num_custom_data_floats(FLaserPresentation::n_custom_ismc_floats);
+
+    FLevelSimulation simulation{make_battle()};
+    prepare_mission(simulation);
+    auto* const lasers{simulation.get_lasers()};
+    FLaserPresentation presentation{*component};
+    presentation.bind_simulation(*lasers);
+
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    constexpr int32 simulated_seconds{3};
+    constexpr int32 spawns_per_tick{6};
+    auto const tick_count{static_cast<int32>(simulation.get_clock().tick_loop.tick_rate) *
+                          simulated_seconds};
+    TArray<FExpectedMaterialData> expected_material_data;
+    expected_material_data.Reserve(tick_count * spawns_per_tick);
+
+    for (int32 tick{}; tick < tick_count; ++tick) {
+        ml::test_lasers::SpawnRequests requests;
+        requests.add_uninitialised(spawns_per_tick);
+        for (int32 spawn{}; spawn < spawns_per_tick; ++spawn) {
+            auto const id{expected_material_data.Num() + 1};
+            auto const initial_lifetime{
+                static_cast<float>((spawn == 0 ? 0.5 : 2.0 + static_cast<double>(id % 45)) * dt)};
+            auto const colour{FLinearColor{static_cast<float>(id),
+                                           static_cast<float>(id) + 0.25f,
+                                           static_cast<float>(id) + 0.5f}};
+
+            ml::assign(
+                requests.locations, spawn, FVector3f{static_cast<float>(id * 10), 0.0f, 100000.0f});
+            ml::assign(requests.rotations, spawn, FRotator3f::ZeroRotator);
+            ml::assign(requests.base_velocities, spawn, FVector3f::ZeroVector);
+            requests.damages[spawn] = 1;
+            requests.speeds[spawn] = 1000.0f;
+            requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
+            requests.instigator_handles[spawn] = {};
+            requests.colours[spawn] = colour;
+            expected_material_data.Add(
+                {.colour = colour,
+                 .initial_lifetime = initial_lifetime,
+                 .spawn_time = static_cast<float>(simulation.get_clock().get_simulation_time())});
+        }
+
+        lasers->queue_laser_spawns(requests);
+        simulation.advance(dt);
+        presentation.update_visual_data();
+
+        auto const live_count{lasers->get_num_instances()};
+        if (!TestEqual(TEXT("Presentation and simulation retain the same row count"),
+                       presentation.material_data.Num(),
+                       live_count)) {
+            return false;
+        }
+
+        for (int32 index{}; index < live_count; ++index) {
+            auto const id{FMath::RoundToInt(lasers->entities.colours[index].R)};
+            auto const& expected{expected_material_data[id - 1]};
+            auto const& actual{presentation.material_data[index]};
+            auto const matches{actual.colour.X == expected.colour.R &&
+                               actual.colour.Y == expected.colour.G &&
+                               actual.colour.Z == expected.colour.B &&
+                               actual.initial_lifetime == expected.initial_lifetime &&
+                               actual.spawn_time == expected.spawn_time};
+            if (!matches) {
+                AddError(FString::Printf(
+                    TEXT("Tick %d row %d (laser %d) has material (%.2f, %.2f, %.2f, %.6f, "
+                         "%.6f), expected (%.2f, %.2f, %.2f, %.6f, %.6f)"),
+                    tick,
+                    index,
+                    id,
+                    actual.colour.X,
+                    actual.colour.Y,
+                    actual.colour.Z,
+                    actual.initial_lifetime,
+                    actual.spawn_time,
+                    expected.colour.R,
+                    expected.colour.G,
+                    expected.colour.B,
+                    expected.initial_lifetime,
+                    expected.spawn_time));
+                return false;
+            }
+        }
+    }
+
+    TestTrue(TEXT("The test exercises removal churn"),
+             lasers->get_number_spawned() > lasers->get_num_instances());
     return true;
 }

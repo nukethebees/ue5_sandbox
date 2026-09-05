@@ -45,6 +45,63 @@ set(CACHE{SANDBOX_TEST_SUITE}
 set_property(CACHE SANDBOX_TEST_SUITE PROPERTY STRINGS
   default
   benchmark
+  editor-only
+)
+
+set(CACHE{SANDBOX_ISMC_BENCHMARK_SECONDS}
+  TYPE STRING
+  HELP "Duration of the offscreen SandboxISMC paired benchmark"
+  VALUE 10
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_INSTANCES}
+  TYPE STRING
+  HELP "Instances per renderer in the offscreen SandboxISMC paired benchmark"
+  VALUE 40000
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT}
+  TYPE STRING
+  HELP "Percentage of instances updated per frame in the offscreen SandboxISMC benchmark"
+  VALUE 100
+)
+set(SANDBOX_ISMC_BENCHMARK_CHURN 0 CACHE STRING "Enable deterministic population churn (0 or 1)")
+set(SANDBOX_ISMC_BENCHMARK_MIN_INSTANCES 1000 CACHE STRING "Minimum live population during churn")
+set(SANDBOX_ISMC_BENCHMARK_HALF_CYCLE_UPDATES 120 CACHE STRING "Updates per grow/shrink half-cycle")
+set(SANDBOX_ISMC_BENCHMARK_REPLACEMENT_PERCENT 5 CACHE STRING "Percentage of survivors replaced per update")
+set(SANDBOX_ISMC_BENCHMARK_WARMUP_UPDATES 0 CACHE STRING "Initial updates excluded from benchmark samples")
+set(CACHE{SANDBOX_ISMC_BENCHMARK_MODE}
+  TYPE STRING
+  HELP "SandboxISMC benchmark renderer mode: paired, custom, or engine_ismc"
+  VALUE paired
+)
+set_property(CACHE SANDBOX_ISMC_BENCHMARK_MODE PROPERTY STRINGS
+  paired
+  custom
+  engine_ismc
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_VISIBILITY}
+  TYPE STRING
+  HELP "SandboxISMC benchmark visibility distribution: all, half, or none"
+  VALUE all
+)
+set_property(CACHE SANDBOX_ISMC_BENCHMARK_VISIBILITY PROPERTY STRINGS
+  all
+  half
+  none
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_CUSTOM_DATA}
+  TYPE STRING
+  HELP "SandboxISMC benchmark custom data: none, static, or animated"
+  VALUE none
+)
+set_property(CACHE SANDBOX_ISMC_BENCHMARK_CUSTOM_DATA PROPERTY STRINGS
+  none
+  static
+  animated
+)
+set(CACHE{SANDBOX_ISMC_BENCHMARK_SHADOWS}
+  TYPE STRING
+  HELP "Whether the offscreen SandboxISMC benchmark casts shadows (0 or 1)"
+  VALUE 0
 )
 
 if(NOT CMAKE_HOST_WIN32)
@@ -238,6 +295,7 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxImages.UnitTests
   LuaLab.UnitTests
   S7Lab.UnitTests
+  SandboxISMC.UnitTests
   SandboxUI.UnitTests
 )
 set(SANDBOX_LEVEL_AUTOMATION_FILTERS
@@ -263,6 +321,58 @@ add_unreal_automation_test(
   LABELS all
 )
 
+add_test(
+  NAME SandboxISMC.RenderTests
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests StartsWith:SandboxISMC.RenderTests; Quit"
+    -RenderOffscreen
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+    -ddc=NoZenLocalFallback
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+)
+set_tests_properties(SandboxISMC.RenderTests PROPERTIES
+  LABELS "level;all"
+  TIMEOUT 900
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
+  NAME SandboxISMC.RemoteBenchmark
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests SandboxISMC.RemoteBenchmark; Quit"
+    "-SandboxISMCBenchmarkSeconds=${SANDBOX_ISMC_BENCHMARK_SECONDS}"
+    "-SandboxISMCBenchmarkInstances=${SANDBOX_ISMC_BENCHMARK_INSTANCES}"
+    "-SandboxISMCBenchmarkChurn=${SANDBOX_ISMC_BENCHMARK_CHURN}"
+    "-SandboxISMCBenchmarkMinInstances=${SANDBOX_ISMC_BENCHMARK_MIN_INSTANCES}"
+    "-SandboxISMCBenchmarkHalfCycleUpdates=${SANDBOX_ISMC_BENCHMARK_HALF_CYCLE_UPDATES}"
+    "-SandboxISMCBenchmarkReplacementPercent=${SANDBOX_ISMC_BENCHMARK_REPLACEMENT_PERCENT}"
+    "-SandboxISMCBenchmarkWarmupUpdates=${SANDBOX_ISMC_BENCHMARK_WARMUP_UPDATES}"
+    "-SandboxISMCBenchmarkUpdatePercent=${SANDBOX_ISMC_BENCHMARK_UPDATE_PERCENT}"
+    "-SandboxISMCBenchmarkMode=${SANDBOX_ISMC_BENCHMARK_MODE}"
+    "-SandboxISMCBenchmarkVisibility=${SANDBOX_ISMC_BENCHMARK_VISIBILITY}"
+    "-SandboxISMCBenchmarkCustomData=${SANDBOX_ISMC_BENCHMARK_CUSTOM_DATA}"
+    "-SandboxISMCBenchmarkShadows=${SANDBOX_ISMC_BENCHMARK_SHADOWS}"
+    -SandboxISMCBenchmarkEndPIE
+    -RenderOffscreen
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+    -FullStdOutLogOutput
+    -ddc=NoZenLocalFallback
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+)
+set_tests_properties(SandboxISMC.RemoteBenchmark PROPERTIES
+  LABELS sandbox-ismc-benchmark
+  TIMEOUT 600
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
 add_custom_target(dev-core
   DEPENDS
     editor
@@ -283,9 +393,11 @@ elseif(SANDBOX_TEST_SUITE STREQUAL "default")
     core-tests
     native-tests
   )
+elseif(SANDBOX_TEST_SUITE STREQUAL "editor-only")
+  # Editor automation tests are registered above and need no low-level test executable.
 else()
   message(FATAL_ERROR
-    "SANDBOX_TEST_SUITE must be one of: default, benchmark. "
+    "SANDBOX_TEST_SUITE must be one of: default, benchmark, editor-only. "
     "Got '${SANDBOX_TEST_SUITE}'."
   )
 endif()
