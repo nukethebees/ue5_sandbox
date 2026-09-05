@@ -12,6 +12,10 @@ prefix_rule(
 # CMake
 # ---------------------------------------------
 prefix_rule(
+    pattern=["cmake", "--preset"], 
+    decision="allow"
+)
+prefix_rule(
     pattern=["cmake", "--workflow", "--preset"], 
     decision="allow"
 )
