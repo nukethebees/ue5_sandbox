@@ -14,6 +14,7 @@ struct SGameOptionsViewBuilder;
 
 namespace ml::ioj {
 class SGameButton;
+class SHiveNavigationButton;
 class UGameSettingsSubsystem;
 struct FGameCapabilities;
 
@@ -56,6 +57,7 @@ class SGameOptionsView final : public SCompoundWidget {
     auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
   private:
     auto build_header() -> TSharedRef<SWidget>;
+    auto build_navigation() -> TSharedRef<SWidget>;
     auto build_body() -> TSharedRef<SWidget>;
     auto build_footer() -> TSharedRef<SWidget>;
     auto build_category_page(EGameSettingCategory category) -> TSharedRef<SWidget>;
@@ -67,6 +69,8 @@ class SGameOptionsView final : public SCompoundWidget {
         -> TSharedRef<SWidget>;
     auto handle_tab(EOptionsTab tab) -> FReply;
     auto tab_text(EOptionsTab tab) const -> FText;
+    auto tab_icon(EOptionsTab tab) const -> EGameUiIcon;
+    void cycle_tab(int32 direction);
     auto setting_float(EGameSetting setting) const -> float;
     auto format_range_value(FGameSettingDescriptor const& descriptor) const -> FText;
     auto active_category() const -> TOptional<EGameSettingCategory>;
@@ -88,7 +92,7 @@ class SGameOptionsView final : public SCompoundWidget {
     FSimpleDelegate on_confirm_display_{};
     FSimpleDelegate on_revert_display_{};
 
-    TArray<TSharedPtr<SGameButton>> tab_buttons_{};
+    TArray<TSharedPtr<SHiveNavigationButton>> tab_buttons_{};
     TSharedPtr<SGameButton> apply_button_{};
     TSharedPtr<SGameButton> reset_button_{};
     TSharedPtr<SGameButton> dirty_apply_button_{};

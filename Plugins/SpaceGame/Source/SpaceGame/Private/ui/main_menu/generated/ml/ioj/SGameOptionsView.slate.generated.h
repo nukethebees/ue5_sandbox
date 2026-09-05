@@ -14,9 +14,9 @@ struct SGameOptionsViewBuilder {
 
     explicit SGameOptionsViewBuilder(ThisClass& self) : self_{self} {}
 
-    auto BuildPanel(auto&& background, auto&& page_margin, auto&& maximum_width, auto&& header_padding, auto&& body_padding, auto&& footer_padding, auto&& header, auto&& body, auto&& footer) {
+    auto BuildPanel(auto&& background, auto&& page_margin, auto&& maximum_width, auto&& chrome_style, auto&& header, auto&& body, auto&& footer) {
         return
-#line 13 "SGameOptionsView.sbxslate"
+#line 11 "SGameOptionsView.sbxslate"
             SNew(SBorder)
                 .BorderImage(background)
                 .Padding(page_margin)
@@ -26,19 +26,23 @@ struct SGameOptionsViewBuilder {
                         .MaxDesiredWidth(maximum_width)
                         .HAlign(HAlign_Fill)
                         [
-                            SNew(SVerticalBox)
-                                + SandboxUI::Slate::vbox_auto_slot(FMargin{header_padding})
-                                    [
-                                        std::forward<decltype(header)>(header)
-                                    ]
-                                + SandboxUI::Slate::vbox_fill_slot(1.0f, FMargin{body_padding})
-                                    [
-                                        std::forward<decltype(body)>(body)
-                                    ]
-                                + SandboxUI::Slate::vbox_auto_slot(FMargin{footer_padding})
-                                    [
-                                        std::forward<decltype(footer)>(footer)
-                                    ]
+                            SNew(::ml::ioj::SHiveFrame)
+                                .Style(chrome_style)
+                                [
+                                    SNew(SVerticalBox)
+                                        + SandboxUI::Slate::vbox_auto_slot()
+                                            [
+                                                std::forward<decltype(header)>(header)
+                                            ]
+                                        + SandboxUI::Slate::vbox_fill_slot()
+                                            [
+                                                std::forward<decltype(body)>(body)
+                                            ]
+                                        + SandboxUI::Slate::vbox_auto_slot()
+                                            [
+                                                std::forward<decltype(footer)>(footer)
+                                            ]
+                                ]
                         ]
                 ];
     }

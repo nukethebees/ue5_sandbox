@@ -4,9 +4,7 @@
       (value background)
       (value page_margin)
       (value maximum_width)
-      (value header_padding)
-      (value body_padding)
-      (value footer_padding)
+      (value chrome_style)
       (existing header)
       (existing body)
       (existing footer))
@@ -17,7 +15,9 @@
       (SBox
         :MaxDesiredWidth maximum_width
         :HAlign HAlign_Fill
-        (vbox
-          (auto :padding header_padding (existing header))
-          (fill :padding body_padding (existing body))
-          (auto :padding footer_padding (existing footer)))))))
+        (::ml::ioj::SHiveFrame
+          :Style chrome_style
+          (vbox
+            (auto (existing header))
+            (fill (existing body))
+            (auto (existing footer))))))))

@@ -5,11 +5,12 @@
 #include "SpaceGame/settings/GameSettingsBackend.h"
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/ui/common/HiveWidgets.h"
 #include "SpaceGame/ui/common/SGameButton.h"
 
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
-#include "Styling/CoreStyle.h"
+#include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -113,16 +114,11 @@ void SGameOptionsView::Construct(FArguments const& args) {
     display_prompt_ = build_display_prompt();
 
     auto const& settings_style{style_->settings()};
-    auto const header_padding{FMargin{0.0f, 0.0f, 0.0f, settings_style.header_spacing}};
-    auto const body_padding{FMargin{0.0f}};
-    auto const footer_padding{FMargin{0.0f, settings_style.footer_spacing, 0.0f, 0.0f}};
     auto panel{::SlateGenerated::ml::ioj::SGameOptionsViewBuilder{*this}.BuildPanel(
         &style_->settings().page_background,
         settings_style.page_margin,
         settings_style.maximum_page_width,
-        header_padding,
-        body_padding,
-        footer_padding,
+        &style_->chrome(),
         header,
         body,
         footer)};
@@ -226,6 +222,13 @@ auto SGameOptionsView::OnFocusReceived(FGeometry const& geometry, FFocusEvent co
 }
 
 auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply {
+    auto const key{key_event.GetKey()};
+    if (!dirty_prompt_visible_ && !display_prompt_visible_ &&
+        (key == EKeys::Gamepad_LeftShoulder || key == EKeys::Gamepad_RightShoulder)) {
+        cycle_tab(key == EKeys::Gamepad_LeftShoulder ? -1 : 1);
+        return FReply::Handled();
+    }
+
     auto buttons{TArray<TSharedPtr<SGameButton>>{}};
     if (dirty_prompt_visible_) {
         buttons = {dirty_apply_button_, dirty_discard_button_, dirty_stay_button_};
@@ -235,7 +238,6 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
 
-    auto const key{key_event.GetKey()};
     auto direction{0};
     if (key == EKeys::Left || key == EKeys::Gamepad_DPad_Left || key == EKeys::Up ||
         key == EKeys::Gamepad_DPad_Up) {
@@ -262,43 +264,64 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
 }
 
 auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
-    auto tabs{SNew(SHorizontalBox)};
+    return SNew(SBorder)
+        .BorderImage(&style_->chrome().header_background)
+        .Padding(style_->chrome().header_padding)
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot().AutoWidth().VAlign(
+                 VAlign_Center)[SNew(SImage)
+                                    .Image(&style_->icon(EGameUiIcon::Hive))
+                                    .ColorAndOpacity(style_->palette().honey)
+                                    .DesiredSizeOverride(FVector2D{28.0f, 28.0f})] +
+             SHorizontalBox::Slot()
+                 .FillWidth(1.0f)
+                 .Padding(FMargin{14.0f, 0.0f})
+                 .VAlign(VAlign_Center)[SNew(STextBlock)
+                                            .Text(NSLOCTEXT("OptionsMenu", "Title", "OPTIONS"))
+                                            .TextStyle(&style_->text(EGameTextStyle::Heading2))] +
+             SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+                 [SNew(STextBlock)
+                      .Text(NSLOCTEXT("OptionsMenu", "HiveSystemLabel", "HIVE SYSTEMS // CONFIG"))
+                      .TextStyle(&style_->text(EGameTextStyle::Caption))]];
+}
+
+auto SGameOptionsView::build_navigation() -> TSharedRef<SWidget> {
+    auto tabs{SNew(SVerticalBox)};
     auto const add_tab = [this, &tabs](EOptionsTab const tab) {
-        TSharedPtr<SGameButton> button;
-        tabs->AddSlot().AutoWidth().Padding(FMargin{
-            0.0f,
-            0.0f,
-            style_->settings().tab_spacing,
-            0.0f})[SAssignNew(button, SGameButton)
-                       .Style(&style_->button(EGameButtonStyle::Secondary))
-                       .Text_Lambda([this, tab] {
-                           auto text{tab_text(tab)};
-                           auto* const settings{settings_.Get()};
-                           auto const category = [tab]() -> TOptional<EGameSettingCategory> {
-                               switch (tab) {
-                                   case EOptionsTab::Video:
-                                       return EGameSettingCategory::Video;
-                                   case EOptionsTab::Gameplay:
-                                       return EGameSettingCategory::Gameplay;
-                                   case EOptionsTab::Audio:
-                                       return EGameSettingCategory::Audio;
-                                   case EOptionsTab::Controls:
-                                       return EGameSettingCategory::Controls;
-                                   case EOptionsTab::Accessibility:
-                                       return EGameSettingCategory::Accessibility;
-                                   case EOptionsTab::System:
-                                       return {};
-                               }
-                               return {};
-                           }();
-                           if (settings != nullptr && category.IsSet() &&
-                               settings->is_dirty(category.GetValue())) {
-                               text = FText::Format(
-                                   NSLOCTEXT("OptionsMenu", "DirtyTabLabel", "{0} *"), text);
-                           }
-                           return text;
-                       })
-                       .OnClicked(FOnClicked::CreateSP(this, &SGameOptionsView::handle_tab, tab))];
+        TSharedPtr<SHiveNavigationButton> button;
+        tabs->AddSlot().AutoHeight().Padding(
+            FMargin{0.0f, 0.0f, 0.0f, style_->chrome().navigation_spacing})
+            [SAssignNew(button, SHiveNavigationButton)
+                 .Style(style_)
+                 .Icon(&style_->icon(tab_icon(tab)))
+                 .Text_Lambda([this, tab] {
+                     auto text{tab_text(tab)};
+                     auto* const settings{settings_.Get()};
+                     auto const category = [tab]() -> TOptional<EGameSettingCategory> {
+                         switch (tab) {
+                             case EOptionsTab::Video:
+                                 return EGameSettingCategory::Video;
+                             case EOptionsTab::Gameplay:
+                                 return EGameSettingCategory::Gameplay;
+                             case EOptionsTab::Audio:
+                                 return EGameSettingCategory::Audio;
+                             case EOptionsTab::Controls:
+                                 return EGameSettingCategory::Controls;
+                             case EOptionsTab::Accessibility:
+                                 return EGameSettingCategory::Accessibility;
+                             case EOptionsTab::System:
+                                 return {};
+                         }
+                         return {};
+                     }();
+                     if (settings != nullptr && category.IsSet() &&
+                         settings->is_dirty(category.GetValue())) {
+                         text = FText::Format(NSLOCTEXT("OptionsMenu", "DirtyTabLabel", "{0} *"),
+                                              text);
+                     }
+                     return text;
+                 })
+                 .OnClicked(FOnClicked::CreateSP(this, &SGameOptionsView::handle_tab, tab))];
         tab_buttons_.Add(button);
     };
 
@@ -309,12 +332,27 @@ auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
     add_tab(EOptionsTab::Accessibility);
     add_tab(EOptionsTab::System);
 
-    return SNew(SVerticalBox) +
-           SVerticalBox::Slot()
-               .AutoHeight()[SNew(STextBlock)
-                                 .Text(NSLOCTEXT("OptionsMenu", "Title", "Options"))
-                                 .TextStyle(&style_->text(EGameTextStyle::Heading1))] +
-           SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 16.0f, 0.0f, 0.0f})[tabs];
+    tabs->AddSlot().FillHeight(1.0f);
+    tabs->AddSlot()
+        .AutoHeight()
+        .HAlign(HAlign_Center)
+        .Padding(FMargin{
+            0.0f,
+            18.0f,
+            0.0f,
+            10.0f})[SNew(SImage)
+                        .Image(&style_->icon(EGameUiIcon::Hive))
+                        .ColorAndOpacity(style_->palette().text_muted.CopyWithNewOpacity(0.16f))
+                        .DesiredSizeOverride(FVector2D{72.0f, 72.0f})];
+    tabs->AddSlot().AutoHeight().HAlign(
+        HAlign_Center)[SNew(STextBlock)
+                           .Text(
+                               NSLOCTEXT("OptionsMenu", "HiveNavigationFooter", "HIVE // SETTINGS"))
+                           .TextStyle(&style_->text(EGameTextStyle::Caption))];
+
+    return SNew(SBorder)
+        .BorderImage(&style_->chrome().navigation_background)
+        .Padding(FMargin{14.0f})[SNew(SBox).WidthOverride(style_->chrome().navigation_width)[tabs]];
 }
 
 auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
@@ -325,41 +363,47 @@ auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Controls)] +
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Accessibility)] +
         SWidgetSwitcher::Slot()[build_system_page()];
-    return SNew(SBorder)
-        .BorderImage(&style_->settings().section_background)
-        .Padding(style_->settings().body_padding)[page_switcher_.ToSharedRef()];
+    return SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_navigation()] +
+           SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin{
+               2.0f,
+               0.0f,
+               0.0f,
+               0.0f})[SNew(SBorder)
+                          .BorderImage(&style_->chrome().body_background)
+                          .Padding(style_->settings().body_padding)[page_switcher_.ToSharedRef()]];
 }
 
 auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
     auto const spacing{style_->settings().button_spacing};
-    return SNew(SHorizontalBox) +
-           SHorizontalBox::Slot()
-               .AutoWidth()[SNew(SGameButton)
-                                .Style(&style_->button(EGameButtonStyle::Secondary))
-                                .Text(NSLOCTEXT("OptionsMenu", "Back", "Back"))
-                                .OnClicked_Lambda([delegate = on_back_]() {
-                                    delegate.ExecuteIfBound();
-                                    return FReply::Handled();
-                                })] +
-           SHorizontalBox::Slot().FillWidth(1.0f) +
-           SHorizontalBox::Slot().AutoWidth().Padding(
-               FMargin{0.0f,
-                       0.0f,
-                       spacing,
-                       0.0f})[SAssignNew(reset_button_, SGameButton)
+    return SNew(SBorder)
+        .BorderImage(&style_->chrome().footer_background)
+        .Padding(style_->chrome().footer_padding)
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot()
+                 .AutoWidth()[SNew(SGameButton)
                                   .Style(&style_->button(EGameButtonStyle::Secondary))
-                                  .Text(NSLOCTEXT("OptionsMenu", "ResetCategory", "Reset Category"))
-                                  .OnClicked_Lambda([delegate = on_reset_]() {
+                                  .Text(NSLOCTEXT("OptionsMenu", "Back", "Back"))
+                                  .OnClicked_Lambda([delegate = on_back_]() {
                                       delegate.ExecuteIfBound();
                                       return FReply::Handled();
                                   })] +
-           SHorizontalBox::Slot().AutoWidth()[SAssignNew(apply_button_, SGameButton)
-                                                  .Style(&style_->button(EGameButtonStyle::Primary))
-                                                  .Text(NSLOCTEXT("OptionsMenu", "Apply", "Apply"))
-                                                  .OnClicked_Lambda([delegate = on_apply_]() {
-                                                      delegate.ExecuteIfBound();
-                                                      return FReply::Handled();
-                                                  })];
+             SHorizontalBox::Slot().FillWidth(1.0f) +
+             SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, spacing, 0.0f})
+                 [SAssignNew(reset_button_, SGameButton)
+                      .Style(&style_->button(EGameButtonStyle::Secondary))
+                      .Text(NSLOCTEXT("OptionsMenu", "ResetCategory", "Reset Category"))
+                      .OnClicked_Lambda([delegate = on_reset_]() {
+                          delegate.ExecuteIfBound();
+                          return FReply::Handled();
+                      })] +
+             SHorizontalBox::Slot()
+                 .AutoWidth()[SAssignNew(apply_button_, SGameButton)
+                                  .Style(&style_->button(EGameButtonStyle::Primary))
+                                  .Text(NSLOCTEXT("OptionsMenu", "Apply", "Apply"))
+                                  .OnClicked_Lambda([delegate = on_apply_]() {
+                                      delegate.ExecuteIfBound();
+                                      return FReply::Handled();
+                                  })]];
 }
 
 auto SGameOptionsView::build_category_page(EGameSettingCategory const category)
@@ -381,14 +425,18 @@ auto SGameOptionsView::build_category_page(EGameSettingCategory const category)
             if (!rows.IsValid()) {
                 return;
             }
-            content->AddSlot().AutoHeight().Padding(
-                FMargin{0.0f,
-                        0.0f,
-                        0.0f,
-                        style_->settings()
-                            .section_spacing})[SNew(SSettingsSection)
-                                                   .Style(&style_->settings())
-                                                   .Title(current_section)[rows.ToSharedRef()]];
+            content->AddSlot().AutoHeight().Padding(FMargin{
+                0.0f,
+                0.0f,
+                0.0f,
+                style_->settings()
+                    .section_spacing})[SNew(SSettingsSection)
+                                           .Style(&style_->settings())
+                                           .Header()[SNew(SHiveSectionHeader)
+                                                         .Style(style_)
+                                                         .Icon(&style_->icon(EGameUiIcon::Hive))
+                                                         .Text(current_section)]
+                                           .Title(current_section)[rows.ToSharedRef()]];
         };
 
         for (auto const* const descriptor : descriptors) {
@@ -405,6 +453,7 @@ auto SGameOptionsView::build_category_page(EGameSettingCategory const category)
     }
 
     return SNew(SScrollBox)
+               .ScrollBarStyle(&style_->settings().scroll_bar)
                .Orientation(Orient_Vertical)
                .ScrollBarAlwaysVisible(false)
                .AnimateWheelScrolling(true) +
@@ -561,7 +610,8 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
                                                             "SystemUnavailable",
                                                             "System information is unavailable."))
                                             .TextStyle(&style_->settings().empty_text)];
-        return SNew(SScrollBox) + SScrollBox::Slot()[content];
+        return SNew(SScrollBox).ScrollBarStyle(&style_->settings().scroll_bar) +
+               SScrollBox::Slot()[content];
     }
 
     auto const add_section = [this, &content](FText title,
@@ -575,8 +625,17 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
                                                     .Value(value.Value)];
         }
         content->AddSlot().AutoHeight().Padding(
-            FMargin{0.0f, 0.0f, 0.0f, style_->settings().section_spacing})
-            [SNew(SSettingsSection).Style(&style_->settings()).Title(MoveTemp(title))[rows]];
+            FMargin{0.0f,
+                    0.0f,
+                    0.0f,
+                    style_->settings()
+                        .section_spacing})[SNew(SSettingsSection)
+                                               .Style(&style_->settings())
+                                               .Header()[SNew(SHiveSectionHeader)
+                                                             .Style(style_)
+                                                             .Icon(&style_->icon(EGameUiIcon::Hive))
+                                                             .Text(title)]
+                                               .Title(MoveTemp(title))[rows]];
     };
 
     auto operating_system{capabilities_->operating_system_version};
@@ -620,7 +679,10 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
                   large_page_access_text(capabilities_->windows.large_page_access_status)}});
 #endif
 
-    return SNew(SScrollBox).AnimateWheelScrolling(true) + SScrollBox::Slot()[content];
+    return SNew(SScrollBox)
+               .ScrollBarStyle(&style_->settings().scroll_bar)
+               .AnimateWheelScrolling(true) +
+           SScrollBox::Slot()[content];
 }
 
 auto SGameOptionsView::build_dirty_prompt() -> TSharedRef<SWidget> {
@@ -693,22 +755,23 @@ auto SGameOptionsView::build_modal(TAttribute<FText> title,
     }
 
     return SNew(SBorder)
-        .BorderImage(FCoreStyle::Get().GetBrush("WhiteBrush"))
-        .BorderBackgroundColor(FLinearColor{0.0f, 0.0f, 0.0f, 0.72f})
+        .BorderImage(&style_->chrome().modal_overlay)
         .Padding(FMargin{48.0f})
         .HAlign(HAlign_Center)
         .VAlign(VAlign_Center)[SNew(SBox).WidthOverride(
-            560.0f)[SNew(SBorder)
-                        .BorderImage(&style_->settings().section_background)
-                        .Padding(FMargin{
-                            28.0f})[SNew(SVerticalBox) +
-                                    SVerticalBox::Slot().AutoHeight()
-                                        [SNew(STextBlock)
-                                             .Text(MoveTemp(title))
-                                             .TextStyle(&style_->text(EGameTextStyle::Heading3))
-                                             .AutoWrapText(true)] +
-                                    SVerticalBox::Slot().AutoHeight().Padding(
-                                        FMargin{0.0f, 24.0f, 0.0f, 0.0f})[actions]]]];
+            560.0f)[SNew(SHiveFrame)
+                        .Style(&style_->chrome())
+                            [SNew(SBorder)
+                                 .BorderImage(&style_->chrome().body_background)
+                                 .Padding(FMargin{28.0f})
+                                     [SNew(SVerticalBox) +
+                                      SVerticalBox::Slot().AutoHeight()
+                                          [SNew(STextBlock)
+                                               .Text(MoveTemp(title))
+                                               .TextStyle(&style_->text(EGameTextStyle::Heading3))
+                                               .AutoWrapText(true)] +
+                                      SVerticalBox::Slot().AutoHeight().Padding(
+                                          FMargin{0.0f, 24.0f, 0.0f, 0.0f})[actions]]]]];
 }
 
 auto SGameOptionsView::handle_tab(EOptionsTab const tab) -> FReply {
@@ -733,6 +796,35 @@ auto SGameOptionsView::tab_text(EOptionsTab const tab) const -> FText {
             return NSLOCTEXT("OptionsMenu", "SystemTab", "System");
     }
     return FText::GetEmpty();
+}
+
+auto SGameOptionsView::tab_icon(EOptionsTab const tab) const -> EGameUiIcon {
+    switch (tab) {
+        case EOptionsTab::Video:
+            return EGameUiIcon::Video;
+        case EOptionsTab::Gameplay:
+            return EGameUiIcon::Gameplay;
+        case EOptionsTab::Audio:
+            return EGameUiIcon::Audio;
+        case EOptionsTab::Controls:
+            return EGameUiIcon::Controls;
+        case EOptionsTab::Accessibility:
+            return EGameUiIcon::Accessibility;
+        case EOptionsTab::System:
+            return EGameUiIcon::System;
+    }
+    checkNoEntry();
+    return EGameUiIcon::Hive;
+}
+
+void SGameOptionsView::cycle_tab(int32 const direction) {
+    auto constexpr tab_count{static_cast<int32>(EOptionsTab::System) + 1};
+    auto const current{static_cast<int32>(active_tab_)};
+    auto const next{(current + direction + tab_count) % tab_count};
+    auto const tab{static_cast<EOptionsTab>(next)};
+    set_active_tab(tab);
+    on_tab_changed_.ExecuteIfBound(tab);
+    focus_active_tab();
 }
 
 auto SGameOptionsView::setting_float(EGameSetting const setting) const -> float {
