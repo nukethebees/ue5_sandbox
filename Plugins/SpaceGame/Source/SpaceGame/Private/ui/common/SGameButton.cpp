@@ -3,8 +3,11 @@
 #include "Framework/Application/SlateApplication.h"
 
 #include <Styling/CoreStyle.h>
+#include <Widgets/Images/SImage.h>
 #include <Widgets/Input/SButton.h>
+#include <Widgets/Layout/SBorder.h>
 #include <Widgets/Layout/SBox.h>
+#include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
 
 namespace ml::ioj {
@@ -41,16 +44,30 @@ void SGameButton::Construct(FArguments const& args) {
                  .MinDesiredHeight(style_->minimum_size.Y)
                  .MaxDesiredWidth(style_->maximum_size.X > 0.0f ? style_->maximum_size.X
                                                                 : TOptional<float>{})
-                 .MaxDesiredHeight(
-                     style_->maximum_size.Y > 0.0f
-                         ? style_->maximum_size.Y
-                         : TOptional<float>{})[SNew(STextBlock)
-                                                   .Text(args._Text)
-                                                   .TextStyle(&style_->normal_text)
-                                                   .ColorAndOpacity(this, &SGameButton::text_colour)
-                                                   .Justification(ETextJustify::Center)]];
+                 .MaxDesiredHeight(style_->maximum_size.Y > 0.0f ? style_->maximum_size.Y
+                                                                 : TOptional<float>{})
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+                          [SNew(SImage)
+                               .Image(args._Icon)
+                               .ColorAndOpacity(args._IconTint)
+                               .DesiredSizeOverride(args._IconSize)
+                               .Visibility(args._Icon != nullptr ? EVisibility::HitTestInvisible
+                                                                 : EVisibility::Collapsed)] +
+                      SHorizontalBox::Slot()
+                          .FillWidth(1.0f)
+                          .Padding(FMargin{args._Icon != nullptr ? args._IconSpacing : 0.0f, 0.0f})
+                          .VAlign(VAlign_Center)[SNew(SBox).HAlign(
+                              args._ContentAlignment)[SNew(STextBlock)
+                                                          .Text(args._Text)
+                                                          .TextStyle(&style_->normal_text)
+                                                          .ColorAndOpacity(
+                                                              this, &SGameButton::text_colour)
+                                                          .Justification(ETextJustify::Center)]]]];
 
-    ChildSlot[button_.ToSharedRef()];
+    ChildSlot[SNew(SBorder)
+                  .BorderImage(this, &SGameButton::focus_brush)
+                  .Padding(FMargin{2.0f})[button_.ToSharedRef()]];
 }
 
 void SGameButton::set_selected(bool const selected) {
@@ -83,6 +100,10 @@ auto SGameButton::text_colour() const -> FSlateColor {
     }
     return button_->IsHovered() ? style_->normal_hovered_text.ColorAndOpacity
                                 : style_->normal_text.ColorAndOpacity;
+}
+
+auto SGameButton::focus_brush() const -> FSlateBrush const* {
+    return has_focus() ? &style_->focus : nullptr;
 }
 
 } // namespace ml::ioj

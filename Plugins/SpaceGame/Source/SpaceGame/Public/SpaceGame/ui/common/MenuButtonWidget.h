@@ -37,6 +37,8 @@ class SPACEGAME_API UMenuButtonWidget : public UCommonButtonBase {
     void NativeOnPressed() override;
     void NativeOnReleased() override;
     void NativeOnCurrentTextStyleChanged() override;
+    void NativeOnAddedToFocusPath(FFocusEvent const& focus_event) override;
+    void NativeOnRemovedFromFocusPath(FFocusEvent const& focus_event) override;
 
     UPROPERTY(EditAnywhere, Category = "Menu Button")
     FText text_{};
