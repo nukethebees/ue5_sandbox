@@ -6,5 +6,14 @@
   "dependencies": [
     "gtest",
     "nlohmann-json"
-  ]
+  ],
+  "features": {
+    "kernel-benchmarks": {
+      "description": "Native generated-kernel SIMD benchmarks and runtime dispatch",
+      "dependencies": [
+        "benchmark",
+        "cpu-features"
+      ]
+    }
+  }
 }

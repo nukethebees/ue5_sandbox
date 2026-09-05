@@ -1,0 +1,83 @@
+{
+  "context": {
+    "date": "2026-09-05T12:00:00+01:00",
+    "host_name": "test-host",
+    "num_cpus": 8,
+    "mhz_per_cpu": 4000,
+    "json_schema_version": 1
+  },
+  "benchmarks": [
+    {
+      "name": "add_scaled/autovec-avx2/ordinary/aligned/32/real_time_median",
+      "run_name": "add_scaled/autovec-avx2/ordinary/aligned/32/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 4.0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "add_scaled/avx2/ordinary/aligned/32/real_time_median",
+      "run_name": "add_scaled/avx2/ordinary/aligned/32/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 3.0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "add_scaled/autovec-avx2/ordinary/unaligned/32/real_time_median",
+      "run_name": "add_scaled/autovec-avx2/ordinary/unaligned/32/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 5.0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "add_scaled/avx2/ordinary/unaligned/32/real_time_median",
+      "run_name": "add_scaled/avx2/ordinary/unaligned/32/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 4.0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "add_scaled/autovec-avx2/ordinary/aligned/4096/real_time_median",
+      "run_name": "add_scaled/autovec-avx2/ordinary/aligned/4096/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 400.0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "add_scaled/avx2/ordinary/aligned/4096/real_time_median",
+      "run_name": "add_scaled/avx2/ordinary/aligned/4096/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 360.0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "add_scaled/autovec-avx2/ordinary/unaligned/4096/real_time_median",
+      "run_name": "add_scaled/autovec-avx2/ordinary/unaligned/4096/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 420.0,
+      "time_unit": "ns"
+    },
+    {
+      "name": "add_scaled/avx2/ordinary/unaligned/4096/real_time_median",
+      "run_name": "add_scaled/avx2/ordinary/unaligned/4096/real_time",
+      "run_type": "aggregate",
+      "aggregate_name": "median",
+      "aggregate_unit": "time",
+      "real_time": 390.0,
+      "time_unit": "ns"
+    }
+  ]
+}

@@ -1,5 +1,17 @@
 find_package(GTest CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+if(SANDBOX_KERNEL_BENCHMARKS)
+  find_package(benchmark CONFIG REQUIRED)
+  find_package(CpuFeatures CONFIG REQUIRED)
+endif()
+if(SANDBOX_KERNEL_BENCHMARK_PLOTS)
+  if(NOT SANDBOX_KERNEL_BENCHMARKS)
+    message(FATAL_ERROR
+      "SANDBOX_KERNEL_BENCHMARK_PLOTS requires SANDBOX_KERNEL_BENCHMARKS")
+  endif()
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  find_program(UV_EXECUTABLE NAMES uv REQUIRED)
+endif()
 
 if(NOT MSVC)
   set(SANDBOX_CODEGEN_WARNINGS
