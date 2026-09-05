@@ -4,9 +4,7 @@
 
 #include "MainMenuWidget.generated.h"
 
-class UButton;
 class UOverlay;
-class UVerticalBox;
 class UWidgetSwitcher;
 
 namespace ml::ioj {
@@ -42,21 +40,15 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     UPROPERTY(meta = (BindWidget))
     UMainMenuLandingWidget* main_page{nullptr};
     UPROPERTY(meta = (BindWidget))
-    UVerticalBox* save_games_page{nullptr};
-    UPROPERTY(meta = (BindWidget))
     USaveGameViewerWidget* save_game_viewer{nullptr};
     UPROPERTY(meta = (BindWidget))
     UOptionsWidget* options_widget{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UButton* save_games_back_button{nullptr};
   private:
     void handle_select_mission();
     void handle_save_games();
     void handle_options();
     void handle_quit();
 
-    UFUNCTION()
     void return_from_save_games();
     void return_from_options();
     void set_active_page(EMainMenuPage page);

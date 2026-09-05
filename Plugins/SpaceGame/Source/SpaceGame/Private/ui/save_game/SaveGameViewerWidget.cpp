@@ -5,19 +5,11 @@
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
-#include "SpaceGame/ui/save_game/LevelOutcomeRowWidget.h"
-#include "SpaceGame/ui/save_game/SaveGameRowWidget.h"
+#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+#include "SSaveGameViewerView.h"
 
-#include <Blueprint/WidgetTree.h>
-#include <Components/Border.h>
-#include <Components/Button.h>
-#include <Components/EditableTextBox.h>
-#include <Components/ScrollBox.h>
-#include <Components/TextBlock.h>
-#include <Components/VerticalBox.h>
-#include <Components/WidgetSwitcher.h>
+#include <Components/NativeWidgetHost.h>
 #include <Engine/GameInstance.h>
-#include <UObject/ConstructorHelpers.h>
 
 namespace ml::ioj {
 namespace save_game_viewer_widget {
@@ -36,76 +28,87 @@ auto format_date(FDateTime const& date) -> FText {
     return date == FDateTime{} ? FText::FromString(TEXT("—"))
                                : FText::FromString(date.ToString(TEXT("%Y-%m-%d %H:%M")));
 }
-}
+} // namespace save_game_viewer_widget
 
 USaveGameViewerWidget::USaveGameViewerWidget(FObjectInitializer const& object_initializer)
-    : Super{object_initializer} {
-    static ConstructorHelpers::FClassFinder<USaveGameRowWidget> const profile_row_widget_class{
-        TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameRow")};
-    static ConstructorHelpers::FClassFinder<ULevelOutcomeRowWidget> const outcome_row_widget_class{
-        TEXT("/SpaceGame/UI/SaveGame/WBP_LevelOutcomeRow")};
-    profile_row_widget_class_ = profile_row_widget_class.Class;
-    outcome_row_widget_class_ = outcome_row_widget_class.Class;
+    : Super(object_initializer) {
+    SetIsFocusable(true);
 }
 
 void USaveGameViewerWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    if (!IsValid(profile_list) || !IsValid(profile_empty_state_text) || !IsValid(refresh_button) ||
-        !IsValid(create_profile_button) || !IsValid(create_profile_panel) ||
-        !IsValid(profile_name_input) || !IsValid(profile_create_error_text) ||
-        !IsValid(confirm_create_profile_button) || !IsValid(cancel_create_profile_button) ||
-        !IsValid(outcome_list) || !IsValid(outcome_empty_state_text) || !IsValid(report_switcher) ||
-        !IsValid(empty_report_panel) || !IsValid(selected_report_panel) ||
-        !IsValid(profile_name_text) || !IsValid(profile_id_text) ||
-        !IsValid(profile_created_text) || !IsValid(profile_last_played_text) ||
-        !IsValid(profile_duration_text) || !IsValid(profile_score_text) ||
-        !IsValid(active_profile_text) || !IsValid(activate_profile_button) ||
-        !IsValid(results_scroll_box) || !IsValid(result_sections_box)) {
+    auto* const game_instance{GetGameInstance()};
+    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
+    if (!IsValid(game_)) {
+        UE_LOG(LogSandboxUI,
+               Warning,
+               TEXT("USaveGameViewerWidget: Game subsystem is unavailable; using the default UI "
+                    "theme."));
+        auto const* const default_theme{GetDefault<USpaceGameUiTheme>()};
+        check(IsValid(default_theme));
+        fallback_style_ = default_theme->compile();
+    }
+
+    if (!IsValid(view_host)) {
         UE_LOG(LogSandboxUI,
                Error,
-               TEXT("USaveGameViewerWidget::NativeOnInitialized: One or more bound widgets are "
-                    "invalid."));
+               TEXT("USaveGameViewerWidget: The native view host is unavailable."));
         return;
     }
 
-    refresh_button->OnClicked.AddDynamic(this, &ThisClass::handle_refresh);
-    create_profile_button->OnClicked.AddDynamic(this, &ThisClass::handle_begin_create_profile);
-    confirm_create_profile_button->OnClicked.AddDynamic(this,
-                                                        &ThisClass::handle_confirm_create_profile);
-    cancel_create_profile_button->OnClicked.AddDynamic(this,
-                                                       &ThisClass::handle_cancel_create_profile);
-    activate_profile_button->OnClicked.AddDynamic(this, &ThisClass::handle_activate_profile);
+    auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
+    view_host->SetContent(
+        SAssignNew(view_, SSaveGameViewerView)
+            .Style(style)
+            .OnProfileSelected(
+                FOnSaveProfileSelected::CreateUObject(this, &ThisClass::select_profile))
+            .OnOutcomeSelected(
+                FOnSaveOutcomeSelected::CreateUObject(this, &ThisClass::select_outcome))
+            .OnRefresh(FSimpleDelegate::CreateUObject(this, &ThisClass::refresh))
+            .OnBeginCreate(FSimpleDelegate::CreateUObject(this, &ThisClass::begin_create_profile))
+            .OnCreate(FOnCreateSaveProfile::CreateUObject(this, &ThisClass::handle_create_profile))
+            .OnCancelCreate(FSimpleDelegate::CreateUObject(this, &ThisClass::cancel_create_profile))
+            .OnActivate(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_activate_profile))
+            .OnResetTestProfile(
+                FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset_test_profile))
+            .OnBack(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_back)));
+    rebuild_profiles();
 }
 
-void USaveGameViewerWidget::NativeConstruct() {
-    Super::NativeConstruct();
-    create_profile_panel->SetVisibility(ESlateVisibility::Collapsed);
-    profile_create_error_text->SetVisibility(ESlateVisibility::Collapsed);
-    rebuild_profiles();
+void USaveGameViewerWidget::ReleaseSlateResources(bool const release_children) {
+    Super::ReleaseSlateResources(release_children);
+    view_.Reset();
+}
+
+auto USaveGameViewerWidget::NativeOnFocusReceived(FGeometry const& geometry,
+                                                  FFocusEvent const& focus_event) -> FReply {
+    static_cast<void>(geometry);
+    static_cast<void>(focus_event);
+    focus_primary_action();
+    return FReply::Handled();
 }
 
 void USaveGameViewerWidget::set_browser(FSaveGameBrowser& browser) {
     browser_override_ = &browser;
+    rebuild_profiles();
 }
 
 void USaveGameViewerWidget::focus_primary_action() {
-    if (auto* const focus_target{get_focus_target()}; IsValid(focus_target)) {
-        focus_target->SetKeyboardFocus();
+    if (view_.IsValid()) {
+        view_->focus_selected_profile();
     }
 }
 
 auto USaveGameViewerWidget::get_focus_target() const -> UWidget* {
-    if (!profile_rows_.IsEmpty() && IsValid(profile_rows_[0])) {
-        return profile_rows_[0]->get_focus_target();
-    }
-    return refresh_button;
+    return const_cast<USaveGameViewerWidget*>(this);
 }
 
-void USaveGameViewerWidget::handle_refresh() {
+void USaveGameViewerWidget::refresh() {
     auto* const browser{resolve_browser()};
     if (!browser) {
         show_empty_profiles();
+        publish_all();
         return;
     }
 
@@ -114,14 +117,29 @@ void USaveGameViewerWidget::handle_refresh() {
     focus_primary_action();
 }
 
-void USaveGameViewerWidget::handle_begin_create_profile() {
-    profile_name_input->SetText(FText::GetEmpty());
-    profile_create_error_text->SetVisibility(ESlateVisibility::Collapsed);
-    create_profile_panel->SetVisibility(ESlateVisibility::Visible);
-    profile_name_input->SetKeyboardFocus();
+void USaveGameViewerWidget::begin_create_profile() {
+    create_profile_open_ = true;
+    if (view_.IsValid()) {
+        view_->show_create_profile();
+    }
 }
 
-void USaveGameViewerWidget::handle_confirm_create_profile() {
+void USaveGameViewerWidget::cancel_create_profile() {
+    create_profile_open_ = false;
+    if (view_.IsValid()) {
+        view_->hide_create_profile();
+    }
+}
+
+void USaveGameViewerWidget::request_back() {
+    if (create_profile_open_) {
+        cancel_create_profile();
+        return;
+    }
+    back_requested.Broadcast();
+}
+
+void USaveGameViewerWidget::handle_create_profile(FString const& display_name) {
     auto* const save_subsystem{resolve_save_subsystem()};
     if (!IsValid(save_subsystem)) {
         show_create_profile_error(
@@ -129,10 +147,10 @@ void USaveGameViewerWidget::handle_confirm_create_profile() {
         return;
     }
 
-    auto const response{save_subsystem->create_profile(profile_name_input->GetText().ToString())};
+    auto const response{save_subsystem->create_profile(display_name)};
     switch (response.result) {
         case ECreateSaveProfileResult::succeeded: {
-            create_profile_panel->SetVisibility(ESlateVisibility::Collapsed);
+            cancel_create_profile();
             refresh_and_select(response.profile_id);
             return;
         }
@@ -160,11 +178,6 @@ void USaveGameViewerWidget::handle_confirm_create_profile() {
     }
 }
 
-void USaveGameViewerWidget::handle_cancel_create_profile() {
-    create_profile_panel->SetVisibility(ESlateVisibility::Collapsed);
-    create_profile_button->SetKeyboardFocus();
-}
-
 void USaveGameViewerWidget::handle_activate_profile() {
     auto* const save_subsystem{resolve_save_subsystem()};
     if (!IsValid(save_subsystem) || selected_profile_id_.IsEmpty()) {
@@ -181,6 +194,7 @@ void USaveGameViewerWidget::handle_activate_profile() {
 }
 
 void USaveGameViewerWidget::handle_reset_test_profile() {
+#if !UE_BUILD_SHIPPING
     auto* const save_subsystem{resolve_save_subsystem()};
     if (!IsValid(save_subsystem) || !save_subsystem->reset_test_profile()) {
         UE_LOG(LogSandboxUI,
@@ -191,6 +205,11 @@ void USaveGameViewerWidget::handle_reset_test_profile() {
     }
 
     refresh_and_select(save_subsystem->get_active_profile_id());
+#endif
+}
+
+void USaveGameViewerWidget::handle_back() {
+    request_back();
 }
 
 auto USaveGameViewerWidget::resolve_browser() -> FSaveGameBrowser* {
@@ -198,23 +217,13 @@ auto USaveGameViewerWidget::resolve_browser() -> FSaveGameBrowser* {
         return browser_override_;
     }
 
-    auto* const game_instance{GetGameInstance()};
-    if (!IsValid(game_instance)) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("USaveGameViewerWidget::resolve_browser: Game instance is invalid."));
-        return nullptr;
-    }
-
-    auto* const subsystem{game_instance->GetSubsystem<UGameSubsystem>()};
-    if (!IsValid(subsystem)) {
+    if (!IsValid(game_)) {
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("USaveGameViewerWidget::resolve_browser: Game subsystem is invalid."));
         return nullptr;
     }
-
-    return &subsystem->get_save_game_browser();
+    return &game_->get_save_game_browser();
 }
 
 auto USaveGameViewerWidget::resolve_save_subsystem() const -> USpaceSaveSubsystem* {
@@ -233,102 +242,52 @@ void USaveGameViewerWidget::refresh_and_select(FString const& profile_id) {
 }
 
 void USaveGameViewerWidget::show_create_profile_error(FText const& error) {
-    profile_create_error_text->SetText(error);
-    profile_create_error_text->SetVisibility(ESlateVisibility::Visible);
-}
-
-void USaveGameViewerWidget::add_test_profile_button() {
-#if !UE_BUILD_SHIPPING
-    auto* button{Cast<UButton>(WidgetTree->FindWidget(TEXT("reset_test_profile_button")))};
-    if (!IsValid(button)) {
-        button = WidgetTree->ConstructWidget<UButton>(UButton::StaticClass(),
-                                                      TEXT("reset_test_profile_button"));
-        auto* const label{WidgetTree->ConstructWidget<UTextBlock>(
-            UTextBlock::StaticClass(), TEXT("reset_test_profile_button_label"))};
-        if (!IsValid(button) || !IsValid(label)) {
-            UE_LOG(LogSandboxUI,
-                   Error,
-                   TEXT("USaveGameViewerWidget::add_test_profile_button: Failed to construct the "
-                        "test profile button."));
-            return;
-        }
-
-        label->SetText(NSLOCTEXT("SaveGameViewer", "CreateTestProfile", "Create Test Profile"));
-        button->SetContent(label);
-        button->SetToolTipText(NSLOCTEXT("SaveGameViewer",
-                                         "ResetTestProfileTooltip",
-                                         "Create or replace the deterministic test profile."));
-        button->OnClicked.AddUniqueDynamic(this, &ThisClass::handle_reset_test_profile);
+    if (view_.IsValid()) {
+        view_->show_create_error(error);
     }
-
-    profile_list->AddChild(button);
-#endif
 }
 
 void USaveGameViewerWidget::rebuild_profiles() {
-    if (!IsValid(profile_row_widget_class_)) {
-        profile_row_widget_class_ = LoadClass<USaveGameRowWidget>(
-            nullptr, TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameRow.WBP_SaveGameRow_C"));
-    }
-    if (!IsValid(outcome_row_widget_class_)) {
-        outcome_row_widget_class_ = LoadClass<ULevelOutcomeRowWidget>(
-            nullptr, TEXT("/SpaceGame/UI/SaveGame/WBP_LevelOutcomeRow.WBP_LevelOutcomeRow_C"));
-    }
-
-    if (!IsValid(profile_list) || !IsValid(profile_empty_state_text) ||
-        !IsValid(profile_row_widget_class_) || !IsValid(outcome_row_widget_class_)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("USaveGameViewerWidget::rebuild_profiles: List dependencies are invalid."));
-        show_empty_profiles();
-        return;
-    }
-
-    profile_list->ClearChildren();
-    profile_rows_.Reset();
-
+    view_state_ = FSaveGameViewState{};
     auto* const browser{resolve_browser()};
     auto const profiles{browser ? browser->get_summaries()
                                 : TConstArrayView<FSaveProfileSummary>{}};
     if (profiles.IsEmpty()) {
-        add_test_profile_button();
         show_empty_profiles();
+        publish_all();
         return;
     }
 
-    profile_empty_state_text->SetVisibility(ESlateVisibility::Collapsed);
-    auto const n_profiles{profiles.Num()};
-    profile_rows_.Reserve(n_profiles);
-    for (int32 i{0}; i < n_profiles; ++i) {
-        auto const row_name{FName{*FString::Printf(TEXT("profile_row_%d"), i)}};
-        auto* const row{
-            WidgetTree->ConstructWidget<USaveGameRowWidget>(profile_row_widget_class_, row_name)};
-        if (!IsValid(row)) {
-            UE_LOG(LogSandboxUI,
-                   Warning,
-                   TEXT("USaveGameViewerWidget::rebuild_profiles: Failed to create row %d."),
-                   i);
-            continue;
-        }
-
-        row->set_summary(profiles[i]);
-        row->selected.AddUObject(this, &ThisClass::select_profile);
-        row->set_selected(false);
-        profile_list->AddChild(row);
-        profile_rows_.Add(row);
+    auto const profile_count{profiles.Num()};
+    view_state_.profiles.Reserve(profile_count);
+    for (auto const& profile : profiles) {
+        auto const marker{profile.active ? TEXT("ACTIVE // ") : TEXT("")};
+        view_state_.profiles.Add(FSaveProfileViewRow{
+            .profile_id = profile.profile_id,
+            .text = FText::FromString(marker + profile.display_name.ToUpper()),
+            .active = profile.active,
+        });
     }
+    view_state_.archive_status =
+        FText::Format(NSLOCTEXT("SaveGameViewer", "ArchiveStatus", "{0} SERVICE RECORDS AVAILABLE"),
+                      FText::AsNumber(profile_count));
 
-    add_test_profile_button();
-
-    auto const previous_selection{selected_profile_id_};
+    auto const requested_profile{selected_profile_id_};
     selected_profile_id_.Reset();
-    select_profile(previous_selection.IsEmpty() ? profiles[0].profile_id : previous_selection);
+    apply_profile_selection(requested_profile.IsEmpty() ? profiles[0].profile_id
+                                                        : requested_profile);
     if (selected_profile_id_.IsEmpty()) {
-        select_profile(profiles[0].profile_id);
+        apply_profile_selection(profiles[0].profile_id);
     }
+    publish_all();
 }
 
 void USaveGameViewerWidget::select_profile(FString const& profile_id) {
+    apply_profile_selection(profile_id);
+    publish_profile();
+}
+
+void USaveGameViewerWidget::apply_profile_selection(FString const& profile_id) {
     auto* const browser{resolve_browser()};
     if (!browser) {
         show_empty_profiles();
@@ -336,245 +295,167 @@ void USaveGameViewerWidget::select_profile(FString const& profile_id) {
     }
 
     auto const profiles{browser->get_summaries()};
-    auto const n_profiles{profiles.Num()};
-    int32 selected_index{INDEX_NONE};
-    for (int32 i{0}; i < n_profiles; ++i) {
-        if (profiles[i].profile_id == profile_id) {
-            selected_index = i;
-            auto const profile_changed{selected_profile_id_ != profile_id};
-            selected_profile_id_ = profile_id;
-            if (profile_changed) {
-                selected_outcome_id_.Reset();
-            }
-            show_profile(profiles[i]);
-            if (browser->load_profile_report(profile_id)) {
-                auto const* const report{browser->get_loaded_profile_report()};
-                if (report) {
-                    rebuild_outcomes(*report);
-                }
-            } else {
-                UE_LOG(LogSandboxUI,
-                       Warning,
-                       TEXT("USaveGameViewerWidget::select_profile: Failed to load profile '%s'."),
-                       *profile_id);
-                rebuild_outcomes(FSaveProfileReport{.profile_id = profile_id});
-            }
-            break;
+    auto const profile_count{profiles.Num()};
+    for (int32 index{}; index < profile_count; ++index) {
+        auto const& profile{profiles[index]};
+        if (profile.profile_id != profile_id) {
+            continue;
         }
-    }
 
-    auto const n_rows{profile_rows_.Num()};
-    for (int32 i{0}; i < n_rows; ++i) {
-        if (IsValid(profile_rows_[i])) {
-            profile_rows_[i]->set_selected(i == selected_index);
+        auto const profile_changed{selected_profile_id_ != profile_id};
+        selected_profile_id_ = profile_id;
+        view_state_.selected_profile_index = index;
+        if (profile_changed) {
+            selected_outcome_id_.Reset();
         }
+        show_profile(profile);
+
+        if (browser->load_profile_report(profile_id)) {
+            auto const* const report{browser->get_loaded_profile_report()};
+            if (report) {
+                rebuild_outcomes(*report);
+            }
+        } else {
+            UE_LOG(LogSandboxUI,
+                   Warning,
+                   TEXT("USaveGameViewerWidget::select_profile: Failed to load profile '%s'."),
+                   *profile_id);
+            rebuild_outcomes(FSaveProfileReport{.profile_id = profile_id});
+        }
+        return;
     }
 }
 
 void USaveGameViewerWidget::rebuild_outcomes(FSaveProfileReport const& report) {
-    if (!IsValid(outcome_list) || !IsValid(outcome_empty_state_text) ||
-        !IsValid(result_sections_box)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("USaveGameViewerWidget::rebuild_outcomes: Outcome widgets are invalid."));
-        return;
-    }
-
-    outcome_list->ClearChildren();
-    result_sections_box->ClearChildren();
-    outcome_rows_.Reset();
-    result_sections_.Reset();
+    view_state_.outcomes.Reset();
+    view_state_.statistics.Reset();
+    view_state_.selected_outcome_index = INDEX_NONE;
+    view_state_.outcome_name = NSLOCTEXT("SaveGameViewer", "NoOperations", "NO OPERATIONS LOGGED");
+    view_state_.outcome_status = NSLOCTEXT(
+        "SaveGameViewer", "NoOperationsDetail", "This service record contains no mission reports.");
+    view_state_.outcome_completed = FText::GetEmpty();
+    view_state_.outcome_duration = FText::GetEmpty();
+    view_state_.outcome_kills = FText::GetEmpty();
 
     if (report.outcomes.IsEmpty()) {
         selected_outcome_id_.Reset();
-        outcome_empty_state_text->SetVisibility(ESlateVisibility::Visible);
         return;
     }
 
-    outcome_empty_state_text->SetVisibility(ESlateVisibility::Collapsed);
-    auto const n_outcomes{report.outcomes.Num()};
-    outcome_rows_.Reserve(n_outcomes);
-    result_sections_.Reserve(n_outcomes);
-    for (int32 i{0}; i < n_outcomes; ++i) {
-        auto const& outcome{report.outcomes[i]};
-        auto const row_name{FName{*FString::Printf(TEXT("outcome_row_%d"), i)}};
-        auto* const row{WidgetTree->ConstructWidget<ULevelOutcomeRowWidget>(
-            outcome_row_widget_class_, row_name)};
-        if (!IsValid(row)) {
-            UE_LOG(LogSandboxUI,
-                   Warning,
-                   TEXT("USaveGameViewerWidget::rebuild_outcomes: Failed to create row %d."),
-                   i);
-            continue;
-        }
-
-        row->set_outcome(outcome);
-        row->selected.AddUObject(this, &ThisClass::select_outcome);
-        row->set_selected(false);
-        outcome_list->AddChild(row);
-        outcome_rows_.Add(row);
-        add_result_section(outcome, i);
+    auto const outcome_count{report.outcomes.Num()};
+    view_state_.outcomes.Reserve(outcome_count);
+    for (auto const& outcome : report.outcomes) {
+        view_state_.outcomes.Add(FSaveOutcomeViewRow{
+            .outcome_id = outcome.outcome_id,
+            .text = FText::FromString(outcome.display_name.ToUpper()),
+        });
     }
 
-    auto const previous_selection{selected_outcome_id_};
+    auto const requested_outcome{selected_outcome_id_};
     selected_outcome_id_.Reset();
-    select_outcome(previous_selection.IsEmpty() ? report.outcomes[0].outcome_id
-                                                : previous_selection);
+    apply_outcome_selection(requested_outcome.IsEmpty() ? report.outcomes[0].outcome_id
+                                                        : requested_outcome);
     if (selected_outcome_id_.IsEmpty()) {
-        select_outcome(report.outcomes[0].outcome_id);
+        apply_outcome_selection(report.outcomes[0].outcome_id);
     }
 }
 
 void USaveGameViewerWidget::select_outcome(FString const& outcome_id) {
-    auto* const browser{resolve_browser()};
-    if (!browser) {
-        return;
-    }
+    apply_outcome_selection(outcome_id);
+    publish_outcome();
+}
 
-    auto const* const report{browser->get_loaded_profile_report()};
+void USaveGameViewerWidget::apply_outcome_selection(FString const& outcome_id) {
+    auto* const browser{resolve_browser()};
+    auto const* const report{browser ? browser->get_loaded_profile_report() : nullptr};
     if (!report || report->profile_id != selected_profile_id_) {
         return;
     }
 
-    auto const n_outcomes{report->outcomes.Num()};
-    for (int32 i{0}; i < n_outcomes; ++i) {
-        if (report->outcomes[i].outcome_id != outcome_id) {
-            continue;
+    auto const outcome_count{report->outcomes.Num()};
+    for (int32 index{}; index < outcome_count; ++index) {
+        auto const& outcome{report->outcomes[index]};
+        if (outcome.outcome_id == outcome_id) {
+            selected_outcome_id_ = outcome_id;
+            view_state_.selected_outcome_index = index;
+            show_outcome(outcome);
+            return;
         }
-
-        selected_outcome_id_ = outcome_id;
-        auto const n_rows{outcome_rows_.Num()};
-        for (int32 row_index{0}; row_index < n_rows; ++row_index) {
-            if (IsValid(outcome_rows_[row_index])) {
-                outcome_rows_[row_index]->set_selected(row_index == i);
-            }
-        }
-
-        if (result_sections_.IsValidIndex(i) && IsValid(result_sections_[i]) &&
-            IsValid(results_scroll_box)) {
-            results_scroll_box->ScrollWidgetIntoView(
-                result_sections_[i], true, EDescendantScrollDestination::TopOrLeft, 0.f);
-        }
-        return;
     }
 }
 
 void USaveGameViewerWidget::show_profile(FSaveProfileSummary const& profile) {
-    if (!IsValid(report_switcher) || !IsValid(selected_report_panel) ||
-        !IsValid(profile_name_text) || !IsValid(profile_id_text) ||
-        !IsValid(profile_created_text) || !IsValid(profile_last_played_text) ||
-        !IsValid(profile_duration_text) || !IsValid(profile_score_text)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("USaveGameViewerWidget::show_profile: Profile widgets are invalid."));
-        return;
-    }
-
-    profile_name_text->SetText(FText::FromString(profile.display_name));
-    profile_id_text->SetText(FText::Format(NSLOCTEXT("SaveGameViewer", "ProfileId", "ID: {0}"),
-                                           FText::FromString(profile.profile_id)));
-    profile_created_text->SetText(
-        FText::Format(NSLOCTEXT("SaveGameViewer", "Created", "Created: {0}"),
-                      save_game_viewer_widget::format_date(profile.created_at)));
-    profile_last_played_text->SetText(
-        FText::Format(NSLOCTEXT("SaveGameViewer", "LastPlayed", "Last played: {0}"),
-                      save_game_viewer_widget::format_date(profile.last_played_at)));
-    profile_duration_text->SetText(FText::Format(
-        NSLOCTEXT("SaveGameViewer", "TotalDuration", "Total duration: {0}"),
-        save_game_viewer_widget::format_duration(profile.total_simulation_duration_seconds)));
-    profile_score_text->SetText(
-        FText::Format(NSLOCTEXT("SaveGameViewer", "ProfileTotals", "Outcomes: {0}    Kills: {1}"),
-                      FText::AsNumber(profile.outcome_count),
-                      FText::AsNumber(profile.total_kills)));
-    active_profile_text->SetText(
-        profile.active ? NSLOCTEXT("SaveGameViewer", "ActiveProfile", "Active profile")
-                       : NSLOCTEXT("SaveGameViewer", "InactiveProfile", "Not active"));
-    activate_profile_button->SetIsEnabled(!profile.active);
-    report_switcher->SetActiveWidget(selected_report_panel);
+    view_state_.profile_name = FText::FromString(profile.display_name);
+    view_state_.profile_status =
+        profile.active ? NSLOCTEXT("SaveGameViewer", "ActiveProfile", "ACTIVE SERVICE RECORD")
+                       : NSLOCTEXT("SaveGameViewer", "InactiveProfile", "ARCHIVED SERVICE RECORD");
+    view_state_.profile_id = FText::Format(NSLOCTEXT("SaveGameViewer", "ProfileId", "ID  //  {0}"),
+                                           FText::FromString(profile.profile_id.ToUpper()));
+    view_state_.profile_created =
+        FText::Format(NSLOCTEXT("SaveGameViewer", "Created", "CREATED  //  {0}"),
+                      save_game_viewer_widget::format_date(profile.created_at));
+    view_state_.profile_last_played =
+        FText::Format(NSLOCTEXT("SaveGameViewer", "LastPlayed", "LAST OPERATION  //  {0}"),
+                      save_game_viewer_widget::format_date(profile.last_played_at));
+    view_state_.profile_duration = FText::Format(
+        NSLOCTEXT("SaveGameViewer", "TotalDuration", "DUTY TIME  //  {0}"),
+        save_game_viewer_widget::format_duration(profile.total_simulation_duration_seconds));
+    view_state_.profile_totals = FText::Format(
+        NSLOCTEXT("SaveGameViewer", "ProfileTotals", "REPORTS  //  {0}    KILLS  //  {1}"),
+        FText::AsNumber(profile.outcome_count),
+        FText::AsNumber(profile.total_kills));
+    view_state_.can_activate = !profile.active;
 }
 
-void USaveGameViewerWidget::add_result_section(FLevelOutcomeSummary const& outcome,
-                                               int32 const index) {
-    auto const border_name{FName{*FString::Printf(TEXT("result_section_%d"), index)}};
-    auto* const border{WidgetTree->ConstructWidget<UBorder>(UBorder::StaticClass(), border_name)};
-    auto* const content{WidgetTree->ConstructWidget<UVerticalBox>(
-        UVerticalBox::StaticClass(),
-        FName{*FString::Printf(TEXT("result_section_content_%d"), index)})};
-    if (!IsValid(border) || !IsValid(content)) {
-        UE_LOG(LogSandboxUI,
-               Warning,
-               TEXT("USaveGameViewerWidget::add_result_section: Failed to create section %d."),
-               index);
-        return;
+void USaveGameViewerWidget::show_outcome(FLevelOutcomeSummary const& outcome) {
+    view_state_.outcome_name = FText::FromString(outcome.display_name);
+    view_state_.outcome_status = FText::FromString(outcome.result.ToUpper());
+    view_state_.outcome_completed =
+        FText::Format(NSLOCTEXT("SaveGameViewer", "LevelCompleted", "COMPLETED  //  {0}"),
+                      save_game_viewer_widget::format_date(outcome.completed_at));
+    view_state_.outcome_duration = FText::Format(
+        NSLOCTEXT("SaveGameViewer", "LevelDuration", "DURATION  //  {0}"),
+        save_game_viewer_widget::format_duration(outcome.simulation_duration_seconds));
+    view_state_.outcome_kills =
+        FText::Format(NSLOCTEXT("SaveGameViewer", "LevelKills", "CONFIRMED KILLS  //  {0}"),
+                      FText::AsNumber(outcome.kills));
+    view_state_.statistics.Reset(outcome.statistics.Num());
+    for (auto const& statistic : outcome.statistics) {
+        view_state_.statistics.Add(FSaveStatisticViewRow{
+            .label = FText::FromString(statistic.label.ToUpper()),
+            .value = FText::FromString(statistic.value),
+        });
     }
-
-    border->SetPadding(FMargin{16.f});
-    border->SetBrushColor(FLinearColor{0.08f, 0.1f, 0.12f, 1.f});
-    border->SetContent(content);
-
-    int32 text_index{};
-    auto add_text = [this, content, index, &text_index](FString const& name, FText const& text) {
-        auto* const text_widget{WidgetTree->ConstructWidget<UTextBlock>(
-            UTextBlock::StaticClass(),
-            FName{*FString::Printf(TEXT("%s_%d_%d"), *name, index, text_index++)})};
-        if (IsValid(text_widget)) {
-            text_widget->SetText(text);
-            text_widget->SetAutoWrapText(true);
-            content->AddChild(text_widget);
-        }
-    };
-
-    add_text(TEXT("result_name"), FText::FromString(outcome.display_name));
-    add_text(TEXT("result_outcome"),
-             FText::Format(NSLOCTEXT("SaveGameViewer", "LevelResult", "Result: {0}"),
-                           FText::FromString(outcome.result)));
-    add_text(
-        TEXT("result_completed"),
-        FText::Format(NSLOCTEXT("SaveGameViewer", "LevelCompleted", "Completed: {0}"),
-                      FText::FromString(outcome.completed_at.ToString(TEXT("%Y-%m-%d %H:%M")))));
-    add_text(TEXT("result_duration"),
-             FText::Format(
-                 NSLOCTEXT("SaveGameViewer", "LevelDuration", "Duration: {0}"),
-                 save_game_viewer_widget::format_duration(outcome.simulation_duration_seconds)));
-    add_text(TEXT("result_kills"),
-             FText::Format(NSLOCTEXT("SaveGameViewer", "LevelKills", "Kills: {0}"),
-                           FText::AsNumber(outcome.kills)));
-
-    for (FLevelOutcomeStatistic const& statistic : outcome.statistics) {
-        add_text(TEXT("result_statistic"),
-                 FText::Format(NSLOCTEXT("SaveGameViewer", "LevelStatistic", "{0}: {1}"),
-                               FText::FromString(statistic.label),
-                               FText::FromString(statistic.value)));
-    }
-
-    result_sections_box->AddChild(border);
-    result_sections_.Add(border);
 }
 
 void USaveGameViewerWidget::show_empty_profiles() {
     selected_profile_id_.Reset();
     selected_outcome_id_.Reset();
-    profile_rows_.Reset();
-    outcome_rows_.Reset();
-    result_sections_.Reset();
+    view_state_ = FSaveGameViewState{};
+    view_state_.archive_status =
+        NSLOCTEXT("SaveGameViewer", "NoProfiles", "NO SERVICE RECORDS AVAILABLE");
+    view_state_.profile_name = NSLOCTEXT("SaveGameViewer", "ArchiveEmpty", "ARCHIVE EMPTY");
+    view_state_.profile_status = NSLOCTEXT("SaveGameViewer",
+                                           "ArchiveEmptyDetail",
+                                           "Create a service record to begin mission logging.");
+    view_state_.outcome_name = NSLOCTEXT("SaveGameViewer", "NoReport", "NO REPORT SELECTED");
+}
 
-    if (IsValid(profile_list)) {
-        profile_list->ClearChildren();
-    }
-    if (IsValid(outcome_list)) {
-        outcome_list->ClearChildren();
-    }
-    if (IsValid(result_sections_box)) {
-        result_sections_box->ClearChildren();
-    }
-    if (IsValid(profile_empty_state_text)) {
-        profile_empty_state_text->SetVisibility(ESlateVisibility::Visible);
-    }
-    if (IsValid(outcome_empty_state_text)) {
-        outcome_empty_state_text->SetVisibility(ESlateVisibility::Visible);
-    }
-    if (IsValid(report_switcher) && IsValid(empty_report_panel)) {
-        report_switcher->SetActiveWidget(empty_report_panel);
+void USaveGameViewerWidget::publish_all() {
+    if (view_.IsValid()) {
+        view_->replace_state(view_state_);
     }
 }
+
+void USaveGameViewerWidget::publish_profile() {
+    if (view_.IsValid()) {
+        view_->replace_profile(view_state_);
+    }
 }
+
+void USaveGameViewerWidget::publish_outcome() {
+    if (view_.IsValid()) {
+        view_->update_outcome(view_state_);
+    }
+}
+} // namespace ml::ioj

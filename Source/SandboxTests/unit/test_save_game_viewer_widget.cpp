@@ -1,14 +1,8 @@
 #include <SandboxTests/support/test_setup.h>
 
 #include <SpaceGame/persistence/SaveGameBrowser.h>
-#include <SpaceGame/ui/save_game/LevelOutcomeRowWidget.h>
-#include <SpaceGame/ui/save_game/SaveGameRowWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 
-#include <Components/Button.h>
-#include <Components/ScrollBox.h>
-#include <Components/TextBlock.h>
-#include <Components/VerticalBox.h>
 #include <CQTest.h>
 
 namespace save_game_viewer_widget_test {
@@ -21,11 +15,11 @@ auto make_outcome(FString id, FString name) -> ml::ioj::FLevelOutcomeSummary {
             .result = TEXT("Victory"),
             .statistics = {{TEXT("Accuracy"), TEXT("75%")}}};
 }
-}
+} // namespace save_game_viewer_widget_test
 
 TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
 {
-    TEST_METHOD(DisplaysProfilesOutcomesAndScrollableResults)
+    TEST_METHOD(DisplaysProfilesOutcomesAndReports)
     {
         auto const world_result{ml::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
@@ -93,125 +87,52 @@ TEST_CLASS(SaveGameViewerWidget, "Sandbox.UnitTests")
         auto const slate_widget{widget->TakeWidget()};
         (void)slate_widget;
 
-        auto* const profile_list{Cast<UScrollBox>(widget->GetWidgetFromName(TEXT("profile_list")))};
-        auto* const outcome_list{Cast<UScrollBox>(widget->GetWidgetFromName(TEXT("outcome_list")))};
-        auto* const profile_name{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("profile_name_text")))};
-        auto* const outcome_empty_state{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("outcome_empty_state_text")))};
-        auto* const result_sections{
-            Cast<UVerticalBox>(widget->GetWidgetFromName(TEXT("result_sections_box")))};
-        auto* const refresh_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("refresh_button")))};
-        auto* const create_profile_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("create_profile_button")))};
-        auto* const create_profile_panel{
-            Cast<UVerticalBox>(widget->GetWidgetFromName(TEXT("create_profile_panel")))};
-        auto* const cancel_create_profile_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("cancel_create_profile_button")))};
-        auto* const active_profile_text{
-            Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("active_profile_text")))};
-        auto* const activate_profile_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("activate_profile_button")))};
-        auto* const reset_test_profile_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("reset_test_profile_button")))};
-        auto const bindings_valid{
-            IsValid(profile_list) && IsValid(outcome_list) && IsValid(profile_name) &&
-            IsValid(outcome_empty_state) && IsValid(result_sections) && IsValid(refresh_button) &&
-            IsValid(create_profile_button) && IsValid(create_profile_panel) &&
-            IsValid(cancel_create_profile_button) && IsValid(active_profile_text) &&
-            IsValid(activate_profile_button) && IsValid(reset_test_profile_button)};
-        if (!TestRunner->TestTrue(TEXT("Viewer bindings are valid"), bindings_valid)) {
-            return;
-        }
-
-        TestRunner->TestEqual(TEXT("All profiles and the test action are listed"),
-                              profile_list->GetChildrenCount(),
-                              4);
         TestRunner->TestEqual(
-            TEXT("Selected profile outcomes are indexed"), outcome_list->GetChildrenCount(), 2);
-        TestRunner->TestEqual(TEXT("Every outcome has a full result section"),
-                              result_sections->GetChildrenCount(),
-                              2);
+            TEXT("All service records are listed"), widget->get_profile_count(), 3);
+        TestRunner->TestEqual(
+            TEXT("Selected profile outcomes are indexed"), widget->get_outcome_count(), 2);
         TestRunner->TestEqual(TEXT("Newest profile is selected initially"),
-                              profile_name->GetText().ToString(),
+                              widget->get_selected_profile_name().ToString(),
                               FString{TEXT("Battle at Vega")});
-        TestRunner->TestEqual(TEXT("Active profile is identified"),
-                              active_profile_text->GetText().ToString(),
-                              FString{TEXT("Active profile")});
+        TestRunner->TestEqual(TEXT("First report is selected initially"),
+                              widget->get_selected_outcome_id(),
+                              FString{TEXT("patrol")});
         TestRunner->TestFalse(TEXT("Active profile cannot be activated again"),
-                              activate_profile_button->GetIsEnabled());
+                              widget->can_activate_selected_profile());
+        TestRunner->TestTrue(TEXT("Viewer is the CommonUI focus bridge"),
+                             widget->get_focus_target() == widget);
 
-        create_profile_button->OnClicked.Broadcast();
-        TestRunner->TestTrue(TEXT("Create profile form opens"),
-                             create_profile_panel->GetVisibility() == ESlateVisibility::Visible);
-        cancel_create_profile_button->OnClicked.Broadcast();
-        TestRunner->TestTrue(TEXT("Create profile form cancels"),
-                             create_profile_panel->GetVisibility() == ESlateVisibility::Collapsed);
+        widget->begin_create_profile();
+        TestRunner->TestTrue(TEXT("Create profile form opens"), widget->is_create_profile_open());
+        widget->request_back();
+        TestRunner->TestFalse(TEXT("Create profile form cancels"),
+                              widget->is_create_profile_open());
 
-        auto* const second_outcome{
-            Cast<ml::ioj::ULevelOutcomeRowWidget>(outcome_list->GetChildAt(1))};
-        auto* const second_outcome_button{
-            second_outcome ? Cast<UButton>(second_outcome->GetWidgetFromName(TEXT("row_button")))
-                           : nullptr};
-        if (!TestRunner->TestTrue(TEXT("Second outcome row is navigable"),
-                                  IsValid(second_outcome_button))) {
-            return;
-        }
-        second_outcome_button->OnClicked.Broadcast();
-        auto* const first_outcome{
-            Cast<ml::ioj::ULevelOutcomeRowWidget>(outcome_list->GetChildAt(0))};
-        auto* const first_outcome_button{
-            first_outcome ? Cast<UButton>(first_outcome->GetWidgetFromName(TEXT("row_button")))
-                          : nullptr};
-        if (!TestRunner->TestTrue(TEXT("First outcome row is navigable"),
-                                  IsValid(first_outcome_button))) {
-            return;
-        }
-        TestRunner->TestTrue(TEXT("Jump target is shown as the selected outcome"),
-                             first_outcome_button->GetBackgroundColor() !=
-                                 second_outcome_button->GetBackgroundColor());
+        widget->select_outcome(TEXT("defence"));
+        TestRunner->TestEqual(TEXT("Outcome selection updates the report"),
+                              widget->get_selected_outcome_id(),
+                              FString{TEXT("defence")});
 
-        auto* const second_profile{Cast<ml::ioj::USaveGameRowWidget>(profile_list->GetChildAt(1))};
-        auto* const second_profile_button{
-            second_profile ? Cast<UButton>(second_profile->GetWidgetFromName(TEXT("row_button")))
-                           : nullptr};
-        if (!TestRunner->TestTrue(TEXT("Second profile row is navigable"),
-                                  IsValid(second_profile_button))) {
-            return;
-        }
-        second_profile_button->OnClicked.Broadcast();
+        widget->select_profile(TEXT("test_run_12"));
         TestRunner->TestEqual(TEXT("Selecting a profile updates its report"),
-                              profile_name->GetText().ToString(),
+                              widget->get_selected_profile_name().ToString(),
                               FString{TEXT("Test Run 12")});
         TestRunner->TestEqual(
-            TEXT("Outcome index is rebuilt for profile"), outcome_list->GetChildrenCount(), 1);
-        TestRunner->TestEqual(
-            TEXT("Full results are rebuilt for profile"), result_sections->GetChildrenCount(), 1);
+            TEXT("Outcome index is rebuilt for profile"), widget->get_outcome_count(), 1);
         TestRunner->TestTrue(TEXT("Inactive profile can be explicitly activated"),
-                             activate_profile_button->GetIsEnabled());
+                             widget->can_activate_selected_profile());
 
-        auto* const empty_profile{Cast<ml::ioj::USaveGameRowWidget>(profile_list->GetChildAt(2))};
-        auto* const empty_profile_button{
-            empty_profile ? Cast<UButton>(empty_profile->GetWidgetFromName(TEXT("row_button")))
-                          : nullptr};
-        if (!TestRunner->TestTrue(TEXT("Empty profile row is navigable"),
-                                  IsValid(empty_profile_button))) {
-            return;
-        }
-        empty_profile_button->OnClicked.Broadcast();
+        widget->select_profile(TEXT("empty_profile"));
         TestRunner->TestEqual(
-            TEXT("Empty profile has no outcome rows"), outcome_list->GetChildrenCount(), 0);
-        TestRunner->TestEqual(
-            TEXT("Empty profile has no result sections"), result_sections->GetChildrenCount(), 0);
-        TestRunner->TestTrue(TEXT("Empty profile explains the missing outcomes"),
-                             outcome_empty_state->GetVisibility() == ESlateVisibility::Visible);
+            TEXT("Empty profile has no outcome rows"), widget->get_outcome_count(), 0);
+        TestRunner->TestTrue(TEXT("Empty profile has no selected report"),
+                             widget->get_selected_outcome_id().IsEmpty());
 
-        refresh_button->OnClicked.Broadcast();
+        widget->refresh();
         TestRunner->TestEqual(
-            TEXT("Refresh rebuilds without duplication"), profile_list->GetChildrenCount(), 4);
+            TEXT("Refresh rebuilds without duplication"), widget->get_profile_count(), 3);
         TestRunner->TestEqual(TEXT("Refresh preserves the selected profile"),
-                              profile_name->GetText().ToString(),
+                              widget->get_selected_profile_name().ToString(),
                               FString{TEXT("Empty Profile")});
     }
 };

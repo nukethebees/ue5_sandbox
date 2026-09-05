@@ -31,6 +31,7 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
 
         auto const display{FText::Format(format_spec_text, to_text(values)...)};
 
+        has_value_ = true;
         value_text->SetText(display);
     }
     template <typename... Ts>
@@ -41,6 +42,7 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
 
         auto const display{FText::Format(format_spec_text, to_text(values, &options)...)};
 
+        has_value_ = true;
         value_text->SetText(display);
     }
   protected:
@@ -67,4 +69,5 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
 
     FText format_spec_text;
     TOptional<FTextBlockStyle> text_style_{};
+    bool has_value_{};
 };

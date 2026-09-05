@@ -36,8 +36,8 @@ void UValueWidget::update_format_spec_text() {
             value_text->SetFont(font);
         }
 
-        if (value_text->GetText().IsEmpty()) {
-            value_text->SetText(format_spec_text);
+        if (!has_value_) {
+            value_text->SetText(FText::GetEmpty());
         }
     }
 }

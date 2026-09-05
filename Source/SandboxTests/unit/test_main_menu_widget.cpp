@@ -9,7 +9,6 @@
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include <CommonInputSettings.h>
-#include <Components/Button.h>
 #include <CQTest.h>
 #include <Engine/Engine.h>
 #include <Engine/GameInstance.h>
@@ -172,11 +171,8 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             Cast<ml::ioj::UOptionsWidget>(widget->GetWidgetFromName(TEXT("options_widget")))};
         auto* const save_game_viewer{Cast<ml::ioj::USaveGameViewerWidget>(
             widget->GetWidgetFromName(TEXT("save_game_viewer")))};
-        auto* const save_games_back_button{
-            Cast<UButton>(widget->GetWidgetFromName(TEXT("save_games_back_button")))};
-
         auto const main_bindings_valid{IsValid(main_page) && IsValid(save_game_viewer) &&
-                                       IsValid(save_games_back_button) && IsValid(options_widget)};
+                                       IsValid(options_widget)};
         if (!TestRunner->TestTrue(TEXT("All required main menu bindings are valid"),
                                   main_bindings_valid)) {
             return;
@@ -249,7 +245,7 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Save Data opens save viewer"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::SaveGames);
 
-        save_games_back_button->OnClicked.Broadcast();
+        save_game_viewer->back_requested.Broadcast();
         TestRunner->TestTrue(TEXT("Save Games Back returns to main"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
 

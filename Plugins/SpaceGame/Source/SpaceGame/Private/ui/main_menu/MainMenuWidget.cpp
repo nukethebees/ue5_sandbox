@@ -5,8 +5,6 @@
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 
-#include <Components/Button.h>
-#include <Components/VerticalBox.h>
 #include <Components/WidgetSwitcher.h>
 #include <Kismet/KismetSystemLibrary.h>
 
@@ -14,8 +12,7 @@ namespace ml::ioj {
 void UMainMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    if (!IsValid(main_page) || !IsValid(save_games_page) || !IsValid(save_game_viewer) ||
-        !IsValid(save_games_back_button) || !IsValid(options_widget)) {
+    if (!IsValid(main_page) || !IsValid(save_game_viewer) || !IsValid(options_widget)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UMainMenuWidget::NativeOnInitialized: One or more bound widgets are "
@@ -27,7 +24,7 @@ void UMainMenuWidget::NativeOnInitialized() {
     main_page->save_data_requested.AddUObject(this, &ThisClass::handle_save_games);
     main_page->options_requested.AddUObject(this, &ThisClass::handle_options);
     main_page->quit_game_requested.AddUObject(this, &ThisClass::handle_quit);
-    save_games_back_button->OnClicked.AddDynamic(this, &ThisClass::return_from_save_games);
+    save_game_viewer->back_requested.AddUObject(this, &ThisClass::return_from_save_games);
     options_widget->back_requested.AddUObject(this, &ThisClass::return_from_options);
 }
 
@@ -49,7 +46,7 @@ auto UMainMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
 auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
     switch (active_page_) {
         case EMainMenuPage::SaveGames: {
-            return_from_save_games();
+            save_game_viewer->request_back();
             break;
         }
         case EMainMenuPage::Options: {
@@ -91,7 +88,7 @@ void UMainMenuWidget::return_from_options() {
 }
 
 void UMainMenuWidget::set_active_page(EMainMenuPage const page) {
-    if (!IsValid(page_switcher) || !IsValid(main_page) || !IsValid(save_games_page) ||
+    if (!IsValid(page_switcher) || !IsValid(main_page) || !IsValid(save_game_viewer) ||
         !IsValid(options_widget)) {
         UE_LOG(LogSandboxUI,
                Error,
@@ -106,7 +103,7 @@ void UMainMenuWidget::set_active_page(EMainMenuPage const page) {
             break;
         }
         case EMainMenuPage::SaveGames: {
-            active_widget = save_games_page;
+            active_widget = save_game_viewer;
             break;
         }
         case EMainMenuPage::Options: {
