@@ -2,8 +2,9 @@
 
 #include <SpaceGame/presentation/HUDManager.h>
 
+#include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/MissionStatusWidget.h"
 #include "SpaceGame/presentation/widgets/ShipHealthWidget.h"
 #include "SpaceGame/presentation/widgets/ShipPointsWidget.h"
@@ -11,9 +12,9 @@
 #include "SpaceGame/presentation/widgets/ShipThrusterEnergyWidget.h"
 #include "SpaceGame/presentation/widgets/TeamEntityTableWidget.h"
 #include "SpaceGame/presentation/widgets/TopKillersWidget.h"
-#include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/Vector2DWidget.h"
-#include "SandboxGameShared/ui/widgets/ValueWidget.h"
+#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/ui/style/GameUiStyle.h"
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/CanvasPanelSlot.h>
@@ -69,7 +70,6 @@ void UShipHudWidget::NativePreConstruct() {
 
 void UShipHudWidget::set_common_widget_properties() {
     set_font_size_on_widgets(font_size,
-                             speed_widget,
                              health_widget,
                              points_widget,
                              stopwatch_widget,
@@ -88,6 +88,16 @@ void UShipHudWidget::set_common_widget_properties() {
                              top_killers_widget,
                              team_kill_matrix_widget,
                              mission_status_panel);
+}
+
+void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
+    if (!IsValid(speed_widget)) {
+        UE_LOG(
+            LogSandboxUI, Error, TEXT("UShipHudWidget::apply_ui_style: Speed widget is invalid."));
+        return;
+    }
+
+    speed_widget->set_text_style(style.text(EGameTextStyle::HudPrimary));
 }
 
 void UShipHudWidget::set_font_size(int32 const new_font_size) {

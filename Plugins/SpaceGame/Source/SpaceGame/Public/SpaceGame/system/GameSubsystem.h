@@ -2,12 +2,15 @@
 
 #include "SpaceGame/levels/LevelDefinition.h"
 #include "SpaceGame/persistence/SaveGameBrowser.h"
+#include "SpaceGame/ui/style/GameUiStyle.h"
 
 #include "Subsystems/GameInstanceSubsystem.h"
 
 #include "GameSubsystem.generated.h"
 
 namespace ml::ioj {
+class USpaceGameUiTheme;
+
 #if PLATFORM_WINDOWS
 enum class ELargePageAccessStatus : uint8 {
     Unsupported,
@@ -63,6 +66,9 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto get_platform_capabilities() const -> FGameCapabilities const&;
     auto get_save_game_browser() -> FSaveGameBrowser&;
 
+    auto get_ui_style() const -> FGameUiStyle const&;
+    auto set_ui_theme(USpaceGameUiTheme* theme) -> bool;
+
     void set_pending_level(FLevelDefinition definition,
                            FString source_path,
                            ELevelLaunchMode launch_mode = ELevelLaunchMode::Running);
@@ -76,11 +82,17 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto has_level_launch_error() const noexcept -> bool;
     auto take_level_launch_error() -> FString;
   private:
+    void initialize_ui_style();
+
     FGameCapabilities platform_capabilities_;
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};
     TOptional<FLevelSelectRequest> level_select_request_{NullOpt};
     FString level_launch_error_{};
     bool level_transition_in_progress_{false};
+
+    UPROPERTY(Transient)
+    TObjectPtr<USpaceGameUiTheme> ui_theme_{nullptr};
+    FGameUiStyle ui_style_{};
 };
 }

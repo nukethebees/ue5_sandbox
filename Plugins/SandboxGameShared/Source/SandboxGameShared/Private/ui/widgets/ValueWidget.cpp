@@ -21,9 +21,20 @@ void UValueWidget::NativeConstruct() {
 void UValueWidget::update_format_spec_text() {
     format_spec_text = FText::FromName(format_spec);
     if (value_text) {
-        auto font{value_text->GetFont()};
-        font.Size = font_size;
-        value_text->SetFont(font);
+        if (text_style_) {
+            auto const& style{text_style_.GetValue()};
+            value_text->SetFont(style.Font);
+            value_text->SetColorAndOpacity(style.ColorAndOpacity);
+            value_text->SetShadowOffset(style.ShadowOffset);
+            value_text->SetShadowColorAndOpacity(style.ShadowColorAndOpacity);
+            value_text->SetStrikeBrush(style.StrikeBrush);
+            value_text->SetTextTransformPolicy(style.TransformPolicy);
+            value_text->SetTextOverflowPolicy(style.OverflowPolicy);
+        } else {
+            auto font{value_text->GetFont()};
+            font.Size = font_size;
+            value_text->SetFont(font);
+        }
 
         if (value_text->GetText().IsEmpty()) {
             value_text->SetText(format_spec_text);
@@ -38,5 +49,10 @@ void UValueWidget::set_format_spec(FName const new_format_spec) {
 
 void UValueWidget::set_font_size(int32 const new_font_size) {
     font_size = new_font_size;
+    update_format_spec_text();
+}
+
+void UValueWidget::set_text_style(FTextBlockStyle const& style) {
+    text_style_ = style;
     update_format_spec_text();
 }

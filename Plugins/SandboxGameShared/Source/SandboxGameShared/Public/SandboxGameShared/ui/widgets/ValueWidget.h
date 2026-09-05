@@ -20,6 +20,7 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
 
     void set_format_spec(FName const new_format_spec);
     void set_font_size(int32 const new_font_size);
+    void set_text_style(FTextBlockStyle const& style);
     auto get_font_size() const noexcept -> int32 { return font_size; }
 
     template <typename... Ts>
@@ -65,4 +66,5 @@ class SANDBOXGAMESHARED_API UValueWidget : public UUserWidget {
     void update_format_spec_text();
 
     FText format_spec_text;
+    TOptional<FTextBlockStyle> text_style_{};
 };

@@ -4,6 +4,8 @@
 
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGame/ui/style/SpaceGameUiSettings.h"
+#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
@@ -43,6 +45,8 @@ auto query_platform_capabilities() -> FGameCapabilities {
 void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
 
+    initialize_ui_style();
+
     collection.InitializeDependency(USpaceSaveSubsystem::StaticClass());
     auto* const save_subsystem{GetGameInstance()->GetSubsystem<USpaceSaveSubsystem>()};
     if (!IsValid(save_subsystem)) {
@@ -63,12 +67,41 @@ void UGameSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     save_game_browser_.refresh();
 }
 
+void UGameSubsystem::initialize_ui_style() {
+    auto const* const settings{GetDefault<USpaceGameUiSettings>()};
+    auto* theme{settings->default_theme.LoadSynchronous()};
+    if (!IsValid(theme)) {
+        theme = NewObject<USpaceGameUiTheme>(this, TEXT("default_ui_theme"));
+    }
+
+    if (!set_ui_theme(theme)) {
+        UE_LOG(LogSandboxUI,
+               Fatal,
+               TEXT("UGameSubsystem::initialize_ui_style: Failed to compile the UI theme."));
+    }
+}
+
 auto UGameSubsystem::get_platform_capabilities() const -> FGameCapabilities const& {
     return platform_capabilities_;
 }
 
 auto UGameSubsystem::get_save_game_browser() -> FSaveGameBrowser& {
     return save_game_browser_;
+}
+
+auto UGameSubsystem::get_ui_style() const -> FGameUiStyle const& {
+    return ui_style_;
+}
+
+auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
+    if (!IsValid(theme)) {
+        UE_LOG(LogSandboxUI, Error, TEXT("UGameSubsystem::set_ui_theme: Theme is invalid."));
+        return false;
+    }
+
+    ui_theme_ = theme;
+    ui_style_ = theme->compile();
+    return true;
 }
 
 void UGameSubsystem::set_pending_level(FLevelDefinition definition,

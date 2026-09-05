@@ -18,6 +18,7 @@
 #include <Blueprint/WidgetTree.h>
 #include <BlueprintEditorLibrary.h>
 #include <CommonTextBlock.h>
+#include <Components/Border.h>
 #include <Components/Button.h>
 #include <Components/ButtonSlot.h>
 #include <Components/HorizontalBox.h>
@@ -193,10 +194,13 @@ auto generate_menu_button_widget() -> UClass* {
     if (!IsValid(blueprint)) {
         return nullptr;
     }
+    auto* const background{make_widget<UBorder>(*blueprint->WidgetTree, TEXT("background"))};
+    background->SetVisibility(ESlateVisibility::HitTestInvisible);
     auto* const label{make_widget<UCommonTextBlock>(*blueprint->WidgetTree, TEXT("label_text"))};
     label->SetJustification(ETextJustify::Center);
     label->SetVisibility(ESlateVisibility::HitTestInvisible);
-    blueprint->WidgetTree->RootWidget = label;
+    background->SetContent(label);
+    blueprint->WidgetTree->RootWidget = background;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
