@@ -1,17 +1,17 @@
 #pragma once
 
+#include <SandboxCore/multi_buffer.h>
+#include <SandboxCore/periodic_tick_countdown.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/presentation/widgets/ShipHudKillData.h>
+#include <SpaceGame/ships/common/ShipHealth.h>
 #include <SpaceGame/ships/player/TestShipFireRate.h>
 #include <SpaceGame/ships/player/TestSpaceShipControlMode.h>
 #include <SpaceGame/ships/player/TestSpaceShipFlightMode.h>
-#include <SpaceGame/ships/common/ShipHealth.h>
-#include <SpaceGame/presentation/widgets/ShipHudKillData.h>
-#include <SandboxCore/multi_buffer.h>
-#include <SandboxCore/periodic_tick_countdown.h>
 
 #include <CoreMinimal.h>
 #include <HAL/Platform.h>
@@ -19,8 +19,11 @@
 
 struct FTestEntityRegistry;
 struct FTestMissionManager;
-class ATestSpaceShip;
 class UShipHudWidget;
+
+namespace ml::test_space_ship {
+struct Simulation;
+}
 
 enum class EHUDManagerState : uint8 {
     Disabled,
@@ -148,7 +151,7 @@ struct SPACEGAME_API FHUDManager {
                     FTestMissionManager const& new_mission_manager,
                     FTestEntityRegistry const& new_entity_registry,
                     double update_tick_rate,
-                    ATestSpaceShip const* new_player_ship);
+                    ml::test_space_ship::Simulation const* new_player_ship);
     void deactivate();
     void tick(FPeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
@@ -208,7 +211,7 @@ struct SPACEGAME_API FHUDManager {
 
     EHUDManagerState state{EHUDManagerState::Disabled};
     TArray<TWeakObjectPtr<UShipHudWidget>> registered_huds;
-    TWeakObjectPtr<ATestSpaceShip const> player_ship;
+    ml::test_space_ship::Simulation const* player_ship{nullptr};
     FTestMissionManager const* mission_manager{nullptr};
     FTestEntityRegistry const* entity_registry{nullptr};
     FPeriodicTickCountdown8 update_timers;

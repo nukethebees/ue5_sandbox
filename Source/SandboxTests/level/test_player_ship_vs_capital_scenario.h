@@ -12,6 +12,10 @@
 class ATestSpaceShip;
 
 namespace ml {
+void run_worldless_player_ship_vs_capital(FAutomationTestBase& test,
+                                          FSoftTestAssertions& checks,
+                                          USpaceGameLevelConfig const& config);
+
 class FPlayerShipVsCapitalScenario final : public FSimulationTestScenario {
     static constexpr time_type initial_wait{0.1};
     static constexpr time_type track_time{0.5};

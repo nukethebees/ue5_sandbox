@@ -10,6 +10,11 @@
 namespace ml {
 enum class ESimulationCoreRegressionScenario : uint8 { FixedTickLifecycle, DamageLifecycle };
 
+void run_worldless_simulation_core_regression(FAutomationTestBase& test,
+                                              FSoftTestAssertions& checks,
+                                              USpaceGameLevelConfig const& config,
+                                              ESimulationCoreRegressionScenario scenario);
+
 class FSimulationCoreRegressionScenario final : public FSimulationTestScenario {
     struct FDamageSample {
         int32 capital_count{0};

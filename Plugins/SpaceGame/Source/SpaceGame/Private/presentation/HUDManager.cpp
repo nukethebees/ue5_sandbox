@@ -2,7 +2,7 @@
 
 #include "SpaceGame/missions/TestMissionManager.h"
 #include "SpaceGame/presentation/widgets/ShipHudWidget.h"
-#include "SpaceGame/ships/player/TestSpaceShip.h"
+#include "SpaceGame/ships/player/TestSpaceShipSimulation.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCore/timing.h>
@@ -17,7 +17,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
                              FTestMissionManager const& new_mission_manager,
                              FTestEntityRegistry const& new_entity_registry,
                              double const update_tick_rate,
-                             ATestSpaceShip const* const new_player_ship) {
+                             ml::test_space_ship::Simulation const* const new_player_ship) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
     update_timers.reset();
     mission_data_buffers = {};
@@ -77,7 +77,7 @@ void FHUDManager::deactivate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::deactivate);
     update_timers.reset();
     registered_huds.Reset();
-    player_ship.Reset();
+    player_ship = nullptr;
     mission_manager = nullptr;
     entity_registry = nullptr;
     mission_data_buffers = {};
@@ -284,14 +284,14 @@ bool FHUDManager::collect_player_status_data() {
 
     if (validate_player_ship_for_collection()) {
         next_data.has_player_ship = true;
-        next_data.health = player_ship->get_health_info();
+        next_data.health = player_ship->health;
         next_data.speed = player_ship->get_speed();
-        next_data.target_speed = player_ship->get_target_speed();
+        next_data.target_speed = player_ship->target_speed;
         next_data.energy = player_ship->get_energy();
         next_data.points = player_ship->get_kills();
-        next_data.fire_rate = player_ship->get_laser_fire_rate();
+        next_data.fire_rate = player_ship->laser_fire_rate;
 
-        auto const firing_mode{player_ship->get_laser_firing_mode()};
+        auto const firing_mode{player_ship->laser_firing_mode};
         if (firing_mode == ELaserFiringState::lock_on_searching ||
             firing_mode == ELaserFiringState::lock_on_acquired) {
             next_data.near_crosshair_colour = FLinearColor::Yellow;
@@ -310,16 +310,16 @@ bool FHUDManager::collect_player_flight_data() {
 
     if (validate_player_ship_for_collection()) {
         auto const ship_socket{player_ship->get_middle_socket()};
-        auto const lock_on_target{player_ship->get_lock_on_target()};
+        auto const lock_on_target{player_ship->lock_on_target};
 
         next_data.has_player_ship = true;
-        next_data.turning = player_ship->get_turn_input();
-        next_data.moving = player_ship->get_move_input();
-        next_data.desired_velocity_scale = player_ship->get_target_local_planar_velocity_scale();
-        next_data.ship_velocity = player_ship->get_velocity();
-        next_data.target_velocity = player_ship->get_target_local_planar_velocity();
-        next_data.control_mode = player_ship->get_control_mode();
-        next_data.flight_mode = player_ship->get_flight_mode();
+        next_data.turning = player_ship->rotation_input;
+        next_data.moving = player_ship->planar_movement_direction;
+        next_data.desired_velocity_scale = player_ship->target_local_planar_velocity_scale;
+        next_data.ship_velocity = player_ship->velocity;
+        next_data.target_velocity = player_ship->target_local_planar_velocity;
+        next_data.control_mode = player_ship->control_mode;
+        next_data.flight_mode = player_ship->flight_mode;
         next_data.crosshair_origin = ship_socket.GetLocation();
         next_data.crosshair_direction = ship_socket.GetUnitAxis(EAxis::X);
         next_data.has_lock_on_target = entity_registry->is_valid_handle(lock_on_target);
@@ -337,10 +337,10 @@ bool FHUDManager::collect_sampled_speed_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_sampled_speed_data);
     auto& next_data{sampled_speed_data_buffers.next()};
     next_data = {};
-    if (player_ship.IsValid()) {
-        auto const samples{player_ship->get_speed_samples()};
+    if (player_ship) {
+        auto const& samples{player_ship->speed_samples};
         next_data.samples.Append(samples.GetData(), samples.Num());
-        next_data.oldest_index = player_ship->get_speed_sample_index();
+        next_data.oldest_index = player_ship->speed_sample_index;
         has_sampled_speed_data = true;
     }
 
@@ -496,12 +496,11 @@ void FHUDManager::update_sampled_speed_hud(UShipHudWidget& hud) const {
 
 bool FHUDManager::validate_player_ship_for_collection() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::validate_player_ship_for_collection);
-    auto const* const ship{player_ship.Get()};
-    if (!IsValid(ship)) {
+    if (!player_ship) {
         return false;
     }
 
     check(entity_registry);
-    auto const unique_id{ship->get_unique_id()};
+    auto const unique_id{player_ship->unique_entity_id};
     return unique_id.is_valid() && entity_registry->is_valid_unique_id(unique_id);
 }

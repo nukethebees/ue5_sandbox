@@ -9,6 +9,10 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+void run_worldless_fighter_attack(FAutomationTestBase& test,
+                                  FSoftTestAssertions& checks,
+                                  USpaceGameLevelConfig const& config);
+
 class FFighterAttackScenario final : public FSimulationTestScenario {
 
     struct FSimulationSample {

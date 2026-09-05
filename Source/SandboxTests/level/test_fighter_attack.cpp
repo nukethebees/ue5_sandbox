@@ -12,8 +12,53 @@
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>
+#include <SandboxTests/support/WorldlessSimulationTest.h>
 
 namespace ml {
+void run_worldless_fighter_attack(FAutomationTestBase& test,
+                                  FSoftTestAssertions& checks,
+                                  USpaceGameLevelConfig const& config) {
+    auto data{make_worldless_simulation_test_data(config)};
+    data.fighters.laser.projectile_speed = 20000.f;
+    data.fighters.laser.max_distance = 25000.f;
+    add_worldless_capital_spawn(
+        data, FVector3f{-22020.f, 2170.f, 4360.f}, ETestTeam::Green, 1, 0.f, 60.f);
+    add_worldless_capital_spawn(
+        data, FVector3f{17030.f, 2170.f, 4360.f}, ETestTeam::Red, 0, 60.f, 60.f);
+
+    FWorldlessSimulationTest harness{MoveTemp(data)};
+    harness.finish_initialisation();
+    auto const* capitals{harness.get_simulation().get_capital_ships()};
+    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const enemy{capitals->get_handle(1)};
+    struct Sample {
+        int32 enemy_health{};
+        TArray<ETestTeam> fighter_teams;
+    };
+    TimeSeriesData<Sample> samples;
+    harness.on_end_tick = [&](FLevelSimulation&) {
+        Sample sample{.enemy_health = capitals->get_health(enemy)};
+        sample.fighter_teams.Append(fighters->get_teams());
+        samples.add(harness.get_time(), MoveTemp(sample));
+    };
+    harness.timeline.finish_at(11.0);
+    test.TestTrue(TEXT("Fighter-attack timeline completes"),
+                  harness.run_until_timeline_finished(12.0));
+    checks.is_true(!samples.is_empty(), TEXT("Fighter-attack samples are recorded"));
+    if (samples.is_empty()) {
+        return;
+    }
+
+    auto const& before{samples.nearest_value(1.0)};
+    auto const& after{samples.nearest_value(11.0)};
+    checks.is_greater_than(before.fighter_teams.Num(), int32{0}, TEXT("Hero fighters spawned"));
+    for (int32 i{}; i < before.fighter_teams.Num(); ++i) {
+        checks.are_equal(
+            ETestTeam::Green, before.fighter_teams[i], TEXT("Fighter is on the hero team"), i);
+    }
+    checks.is_true(after.enemy_health < before.enemy_health, TEXT("Enemy lost health"));
+}
+
 FFighterAttackScenario::FFighterAttackScenario(FSimulationTestContext& context)
     : FSimulationTestScenario{context} {
     TestCommandBuilder.Do([this] { spawn_fixture(); });

@@ -8,6 +8,10 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+void run_worldless_fighters_standby_transition(FAutomationTestBase& test,
+                                               FSoftTestAssertions& checks,
+                                               USpaceGameLevelConfig const& config);
+
 class FFightersStandbyTransitionScenario final : public FSimulationTestScenario {
     using Task = test_capital_ship_fighters::Simulation::Task;
 

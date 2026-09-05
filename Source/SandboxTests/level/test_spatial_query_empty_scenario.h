@@ -8,6 +8,13 @@
 #include <SpaceGame/entities/ProxyEntityMap.h>
 
 namespace ml {
+void run_worldless_spatial_query_empty(FAutomationTestBase& test,
+                                       FSoftTestAssertions& checks,
+                                       USpaceGameLevelConfig const& config);
+void run_worldless_spatial_query_range(FAutomationTestBase& test,
+                                       FSoftTestAssertions& checks,
+                                       USpaceGameLevelConfig const& config);
+
 class FSpatialQueryEmptyScenario final : public FSimulationTestScenario {
     struct FSample {
         bool queries_completed{false};

@@ -35,6 +35,7 @@ public class SandboxTests : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "DeveloperSettings",
             "AssetRegistry",
             "RenderCore",
             "UnrealEd",

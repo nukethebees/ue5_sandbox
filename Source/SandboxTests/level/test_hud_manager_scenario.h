@@ -19,6 +19,11 @@ enum class EHUDManagerScenario : uint8 {
     LateHUDRegistrationSynchronisesAndUnregisters,
 };
 
+void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
+                                        FSoftTestAssertions& checks,
+                                        USpaceGameLevelConfig const& config,
+                                        EHUDManagerScenario scenario);
+
 class FTestHUDManagerScenario final : public FSimulationTestScenario {
     inline static FTimespan const timeout{0, 0, 2};
     static constexpr double early_sample_time{0.1};

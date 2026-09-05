@@ -47,6 +47,25 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data,
         player_ship_phase_.begin_play();
     }
     capital_ships_simulation_.register_ships(data.capital_spawns);
+    auto const target_count{data.capital_target_spawn_indices.Num()};
+    check(target_count == 0 || target_count == capital_ships_simulation_.get_num_instances());
+    for (int32 capital_index{}; capital_index < target_count; ++capital_index) {
+        auto const target_index{data.capital_target_spawn_indices[capital_index]};
+        if (target_index == INDEX_NONE) {
+            continue;
+        }
+        if (target_index == FLevelSimulationInitData::player_target_spawn_index) {
+            check(player_ship_simulation_.IsSet());
+            capital_ships_simulation_.bind_proxy_target(
+                capital_ships_simulation_.get_handle(capital_index),
+                player_ship_simulation_->registry_handle);
+            continue;
+        }
+        check(target_index >= 0 && target_index < target_count);
+        capital_ships_simulation_.bind_proxy_target(
+            capital_ships_simulation_.get_handle(capital_index),
+            capital_ships_simulation_.get_handle(target_index));
+    }
     capital_ships_phase_.begin_play();
     capital_ship_fighters_phase_.begin_play();
     turrets_simulation_.register_turrets(data.turret_spawns);

@@ -9,6 +9,10 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+void run_worldless_fighters_intercept_capital(FAutomationTestBase& test,
+                                              FSoftTestAssertions& checks,
+                                              USpaceGameLevelConfig const& config);
+
 class FFightersInterceptCapitalScenario final : public FSimulationTestScenario {
 
     struct FSimulationSample {

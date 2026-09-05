@@ -10,6 +10,10 @@
 class AActor;
 
 namespace ml {
+void run_worldless_turret_search_requires_line_of_sight(FAutomationTestBase& test,
+                                                        FSoftTestAssertions& checks,
+                                                        USpaceGameLevelConfig const& config);
+
 class FTurretSearchRequiresLineOfSightScenario final : public FSimulationTestScenario {
 
     static constexpr time_type test_end_time{1.0};

@@ -7,6 +7,10 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+void run_worldless_spatial_query_line_of_sight(FAutomationTestBase& test,
+                                               FSoftTestAssertions& checks,
+                                               USpaceGameLevelConfig const& config);
+
 class FSpatialQueryLineOfSightScenario final : public FSimulationTestScenario {
     static constexpr float distance{30000.f};
     static constexpr float spawn_cooldown{999.f};

@@ -360,7 +360,7 @@ void ATestBatchOrchestrator::begin_play() {
                                get_mission_manager(),
                                get_entity_registry(),
                                hud_tick_loop.tick_rate,
-                               player_ship.Get());
+                               get_player_ship_simulation());
     }
     bool const automatic{
         start_mode == EOrchestratorStartMode::Automatic ||

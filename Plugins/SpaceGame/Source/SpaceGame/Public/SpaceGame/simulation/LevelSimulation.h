@@ -22,6 +22,8 @@
 #include <SpaceGame/simulation/LevelSimulationState.h>
 
 struct FLevelSimulationInitData {
+    static constexpr int32 player_target_spawn_index{-2};
+
     FFixedTickLoop clock_settings{};
     FLaserSimulationConfig lasers;
     FCapitalSimulationConfig capital_ships;
@@ -30,6 +32,7 @@ struct FLevelSimulationInitData {
     FSpinnerSimulationConfig spinners;
     TOptional<ml::test_space_ship::FPlayerSpawnData> player;
     ml::test_capital_ships::SpawnData capital_spawns;
+    TArray<int32> capital_target_spawn_indices;
     ml::test_static_turrets::SpawnData turret_spawns;
     FVectors3f spinner_locations;
     TArray<float> spinner_yaws;
