@@ -1,60 +1,59 @@
 #include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ui/common/MenuButtonWidget.h"
+#include <Styling/CoreStyle.h>
 
 namespace ml::ioj {
 namespace {
-auto compile_text_style(TSubclassOf<UCommonTextStyle> const style_class, FTextBlockStyle& result)
-    -> bool {
-    auto const* const style{style_class ? style_class->GetDefaultObject<UCommonTextStyle>()
-                                        : nullptr};
-    if (!IsValid(style)) {
-        return false;
-    }
-
-    style->ToTextBlockStyle(result);
-    return true;
+auto make_text_style(TCHAR const* const typeface, int32 const size, FLinearColor const& colour)
+    -> FTextBlockStyle {
+    return FTextBlockStyle{}
+        .SetFont(FCoreStyle::GetDefaultFontStyle(typeface, size))
+        .SetColorAndOpacity(FSlateColor{colour});
 }
 
-auto compile_button_style(UCommonButtonStyle const& source, FGameButtonPresentationStyle& result)
-    -> bool {
-    auto const& normal{source.bSingleMaterial ? source.SingleMaterialBrush : source.NormalBase};
-    auto const& hovered{source.bSingleMaterial ? source.SingleMaterialBrush : source.NormalHovered};
-    auto const& pressed{source.bSingleMaterial ? source.SingleMaterialBrush : source.NormalPressed};
-    auto const& selected{source.bSingleMaterial ? source.SingleMaterialBrush : source.SelectedBase};
-    auto const& selected_hovered{source.bSingleMaterial ? source.SingleMaterialBrush
-                                                        : source.SelectedHovered};
-    auto const& selected_pressed{source.bSingleMaterial ? source.SingleMaterialBrush
-                                                        : source.SelectedPressed};
+auto make_brush(FLinearColor const& colour) -> FSlateBrush {
+    FSlateBrush brush;
+    brush.DrawAs = ESlateBrushDrawType::Box;
+    brush.TintColor = FSlateColor{colour};
+    return brush;
+}
 
+auto make_button_style(FSlateBrush const& normal,
+                       FSlateBrush const& hovered,
+                       FSlateBrush const& pressed,
+                       FSlateBrush const& selected,
+                       FSlateBrush const& selected_hovered,
+                       FSlateBrush const& selected_pressed,
+                       FSlateBrush const& disabled,
+                       FTextBlockStyle const& normal_text,
+                       FTextBlockStyle const& hovered_text,
+                       FTextBlockStyle const& selected_text,
+                       FTextBlockStyle const& selected_hovered_text,
+                       FTextBlockStyle const& disabled_text) -> FGameButtonPresentationStyle {
+    FGameButtonPresentationStyle result;
     result.normal.SetNormal(normal)
         .SetHovered(hovered)
         .SetPressed(pressed)
-        .SetDisabled(source.Disabled)
-        .SetNormalPadding(source.ButtonPadding)
-        .SetPressedPadding(source.ButtonPadding);
+        .SetDisabled(disabled)
+        .SetNormalPadding(FMargin{10.f, 5.f})
+        .SetPressedPadding(FMargin{10.f, 5.f});
     result.selected.SetNormal(selected)
         .SetHovered(selected_hovered)
         .SetPressed(selected_pressed)
-        .SetDisabled(source.Disabled)
-        .SetNormalPadding(source.ButtonPadding)
-        .SetPressedPadding(source.ButtonPadding);
-    result.custom_padding = source.CustomPadding;
-    result.minimum_size =
-        FVector2f{static_cast<float>(source.MinWidth), static_cast<float>(source.MinHeight)};
-    result.maximum_size =
-        FVector2f{static_cast<float>(source.MaxWidth), static_cast<float>(source.MaxHeight)};
-
-    return compile_text_style(source.NormalTextStyle, result.normal_text) &&
-           compile_text_style(source.NormalHoveredTextStyle, result.normal_hovered_text) &&
-           compile_text_style(source.SelectedTextStyle, result.selected_text) &&
-           compile_text_style(source.SelectedHoveredTextStyle, result.selected_hovered_text) &&
-           compile_text_style(source.DisabledTextStyle, result.disabled_text);
+        .SetDisabled(disabled)
+        .SetNormalPadding(FMargin{10.f, 5.f})
+        .SetPressedPadding(FMargin{10.f, 5.f});
+    result.normal_text = normal_text;
+    result.normal_hovered_text = hovered_text;
+    result.selected_text = selected_text;
+    result.selected_hovered_text = selected_hovered_text;
+    result.disabled_text = disabled_text;
+    result.minimum_size = FVector2f{0.f, 28.f};
+    return result;
 }
 }
 
-auto FGameTextStyleClasses::get(EGameTextStyle const role) const -> TSubclassOf<UCommonTextStyle> {
+auto FGameTextStyles::get(EGameTextStyle const role) const -> FTextBlockStyle const& {
     switch (role) {
         case EGameTextStyle::Body:
             return body;
@@ -77,11 +76,11 @@ auto FGameTextStyleClasses::get(EGameTextStyle const role) const -> TSubclassOf<
     }
 
     checkNoEntry();
-    return nullptr;
+    return body;
 }
 
-auto FGameButtonStyleClasses::get(EGameButtonStyle const role) const
-    -> TSubclassOf<UCommonButtonStyle> {
+auto FGameButtonStyles::get(EGameButtonStyle const role) const
+    -> FGameButtonPresentationStyle const& {
     switch (role) {
         case EGameButtonStyle::Primary:
             return primary;
@@ -90,116 +89,65 @@ auto FGameButtonStyleClasses::get(EGameButtonStyle const role) const
     }
 
     checkNoEntry();
-    return nullptr;
+    return primary;
 }
 
 USpaceGameUiTheme::USpaceGameUiTheme() {
-    auto const default_text_style{UMenuTextStyle::StaticClass()};
-    text_styles_.body = default_text_style;
-    text_styles_.body_secondary = default_text_style;
-    text_styles_.caption = default_text_style;
-    text_styles_.heading_1 = default_text_style;
-    text_styles_.heading_2 = default_text_style;
-    text_styles_.heading_3 = default_text_style;
-    text_styles_.warning = default_text_style;
-    text_styles_.hud_primary = default_text_style;
-    text_styles_.hud_secondary = default_text_style;
+    text_styles_.body = make_text_style(TEXT("Regular"), 14, FLinearColor::White);
+    text_styles_.body_secondary =
+        make_text_style(TEXT("Regular"), 14, FLinearColor{0.72f, 0.76f, 0.82f, 1.f});
+    text_styles_.caption =
+        make_text_style(TEXT("Regular"), 12, FLinearColor{0.6f, 0.64f, 0.7f, 1.f});
+    text_styles_.heading_1 = make_text_style(TEXT("Bold"), 28, FLinearColor::White);
+    text_styles_.heading_2 = make_text_style(TEXT("Bold"), 22, FLinearColor::White);
+    text_styles_.heading_3 = make_text_style(TEXT("Bold"), 18, FLinearColor::White);
+    text_styles_.warning = make_text_style(TEXT("Bold"), 14, FLinearColor{1.f, 0.35f, 0.15f, 1.f});
+    text_styles_.hud_primary = make_text_style(TEXT("Bold"), 18, FLinearColor::White);
+    text_styles_.hud_secondary =
+        make_text_style(TEXT("Regular"), 14, FLinearColor{0.72f, 0.76f, 0.82f, 1.f});
 
-    auto const default_button_style{UMenuButtonStyle::StaticClass()};
-    button_styles_.primary = default_button_style;
-    button_styles_.secondary = default_button_style;
+    auto const disabled_text{
+        make_text_style(TEXT("Regular"), 14, FLinearColor{0.5f, 0.52f, 0.55f, 1.f})};
+    button_styles_.primary = make_button_style(make_brush(FLinearColor{0.12f, 0.14f, 0.16f, 1.f}),
+                                               make_brush(FLinearColor{0.16f, 0.38f, 0.55f, 1.f}),
+                                               make_brush(FLinearColor{0.08f, 0.3f, 0.65f, 1.f}),
+                                               make_brush(FLinearColor{0.08f, 0.3f, 0.65f, 1.f}),
+                                               make_brush(FLinearColor{0.12f, 0.4f, 0.78f, 1.f}),
+                                               make_brush(FLinearColor{0.06f, 0.24f, 0.52f, 1.f}),
+                                               make_brush(FLinearColor{0.08f, 0.09f, 0.1f, 0.6f}),
+                                               text_styles_.body,
+                                               text_styles_.body,
+                                               text_styles_.body,
+                                               text_styles_.body,
+                                               disabled_text);
+    button_styles_.secondary = make_button_style(make_brush(FLinearColor{0.1f, 0.11f, 0.12f, 1.f}),
+                                                 make_brush(FLinearColor{0.18f, 0.2f, 0.22f, 1.f}),
+                                                 make_brush(FLinearColor{0.07f, 0.08f, 0.09f, 1.f}),
+                                                 make_brush(FLinearColor{0.14f, 0.18f, 0.22f, 1.f}),
+                                                 make_brush(FLinearColor{0.22f, 0.26f, 0.3f, 1.f}),
+                                                 make_brush(FLinearColor{0.1f, 0.14f, 0.18f, 1.f}),
+                                                 make_brush(FLinearColor{0.08f, 0.09f, 0.1f, 0.6f}),
+                                                 text_styles_.body_secondary,
+                                                 text_styles_.body,
+                                                 text_styles_.body,
+                                                 text_styles_.body,
+                                                 disabled_text);
 }
 
-auto USpaceGameUiTheme::compile(FGameUiStyle& result) const -> bool {
+auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
     FGameUiStyle compiled;
     for (int32 index{}; index < TEnumTraits<EGameTextStyle>::count; ++index) {
         auto const role{static_cast<EGameTextStyle>(index)};
-        auto const style_class{text_styles_.get(role)};
-        if (!compile_text_style(style_class, compiled.text_styles_[role])) {
-            UE_LOG(LogSandboxUI,
-                   Error,
-                   TEXT("USpaceGameUiTheme::compile: Text style '%s' is not configured."),
-                   LexToString(role));
-            return false;
-        }
+        compiled.text_styles_[role] = text_styles_.get(role);
     }
 
     for (int32 index{}; index < TEnumTraits<EGameButtonStyle>::count; ++index) {
         auto const role{static_cast<EGameButtonStyle>(index)};
-        auto const style_class{button_styles_.get(role)};
-        auto const* const style{style_class ? style_class->GetDefaultObject<UCommonButtonStyle>()
-                                            : nullptr};
-        if (!IsValid(style) || !compile_button_style(*style, compiled.button_styles_[role])) {
-            UE_LOG(LogSandboxUI,
-                   Error,
-                   TEXT("USpaceGameUiTheme::compile: Button style '%s' is incomplete."),
-                   LexToString(role));
-            return false;
-        }
+        compiled.button_styles_[role] = button_styles_.get(role);
     }
 
     compiled.panel_ = FGamePanelStyle{.background = panel_background_, .padding = panel_padding_};
     compiled.health_bar_ = health_bar_;
-    result = MoveTemp(compiled);
-    return true;
-}
-
-auto USpaceGameUiTheme::get_common_text_style(EGameTextStyle const role) const
-    -> TSubclassOf<UCommonTextStyle> {
-    return text_styles_.get(role);
-}
-
-auto USpaceGameUiTheme::get_common_button_style(EGameButtonStyle const role) const
-    -> TSubclassOf<UCommonButtonStyle> {
-    return button_styles_.get(role);
-}
-
-void USpaceGameUiTheme::set_common_text_style(EGameTextStyle const role,
-                                              TSubclassOf<UCommonTextStyle> const style) {
-    switch (role) {
-        case EGameTextStyle::Body:
-            text_styles_.body = style;
-            return;
-        case EGameTextStyle::BodySecondary:
-            text_styles_.body_secondary = style;
-            return;
-        case EGameTextStyle::Caption:
-            text_styles_.caption = style;
-            return;
-        case EGameTextStyle::Heading1:
-            text_styles_.heading_1 = style;
-            return;
-        case EGameTextStyle::Heading2:
-            text_styles_.heading_2 = style;
-            return;
-        case EGameTextStyle::Heading3:
-            text_styles_.heading_3 = style;
-            return;
-        case EGameTextStyle::Warning:
-            text_styles_.warning = style;
-            return;
-        case EGameTextStyle::HudPrimary:
-            text_styles_.hud_primary = style;
-            return;
-        case EGameTextStyle::HudSecondary:
-            text_styles_.hud_secondary = style;
-            return;
-    }
-
-    checkNoEntry();
-}
-
-void USpaceGameUiTheme::set_common_button_style(EGameButtonStyle const role,
-                                                TSubclassOf<UCommonButtonStyle> const style) {
-    switch (role) {
-        case EGameButtonStyle::Primary:
-            button_styles_.primary = style;
-            return;
-        case EGameButtonStyle::Secondary:
-            button_styles_.secondary = style;
-            return;
-    }
-
-    checkNoEntry();
+    return compiled;
 }
 }

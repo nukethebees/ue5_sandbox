@@ -2,49 +2,47 @@
 
 #include "SpaceGame/ui/style/GameUiStyle.h"
 
-#include <CommonButtonBase.h>
-#include <CommonTextBlock.h>
 #include <Engine/DataAsset.h>
 
 #include "SpaceGameUiTheme.generated.h"
 
 namespace ml::ioj {
 USTRUCT(BlueprintType)
-struct SPACEGAME_API FGameTextStyleClasses {
+struct SPACEGAME_API FGameTextStyles {
     GENERATED_BODY()
 
-    auto get(EGameTextStyle role) const -> TSubclassOf<UCommonTextStyle>;
+    auto get(EGameTextStyle role) const -> FTextBlockStyle const&;
 
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> body{};
+    FTextBlockStyle body{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> body_secondary{};
+    FTextBlockStyle body_secondary{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> caption{};
+    FTextBlockStyle caption{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> heading_1{};
+    FTextBlockStyle heading_1{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> heading_2{};
+    FTextBlockStyle heading_2{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> heading_3{};
+    FTextBlockStyle heading_3{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> warning{};
+    FTextBlockStyle warning{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> hud_primary{};
+    FTextBlockStyle hud_primary{};
     UPROPERTY(EditAnywhere, Category = "Text")
-    TSubclassOf<UCommonTextStyle> hud_secondary{};
+    FTextBlockStyle hud_secondary{};
 };
 
 USTRUCT(BlueprintType)
-struct SPACEGAME_API FGameButtonStyleClasses {
+struct SPACEGAME_API FGameButtonStyles {
     GENERATED_BODY()
 
-    auto get(EGameButtonStyle role) const -> TSubclassOf<UCommonButtonStyle>;
+    auto get(EGameButtonStyle role) const -> FGameButtonPresentationStyle const&;
 
     UPROPERTY(EditAnywhere, Category = "Buttons")
-    TSubclassOf<UCommonButtonStyle> primary{};
+    FGameButtonPresentationStyle primary{};
     UPROPERTY(EditAnywhere, Category = "Buttons")
-    TSubclassOf<UCommonButtonStyle> secondary{};
+    FGameButtonPresentationStyle secondary{};
 };
 
 UCLASS(BlueprintType)
@@ -53,17 +51,13 @@ class SPACEGAME_API USpaceGameUiTheme : public UDataAsset {
   public:
     USpaceGameUiTheme();
 
-    auto compile(FGameUiStyle& result) const -> bool;
-    auto get_common_text_style(EGameTextStyle role) const -> TSubclassOf<UCommonTextStyle>;
-    auto get_common_button_style(EGameButtonStyle role) const -> TSubclassOf<UCommonButtonStyle>;
-    void set_common_text_style(EGameTextStyle role, TSubclassOf<UCommonTextStyle> style);
-    void set_common_button_style(EGameButtonStyle role, TSubclassOf<UCommonButtonStyle> style);
+    auto compile() const -> FGameUiStyle;
   private:
     UPROPERTY(EditAnywhere, Category = "Text")
-    FGameTextStyleClasses text_styles_{};
+    FGameTextStyles text_styles_{};
 
     UPROPERTY(EditAnywhere, Category = "Buttons")
-    FGameButtonStyleClasses button_styles_{};
+    FGameButtonStyles button_styles_{};
 
     UPROPERTY(EditAnywhere, Category = "Panels")
     FSlateBrush panel_background_{};

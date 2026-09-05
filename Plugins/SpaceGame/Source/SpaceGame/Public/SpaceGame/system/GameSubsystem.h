@@ -40,7 +40,6 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto get_save_game_browser() -> FSaveGameBrowser&;
 
     auto get_ui_style() const -> FGameUiStyle const&;
-    auto get_ui_theme() const -> USpaceGameUiTheme const&;
     auto set_ui_theme(USpaceGameUiTheme* theme) -> bool;
 
     void set_pending_level(FLevelDefinition definition,

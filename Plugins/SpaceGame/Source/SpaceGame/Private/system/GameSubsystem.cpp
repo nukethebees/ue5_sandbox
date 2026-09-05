@@ -70,24 +70,14 @@ auto UGameSubsystem::get_ui_style() const -> FGameUiStyle const& {
     return ui_style_;
 }
 
-auto UGameSubsystem::get_ui_theme() const -> USpaceGameUiTheme const& {
-    check(IsValid(ui_theme_));
-    return *ui_theme_;
-}
-
 auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
     if (!IsValid(theme)) {
         UE_LOG(LogSandboxUI, Error, TEXT("UGameSubsystem::set_ui_theme: Theme is invalid."));
         return false;
     }
 
-    FGameUiStyle compiled;
-    if (!theme->compile(compiled)) {
-        return false;
-    }
-
     ui_theme_ = theme;
-    ui_style_ = MoveTemp(compiled);
+    ui_style_ = theme->compile();
     return true;
 }
 

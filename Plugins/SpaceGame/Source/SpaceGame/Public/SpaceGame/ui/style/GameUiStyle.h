@@ -6,6 +6,8 @@
 
 #include <Styling/SlateTypes.h>
 
+#include "GameUiStyle.generated.h"
+
 namespace ml::ioj {
 class USpaceGameUiTheme;
 
@@ -14,16 +16,38 @@ struct SPACEGAME_API FGamePanelStyle {
     FMargin padding{};
 };
 
+USTRUCT(BlueprintType)
 struct SPACEGAME_API FGameButtonPresentationStyle {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Button")
     FButtonStyle normal{};
+
+    UPROPERTY(EditAnywhere, Category = "Button")
     FButtonStyle selected{};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
     FTextBlockStyle normal_text{};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
     FTextBlockStyle normal_hovered_text{};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
     FTextBlockStyle selected_text{};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
     FTextBlockStyle selected_hovered_text{};
+
+    UPROPERTY(EditAnywhere, Category = "Text")
     FTextBlockStyle disabled_text{};
+
+    UPROPERTY(EditAnywhere, Category = "Layout")
     FMargin custom_padding{};
+
+    UPROPERTY(EditAnywhere, Category = "Layout")
     FVector2f minimum_size{};
+
+    UPROPERTY(EditAnywhere, Category = "Layout")
     FVector2f maximum_size{};
 };
 

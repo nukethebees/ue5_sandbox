@@ -5,6 +5,7 @@
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
+#include <SpaceGame/ui/style/SpaceGameUiTheme.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include <CommonInputSettings.h>
@@ -21,10 +22,12 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 {
     TEST_METHOD(Navigation)
     {
-        auto const* const text_style{GetDefault<ml::ioj::UMenuTextStyle>()};
+        auto const* const theme{GetDefault<ml::ioj::USpaceGameUiTheme>()};
+        auto const ui_style{theme->compile()};
+        auto const& text_style{ui_style.text(EGameTextStyle::Body)};
         TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
-                             IsValid(text_style) && (text_style->Font.CompositeFont.IsValid() ||
-                                                     IsValid(text_style->Font.FontObject)));
+                             text_style.Font.CompositeFont.IsValid() ||
+                                 IsValid(text_style.Font.FontObject));
 
         auto const world_result{ml::get_editor_world()};
         if (!TestRunner->TestTrue(TEXT("Editor world is available"), world_result.has_value())) {
