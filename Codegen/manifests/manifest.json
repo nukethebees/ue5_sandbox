@@ -1,5 +1,5 @@
 {
-  "schema_version": 5,
+  "schema_version": 6,
   "types": "types.json",
   "modules": [
     "dynamic_core.json",
@@ -11,6 +11,7 @@
     "entity_registry.json",
     "batch_game.json",
     "enums.json",
-    "facades.json"
+    "facades.json",
+    "settings.json"
   ]
 }

@@ -6,11 +6,17 @@
 #include "OptionsWidget.generated.h"
 
 class UButton;
+class UBorder;
 class UOverlay;
+class UTextBlock;
 class UWidget;
 class UWidgetSwitcher;
 
 namespace ml::ioj {
+enum class EGameSettingCategory : uint8;
+class UGameSettingsSubsystem;
+class USettingsRowWidget;
+
 enum class EOptionsTab : uint8 {
     Video,
     Gameplay,
@@ -75,10 +81,49 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     void handle_accessibility();
     UFUNCTION()
     void handle_back();
+    UFUNCTION()
+    void handle_apply();
+    UFUNCTION()
+    void handle_reset();
+    UFUNCTION()
+    void handle_dirty_apply();
+    UFUNCTION()
+    void handle_dirty_discard();
+    UFUNCTION()
+    void handle_dirty_stay();
+    UFUNCTION()
+    void handle_confirm_display();
+    UFUNCTION()
+    void handle_revert_display();
 
     void set_active_tab(EOptionsTab tab);
     void set_tab_button_state(UButton& button, bool selected);
+    void build_settings_pages();
+    void build_category_page(UWidget& page, EGameSettingCategory category);
+    void build_modals();
+    void refresh_settings_ui();
+    void handle_display_confirmation_changed(bool visible);
+    auto active_category() const -> EGameSettingCategory;
+
+    UPROPERTY(Transient)
+    UGameSettingsSubsystem* settings_{nullptr};
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<USettingsRowWidget>> settings_rows_;
+
+    UPROPERTY(Transient)
+    TArray<TObjectPtr<UButton>> apply_buttons_;
+
+    UPROPERTY(Transient)
+    UBorder* dirty_modal_{nullptr};
+
+    UPROPERTY(Transient)
+    UBorder* display_modal_{nullptr};
+
+    UPROPERTY(Transient)
+    UTextBlock* display_countdown_{nullptr};
 
     EOptionsTab active_tab_{EOptionsTab::Video};
+    bool settings_pages_built_{};
 };
 }
