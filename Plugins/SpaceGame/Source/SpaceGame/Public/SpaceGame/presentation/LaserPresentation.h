@@ -7,10 +7,12 @@
 #include <CoreMinimal.h>
 
 class USandboxISMCComponent;
+class FLaserPresentationIndexingTest;
 
 struct SPACEGAME_API FLaserPresentation {
     friend struct FLevelPresentation;
     friend struct FLevelSimulation;
+    friend class FLaserPresentationIndexingTest;
   public:
     static constexpr int32 n_custom_ismc_floats{5};
 

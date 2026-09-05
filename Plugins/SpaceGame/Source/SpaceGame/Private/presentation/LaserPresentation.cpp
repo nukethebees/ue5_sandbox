@@ -91,6 +91,10 @@ void FLaserPresentation::configure_ismc() {
 
 void FLaserPresentation::synchronize_material_data() {
     auto const& laser_simulation{simulation()};
+    for (auto const index : laser_simulation.presentation_indices_to_remove) {
+        material_data.RemoveAtSwap(index, EAllowShrinking::No);
+    }
+
     auto const spawn_count{laser_simulation.presentation_spawn_count};
     auto const& custom_data{laser_simulation.presentation_custom_data_to_add};
     check(custom_data.Num() == spawn_count * n_custom_ismc_floats);
@@ -100,10 +104,6 @@ void FLaserPresentation::synchronize_material_data() {
             {.colour = {custom_data[offset], custom_data[offset + 1], custom_data[offset + 2]},
              .initial_lifetime = custom_data[offset + 3],
              .spawn_time = custom_data[offset + 4]});
-    }
-
-    for (auto const index : laser_simulation.presentation_indices_to_remove) {
-        material_data.RemoveAtSwap(index, EAllowShrinking::No);
     }
 
     check(material_data.Num() == laser_simulation.get_num_instances());

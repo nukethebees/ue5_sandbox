@@ -11,6 +11,7 @@
 #include <CoreMinimal.h>
 
 class ATestBatchOrchestrator;
+class FLaserPresentationIndexingTest;
 struct FLevelSimulation;
 struct FLaserPresentation;
 struct FTestEntityRegistry;
@@ -80,6 +81,7 @@ struct SPACEGAME_API Simulation {
 
     friend class PhaseInterface;
     friend struct ::FLaserPresentation;
+    friend class ::FLaserPresentationIndexingTest;
 
     FTestEntityRegistry* entity_registry{nullptr};
     FSpatialQueryManager* query_manager{nullptr};
