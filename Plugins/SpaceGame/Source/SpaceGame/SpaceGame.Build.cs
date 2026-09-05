@@ -24,6 +24,7 @@ public class SpaceGame : ModuleRules
             "GameplayTags",
             "InputCore",
             "RenderCore",
+            "SandboxUI",
             "UMG",
             "SGCollision",
         });
@@ -32,7 +33,6 @@ public class SpaceGame : ModuleRules
         {
             "DeveloperSettings",
             "Niagara",
-            "SandboxUI",
             "Slate",
             "SlateCore",
             "TraceLog",

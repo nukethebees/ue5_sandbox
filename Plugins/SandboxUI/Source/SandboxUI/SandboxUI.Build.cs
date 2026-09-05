@@ -16,5 +16,13 @@ public class SandboxUI : ModuleRules
             "Slate",
             "SlateCore",
         });
+
+        PrivateDependencyModuleNames.AddRange(new string[]
+        {
+            "Engine",
+            "Projects",
+            "RenderCore",
+            "RHI",
+        });
     }
 }

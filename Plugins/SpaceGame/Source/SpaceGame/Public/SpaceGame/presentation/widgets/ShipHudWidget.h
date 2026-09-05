@@ -1,11 +1,12 @@
 #pragma once
 
+#include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
-#include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/entities/TestTeamVisualData.h"
-#include "SpaceGame/ships/common/ShipHealth.h"
+#include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/presentation/HudCrosshairDistances.h"
 #include "SpaceGame/presentation/widgets/ShipHudKillData.h"
+#include "SpaceGame/ships/common/ShipHealth.h"
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -27,6 +28,7 @@ class UDebugGraphWidget;
 class UTeamEntityTableWidget;
 class UMissionStatusWidget;
 class UTopKillersWidget;
+class SEntityOverlayWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
 }
@@ -94,12 +96,18 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void set_mission_time_remaining(float const time_remaining);
     void set_mission_enemies_remaining(int32 const enemies_remaining);
 
+    void set_entity_overlay_frame(FEntityOverlayFramePtr frame);
+    void set_entity_overlay_style(FEntityOverlayStyle const& style);
+
 #if WITH_EDITOR
     void update_sampled_speed(TConstArrayView<FVector2d> samples, int32 oldest_index);
 #endif
   protected:
     void NativePreConstruct() override;
     void NativeConstruct() override;
+    void NativeTick(FGeometry const& geometry, float delta_time) override;
+    auto RebuildWidget() -> TSharedRef<SWidget> override;
+    void ReleaseSlateResources(bool release_children) override;
 
     void set_common_widget_properties();
     void set_widget_visibility_checked(UWidget* const widget,
@@ -166,6 +174,9 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
 
     FHudCrosshairDistances crosshair_distances{};
+    FEntityOverlayFramePtr entity_overlay_frame_;
+    FEntityOverlayStyle entity_overlay_style_;
+    TSharedPtr<SEntityOverlayWidget> entity_overlay_widget_;
 
     UPROPERTY(meta = (BindWidget))
     UImage* lock_on_widget{nullptr};

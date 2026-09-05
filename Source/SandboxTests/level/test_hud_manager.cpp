@@ -507,7 +507,9 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
                                      orchestrator->get_mission_manager(),
                                      entity_registry,
                                      orchestrator->get_hud_tick_loop().tick_rate,
-                                     orchestrator->get_player_ship());
+                                     orchestrator->get_player_ship(),
+                                     *orchestrator->get_level_config(),
+                                     {});
     return true;
 }
 
