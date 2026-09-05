@@ -194,6 +194,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void start_visual_logging();
     void stop_visual_logging();
     void refresh_collision_grid_visualization();
+    void update_collision_bounds_visualization();
 
     FOrchestratorEndTickTestHook end_tick_test_hook;
 
@@ -212,6 +213,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
     TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision|Visualization")
+    bool show_collision_bounds{false};
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox|Collision|Visualization",
+              meta = (ClampMin = "0.0", Units = "cm", EditCondition = "show_collision_bounds"))
+    float collision_bounds_max_draw_distance{200000.f};
 
     FFixedTickLoop hud_tick_loop{};
 
