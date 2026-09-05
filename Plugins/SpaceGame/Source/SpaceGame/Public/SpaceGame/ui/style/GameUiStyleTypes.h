@@ -30,6 +30,17 @@ enum class EGameButtonStyle : uint8 {
     Secondary,
 };
 
+UENUM()
+enum class EGameUiIcon : uint8 {
+    Hive,
+    Video,
+    Gameplay,
+    Audio,
+    Controls,
+    Accessibility,
+    System,
+};
+
 template <>
 struct TEnumTraits<EGameTextStyle> {
     static constexpr int32 count{10};
@@ -40,9 +51,16 @@ struct TEnumTraits<EGameButtonStyle> {
     static constexpr int32 count{2};
 };
 
+template <>
+struct TEnumTraits<EGameUiIcon> {
+    static constexpr int32 count{7};
+};
+
 SPACEGAME_API auto LexToString(EGameTextStyle const value) -> TCHAR const*;
 
 SPACEGAME_API auto LexToString(EGameButtonStyle const value) -> TCHAR const*;
+
+SPACEGAME_API auto LexToString(EGameUiIcon const value) -> TCHAR const*;
 
 namespace ml::ioj {
 SPACEGAME_API auto to_string_view(EGameTextStyle const value) -> FStringView;
@@ -52,6 +70,10 @@ SPACEGAME_API auto to_display_string_view(EGameTextStyle const value) -> FString
 SPACEGAME_API auto to_string_view(EGameButtonStyle const value) -> FStringView;
 
 SPACEGAME_API auto to_display_string_view(EGameButtonStyle const value) -> FStringView;
+
+SPACEGAME_API auto to_string_view(EGameUiIcon const value) -> FStringView;
+
+SPACEGAME_API auto to_display_string_view(EGameUiIcon const value) -> FStringView;
 
 
 } // namespace ml::ioj

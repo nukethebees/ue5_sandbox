@@ -4,26 +4,11 @@
 #include "HAL/PlatformTime.h"
 
 namespace ml::ioj {
-namespace {
-
 constexpr double display_confirmation_duration_seconds{15.0};
-
-auto setting_values_equal(FGameSettingValue const& left, FGameSettingValue const& right) -> bool {
-    if (auto const* const left_float{std::get_if<float>(&left)}) {
-        auto const* const right_float{std::get_if<float>(&right)};
-        return right_float != nullptr &&
-               (*left_float == *right_float ||
-                (FMath::IsNaN(*left_float) && FMath::IsNaN(*right_float)));
-    }
-    return left == right;
-}
-
-} // namespace
 
 void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
-    baseline_ = backend_.read();
-    pending_ = baseline_;
+    edit_state_.begin(backend_.read(), backend_.defaults());
 }
 
 void UGameSettingsSubsystem::Deinitialize() {
@@ -38,8 +23,7 @@ void UGameSettingsSubsystem::begin_edit() {
     if (awaiting_display_confirmation_) {
         return;
     }
-    baseline_ = backend_.read();
-    pending_ = baseline_;
+    edit_state_.begin(backend_.read(), backend_.defaults());
     editing_ = true;
     settings_changed.Broadcast();
 }
@@ -48,8 +32,8 @@ void UGameSettingsSubsystem::cancel() {
     if (!editing_ || awaiting_display_confirmation_) {
         return;
     }
-    preview_immediate_settings(baseline_);
-    pending_ = baseline_;
+    preview_immediate_settings(edit_state_.applied());
+    edit_state_.cancel();
     editing_ = false;
     settings_changed.Broadcast();
 }
@@ -59,22 +43,25 @@ void UGameSettingsSubsystem::apply() {
         return;
     }
 
-    auto const display_changed{pending_.resolution != baseline_.resolution ||
-                               pending_.window_mode != baseline_.window_mode};
-    backend_.apply_non_display(pending_);
+    auto const& pending{edit_state_.pending()};
+    auto const& applied{edit_state_.applied()};
+    auto const display_changed{pending.resolution != applied.resolution ||
+                               pending.window_mode != applied.window_mode};
+    backend_.apply_non_display(pending);
     if (!display_changed) {
         backend_.save();
-        baseline_ = pending_;
+        edit_state_.commit_all();
         settings_changed.Broadcast();
         return;
     }
 
-    auto applied_non_display{pending_};
-    applied_non_display.resolution = baseline_.resolution;
-    applied_non_display.window_mode = baseline_.window_mode;
-    baseline_ = applied_non_display;
+    for (auto const& descriptor : game_setting_descriptors()) {
+        if (descriptor.apply_mode != ESettingApplyMode::Confirm) {
+            edit_state_.commit_setting(descriptor.id);
+        }
+    }
 
-    backend_.apply_display(pending_);
+    backend_.apply_display(edit_state_.pending());
     awaiting_display_confirmation_ = true;
     display_confirmation_deadline_ =
         FPlatformTime::Seconds() + display_confirmation_duration_seconds;
@@ -88,14 +75,16 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
     if (!editing_ || awaiting_display_confirmation_) {
         return;
     }
-    auto const defaults{backend_.defaults()};
+    auto const before{edit_state_.pending()};
+    edit_state_.reset_category(category);
     for (auto const& descriptor : game_setting_descriptors()) {
-        if (descriptor.category != category) {
-            continue;
+        if (descriptor.category == category &&
+            descriptor.apply_mode == ESettingApplyMode::Immediate &&
+            game_setting_value(before, descriptor.id) != edit_state_.value(descriptor.id)) {
+            backend_.preview_immediate(edit_state_.pending(), descriptor.id);
         }
-        auto const default_value{game_setting_value(defaults, descriptor.id)};
-        set_setting(descriptor.id, default_value);
     }
+    settings_changed.Broadcast();
 }
 
 void UGameSettingsSubsystem::confirm_display_changes() {
@@ -104,7 +93,7 @@ void UGameSettingsSubsystem::confirm_display_changes() {
     }
     backend_.confirm_display();
     backend_.save();
-    baseline_ = pending_;
+    edit_state_.commit_all();
     awaiting_display_confirmation_ = false;
     if (display_confirmation_ticker_.IsValid()) {
         FTSTicker::GetCoreTicker().RemoveTicker(display_confirmation_ticker_);
@@ -120,7 +109,7 @@ void UGameSettingsSubsystem::revert_display_changes() {
     }
     backend_.revert_display();
     backend_.save();
-    pending_ = baseline_;
+    edit_state_.cancel();
     awaiting_display_confirmation_ = false;
     if (display_confirmation_ticker_.IsValid()) {
         FTSTicker::GetCoreTicker().RemoveTicker(display_confirmation_ticker_);
@@ -131,11 +120,19 @@ void UGameSettingsSubsystem::revert_display_changes() {
 }
 
 auto UGameSettingsSubsystem::settings_state() const -> FGameSettingsState const& {
-    return pending_;
+    return edit_state_.pending();
+}
+
+auto UGameSettingsSubsystem::applied_state() const -> FGameSettingsState const& {
+    return edit_state_.applied();
+}
+
+auto UGameSettingsSubsystem::default_state() const -> FGameSettingsState const& {
+    return edit_state_.defaults();
 }
 
 auto UGameSettingsSubsystem::value(EGameSetting const setting) const -> FGameSettingValue {
-    return game_setting_value(pending_, setting);
+    return edit_state_.value(setting);
 }
 
 void UGameSettingsSubsystem::set_setting(EGameSetting const setting,
@@ -145,13 +142,13 @@ void UGameSettingsSubsystem::set_setting(EGameSetting const setting,
     }
     auto const& descriptor{game_setting_descriptor(setting)};
     auto normalized{normalize_value(descriptor, value)};
-    if (!normalized.IsSet() || !set_game_setting_value(pending_, setting, normalized.GetValue())) {
+    if (!normalized.IsSet() || !edit_state_.set_setting(setting, normalized.GetValue())) {
         UE_LOG(
             LogTemp, Warning, TEXT("Rejected invalid value for game setting %s"), descriptor.name);
         return;
     }
     if (descriptor.apply_mode == ESettingApplyMode::Immediate) {
-        backend_.preview_immediate(pending_, setting);
+        backend_.preview_immediate(edit_state_.pending(), setting);
     }
     settings_changed.Broadcast();
 }
@@ -173,28 +170,20 @@ auto UGameSettingsSubsystem::options(EGameSetting const setting) const
 }
 
 auto UGameSettingsSubsystem::is_available(EGameSetting const setting) const -> bool {
-    return backend_.is_available(game_setting_descriptor(setting).availability_provider, pending_);
+    return backend_.is_available(game_setting_descriptor(setting).availability_provider,
+                                 edit_state_.pending());
 }
 
 auto UGameSettingsSubsystem::is_dirty() const -> bool {
-    for (auto const& descriptor : game_setting_descriptors()) {
-        if (!setting_values_equal(game_setting_value(pending_, descriptor.id),
-                                  game_setting_value(baseline_, descriptor.id))) {
-            return true;
-        }
-    }
-    return false;
+    return edit_state_.is_dirty();
 }
 
 auto UGameSettingsSubsystem::is_dirty(EGameSettingCategory const category) const -> bool {
-    for (auto const& descriptor : game_setting_descriptors()) {
-        if (descriptor.category == category &&
-            !setting_values_equal(game_setting_value(pending_, descriptor.id),
-                                  game_setting_value(baseline_, descriptor.id))) {
-            return true;
-        }
-    }
-    return false;
+    return edit_state_.is_dirty(category);
+}
+
+auto UGameSettingsSubsystem::is_at_defaults(EGameSettingCategory const category) const -> bool {
+    return edit_state_.is_at_defaults(category);
 }
 
 auto UGameSettingsSubsystem::is_awaiting_display_confirmation() const -> bool {

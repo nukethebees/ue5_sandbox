@@ -90,6 +90,7 @@ set(SLATE_CODEGEN_DOCUMENTS
   "Plugins/SandboxUI/Source/SbxUIExperiments/Private/SlateDslSmoke/SlateDslSmokeWidget.sbxslate"
   "Plugins/SandboxUI/Source/SbxUIExperiments/Private/VolumeHeatmap3D/VolumeHeatmap3DShowcase.sbxslate"
   "Plugins/SandboxUI/Source/SbxUIExperiments/Private/Widgets/ExperimentPanels.sbxslate"
+  "Plugins/SpaceGame/Source/SpaceGame/Private/ui/main_menu/SGameOptionsView.sbxslate"
 )
 
 set(SLATE_CODEGEN_GENERATE_COMMANDS)

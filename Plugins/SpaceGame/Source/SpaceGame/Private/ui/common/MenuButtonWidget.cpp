@@ -99,6 +99,16 @@ void UMenuButtonWidget::NativeOnCurrentTextStyleChanged() {
     update_visual_style();
 }
 
+void UMenuButtonWidget::NativeOnAddedToFocusPath(FFocusEvent const& focus_event) {
+    Super::NativeOnAddedToFocusPath(focus_event);
+    update_visual_style();
+}
+
+void UMenuButtonWidget::NativeOnRemovedFromFocusPath(FFocusEvent const& focus_event) {
+    Super::NativeOnRemovedFromFocusPath(focus_event);
+    update_visual_style();
+}
+
 auto UMenuButtonWidget::resolve_style() const -> FGameButtonPresentationStyle {
     if (has_style_override_) {
         return style_override_;
@@ -124,6 +134,7 @@ void UMenuButtonWidget::update_visual_style() {
     auto const selected{GetSelected()};
     auto const interaction_enabled{IsInteractionEnabled()};
     auto const hovered{IsHovered()};
+    auto const focused{HasAnyUserFocus()};
     auto const pressed{IsPressed()};
     auto const& button_style{selected ? resolved_style_.selected : resolved_style_.normal};
 
@@ -132,7 +143,7 @@ void UMenuButtonWidget::update_visual_style() {
         brush = &button_style.Disabled;
     } else if (pressed) {
         brush = &button_style.Pressed;
-    } else if (hovered) {
+    } else if (hovered || focused) {
         brush = &button_style.Hovered;
     }
     background->SetBrush(*brush);
@@ -143,9 +154,9 @@ void UMenuButtonWidget::update_visual_style() {
     if (!interaction_enabled) {
         text_style = &resolved_style_.disabled_text;
     } else if (selected) {
-        text_style =
-            hovered ? &resolved_style_.selected_hovered_text : &resolved_style_.selected_text;
-    } else if (hovered) {
+        text_style = hovered || focused ? &resolved_style_.selected_hovered_text
+                                        : &resolved_style_.selected_text;
+    } else if (hovered || focused) {
         text_style = &resolved_style_.normal_hovered_text;
     }
     apply_text_style(*label_text, *text_style);

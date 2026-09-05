@@ -91,3 +91,67 @@
           (SBox
             :MinDesiredWidth value_text_min_width
             (STextBlock :Text value_text)))))))
+
+(widget-class SSettingsRow
+  (function Build
+    (params
+      (value row_minimum_height)
+      (value label_width)
+      (value control_padding)
+      (value control_width)
+      (existing label)
+      (existing control))
+    (SBox
+      :MinDesiredHeight row_minimum_height
+      (hbox
+        (auto :valign center
+          (SBox
+            :WidthOverride label_width
+            (existing label)))
+        (auto :padding control_padding :valign center
+          (SBox
+            :WidthOverride control_width
+            (existing control)))))))
+
+(widget-class SSettingsSection
+  (function Build
+    (params
+      (value padding)
+      (value background)
+      (value border)
+      (value border_thickness)
+      (value title_padding)
+      (existing title)
+      (existing content))
+    (SBorder
+      :Padding border_thickness
+      :BorderImage border
+      (SBorder
+        :Padding padding
+        :BorderImage background
+        (vbox
+          (auto :padding title_padding (existing title))
+          (auto (existing content)))))))
+
+(widget-class SSettingsSlider
+  (function Build
+    (params
+      (value style)
+      (value label)
+      (value tool_tip_text)
+      (value control_enabled)
+      (value value_padding)
+      (value value_width)
+      (existing slider)
+      (existing value_text))
+    (SSettingsRow
+      :Style style
+      :Label label
+      :ToolTipText tool_tip_text
+      :ControlEnabled control_enabled
+      (hbox
+        (fill :valign center (existing slider))
+        (auto :padding value_padding :valign center
+          (SBox
+            :WidthOverride value_width
+            (existing value_text)))))))

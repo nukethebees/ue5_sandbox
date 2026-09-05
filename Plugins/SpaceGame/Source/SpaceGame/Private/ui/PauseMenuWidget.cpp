@@ -289,9 +289,8 @@ void UPauseMenuWidget::apply_ui_style() {
     graph_style.plot_color = panel_color.CopyWithNewOpacity(panel_color.A * 0.35f);
     graph_style.empty_text =
         NSLOCTEXT("PauseMenu", "StatsGraphEmpty", "No level activity recorded");
-    active_entity_series_color_ =
-        style.text(EGameTextStyle::HudPrimary).ColorAndOpacity.GetSpecifiedColor();
-    kills_series_color_ = style.text(EGameTextStyle::Warning).ColorAndOpacity.GetSpecifiedColor();
+    active_entity_series_color_ = style.palette().honey;
+    kills_series_color_ = style.palette().danger;
     (void)stats_graph_->set_style(MoveTemp(graph_style));
 }
 

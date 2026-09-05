@@ -18,6 +18,7 @@
 #include <Components/TextBlock.h>
 #include <Components/VerticalBox.h>
 #include <CQTest.h>
+#include <HAL/FileManager.h>
 
 TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 {
@@ -29,6 +30,25 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Common menu text style has a renderable font"),
                              text_style.Font.CompositeFont.IsValid() ||
                                  IsValid(text_style.Font.FontObject));
+        auto const& palette{ui_style.palette()};
+        TestRunner->TestTrue(TEXT("Hive canvas remains dark"),
+                             palette.canvas.GetLuminance() < 0.02f);
+        TestRunner->TestTrue(TEXT("Honey is brighter than the raised surface"),
+                             palette.honey.GetLuminance() > palette.surface_raised.GetLuminance());
+        TestRunner->TestTrue(TEXT("Primary text remains readable against the canvas"),
+                             palette.text_primary.GetLuminance() - palette.canvas.GetLuminance() >
+                                 0.65f);
+        for (int32 index{}; index < TEnumTraits<EGameUiIcon>::count; ++index) {
+            auto const icon_role{static_cast<EGameUiIcon>(index)};
+            auto const& icon{ui_style.icon(icon_role)};
+            TestRunner->TestTrue(
+                *FString::Printf(TEXT("%s icon is vector-backed"), LexToString(icon_role)),
+                icon.ImageType == ESlateBrushImageType::Vector);
+            auto const resource_path{icon.GetResourceName().ToString()};
+            TestRunner->TestTrue(
+                *FString::Printf(TEXT("%s icon resource exists"), LexToString(icon_role)),
+                IFileManager::Get().FileExists(*resource_path));
+        }
 
         auto const* const ui_settings{GetDefault<ml::ioj::USpaceGameUiSettings>()};
         auto* const configured_theme{ui_settings->default_theme.LoadSynchronous()};
@@ -115,25 +135,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             level_select_widget->GetWidgetFromName(TEXT("launch_button")))};
         auto* const start_paused_button{Cast<ml::ioj::UMenuButtonWidget>(
             level_select_widget->GetWidgetFromName(TEXT("start_paused_button")))};
-        auto* const video_button{
-            Cast<UButton>(options_widget->GetWidgetFromName(TEXT("video_button")))};
-        auto* const gameplay_button{
-            Cast<UButton>(options_widget->GetWidgetFromName(TEXT("gameplay_button")))};
-        auto* const audio_button{
-            Cast<UButton>(options_widget->GetWidgetFromName(TEXT("audio_button")))};
-        auto* const controls_button{
-            Cast<UButton>(options_widget->GetWidgetFromName(TEXT("controls_button")))};
-        auto* const accessibility_button{
-            Cast<UButton>(options_widget->GetWidgetFromName(TEXT("accessibility_button")))};
-        auto* const options_back_button{
-            Cast<UButton>(options_widget->GetWidgetFromName(TEXT("back_button")))};
-
-        auto const child_bindings_valid{
-            IsValid(level_back_button) && IsValid(level_list) && IsValid(title_text) &&
-            IsValid(description_text) && IsValid(status_text) && IsValid(details_text) &&
-            IsValid(launch_button) && IsValid(start_paused_button) && IsValid(video_button) &&
-            IsValid(gameplay_button) && IsValid(audio_button) && IsValid(controls_button) &&
-            IsValid(accessibility_button) && IsValid(options_back_button)};
+        auto const child_bindings_valid{IsValid(level_back_button) && IsValid(level_list) &&
+                                        IsValid(title_text) && IsValid(description_text) &&
+                                        IsValid(status_text) && IsValid(details_text) &&
+                                        IsValid(launch_button) && IsValid(start_paused_button)};
         if (!TestRunner->TestTrue(TEXT("All required child menu bindings are valid"),
                                   child_bindings_valid)) {
             return;
@@ -301,31 +306,33 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Video is the initial options tab"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Video);
 
-        gameplay_button->OnClicked.Broadcast();
+        options_widget->select_tab(ml::ioj::EOptionsTab::Gameplay);
         TestRunner->TestTrue(TEXT("Gameplay tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Gameplay);
 
-        audio_button->OnClicked.Broadcast();
+        options_widget->select_tab(ml::ioj::EOptionsTab::Audio);
         TestRunner->TestTrue(TEXT("Audio tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Audio);
 
-        controls_button->OnClicked.Broadcast();
+        options_widget->select_tab(ml::ioj::EOptionsTab::Controls);
         TestRunner->TestTrue(TEXT("Controls tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Controls);
 
-        accessibility_button->OnClicked.Broadcast();
+        options_widget->select_tab(ml::ioj::EOptionsTab::Accessibility);
         TestRunner->TestTrue(TEXT("Accessibility tab is selectable"),
                              options_widget->get_active_tab() ==
                                  ml::ioj::EOptionsTab::Accessibility);
-        TestRunner->TestTrue(TEXT("Selected tab has a distinct appearance"),
-                             accessibility_button->GetBackgroundColor() !=
-                                 video_button->GetBackgroundColor());
+        options_widget->select_tab(ml::ioj::EOptionsTab::System);
+        TestRunner->TestTrue(TEXT("System tab is selectable"),
+                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::System);
 
-        video_button->OnClicked.Broadcast();
+        options_widget->select_tab(ml::ioj::EOptionsTab::Video);
         TestRunner->TestTrue(TEXT("Video tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Video);
 
-        options_back_button->OnClicked.Broadcast();
+        TestRunner->TestTrue(TEXT("Options is the CommonUI focus bridge"),
+                             options_widget->get_focus_target() == options_widget);
+        options_widget->request_back();
         TestRunner->TestTrue(TEXT("Options Back returns to main"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
     }

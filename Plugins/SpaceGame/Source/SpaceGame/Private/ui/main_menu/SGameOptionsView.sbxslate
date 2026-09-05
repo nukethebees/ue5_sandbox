@@ -1,0 +1,23 @@
+(widget-class ml::ioj::SGameOptionsView
+  (function BuildPanel
+    (params
+      (value background)
+      (value page_margin)
+      (value maximum_width)
+      (value chrome_style)
+      (existing header)
+      (existing body)
+      (existing footer))
+    (SBorder
+      :BorderImage background
+      :Padding page_margin
+      :HAlign HAlign_Center
+      (SBox
+        :MaxDesiredWidth maximum_width
+        :HAlign HAlign_Fill
+        (::ml::ioj::SHiveFrame
+          :Style chrome_style
+          (vbox
+            (auto (existing header))
+            (fill (existing body))
+            (auto (existing footer))))))))

@@ -3,6 +3,7 @@
 #include "Containers/Ticker.h"
 #include "SpaceGame/settings/GameSettings.generated.h"
 #include "SpaceGame/settings/GameSettingsBackend.h"
+#include "SpaceGame/settings/GameSettingsEditState.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 
 #include "GameSettingsSubsystem.generated.h"
@@ -29,6 +30,8 @@ class SPACEGAME_API UGameSettingsSubsystem final
     void revert_display_changes();
 
     auto settings_state() const -> FGameSettingsState const&;
+    auto applied_state() const -> FGameSettingsState const&;
+    auto default_state() const -> FGameSettingsState const&;
     auto value(EGameSetting setting) const -> FGameSettingValue;
     void set_setting(EGameSetting setting, FGameSettingValue const& value);
     auto descriptors(EGameSettingCategory category) const -> TArray<FGameSettingDescriptor const*>;
@@ -36,6 +39,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto is_available(EGameSetting setting) const -> bool;
     auto is_dirty() const -> bool;
     auto is_dirty(EGameSettingCategory category) const -> bool;
+    auto is_at_defaults(EGameSettingCategory category) const -> bool;
     auto is_awaiting_display_confirmation() const -> bool;
     auto display_confirmation_seconds_remaining() const -> int32;
 
@@ -48,8 +52,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
                          FGameSettingValue const& value) const -> TOptional<FGameSettingValue>;
 
     FGameSettingsBackend backend_;
-    FGameSettingsState baseline_{};
-    FGameSettingsState pending_{};
+    FGameSettingsEditState edit_state_{};
     double display_confirmation_deadline_{};
     FTSTicker::FDelegateHandle display_confirmation_ticker_;
     bool editing_{};

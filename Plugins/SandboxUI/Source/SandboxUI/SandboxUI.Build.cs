@@ -12,6 +12,7 @@ public class SandboxUI : ModuleRules
         {
             "Core",
             "CoreUObject",
+            "InputCore",
             "SandboxCore",
             "Slate",
             "SlateCore",
