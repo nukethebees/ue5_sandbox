@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
 #include "SpaceGame/entities/TestTeamVisualData.h"
@@ -96,7 +97,7 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void set_mission_time_remaining(float const time_remaining);
     void set_mission_enemies_remaining(int32 const enemies_remaining);
 
-    void set_entity_overlay_frame(FEntityOverlayFramePtr frame);
+    void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_entity_overlay_style(FEntityOverlayStyle const& style);
 
 #if WITH_EDITOR
@@ -174,7 +175,7 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
 
     FHudCrosshairDistances crosshair_distances{};
-    FEntityOverlayFramePtr entity_overlay_frame_;
+    FEntityOverlayFrameStoreConstPtr entity_overlay_frame_store_;
     FEntityOverlayStyle entity_overlay_style_;
     TSharedPtr<SEntityOverlayWidget> entity_overlay_widget_;
 

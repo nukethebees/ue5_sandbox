@@ -3,6 +3,7 @@
 #include "Containers/Array.h"
 #include "Containers/UnrealString.h"
 
+#include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
 struct SANDBOXUI_API FEntityOverlayBenchmarkResult {
@@ -26,6 +27,6 @@ SANDBOXUI_API auto run_entity_overlay_benchmark(int32 warmup_iterations = 3,
                                                 int32 measured_iterations = 20)
     -> FEntityOverlayBenchmarkReport;
 
-SANDBOXUI_API auto write_entity_overlay_debug_image(FEntityOverlayFramePtr frame,
+SANDBOXUI_API auto write_entity_overlay_debug_image(FEntityOverlayFrameStoreConstPtr frame_store,
                                                     FEntityOverlayView const& view,
                                                     FString const& output_path) -> bool;

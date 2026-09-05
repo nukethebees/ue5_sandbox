@@ -52,7 +52,7 @@ auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
     auto const overlay{SAssignNew(entity_overlay_widget_, SEntityOverlayWidget)};
     entity_overlay_widget_->SetVisibility(EVisibility::HitTestInvisible);
-    entity_overlay_widget_->set_frame(entity_overlay_frame_);
+    entity_overlay_widget_->set_frame_store(entity_overlay_frame_store_);
     entity_overlay_widget_->set_style(entity_overlay_style_);
     return SNew(SOverlay) + SOverlay::Slot()[overlay] + SOverlay::Slot()[hud_content];
 }
@@ -65,7 +65,7 @@ void UShipHudWidget::ReleaseSlateResources(bool const release_children) {
 void UShipHudWidget::NativeTick(FGeometry const& geometry, float const delta_time) {
     Super::NativeTick(geometry, delta_time);
 
-    if (!entity_overlay_widget_.IsValid() || !entity_overlay_frame_.IsValid()) {
+    if (!entity_overlay_widget_.IsValid() || !entity_overlay_frame_store_.IsValid()) {
         return;
     }
 
@@ -94,10 +94,10 @@ void UShipHudWidget::NativeTick(FGeometry const& geometry, float const delta_tim
     entity_overlay_widget_->render(view);
 }
 
-void UShipHudWidget::set_entity_overlay_frame(FEntityOverlayFramePtr frame) {
-    entity_overlay_frame_ = MoveTemp(frame);
+void UShipHudWidget::set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store) {
+    entity_overlay_frame_store_ = MoveTemp(frame_store);
     if (entity_overlay_widget_.IsValid()) {
-        entity_overlay_widget_->set_frame(entity_overlay_frame_);
+        entity_overlay_widget_->set_frame_store(entity_overlay_frame_store_);
     }
 }
 

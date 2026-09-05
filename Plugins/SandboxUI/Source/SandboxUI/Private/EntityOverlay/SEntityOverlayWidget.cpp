@@ -20,8 +20,8 @@ SEntityOverlayWidget::~SEntityOverlayWidget() {
     output_texture_.Reset();
 }
 
-void SEntityOverlayWidget::set_frame(FEntityOverlayFramePtr frame) {
-    frame_ = MoveTemp(frame);
+void SEntityOverlayWidget::set_frame_store(FEntityOverlayFrameStoreConstPtr frame_store) {
+    frame_store_ = MoveTemp(frame_store);
 }
 
 void SEntityOverlayWidget::set_style(FEntityOverlayStyle const& style) {
@@ -29,7 +29,7 @@ void SEntityOverlayWidget::set_style(FEntityOverlayStyle const& style) {
 }
 
 void SEntityOverlayWidget::render(FEntityOverlayView const& view) {
-    if (GUsingNullRHI || !frame_.IsValid() || !view.is_valid() ||
+    if (GUsingNullRHI || !frame_store_.IsValid() || !view.is_valid() ||
         !ensure_output_texture(view.output_size)) {
         return;
     }
@@ -43,7 +43,7 @@ void SEntityOverlayWidget::render(FEntityOverlayView const& view) {
     }
 
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::Submit);
-    FEntityOverlayRenderer{}.render(frame_, view, style_, output_resource);
+    FEntityOverlayRenderer{}.render(frame_store_, view, style_, output_resource);
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 

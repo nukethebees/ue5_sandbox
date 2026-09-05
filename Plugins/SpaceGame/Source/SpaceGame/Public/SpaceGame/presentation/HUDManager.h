@@ -2,6 +2,7 @@
 
 #include <SandboxCore/multi_buffer.h>
 #include <SandboxCore/periodic_tick_countdown.h>
+#include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityType.h>
@@ -189,7 +190,7 @@ struct SPACEGAME_API FHUDManager {
   private:
     struct FRegisteredEntityOverlayHud {
         TWeakObjectPtr<UShipHudWidget> hud;
-        TArray<TSharedPtr<FEntityOverlayFrame, ESPMode::ThreadSafe>> frame_pool;
+        FEntityOverlayFrameStorePtr frame_store;
         FEntityOverlayCollector collector;
     };
 

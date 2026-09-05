@@ -152,20 +152,22 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
 }
 } // namespace ml::ui::entity_overlay
 
-void FEntityOverlayRenderer::render(FEntityOverlayFramePtr frame,
+void FEntityOverlayRenderer::render(FEntityOverlayFrameStoreConstPtr frame_store,
                                     FEntityOverlayView const& view,
                                     FEntityOverlayStyle const& style,
                                     FTextureRenderTargetResource* const output_resource) const {
     check(IsInGameThread());
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::PrepareUpload);
-    if (!frame.IsValid() || !view.is_valid() || output_resource == nullptr) {
+    if (!frame_store.IsValid() || !view.is_valid() || output_resource == nullptr) {
         UE_LOG(LogEntityOverlayRenderer, Error, TEXT("Cannot submit invalid entity overlay data."));
         return;
     }
 
+    auto const* const frame{&frame_store->current()};
     ENQUEUE_RENDER_COMMAND(RenderEntityOverlay)
-    ([frame = MoveTemp(frame), view, style, output_resource](
+    ([frame_store = MoveTemp(frame_store), frame, view, style, output_resource](
          FRHICommandListImmediate& rhi_command_list) {
+        static_cast<void>(frame_store);
         auto const output_texture_rhi{output_resource->GetRenderTargetTexture()};
         if (!output_texture_rhi.IsValid()) {
             UE_LOG(LogEntityOverlayRenderer,

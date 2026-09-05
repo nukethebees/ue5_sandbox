@@ -1,6 +1,7 @@
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 
 #include "EntityOverlayRenderer.h"
+#include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
 #include "Engine/TextureRenderTarget2D.h"
@@ -113,12 +114,11 @@ auto run_entity_overlay_benchmark(int32 const warmup_iterations, int32 const mea
             }
         }
 
-        FEntityOverlayFramePtr frame;
+        auto frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
         for (int32 iteration{0}; iteration < total_iterations; ++iteration) {
             auto const start{FPlatformTime::Seconds()};
-            auto mutable_frame{MakeShared<FEntityOverlayFrame, ESPMode::ThreadSafe>()};
-            mutable_frame->instances = collected;
-            frame = MoveTemp(mutable_frame);
+            frame_store->next().instances = collected;
+            frame_store->publish();
             auto const elapsed{(FPlatformTime::Seconds() - start) * 1'000'000.0};
             if (iteration >= warmup_iterations) {
                 preparation_samples.Add(elapsed);
@@ -140,7 +140,7 @@ auto run_entity_overlay_benchmark(int32 const warmup_iterations, int32 const mea
         TArray<double> gpu_samples;
         for (int32 iteration{0}; iteration < total_iterations; ++iteration) {
             auto const start{FPlatformTime::Seconds()};
-            renderer.render(frame, view, style, output_resource);
+            renderer.render(frame_store, view, style, output_resource);
             auto const elapsed{(FPlatformTime::Seconds() - start) * 1'000'000.0};
             if (iteration >= warmup_iterations) {
                 submission_samples.Add(elapsed);
@@ -150,10 +150,15 @@ auto run_entity_overlay_benchmark(int32 const warmup_iterations, int32 const mea
 
         for (int32 iteration{0}; iteration < total_iterations; ++iteration) {
             ENQUEUE_RENDER_COMMAND(MeasureEntityOverlayGPU)
-            ([frame, view, style, output_resource, iteration, warmup_iterations, &gpu_samples](
-                 FRHICommandListImmediate& rhi_command_list) {
+            ([frame_store,
+              view,
+              style,
+              output_resource,
+              iteration,
+              warmup_iterations,
+              &gpu_samples](FRHICommandListImmediate& rhi_command_list) {
                 auto const measurement{measure_entity_overlay_gpu(
-                    rhi_command_list, *frame, view, style, output_resource)};
+                    rhi_command_list, frame_store->current(), view, style, output_resource)};
                 if (iteration >= warmup_iterations && measurement.IsSet()) {
                     gpu_samples.Add(measurement.GetValue());
                 }
@@ -174,11 +179,11 @@ auto run_entity_overlay_benchmark(int32 const warmup_iterations, int32 const mea
     return report;
 }
 
-auto write_entity_overlay_debug_image(FEntityOverlayFramePtr frame,
+auto write_entity_overlay_debug_image(FEntityOverlayFrameStoreConstPtr frame_store,
                                       FEntityOverlayView const& view,
                                       FString const& output_path) -> bool {
     check(IsInGameThread());
-    if (!frame.IsValid() || !view.is_valid()) {
+    if (!frame_store.IsValid() || !view.is_valid()) {
         return false;
     }
 
@@ -193,9 +198,9 @@ auto write_entity_overlay_debug_image(FEntityOverlayFramePtr frame,
     }
 
     FEntityOverlayRenderer renderer;
-    renderer.render(frame, view, FEntityOverlayStyle{}, output_resource);
+    renderer.render(frame_store, view, FEntityOverlayStyle{}, output_resource);
     FlushRenderingCommands();
-    renderer.render(frame, view, FEntityOverlayStyle{}, output_resource);
+    renderer.render(frame_store, view, FEntityOverlayStyle{}, output_resource);
     FlushRenderingCommands();
 
     IFileManager::Get().MakeDirectory(*FPaths::GetPath(output_path), true);

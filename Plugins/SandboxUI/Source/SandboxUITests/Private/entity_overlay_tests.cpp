@@ -1,8 +1,41 @@
+#include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
 #include <CQTest.h>
 
 #include <limits>
+
+TEST_CLASS(EntityOverlayFrameStore, "SandboxUI.UnitTests")
+{
+    TEST_METHOD(PublishesAndRotatesThreeStableFrames)
+    {
+        FEntityOverlayFrameStore store;
+        TestRunner->TestEqual(
+            TEXT("Store has three buffers"), FEntityOverlayFrameStore::buffer_count, 3);
+
+        auto* const first{&store.next()};
+        first->instances.Add({.health = 0.25f});
+        store.publish();
+        TestRunner->TestEqual(
+            TEXT("First frame is published"), store.current().instances[0].health, 0.25f);
+
+        auto* const second{&store.next()};
+        second->instances.Add({.health = 0.5f});
+        TestRunner->TestEqual(TEXT("Writing next does not change current"),
+                              store.current().instances[0].health,
+                              0.25f);
+        store.publish();
+
+        auto* const third{&store.next()};
+        third->instances.Add({.health = 0.75f});
+        store.publish();
+
+        auto* const wrapped{&store.next()};
+        TestRunner->TestTrue(TEXT("Fourth write returns to the first buffer"), wrapped == first);
+        TestRunner->TestTrue(TEXT("The three writable frames are distinct"),
+                             first != second && first != third && second != third);
+    }
+};
 
 TEST_CLASS(EntityOverlayCollector, "SandboxUI.UnitTests")
 {

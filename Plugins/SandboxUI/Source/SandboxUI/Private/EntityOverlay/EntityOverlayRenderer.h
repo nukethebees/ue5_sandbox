@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
+#include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 
 #include "Misc/Optional.h"
 
@@ -9,7 +9,7 @@ class FRHICommandListImmediate;
 
 class FEntityOverlayRenderer {
   public:
-    void render(FEntityOverlayFramePtr frame,
+    void render(FEntityOverlayFrameStoreConstPtr frame_store,
                 FEntityOverlayView const& view,
                 FEntityOverlayStyle const& style,
                 FTextureRenderTargetResource* output_resource) const;

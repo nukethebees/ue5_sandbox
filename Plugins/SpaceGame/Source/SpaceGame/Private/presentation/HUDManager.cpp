@@ -110,8 +110,8 @@ void FHUDManager::deactivate() {
         if (!IsValid(hud)) {
             continue;
         }
-        auto empty_frame{MakeShared<FEntityOverlayFrame, ESPMode::ThreadSafe>()};
-        hud->set_entity_overlay_frame(MoveTemp(empty_frame));
+        auto empty_frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
+        hud->set_entity_overlay_frame_store(MoveTemp(empty_frame_store));
     }
     registered_huds.Reset();
     player_ship.Reset();
@@ -177,6 +177,9 @@ void FHUDManager::register_hud(UShipHudWidget& hud) {
 
     auto& registration{registered_huds.Emplace_GetRef()};
     registration.hud = &hud;
+    registration.frame_store = MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>();
+    hud.set_entity_overlay_frame_store(registration.frame_store);
+    hud.set_entity_overlay_style(entity_overlay_style_);
     if (state == EHUDManagerState::Active) {
         synchronise_hud(hud);
         update_entity_overlay(registration);
@@ -241,25 +244,16 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
         return;
     }
 
-    TSharedPtr<FEntityOverlayFrame, ESPMode::ThreadSafe> frame;
-    for (auto const& pooled_frame : registration.frame_pool) {
-        if (pooled_frame.GetSharedReferenceCount() == 1) {
-            frame = pooled_frame;
-            break;
-        }
-    }
-    if (!frame.IsValid()) {
-        frame = MakeShared<FEntityOverlayFrame, ESPMode::ThreadSafe>();
-        registration.frame_pool.Add(frame);
-    }
+    check(registration.frame_store.IsValid());
+    auto& frame{registration.frame_store->next()};
 
     FVector camera_location{};
     FRotator camera_rotation{};
     auto* const controller{hud->GetOwningPlayer()};
     if (!IsValid(controller)) {
         UE_LOG(LogSandboxUI, Error, TEXT("FHUDManager: Entity overlay has no player controller."));
-        frame->instances.Reset();
-        hud->set_entity_overlay_frame(frame);
+        frame.instances.Reset();
+        registration.frame_store->publish();
         return;
     }
     controller->GetPlayerViewPoint(camera_location, camera_rotation);
@@ -272,16 +266,16 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
                                              entity_overlay_maximum_health_,
                                              FVector3f{camera_location},
                                              entity_overlay_settings_.maximum_range,
-                                             frame->instances,
+                                             frame.instances,
                                              registration.collector);
     } else {
-        registration.collector.begin(FVector3f{camera_location}, 0.0f, frame->instances);
+        registration.collector.begin(FVector3f{camera_location}, 0.0f, frame.instances);
     }
+    registration.frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, result.candidate_count);
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, result.invalid_health_count);
     hud->set_entity_overlay_style(entity_overlay_style_);
-    hud->set_entity_overlay_frame(frame);
 }
 bool FHUDManager::collect_mission_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_mission_data);

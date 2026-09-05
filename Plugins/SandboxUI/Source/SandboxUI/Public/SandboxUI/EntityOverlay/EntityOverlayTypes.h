@@ -54,8 +54,6 @@ struct SANDBOXUI_API FEntityOverlayFrame {
     TArray<FEntityOverlayInstance> instances;
 };
 
-using FEntityOverlayFramePtr = TSharedPtr<FEntityOverlayFrame const, ESPMode::ThreadSafe>;
-
 class FEntityOverlayCollector {
   public:
     FEntityOverlayCollector() = default;

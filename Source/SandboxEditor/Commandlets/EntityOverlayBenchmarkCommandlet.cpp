@@ -66,30 +66,33 @@ auto write_debug_frames(FString const& output_directory) -> bool {
                                   .output_size = {1280, 720}};
 
     FEntityOverlayCollector collector;
-    auto frame{MakeShared<FEntityOverlayFrame, ESPMode::ThreadSafe>()};
+    auto frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
+    auto& frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(registry.get_entity_data()),
                                                        {100, 100, 100},
                                                        FVector3f::ZeroVector,
                                                        10000.0f,
-                                                       frame->instances,
+                                                       frame.instances,
                                                        collector));
+    frame_store->publish();
     auto const before_path{FPaths::Combine(output_directory, TEXT("camera_plane_before.png"))};
-    if (!write_entity_overlay_debug_image(frame, view, before_path)) {
+    if (!write_entity_overlay_debug_image(frame_store, view, before_path)) {
         return false;
     }
 
     entities.locations.set(count - 1, {100.0f, 50.0f, 50.0f});
     FTestEntityRegistry moved_registry;
     static_cast<void>(moved_registry.add_entities(make_view(entities)));
-    frame = MakeShared<FEntityOverlayFrame, ESPMode::ThreadSafe>();
+    auto& moved_frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(moved_registry.get_entity_data()),
                                                        {100, 100, 100},
                                                        FVector3f::ZeroVector,
                                                        10000.0f,
-                                                       frame->instances,
+                                                       moved_frame.instances,
                                                        collector));
+    frame_store->publish();
     auto const after_path{FPaths::Combine(output_directory, TEXT("camera_plane_after.png"))};
-    return write_entity_overlay_debug_image(frame, view, after_path);
+    return write_entity_overlay_debug_image(frame_store, view, after_path);
 }
 } // namespace
 

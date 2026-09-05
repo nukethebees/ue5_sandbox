@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
+#include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 
 #include "Engine/TextureRenderTarget2D.h"
 #include "Styling/SlateBrush.h"
@@ -15,13 +15,13 @@ class SANDBOXUI_API SEntityOverlayWidget final : public SCompoundWidget {
     void Construct(FArguments const& arguments);
     ~SEntityOverlayWidget() override;
 
-    void set_frame(FEntityOverlayFramePtr frame);
+    void set_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_style(FEntityOverlayStyle const& style);
     void render(FEntityOverlayView const& view);
   private:
     [[nodiscard]] auto ensure_output_texture(FIntPoint output_size) -> bool;
 
-    FEntityOverlayFramePtr frame_;
+    FEntityOverlayFrameStoreConstPtr frame_store_;
     FEntityOverlayStyle style_;
     TStrongObjectPtr<UTextureRenderTarget2D> output_texture_;
     FSlateBrush brush_;
