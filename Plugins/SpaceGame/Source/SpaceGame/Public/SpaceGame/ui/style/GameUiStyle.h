@@ -3,6 +3,7 @@
 #include "SpaceGame/ui/style/GameUiStyleTypes.h"
 
 #include "SandboxGameShared/utilities/enum_array.h"
+#include "SandboxUI/widgets/SettingsWidgets.h"
 
 #include <Styling/SlateTypes.h>
 
@@ -56,6 +57,7 @@ class SPACEGAME_API FGameUiStyle {
     auto text(EGameTextStyle role) const -> FTextBlockStyle const&;
     auto button(EGameButtonStyle role) const -> FGameButtonPresentationStyle const&;
     auto panel() const -> FGamePanelStyle const&;
+    auto settings() const -> FSettingsStyle const&;
     auto health_bar() const -> FProgressBarStyle const&;
   private:
     friend USpaceGameUiTheme;
@@ -63,6 +65,7 @@ class SPACEGAME_API FGameUiStyle {
     TEnumArray<EGameTextStyle, FTextBlockStyle> text_styles_{};
     TEnumArray<EGameButtonStyle, FGameButtonPresentationStyle> button_styles_{};
     FGamePanelStyle panel_{};
+    FSettingsStyle settings_{};
     FProgressBarStyle health_bar_{};
 };
 }

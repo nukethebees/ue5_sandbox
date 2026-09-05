@@ -130,6 +130,12 @@ USpaceGameUiTheme::USpaceGameUiTheme() {
 
     panel_background_ = make_brush(FLinearColor{0.035f, 0.045f, 0.065f, 0.78f});
 
+    settings_style_.section_text = text_styles_.heading_3;
+    settings_style_.label_text = text_styles_.body;
+    settings_style_.value_text = text_styles_.body_secondary;
+    settings_style_.disabled_text = text_styles_.disabled;
+    settings_style_.empty_text = text_styles_.body_secondary;
+
     button_styles_.primary = make_button_style(FButtonPalette{
         .normal = FLinearColor{0.12f, 0.14f, 0.16f, 1.f},
         .hovered = FLinearColor{0.16f, 0.38f, 0.55f, 1.f},
@@ -166,6 +172,7 @@ auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
     }
 
     compiled.panel_ = FGamePanelStyle{.background = panel_background_, .padding = panel_padding_};
+    compiled.settings_ = settings_style_;
     compiled.health_bar_ = health_bar_;
     return compiled;
 }

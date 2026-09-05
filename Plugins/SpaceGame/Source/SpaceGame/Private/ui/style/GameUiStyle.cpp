@@ -14,6 +14,10 @@ auto FGameUiStyle::panel() const -> FGamePanelStyle const& {
     return panel_;
 }
 
+auto FGameUiStyle::settings() const -> FSettingsStyle const& {
+    return settings_;
+}
+
 auto FGameUiStyle::health_bar() const -> FProgressBarStyle const& {
     return health_bar_;
 }
