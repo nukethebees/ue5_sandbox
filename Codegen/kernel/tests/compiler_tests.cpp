@@ -136,7 +136,72 @@ TEST(KernelRenderer, GeneratesStandardLibraryBindingsAndTests) {
     EXPECT_TRUE(files[1].content.contains("for (std::size_t i{}; i < count; ++i)"));
     EXPECT_TRUE(files[1].content.contains("std::abort()"));
     EXPECT_TRUE(files[2].content.contains("#include <gtest/gtest.h>"));
-    EXPECT_TRUE(files[2].content.contains("run.template operator()<31>()"));
+    EXPECT_TRUE(files[2].content.contains("constexpr std::size_t Count{31}"));
+    EXPECT_TRUE(files[2].content.contains("std::array<float, Count> expected{"));
+    EXPECT_TRUE(files[2].content.contains("EXPECT_FLOAT_EQ("));
+    EXPECT_FALSE(files[2].content.contains("expected[i] ="));
+}
+
+TEST(KernelRenderer, RejectsInvalidIntegralReferenceFixtures) {
+    constexpr std::string_view prefix = R"(
+(kernel-module invalid_reference
+  (emit standard
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (tests "ArrayKernelsTests.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml))
+  (type-set integral int32)
+  (map calculate
+    (types integral)
+    (operand data array)
+    (output out)
+    (expression )";
+    constexpr std::string_view suffix = R"()
+    (variants
+      (out-of-place calculate))))
+)";
+
+    for (auto const expression : {"(* (* data 50000) 50000)", "(/ data 0)"}) {
+        auto const source{std::string{prefix} + expression + std::string{suffix}};
+        auto const document{
+            parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
+        EXPECT_THROW(static_cast<void>(render(document.modules[0], Profile::standard)),
+                     std::invalid_argument);
+    }
+}
+
+TEST(KernelReferenceEvaluator, EvaluatesEveryOperatorForEveryNumericType) {
+    constexpr std::string_view source = R"(
+(kernel-module reference_operators
+  (emit standard
+    (header "ArrayKernels.h")
+    (source "ArrayKernels.cpp")
+    (tests "ArrayKernelsTests.cpp")
+    (header-include "ArrayKernels.h")
+    (namespace ml))
+  (type-set numeric int32 uint32 float double)
+  (map calculate
+    (types numeric)
+    (operand a array)
+    (operand b array)
+    (operand c array)
+    (operand d array)
+    (operand e array)
+    (output out)
+    (expression (+ (- a b) (* c (/ d e))))
+    (variants
+      (out-of-place calculate))))
+)";
+
+    auto const document{parse("test.sbxkernel", codegen::sexpr::lex("test.sbxkernel", source))};
+    auto const files{render(document.modules[0], Profile::standard)};
+
+    ASSERT_EQ(files.size(), 3);
+    EXPECT_TRUE(files[2].content.contains("static_cast<std::int32_t>("));
+    EXPECT_TRUE(files[2].content.contains("static_cast<std::uint32_t>("));
+    EXPECT_TRUE(files[2].content.contains("static_cast<float>("));
+    EXPECT_TRUE(files[2].content.contains("static_cast<double>("));
 }
 
 TEST(KernelRenderer, SkipsModulesWithoutTheSelectedProfile) {

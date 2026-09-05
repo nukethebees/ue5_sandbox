@@ -3,6 +3,7 @@ add_library(kernel-codegen-lib
   src/lowering.cpp
   src/manifest.cpp
   src/parser.cpp
+  src/reference_evaluator.cpp
   src/renderer.cpp
   src/standard_renderer.cpp
   src/test_renderer.cpp

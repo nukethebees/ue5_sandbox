@@ -1,7 +1,9 @@
 #include "test_renderer.h"
 
+#include "reference_evaluator.h"
+
 #include <algorithm>
-#include <limits>
+#include <array>
 
 namespace kernel_codegen::detail {
 namespace {
@@ -50,6 +52,82 @@ auto out_of_place_arguments(ExpandedVariant const& expanded, std::string const& 
     return result + ", std::span<" + type + ">{out_of_place.data(), Count}";
 }
 
+auto initializer(std::vector<std::string> const& values) -> std::string {
+    std::string result{"{"};
+    for (std::size_t index{}; index < values.size(); ++index) {
+        if (index != 0) {
+            result += ", ";
+        }
+        result += values[index];
+    }
+    return result + "}";
+}
+
+void append_expectation(std::string& output,
+                        std::string const& type,
+                        std::string const& actual) {
+    if (type == "float" || type == "double") {
+        output += "            if (std::isnan(expected[i])) {\n"
+                  "                EXPECT_TRUE(std::isnan(" +
+                  actual +
+                  "));\n"
+                  "            } else if (std::isinf(expected[i])) {\n"
+                  "                EXPECT_EQ(" +
+                  actual +
+                  ", expected[i]);\n"
+                  "            } else {\n                " +
+                  (type == "float" ? "EXPECT_FLOAT_EQ(" : "EXPECT_DOUBLE_EQ(") + actual +
+                  ", expected[i]);\n            }\n";
+    } else {
+        output += "            EXPECT_EQ(" + actual + ", expected[i]);\n";
+    }
+}
+
+void append_case(std::string& output,
+                 Emission const& emission,
+                 ExpandedVariant const& expanded,
+                 ExpandedVariant const* const out_of_place,
+                 std::size_t const count) {
+    auto const type{standard_type(expanded.type)};
+    auto const fixture{make_reference_fixture(expanded, count)};
+    output += "    {\n        constexpr std::size_t Count{" + std::to_string(count) + "};\n";
+    for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
+        auto const& operand{expanded.operation->operands[index]};
+        if (expanded.storage[index] == StorageKind::array) {
+            output += "        std::array<" + type + ", Count> " + operand.name +
+                      initializer(fixture.operands[index]) + ";\n";
+        } else {
+            output += "        auto const " + operand.name + "{" +
+                      fixture.operands[index][0] + "};\n";
+        }
+    }
+
+    auto const destination{expanded.variant->kind == VariantKind::in_place
+                               ? *expanded.variant->target
+                               : expanded.operation->output};
+    if (expanded.variant->kind == VariantKind::out_of_place) {
+        output += "        std::array<" + type + ", Count> " + destination + "{};\n";
+    }
+    if (out_of_place != nullptr) {
+        output += "        std::array<" + type + ", Count> out_of_place{};\n";
+    }
+    output += "        std::array<" + type + ", Count> expected" +
+              initializer(fixture.expected) + ";\n";
+
+    if (out_of_place != nullptr) {
+        output += "        " + emission.cpp_namespace + "::" + out_of_place->variant->public_name +
+                  "(" + out_of_place_arguments(*out_of_place, type) + ");\n";
+    }
+    output += "        " + emission.cpp_namespace + "::" + expanded.variant->public_name + "(" +
+              test_arguments(expanded) + ");\n"
+              "        for (std::size_t i{}; i < Count; ++i) {\n";
+    append_expectation(output, expanded.type, destination + "[i]");
+    if (out_of_place != nullptr) {
+        append_expectation(output, expanded.type, "out_of_place[i]");
+    }
+    output += "        }\n    }\n";
+}
+
 }
 
 auto render_standard_tests(Emission const& emission,
@@ -67,69 +145,12 @@ auto render_standard_tests(Emission const& emission,
                    candidate.storage == expanded.storage &&
                    candidate.variant->kind == VariantKind::out_of_place;
         })};
-        auto const type{standard_type(expanded.type)};
-        result += "TEST(" + suite + ", " + raw_name(expanded) + ") {\n"
-                  "    auto const run = []<std::size_t Count>() {\n"
-                  "        constexpr auto storage_count{Count == 0 ? std::size_t{1} : Count};\n";
-        for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-            auto const& operand{expanded.operation->operands[index]};
-            if (expanded.storage[index] == StorageKind::array) {
-                result += "        std::array<" + type + ", storage_count> " + operand.name +
-                          "{};\n";
-            } else {
-                result += "        auto const " + operand.name + "{static_cast<" + type + ">(" +
-                          std::to_string(index + 2) + ")};\n";
-            }
+        result += "TEST(" + suite + ", " + raw_name(expanded) + ") {\n";
+        auto const* comparison{out_of_place == variants.end() ? nullptr : &*out_of_place};
+        for (auto const count : std::array<std::size_t, 6>{0, 1, 7, 8, 9, 31}) {
+            append_case(result, emission, expanded, comparison, count);
         }
-        auto const destination{expanded.variant->kind == VariantKind::in_place
-                                   ? *expanded.variant->target
-                                   : expanded.operation->output};
-        if (expanded.variant->kind == VariantKind::out_of_place) {
-            result += "        std::array<" + type + ", storage_count> " + destination + "{};\n";
-        }
-        if (out_of_place != variants.end()) {
-            result += "        std::array<" + type + ", storage_count> out_of_place{};\n";
-        }
-        result += "        std::array<" + type + ", storage_count> expected{};\n"
-                  "        for (std::size_t i{}; i < Count; ++i) {\n";
-        for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-            if (expanded.storage[index] == StorageKind::array) {
-                auto const& name{expanded.operation->operands[index].name};
-                result += "            " + name + "[i] = static_cast<" + type +
-                          ">(((i * 17) + " + std::to_string(index * 3 + 1) + ") % 7 + 1);\n";
-            }
-        }
-        result += "            expected[i] = " +
-                  render_expression(expanded.operation->expression,
-                                    *expanded.operation,
-                                    expanded.storage,
-                                    type) +
-                  ";\n        }\n";
-        if (out_of_place != variants.end()) {
-            result += "        " + emission.cpp_namespace + "::" +
-                      out_of_place->variant->public_name + "(" +
-                      out_of_place_arguments(*out_of_place, type) + ");\n";
-        }
-        result += "        " + emission.cpp_namespace + "::" + expanded.variant->public_name +
-                  "(" + test_arguments(expanded) + ");\n"
-                  "        for (std::size_t i{}; i < Count; ++i) {\n"
-                  "            if constexpr (std::numeric_limits<" + type +
-                  ">::has_quiet_NaN) {\n"
-                  "                if (std::isnan(expected[i])) {\n"
-                  "                    EXPECT_TRUE(std::isnan(" + destination + "[i]));\n"
-                  "                    continue;\n                }\n            }\n"
-                  "            EXPECT_EQ(" + destination + "[i], expected[i]);\n"
-                  "        }\n";
-        if (out_of_place != variants.end()) {
-            result += "        EXPECT_EQ(out_of_place, expected);\n";
-        }
-        result += "    };\n"
-                  "    run.template operator()<0>();\n"
-                  "    run.template operator()<1>();\n"
-                  "    run.template operator()<7>();\n"
-                  "    run.template operator()<8>();\n"
-                  "    run.template operator()<9>();\n"
-                  "    run.template operator()<31>();\n}\n\n";
+        result += "}\n\n";
     }
     return result;
 }

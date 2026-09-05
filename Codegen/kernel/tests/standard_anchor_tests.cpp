@@ -67,6 +67,18 @@ TEST(KernelStandardAnchors, ComputesVectorComponentExpressions) {
     EXPECT_EQ(out, (std::array<float, 2>{14.0f, 29.0f}));
 }
 
+TEST(KernelStandardAnchors, PreservesFloatingPointGrouping) {
+    std::array<float, 1> ax{1.0e20f};
+    std::array<float, 1> ay{-1.0e20f};
+    std::array<float, 1> az{3.0f};
+    std::array<float, 1> unit{1.0f};
+    std::array<float, 1> out{};
+
+    ml::kernel_lab::dot_product_3d(ax, ay, az, unit, unit, unit, out);
+
+    EXPECT_EQ(out[0], 3.0f);
+}
+
 TEST(KernelStandardInvariants, AcceptsAliasedReadOnlyInputs) {
     std::array<float, 2> input{2.0f, 4.0f};
     std::array<float, 2> out{};

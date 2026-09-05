@@ -57,7 +57,7 @@
     (operand y array)
     (operand z array)
     (output out)
-    (expression (+ (* x x) (+ (* y y) (* z z))))
+    (expression (+ (+ (* x x) (* y y)) (* z z)))
     (variants
       (out-of-place size_squared_3d)))
 
@@ -70,9 +70,9 @@
     (operand by array)
     (operand bz array)
     (output out)
-    (expression (+ (* (- bx ax) (- bx ax))
-                   (+ (* (- by ay) (- by ay))
-                      (* (- bz az) (- bz az)))))
+    (expression (+ (+ (* (- bx ax) (- bx ax))
+                      (* (- by ay) (- by ay)))
+                   (* (- bz az) (- bz az))))
     (variants
       (out-of-place distance_squared_3d)))
 
@@ -85,6 +85,6 @@
     (operand by array)
     (operand bz array)
     (output out)
-    (expression (+ (* ax bx) (+ (* ay by) (* az bz))))
+    (expression (+ (+ (* ax bx) (* ay by)) (* az bz)))
     (variants
       (out-of-place dot_product_3d))))

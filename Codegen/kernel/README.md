@@ -55,8 +55,9 @@ The `unreal` profile emits `TArrayView`/`TConstArrayView`, Unreal integer names,
 `TArray` conveniences, and `RESTRICT` raw kernels. The `standard` profile emits `std::span`, maps
 `int32` and `uint32` to the corresponding `<cstdint>` types, and has no Unreal dependencies. A
 standard emission may also request a generated GoogleTest source. Each generated overload is
-exercised at empty, scalar, SIMD-boundary, and larger lengths against a scalar reference. Profile
-selection is fixed in the generator rather than configurable through arbitrary C++ strings.
+exercised at empty, scalar, SIMD-boundary, and larger lengths against values produced by a typed
+AST evaluator that is independent of C++ expression rendering. Profile selection is fixed in the
+generator rather than configurable through arbitrary C++ strings.
 
 ## Commands
 
