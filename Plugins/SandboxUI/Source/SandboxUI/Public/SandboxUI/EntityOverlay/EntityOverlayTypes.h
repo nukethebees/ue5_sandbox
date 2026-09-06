@@ -112,5 +112,6 @@ class FEntityOverlayCollector {
     FVector3f origin_{FVector3f::ZeroVector};
     float maximum_range_squared_{0.0f};
     TArray<FEntityOverlayInstance>* output_instances_{nullptr};
+    int32 first_objective_index_{INDEX_NONE};
     int32 invalid_health_count_{0};
 };

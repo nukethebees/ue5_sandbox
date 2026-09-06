@@ -37,6 +37,7 @@ void FEntityOverlayCollector::begin(FVector3f const origin,
     maximum_range_squared_ = maximum_range * maximum_range;
     output_instances_ = &output_instances;
     output_instances_->Reset();
+    first_objective_index_ = INDEX_NONE;
     invalid_health_count_ = 0;
 }
 
@@ -84,10 +85,20 @@ auto FEntityOverlayCollector::try_add_impl(FVector3f const position,
         world_radius = 0.0f;
     }
 
-    output_instances_->Add({.world_position = position,
-                            .health = FMath::Clamp(normalized_health, 0.0f, 1.0f),
-                            .world_radius = FMath::Max(world_radius, 0.0f),
-                            .display_data = display_data});
+    auto const added_index{
+        output_instances_->Add({.world_position = position,
+                                .health = FMath::Clamp(normalized_health, 0.0f, 1.0f),
+                                .world_radius = FMath::Max(world_radius, 0.0f),
+                                .display_data = display_data})};
+    auto const is_objective{(display_data & ml::ui::entity_overlay::objective_role_mask) != 0};
+    if (is_objective) {
+        if (first_objective_index_ == INDEX_NONE) {
+            first_objective_index_ = added_index;
+        }
+    } else if (first_objective_index_ != INDEX_NONE) {
+        output_instances_->Swap(first_objective_index_, added_index);
+        ++first_objective_index_;
+    }
     return true;
 }
 

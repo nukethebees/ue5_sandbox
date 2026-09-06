@@ -576,6 +576,7 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
 
     if (!is_objective) {
         if (!all(abs(local_position) <= bar_half_size)) {
+            discard;
             return 0.0;
         }
 
@@ -722,5 +723,6 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
         return filled ? fill_color : BackgroundColor;
     }
 
+    discard;
     return 0.0;
 }
