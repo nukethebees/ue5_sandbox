@@ -3,6 +3,7 @@
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestTeamVisualData.h>
 #include <SpaceGame/presentation/widgets/ShipHudKillData.h>
+#include <SpaceGame/ui/style/GameUiStyle.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
@@ -20,12 +21,14 @@ class SPACEGAME_API UTeamEntityTableWidget : public UUserWidget {
     void set_entity_counts(FTestEntityRegistry::EntityCounts const& new_counts);
     void set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& new_matrix);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
+    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_show_team_totals(bool show_totals);
     auto get_show_team_totals() const noexcept -> bool { return show_team_totals; }
   protected:
     void NativePreConstruct() override;
+    auto RebuildWidget() -> TSharedRef<SWidget> override;
 
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
     UGridPanel* team_entity_grid{nullptr};
@@ -47,4 +50,5 @@ class SPACEGAME_API UTeamEntityTableWidget : public UUserWidget {
 
     FTestEntityRegistry::EntityCounts values{};
     UTestTeamVisualData::FColourArray team_colours{};
+    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
 };

@@ -2,6 +2,7 @@
 
 #include <SpaceGame/entities/TestTeamVisualData.h>
 #include <SpaceGame/presentation/widgets/ShipHudKillData.h>
+#include <SpaceGame/ui/style/GameUiStyle.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
@@ -20,10 +21,12 @@ class SPACEGAME_API UTopKillersWidget : public UUserWidget {
 
     void set_top_killers(ml::ship_hud::FTopKillerEntries const& new_entries);
     void set_team_colours(UTestTeamVisualData::FColourArray const& new_colours);
+    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
     void NativePreConstruct() override;
+    auto RebuildWidget() -> TSharedRef<SWidget> override;
 
     UPROPERTY(meta = (BindWidget, GeneratorRoot))
     UGridPanel* top_killers_grid{nullptr};
@@ -42,4 +45,5 @@ class SPACEGAME_API UTopKillersWidget : public UUserWidget {
 
     ml::ship_hud::FTopKillerEntries top_killers{};
     UTestTeamVisualData::FColourArray team_colours{};
+    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
 };

@@ -6,6 +6,9 @@
 #include "ShipPointsWidget.generated.h"
 
 class UValueWidget;
+namespace ml::ioj {
+struct FGameHudStyle;
+}
 
 UCLASS()
 class SPACEGAME_API UShipPointsWidget : public UUserWidget {
@@ -13,6 +16,7 @@ class SPACEGAME_API UShipPointsWidget : public UUserWidget {
     GENERATED_BODY()
 
     void set_points(int32 points);
+    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32;
   protected:

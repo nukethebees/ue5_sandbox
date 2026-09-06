@@ -1,10 +1,11 @@
 #pragma once
 
-#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGame/ships/common/ShipHealth.h>
+#include <SpaceGame/ui/style/GameUiStyle.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
@@ -28,11 +29,13 @@ class SPACEGAME_API UMissionStatusWidget : public UUserWidget {
     void set_mission_time(float const mission_time);
     void set_enemies_remaining(int32 const enemies_remaining);
     void set_time_remaining(float const time_remaining);
+    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
     void NativeConstruct() override;
     void NativePreConstruct() override;
+    auto RebuildWidget() -> TSharedRef<SWidget> override;
 
     UPROPERTY(meta = (BindWidget))
     UValueWidget* mission_mode_widget{nullptr};
@@ -80,6 +83,7 @@ class SPACEGAME_API UMissionStatusWidget : public UUserWidget {
                             TConstArrayView<ETestEntityType> const required_kill_entity_types,
                             TConstArrayView<FShipHealth> const required_kill_entity_health);
     auto check_widget_bindings() const -> bool;
+    void apply_mission_state_style(ETestMissionState state);
     auto update_entity_widgets(UVerticalBox& entity_box,
                                FStringView widget_name_prefix,
                                TConstArrayView<TestEntityUniqueId> entity_ids,
@@ -94,4 +98,5 @@ class SPACEGAME_API UMissionStatusWidget : public UUserWidget {
     TArray<TestEntityUniqueId> required_kill_entity_ids{};
     TArray<TObjectPtr<UMissionEntityHealthRowWidget>> required_kill_entity_widgets{};
     ETestMissionMode current_mission_mode{ETestMissionMode::None};
+    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
 };

@@ -1,9 +1,10 @@
 #include "SpaceGame/presentation/widgets/MissionEntityHealthRowWidget.h"
 
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/presentation/widgets/ShipHealthWidget.h>
 #include <SandboxCore/error_msg.h>
 #include <SandboxCoreEngine/uobject_utils.h>
+#include <SpaceGame/presentation/widgets/ShipHealthWidget.h>
+#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/ui/style/GameUiStyle.h>
 
 #include <Components/HorizontalBox.h>
 #include <Components/TextBlock.h>
@@ -42,6 +43,11 @@ void UMissionEntityHealthRowWidget::set_entity(TestEntityUniqueId const unique_i
 
 void UMissionEntityHealthRowWidget::set_health(FShipHealth const health) {
     health_widget->set_health(health);
+}
+
+void UMissionEntityHealthRowWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+    ml::ioj::apply_text_style(*entity_name, style.caption_text);
+    health_widget->apply_hud_style(style);
 }
 
 void UMissionEntityHealthRowWidget::set_font_size(int32 const new_font_size) {

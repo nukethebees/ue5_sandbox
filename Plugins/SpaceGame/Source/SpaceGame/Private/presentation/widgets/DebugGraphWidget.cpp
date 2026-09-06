@@ -1,6 +1,7 @@
 #include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 
 #include "SandboxUI/widgets/SGraphPlot.h"
+#include "SpaceGame/ui/style/GameUiStyle.h"
 #include "Widgets/DeclarativeSyntaxSupport.h"
 
 void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
@@ -24,8 +25,20 @@ void UDebugGraphWidget::set_samples(TConstArrayView<FVector2d> const in_samples,
     update_slate_series();
 }
 
+void UDebugGraphWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+    graph_style_ = style.graph;
+    series_colour_ = style.graph_series;
+    if (graph_widget_.IsValid()) {
+        (void)graph_widget_->set_style(graph_style_.GetValue());
+        update_slate_series();
+    }
+}
+
 TSharedRef<SWidget> UDebugGraphWidget::RebuildWidget() {
     SAssignNew(graph_widget_, SGraphPlot);
+    if (graph_style_) {
+        (void)graph_widget_->set_style(graph_style_.GetValue());
+    }
     update_slate_series();
     return graph_widget_.ToSharedRef();
 }
@@ -40,12 +53,12 @@ void UDebugGraphWidget::update_slate_series() {
         return;
     }
 
-    static FText const speed_series_name{FText::FromString(TEXT("Speed"))};
+    static FText const speed_series_name{FText::FromString(TEXT("SPEED"))};
     FGraphSeries series{
         .name = speed_series_name,
         .x = x_,
         .y = y_,
-        .style = {.color = FLinearColor::Green, .thickness = 1.0f, .antialias = false},
+        .style = {.color = series_colour_, .thickness = 1.5f, .antialias = true},
     };
     TArray<FGraphSeries> series_snapshot;
     series_snapshot.Add(MoveTemp(series));

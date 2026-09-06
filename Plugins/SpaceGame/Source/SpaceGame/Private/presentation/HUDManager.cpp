@@ -413,8 +413,7 @@ bool FHUDManager::collect_player_status_data() {
         auto const firing_mode{player_ship->laser_firing_mode};
         if (firing_mode == ELaserFiringState::lock_on_searching ||
             firing_mode == ELaserFiringState::lock_on_acquired) {
-            next_data.near_crosshair_colour = FLinearColor::Yellow;
-            next_data.far_crosshair_colour = FLinearColor::Red;
+            next_data.crosshair_targeting = true;
         }
     }
 
@@ -548,7 +547,7 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     hud.set_energy(data.energy);
     hud.set_points(data.points);
     hud.set_fire_rate(*ml::to_string_without_type_prefix(data.fire_rate));
-    hud.set_crosshair_colours(data.near_crosshair_colour, data.far_crosshair_colour);
+    hud.set_crosshair_targeting(data.crosshair_targeting);
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_flight_hud);

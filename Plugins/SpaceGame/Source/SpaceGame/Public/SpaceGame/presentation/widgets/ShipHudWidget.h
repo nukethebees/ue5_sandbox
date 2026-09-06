@@ -65,7 +65,7 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void set_fire_rate_visibility(ESlateVisibility const new_visibility);
 
     void set_crosshair_positions(FVector2d near, FVector2d far);
-    void set_crosshair_colours(FLinearColor near, FLinearColor far);
+    void set_crosshair_targeting(bool targeting);
     void set_crosshair_widget_visibility(ESlateVisibility const new_visibility);
     void set_crosshair_distances(FHudCrosshairDistances const& value) {
         crosshair_distances = value;
@@ -115,6 +115,8 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void ReleaseSlateResources(bool release_children) override;
 
     void set_common_widget_properties();
+    void update_crosshair_colours();
+    void apply_entity_overlay_colours();
     void set_widget_visibility_checked(UWidget* const widget,
                                        ESlateVisibility const new_visibility);
 
@@ -182,6 +184,13 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     FEntityOverlayFrameStoreConstPtr entity_overlay_frame_store_;
     FEntityOverlayStyle entity_overlay_style_;
     TSharedPtr<SEntityOverlayWidget> entity_overlay_widget_;
+    FLinearColor entity_overlay_background_colour_{};
+    FLinearColor entity_overlay_fill_colour_{};
+    FLinearColor reticle_normal_colour_{FLinearColor::Green};
+    FLinearColor reticle_warning_colour_{FLinearColor::Yellow};
+    FLinearColor reticle_danger_colour_{FLinearColor::Red};
+    bool crosshair_targeting_{};
+    bool has_ui_style_{};
 
     UPROPERTY(meta = (BindWidget))
     UImage* lock_on_widget{nullptr};

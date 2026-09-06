@@ -8,6 +8,9 @@
 class UBorder;
 class UCanvasPanel;
 class UTextBlock;
+namespace ml::ioj {
+struct FGameHudStyle;
+}
 
 UCLASS()
 class SPACEGAME_API UVector2DWidget : public UUserWidget {
@@ -16,6 +19,7 @@ class SPACEGAME_API UVector2DWidget : public UUserWidget {
     void NativeConstruct() override;
 
     void update(FVector2D const value);
+    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:

@@ -1,5 +1,7 @@
 #include "SpaceGame/presentation/widgets/Vector2DWidget.h"
 
+#include "SpaceGame/ui/style/GameUiStyle.h"
+
 #include "Components/Border.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
@@ -67,5 +69,20 @@ void UVector2DWidget::set_font_size(int32 const new_font_size) {
         auto font{value_text->GetFont()};
         font.Size = font_size;
         value_text->SetFont(font);
+    }
+}
+
+void UVector2DWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+    if (background_widget) {
+        background_widget->SetBrush(style.control_background);
+    }
+    if (cursor_widget) {
+        cursor_widget->SetBrushColor(style.energy);
+    }
+    if (name_text) {
+        ml::ioj::apply_text_style(*name_text, style.caption_text);
+    }
+    if (value_text) {
+        ml::ioj::apply_text_style(*value_text, style.secondary_text);
     }
 }

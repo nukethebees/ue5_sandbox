@@ -108,8 +108,7 @@ struct FPlayerStatusDataCache {
     float energy{1.f};
     int32 points{0};
     ETestShipFireRate fire_rate{ETestShipFireRate::Single};
-    FLinearColor near_crosshair_colour{FLinearColor::Green};
-    FLinearColor far_crosshair_colour{FLinearColor::Green};
+    bool crosshair_targeting{false};
 };
 
 struct FPlayerFlightDataCache {

@@ -21,6 +21,11 @@ void UMissionStatusWidget::NativeConstruct() {
     required_kill_entities_box->SetVisibility(ESlateVisibility::Collapsed);
 }
 
+auto UMissionStatusWidget::RebuildWidget() -> TSharedRef<SWidget> {
+    auto const content{Super::RebuildWidget()};
+    return hud_style_ ? ml::ioj::make_hud_panel(hud_style_.GetValue(), content) : content;
+}
+
 auto UMissionStatusWidget::check_widget_bindings() const -> bool {
     ml::FErrorMsg error_msg;
     if (ml::report_invalid_uobject_ptrs(
@@ -108,12 +113,50 @@ void UMissionStatusWidget::set_mission_mode(ETestMissionMode const new_mode,
     auto const mode_name{ml::to_display_string_view(new_mode)};
     auto const state_name{ml::to_string_without_type_prefix(initial_state)};
     mission_mode_widget->update(mode_name, FStringView{state_name});
+    apply_mission_state_style(initial_state);
 }
 
 void UMissionStatusWidget::set_mission_state(ETestMissionState const new_state) {
     auto const mode_name{ml::to_display_string_view(current_mission_mode)};
     auto const state_name{ml::to_string_without_type_prefix(new_state)};
     mission_mode_widget->update(mode_name, FStringView{state_name});
+    apply_mission_state_style(new_state);
+}
+
+void UMissionStatusWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+    hud_style_ = style;
+    mission_mode_widget->set_format_spec(TEXT("{0} // {1}"));
+    mission_time_widget->set_format_spec(TEXT("MISSION TIME // {0}"));
+    enemies_remaining_widget->set_format_spec(TEXT("ENEMIES REMAINING // {0}"));
+    time_remaining_widget->set_format_spec(TEXT("TIME REMAINING // {0}"));
+    mission_mode_widget->set_text_style(style.primary_text);
+    mission_time_widget->set_text_style(style.secondary_text);
+    enemies_remaining_widget->set_text_style(style.secondary_text);
+    time_remaining_widget->set_text_style(style.warning_text);
+
+    for (auto const row_widget : surviving_entity_widgets) {
+        row_widget->apply_hud_style(style);
+    }
+    for (auto const row_widget : required_kill_entity_widgets) {
+        row_widget->apply_hud_style(style);
+    }
+}
+
+void UMissionStatusWidget::apply_mission_state_style(ETestMissionState const state) {
+    if (!hud_style_ || !mission_mode_widget) {
+        return;
+    }
+
+    auto const& style{hud_style_.GetValue()};
+    auto const* text_style{&style.primary_text};
+    if (state == ETestMissionState::Succeeded) {
+        text_style = &style.success_text;
+    } else if (state == ETestMissionState::Failed) {
+        text_style = &style.danger_text;
+    } else if (state == ETestMissionState::Running) {
+        text_style = &style.accent_text;
+    }
+    mission_mode_widget->set_text_style(*text_style);
 }
 
 void UMissionStatusWidget::set_mission_time(float const mission_time) {
@@ -245,6 +288,9 @@ auto UMissionStatusWidget::update_entity_widgets(
             }
             health_widget->set_entity(entity_ids[i], entity_types[i]);
             health_widget->set_font_size(font_size);
+            if (hud_style_) {
+                health_widget->apply_hud_style(hud_style_.GetValue());
+            }
             health_widget->set_health(health_values[i]);
             entity_box.AddChild(health_widget);
             cached_entity_ids.Add(entity_ids[i]);

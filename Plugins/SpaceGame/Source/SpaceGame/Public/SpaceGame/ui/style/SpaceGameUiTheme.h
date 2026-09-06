@@ -26,8 +26,5 @@ class SPACEGAME_API USpaceGameUiTheme : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Settings")
     FSettingsStyle settings_style_{};
-
-    UPROPERTY(EditAnywhere, Category = "HUD")
-    FProgressBarStyle health_bar_{};
 };
 }

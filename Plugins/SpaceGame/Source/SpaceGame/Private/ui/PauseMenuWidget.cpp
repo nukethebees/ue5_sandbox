@@ -4,6 +4,7 @@
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/common/MenuButtonWidget.h"
+#include "SpaceGame/ui/style/GameUiStyle.h"
 #include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 
 #include "SandboxUI/widgets/SGraphPlot.h"
@@ -17,18 +18,6 @@
 #include <Input/UIActionBinding.h>
 #include <InputAction.h>
 #include <Widgets/DeclarativeSyntaxSupport.h>
-
-namespace {
-void apply_pause_menu_text_style(UTextBlock& text, FTextBlockStyle const& style) {
-    text.SetFont(style.Font);
-    text.SetColorAndOpacity(style.ColorAndOpacity);
-    text.SetShadowOffset(style.ShadowOffset);
-    text.SetShadowColorAndOpacity(style.ShadowColorAndOpacity);
-    text.SetStrikeBrush(style.StrikeBrush);
-    text.SetTextTransformPolicy(style.TransformPolicy);
-    text.SetTextOverflowPolicy(style.OverflowPolicy);
-}
-}
 
 namespace ml::ioj {
 void UPauseMenuWidget::NativeOnInitialized() {
@@ -223,30 +212,30 @@ void UPauseMenuWidget::apply_ui_style() {
         style = default_theme->compile();
     }
 
-    apply_pause_menu_text_style(*paused_heading, style.text(EGameTextStyle::Heading1));
-    apply_pause_menu_text_style(*page_heading, style.text(EGameTextStyle::Heading1));
-    apply_pause_menu_text_style(*overview_placeholder, style.text(EGameTextStyle::BodySecondary));
-    apply_pause_menu_text_style(*options_placeholder, style.text(EGameTextStyle::BodySecondary));
-    apply_pause_menu_text_style(*stats_summary_heading, style.text(EGameTextStyle::Heading3));
-    apply_pause_menu_text_style(*stats_graph_heading, style.text(EGameTextStyle::Heading3));
-    apply_pause_menu_text_style(*stats_graph_description, style.text(EGameTextStyle::Caption));
+    apply_text_style(*paused_heading, style.text(EGameTextStyle::Heading1));
+    apply_text_style(*page_heading, style.text(EGameTextStyle::Heading1));
+    apply_text_style(*overview_placeholder, style.text(EGameTextStyle::BodySecondary));
+    apply_text_style(*options_placeholder, style.text(EGameTextStyle::BodySecondary));
+    apply_text_style(*stats_summary_heading, style.text(EGameTextStyle::Heading3));
+    apply_text_style(*stats_graph_heading, style.text(EGameTextStyle::Heading3));
+    apply_text_style(*stats_graph_description, style.text(EGameTextStyle::Caption));
     auto const& label_style{style.text(EGameTextStyle::BodySecondary)};
-    apply_pause_menu_text_style(*stats_label_elapsed_time, label_style);
-    apply_pause_menu_text_style(*stats_label_entities_spawned, label_style);
-    apply_pause_menu_text_style(*stats_label_entities_active, label_style);
-    apply_pause_menu_text_style(*stats_label_entities_destroyed, label_style);
-    apply_pause_menu_text_style(*stats_label_kills, label_style);
-    apply_pause_menu_text_style(*stats_label_lasers_fired, label_style);
-    apply_pause_menu_text_style(*stats_label_lasers_active, label_style);
+    apply_text_style(*stats_label_elapsed_time, label_style);
+    apply_text_style(*stats_label_entities_spawned, label_style);
+    apply_text_style(*stats_label_entities_active, label_style);
+    apply_text_style(*stats_label_entities_destroyed, label_style);
+    apply_text_style(*stats_label_kills, label_style);
+    apply_text_style(*stats_label_lasers_fired, label_style);
+    apply_text_style(*stats_label_lasers_active, label_style);
 
     auto const& value_style{style.text(EGameTextStyle::Body)};
-    apply_pause_menu_text_style(*elapsed_time_value, value_style);
-    apply_pause_menu_text_style(*entities_spawned_value, value_style);
-    apply_pause_menu_text_style(*entities_active_value, value_style);
-    apply_pause_menu_text_style(*entities_destroyed_value, value_style);
-    apply_pause_menu_text_style(*kills_value, value_style);
-    apply_pause_menu_text_style(*lasers_fired_value, value_style);
-    apply_pause_menu_text_style(*lasers_active_value, value_style);
+    apply_text_style(*elapsed_time_value, value_style);
+    apply_text_style(*entities_spawned_value, value_style);
+    apply_text_style(*entities_active_value, value_style);
+    apply_text_style(*entities_destroyed_value, value_style);
+    apply_text_style(*kills_value, value_style);
+    apply_text_style(*lasers_fired_value, value_style);
+    apply_text_style(*lasers_active_value, value_style);
 
     stats_summary_panel->SetBrush(style.panel().background);
     stats_summary_panel->SetPadding(style.panel().padding);

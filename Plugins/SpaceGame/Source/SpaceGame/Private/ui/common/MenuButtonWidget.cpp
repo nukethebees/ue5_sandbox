@@ -16,15 +16,6 @@ auto make_no_draw_brush() -> FSlateBrush {
     return brush;
 }
 
-void apply_text_style(UCommonTextBlock& text, FTextBlockStyle const& style) {
-    text.SetFont(style.Font);
-    text.SetColorAndOpacity(style.ColorAndOpacity);
-    text.SetShadowOffset(style.ShadowOffset);
-    text.SetShadowColorAndOpacity(style.ShadowColorAndOpacity);
-    text.SetStrikeBrush(style.StrikeBrush);
-    text.SetTextTransformPolicy(style.TransformPolicy);
-    text.SetTextOverflowPolicy(style.OverflowPolicy);
-}
 }
 
 UMenuTextStyle::UMenuTextStyle() {

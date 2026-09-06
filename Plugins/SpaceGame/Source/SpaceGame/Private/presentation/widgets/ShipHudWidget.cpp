@@ -21,6 +21,7 @@
 #include <Components/CanvasPanelSlot.h>
 #include <Components/Image.h>
 #include <Components/PanelWidget.h>
+#include <Components/TextBlock.h>
 #include <Components/Widget.h>
 #include <Engine/GameViewportClient.h>
 #include <Engine/LocalPlayer.h>
@@ -109,6 +110,7 @@ void UShipHudWidget::set_entity_overlay_frame_store(FEntityOverlayFrameStoreCons
 
 void UShipHudWidget::set_entity_overlay_style(FEntityOverlayStyle const& style) {
     entity_overlay_style_ = style;
+    apply_entity_overlay_colours();
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_style(entity_overlay_style_);
     }
@@ -131,6 +133,7 @@ void UShipHudWidget::NativeConstruct() {
 
     near_crosshair_widget->SetBrushFromMaterial(near_crosshair_material_instance);
     far_crosshair_widget->SetBrushFromMaterial(far_crosshair_material_instance);
+    update_crosshair_colours();
 }
 
 void UShipHudWidget::NativePreConstruct() {
@@ -161,13 +164,87 @@ void UShipHudWidget::set_common_widget_properties() {
 }
 
 void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
-    if (!IsValid(speed_widget)) {
-        UE_LOG(
-            LogSandboxUI, Error, TEXT("UShipHudWidget::apply_ui_style: Speed widget is invalid."));
-        return;
+    auto const& hud_style{style.hud()};
+    has_ui_style_ = true;
+    entity_overlay_background_colour_ = hud_style.control_background.TintColor.GetSpecifiedColor();
+    entity_overlay_fill_colour_ = hud_style.health_nominal;
+    reticle_normal_colour_ = hud_style.reticle_normal;
+    reticle_warning_colour_ = hud_style.reticle_warning;
+    reticle_danger_colour_ = hud_style.reticle_danger;
+
+    if (speed_widget) {
+        speed_widget->apply_hud_style(hud_style);
+    }
+    if (health_widget) {
+        health_widget->apply_hud_style(hud_style);
+    }
+    if (energy_widget) {
+        energy_widget->apply_hud_style(hud_style);
+    }
+    if (points_widget) {
+        points_widget->apply_hud_style(hud_style);
     }
 
-    speed_widget->set_text_style(style.text(EGameTextStyle::HudPrimary));
+    auto apply_value_style{[](UValueWidget* const widget, FTextBlockStyle const& text_style) {
+        if (widget) {
+            widget->set_text_style(text_style);
+        }
+    }};
+    apply_value_style(stopwatch_widget, hud_style.secondary_text);
+    apply_value_style(mission_status_widget, hud_style.accent_text);
+    apply_value_style(fire_rate_widget, hud_style.secondary_text);
+    apply_value_style(target_speed_widget, hud_style.secondary_text);
+    apply_value_style(selected_imc_widget, hud_style.caption_text);
+    apply_value_style(ship_velocity_widget, hud_style.secondary_text);
+    apply_value_style(target_velocity_widget, hud_style.secondary_text);
+    apply_value_style(control_mode_widget, hud_style.secondary_text);
+    apply_value_style(flight_mode_widget, hud_style.secondary_text);
+
+    stopwatch_widget->set_format_spec(TEXT("MISSION TIME // {0}:{1}:{2}"));
+    mission_status_widget->set_format_spec(TEXT("STATUS // {0}"));
+    fire_rate_widget->set_format_spec(TEXT("FIRE RATE // {0}"));
+    target_speed_widget->set_format_spec(TEXT("TARGET SPEED // {0}"));
+    selected_imc_widget->set_format_spec(TEXT("IMC // {0}"));
+    ship_velocity_widget->set_format_spec(TEXT("VELOCITY // {0}"));
+    target_velocity_widget->set_format_spec(TEXT("TARGET VELOCITY // {0} ({1})"));
+    control_mode_widget->set_format_spec(TEXT("CONTROL // {0}"));
+    flight_mode_widget->set_format_spec(TEXT("FLIGHT MODE // {0}"));
+
+    for (auto* const widget : {turning_widget, moving_widget, desired_velocity_scale_widget}) {
+        if (widget) {
+            widget->apply_hud_style(hud_style);
+        }
+    }
+    for (auto* const widget : {entity_count_table, team_kill_matrix_widget}) {
+        if (widget) {
+            widget->apply_hud_style(hud_style);
+        }
+    }
+    if (top_killers_widget) {
+        top_killers_widget->apply_hud_style(hud_style);
+    }
+    if (mission_status_panel) {
+        mission_status_panel->apply_hud_style(hud_style);
+    }
+#if WITH_EDITORONLY_DATA
+    if (speed_graph) {
+        speed_graph->apply_hud_style(hud_style);
+    }
+#endif
+
+    if (WidgetTree) {
+        WidgetTree->ForEachWidget([&hud_style](UWidget* const widget) {
+            if (auto* const heading{Cast<UTextBlock>(widget)}) {
+                ml::ioj::apply_text_style(*heading, hud_style.heading_text);
+            }
+        });
+    }
+    if (lock_on_widget) {
+        lock_on_widget->SetColorAndOpacity(hud_style.reticle_danger);
+    }
+
+    apply_entity_overlay_colours();
+    update_crosshair_colours();
 }
 
 void UShipHudWidget::set_font_size(int32 const new_font_size) {
@@ -370,7 +447,12 @@ void UShipHudWidget::set_crosshair_positions(FVector2d near, FVector2d far) {
     far_slot->SetPosition(far);
     near_slot->SetPosition(near);
 }
-void UShipHudWidget::set_crosshair_colours(FLinearColor near, FLinearColor far) {
+void UShipHudWidget::set_crosshair_targeting(bool const targeting) {
+    crosshair_targeting_ = targeting;
+    update_crosshair_colours();
+}
+
+void UShipHudWidget::update_crosshair_colours() {
     RETURN_IF_NULLPTR(near_crosshair_material_instance);
     RETURN_IF_NULLPTR(far_crosshair_material_instance);
 
@@ -378,8 +460,22 @@ void UShipHudWidget::set_crosshair_colours(FLinearColor near, FLinearColor far) 
 
     UE_LOG(LogSandboxUI, Verbose, TEXT("Setting colour parameters."));
 
-    near_crosshair_material_instance->SetVectorParameterValue(name, near);
-    far_crosshair_material_instance->SetVectorParameterValue(name, far);
+    near_crosshair_material_instance->SetVectorParameterValue(
+        name, crosshair_targeting_ ? reticle_warning_colour_ : reticle_normal_colour_);
+    far_crosshair_material_instance->SetVectorParameterValue(
+        name, crosshair_targeting_ ? reticle_danger_colour_ : reticle_normal_colour_);
+}
+
+void UShipHudWidget::apply_entity_overlay_colours() {
+    if (!has_ui_style_) {
+        return;
+    }
+
+    entity_overlay_style_.background_color = entity_overlay_background_colour_;
+    entity_overlay_style_.fill_color = entity_overlay_fill_colour_;
+    if (entity_overlay_widget_.IsValid()) {
+        entity_overlay_widget_->set_style(entity_overlay_style_);
+    }
 }
 void UShipHudWidget::set_crosshair_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(far_crosshair_widget, new_visibility);

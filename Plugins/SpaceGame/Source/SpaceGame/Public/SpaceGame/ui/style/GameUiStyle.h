@@ -4,13 +4,56 @@
 
 #include "SandboxGameShared/utilities/enum_array.h"
 #include "SandboxUI/widgets/SettingsWidgets.h"
+#include "SandboxUI/widgets/SGraphPlot.h"
 
 #include <Styling/SlateTypes.h>
 
 #include "GameUiStyle.generated.h"
 
+class UTextBlock;
+class SWidget;
+
 namespace ml::ioj {
 class USpaceGameUiTheme;
+
+struct SPACEGAME_API FGameHudStyle {
+    FTextBlockStyle heading_text{};
+    FTextBlockStyle primary_text{};
+    FTextBlockStyle secondary_text{};
+    FTextBlockStyle caption_text{};
+    FTextBlockStyle data_text{};
+    FTextBlockStyle data_accent_text{};
+    FTextBlockStyle accent_text{};
+    FTextBlockStyle success_text{};
+    FTextBlockStyle warning_text{};
+    FTextBlockStyle danger_text{};
+
+    FSlateBrush panel_background{};
+    FSlateBrush table_header_background{};
+    FSlateBrush table_row_background{};
+    FSlateBrush table_alternate_row_background{};
+    FSlateBrush control_background{};
+    FSlateBrush border{};
+    FProgressBarStyle health_bar{};
+    FProgressBarStyle energy_bar{};
+    FGraphPlotStyle graph{};
+
+    FLinearColor health_nominal{};
+    FLinearColor health_warning{};
+    FLinearColor health_critical{};
+    FLinearColor energy{};
+    FLinearColor reticle_normal{};
+    FLinearColor reticle_warning{};
+    FLinearColor reticle_danger{};
+    FLinearColor graph_series{};
+
+    FMargin panel_padding{10.0f};
+    FMargin table_cell_padding{6.0f, 3.0f};
+    float team_wash_opacity{0.08f};
+    float team_text_blend{0.20f};
+    float health_warning_threshold{0.50f};
+    float health_critical_threshold{0.25f};
+};
 
 struct SPACEGAME_API FGamePanelStyle {
     FSlateBrush background{};
@@ -143,7 +186,7 @@ class SPACEGAME_API FGameUiStyle {
     auto palette() const -> FGameUiPalette const&;
     auto chrome() const -> FGameUiChromeStyle const&;
     auto icon(EGameUiIcon role) const -> FSlateBrush const&;
-    auto health_bar() const -> FProgressBarStyle const&;
+    auto hud() const -> FGameHudStyle const&;
   private:
     friend USpaceGameUiTheme;
 
@@ -154,6 +197,10 @@ class SPACEGAME_API FGameUiStyle {
     FGameUiPalette palette_{};
     FGameUiChromeStyle chrome_{};
     TEnumArray<EGameUiIcon, FSlateBrush> icons_{};
-    FProgressBarStyle health_bar_{};
+    FGameHudStyle hud_{};
 };
+
+SPACEGAME_API void apply_text_style(UTextBlock& text, FTextBlockStyle const& style);
+SPACEGAME_API auto make_hud_panel(FGameHudStyle const& style, TSharedRef<SWidget> content)
+    -> TSharedRef<SWidget>;
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/ships/common/ShipHealth.h>
 
 #include <Blueprint/UserWidget.h>
@@ -12,6 +12,9 @@
 class UHorizontalBox;
 class UShipHealthWidget;
 class UTextBlock;
+namespace ml::ioj {
+struct FGameHudStyle;
+}
 
 UCLASS()
 class SPACEGAME_API UMissionEntityHealthRowWidget : public UUserWidget {
@@ -19,6 +22,7 @@ class SPACEGAME_API UMissionEntityHealthRowWidget : public UUserWidget {
   public:
     void set_entity(TestEntityUniqueId unique_id, ETestEntityType entity_type);
     void set_health(FShipHealth health);
+    void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:

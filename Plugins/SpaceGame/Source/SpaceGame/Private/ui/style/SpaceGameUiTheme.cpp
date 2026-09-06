@@ -83,6 +83,15 @@ auto make_scroll_bar_style(FGameUiPalette const& palette) -> FScrollBarStyle {
         .SetThickness(10.0f);
 }
 
+auto make_progress_bar_style(FLinearColor const& background) -> FProgressBarStyle {
+    auto const background_brush{make_brush(background, FVector2D{8.0f, 8.0f})};
+    auto const fill_brush{make_brush(FLinearColor::White, FVector2D{8.0f, 8.0f})};
+    return FProgressBarStyle{}
+        .SetBackgroundImage(background_brush)
+        .SetFillImage(fill_brush)
+        .SetMarqueeImage(fill_brush);
+}
+
 auto icon_path(EGameUiIcon const icon) -> FString {
     auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SpaceGame"))};
     auto const root{plugin.IsValid()
@@ -269,7 +278,52 @@ auto USpaceGameUiTheme::compile() const -> FGameUiStyle {
         .background = make_brush(palette_.surface.CopyWithNewOpacity(0.88f)),
         .padding = panel_padding_,
     };
-    compiled.health_bar_ = health_bar_;
+
+    auto& hud{compiled.hud_};
+    hud.heading_text = compiled.text_styles_[EGameTextStyle::HudPrimary];
+    hud.heading_text.SetTransformPolicy(ETextTransformPolicy::ToUpper);
+    hud.primary_text = compiled.text_styles_[EGameTextStyle::HudPrimary];
+    hud.secondary_text = compiled.text_styles_[EGameTextStyle::HudSecondary];
+    hud.caption_text = compiled.text_styles_[EGameTextStyle::Caption];
+    hud.caption_text.SetTransformPolicy(ETextTransformPolicy::ToUpper);
+    hud.data_text = compiled.text_styles_[EGameTextStyle::Body];
+    hud.data_accent_text = hud.data_text;
+    hud.data_accent_text.SetColorAndOpacity(FSlateColor{palette_.honey});
+    hud.accent_text = hud.primary_text;
+    hud.accent_text.SetColorAndOpacity(FSlateColor{palette_.honey});
+    hud.success_text = hud.secondary_text;
+    hud.success_text.SetColorAndOpacity(FSlateColor{palette_.success});
+    hud.warning_text = hud.secondary_text;
+    hud.warning_text.SetColorAndOpacity(FSlateColor{palette_.warning});
+    hud.danger_text = hud.secondary_text;
+    hud.danger_text.SetColorAndOpacity(FSlateColor{palette_.danger});
+
+    hud.panel_background = make_brush(palette_.surface_low.CopyWithNewOpacity(0.88f));
+    hud.table_header_background = make_brush(palette_.surface_raised.CopyWithNewOpacity(0.88f));
+    hud.table_row_background = make_brush(palette_.surface.CopyWithNewOpacity(0.82f));
+    hud.table_alternate_row_background = make_brush(palette_.surface_low.CopyWithNewOpacity(0.82f));
+    hud.control_background = make_brush(palette_.control.CopyWithNewOpacity(0.92f));
+    hud.border = make_brush(palette_.border.CopyWithNewOpacity(0.55f));
+    hud.health_bar = make_progress_bar_style(palette_.control.CopyWithNewOpacity(0.92f));
+    hud.energy_bar = make_progress_bar_style(palette_.control.CopyWithNewOpacity(0.92f));
+
+    hud.health_nominal = palette_.success;
+    hud.health_warning = palette_.warning;
+    hud.health_critical = palette_.danger;
+    hud.energy = palette_.honey;
+    hud.reticle_normal = palette_.success;
+    hud.reticle_warning = palette_.warning;
+    hud.reticle_danger = palette_.danger;
+    hud.graph_series = palette_.honey;
+
+    hud.graph.desired_size = FVector2f{320.0f, 180.0f};
+    hud.graph.label_font = hud.caption_text.Font;
+    hud.graph.label_color = hud.caption_text.ColorAndOpacity.GetSpecifiedColor();
+    hud.graph.axis_color = hud.secondary_text.ColorAndOpacity.GetSpecifiedColor();
+    hud.graph.grid_color = hud.graph.axis_color.CopyWithNewOpacity(0.25f);
+    hud.graph.background_color = palette_.surface_low.CopyWithNewOpacity(0.88f);
+    hud.graph.plot_color = palette_.control.CopyWithNewOpacity(0.70f);
+    hud.graph.empty_text = NSLOCTEXT("GameHud", "NoGraphData", "NO TELEMETRY");
     return compiled;
 }
 }
