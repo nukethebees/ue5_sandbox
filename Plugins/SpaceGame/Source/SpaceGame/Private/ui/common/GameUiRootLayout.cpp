@@ -34,12 +34,14 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
     }
 
     screen_stack->ClearWidgets();
-    level_select_focus_id_ = preferred_level_id;
     auto const main_menu_class{ui_data->get_widget_class<UMainMenuWidget>()};
-    auto* const main_menu{
-        screen_stack->AddWidget<UMainMenuWidget>(main_menu_class, [this](UMainMenuWidget& widget) {
-            widget.level_select_requested.RemoveAll(this);
-            widget.level_select_requested.AddUObject(this, &ThisClass::show_level_select);
+    auto const level_select_class{ui_data->get_widget_class<ULevelSelectWidget>()};
+    auto* const main_menu{screen_stack->AddWidget<UMainMenuWidget>(
+        main_menu_class,
+        [level_select_class, show_level_select_screen, preferred_level_id](
+            UMainMenuWidget& widget) {
+            widget.prepare_for_open(
+                level_select_class, show_level_select_screen, preferred_level_id);
         })};
     if (!IsValid(main_menu)) {
         UE_LOG(LogSandboxUI,
@@ -48,11 +50,6 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
         return false;
     }
 
-    if (show_level_select_screen) {
-        show_level_select();
-    } else {
-        level_select_focus_id_ = NAME_None;
-    }
     return true;
 }
 
@@ -168,25 +165,4 @@ TOptional<FUIInputConfig> UGameUiRootLayout::GetDesiredInputConfig() const {
                           true};
 }
 
-void UGameUiRootLayout::show_level_select() {
-    auto* const ui_data{ui_data_.Get()};
-    if (!IsValid(ui_data) || !IsValid(screen_stack)) {
-        return;
-    }
-    if (IsValid(Cast<ULevelSelectWidget>(screen_stack->GetActiveWidget()))) {
-        return;
-    }
-
-    auto const level_select_class{ui_data->get_widget_class<ULevelSelectWidget>()};
-    auto const preferred_level_id{level_select_focus_id_};
-    level_select_focus_id_ = NAME_None;
-    if (!IsValid(screen_stack->AddWidget<ULevelSelectWidget>(
-            level_select_class, [preferred_level_id](ULevelSelectWidget& widget) {
-                widget.prepare_for_open(preferred_level_id);
-            }))) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("UGameUiRootLayout::show_level_select: Failed to push level select."));
-    }
-}
 }

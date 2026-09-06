@@ -5,7 +5,6 @@
 
 #include "SaveGameViewerWidget.generated.h"
 
-class UNativeWidgetHost;
 class USpaceSaveSubsystem;
 
 namespace ml::ioj {
@@ -54,7 +53,7 @@ struct FSaveGameViewState {
     bool can_activate{};
 };
 
-DECLARE_MULTICAST_DELEGATE(FSaveGameBackRequested);
+DECLARE_MULTICAST_DELEGATE_OneParam(FSaveGameModalStateChanged, bool);
 
 UCLASS()
 class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
@@ -95,15 +94,13 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
         return create_profile_open_;
     }
 
-    FSaveGameBackRequested back_requested;
+    FSaveGameModalStateChanged modal_state_changed;
   protected:
     void NativeOnInitialized() override;
+    auto RebuildWidget() -> TSharedRef<SWidget> override;
     void ReleaseSlateResources(bool release_children) override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
-
-    UPROPERTY(meta = (BindWidget))
-    UNativeWidgetHost* view_host{nullptr};
   private:
     auto resolve_browser() -> FSaveGameBrowser*;
     auto resolve_save_subsystem() const -> USpaceSaveSubsystem*;
@@ -121,7 +118,6 @@ class SPACEGAME_API USaveGameViewerWidget : public UUserWidget {
     void handle_create_profile(FString const& display_name);
     void handle_activate_profile();
     void handle_reset_test_profile();
-    void handle_back();
     void refresh_and_select(FString const& profile_id);
     void show_create_profile_error(FText const& error);
 

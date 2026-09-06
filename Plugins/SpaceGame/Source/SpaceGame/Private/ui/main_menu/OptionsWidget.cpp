@@ -56,7 +56,6 @@ auto UOptionsWidget::RebuildWidget() -> TSharedRef<SWidget> {
         .Style(&game_->get_ui_style())
         .InitialTab(active_tab_)
         .OnTabChanged(FOnOptionsTabChanged::CreateUObject(this, &ThisClass::handle_tab_changed))
-        .OnBack(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_back))
         .OnApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_apply))
         .OnReset(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset))
         .OnDirtyApply(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_dirty_apply))
@@ -75,7 +74,7 @@ auto UOptionsWidget::NativeOnFocusReceived(FGeometry const& geometry,
                                            FFocusEvent const& focus_event) -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    focus_active_tab();
+    focus_content();
     return FReply::Handled();
 }
 
@@ -88,6 +87,7 @@ void UOptionsWidget::select_tab(EOptionsTab const tab) {
 
 void UOptionsWidget::prepare_for_open() {
     exit_after_confirmation_ = false;
+    leave_continuation_.Unbind();
     if (IsValid(settings_)) {
         settings_->begin_edit();
     }
@@ -97,9 +97,31 @@ void UOptionsWidget::prepare_for_open() {
     refresh_view();
 }
 
+void UOptionsWidget::request_leave(FSimpleDelegate continuation) {
+    if (!IsValid(settings_)) {
+        continuation.ExecuteIfBound();
+        return;
+    }
+    if (settings_->is_awaiting_display_confirmation()) {
+        return;
+    }
+    if (!settings_->is_dirty()) {
+        settings_->cancel();
+        continuation.ExecuteIfBound();
+        return;
+    }
+
+    leave_continuation_ = MoveTemp(continuation);
+    if (options_view_.IsValid()) {
+        options_view_->show_dirty_prompt();
+    }
+    modal_state_changed.Broadcast(true);
+}
+
 void UOptionsWidget::request_back() {
     if (options_view_.IsValid() && options_view_->is_dirty_prompt_visible()) {
         options_view_->hide_dirty_prompt();
+        cancel_leave();
         return;
     }
     if (IsValid(settings_) && settings_->is_awaiting_display_confirmation()) {
@@ -110,26 +132,22 @@ void UOptionsWidget::request_back() {
         if (options_view_.IsValid()) {
             options_view_->show_dirty_prompt();
         }
+        modal_state_changed.Broadcast(true);
         return;
     }
     if (IsValid(settings_)) {
         settings_->cancel();
     }
-    back_requested.Broadcast();
 }
 
-void UOptionsWidget::focus_active_tab() {
+void UOptionsWidget::focus_content() {
     if (options_view_.IsValid()) {
-        options_view_->focus_active_tab();
+        options_view_->focus_content();
     }
 }
 
 auto UOptionsWidget::get_focus_target() const -> UWidget* {
     return const_cast<UOptionsWidget*>(this);
-}
-
-void UOptionsWidget::handle_back() {
-    request_back();
 }
 
 void UOptionsWidget::handle_tab_changed(EOptionsTab const tab) {
@@ -160,9 +178,7 @@ void UOptionsWidget::handle_dirty_apply() {
     }
     settings_->apply();
     if (!settings_->is_awaiting_display_confirmation()) {
-        settings_->cancel();
-        exit_after_confirmation_ = false;
-        back_requested.Broadcast();
+        complete_leave();
     }
 }
 
@@ -173,14 +189,14 @@ void UOptionsWidget::handle_dirty_discard() {
     if (IsValid(settings_)) {
         settings_->cancel();
     }
-    exit_after_confirmation_ = false;
-    back_requested.Broadcast();
+    complete_leave();
 }
 
 void UOptionsWidget::handle_dirty_stay() {
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
     }
+    cancel_leave();
 }
 
 void UOptionsWidget::handle_confirm_display() {
@@ -198,12 +214,13 @@ void UOptionsWidget::handle_revert_display() {
 void UOptionsWidget::handle_display_confirmation_changed(bool const visible) {
     refresh_view();
     if (!visible && exit_after_confirmation_) {
-        exit_after_confirmation_ = false;
         if (IsValid(settings_)) {
             settings_->cancel();
         }
-        back_requested.Broadcast();
+        complete_leave();
+        return;
     }
+    modal_state_changed.Broadcast(visible);
 }
 
 void UOptionsWidget::refresh_view() {
@@ -228,6 +245,23 @@ auto UOptionsWidget::active_category() const -> TOptional<EGameSettingCategory> 
             return {};
     }
     return {};
+}
+
+void UOptionsWidget::complete_leave() {
+    auto continuation{MoveTemp(leave_continuation_)};
+    leave_continuation_.Unbind();
+    exit_after_confirmation_ = false;
+    if (IsValid(settings_)) {
+        settings_->cancel();
+    }
+    modal_state_changed.Broadcast(false);
+    continuation.ExecuteIfBound();
+}
+
+void UOptionsWidget::cancel_leave() {
+    leave_continuation_.Unbind();
+    exit_after_confirmation_ = false;
+    modal_state_changed.Broadcast(false);
 }
 
 } // namespace ml::ioj

@@ -19,8 +19,6 @@
 #include "Widgets/SOverlay.h"
 #include "Widgets/Text/STextBlock.h"
 
-#include "generated/ml/ioj/SGameOptionsView.slate.generated.h"
-
 namespace ml::ioj {
 namespace {
 auto category_label(EGameSettingCategory const category) -> FText {
@@ -98,7 +96,6 @@ void SGameOptionsView::Construct(FArguments const& args) {
     active_tab_ = args._InitialTab;
     check(style_ != nullptr);
     on_tab_changed_ = args._OnTabChanged;
-    on_back_ = args._OnBack;
     on_apply_ = args._OnApply;
     on_reset_ = args._OnReset;
     on_dirty_apply_ = args._OnDirtyApply;
@@ -106,6 +103,7 @@ void SGameOptionsView::Construct(FArguments const& args) {
     on_dirty_stay_ = args._OnDirtyStay;
     on_confirm_display_ = args._OnConfirmDisplay;
     on_revert_display_ = args._OnRevertDisplay;
+    page_focus_actions_.SetNum(static_cast<int32>(EOptionsTab::System) + 1);
 
     auto header{build_header()};
     auto body{build_body()};
@@ -113,16 +111,12 @@ void SGameOptionsView::Construct(FArguments const& args) {
     dirty_prompt_ = build_dirty_prompt();
     display_prompt_ = build_display_prompt();
 
-    auto const& settings_style{style_->settings()};
-    auto panel{::SlateGenerated::ml::ioj::SGameOptionsViewBuilder{*this}.BuildPanel(
-        &style_->settings().page_background,
-        settings_style.page_margin,
-        settings_style.window_size.X,
-        settings_style.window_size.Y,
-        &style_->chrome(),
-        header,
-        body,
-        footer)};
+    auto panel{SNew(SBorder)
+                   .BorderImage(&style_->chrome().body_background)
+                   .Padding(style_->settings().body_padding)
+                       [SNew(SVerticalBox) + SVerticalBox::Slot().AutoHeight()[header] +
+                        SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{0.0f, 18.0f})[body] +
+                        SVerticalBox::Slot().AutoHeight()[footer]]};
 
     dirty_prompt_->SetVisibility(EVisibility::Collapsed);
     display_prompt_->SetVisibility(EVisibility::Collapsed);
@@ -144,13 +138,6 @@ void SGameOptionsView::refresh() {
     auto* const settings{settings_.Get()};
     if (settings == nullptr || style_ == nullptr) {
         return;
-    }
-
-    auto const tab_count{tab_buttons_.Num()};
-    for (int32 index{}; index < tab_count; ++index) {
-        if (tab_buttons_[index].IsValid()) {
-            tab_buttons_[index]->set_selected(index == static_cast<int32>(active_tab_));
-        }
     }
 
     auto const category{active_category()};
@@ -182,11 +169,13 @@ void SGameOptionsView::refresh() {
     }
 }
 
-void SGameOptionsView::focus_active_tab() {
+void SGameOptionsView::focus_content() {
     auto const index{static_cast<int32>(active_tab_)};
-    if (tab_buttons_.IsValidIndex(index) && tab_buttons_[index].IsValid()) {
-        tab_buttons_[index]->focus();
+    if (page_focus_actions_.IsValidIndex(index) && page_focus_actions_[index]) {
+        page_focus_actions_[index]();
+        return;
     }
+    FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EFocusCause::SetDirectly);
 }
 
 void SGameOptionsView::show_dirty_prompt() {
@@ -218,18 +207,11 @@ auto SGameOptionsView::OnFocusReceived(FGeometry const& geometry, FFocusEvent co
     -> FReply {
     static_cast<void>(geometry);
     static_cast<void>(focus_event);
-    focus_active_tab();
     return FReply::Handled();
 }
 
 auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply {
     auto const key{key_event.GetKey()};
-    if (!dirty_prompt_visible_ && !display_prompt_visible_ &&
-        (key == EKeys::Gamepad_LeftShoulder || key == EKeys::Gamepad_RightShoulder)) {
-        cycle_tab(key == EKeys::Gamepad_LeftShoulder ? -1 : 1);
-        return FReply::Handled();
-    }
-
     auto buttons{TArray<TSharedPtr<SGameButton>>{}};
     if (dirty_prompt_visible_) {
         buttons = {dirty_apply_button_, dirty_discard_button_, dirty_stay_button_};
@@ -265,95 +247,15 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
 }
 
 auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
-    return SNew(SBorder)
-        .BorderImage(&style_->chrome().header_background)
-        .Padding(style_->chrome().header_padding)
-            [SNew(SHorizontalBox) +
-             SHorizontalBox::Slot().AutoWidth().VAlign(
-                 VAlign_Center)[SNew(SImage)
-                                    .Image(&style_->icon(EGameUiIcon::Hive))
-                                    .ColorAndOpacity(style_->palette().honey)
-                                    .DesiredSizeOverride(FVector2D{28.0f, 28.0f})] +
-             SHorizontalBox::Slot()
-                 .FillWidth(1.0f)
-                 .Padding(FMargin{14.0f, 0.0f})
-                 .VAlign(VAlign_Center)[SNew(STextBlock)
-                                            .Text(NSLOCTEXT("OptionsMenu", "Title", "OPTIONS"))
-                                            .TextStyle(&style_->text(EGameTextStyle::Heading2))] +
-             SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
-                 [SNew(STextBlock)
-                      .Text(NSLOCTEXT("OptionsMenu", "HiveSystemLabel", "HIVE SYSTEMS // CONFIG"))
-                      .TextStyle(&style_->text(EGameTextStyle::Caption))]];
-}
-
-auto SGameOptionsView::build_navigation() -> TSharedRef<SWidget> {
-    auto tabs{SNew(SVerticalBox)};
-    auto const add_tab = [this, &tabs](EOptionsTab const tab) {
-        TSharedPtr<SHiveNavigationButton> button;
-        tabs->AddSlot().AutoHeight().Padding(
-            FMargin{0.0f, 0.0f, 0.0f, style_->chrome().navigation_spacing})
-            [SAssignNew(button, SHiveNavigationButton)
-                 .Style(style_)
-                 .Icon(&style_->icon(tab_icon(tab)))
-                 .Text_Lambda([this, tab] {
-                     auto text{tab_text(tab)};
-                     auto* const settings{settings_.Get()};
-                     auto const category = [tab]() -> TOptional<EGameSettingCategory> {
-                         switch (tab) {
-                             case EOptionsTab::Video:
-                                 return EGameSettingCategory::Video;
-                             case EOptionsTab::Gameplay:
-                                 return EGameSettingCategory::Gameplay;
-                             case EOptionsTab::Audio:
-                                 return EGameSettingCategory::Audio;
-                             case EOptionsTab::Controls:
-                                 return EGameSettingCategory::Controls;
-                             case EOptionsTab::Accessibility:
-                                 return EGameSettingCategory::Accessibility;
-                             case EOptionsTab::System:
-                                 return {};
-                         }
-                         return {};
-                     }();
-                     if (settings != nullptr && category.IsSet() &&
-                         settings->is_dirty(category.GetValue())) {
-                         text = FText::Format(NSLOCTEXT("OptionsMenu", "DirtyTabLabel", "{0} *"),
-                                              text);
-                     }
-                     return text;
-                 })
-                 .OnClicked(FOnClicked::CreateSP(this, &SGameOptionsView::handle_tab, tab))];
-        tab_buttons_.Add(button);
-    };
-
-    add_tab(EOptionsTab::Video);
-    add_tab(EOptionsTab::Gameplay);
-    add_tab(EOptionsTab::Audio);
-    add_tab(EOptionsTab::Controls);
-    add_tab(EOptionsTab::Accessibility);
-    add_tab(EOptionsTab::System);
-
-    tabs->AddSlot().FillHeight(1.0f);
-    tabs->AddSlot()
-        .AutoHeight()
-        .HAlign(HAlign_Center)
-        .Padding(FMargin{
-            0.0f,
-            18.0f,
-            0.0f,
-            10.0f})[SNew(SImage)
-                        .Image(&style_->icon(EGameUiIcon::Hive))
-                        .ColorAndOpacity(style_->palette().text_muted.CopyWithNewOpacity(0.16f))
-                        .DesiredSizeOverride(FVector2D{72.0f, 72.0f})];
-    tabs->AddSlot().AutoHeight().HAlign(
-        HAlign_Center)[SNew(STextBlock)
-                           .Text(
-                               NSLOCTEXT("OptionsMenu", "HiveNavigationFooter", "HIVE // SETTINGS"))
-                           .TextStyle(&style_->text(EGameTextStyle::Caption))];
-
-    return SNew(SBorder)
-        .BorderImage(&style_->chrome().navigation_background)
-        .Padding(FMargin{14.0f})[SNew(SBox).WidthOverride(style_->chrome().navigation_width)[tabs]];
+    return SNew(SVerticalBox) +
+           SVerticalBox::Slot()
+               .AutoHeight()[SNew(STextBlock)
+                                 .Text(NSLOCTEXT("OptionsMenu", "Section", "SYSTEM CONFIGURATION"))
+                                 .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+           SVerticalBox::Slot().AutoHeight().Padding(
+               FMargin{0.0f, 4.0f})[SNew(STextBlock)
+                                        .Text_Lambda([this] { return tab_text(active_tab_); })
+                                        .TextStyle(&style_->text(EGameTextStyle::Heading1))];
 }
 
 auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
@@ -364,14 +266,7 @@ auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Controls)] +
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Accessibility)] +
         SWidgetSwitcher::Slot()[build_system_page()];
-    return SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_navigation()] +
-           SHorizontalBox::Slot().FillWidth(1.0f).Padding(FMargin{
-               2.0f,
-               0.0f,
-               0.0f,
-               0.0f})[SNew(SBorder)
-                          .BorderImage(&style_->chrome().body_background)
-                          .Padding(style_->settings().body_padding)[page_switcher_.ToSharedRef()]];
+    return page_switcher_.ToSharedRef();
 }
 
 auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
@@ -379,16 +274,7 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
     return SNew(SBorder)
         .BorderImage(&style_->chrome().footer_background)
         .Padding(style_->chrome().footer_padding)
-            [SNew(SHorizontalBox) +
-             SHorizontalBox::Slot()
-                 .AutoWidth()[SNew(SGameButton)
-                                  .Style(&style_->button(EGameButtonStyle::Secondary))
-                                  .Text(NSLOCTEXT("OptionsMenu", "Back", "Back"))
-                                  .OnClicked_Lambda([delegate = on_back_]() {
-                                      delegate.ExecuteIfBound();
-                                      return FReply::Handled();
-                                  })] +
-             SHorizontalBox::Slot().FillWidth(1.0f) +
+            [SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.0f) +
              SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, spacing, 0.0f})
                  [SAssignNew(reset_button_, SGameButton)
                       .Style(&style_->button(EGameButtonStyle::Secondary))
@@ -447,8 +333,13 @@ auto SGameOptionsView::build_category_page(EGameSettingCategory const category)
                 current_section = next_section;
                 rows = SNew(SVerticalBox);
             }
-            rows->AddSlot().AutoHeight().Padding(
-                style_->settings().row_padding)[build_setting_row(*descriptor)];
+            TFunction<void()> focus_action;
+            auto const row{build_setting_row(*descriptor, focus_action)};
+            auto const page_index{static_cast<int32>(category)};
+            if (!page_focus_actions_[page_index] && focus_action) {
+                page_focus_actions_[page_index] = MoveTemp(focus_action);
+            }
+            rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)[row];
         }
         flush_section();
     }
@@ -461,8 +352,8 @@ auto SGameOptionsView::build_category_page(EGameSettingCategory const category)
            SScrollBox::Slot()[content];
 }
 
-auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descriptor)
-    -> TSharedRef<SWidget> {
+auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descriptor,
+                                         TFunction<void()>& focus_action) -> TSharedRef<SWidget> {
     auto const weak_settings{settings_};
     auto available{TAttribute<bool>::CreateLambda([weak_settings, setting = descriptor.id] {
         auto const* const settings{weak_settings.Get()};
@@ -471,6 +362,7 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
 
     switch (descriptor.control_kind) {
         case ESettingControlKind::Toggle: {
+            TSharedPtr<SSettingsToggle> control;
             auto checked{TAttribute<bool>::CreateLambda([weak_settings, setting = descriptor.id] {
                 auto const* const settings{weak_settings.Get()};
                 if (settings == nullptr) {
@@ -480,21 +372,24 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                 auto const* const typed{std::get_if<bool>(&value)};
                 return typed != nullptr && *typed;
             })};
-            return SNew(SSettingsToggle)
-                .Style(&style_->settings())
-                .Label(descriptor.label)
-                .ToolTipText(descriptor.tooltip)
-                .Checked(checked)
-                .ControlEnabled(available)
-                .OnCheckStateChanged_Lambda([weak_settings,
-                                             setting = descriptor.id](ECheckBoxState const state) {
-                    if (auto* const settings{weak_settings.Get()}) {
-                        settings->set_setting(setting,
-                                              FGameSettingValue{state == ECheckBoxState::Checked});
-                    }
-                });
+            auto row{SAssignNew(control, SSettingsToggle)
+                         .Style(&style_->settings())
+                         .Label(descriptor.label)
+                         .ToolTipText(descriptor.tooltip)
+                         .Checked(checked)
+                         .ControlEnabled(available)
+                         .OnCheckStateChanged_Lambda([weak_settings, setting = descriptor.id](
+                                                         ECheckBoxState const state) {
+                             if (auto* const settings{weak_settings.Get()}) {
+                                 settings->set_setting(
+                                     setting, FGameSettingValue{state == ECheckBoxState::Checked});
+                             }
+                         })};
+            focus_action = [control] { control->focus(); };
+            return row;
         }
         case ESettingControlKind::Choice: {
+            TSharedPtr<SSettingsChoice> control;
             auto const options{settings_.IsValid() ? settings_->options(descriptor.id)
                                                    : TArray<FGameSettingOption>{}};
             TArray<FText> labels;
@@ -513,21 +408,25 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                         return option.value == value;
                     });
                 })};
-            return SNew(SSettingsChoice)
-                .Style(&style_->settings())
-                .Label(descriptor.label)
-                .ToolTipText(descriptor.tooltip)
-                .Options(MoveTemp(labels))
-                .SelectedIndex(selected)
-                .ControlEnabled(available)
-                .OnSelectionChanged_Lambda([weak_settings, setting = descriptor.id, options](
-                                               int32 const index) {
-                    if (auto* const settings{weak_settings.Get()}; options.IsValidIndex(index)) {
-                        settings->set_setting(setting, options[index].value);
-                    }
-                });
+            auto row{SAssignNew(control, SSettingsChoice)
+                         .Style(&style_->settings())
+                         .Label(descriptor.label)
+                         .ToolTipText(descriptor.tooltip)
+                         .Options(MoveTemp(labels))
+                         .SelectedIndex(selected)
+                         .ControlEnabled(available)
+                         .OnSelectionChanged_Lambda(
+                             [weak_settings, setting = descriptor.id, options](int32 const index) {
+                                 if (auto* const settings{weak_settings.Get()};
+                                     options.IsValidIndex(index)) {
+                                     settings->set_setting(setting, options[index].value);
+                                 }
+                             })};
+            focus_action = [control] { control->focus(); };
+            return row;
         }
         case ESettingControlKind::FloatRange: {
+            TSharedPtr<SSettingsSlider> control;
             auto value{TAttribute<float>::CreateLambda([weak_settings, setting = descriptor.id] {
                 auto const* const settings{weak_settings.Get()};
                 if (settings == nullptr) {
@@ -539,23 +438,27 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
             })};
             auto value_text{TAttribute<FText>::CreateLambda(
                 [this, descriptor] { return format_range_value(descriptor); })};
-            return SNew(SSettingsSlider)
-                .Style(&style_->settings())
-                .Label(descriptor.label)
-                .ToolTipText(descriptor.tooltip)
-                .Value(value)
-                .ValueText(value_text)
-                .Minimum(static_cast<float>(descriptor.minimum))
-                .Maximum(static_cast<float>(descriptor.maximum))
-                .Step(static_cast<float>(descriptor.step))
-                .ControlEnabled(available)
-                .OnValueChanged_Lambda([weak_settings, setting = descriptor.id](float const next) {
-                    if (auto* const settings{weak_settings.Get()}) {
-                        settings->set_setting(setting, FGameSettingValue{next});
-                    }
-                });
+            auto row{SAssignNew(control, SSettingsSlider)
+                         .Style(&style_->settings())
+                         .Label(descriptor.label)
+                         .ToolTipText(descriptor.tooltip)
+                         .Value(value)
+                         .ValueText(value_text)
+                         .Minimum(static_cast<float>(descriptor.minimum))
+                         .Maximum(static_cast<float>(descriptor.maximum))
+                         .Step(static_cast<float>(descriptor.step))
+                         .ControlEnabled(available)
+                         .OnValueChanged_Lambda(
+                             [weak_settings, setting = descriptor.id](float const next) {
+                                 if (auto* const settings{weak_settings.Get()}) {
+                                     settings->set_setting(setting, FGameSettingValue{next});
+                                 }
+                             })};
+            focus_action = [control] { control->focus(); };
+            return row;
         }
         case ESettingControlKind::IntegerRange: {
+            TSharedPtr<SSettingsSlider> control;
             auto value{TAttribute<float>::CreateLambda([weak_settings, setting = descriptor.id] {
                 auto const* const settings{weak_settings.Get()};
                 if (settings == nullptr) {
@@ -575,22 +478,25 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                     auto const* const typed{std::get_if<int32>(&current)};
                     return typed != nullptr ? FText::AsNumber(*typed) : FText::GetEmpty();
                 })};
-            return SNew(SSettingsSlider)
-                .Style(&style_->settings())
-                .Label(descriptor.label)
-                .ToolTipText(descriptor.tooltip)
-                .Value(value)
-                .ValueText(value_text)
-                .Minimum(static_cast<float>(descriptor.minimum))
-                .Maximum(static_cast<float>(descriptor.maximum))
-                .Step(static_cast<float>(descriptor.step))
-                .ControlEnabled(available)
-                .OnValueChanged_Lambda([weak_settings, setting = descriptor.id](float const next) {
-                    if (auto* const settings{weak_settings.Get()}) {
-                        settings->set_setting(setting,
-                                              FGameSettingValue{FMath::RoundToInt32(next)});
-                    }
-                });
+            auto row{SAssignNew(control, SSettingsSlider)
+                         .Style(&style_->settings())
+                         .Label(descriptor.label)
+                         .ToolTipText(descriptor.tooltip)
+                         .Value(value)
+                         .ValueText(value_text)
+                         .Minimum(static_cast<float>(descriptor.minimum))
+                         .Maximum(static_cast<float>(descriptor.maximum))
+                         .Step(static_cast<float>(descriptor.step))
+                         .ControlEnabled(available)
+                         .OnValueChanged_Lambda(
+                             [weak_settings, setting = descriptor.id](float const next) {
+                                 if (auto* const settings{weak_settings.Get()}) {
+                                     settings->set_setting(
+                                         setting, FGameSettingValue{FMath::RoundToInt32(next)});
+                                 }
+                             })};
+            focus_action = [control] { control->focus(); };
+            return row;
         }
         case ESettingControlKind::Custom:
             return SNew(SSettingsReadOnlyRow)
@@ -775,12 +681,6 @@ auto SGameOptionsView::build_modal(TAttribute<FText> title,
                                           FMargin{0.0f, 24.0f, 0.0f, 0.0f})[actions]]]]];
 }
 
-auto SGameOptionsView::handle_tab(EOptionsTab const tab) -> FReply {
-    set_active_tab(tab);
-    on_tab_changed_.ExecuteIfBound(tab);
-    return FReply::Handled();
-}
-
 auto SGameOptionsView::tab_text(EOptionsTab const tab) const -> FText {
     switch (tab) {
         case EOptionsTab::Video:
@@ -797,35 +697,6 @@ auto SGameOptionsView::tab_text(EOptionsTab const tab) const -> FText {
             return NSLOCTEXT("OptionsMenu", "SystemTab", "System");
     }
     return FText::GetEmpty();
-}
-
-auto SGameOptionsView::tab_icon(EOptionsTab const tab) const -> EGameUiIcon {
-    switch (tab) {
-        case EOptionsTab::Video:
-            return EGameUiIcon::Video;
-        case EOptionsTab::Gameplay:
-            return EGameUiIcon::Gameplay;
-        case EOptionsTab::Audio:
-            return EGameUiIcon::Audio;
-        case EOptionsTab::Controls:
-            return EGameUiIcon::Controls;
-        case EOptionsTab::Accessibility:
-            return EGameUiIcon::Accessibility;
-        case EOptionsTab::System:
-            return EGameUiIcon::System;
-    }
-    checkNoEntry();
-    return EGameUiIcon::Hive;
-}
-
-void SGameOptionsView::cycle_tab(int32 const direction) {
-    auto constexpr tab_count{static_cast<int32>(EOptionsTab::System) + 1};
-    auto const current{static_cast<int32>(active_tab_)};
-    auto const next{(current + direction + tab_count) % tab_count};
-    auto const tab{static_cast<EOptionsTab>(next)};
-    set_active_tab(tab);
-    on_tab_changed_.ExecuteIfBound(tab);
-    focus_active_tab();
 }
 
 auto SGameOptionsView::setting_float(EGameSetting const setting) const -> float {
@@ -881,7 +752,7 @@ void SGameOptionsView::restore_focus() {
     if (auto const previous{previous_focus_.Pin()}; previous.IsValid()) {
         FSlateApplication::Get().SetKeyboardFocus(previous, EFocusCause::SetDirectly);
     } else {
-        focus_active_tab();
+        focus_content();
     }
     previous_focus_.Reset();
 }

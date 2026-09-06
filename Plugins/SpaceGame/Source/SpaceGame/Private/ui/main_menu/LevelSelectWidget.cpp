@@ -1,7 +1,8 @@
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 
 namespace ml::ioj {
-ULevelSelectWidget::ULevelSelectWidget() {
+ULevelSelectWidget::ULevelSelectWidget(FObjectInitializer const& object_initializer)
+    : Super(object_initializer) {
     SetIsFocusable(true);
 }
 
@@ -9,12 +10,4 @@ void ULevelSelectWidget::prepare_for_open(FName const preferred_level_id) noexce
     preferred_level_id_ = preferred_level_id;
 }
 
-auto ULevelSelectWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
-    return const_cast<ULevelSelectWidget*>(this);
-}
-
-auto ULevelSelectWidget::NativeOnHandleBackAction() -> bool {
-    DeactivateWidget();
-    return true;
-}
 }

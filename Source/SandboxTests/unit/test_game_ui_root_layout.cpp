@@ -5,7 +5,6 @@
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
-#include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 
@@ -51,14 +50,11 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(TEXT("Main menu is pushed"), root->show_main_menu(false));
         auto* const main_menu{Cast<ml::ioj::UMainMenuWidget>(root->get_active_screen())};
-        auto* const main_page{IsValid(main_menu)
-                                  ? Cast<ml::ioj::UMainMenuLandingWidget>(
-                                        main_menu->GetWidgetFromName(TEXT("main_page")))
-                                  : nullptr};
-        if (!TestRunner->TestTrue(TEXT("Main menu and landing page are active"),
-                                  IsValid(main_menu) && IsValid(main_page))) {
+        if (!TestRunner->TestTrue(TEXT("Command-deck main menu is active"), IsValid(main_menu))) {
             return;
         }
+        TestRunner->TestTrue(TEXT("Select Mission is the initial command-deck page"),
+                             main_menu->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
         auto const menu_input_config{main_menu->GetDesiredInputConfig()};
         TestRunner->TestTrue(
             TEXT("Active menus own menu input without mouse capture"),
@@ -75,27 +71,26 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
                                  root_menu_input_config->GetMouseCaptureMode() ==
                                      EMouseCaptureMode::NoCapture);
 
-        main_page->select_mission_requested.Broadcast();
-        auto* const level_select{Cast<ml::ioj::ULevelSelectWidget>(root->get_active_screen())};
-        TestRunner->TestTrue(TEXT("Select Mission pushes the level selector"),
+        auto* const level_select{main_menu->get_level_select_widget()};
+        TestRunner->TestTrue(TEXT("Select Mission is hosted by the command deck"),
                              IsValid(level_select));
         TestRunner->TestEqual(
-            TEXT("The screen stack contains main and level select"), root->get_screen_count(), 2);
+            TEXT("Hosted pages do not add screens to the stack"), root->get_screen_count(), 1);
         auto const transitioned_input_config{root->GetDesiredInputConfig()};
         TestRunner->TestTrue(
-            TEXT("Pushing level select does not expose gameplay mouse capture"),
+            TEXT("Hosted level select does not expose gameplay mouse capture"),
             transitioned_input_config.IsSet() &&
                 transitioned_input_config->GetInputMode() == ECommonInputMode::Menu &&
                 transitioned_input_config->GetMouseCaptureMode() == EMouseCaptureMode::NoCapture);
-        if (IsValid(level_select)) {
-            level_select->DeactivateWidget();
-        }
-        TestRunner->TestTrue(TEXT("Back restores the existing main menu"),
-                             root->get_active_screen() == main_menu);
+        main_menu->select_page(ml::ioj::EMainMenuPage::DataArchive);
+        main_menu->select_page(ml::ioj::EMainMenuPage::SelectMission);
+        TestRunner->TestTrue(TEXT("Page navigation retains the existing command deck"),
+                             root->get_active_screen() == main_menu &&
+                                 main_menu->get_level_select_widget() == level_select);
         TestRunner->TestEqual(
-            TEXT("The level selector is removed from the stack"), root->get_screen_count(), 1);
-        TestRunner->TestTrue(TEXT("Returning restores the landing page as the focus target"),
-                             main_menu->GetDesiredFocusTarget() == main_page);
+            TEXT("Page navigation leaves the screen stack unchanged"), root->get_screen_count(), 1);
+        TestRunner->TestTrue(TEXT("The command deck remains the CommonUI focus target"),
+                             main_menu->GetDesiredFocusTarget() == main_menu);
 
         auto* const pause_action{LoadObject<UInputAction>(
             nullptr, TEXT("/SpaceGame/Input/SpaceShip/IA_pause.IA_pause"))};

@@ -1,126 +1,265 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
 
+#include "SMainMenuView.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ui/main_menu/MainMenuLandingWidget.h"
+#include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
+#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 
-#include <Components/WidgetSwitcher.h>
+#include <Engine/GameInstance.h>
 #include <Kismet/KismetSystemLibrary.h>
+#include <Widgets/SNullWidget.h>
 
 namespace ml::ioj {
+UMainMenuWidget::UMainMenuWidget() {
+    SetIsFocusable(true);
+}
+
 void UMainMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    if (!IsValid(main_page) || !IsValid(save_game_viewer) || !IsValid(options_widget)) {
+    auto* const game_instance{GetGameInstance()};
+    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
+    if (!IsValid(game_)) {
         UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("UMainMenuWidget::NativeOnInitialized: One or more bound widgets are "
-                    "invalid."));
-        return;
+               Warning,
+               TEXT("UMainMenuWidget: Game subsystem is unavailable; using the default UI theme."));
+        auto const* const default_theme{GetDefault<USpaceGameUiTheme>()};
+        check(IsValid(default_theme));
+        fallback_style_ = default_theme->compile();
     }
+}
 
-    main_page->select_mission_requested.AddUObject(this, &ThisClass::handle_select_mission);
-    main_page->save_data_requested.AddUObject(this, &ThisClass::handle_save_games);
-    main_page->options_requested.AddUObject(this, &ThisClass::handle_options);
-    main_page->quit_game_requested.AddUObject(this, &ThisClass::handle_quit);
-    save_game_viewer->back_requested.AddUObject(this, &ThisClass::return_from_save_games);
-    options_widget->back_requested.AddUObject(this, &ThisClass::return_from_options);
+void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
+                                       bool const focus_mission_content,
+                                       FName const preferred_level_id) {
+    level_select_class_ = level_select_class;
+    focus_mission_content_ = focus_mission_content;
+    preferred_level_id_ = preferred_level_id;
+    create_content_widgets();
+
+    if (IsValid(level_select_widget_)) {
+        level_select_widget_->prepare_for_open(preferred_level_id_);
+        level_select_widget_->refresh();
+        if (view_.IsValid()) {
+            view_->set_mission_content(level_select_widget_->TakeWidget());
+        }
+    }
+    if (focus_mission_content_ && view_.IsValid()) {
+        view_->focus_content_on_next_focus();
+    }
+}
+
+void UMainMenuWidget::select_page(EMainMenuPage const page) {
+    request_page(page);
+}
+
+auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
+    create_content_widgets();
+    auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
+    auto const mission_content{IsValid(level_select_widget_) ? level_select_widget_->TakeWidget()
+                                                             : SNullWidget::NullWidget};
+    auto const archive_content{IsValid(save_game_viewer_) ? save_game_viewer_->TakeWidget()
+                                                          : SNullWidget::NullWidget};
+    auto const options_content{IsValid(options_widget_) ? options_widget_->TakeWidget()
+                                                        : SNullWidget::NullWidget};
+
+    auto result{
+        SAssignNew(view_, SMainMenuView)
+            .Style(style)
+            .InitialPage(active_page_)
+            .MissionContent()[mission_content]
+            .ArchiveContent()[archive_content]
+            .OptionsContent()[options_content]
+            .OnPageSelected(FOnMainMenuPageSelected::CreateUObject(this, &ThisClass::request_page))
+            .OnQuit(FSimpleDelegate::CreateUObject(this, &ThisClass::request_quit))
+            .OnFocusContent(
+                FSimpleDelegate::CreateUObject(this, &ThisClass::focus_active_content))};
+    if (focus_mission_content_) {
+        view_->focus_content_on_next_focus();
+    }
+    return result;
+}
+
+void UMainMenuWidget::ReleaseSlateResources(bool const release_children) {
+    Super::ReleaseSlateResources(release_children);
+    view_.Reset();
 }
 
 auto UMainMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
-    switch (active_page_) {
-        case EMainMenuPage::Main: {
-            return main_page;
-        }
-        case EMainMenuPage::SaveGames: {
-            return IsValid(save_game_viewer) ? save_game_viewer->get_focus_target() : nullptr;
-        }
-        case EMainMenuPage::Options: {
-            return IsValid(options_widget) ? options_widget->get_focus_target() : nullptr;
+    return const_cast<UMainMenuWidget*>(this);
+}
+
+auto UMainMenuWidget::NativeOnFocusReceived(FGeometry const& geometry,
+                                            FFocusEvent const& focus_event) -> FReply {
+    static_cast<void>(geometry);
+    static_cast<void>(focus_event);
+    if (view_.IsValid()) {
+        if (focus_mission_content_) {
+            focus_mission_content_ = false;
+            focus_active_content();
+        } else {
+            view_->focus_navigation();
         }
     }
-    return nullptr;
+    return FReply::Handled();
 }
 
 auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
-    switch (active_page_) {
-        case EMainMenuPage::SaveGames: {
-            save_game_viewer->request_back();
-            break;
+    if (page_modal_visible_) {
+        if (active_page_ == EMainMenuPage::DataArchive && IsValid(save_game_viewer_)) {
+            save_game_viewer_->request_back();
+        } else if (is_configuration_page(active_page_) && IsValid(options_widget_)) {
+            options_widget_->request_back();
         }
-        case EMainMenuPage::Options: {
-            options_widget->request_back();
-            break;
-        }
-        case EMainMenuPage::Main: {
-            break;
-        }
+        return true;
+    }
+    if (view_.IsValid()) {
+        view_->focus_navigation();
     }
     return true;
 }
 
-void UMainMenuWidget::handle_select_mission() {
-    level_select_requested.Broadcast();
+auto UMainMenuWidget::is_configuration_page(EMainMenuPage const page) -> bool {
+    return page >= EMainMenuPage::Video && page <= EMainMenuPage::System;
 }
 
-void UMainMenuWidget::handle_save_games() {
-    set_active_page(EMainMenuPage::SaveGames);
+auto UMainMenuWidget::options_tab_for_page(EMainMenuPage const page) -> EOptionsTab {
+    switch (page) {
+        case EMainMenuPage::Video:
+            return EOptionsTab::Video;
+        case EMainMenuPage::Gameplay:
+            return EOptionsTab::Gameplay;
+        case EMainMenuPage::Audio:
+            return EOptionsTab::Audio;
+        case EMainMenuPage::Controls:
+            return EOptionsTab::Controls;
+        case EMainMenuPage::Accessibility:
+            return EOptionsTab::Accessibility;
+        case EMainMenuPage::System:
+            return EOptionsTab::System;
+        case EMainMenuPage::SelectMission:
+        case EMainMenuPage::DataArchive:
+            break;
+    }
+    checkNoEntry();
+    return EOptionsTab::Video;
 }
 
-void UMainMenuWidget::handle_options() {
-    options_widget->prepare_for_open();
-    set_active_page(EMainMenuPage::Options);
+void UMainMenuWidget::create_content_widgets() {
+    auto* const game_instance{GetGameInstance()};
+    auto* const owning_player{GetOwningPlayer()};
+    auto* const world{GetWorld()};
+    if (!IsValid(save_game_viewer_)) {
+        save_game_viewer_ =
+            IsValid(owning_player) ? CreateWidget<USaveGameViewerWidget>(
+                                         owning_player, USaveGameViewerWidget::StaticClass())
+            : IsValid(game_instance) ? CreateWidget<USaveGameViewerWidget>(
+                                           game_instance, USaveGameViewerWidget::StaticClass())
+            : IsValid(world)
+                ? CreateWidget<USaveGameViewerWidget>(world, USaveGameViewerWidget::StaticClass())
+                : nullptr;
+        if (IsValid(save_game_viewer_)) {
+            save_game_viewer_->modal_state_changed.AddUObject(
+                this, &ThisClass::handle_page_modal_changed);
+        }
+    }
+    if (!IsValid(options_widget_)) {
+        options_widget_ =
+            IsValid(owning_player)
+                ? CreateWidget<UOptionsWidget>(owning_player, UOptionsWidget::StaticClass())
+            : IsValid(game_instance)
+                ? CreateWidget<UOptionsWidget>(game_instance, UOptionsWidget::StaticClass())
+            : IsValid(world) ? CreateWidget<UOptionsWidget>(world, UOptionsWidget::StaticClass())
+                             : nullptr;
+        if (IsValid(options_widget_)) {
+            options_widget_->modal_state_changed.AddUObject(this,
+                                                            &ThisClass::handle_page_modal_changed);
+        }
+    }
+    if (!IsValid(level_select_widget_) && level_select_class_) {
+        level_select_widget_ =
+            IsValid(owning_player)   ? CreateWidget<ULevelSelectWidget>(owning_player,
+                                                                      level_select_class_,
+                                                                      TEXT("level_select_page"))
+            : IsValid(game_instance) ? CreateWidget<ULevelSelectWidget>(game_instance,
+                                                                        level_select_class_,
+                                                                        TEXT("level_select_page"))
+            : IsValid(world)         ? CreateWidget<ULevelSelectWidget>(
+                                   world, level_select_class_, TEXT("level_select_page"))
+                             : nullptr;
+        if (IsValid(level_select_widget_)) {
+            level_select_widget_->prepare_for_open(preferred_level_id_);
+        }
+    }
 }
 
-void UMainMenuWidget::handle_quit() {
-    UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
-}
-
-void UMainMenuWidget::return_from_save_games() {
-    main_page->set_preferred_action(EMainMenuAction::SaveData);
-    set_active_page(EMainMenuPage::Main);
-}
-
-void UMainMenuWidget::return_from_options() {
-    main_page->set_preferred_action(EMainMenuAction::Options);
-    set_active_page(EMainMenuPage::Main);
-}
-
-void UMainMenuWidget::set_active_page(EMainMenuPage const page) {
-    if (!IsValid(page_switcher) || !IsValid(main_page) || !IsValid(save_game_viewer) ||
-        !IsValid(options_widget)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("UMainMenuWidget::set_active_page: One or more bound widgets are invalid."));
+void UMainMenuWidget::request_page(EMainMenuPage const page) {
+    if (page == active_page_ || page_modal_visible_) {
         return;
     }
+    if (is_configuration_page(active_page_) && !is_configuration_page(page) &&
+        IsValid(options_widget_)) {
+        options_widget_->request_leave(
+            FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
+        return;
+    }
+    show_page(page);
+}
 
-    UWidget* active_widget{nullptr};
-    switch (page) {
-        case EMainMenuPage::Main: {
-            active_widget = main_page;
-            break;
-        }
-        case EMainMenuPage::SaveGames: {
-            active_widget = save_game_viewer;
-            break;
-        }
-        case EMainMenuPage::Options: {
-            active_widget = options_widget;
-            break;
-        }
-        default: {
-            UE_LOG(LogSandboxUI,
-                   Error,
-                   TEXT("UMainMenuWidget::set_active_page: Unhandled page value %d."),
-                   static_cast<int32>(page));
-            return;
+void UMainMenuWidget::show_page(EMainMenuPage const page) {
+    auto const entering_configuration{!configuration_open_ && is_configuration_page(page)};
+    if (!is_configuration_page(page)) {
+        configuration_open_ = false;
+    } else if (entering_configuration) {
+        configuration_open_ = true;
+        if (IsValid(options_widget_)) {
+            options_widget_->prepare_for_open();
         }
     }
 
     active_page_ = page;
-    page_switcher->SetActiveWidget(active_widget);
-    RequestRefreshFocus();
+    if (view_.IsValid()) {
+        view_->set_active_page(page);
+    }
+    if (page == EMainMenuPage::SelectMission && IsValid(level_select_widget_)) {
+        level_select_widget_->refresh();
+    } else if (is_configuration_page(page) && IsValid(options_widget_)) {
+        options_widget_->select_tab(options_tab_for_page(page));
+    }
 }
+
+void UMainMenuWidget::request_quit() {
+    if (page_modal_visible_) {
+        return;
+    }
+    if (is_configuration_page(active_page_) && IsValid(options_widget_)) {
+        options_widget_->request_leave(FSimpleDelegate::CreateUObject(this, &ThisClass::quit_game));
+        return;
+    }
+    quit_game();
 }
+
+void UMainMenuWidget::quit_game() {
+    UKismetSystemLibrary::QuitGame(this, GetOwningPlayer(), EQuitPreference::Quit, false);
+}
+
+void UMainMenuWidget::focus_active_content() {
+    if (active_page_ == EMainMenuPage::SelectMission && IsValid(level_select_widget_)) {
+        level_select_widget_->focus_primary_action();
+    } else if (active_page_ == EMainMenuPage::DataArchive && IsValid(save_game_viewer_)) {
+        save_game_viewer_->focus_primary_action();
+    } else if (is_configuration_page(active_page_) && IsValid(options_widget_)) {
+        options_widget_->focus_content();
+    }
+}
+
+void UMainMenuWidget::handle_page_modal_changed(bool const visible) {
+    page_modal_visible_ = visible;
+    if (view_.IsValid()) {
+        view_->set_navigation_enabled(!visible);
+    }
+}
+} // namespace ml::ioj

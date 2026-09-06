@@ -1,6 +1,5 @@
 #include <SandboxTests/support/test_setup.h>
 
-#include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
@@ -161,62 +160,35 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
-        FCommonInputBase::GetInputSettings()->LoadData();
-        auto const slate_widget{widget->TakeWidget()};
-        (void)slate_widget;
-
-        auto* const main_page{
-            Cast<ml::ioj::UMainMenuLandingWidget>(widget->GetWidgetFromName(TEXT("main_page")))};
-        auto* const options_widget{
-            Cast<ml::ioj::UOptionsWidget>(widget->GetWidgetFromName(TEXT("options_widget")))};
-        auto* const save_game_viewer{Cast<ml::ioj::USaveGameViewerWidget>(
-            widget->GetWidgetFromName(TEXT("save_game_viewer")))};
-        auto const main_bindings_valid{IsValid(main_page) && IsValid(save_game_viewer) &&
-                                       IsValid(options_widget)};
-        if (!TestRunner->TestTrue(TEXT("All required main menu bindings are valid"),
-                                  main_bindings_valid)) {
-            return;
-        }
-
         auto const level_select_class{LoadClass<ml::s7::UScriptLevelSelectWidget>(
             nullptr, TEXT("/SpaceGame/UI/MainMenu/WBP_LevelSelect.WBP_LevelSelect_C"))};
-        auto* const level_select_widget{IsValid(level_select_class)
-                                            ? CreateWidget<ml::s7::UScriptLevelSelectWidget>(
-                                                  world_result.value(), level_select_class)
-                                            : nullptr};
-        if (!TestRunner->TestTrue(TEXT("Level selector is created"),
-                                  IsValid(level_select_widget))) {
+        if (!TestRunner->TestTrue(TEXT("Level selector class loads"),
+                                  IsValid(level_select_class))) {
             return;
         }
-        level_select_widget->prepare_for_open(TEXT("turret-trial-0"));
-        auto const level_select_slate{level_select_widget->TakeWidget()};
-        (void)level_select_slate;
-        level_select_widget->ActivateWidget();
+        widget->prepare_for_open(level_select_class, false, TEXT("turret-trial-0"));
+        FCommonInputBase::GetInputSettings()->LoadData();
+        auto const slate_widget{widget->TakeWidget()};
 
-        auto const level_select_frame{
-            find_slate_descendant(level_select_slate, FName{TEXT("ml::ioj::SHiveFrame")})};
-        if (!TestRunner->TestTrue(TEXT("Level selector uses the reusable Hive frame"),
-                                  level_select_frame.IsValid())) {
+        auto* const level_select_widget{
+            Cast<ml::s7::UScriptLevelSelectWidget>(widget->get_level_select_widget())};
+        auto* const options_widget{widget->get_options_widget()};
+        auto* const save_game_viewer{widget->get_save_game_viewer()};
+        if (!TestRunner->TestTrue(TEXT("All command-deck pages are created"),
+                                  IsValid(level_select_widget) && IsValid(options_widget) &&
+                                      IsValid(save_game_viewer))) {
             return;
         }
 
-        TestRunner->TestTrue(TEXT("Main page is active initially"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
-        TestRunner->TestTrue(TEXT("Landing page is the deterministic initial focus target"),
-                             widget->GetDesiredFocusTarget() == main_page);
-
-        bool level_select_requested{false};
-        widget->level_select_requested.AddLambda(
-            [&level_select_requested] { level_select_requested = true; });
-        main_page->select_mission_requested.Broadcast();
-        TestRunner->TestTrue(TEXT("Select Mission requests level select"), level_select_requested);
+        TestRunner->TestTrue(TEXT("Select Mission is active initially"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
+        TestRunner->TestTrue(TEXT("The command deck is the CommonUI focus bridge"),
+                             widget->GetDesiredFocusTarget() == widget);
         TestRunner->TestEqual(TEXT("Preferred stable level id restores selection"),
                               level_select_widget->get_selected_level_id(),
                               FName{TEXT("turret-trial-0")});
         TestRunner->TestTrue(TEXT("Preferred valid level can be launched immediately"),
                              level_select_widget->can_launch_selected_level());
-        TestRunner->TestTrue(TEXT("Level selector is the CommonUI focus bridge"),
-                             level_select_widget->GetDesiredFocusTarget() == level_select_widget);
 
         TestRunner->TestEqual(TEXT("Completed level rows receive a visible marker"),
                               ml::s7::format_level_row_title(TEXT("Border Skirmish"),
@@ -231,96 +203,46 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
             ml::s7::format_level_row_title(TEXT("Broken Script"), ml::s7::ELevelRowState::Invalid),
             FString{TEXT("! Broken Script")});
 
-        auto const selector_available_size{FVector2D{1366.0, 768.0}};
-        auto const selector_frame_size{arranged_size(
-            level_select_slate, level_select_frame.ToSharedRef(), selector_available_size)};
-        if (!TestRunner->TestTrue(TEXT("Level selector frame is arranged"),
-                                  selector_frame_size.IsSet())) {
+        auto const shell_frame{find_slate_descendant(slate_widget, FName{TEXT("SHiveFrame")})};
+        if (!TestRunner->TestTrue(TEXT("Command deck uses one reusable Hive frame"),
+                                  shell_frame.IsValid())) {
             return;
         }
-        TestRunner->TestTrue(
-            TEXT("Level selector fills the available viewport"),
-            selector_frame_size.GetValue().Equals(FVector2f{selector_available_size}));
-        main_page->save_data_requested.Broadcast();
-        TestRunner->TestTrue(TEXT("Save Data opens save viewer"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::SaveGames);
+        auto const available_size{FVector2D{1366.0, 768.0}};
+        auto const shell_size{
+            arranged_size(slate_widget, shell_frame.ToSharedRef(), available_size)};
+        TestRunner->TestTrue(TEXT("Command deck fills the available viewport"),
+                             shell_size.IsSet() &&
+                                 shell_size.GetValue().Equals(FVector2f{available_size}));
 
-        save_game_viewer->back_requested.Broadcast();
-        TestRunner->TestTrue(TEXT("Save Games Back returns to main"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
+        widget->select_page(ml::ioj::EMainMenuPage::DataArchive);
+        TestRunner->TestTrue(TEXT("Data Archive is selectable"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::DataArchive);
 
-        main_page->options_requested.Broadcast();
-        TestRunner->TestTrue(TEXT("Options opens options page"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Options);
+        widget->select_page(ml::ioj::EMainMenuPage::Video);
+        TestRunner->TestTrue(TEXT("Video configuration is selectable"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::Video);
         TestRunner->TestTrue(TEXT("Video is the initial options tab"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Video);
-
-        auto const options_slate{options_widget->TakeWidget()};
-        auto const options_frame{
-            find_slate_descendant(options_slate, FName{TEXT("::ml::ioj::SHiveFrame")})};
-        if (!TestRunner->TestTrue(TEXT("Options contains its reusable Hive frame"),
-                                  options_frame.IsValid())) {
-            return;
-        }
-        auto const window_size{configured_style.settings().window_size};
-        options_slate->SlatePrepass();
-        auto const video_desired_size{FVector2f{options_frame->GetDesiredSize()}};
-        TestRunner->TestTrue(TEXT("Populated options frame reports its configured size"),
-                             video_desired_size.Equals(window_size));
-
-        auto const constrained_size{FVector2D{480.0, 594.0}};
-        auto const video_frame_size{
-            arranged_size(options_slate, options_frame.ToSharedRef(), constrained_size)};
-        if (!TestRunner->TestTrue(TEXT("Options frame is arranged in a constrained viewport"),
-                                  video_frame_size.IsSet())) {
-            return;
-        }
-
-        options_widget->select_tab(ml::ioj::EOptionsTab::Gameplay);
+        widget->select_page(ml::ioj::EMainMenuPage::Gameplay);
         TestRunner->TestTrue(TEXT("Gameplay tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Gameplay);
-
-        options_widget->select_tab(ml::ioj::EOptionsTab::Audio);
+        widget->select_page(ml::ioj::EMainMenuPage::Audio);
         TestRunner->TestTrue(TEXT("Audio tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Audio);
-
-        options_widget->select_tab(ml::ioj::EOptionsTab::Controls);
+        widget->select_page(ml::ioj::EMainMenuPage::Controls);
         TestRunner->TestTrue(TEXT("Controls tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::Controls);
-
-        options_widget->select_tab(ml::ioj::EOptionsTab::Accessibility);
+        widget->select_page(ml::ioj::EMainMenuPage::Accessibility);
         TestRunner->TestTrue(TEXT("Accessibility tab is selectable"),
                              options_widget->get_active_tab() ==
                                  ml::ioj::EOptionsTab::Accessibility);
-        options_slate->SlatePrepass();
-        auto const accessibility_desired_size{FVector2f{options_frame->GetDesiredSize()}};
-        TestRunner->TestTrue(TEXT("Sparse options frame reports its configured size"),
-                             accessibility_desired_size.Equals(window_size));
-        auto const accessibility_frame_size{
-            arranged_size(options_slate, options_frame.ToSharedRef(), constrained_size)};
-        if (!TestRunner->TestTrue(TEXT("Sparse options frame remains arranged"),
-                                  accessibility_frame_size.IsSet())) {
-            return;
-        }
-        TestRunner->TestTrue(
-            TEXT("Options keeps stable arranged dimensions across sparse and populated tabs"),
-            video_frame_size.GetValue().Equals(accessibility_frame_size.GetValue()));
-        TestRunner->TestTrue(TEXT("Constrained options fit within the available viewport"),
-                             accessibility_frame_size.GetValue().X <= constrained_size.X &&
-                                 accessibility_frame_size.GetValue().Y <= constrained_size.Y);
-
-        options_widget->select_tab(ml::ioj::EOptionsTab::System);
+        widget->select_page(ml::ioj::EMainMenuPage::System);
         TestRunner->TestTrue(TEXT("System tab is selectable"),
                              options_widget->get_active_tab() == ml::ioj::EOptionsTab::System);
 
-        options_widget->select_tab(ml::ioj::EOptionsTab::Video);
-        TestRunner->TestTrue(TEXT("Video tab is selectable"),
-                             options_widget->get_active_tab() == ml::ioj::EOptionsTab::Video);
-
-        TestRunner->TestTrue(TEXT("Options is the CommonUI focus bridge"),
-                             options_widget->get_focus_target() == options_widget);
-        options_widget->request_back();
-        TestRunner->TestTrue(TEXT("Options Back returns to main"),
-                             widget->get_active_page() == ml::ioj::EMainMenuPage::Main);
+        widget->select_page(ml::ioj::EMainMenuPage::SelectMission);
+        TestRunner->TestTrue(TEXT("Operations remain reachable after configuration"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
     }
 };

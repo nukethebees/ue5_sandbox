@@ -8,7 +8,6 @@
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/style/SpaceGameUiTheme.h>
 
-#include <Components/NativeWidgetHost.h>
 #include <Engine/GameInstance.h>
 #include <Kismet/GameplayStatics.h>
 
@@ -141,32 +140,29 @@ void UScriptLevelSelectWidget::NativeOnInitialized() {
         check(IsValid(default_theme));
         fallback_style_ = default_theme->compile();
     }
+}
 
-    if (!IsValid(view_host)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("UScriptLevelSelectWidget: The native view host is unavailable."));
-        return;
-    }
+auto UScriptLevelSelectWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
-    view_host->SetContent(
+    auto result{
         SAssignNew(view_, SScriptLevelSelectView)
             .Style(style)
             .OnLevelSelected(FOnLevelRowSelected::CreateUObject(this, &ThisClass::select_level))
             .OnRefresh(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_refresh))
             .OnLaunch(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_launch))
-            .OnStartPaused(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_start_paused))
-            .OnBack(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_back)));
+            .OnStartPaused(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_start_paused))};
+    refresh_levels();
+    return result;
+}
+
+void UScriptLevelSelectWidget::refresh() {
     refresh_levels();
 }
 
-void UScriptLevelSelectWidget::NativeOnActivated() {
-    refresh_levels();
-    Super::NativeOnActivated();
-}
-
-auto UScriptLevelSelectWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
-    return const_cast<UScriptLevelSelectWidget*>(this);
+void UScriptLevelSelectWidget::focus_primary_action() {
+    if (view_.IsValid()) {
+        view_->focus_selected_level();
+    }
 }
 
 void UScriptLevelSelectWidget::ReleaseSlateResources(bool const release_children) {
@@ -368,10 +364,6 @@ void UScriptLevelSelectWidget::handle_launch() {
 
 void UScriptLevelSelectWidget::handle_start_paused() {
     launch_selected_level(ml::ioj::ELevelLaunchMode::Paused);
-}
-
-void UScriptLevelSelectWidget::handle_back() {
-    DeactivateWidget();
 }
 
 void UScriptLevelSelectWidget::publish_view() {

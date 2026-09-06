@@ -1,8 +1,6 @@
 #pragma once
 
 #include "Blueprint/UserWidget.h"
-#include "SandboxGameShared/ui/CommonMenuDelegates.h"
-
 #include "OptionsWidget.generated.h"
 
 namespace ml::ioj {
@@ -20,6 +18,8 @@ enum class EOptionsTab : uint8 {
     System,
 };
 
+DECLARE_MULTICAST_DELEGATE_OneParam(FOptionsModalStateChanged, bool);
+
 UCLASS()
 class SPACEGAME_API UOptionsWidget : public UUserWidget {
     GENERATED_BODY()
@@ -29,11 +29,12 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     [[nodiscard]] auto get_active_tab() const noexcept -> EOptionsTab { return active_tab_; }
     void select_tab(EOptionsTab tab);
     void prepare_for_open();
+    void request_leave(FSimpleDelegate continuation);
     void request_back();
-    void focus_active_tab();
+    void focus_content();
     [[nodiscard]] auto get_focus_target() const -> UWidget*;
 
-    FBackRequested back_requested;
+    FOptionsModalStateChanged modal_state_changed;
   protected:
     void NativeOnInitialized() override;
     void NativeConstruct() override;
@@ -42,7 +43,6 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void handle_back();
     void handle_tab_changed(EOptionsTab tab);
     void handle_apply();
     void handle_reset();
@@ -54,6 +54,8 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     void handle_display_confirmation_changed(bool visible);
     void refresh_view();
     auto active_category() const -> TOptional<EGameSettingCategory>;
+    void complete_leave();
+    void cancel_leave();
 
     UPROPERTY(Transient)
     UGameSettingsSubsystem* settings_{nullptr};
@@ -62,6 +64,7 @@ class SPACEGAME_API UOptionsWidget : public UUserWidget {
     UGameSubsystem* game_{nullptr};
 
     TSharedPtr<SGameOptionsView> options_view_{};
+    FSimpleDelegate leave_continuation_{};
     EOptionsTab active_tab_{EOptionsTab::Video};
     bool exit_after_confirmation_{};
 };

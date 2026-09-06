@@ -40,9 +40,6 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
     UPROPERTY(meta = (BindWidget))
     UCommonActivatableWidgetStack* modal_stack{nullptr};
   private:
-    void show_level_select();
-
     TWeakObjectPtr<UTestBatchGameUiData> ui_data_;
-    FName level_select_focus_id_{NAME_None};
 };
 }
