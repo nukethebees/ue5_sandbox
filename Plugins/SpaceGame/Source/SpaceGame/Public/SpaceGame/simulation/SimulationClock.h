@@ -24,7 +24,9 @@ struct SPACEGAME_API FSimulationClock {
     auto get_simulation_time() const noexcept -> time_type {
         return completed_ticks * tick_loop.tick_period;
     }
+    auto get_tick_rate() const noexcept -> time_type { return tick_loop.tick_rate; }
     auto get_tick_period() const noexcept -> time_type { return tick_loop.tick_period; }
+    auto get_time_scale() const noexcept -> time_type { return tick_loop.time_scale; }
 
     FFixedTickLoop tick_loop{};
     tick_type completed_ticks{};

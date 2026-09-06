@@ -135,10 +135,9 @@ void FLevelSimulation::finish_initialisation() {
     entity_registry_.commit_updates();
     entity_registry_.end_tick();
     query_manager_.update();
+    query_manager_.reset_runtime_telemetry();
     level_telemetry_manager_.initialise(
-        entity_registry_,
-        {.active_count = lasers_simulation_.get_num_instances(),
-         .cumulative_spawn_count = lasers_simulation_.get_number_spawned()});
+        clock_, entity_registry_, lasers_simulation_, query_manager_);
     event_manager_.configure_mission();
     mission_manager_.begin_play();
     state_ = EOrchestratorState::Paused;
@@ -347,9 +346,6 @@ void FLevelSimulation::advance(time_type const dt) {
         }
 
         mission_manager_.mission_tick();
-        if (on_mission_evaluated) {
-            on_mission_evaluated();
-        }
 
         if (presentation_.IsSet()) {
             presentation_->update_visual_data(clock_.tick_loop.tick_period);
@@ -386,11 +382,10 @@ void FLevelSimulation::advance(time_type const dt) {
         }
 
         ++clock_.completed_ticks;
-        level_telemetry_manager_.tick(
-            clock_.completed_ticks,
-            entity_registry_,
-            {.active_count = lasers_simulation_.get_num_instances(),
-             .cumulative_spawn_count = lasers_simulation_.get_number_spawned()});
+        level_telemetry_manager_.tick();
+        if (on_mission_evaluated) {
+            on_mission_evaluated();
+        }
         if (on_end_tick) {
             on_end_tick(*this);
         }

@@ -636,8 +636,7 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto const& kill_data{hud_manager.get_kill_data()};
 
     ml::ioj::FPauseMenuData pause_data;
-    pause_data.telemetry = orchestrator->get_level_telemetry_manager().make_snapshot(
-        orchestrator->get_completed_ticks(), orchestrator->get_tick_period());
+    pause_data.telemetry = orchestrator->get_level_telemetry_manager().make_snapshot();
     pause_data.alive_per_team_and_type = entity_counts.alive_per_team_and_type;
     pause_data.top_killers = kill_data.top_killers;
     pause_data.team_kill_matrix = kill_data.team_kill_matrix;
@@ -761,8 +760,7 @@ void ASpaceGamePlayerController::on_mission_completed(FTestMissionCompletion con
         return;
     }
 
-    auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot(
-        orchestrator->get_completed_ticks(), orchestrator->get_tick_period())};
+    auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot()};
     completion_menu =
         ui_root->show_level_completion(completion.level_display_name, MoveTemp(stats_snapshot));
     if (!IsValid(completion_menu)) {

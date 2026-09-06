@@ -70,6 +70,7 @@ struct SPACEGAME_API FLevelSimulation {
     void set_time_scale(time_type scale);
     auto get_state() const noexcept -> EOrchestratorState { return state_; }
     auto get_clock() const noexcept -> FSimulationClock const& { return clock_; }
+    auto get_time_scale() const noexcept -> time_type { return clock_.get_time_scale(); }
     auto has_presentation() const noexcept -> bool { return presentation_.IsSet(); }
     auto get_player_ship_simulation() -> ml::test_space_ship::Simulation* {
         return player_ship_simulation_.IsSet() ? &player_ship_simulation_.GetValue() : nullptr;
@@ -126,11 +127,11 @@ struct SPACEGAME_API FLevelSimulation {
     FTestMissionManager mission_manager_;
     ml::FSpatialQueryManager query_manager_;
     ml::FLevelEventManager event_manager_;
-    FLevelTelemetryManager level_telemetry_manager_;
     TOptional<ml::test_space_ship::Simulation> player_ship_simulation_;
     ml::test_space_ship::PhaseInterface player_ship_phase_;
     ml::test_lasers::Simulation lasers_simulation_;
     ml::test_lasers::PhaseInterface lasers_phase_;
+    FLevelTelemetryManager level_telemetry_manager_;
     ml::test_capital_ships::Simulation capital_ships_simulation_;
     ml::test_capital_ships::PhaseInterface capital_ships_phase_;
     ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation_;
