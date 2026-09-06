@@ -8,6 +8,7 @@
 
 class USandboxISMCComponent;
 class FLaserPresentationIndexingTest;
+class FSparkEffects;
 
 struct SPACEGAME_API FLaserPresentation {
     friend struct FLevelPresentation;
@@ -22,6 +23,7 @@ struct SPACEGAME_API FLaserPresentation {
     void set_actor_config(FLaserProjectileConfig const* new_config) noexcept {
         actor_config = new_config;
     }
+    void set_spark_effects(FSparkEffects& effects) noexcept { spark_effects_ = &effects; }
   private:
     void bind_simulation(ml::test_lasers::Simulation& new_simulation);
     auto simulation() -> ml::test_lasers::Simulation&;
@@ -36,6 +38,7 @@ struct SPACEGAME_API FLaserPresentation {
     void configure_ismc();
     void synchronize_material_data();
     void update_ismc();
+    void queue_hit_sparks();
     void spawn_hit_effects();
     void validate_array_sizes() const;
 
@@ -51,6 +54,7 @@ struct SPACEGAME_API FLaserPresentation {
     TArray<FMaterialData> material_data;
 
     bool have_warned_hit_effect{false};
+    FSparkEffects* spark_effects_{nullptr};
 
 #if WITH_EDITORONLY_DATA
     FDrawDebugConfig debug_drawer;

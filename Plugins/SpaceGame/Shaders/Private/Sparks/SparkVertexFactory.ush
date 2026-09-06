@@ -1,0 +1,189 @@
+#define PARTICLE_SPRITE_FACTORY 1
+
+#include "/Engine/Private/VertexFactoryCommon.ush"
+
+struct FSparkParticleRecord {
+    float4 InitialPositionSpawnTime;
+    float4 InitialVelocityLifetime;
+    float4 EmissiveColourSize;
+    float4 StreakTimeReserved;
+};
+
+StructuredBuffer<FSparkParticleRecord> SparkParticleData;
+float SparkEffectTime;
+float3 SparkAcceleration;
+float SparkMaximumDrawDistance;
+float SparkMinimumThicknessPixels;
+float SparkMaximumThicknessPixels;
+float SparkMaximumLengthPixels;
+
+#undef GetInstanceIdFromVF
+#define GetInstanceIdFromVF(VFInput) (GetInstanceId(VFInput.InstanceId))
+
+struct FVertexFactoryInput {
+    float2 Corner   : ATTRIBUTE0;
+    uint InstanceId : SV_InstanceID;
+    VF_MOBILE_MULTI_VIEW_DECLARE_INPUT_BLOCK()
+};
+
+struct FVertexFactoryInterpolantsVSToPS {
+    float2 TexCoord : TEXCOORD0;
+    float3 Colour   : TEXCOORD1;
+};
+
+struct FVertexFactoryIntermediates {
+    float4 WorldPosition;
+    float3 PositionInstanceSpace;
+    float2 TexCoord;
+    float3 Colour;
+    FSceneDataIntermediates SceneData;
+};
+
+FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.SceneData.Primitive;
+}
+
+FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput Input) {
+    FVertexFactoryIntermediates Intermediates = (FVertexFactoryIntermediates)0;
+    Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
+    FPrimitiveSceneData const PrimitiveData = GetPrimitiveData(Intermediates);
+    FSparkParticleRecord const Particle = SparkParticleData[GetInstanceId(Input.InstanceId)];
+
+    float const Age = SparkEffectTime - Particle.InitialPositionSpawnTime.w;
+    float const Lifetime = Particle.InitialVelocityLifetime.w;
+    float3 const LocalPosition = Particle.InitialPositionSpawnTime.xyz +
+                                 Particle.InitialVelocityLifetime.xyz * Age +
+                                 0.5 * SparkAcceleration * Age * Age;
+    float3 const LocalVelocity = Particle.InitialVelocityLifetime.xyz + SparkAcceleration * Age;
+    float3 const WorldOffset = mul(LocalPosition, DFToFloat3x3(PrimitiveData.LocalToWorld));
+    float3 const WorldVelocity = mul(LocalVelocity, DFToFloat3x3(PrimitiveData.LocalToWorld));
+    float3 const CameraFromAnchor =
+        DFFastSubtractDemote(ResolvedView.WorldCameraOrigin, PrimitiveData.ObjectWorldPosition);
+    float3 RelativePosition = WorldOffset - CameraFromAnchor;
+    float const DistanceSquared = dot(RelativePosition, RelativePosition);
+    bool const IsAlive = Age >= 0.0 && Age < Lifetime &&
+                         DistanceSquared <= SparkMaximumDrawDistance * SparkMaximumDrawDistance;
+
+    float3 const ProjectedVelocity =
+        WorldVelocity - ResolvedView.ViewForward * dot(WorldVelocity, ResolvedView.ViewForward);
+    float const ProjectedSpeed = length(ProjectedVelocity);
+    float3 const StreakDirection =
+        ProjectedSpeed > 0.01 ? ProjectedVelocity / ProjectedSpeed : ResolvedView.ViewRight;
+    float3 const ThicknessDirection = normalize(cross(ResolvedView.ViewForward, StreakDirection));
+
+    bool const IsOrthographic = IsOrthoProjection(ResolvedView.ViewToClip);
+    float const ProjectionDepth =
+        IsOrthographic ? 1.0 : max(abs(dot(RelativePosition, ResolvedView.ViewForward)), 1.0);
+    float const ViewToPixels =
+        ResolvedView.ViewToClip[1][1] * ResolvedView.ViewSizeAndInvSize.y * 0.5;
+    float const WorldUnitsPerPixel = ProjectionDepth / max(ViewToPixels, 0.0001);
+
+    float const OriginalHalfThickness = Particle.EmissiveColourSize.w * 0.5;
+    float const HalfThickness = clamp(OriginalHalfThickness,
+                                      SparkMinimumThicknessPixels * WorldUnitsPerPixel * 0.5,
+                                      SparkMaximumThicknessPixels * WorldUnitsPerPixel * 0.5);
+    float const RequestedLength =
+        max(ProjectedSpeed * Particle.StreakTimeReserved.x, Particle.EmissiveColourSize.w);
+    float const Length = min(RequestedLength, SparkMaximumLengthPixels * WorldUnitsPerPixel);
+    float const HalfLength = Length * 0.5;
+    float3 const Centre = RelativePosition - StreakDirection * HalfLength;
+    float3 const BillboardOffset = StreakDirection * Input.Corner.x * HalfLength +
+                                   ThicknessDirection * Input.Corner.y * HalfThickness;
+
+    float const LifetimeFade = saturate(1.0 - Age / max(Lifetime, 0.0001));
+    float const TailFade = saturate(Input.Corner.x * 0.5 + 0.5);
+    float const EnergyScale = min(1.0, OriginalHalfThickness / max(HalfThickness, 0.0001));
+    Intermediates.Colour =
+        IsAlive ? Particle.EmissiveColourSize.xyz * LifetimeFade * TailFade * EnergyScale : 0.0;
+    RelativePosition = IsAlive ? Centre + BillboardOffset : 0.0;
+    Intermediates.WorldPosition =
+        float4(ResolvedView.TranslatedWorldCameraOrigin + RelativePosition, 1.0);
+    Intermediates.PositionInstanceSpace = LocalPosition;
+    Intermediates.TexCoord = Input.Corner * 0.5 + 0.5;
+    return Intermediates;
+}
+
+FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVSToPS Interpolants,
+                                                    float4 SvPosition) {
+    FMaterialPixelParameters Result = MakeInitializedMaterialPixelParameters();
+#if NUM_MATERIAL_TEXCOORDS
+    UNROLL
+    for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; ++CoordinateIndex) {
+        Result.TexCoords[CoordinateIndex] = Interpolants.TexCoord;
+    }
+#endif
+    Result.VertexColor = float4(Interpolants.Colour, 1.0);
+    Result.TwoSidedSign = 1.0;
+    return Result;
+}
+
+FMaterialVertexParameters GetMaterialVertexParameters(FVertexFactoryInput Input,
+                                                      FVertexFactoryIntermediates Intermediates,
+                                                      float3 WorldPosition,
+                                                      float3x3 TangentToLocal,
+                                                      bool bIsPreviousFrame = false) {
+    FMaterialVertexParameters Result = MakeInitializedMaterialVertexParameters();
+    Result.SceneData = Intermediates.SceneData;
+    Result.WorldPosition = WorldPosition;
+    Result.PositionInstanceSpace = Intermediates.PositionInstanceSpace;
+    Result.PositionPrimitiveSpace = Intermediates.PositionInstanceSpace;
+    Result.VertexColor = float4(Intermediates.Colour, 1.0);
+    Result.TangentToWorld =
+        mul(TangentToLocal, DFToFloat3x3(GetPrimitiveData(Intermediates).LocalToWorld));
+    Result.PrevFrameLocalToWorld = GetPrimitiveDataFromUniformBuffer().LocalToWorld;
+    Result.LWCData = MakeMaterialLWCData(Result);
+    return Result;
+}
+
+float4 VertexFactoryGetWorldPosition(FVertexFactoryInput Input,
+                                     FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.WorldPosition;
+}
+float3 VertexFactoryGetPreviousInstanceSpacePosition(FVertexFactoryInput Input,
+                                                     FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.PositionInstanceSpace;
+}
+float3 VertexFactoryGetInstanceSpacePosition(FVertexFactoryInput Input,
+                                             FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.PositionInstanceSpace;
+}
+float3 VertexFactoryGetWorldNormal(FVertexFactoryInput Input,
+                                   FVertexFactoryIntermediates Intermediates) {
+    return float3(0.0, 0.0, 1.0);
+}
+float4 VertexFactoryGetRasterizedWorldPosition(FVertexFactoryInput Input,
+                                               FVertexFactoryIntermediates Intermediates,
+                                               float4 TranslatedWorldPosition) {
+    return TranslatedWorldPosition;
+}
+float3 VertexFactoryGetPositionForVertexLighting(FVertexFactoryInput Input,
+                                                 FVertexFactoryIntermediates Intermediates,
+                                                 float3 TranslatedWorldPosition) {
+    return TranslatedWorldPosition;
+}
+FVertexFactoryInterpolantsVSToPS
+    VertexFactoryGetInterpolantsVSToPS(FVertexFactoryInput Input,
+                                       FVertexFactoryIntermediates Intermediates,
+                                       FMaterialVertexParameters VertexParameters) {
+    FVertexFactoryInterpolantsVSToPS Interpolants;
+    Interpolants.TexCoord = Intermediates.TexCoord;
+    Interpolants.Colour = Intermediates.Colour;
+    return Interpolants;
+}
+float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input,
+                                             FVertexFactoryIntermediates Intermediates) {
+    return Intermediates.WorldPosition;
+}
+float3x3 VertexFactoryGetTangentToLocal(FVertexFactoryInput Input,
+                                        FVertexFactoryIntermediates Intermediates) {
+    return float3x3(1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0);
+}
+float4
+    VertexFactoryGetTranslatedPrimitiveVolumeBounds(FVertexFactoryInterpolantsVSToPS Interpolants) {
+    return 0.0;
+}
+uint VertexFactoryGetPrimitiveId(FVertexFactoryInterpolantsVSToPS Interpolants) {
+    return 0;
+}
+
+#include "/Engine/Private/VertexFactoryDefaultInterface.ush"

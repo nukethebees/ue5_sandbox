@@ -504,6 +504,7 @@ struct SPACEGAME_API HitDetailsConstView {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.locations,
+            self.emission_directions,
             self.colours
         );
     }
@@ -520,6 +521,7 @@ struct SPACEGAME_API HitDetailsConstView {
     auto right(int32 const count) const -> ConstView;
 
     FVectors3f::ConstView locations;
+    FVectors3f::ConstView emission_directions;
     TConstArrayView<FLinearColor> colours;
 };
 
@@ -527,8 +529,9 @@ struct SPACEGAME_API HitDetailsView {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FLinearColor const new_colours) const {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, FLinearColor const new_colours) const {
         locations.set(index, new_locations);
+        emission_directions.set(index, new_emission_directions);
         colours[index] = new_colours;
     }
 
@@ -536,6 +539,7 @@ struct SPACEGAME_API HitDetailsView {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.locations,
+            self.emission_directions,
             self.colours
         );
     }
@@ -557,6 +561,7 @@ struct SPACEGAME_API HitDetailsView {
     auto right(int32 const count) const -> ConstView;
 
     FVectors3f::View locations;
+    FVectors3f::View emission_directions;
     TArrayView<FLinearColor> colours;
 };
 
@@ -564,8 +569,9 @@ struct SPACEGAME_API HitDetails {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FLinearColor const new_colours) {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, FLinearColor const new_colours) {
         locations.set(index, new_locations);
+        emission_directions.set(index, new_emission_directions);
         colours[index] = new_colours;
     }
 
@@ -579,6 +585,7 @@ struct SPACEGAME_API HitDetails {
 
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         locations.remove_at_swap(index, count, allow_shrinking);
+        emission_directions.remove_at_swap(index, count, allow_shrinking);
         colours.RemoveAtSwap(index, count, allow_shrinking);
     }
 
@@ -587,12 +594,14 @@ struct SPACEGAME_API HitDetails {
     template <typename Other>
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(emission_directions, dst_i, other.emission_directions, src_i);
         ml::copy_element(colours, dst_i, other.colours, src_i);
     }
 
     template <typename Other>
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(emission_directions, dst_i, other.emission_directions, src_i, count);
         ml::copy_elements(colours, dst_i, other.colours, src_i, count);
     }
 
@@ -607,6 +616,7 @@ struct SPACEGAME_API HitDetails {
     void append_from(Other const& other)
         requires ml::SupportsApplyArrayPairsWith<HitDetails, Other> {
         ml::append_from(locations, other.locations);
+        ml::append_from(emission_directions, other.emission_directions);
         ml::append_from(colours, other.colours);
     }
 
@@ -642,6 +652,7 @@ struct SPACEGAME_API HitDetails {
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.locations,
+            self.emission_directions,
             self.colours
         );
     }
@@ -651,6 +662,7 @@ struct SPACEGAME_API HitDetails {
         -> decltype(auto) {
         return std::forward<TFunc>(func)(
             self.locations, other.locations,
+            self.emission_directions, other.emission_directions,
             self.colours, other.colours
         );
     }
@@ -672,6 +684,7 @@ struct SPACEGAME_API HitDetails {
     auto right(int32 const count) const -> ConstView;
 
     FVectors3f locations;
+    FVectors3f emission_directions;
     TArray<FLinearColor> colours;
 };
 } // namespace ml::test_lasers

@@ -349,6 +349,25 @@ set_tests_properties(SandboxISMC.RenderTests PROPERTIES
 )
 
 add_test(
+  NAME Sandbox.SparkRenderTests
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    "-ExecCmds=Automation RunTests StartsWith:Sandbox.SparkRenderTests; Quit"
+    -RenderOffscreen
+    -unattended
+    -nop4
+    -nosplash
+    -nosound
+    -stdout
+    -ddc=NoZenLocalFallback
+    "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+)
+set_tests_properties(Sandbox.SparkRenderTests PROPERTIES
+  LABELS "level;all"
+  TIMEOUT 900
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+)
+
+add_test(
   NAME SandboxISMC.RemoteBenchmark
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation RunTests SandboxISMC.RemoteBenchmark; Quit"

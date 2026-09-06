@@ -49,6 +49,11 @@
 	],
 	"Modules": [
 		{
+			"Name": "SpaceGameRendering",
+			"Type": "Runtime",
+			"LoadingPhase": "PostConfigInit"
+		},
+		{
 			"Name": "SpaceGame",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"

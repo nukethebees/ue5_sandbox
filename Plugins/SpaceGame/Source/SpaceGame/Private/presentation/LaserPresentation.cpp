@@ -7,12 +7,29 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxISMCComponent.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <Components/SceneComponent.h>
+#include <HAL/IConsoleManager.h>
 #include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
+
+namespace SpaceGame::LaserPresentation::Private {
+TAutoConsoleVariable<int32> impact_renderer{
+    TEXT("sg.Sparks.LaserImpactRenderer"),
+    0,
+    TEXT("Laser impact renderer: 0 custom analytic sparks, 1 legacy Niagara."),
+    ECVF_Default};
+
+auto make_seed(uint64 const tick, FVector3f const location, int32 const ordinal) -> uint32 {
+    auto seed{HashCombineFast(GetTypeHash(static_cast<uint32>(tick)),
+                              GetTypeHash(static_cast<uint32>(tick >> 32)))};
+    seed = HashCombineFast(seed, GetTypeHash(location));
+    return HashCombineFast(seed, GetTypeHash(ordinal));
+}
+} // namespace SpaceGame::LaserPresentation::Private
 
 FLaserPresentation::FLaserPresentation(USandboxISMCComponent& component)
     : instances{&component} {}
@@ -60,11 +77,14 @@ void FLaserPresentation::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
     synchronize_material_data();
     update_ismc();
+    queue_hit_sparks();
 }
 
 void FLaserPresentation::commit_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::commit_visual_data);
-    spawn_hit_effects();
+    if (SpaceGame::LaserPresentation::Private::impact_renderer.GetValueOnGameThread() != 0) {
+        spawn_hit_effects();
+    }
 }
 
 void FLaserPresentation::end_tick_presentation() {
@@ -138,6 +158,35 @@ void FLaserPresentation::update_ismc() {
                 custom_data[4] = data.spawn_time;
             }
         });
+}
+
+void FLaserPresentation::queue_hit_sparks() {
+    if (spark_effects_ == nullptr || actor_config == nullptr ||
+        SpaceGame::LaserPresentation::Private::impact_renderer.GetValueOnGameThread() != 0 ||
+        actor_config->impact_sparks.count <= 0) {
+        return;
+    }
+
+    auto const& hit_details{simulation().hit_details};
+    auto const count{ml::num(hit_details)};
+    auto const tick{simulation().simulation_clock.get_completed_ticks()};
+    auto const& style{actor_config->impact_sparks};
+    for (int32 index{0}; index < count; ++index) {
+        auto const location{ml::get_vector3f(hit_details.locations, index)};
+        spark_effects_->queue_burst({
+            .location = location,
+            .direction = ml::get_vector3f(hit_details.emission_directions, index),
+            .colour = hit_details.colours[index],
+            .speed = style.speed,
+            .lifetime = style.lifetime,
+            .size = style.size,
+            .intensity = style.intensity,
+            .spread_angle_degrees = style.spread_angle_degrees,
+            .streak_time = style.streak_time,
+            .count = style.count,
+            .seed = SpaceGame::LaserPresentation::Private::make_seed(tick, location, index),
+        });
+    }
 }
 
 void FLaserPresentation::spawn_hit_effects() {

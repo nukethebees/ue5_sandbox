@@ -657,6 +657,7 @@ auto HitDetailsConstView::get_view() const -> ConstView {
 auto HitDetailsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         locations.get_const_view(offset, count),
+        emission_directions.get_const_view(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -668,6 +669,7 @@ auto HitDetailsConstView::get_const_view() const -> ConstView {
 auto HitDetailsConstView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         locations.get_const_view(offset, count),
+        emission_directions.get_const_view(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -683,6 +685,7 @@ auto HitDetailsConstView::is_empty() const noexcept -> bool {
 void HitDetailsConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
+        ml::num(emission_directions),
         ml::num(colours),
     });
 }
@@ -706,6 +709,7 @@ auto HitDetailsView::get_view() -> View {
 auto HitDetailsView::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
+        emission_directions.get_view(offset, count),
         TArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -717,6 +721,7 @@ auto HitDetailsView::get_view() const -> ConstView {
 auto HitDetailsView::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         locations.get_const_view(offset, count),
+        emission_directions.get_const_view(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -728,6 +733,7 @@ auto HitDetailsView::get_const_view() const -> ConstView {
 auto HitDetailsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         locations.get_const_view(offset, count),
+        emission_directions.get_const_view(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -743,6 +749,7 @@ auto HitDetailsView::is_empty() const noexcept -> bool {
 void HitDetailsView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
+        ml::num(emission_directions),
         ml::num(colours),
     });
 }
@@ -773,26 +780,31 @@ auto HitDetailsView::right(int32 const count) const -> ConstView {
 
 void HitDetails::reset() {
     ml::reset(locations);
+    ml::reset(emission_directions);
     ml::reset(colours);
 }
 
 void HitDetails::reserve(int32 const count) {
     ml::reserve(locations, count);
+    ml::reserve(emission_directions, count);
     ml::reserve(colours, count);
 }
 
 void HitDetails::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
+    ml::add_uninitialised(emission_directions, count);
     ml::add_uninitialised(colours, count);
 }
 
 void HitDetails::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
+    ml::add_defaulted(emission_directions, count);
     ml::add_defaulted(colours, count);
 }
 
 void HitDetails::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(locations, count, allow_shrinking);
+    ml::set_num(emission_directions, count, allow_shrinking);
     ml::set_num(colours, count, allow_shrinking);
 }
 
@@ -800,6 +812,7 @@ void HitDetails::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());
     ml::apply_permutation(locations, indices);
+    ml::apply_permutation(emission_directions, indices);
     ml::apply_permutation(colours, indices);
 }
 
@@ -810,6 +823,7 @@ auto HitDetails::get_view() -> View {
 auto HitDetails::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
+        emission_directions.get_view(offset, count),
         TArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -821,6 +835,7 @@ auto HitDetails::get_view() const -> ConstView {
 auto HitDetails::get_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         locations.get_const_view(offset, count),
+        emission_directions.get_const_view(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -832,6 +847,7 @@ auto HitDetails::get_const_view() const -> ConstView {
 auto HitDetails::get_const_view(int32 const offset, int32 const count) const -> ConstView {
     return ConstView{
         locations.get_const_view(offset, count),
+        emission_directions.get_const_view(offset, count),
         TConstArrayView<FLinearColor>{colours}.Slice(offset, count),
     };
 }
@@ -847,6 +863,7 @@ auto HitDetails::is_empty() const noexcept -> bool {
 void HitDetails::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
+        ml::num(emission_directions),
         ml::num(colours),
     });
 }

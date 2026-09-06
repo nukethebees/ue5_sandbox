@@ -238,6 +238,10 @@ void Simulation::check_collision_thread(int32 const job_index,
         }
 
         data.hit_details.locations.add(data.trace_hits.locations[trace_index]);
+        auto const velocity{ml::get_vector3f(simulation.entities.velocities, entity_index)};
+        data.hit_details.emission_directions.add(
+            -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector));
+        data.hit_details.colours.Add(simulation.entities.colours[entity_index]);
     }
 }
 
@@ -248,13 +252,14 @@ void Simulation::merge_collision_data() {
     for (int32 i{}; i < collision_jobs; ++i) {
         auto const& thread_data{data[i]};
         auto const n_hits{thread_data.to_remove.Num()};
-        check(n_hits == ml::num(thread_data.hit_details.locations));
+        check(n_hits == ml::num(thread_data.hit_details));
 
         for (int32 j{}; j < n_hits; ++j) {
             auto const entity_index{thread_data.to_remove[j]};
             to_remove.Add(entity_index);
             hit_details.locations.add(thread_data.hit_details.locations[j]);
-            hit_details.colours.Add(entities.colours[entity_index]);
+            hit_details.emission_directions.add(thread_data.hit_details.emission_directions[j]);
+            hit_details.colours.Add(thread_data.hit_details.colours[j]);
         }
 
         auto const damage_count{thread_data.damage_events.num()};

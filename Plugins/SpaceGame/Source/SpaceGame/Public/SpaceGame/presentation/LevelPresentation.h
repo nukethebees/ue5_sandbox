@@ -6,6 +6,7 @@
 #include <SpaceGame/presentation/LevelPresentationSettings.h>
 #include <SpaceGame/presentation/SpinnerPresentation.h>
 #include <SpaceGame/presentation/TurretPresentation.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 
 class ATestSpaceShip;
 struct FLevelSimulation;
@@ -16,6 +17,7 @@ struct SPACEGAME_API FLevelPresentationResources {
     UInstancedStaticMeshComponent* fighters{nullptr};
     UInstancedStaticMeshComponent* turrets{nullptr};
     UInstancedStaticMeshComponent* spinners{nullptr};
+    USparkRendererComponent* sparks{nullptr};
     USpaceGameLevelConfig const* config{nullptr};
     TWeakObjectPtr<ATestSpaceShip> player;
     FLevelPresentationSettings settings;
@@ -31,6 +33,7 @@ struct SPACEGAME_API FLevelPresentation {
     void commit_visual_data(float dt);
     void handle_player_death();
 
+    FSparkEffects sparks;
     FLaserPresentation lasers;
     FCapitalPresentation capital_ships;
     FFighterPresentation capital_ship_fighters;

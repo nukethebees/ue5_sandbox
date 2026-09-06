@@ -33,6 +33,7 @@ public class SandboxTests : ModuleRules
             "Sandbox",
             "SGCollision",
             "SpaceGame",
+            "SpaceGameRendering",
             "SpaceGameS7",
             "Core",
             "CoreUObject",
