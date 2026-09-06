@@ -10,6 +10,7 @@ class UTestBatchGameUiData;
 struct FLevelTelemetrySnapshot;
 
 namespace ml::ioj {
+struct FPauseMenuData;
 class ULevelSelectWidget;
 class ULevelCompletionWidget;
 class UMainMenuWidget;
@@ -21,8 +22,7 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
   public:
     auto initialise(UTestBatchGameUiData& ui_data) -> bool;
     auto show_main_menu(bool show_level_select, FName preferred_level_id = NAME_None) -> bool;
-    auto show_pause_menu(UInputAction& toggle_action, FLevelTelemetrySnapshot snapshot)
-        -> UPauseMenuWidget*;
+    auto show_pause_menu(UInputAction& toggle_action, FPauseMenuData data) -> UPauseMenuWidget*;
     auto show_level_completion(FString level_display_name, FLevelTelemetrySnapshot snapshot)
         -> ULevelCompletionWidget*;
     void clear_menus();

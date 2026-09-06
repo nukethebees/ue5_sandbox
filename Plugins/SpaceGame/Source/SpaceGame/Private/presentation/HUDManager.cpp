@@ -172,7 +172,7 @@ void FHUDManager::force_sample() {
     ml::hud_manager::FDataChanges changes;
     changes.mission = collect_mission_data();
     changes.entity_counts = collect_entity_count_data();
-    changes.kill_data = collect_kill_data();
+    collect_kill_data();
     changes.player_status = collect_player_status_data();
     changes.player_flight = collect_player_flight_data();
 #if WITH_EDITOR
@@ -244,7 +244,7 @@ auto FHUDManager::collect_data(FPeriodicTickCountdown8::counter_type const num_t
     }
     if (update_timers.try_consume(FHUDUpdateTimerIndex::entity_counts)) {
         changes.entity_counts = collect_entity_count_data();
-        changes.kill_data = collect_kill_data();
+        collect_kill_data();
     }
     return changes;
 }
@@ -341,7 +341,7 @@ bool FHUDManager::collect_entity_count_data() {
     entity_count_data_buffers.cycle();
     return entity_count_data_buffers.current() != entity_count_data_buffers.previous();
 }
-bool FHUDManager::collect_kill_data() {
+void FHUDManager::collect_kill_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_kill_data);
     check(entity_registry);
 
@@ -394,7 +394,6 @@ bool FHUDManager::collect_kill_data() {
                                        unique_entities.entity_types[victim_index]);
     }
     kill_data_buffers.cycle();
-    return kill_data_buffers.current() != kill_data_buffers.previous();
 }
 bool FHUDManager::collect_player_status_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::collect_player_status_data);
@@ -483,9 +482,6 @@ void FHUDManager::update_huds(ml::hud_manager::FDataChanges const& changes) {
         if (changes.entity_counts) {
             update_entity_count_hud(*hud);
         }
-        if (changes.kill_data) {
-            update_kill_data_hud(*hud);
-        }
         if (changes.player_status) {
             update_player_status_hud(*hud);
         }
@@ -507,7 +503,6 @@ void FHUDManager::synchronise_hud(UShipHudWidget& hud) const {
         update_mission_hud(hud);
     }
     update_entity_count_hud(hud);
-    update_kill_data_hud(hud);
     update_player_status_hud(hud);
     update_player_flight_hud(hud);
 #if WITH_EDITOR
@@ -527,12 +522,6 @@ void FHUDManager::update_mission_hud(UShipHudWidget& hud) const {
 void FHUDManager::update_entity_count_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_count_hud);
     hud.set_entity_counts(entity_count_data_buffers.current().alive_per_team_and_type);
-}
-void FHUDManager::update_kill_data_hud(UShipHudWidget& hud) const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_kill_data_hud);
-    auto const& data{kill_data_buffers.current()};
-    hud.set_top_killers(data.top_killers);
-    hud.set_team_kill_matrix(data.team_kill_matrix);
 }
 void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_player_status_hud);

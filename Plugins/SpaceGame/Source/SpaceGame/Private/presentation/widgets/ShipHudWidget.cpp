@@ -6,13 +6,12 @@
 #include "SandboxUI/EntityOverlay/SEntityOverlayWidget.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
 #include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
+#include "SpaceGame/presentation/widgets/ForceStatusWidget.h"
 #include "SpaceGame/presentation/widgets/MissionStatusWidget.h"
 #include "SpaceGame/presentation/widgets/ShipHealthWidget.h"
 #include "SpaceGame/presentation/widgets/ShipPointsWidget.h"
 #include "SpaceGame/presentation/widgets/ShipSpeedWidget.h"
 #include "SpaceGame/presentation/widgets/ShipThrusterEnergyWidget.h"
-#include "SpaceGame/presentation/widgets/TeamEntityTableWidget.h"
-#include "SpaceGame/presentation/widgets/TopKillersWidget.h"
 #include "SpaceGame/presentation/widgets/Vector2DWidget.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/ui/style/GameUiStyle.h"
@@ -123,7 +122,7 @@ void UShipHudWidget::NativeConstruct() {
     RETURN_IF_NULLPTR(crosshair_material);
     RETURN_IF_NULLPTR(far_crosshair_widget);
     RETURN_IF_NULLPTR(near_crosshair_widget);
-    RETURN_IF_NULLPTR(entity_count_table);
+    RETURN_IF_NULLPTR(force_status_widget);
 
     near_crosshair_material_instance = UMaterialInstanceDynamic::Create(crosshair_material, this);
     far_crosshair_material_instance = UMaterialInstanceDynamic::Create(crosshair_material, this);
@@ -157,9 +156,6 @@ void UShipHudWidget::set_common_widget_properties() {
                              target_velocity_widget,
                              control_mode_widget,
                              flight_mode_widget,
-                             entity_count_table,
-                             top_killers_widget,
-                             team_kill_matrix_widget,
                              mission_status_panel);
 }
 
@@ -215,13 +211,8 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
             widget->apply_hud_style(hud_style);
         }
     }
-    for (auto* const widget : {entity_count_table, team_kill_matrix_widget}) {
-        if (widget) {
-            widget->apply_hud_style(hud_style);
-        }
-    }
-    if (top_killers_widget) {
-        top_killers_widget->apply_hud_style(hud_style);
+    if (force_status_widget) {
+        force_status_widget->apply_hud_style(hud_style);
     }
     if (mission_status_panel) {
         mission_status_panel->apply_hud_style(hud_style);
@@ -370,32 +361,14 @@ void UShipHudWidget::set_flight_mode(FStringView value) {
 }
 
 void UShipHudWidget::set_entity_counts(FTestEntityRegistry::EntityCounts const& counts) {
-    if (entity_count_table) {
-        entity_count_table->set_entity_counts(counts);
+    if (force_status_widget) {
+        force_status_widget->set_entity_counts(counts);
     }
 }
 
 void UShipHudWidget::set_entity_colours(UTestTeamVisualData::FColourArray const& colours) {
-    if (entity_count_table) {
-        entity_count_table->set_team_colours(colours);
-    }
-    if (top_killers_widget) {
-        top_killers_widget->set_team_colours(colours);
-    }
-    if (team_kill_matrix_widget) {
-        team_kill_matrix_widget->set_team_colours(colours);
-    }
-}
-
-void UShipHudWidget::set_top_killers(ml::ship_hud::FTopKillerEntries const& entries) {
-    if (top_killers_widget) {
-        top_killers_widget->set_top_killers(entries);
-    }
-}
-
-void UShipHudWidget::set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& matrix) {
-    if (team_kill_matrix_widget) {
-        team_kill_matrix_widget->set_team_kill_matrix(matrix);
+    if (force_status_widget) {
+        force_status_widget->set_team_colours(colours);
     }
 }
 

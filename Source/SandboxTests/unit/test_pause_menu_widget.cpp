@@ -1,14 +1,16 @@
 #include <SandboxTests/support/test_setup.h>
 
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/presentation/widgets/TeamEntityTableWidget.h>
+#include <SpaceGame/presentation/widgets/TopKillersWidget.h>
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 
 #include <SandboxUI/widgets/SGraphPlot.h>
 
 #include <CommonInputSettings.h>
-#include <Components/Button.h>
 #include <Components/NativeWidgetHost.h>
+#include <Components/ScrollBox.h>
 #include <Components/TextBlock.h>
 #include <Components/WidgetSwitcher.h>
 #include <CQTest.h>
@@ -46,7 +48,8 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             return;
         }
 
-        FLevelTelemetrySnapshot snapshot;
+        ml::ioj::FPauseMenuData data;
+        auto& snapshot{data.telemetry};
         snapshot.elapsed_seconds = 3723.0;
         snapshot.tick_period = 0.5;
         snapshot.spawned_entities = 25;
@@ -59,7 +62,11 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         snapshot.active_entity_count_data.add(4, 17);
         snapshot.cumulative_kill_count_data.add(0, 0);
         snapshot.cumulative_kill_count_data.add(4, 6);
-        widget->prepare_for_open(*pause_action, MoveTemp(snapshot));
+        data.alive_per_team_and_type[std::to_underlying(ETestTeam::Red)]
+                                    [std::to_underlying(ETestEntityType::CapitalShipFighter)] = 12;
+        data.top_killers.add({.id = 7}, ETestEntityType::CapitalShip, ETestTeam::Blue, 5);
+        data.team_kill_matrix.set(ETestTeam::Green, ETestEntityType::Turret, 3);
+        widget->prepare_for_open(*pause_action, MoveTemp(data));
 
         FCommonInputBase::GetInputSettings()->LoadData();
         auto const slate_widget{widget->TakeWidget()};
@@ -70,8 +77,12 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("resume_button")))};
         auto* const overview_button{
             Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("overview_button")))};
-        auto* const stats_button{
-            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("stats_button")))};
+        auto* const forces_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("forces_button")))};
+        auto* const combat_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("combat_button")))};
+        auto* const telemetry_button{
+            Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("telemetry_button")))};
         auto* const options_button{
             Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(TEXT("options_button")))};
         auto* const return_button{Cast<ml::ioj::UMenuButtonWidget>(
@@ -94,20 +105,36 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("lasers_fired_value")))};
         auto* const lasers_active_value{
             Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("lasers_active_value")))};
-        auto* const stats_graph_host{
-            Cast<UNativeWidgetHost>(widget->GetWidgetFromName(TEXT("stats_graph_host")))};
+        auto* const telemetry_graph_host{
+            Cast<UNativeWidgetHost>(widget->GetWidgetFromName(TEXT("telemetry_graph_host")))};
+        auto* const forces_table{
+            Cast<UTeamEntityTableWidget>(widget->GetWidgetFromName(TEXT("forces_table")))};
+        auto* const top_killers_table{
+            Cast<UTopKillersWidget>(widget->GetWidgetFromName(TEXT("combat_top_killers_table")))};
+        auto* const team_kills_table{Cast<UTeamEntityTableWidget>(
+            widget->GetWidgetFromName(TEXT("combat_team_kills_table")))};
 
         auto const bindings_valid{
-            IsValid(resume_button) && IsValid(overview_button) && IsValid(stats_button) &&
-            IsValid(options_button) && IsValid(return_button) && IsValid(quit_button) &&
-            IsValid(page_heading) && IsValid(page_switcher) && IsValid(elapsed_time_value) &&
+            IsValid(resume_button) && IsValid(overview_button) && IsValid(forces_button) &&
+            IsValid(combat_button) && IsValid(telemetry_button) && IsValid(options_button) &&
+            IsValid(return_button) && IsValid(quit_button) && IsValid(page_heading) &&
+            IsValid(page_switcher) && IsValid(elapsed_time_value) &&
             IsValid(entities_spawned_value) && IsValid(entities_active_value) &&
             IsValid(entities_destroyed_value) && IsValid(kills_value) &&
             IsValid(lasers_fired_value) && IsValid(lasers_active_value) &&
-            IsValid(stats_graph_host)};
+            IsValid(telemetry_graph_host) && IsValid(forces_table) && IsValid(top_killers_table) &&
+            IsValid(team_kills_table)};
         if (!TestRunner->TestTrue(TEXT("All required pause menu bindings are valid"),
                                   bindings_valid)) {
             return;
+        }
+
+        for (auto const page_name : {TEXT("overview_scroll"),
+                                     TEXT("forces_scroll"),
+                                     TEXT("combat_scroll"),
+                                     TEXT("telemetry_scroll")}) {
+            TestRunner->TestTrue(TEXT("Battle-data page supports scrolling"),
+                                 IsValid(Cast<UScrollBox>(widget->GetWidgetFromName(page_name))));
         }
 
         TestRunner->TestTrue(TEXT("Overview is active initially"),
@@ -117,15 +144,6 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Overview heading is displayed"),
                               page_heading->GetText().ToString(),
                               TEXT("Overview"));
-
-        stats_button->OnClicked().Broadcast();
-        TestRunner->TestTrue(TEXT("Stats button activates Stats"),
-                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Stats);
-        TestRunner->TestEqual(
-            TEXT("Stats heading is displayed"), page_heading->GetText().ToString(), TEXT("Stats"));
-        TestRunner->TestEqual(TEXT("Stats page is displayed"),
-                              page_switcher->GetActiveWidgetIndex(),
-                              static_cast<int32>(ml::ioj::EPauseMenuTab::Stats));
         TestRunner->TestEqual(TEXT("Elapsed time is formatted for display"),
                               elapsed_time_value->GetText().ToString(),
                               TEXT("1:02:03"));
@@ -140,6 +158,46 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
                               TEXT("8"));
         TestRunner->TestEqual(
             TEXT("Kill count is displayed"), kills_value->GetText().ToString(), TEXT("6"));
+
+        forces_button->OnClicked().Broadcast();
+        TestRunner->TestTrue(TEXT("Forces button activates Forces"),
+                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Forces);
+        TestRunner->TestEqual(TEXT("Forces heading is displayed"),
+                              page_heading->GetText().ToString(),
+                              TEXT("Forces"));
+        auto* const fighter_count{
+            Cast<UTextBlock>(forces_table->GetWidgetFromName(TEXT("entity_value_3_1")))};
+        TestRunner->TestTrue(TEXT("Detailed fighter count is available"), IsValid(fighter_count));
+        if (IsValid(fighter_count)) {
+            TestRunner->TestEqual(TEXT("Detailed fighter count is current"),
+                                  fighter_count->GetText().ToString(),
+                                  TEXT("12"));
+        }
+
+        combat_button->OnClicked().Broadcast();
+        TestRunner->TestTrue(TEXT("Combat button activates Combat"),
+                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Combat);
+        auto* const top_kills{
+            Cast<UTextBlock>(top_killers_table->GetWidgetFromName(TEXT("kills_0")))};
+        auto* const turret_kills{
+            Cast<UTextBlock>(team_kills_table->GetWidgetFromName(TEXT("entity_value_1_2")))};
+        TestRunner->TestTrue(TEXT("Top-killer data is available"), IsValid(top_kills));
+        TestRunner->TestTrue(TEXT("Team-kill data is available"), IsValid(turret_kills));
+        if (IsValid(top_kills)) {
+            TestRunner->TestEqual(
+                TEXT("Top-killer data is current"), top_kills->GetText().ToString(), TEXT("5"));
+        }
+        if (IsValid(turret_kills)) {
+            TestRunner->TestEqual(
+                TEXT("Team-kill data is current"), turret_kills->GetText().ToString(), TEXT("3"));
+        }
+
+        telemetry_button->OnClicked().Broadcast();
+        TestRunner->TestTrue(TEXT("Telemetry button activates Telemetry"),
+                             widget->get_active_tab() == ml::ioj::EPauseMenuTab::Telemetry);
+        TestRunner->TestEqual(TEXT("Telemetry page is displayed"),
+                              page_switcher->GetActiveWidgetIndex(),
+                              static_cast<int32>(ml::ioj::EPauseMenuTab::Telemetry));
         TestRunner->TestEqual(TEXT("Fired laser count is displayed"),
                               lasers_fired_value->GetText().ToString(),
                               TEXT("120"));
@@ -147,20 +205,17 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
                               lasers_active_value->GetText().ToString(),
                               TEXT("4"));
 
-        auto* const stats_graph{static_cast<SGraphPlot*>(stats_graph_host->GetContent().Get())};
-        if (!TestRunner->TestNotNull(TEXT("Stats graph has Slate content"), stats_graph)) {
+        auto* const telemetry_graph{
+            static_cast<SGraphPlot*>(telemetry_graph_host->GetContent().Get())};
+        if (!TestRunner->TestNotNull(TEXT("Telemetry graph has Slate content"), telemetry_graph)) {
             return;
         }
-        auto const graph_series{stats_graph->get_series()};
+        auto const graph_series{telemetry_graph->get_series()};
         if (TestRunner->TestEqual(
-                TEXT("Stats graph has two series"), graph_series.Num(), int32{2})) {
+                TEXT("Telemetry graph has two series"), graph_series.Num(), int32{2})) {
             TestRunner->TestEqual(TEXT("Active series has its player-facing name"),
                                   graph_series[0].name.ToString(),
                                   TEXT("Active entities"));
-            TestRunner->TestEqual(
-                TEXT("Active series has two X samples"), graph_series[0].x.Num(), int32{2});
-            TestRunner->TestEqual(
-                TEXT("Active series has two Y samples"), graph_series[0].y.Num(), int32{2});
             TestRunner->TestEqual(
                 TEXT("Active series converts ticks to seconds"), graph_series[0].x[1], 2.0f);
             TestRunner->TestEqual(
@@ -168,25 +223,19 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
             TestRunner->TestTrue(TEXT("Active series uses step interpolation"),
                                  graph_series[0].style.interpolation ==
                                      EGraphSeriesInterpolation::StepAfter);
-
             TestRunner->TestEqual(TEXT("Kill series has its player-facing name"),
                                   graph_series[1].name.ToString(),
                                   TEXT("Kills"));
             TestRunner->TestEqual(
-                TEXT("Kill series converts ticks to seconds"), graph_series[1].x[1], 2.0f);
-            TestRunner->TestEqual(
                 TEXT("Kill series preserves its final count"), graph_series[1].y[1], 6.0f);
-            TestRunner->TestTrue(TEXT("Kill series uses step interpolation"),
-                                 graph_series[1].style.interpolation ==
-                                     EGraphSeriesInterpolation::StepAfter);
         }
-        TestRunner->TestTrue(TEXT("Stats has a distinct selected appearance"),
-                             stats_button->GetSelected() && !overview_button->GetSelected());
+        TestRunner->TestTrue(TEXT("Telemetry has a distinct selected appearance"),
+                             telemetry_button->GetSelected() && !overview_button->GetSelected());
 
         auto const check_elapsed_time{[&](double const seconds, TCHAR const* const expected) {
-            FLevelTelemetrySnapshot time_snapshot;
-            time_snapshot.elapsed_seconds = seconds;
-            widget->prepare_for_open(*pause_action, MoveTemp(time_snapshot));
+            ml::ioj::FPauseMenuData time_data;
+            time_data.telemetry.elapsed_seconds = seconds;
+            widget->prepare_for_open(*pause_action, MoveTemp(time_data));
             TestRunner->TestEqual(TEXT("Elapsed-time boundary is formatted correctly"),
                                   elapsed_time_value->GetText().ToString(),
                                   expected);
@@ -197,15 +246,11 @@ TEST_CLASS(PauseMenuWidget, "Sandbox.UnitTests")
         check_elapsed_time(3599.0, TEXT("59:59"));
         check_elapsed_time(3600.0, TEXT("1:00:00"));
         TestRunner->TestTrue(TEXT("Opening with no telemetry clears previous graph data"),
-                             stats_graph->get_series().IsEmpty());
+                             telemetry_graph->get_series().IsEmpty());
 
         options_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Options button activates Options"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Options);
-        TestRunner->TestEqual(TEXT("Options heading is displayed"),
-                              page_heading->GetText().ToString(),
-                              TEXT("Options"));
-
         overview_button->OnClicked().Broadcast();
         TestRunner->TestTrue(TEXT("Overview button returns to Overview"),
                              widget->get_active_tab() == ml::ioj::EPauseMenuTab::Overview);

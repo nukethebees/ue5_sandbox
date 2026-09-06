@@ -49,6 +49,8 @@ struct SPACEGAME_API FGameHudStyle {
 
     FMargin panel_padding{10.0f};
     FMargin table_cell_padding{6.0f, 3.0f};
+    FVector2f force_status_bar_size{18.0f, 104.0f};
+    float force_status_bar_spacing{4.0f};
     float team_wash_opacity{0.08f};
     float team_text_blend{0.20f};
     float health_warning_threshold{0.50f};
