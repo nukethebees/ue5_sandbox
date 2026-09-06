@@ -5,7 +5,7 @@
 #include <expected>
 
 enum class ETelemetryDashboardMetric : uint8 {
-    TimeScaleAchievement,
+    RequestedTimeScaleRatio,
     ObservedTimeScale,
     TicksPerRealSecond,
     RealSampleInterval,
@@ -26,10 +26,11 @@ enum class ETelemetryDashboardMetric : uint8 {
     RangeQueryRate,
     LineTraceRate,
     SweepTraceRate,
+    COUNT,
 };
 
 struct SPACEGAME_API FTelemetryMetricSeries {
-    ETelemetryDashboardMetric metric{ETelemetryDashboardMetric::TimeScaleAchievement};
+    ETelemetryDashboardMetric metric{ETelemetryDashboardMetric::RequestedTimeScaleRatio};
     FString title{};
     FString units{};
     TArray<float> real_elapsed_seconds{};

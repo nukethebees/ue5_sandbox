@@ -34,9 +34,7 @@ auto UTelemetryDashboardWidget::RebuildWidget() -> TSharedRef<SWidget> {
                     .OnRunSelected(FOnTelemetryRunSelected::CreateUObject(
                         this, &ThisClass::handle_run_selected))
                     .OnLevelFilterSelected(FOnTelemetryLevelFilterSelected::CreateUObject(
-                        this, &ThisClass::handle_level_filter_selected))
-                    .OnMetricSelected(FOnTelemetryMetricSelected::CreateUObject(
-                        this, &ThisClass::select_metric))};
+                        this, &ThisClass::handle_level_filter_selected))};
     publish();
     return result;
 }
@@ -71,11 +69,6 @@ void UTelemetryDashboardWidget::select_level_filter(FString const& level_label) 
     publish();
 }
 
-void UTelemetryDashboardWidget::select_metric(ETelemetryDashboardMetric const metric) {
-    state_.selected_metric = metric;
-    publish();
-}
-
 void UTelemetryDashboardWidget::handle_run_selected(FString run_id) {
     (void)select_run(run_id);
 }
@@ -91,9 +84,7 @@ void UTelemetryDashboardWidget::focus_primary_action() {
 }
 
 void UTelemetryDashboardWidget::rebuild_state() {
-    auto const selected_metric{state_.selected_metric};
     state_ = FTelemetryDashboardViewState{};
-    state_.selected_metric = selected_metric;
     state_.runs = catalog_.get_runs();
     state_.level_filters = catalog_.get_level_filters();
     state_.selected_run_id = catalog_.get_selected_run_id();
@@ -120,8 +111,8 @@ void UTelemetryDashboardWidget::rebuild_state() {
                                           *record->metadata.environment.platform,
                                           *record->metadata.run_id));
     state_.analysis = analyze_level_telemetry_run(*record);
-    auto const* achievement{
-        state_.analysis.find_metric(ETelemetryDashboardMetric::TimeScaleAchievement)};
+    auto const* requested_ratio{
+        state_.analysis.find_metric(ETelemetryDashboardMetric::RequestedTimeScaleRatio)};
     auto const* observed{state_.analysis.find_metric(ETelemetryDashboardMetric::ObservedTimeScale)};
     auto format_mean = [](FTelemetryMetricSeries const* metric) {
         return metric && metric->weighted_mean.IsSet()
@@ -136,7 +127,8 @@ void UTelemetryDashboardWidget::rebuild_state() {
     };
     state_.summary = FText::FromString(FString::Printf(
         TEXT("COMPLETED TICKS  //  %llu\nSIMULATED / REAL  //  %.3fs / %.3fs\nMEAN OBSERVED  //  "
-             "%sx\nMEAN ACHIEVEMENT  //  %s%%\nFINAL WORKLOAD  //  ENTITIES %d  LASERS %d  SLOTS "
+             "%sx\nMEAN REQUESTED-SCALE RATIO  //  %s%%\nFINAL WORKLOAD  //  ENTITIES %d  LASERS "
+             "%d  SLOTS "
              "%d  "
              "CELLS %d\nFINAL COUNTERS  //  SPAWN %d  DESTROY %d  KILLS %d  FIRED %d\nQUERIES  //  "
              "GRID %llu  RANGE %llu  LINE %llu  SWEEP %llu"),
@@ -144,7 +136,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
         record->completion.simulated_elapsed_seconds,
         record->completion.wall_elapsed_seconds,
         *format_mean(observed),
-        *format_mean(achievement),
+        *format_mean(requested_ratio),
         last_int(record->tick_series.active_entities),
         last_int(record->tick_series.active_lasers),
         last_int(record->tick_series.registry_slot_count),

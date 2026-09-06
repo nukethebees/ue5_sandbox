@@ -5,11 +5,19 @@
 #include <Widgets/SCompoundWidget.h>
 
 class SButton;
+class SScrollBox;
 
 namespace ml::ioj {
 DECLARE_DELEGATE_OneParam(FOnTelemetryRunSelected, FString);
 DECLARE_DELEGATE_OneParam(FOnTelemetryLevelFilterSelected, FString);
-DECLARE_DELEGATE_OneParam(FOnTelemetryMetricSelected, ETelemetryDashboardMetric);
+
+enum class ETelemetryDashboardSection : uint8 {
+    Overview,
+    Timing,
+    Workload,
+    Activity,
+    Queries,
+};
 
 class STelemetryDashboardView final : public SCompoundWidget {
   public:
@@ -19,7 +27,6 @@ class STelemetryDashboardView final : public SCompoundWidget {
     SLATE_EVENT(FSimpleDelegate, OnRefresh)
     SLATE_EVENT(FOnTelemetryRunSelected, OnRunSelected)
     SLATE_EVENT(FOnTelemetryLevelFilterSelected, OnLevelFilterSelected)
-    SLATE_EVENT(FOnTelemetryMetricSelected, OnMetricSelected)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
@@ -33,14 +40,18 @@ class STelemetryDashboardView final : public SCompoundWidget {
     auto handle_refresh() -> FReply;
     auto handle_filter() -> FReply;
     auto handle_run(FString run_id) -> FReply;
-    auto handle_metric() -> FReply;
+    auto handle_section(ETelemetryDashboardSection section) -> FReply;
 
     FGameUiStyle const* style_{};
     FTelemetryDashboardViewState state_{};
     FSimpleDelegate on_refresh_{};
     FOnTelemetryRunSelected on_run_selected_{};
     FOnTelemetryLevelFilterSelected on_level_filter_selected_{};
-    FOnTelemetryMetricSelected on_metric_selected_{};
     TSharedPtr<SButton> primary_button_{};
+    TSharedPtr<SScrollBox> detail_scroll_{};
+    TSharedPtr<SWidget> timing_section_{};
+    TSharedPtr<SWidget> workload_section_{};
+    TSharedPtr<SWidget> activity_section_{};
+    TSharedPtr<SWidget> queries_section_{};
 };
 } // namespace ml::ioj

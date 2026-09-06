@@ -22,7 +22,6 @@ struct FTelemetryDashboardViewState {
     FText header{};
     FText summary{};
     FTelemetryRunAnalysis analysis{};
-    ETelemetryDashboardMetric selected_metric{ETelemetryDashboardMetric::TimeScaleAchievement};
 };
 
 UCLASS()
@@ -34,7 +33,6 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
     void refresh();
     bool select_run(FString const& run_id);
     void select_level_filter(FString const& level_label);
-    void select_metric(ETelemetryDashboardMetric metric);
     void focus_primary_action();
 
     [[nodiscard]] auto get_catalog() const -> FTelemetryRunCatalog const& { return catalog_; }

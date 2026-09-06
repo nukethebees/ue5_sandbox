@@ -6,7 +6,6 @@
 #include <Framework/Application/SlateApplication.h>
 #include <Widgets/Input/SButton.h>
 #include <Widgets/Layout/SBorder.h>
-#include <Widgets/Layout/SBox.h>
 #include <Widgets/Layout/SScrollBox.h>
 #include <Widgets/SBoxPanel.h>
 #include <Widgets/Text/STextBlock.h>
@@ -21,6 +20,86 @@ auto text(FGameUiStyle const& style, FText value, EGameTextStyle const type = EG
 auto chart_title(FGameUiStyle const& style, FString value) -> TSharedRef<SWidget> {
     return text(style, FText::FromString(MoveTemp(value)), EGameTextStyle::Caption);
 }
+
+auto metric_panel(FGameUiStyle const& style,
+                  FTelemetryRunAnalysis const& analysis,
+                  ETelemetryDashboardMetric const metric,
+                  FGraphPlotStyle const& graph_style,
+                  FHistogramStyle const& histogram_style) -> TSharedRef<SWidget> {
+    auto const* const series{analysis.find_metric(metric)};
+    auto timeline{SNew(SGraphPlot).Style(graph_style)};
+    auto histogram{SNew(SHistogram).Style(histogram_style)};
+    if (series) {
+        FGraphSeries graph_series{.name = FText::FromString(series->title),
+                                  .x = series->real_elapsed_seconds,
+                                  .y = series->values};
+        graph_series.style.color = style.palette().honey;
+        TArray<FGraphSeries> timeline_series;
+        timeline_series.Add(MoveTemp(graph_series));
+        timeline->set_series(MoveTemp(timeline_series));
+        if (!series->values.IsEmpty()) {
+            auto minimum{FMath::Min(series->values)};
+            auto maximum{FMath::Max(series->values)};
+            if (minimum == maximum) {
+                minimum -= 0.5f;
+                maximum += 0.5f;
+            }
+            histogram->set_bin_configuration(minimum, maximum, 20);
+            histogram->set_samples(series->values);
+        }
+    }
+
+    auto const title{series ? series->title : telemetry_metric_title(metric)};
+    auto const units{series ? series->units : telemetry_metric_units(metric)};
+    return SNew(SBorder)
+        .BorderImage(&style.panel().background)
+        .Padding(style.panel().padding)
+            [SNew(SVerticalBox) +
+             SVerticalBox::Slot().AutoHeight()[text(
+                 style,
+                 FText::FromString(FString::Printf(TEXT("%s // %s"), *title, *units)),
+                 EGameTextStyle::Heading3)] +
+             SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 2.0f)
+                 [SNew(SHorizontalBox) +
+                  SHorizontalBox::Slot().FillWidth(
+                      0.62f)[chart_title(style, TEXT("TIMELINE // REAL ELAPSED TIME (s)"))] +
+                  SHorizontalBox::Slot().FillWidth(0.38f).Padding(8.0f, 0.0f, 0.0f, 0.0f)
+                      [chart_title(style, TEXT("DISTRIBUTION // ~1 HZ INTERVAL COUNTS"))]] +
+             SVerticalBox::Slot().AutoHeight()[SNew(SHorizontalBox) +
+                                               SHorizontalBox::Slot().FillWidth(0.62f)[timeline] +
+                                               SHorizontalBox::Slot().FillWidth(0.38f).Padding(
+                                                   8.0f, 0.0f, 0.0f, 0.0f)[histogram]]];
+}
+
+auto metric_section(FGameUiStyle const& style,
+                    FTelemetryRunAnalysis const& analysis,
+                    FString title,
+                    TConstArrayView<ETelemetryDashboardMetric> const metrics,
+                    FString note,
+                    FGraphPlotStyle const& graph_style,
+                    FHistogramStyle const& histogram_style) -> TSharedRef<SWidget> {
+    auto content{SNew(SVerticalBox)};
+    content->AddSlot().AutoHeight().Padding(
+        0.0f,
+        12.0f,
+        0.0f,
+        4.0f)[text(style, FText::FromString(MoveTemp(title)), EGameTextStyle::Heading2)];
+    if (!note.IsEmpty()) {
+        content->AddSlot().AutoHeight().Padding(
+            0.0f,
+            0.0f,
+            0.0f,
+            6.0f)[text(style, FText::FromString(MoveTemp(note)), EGameTextStyle::BodySecondary)];
+    }
+    for (auto const metric : metrics) {
+        content->AddSlot().AutoHeight().Padding(
+            0.0f,
+            0.0f,
+            0.0f,
+            8.0f)[metric_panel(style, analysis, metric, graph_style, histogram_style)];
+    }
+    return content;
+}
 } // namespace telemetry_dashboard_view
 
 void STelemetryDashboardView::Construct(FArguments const& args) {
@@ -29,7 +108,6 @@ void STelemetryDashboardView::Construct(FArguments const& args) {
     on_refresh_ = args._OnRefresh;
     on_run_selected_ = args._OnRunSelected;
     on_level_filter_selected_ = args._OnLevelFilterSelected;
-    on_metric_selected_ = args._OnMetricSelected;
     ChildSlot[build()];
 }
 
@@ -100,6 +178,11 @@ auto STelemetryDashboardView::build_sidebar() -> TSharedRef<SWidget> {
 }
 
 auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
+    detail_scroll_.Reset();
+    timing_section_.Reset();
+    workload_section_.Reset();
+    activity_section_.Reset();
+    queries_section_.Reset();
     if (!state_.error.IsEmpty()) {
         return telemetry_dashboard_view::text(
             *style_,
@@ -112,13 +195,12 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
             NSLOCTEXT("TelemetryDashboard", "NoRun", "NO TELEMETRY RUN SELECTED"),
             EGameTextStyle::BodySecondary);
     }
-    auto const* metric{state_.analysis.find_metric(state_.selected_metric)};
     auto graph_style{style_->hud().graph};
-    graph_style.desired_size = {640.0f, 210.0f};
+    graph_style.desired_size = {600.0f, 180.0f};
     graph_style.empty_text =
         NSLOCTEXT("TelemetryDashboard", "Insufficient", "Insufficient interval data");
     auto histogram_style{FHistogramStyle{}};
-    histogram_style.desired_size = {640.0f, 210.0f};
+    histogram_style.desired_size = {400.0f, 180.0f};
     histogram_style.background_color = graph_style.background_color;
     histogram_style.plot_color = graph_style.plot_color;
     histogram_style.bar_color = style_->palette().honey;
@@ -142,27 +224,70 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
     throughput_series.Add(MoveTemp(requested));
     throughput->set_series(MoveTemp(throughput_series));
 
-    auto metric_graph{SNew(SGraphPlot).Style(graph_style)};
-    auto histogram{SNew(SHistogram).Style(histogram_style)};
-    if (metric) {
-        FGraphSeries series{.name = FText::FromString(metric->title),
-                            .x = metric->real_elapsed_seconds,
-                            .y = metric->values};
-        series.style.color = style_->palette().honey;
-        TArray<FGraphSeries> graph_series;
-        graph_series.Add(MoveTemp(series));
-        metric_graph->set_series(MoveTemp(graph_series));
-        if (!metric->values.IsEmpty()) {
-            auto minimum{FMath::Min(metric->values)};
-            auto maximum{FMath::Max(metric->values)};
-            if (minimum == maximum) {
-                minimum -= 0.5f;
-                maximum += 0.5f;
-            }
-            histogram->set_bin_configuration(minimum, maximum, 20);
-            histogram->set_samples(metric->values);
-        }
-    }
+    static constexpr ETelemetryDashboardMetric timing_metrics[]{
+        ETelemetryDashboardMetric::RequestedTimeScaleRatio,
+        ETelemetryDashboardMetric::ObservedTimeScale,
+        ETelemetryDashboardMetric::TicksPerRealSecond,
+        ETelemetryDashboardMetric::RealSampleInterval,
+    };
+    static constexpr ETelemetryDashboardMetric workload_metrics[]{
+        ETelemetryDashboardMetric::ActiveEntities,
+        ETelemetryDashboardMetric::PlayerShips,
+        ETelemetryDashboardMetric::Turrets,
+        ETelemetryDashboardMetric::CapitalShips,
+        ETelemetryDashboardMetric::CapitalShipFighters,
+        ETelemetryDashboardMetric::TubeSpinners,
+        ETelemetryDashboardMetric::ActiveLasers,
+        ETelemetryDashboardMetric::RegistrySlots,
+        ETelemetryDashboardMetric::OccupiedSpatialCells,
+    };
+    static constexpr ETelemetryDashboardMetric activity_metrics[]{
+        ETelemetryDashboardMetric::SpawnRate,
+        ETelemetryDashboardMetric::DestructionRate,
+        ETelemetryDashboardMetric::KillRate,
+        ETelemetryDashboardMetric::LaserFireRate,
+    };
+    static constexpr ETelemetryDashboardMetric query_metrics[]{
+        ETelemetryDashboardMetric::GridRebuildRate,
+        ETelemetryDashboardMetric::RangeQueryRate,
+        ETelemetryDashboardMetric::LineTraceRate,
+        ETelemetryDashboardMetric::SweepTraceRate,
+    };
+    static_assert(UE_ARRAY_COUNT(timing_metrics) + UE_ARRAY_COUNT(workload_metrics) +
+                      UE_ARRAY_COUNT(activity_metrics) + UE_ARRAY_COUNT(query_metrics) ==
+                  static_cast<int32>(ETelemetryDashboardMetric::COUNT));
+
+    timing_section_ = telemetry_dashboard_view::metric_section(
+        *style_,
+        state_.analysis,
+        TEXT("TIMING"),
+        timing_metrics,
+        TEXT("Requested-scale ratio is observed time scale divided by requested time scale. "
+             "100% matches the request; values above 100% ran faster than requested."),
+        graph_style,
+        histogram_style);
+    workload_section_ = telemetry_dashboard_view::metric_section(*style_,
+                                                                 state_.analysis,
+                                                                 TEXT("WORKLOAD"),
+                                                                 workload_metrics,
+                                                                 {},
+                                                                 graph_style,
+                                                                 histogram_style);
+    activity_section_ = telemetry_dashboard_view::metric_section(*style_,
+                                                                 state_.analysis,
+                                                                 TEXT("ACTIVITY RATES"),
+                                                                 activity_metrics,
+                                                                 {},
+                                                                 graph_style,
+                                                                 histogram_style);
+    queries_section_ = telemetry_dashboard_view::metric_section(*style_,
+                                                                state_.analysis,
+                                                                TEXT("QUERY RATES"),
+                                                                query_metrics,
+                                                                {},
+                                                                graph_style,
+                                                                histogram_style);
+
     auto content{SNew(SVerticalBox)};
     content->AddSlot().AutoHeight()[telemetry_dashboard_view::text(
         *style_, state_.header, EGameTextStyle::Heading3)];
@@ -174,19 +299,34 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
     content->AddSlot().AutoHeight().Padding(0.0f, 6.0f)[telemetry_dashboard_view::chart_title(
         *style_, TEXT("THROUGHPUT // TIME SCALE (x) BY REAL ELAPSED TIME (s)"))];
     content->AddSlot().AutoHeight()[throughput];
-    content->AddSlot().AutoHeight().Padding(0.0f, 10.0f, 0.0f, 4.0f)[SNew(SButton).OnClicked(
-        this, &STelemetryDashboardView::handle_metric)[telemetry_dashboard_view::text(
-        *style_,
-        FText::FromString(FString::Printf(TEXT("METRIC // %s (%s)"),
-                                          metric ? *metric->title : TEXT("None"),
-                                          metric ? *metric->units : TEXT(""))),
-        EGameTextStyle::Caption)]];
-    content->AddSlot().AutoHeight()[metric_graph];
-    content->AddSlot().AutoHeight().Padding(
-        0.0f, 8.0f, 0.0f, 4.0f)[telemetry_dashboard_view::chart_title(
-        *style_, TEXT("DISTRIBUTION // COUNTS OF RECORDED APPROXIMATELY-1-HZ INTERVALS"))];
-    content->AddSlot().AutoHeight()[histogram];
-    return SNew(SScrollBox) + SScrollBox::Slot()[content];
+    content->AddSlot().AutoHeight()[timing_section_.ToSharedRef()];
+    content->AddSlot().AutoHeight()[workload_section_.ToSharedRef()];
+    content->AddSlot().AutoHeight()[activity_section_.ToSharedRef()];
+    content->AddSlot().AutoHeight()[queries_section_.ToSharedRef()];
+
+    auto navigation{SNew(SHorizontalBox)};
+    auto add_jump = [this, &navigation](FText label, ETelemetryDashboardSection const section) {
+        navigation->AddSlot().FillWidth(1.0f).Padding(
+            0.0f, 0.0f, 4.0f, 0.0f)[SNew(SButton).OnClicked(
+            this, &STelemetryDashboardView::handle_section, section)[telemetry_dashboard_view::text(
+            *style_, MoveTemp(label), EGameTextStyle::Caption)]];
+    };
+    add_jump(NSLOCTEXT("TelemetryDashboard", "OverviewSection", "OVERVIEW"),
+             ETelemetryDashboardSection::Overview);
+    add_jump(NSLOCTEXT("TelemetryDashboard", "TimingSection", "TIMING"),
+             ETelemetryDashboardSection::Timing);
+    add_jump(NSLOCTEXT("TelemetryDashboard", "WorkloadSection", "WORKLOAD"),
+             ETelemetryDashboardSection::Workload);
+    add_jump(NSLOCTEXT("TelemetryDashboard", "ActivitySection", "ACTIVITY"),
+             ETelemetryDashboardSection::Activity);
+    add_jump(NSLOCTEXT("TelemetryDashboard", "QueriesSection", "QUERIES"),
+             ETelemetryDashboardSection::Queries);
+
+    return SNew(SVerticalBox) +
+           SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)[navigation] +
+           SVerticalBox::Slot().FillHeight(1.0f)[SAssignNew(detail_scroll_, SScrollBox)
+                                                     .ScrollBarStyle(&style_->chrome().scroll_bar) +
+                                                 SScrollBox::Slot()[content]];
 }
 
 auto STelemetryDashboardView::handle_refresh() -> FReply {
@@ -205,11 +345,35 @@ auto STelemetryDashboardView::handle_filter() -> FReply {
     }
     return FReply::Handled();
 }
-auto STelemetryDashboardView::handle_metric() -> FReply {
-    auto const count{static_cast<uint8>(ETelemetryDashboardMetric::SweepTraceRate) + 1};
-    auto const next{static_cast<ETelemetryDashboardMetric>(
-        (static_cast<uint8>(state_.selected_metric) + 1) % count)};
-    on_metric_selected_.ExecuteIfBound(next);
+auto STelemetryDashboardView::handle_section(ETelemetryDashboardSection const section) -> FReply {
+    if (!detail_scroll_.IsValid()) {
+        return FReply::Handled();
+    }
+    if (section == ETelemetryDashboardSection::Overview) {
+        detail_scroll_->ScrollToStart();
+        return FReply::Handled();
+    }
+    TSharedPtr<SWidget> target;
+    switch (section) {
+        case ETelemetryDashboardSection::Overview:
+            break;
+        case ETelemetryDashboardSection::Timing:
+            target = timing_section_;
+            break;
+        case ETelemetryDashboardSection::Workload:
+            target = workload_section_;
+            break;
+        case ETelemetryDashboardSection::Activity:
+            target = activity_section_;
+            break;
+        case ETelemetryDashboardSection::Queries:
+            target = queries_section_;
+            break;
+    }
+    if (target.IsValid()) {
+        detail_scroll_->ScrollDescendantIntoView(
+            target, true, EDescendantScrollDestination::TopOrLeft);
+    }
     return FReply::Handled();
 }
 } // namespace ml::ioj

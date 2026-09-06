@@ -47,15 +47,7 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
         return std::unexpected{FString::Printf(TEXT("Summary fields are missing in '%s'"), *path)};
     }
     result.level_id = FName{level_id};
-    if (reason == TEXT("mission_succeeded")) {
-        result.completion_reason = ELevelTelemetryRunEndReason::MissionSucceeded;
-    } else if (reason == TEXT("mission_failed")) {
-        result.completion_reason = ELevelTelemetryRunEndReason::MissionFailed;
-    } else if (reason == TEXT("orchestrator_reset")) {
-        result.completion_reason = ELevelTelemetryRunEndReason::OrchestratorReset;
-    } else if (reason == TEXT("world_end")) {
-        result.completion_reason = ELevelTelemetryRunEndReason::WorldEnd;
-    } else {
+    if (!ml::try_parse_serialized(FStringView{reason}, result.completion_reason)) {
         return std::unexpected{FString::Printf(TEXT("Unknown completion reason in '%s'"), *path)};
     }
     return result;
@@ -152,8 +144,8 @@ void add_rate(FMetricBuilder& builder,
 
 auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
     switch (metric) {
-        case ETelemetryDashboardMetric::TimeScaleAchievement:
-            return TEXT("Requested time-scale achievement");
+        case ETelemetryDashboardMetric::RequestedTimeScaleRatio:
+            return TEXT("Observed / requested time scale");
         case ETelemetryDashboardMetric::ObservedTimeScale:
             return TEXT("Observed time scale");
         case ETelemetryDashboardMetric::TicksPerRealSecond:
@@ -194,13 +186,15 @@ auto telemetry_metric_title(ETelemetryDashboardMetric const metric) -> FString {
             return TEXT("Line-trace rate");
         case ETelemetryDashboardMetric::SweepTraceRate:
             return TEXT("Sweep-trace rate");
+        case ETelemetryDashboardMetric::COUNT:
+            break;
     }
     return {};
 }
 
 auto telemetry_metric_units(ETelemetryDashboardMetric const metric) -> FString {
     switch (metric) {
-        case ETelemetryDashboardMetric::TimeScaleAchievement:
+        case ETelemetryDashboardMetric::RequestedTimeScaleRatio:
             return TEXT("%");
         case ETelemetryDashboardMetric::ObservedTimeScale:
             return TEXT("x");
@@ -217,9 +211,12 @@ auto telemetry_metric_units(ETelemetryDashboardMetric const metric) -> FString {
         case ETelemetryDashboardMetric::LineTraceRate:
         case ETelemetryDashboardMetric::SweepTraceRate:
             return TEXT("/s");
+        case ETelemetryDashboardMetric::COUNT:
+            break;
         default:
             return TEXT("count");
     }
+    return {};
 }
 
 auto FTelemetryRunAnalysis::find_metric(ETelemetryDashboardMetric const metric) const
@@ -231,8 +228,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
     using namespace telemetry_dashboard;
     FTelemetryRunAnalysis result;
     TArray<FMetricBuilder> builders;
-    for (uint8 value{}; value <= static_cast<uint8>(ETelemetryDashboardMetric::SweepTraceRate);
-         ++value) {
+    for (uint8 value{}; value < static_cast<uint8>(ETelemetryDashboardMetric::COUNT); ++value) {
         builders.Emplace(static_cast<ETelemetryDashboardMetric>(value));
     }
     auto builder = [&builders](ETelemetryDashboardMetric metric) -> FMetricBuilder& {
@@ -273,7 +269,7 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
                                     begin_tick,
                                     end_tick,
                                     stable_requested)) {
-                builder(ETelemetryDashboardMetric::TimeScaleAchievement)
+                builder(ETelemetryDashboardMetric::RequestedTimeScaleRatio)
                     .add(end_time, observed / stable_requested * 100.0, real_delta);
             }
         }
