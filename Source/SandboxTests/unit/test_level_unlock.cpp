@@ -9,7 +9,8 @@ auto completed_criterion(TCHAR const* const level_id) -> ml::FLevelUnlockCriteri
         ml::FLevelCompletedUnlockCriterion{.level_id = ml::FLevelId{FName{level_id}}}};
 }
 
-auto make_evaluator(TSet<ml::FLevelId> const& completed_levels) -> ml::FLevelUnlockEvaluator {
+auto make_evaluator(TSet<ml::FLevelId> const& completed_levels, bool const force_unlocked = false)
+    -> ml::FLevelUnlockEvaluator {
     return ml::FLevelUnlockEvaluator{
         [&completed_levels](ml::FLevelId const id) { return completed_levels.Contains(id); },
         [](ml::FLevelId const id) {
@@ -18,6 +19,7 @@ auto make_evaluator(TSet<ml::FLevelId> const& completed_levels) -> ml::FLevelUnl
             }
             return FText::FromName(id.value);
         },
+        force_unlocked,
     };
 }
 }
@@ -76,5 +78,24 @@ TEST_CLASS(LevelUnlock, "Sandbox.UnitTests")
         };
         TestRunner->TestTrue(TEXT("Both completed is unlocked"),
                              make_evaluator(both_completed).evaluate(definition).unlocked);
+    }
+
+    TEST_METHOD(AccessOverridePreservesRealCriterionStatus)
+    {
+        ml::FLevelDefinition definition;
+        definition.unlock_criteria.Add(completed_criterion(TEXT("asteroid-field")));
+        TSet<ml::FLevelId> const incomplete;
+
+        auto const overridden{make_evaluator(incomplete, true).evaluate(definition)};
+        TestRunner->TestTrue(TEXT("Access override unlocks the level"), overridden.unlocked);
+        if (TestRunner->TestEqual(
+                TEXT("Real criterion is still reported"), overridden.criteria.Num(), 1)) {
+            TestRunner->TestFalse(TEXT("Real criterion remains unsatisfied"),
+                                  overridden.criteria[0].satisfied);
+        }
+
+        auto const restored{make_evaluator(incomplete, false).evaluate(definition)};
+        TestRunner->TestFalse(TEXT("Disabling the override restores real access"),
+                              restored.unlocked);
     }
 };

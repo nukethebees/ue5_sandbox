@@ -2,6 +2,7 @@
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 
 #include <CQTest.h>
+#include <Kismet/GameplayStatics.h>
 
 namespace save_profile_manager_test {
 struct FFakeProfileStorage {
@@ -10,6 +11,7 @@ struct FFakeProfileStorage {
     bool index_save_fails{};
     bool results_save_fails{};
     bool legacy_exists{};
+    int32 index_save_count{};
     FSaveProfileIndexData index{};
     TMap<FString, FSaveProfileResultsData> results{};
     TArray<FScoreRecord> legacy_records{};
@@ -29,6 +31,7 @@ struct FFakeProfileStorage {
                 },
             .save_index =
                 [this](FSaveProfileIndexData const& value) {
+                    ++index_save_count;
                     if (index_save_fails) {
                         return false;
                     }
@@ -215,5 +218,185 @@ TEST_CLASS(SaveProfileManager, "Sandbox.UnitTests")
             ml::FLevelId{FName{TEXT("asteroid-field")}}, reloaded.get_active_records())};
         TestRunner->TestTrue(TEXT("Reloaded level remains completed"),
                              progress.state == ml::ioj::ELevelProgressState::Completed);
+    }
+
+    TEST_METHOD(MigratesProfileIndexAndPreservesExistingData)
+    {
+        auto const record{save_profile_manager_test::make_record(
+            FDateTime{2026, 9, 5}, TEXT("asteroid-field"), 4)};
+        save_profile_manager_test::FFakeProfileStorage storage{
+            .index_exists = true,
+            .index = {.save_version = 1,
+                      .active_profile_id = TEXT("alpha"),
+                      .profiles = {{.profile_id = TEXT("alpha"),
+                                    .display_name = TEXT("Alpha"),
+                                    .created_at = FDateTime{2026, 8, 1},
+                                    .last_played_at = record.date,
+                                    .total_simulation_duration_seconds = record.time_seconds,
+                                    .total_kills = record.kills,
+                                    .outcome_count = 1,
+                                    .debug_settings = {.unlock_all_missions = true}},
+                                   {.profile_id = TEXT("bravo"),
+                                    .display_name = TEXT("Bravo"),
+                                    .created_at = FDateTime{2026, 8, 2}}}},
+            .results = {{TEXT("alpha"), FSaveProfileResultsData{.score_records = {record}}}},
+        };
+        ml::ioj::FSaveProfileManager manager{storage.make()};
+
+        TestRunner->TestTrue(TEXT("Version one profile index migrates"), manager.initialise());
+        TestRunner->TestEqual(TEXT("Profile index is upgraded"),
+                              storage.index.save_version,
+                              FSaveProfileIndexData::current_save_version);
+        TestRunner->TestEqual(TEXT("Active profile is preserved"),
+                              manager.get_active_profile_id(),
+                              FString{TEXT("alpha")});
+        auto const profiles{manager.get_profiles()};
+        TestRunner->TestEqual(TEXT("All profiles are preserved"), profiles.Num(), 2);
+        TestRunner->TestEqual(
+            TEXT("Profile name is preserved"), profiles[0].display_name, FString{TEXT("Alpha")});
+        TestRunner->TestEqual(TEXT("Outcome count is preserved"), profiles[0].outcome_count, 1);
+        TestRunner->TestFalse(TEXT("Migrated debug setting defaults off"),
+                              manager.unlock_all_missions());
+        TestRunner->TestFalse(TEXT("Every migrated profile defaults off"),
+                              profiles[1].debug_settings.unlock_all_missions);
+        TestRunner->TestEqual(
+            TEXT("Historical result is preserved"), manager.get_active_records().Num(), 1);
+    }
+
+    TEST_METHOD(DebugSettingsPersistPerProfileAndSurviveReload)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{};
+        FString first_profile_id;
+        FString second_profile_id;
+        {
+            ml::ioj::FSaveProfileManager manager{storage.make()};
+            TestRunner->TestTrue(TEXT("Profile manager initialises"), manager.initialise());
+            first_profile_id = manager.get_active_profile_id();
+            TestRunner->TestFalse(TEXT("New profile defaults off"), manager.unlock_all_missions());
+            TestRunner->TestTrue(TEXT("Debug setting saves"),
+                                 manager.set_unlock_all_missions(true));
+            auto const record{save_profile_manager_test::make_record(
+                FDateTime{2026, 9, 6}, TEXT("asteroid-field"), 3)};
+            TestRunner->TestTrue(TEXT("Score record saves with debug setting enabled"),
+                                 manager.append_score_record(record));
+            TestRunner->TestTrue(TEXT("Metadata updates preserve debug settings"),
+                                 manager.unlock_all_missions());
+
+            auto const created{manager.create_profile(TEXT("Second"))};
+            second_profile_id = created.profile_id;
+            TestRunner->TestEqual(TEXT("Second profile is created"),
+                                  created.result,
+                                  ml::ioj::ECreateSaveProfileResult::succeeded);
+            TestRunner->TestFalse(TEXT("Second profile has independent default"),
+                                  manager.unlock_all_missions());
+            TestRunner->TestTrue(TEXT("First profile reactivates"),
+                                 manager.activate_profile(first_profile_id));
+            TestRunner->TestTrue(TEXT("First profile setting is restored"),
+                                 manager.unlock_all_missions());
+        }
+
+        ml::ioj::FSaveProfileManager reloaded{storage.make()};
+        TestRunner->TestTrue(TEXT("Profile manager reloads"), reloaded.initialise());
+        TestRunner->TestTrue(TEXT("Active profile setting survives reload"),
+                             reloaded.unlock_all_missions());
+        TestRunner->TestTrue(TEXT("Second profile activates"),
+                             reloaded.activate_profile(second_profile_id));
+        TestRunner->TestFalse(TEXT("Second profile remains independent"),
+                              reloaded.unlock_all_missions());
+    }
+
+    TEST_METHOD(TestProfileResetRestoresDebugDefaults)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{};
+        ml::ioj::FSaveProfileManager manager{storage.make()};
+        TestRunner->TestTrue(TEXT("Profile manager initialises"), manager.initialise());
+        TestRunner->TestTrue(TEXT("Test profile is created"), manager.reset_test_profile({}));
+        TestRunner->TestTrue(TEXT("Test profile debug setting saves"),
+                             manager.set_unlock_all_missions(true));
+        TestRunner->TestTrue(TEXT("Test profile debug setting is enabled"),
+                             manager.unlock_all_missions());
+
+        TestRunner->TestTrue(TEXT("Test profile resets again"), manager.reset_test_profile({}));
+        TestRunner->TestFalse(TEXT("Reset test profile restores debug default"),
+                              manager.unlock_all_missions());
+    }
+
+    TEST_METHOD(FailedDebugSettingsSaveRollsBack)
+    {
+        save_profile_manager_test::FFakeProfileStorage storage{};
+        ml::ioj::FSaveProfileManager manager{storage.make()};
+        TestRunner->TestTrue(TEXT("Profile manager initialises"), manager.initialise());
+
+        storage.index_save_fails = true;
+        TestRunner->TestFalse(TEXT("Failed settings save is reported"),
+                              manager.set_unlock_all_missions(true));
+        TestRunner->TestFalse(TEXT("Failed settings save is rolled back"),
+                              manager.unlock_all_missions());
+    }
+
+    TEST_METHOD(RejectsUnsupportedProfileVersions)
+    {
+        save_profile_manager_test::FFakeProfileStorage future_index{
+            .index_exists = true,
+            .index = {.save_version = FSaveProfileIndexData::current_save_version + 1,
+                      .active_profile_id = TEXT("future"),
+                      .profiles = {{.profile_id = TEXT("future"), .display_name = TEXT("Future")}}},
+            .results = {{TEXT("future"), FSaveProfileResultsData{}}},
+        };
+        ml::ioj::FSaveProfileManager index_manager{future_index.make()};
+        TestRunner->TestFalse(TEXT("Future index version is rejected"), index_manager.initialise());
+        TestRunner->TestEqual(
+            TEXT("Rejected index is not rewritten"), future_index.index_save_count, 0);
+
+        save_profile_manager_test::FFakeProfileStorage future_results{
+            .index_exists = true,
+            .index = {.active_profile_id = TEXT("future"),
+                      .profiles = {{.profile_id = TEXT("future"), .display_name = TEXT("Future")}}},
+            .results = {{TEXT("future"),
+                         FSaveProfileResultsData{
+                             .save_version = FSaveProfileResultsData::current_save_version + 1}}},
+        };
+        ml::ioj::FSaveProfileManager results_manager{future_results.make()};
+        TestRunner->TestFalse(TEXT("Future results version is rejected"),
+                              results_manager.initialise());
+        TestRunner->TestEqual(
+            TEXT("Rejected results do not rewrite the index"), future_results.index_save_count, 0);
+    }
+
+    TEST_METHOD(ProfileDebugSettingsRoundTripThroughUnrealSerialization)
+    {
+        auto* const save{NewObject<USpaceSaveProfileIndexSaveGame>()};
+        if (!TestRunner->TestNotNull(TEXT("Profile index save object is created"), save)) {
+            return;
+        }
+        save->data.active_profile_id = TEXT("enabled");
+        save->data.profiles = {
+            {.profile_id = TEXT("enabled"),
+             .display_name = TEXT("Enabled"),
+             .debug_settings = {.unlock_all_missions = true}},
+            {.profile_id = TEXT("disabled"),
+             .display_name = TEXT("Disabled"),
+             .debug_settings = {.unlock_all_missions = false}},
+        };
+
+        TArray<uint8> bytes;
+        if (!TestRunner->TestTrue(TEXT("Profile index serializes"),
+                                  UGameplayStatics::SaveGameToMemory(save, bytes))) {
+            return;
+        }
+        auto* const loaded{
+            Cast<USpaceSaveProfileIndexSaveGame>(UGameplayStatics::LoadGameFromMemory(bytes))};
+        if (!TestRunner->TestNotNull(TEXT("Profile index deserializes"), loaded)) {
+            return;
+        }
+
+        TestRunner->TestEqual(TEXT("Schema version round-trips"),
+                              loaded->data.save_version,
+                              FSaveProfileIndexData::current_save_version);
+        TestRunner->TestEqual(TEXT("Both profiles round-trip"), loaded->data.profiles.Num(), 2);
+        TestRunner->TestTrue(TEXT("Enabled profile setting round-trips"),
+                             loaded->data.profiles[0].debug_settings.unlock_all_missions);
+        TestRunner->TestFalse(TEXT("Disabled profile setting round-trips"),
+                              loaded->data.profiles[1].debug_settings.unlock_all_missions);
     }
 };

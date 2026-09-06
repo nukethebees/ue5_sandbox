@@ -2,9 +2,11 @@
 
 namespace ml {
 FLevelUnlockEvaluator::FLevelUnlockEvaluator(FCompletionQuery completion_query,
-                                             FTitleQuery title_query)
+                                             FTitleQuery title_query,
+                                             bool const force_unlocked)
     : completion_query_{MoveTemp(completion_query)}
-    , title_query_{MoveTemp(title_query)} {}
+    , title_query_{MoveTemp(title_query)}
+    , force_unlocked_{force_unlocked} {}
 
 auto FLevelUnlockEvaluator::evaluate(FLevelDefinition const& definition) const
     -> FLevelUnlockStatus {
@@ -15,6 +17,7 @@ auto FLevelUnlockEvaluator::evaluate(FLevelDefinition const& definition) const
         status.unlocked = status.unlocked && criterion_status.satisfied;
         status.criteria.Add(MoveTemp(criterion_status));
     }
+    status.unlocked = force_unlocked_ || status.unlocked;
     return status;
 }
 

@@ -112,6 +112,14 @@ auto USpaceSaveSubsystem::is_level_completed(ml::FLevelId const level_id) const 
     return get_level_progress(level_id).state == ml::ioj::ELevelProgressState::Completed;
 }
 
+auto USpaceSaveSubsystem::has_active_profile() const -> bool {
+    return profile_manager_.has_active_profile();
+}
+
+auto USpaceSaveSubsystem::unlock_all_missions() const -> bool {
+    return profile_manager_.unlock_all_missions();
+}
+
 bool USpaceSaveSubsystem::load_profile_records(FString const& profile_id,
                                                TArray<FScoreRecord>& records) const {
     return profile_manager_.load_profile_records(profile_id, records);
@@ -132,6 +140,17 @@ bool USpaceSaveSubsystem::reset_test_profile() {
 #else
     return profile_manager_.reset_test_profile(ml::ioj::detail::make_test_profile_records());
 #endif
+}
+
+bool USpaceSaveSubsystem::set_unlock_all_missions(bool const enabled) {
+    if (!profile_manager_.set_unlock_all_missions(enabled)) {
+        UE_LOG(LogSandboxSubsystem,
+               Error,
+               TEXT("USpaceSaveSubsystem::set_unlock_all_missions: Failed to save profile debug "
+                    "settings."));
+        return false;
+    }
+    return true;
 }
 
 auto USpaceSaveSubsystem::save_score_record(FScoreRecord const& record) -> bool {

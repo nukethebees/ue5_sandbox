@@ -46,11 +46,14 @@ class SPACEGAME_API FSaveProfileManager {
     [[nodiscard]] auto get_profiles() const -> TConstArrayView<FSaveProfileMetadata>;
     [[nodiscard]] auto get_active_profile_id() const -> FString const&;
     [[nodiscard]] auto get_active_records() const -> TConstArrayView<FScoreRecord>;
+    [[nodiscard]] auto has_active_profile() const -> bool;
+    [[nodiscard]] auto unlock_all_missions() const -> bool;
 
     auto create_profile(FString display_name) -> FCreateSaveProfileResponse;
     bool activate_profile(FString const& profile_id);
     bool load_profile_records(FString const& profile_id, TArray<FScoreRecord>& records) const;
     bool append_score_record(FScoreRecord const& record);
+    bool set_unlock_all_missions(bool enabled);
     bool reset_test_profile(TConstArrayView<FScoreRecord> records);
 
     [[nodiscard]] static auto validate_profile_name(FString display_name,
@@ -63,6 +66,8 @@ class SPACEGAME_API FSaveProfileManager {
                               TConstArrayView<FScoreRecord> records) -> FSaveProfileMetadata;
     static void update_metadata(FSaveProfileMetadata& metadata,
                                 TConstArrayView<FScoreRecord> records);
+    static auto migrate_index(FSaveProfileIndexData& index) -> bool;
+    static auto results_version_is_supported(FSaveProfileResultsData const& results) -> bool;
 
     bool create_initial_profile(TConstArrayView<FScoreRecord> legacy_records);
     bool save_new_profile(FSaveProfileMetadata metadata,

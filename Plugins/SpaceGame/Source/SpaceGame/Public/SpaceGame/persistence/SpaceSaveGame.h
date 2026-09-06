@@ -56,6 +56,14 @@ class SPACEGAME_API USpaceSaveGame : public USaveGame {
 };
 
 USTRUCT()
+struct SPACEGAME_API FSaveProfileDebugSettings {
+    GENERATED_BODY()
+
+    UPROPERTY()
+    bool unlock_all_missions{};
+};
+
+USTRUCT()
 struct SPACEGAME_API FSaveProfileMetadata {
     GENERATED_BODY()
 
@@ -79,14 +87,19 @@ struct SPACEGAME_API FSaveProfileMetadata {
 
     UPROPERTY()
     int32 outcome_count{};
+
+    UPROPERTY()
+    FSaveProfileDebugSettings debug_settings{};
 };
 
 USTRUCT()
 struct SPACEGAME_API FSaveProfileIndexData {
     GENERATED_BODY()
 
+    static constexpr int32 current_save_version{2};
+
     UPROPERTY()
-    int32 save_version{1};
+    int32 save_version{current_save_version};
 
     UPROPERTY()
     FString active_profile_id{};
@@ -99,8 +112,10 @@ USTRUCT()
 struct SPACEGAME_API FSaveProfileResultsData {
     GENERATED_BODY()
 
+    static constexpr int32 current_save_version{1};
+
     UPROPERTY()
-    int32 save_version{1};
+    int32 save_version{current_save_version};
 
     UPROPERTY()
     TArray<FScoreRecord> score_records{};

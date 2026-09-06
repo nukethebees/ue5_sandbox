@@ -91,6 +91,7 @@ auto make_unlock_evaluator(TArray<FLevelScriptEntry> const& entries,
             return IsValid(save_subsystem) && save_subsystem->is_level_completed(id);
         },
         [&entries](FLevelId const id) { return find_level_title(entries, id); },
+        IsValid(save_subsystem) && save_subsystem->unlock_all_missions(),
     };
 }
 

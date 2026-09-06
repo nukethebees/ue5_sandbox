@@ -20,7 +20,9 @@ class SPACEGAME_API FLevelUnlockEvaluator final {
     using FCompletionQuery = TFunction<bool(FLevelId)>;
     using FTitleQuery = TFunction<FText(FLevelId)>;
 
-    FLevelUnlockEvaluator(FCompletionQuery completion_query, FTitleQuery title_query);
+    FLevelUnlockEvaluator(FCompletionQuery completion_query,
+                          FTitleQuery title_query,
+                          bool force_unlocked = false);
 
     [[nodiscard]] auto evaluate(FLevelDefinition const& definition) const -> FLevelUnlockStatus;
     [[nodiscard]] auto evaluate(FLevelUnlockCriterion const& criterion) const
@@ -28,5 +30,6 @@ class SPACEGAME_API FLevelUnlockEvaluator final {
   private:
     FCompletionQuery completion_query_{};
     FTitleQuery title_query_{};
+    bool force_unlocked_{};
 };
 }

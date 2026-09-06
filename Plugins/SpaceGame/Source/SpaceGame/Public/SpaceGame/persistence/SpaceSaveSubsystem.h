@@ -43,11 +43,14 @@ class SPACEGAME_API USpaceSaveSubsystem : public UGameInstanceSubsystem {
     [[nodiscard]] auto get_level_progress(ml::FLevelId level_id) const
         -> ml::ioj::FLevelProgressSummary;
     [[nodiscard]] auto is_level_completed(ml::FLevelId level_id) const -> bool;
+    [[nodiscard]] auto has_active_profile() const -> bool;
+    [[nodiscard]] auto unlock_all_missions() const -> bool;
     bool load_profile_records(FString const& profile_id, TArray<FScoreRecord>& records) const;
 
     auto create_profile(FString display_name) -> ml::ioj::FCreateSaveProfileResponse;
     bool activate_profile(FString const& profile_id);
     bool reset_test_profile();
+    bool set_unlock_all_missions(bool enabled);
 
     [[nodiscard]] auto save_score_record(FScoreRecord const& record) -> bool;
     void log_save_data() const;

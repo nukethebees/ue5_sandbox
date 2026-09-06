@@ -35,6 +35,9 @@ bool FSaveProfileManager::initialise() {
         return create_initial_profile(legacy_records);
     }
 
+    if (!migrate_index(loaded_index)) {
+        return false;
+    }
     index_ = MoveTemp(loaded_index);
     if (index_.profiles.IsEmpty()) {
         return create_initial_profile({});
@@ -42,9 +45,6 @@ bool FSaveProfileManager::initialise() {
 
     if (!find_profile(index_.active_profile_id)) {
         index_.active_profile_id = index_.profiles[0].profile_id;
-        if (!storage_.save_index(index_)) {
-            return false;
-        }
     }
 
     auto const results_result{storage_.load_results(index_.active_profile_id, active_results_)};
@@ -56,6 +56,8 @@ bool FSaveProfileManager::initialise() {
         if (!storage_.save_results(index_.active_profile_id, active_results_)) {
             return false;
         }
+    } else if (!results_version_is_supported(active_results_)) {
+        return false;
     }
 
     auto* const active_metadata{find_profile(index_.active_profile_id)};
@@ -79,6 +81,15 @@ auto FSaveProfileManager::get_active_profile_id() const -> FString const& {
 
 auto FSaveProfileManager::get_active_records() const -> TConstArrayView<FScoreRecord> {
     return active_results_.score_records;
+}
+
+auto FSaveProfileManager::has_active_profile() const -> bool {
+    return initialised_ && find_profile(index_.active_profile_id) != nullptr;
+}
+
+auto FSaveProfileManager::unlock_all_missions() const -> bool {
+    auto const* const profile{find_profile(index_.active_profile_id)};
+    return has_active_profile() && profile->debug_settings.unlock_all_missions;
 }
 
 auto FSaveProfileManager::create_profile(FString display_name) -> FCreateSaveProfileResponse {
@@ -107,7 +118,8 @@ bool FSaveProfileManager::activate_profile(FString const& profile_id) {
 
     FSaveProfileResultsData loaded_results{};
     auto const result{storage_.load_results(profile_id, loaded_results)};
-    if (result != ESaveProfileLoadResult::succeeded) {
+    if (result != ESaveProfileLoadResult::succeeded ||
+        !results_version_is_supported(loaded_results)) {
         return false;
     }
 
@@ -133,7 +145,8 @@ bool FSaveProfileManager::load_profile_records(FString const& profile_id,
     }
 
     FSaveProfileResultsData results{};
-    if (storage_.load_results(profile_id, results) != ESaveProfileLoadResult::succeeded) {
+    if (storage_.load_results(profile_id, results) != ESaveProfileLoadResult::succeeded ||
+        !results_version_is_supported(results)) {
         return false;
     }
 
@@ -161,6 +174,28 @@ bool FSaveProfileManager::append_score_record(FScoreRecord const& record) {
         return false;
     }
 
+    return true;
+}
+
+bool FSaveProfileManager::set_unlock_all_missions(bool const enabled) {
+    if (!initialised_) {
+        return false;
+    }
+
+    auto* const metadata{find_profile(index_.active_profile_id)};
+    if (metadata == nullptr) {
+        return false;
+    }
+    if (metadata->debug_settings.unlock_all_missions == enabled) {
+        return true;
+    }
+
+    auto const previous{metadata->debug_settings.unlock_all_missions};
+    metadata->debug_settings.unlock_all_missions = enabled;
+    if (!storage_.save_index(index_)) {
+        metadata->debug_settings.unlock_all_missions = previous;
+        return false;
+    }
     return true;
 }
 
@@ -219,6 +254,33 @@ void FSaveProfileManager::update_metadata(FSaveProfileMetadata& metadata,
         metadata.total_simulation_duration_seconds += record.time_seconds;
         metadata.total_kills += record.kills;
     }
+}
+
+auto FSaveProfileManager::migrate_index(FSaveProfileIndexData& index) -> bool {
+    if (index.save_version < 1 ||
+        index.save_version > FSaveProfileIndexData::current_save_version) {
+        return false;
+    }
+
+    while (index.save_version < FSaveProfileIndexData::current_save_version) {
+        switch (index.save_version) {
+            case 1: {
+                for (auto& profile : index.profiles) {
+                    profile.debug_settings = {};
+                }
+                index.save_version = 2;
+                break;
+            }
+            default:
+                return false;
+        }
+    }
+    return true;
+}
+
+auto FSaveProfileManager::results_version_is_supported(FSaveProfileResultsData const& results)
+    -> bool {
+    return results.save_version == FSaveProfileResultsData::current_save_version;
 }
 
 bool FSaveProfileManager::create_initial_profile(

@@ -3,6 +3,7 @@
 #include "SMainMenuView.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/ui/main_menu/DebugSettingsWidget.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
@@ -65,6 +66,8 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
                                                           : SNullWidget::NullWidget};
     auto const options_content{IsValid(options_widget_) ? options_widget_->TakeWidget()
                                                         : SNullWidget::NullWidget};
+    auto const debug_content{IsValid(debug_settings_widget_) ? debug_settings_widget_->TakeWidget()
+                                                             : SNullWidget::NullWidget};
 
     auto result{
         SAssignNew(view_, SMainMenuView)
@@ -73,6 +76,7 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
             .MissionContent()[mission_content]
             .ArchiveContent()[archive_content]
             .OptionsContent()[options_content]
+            .DebugContent()[debug_content]
             .OnPageSelected(FOnMainMenuPageSelected::CreateUObject(this, &ThisClass::request_page))
             .OnQuit(FSimpleDelegate::CreateUObject(this, &ThisClass::request_quit))
             .OnFocusContent(
@@ -111,7 +115,7 @@ auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
     if (page_modal_visible_) {
         if (active_page_ == EMainMenuPage::DataArchive && IsValid(save_game_viewer_)) {
             save_game_viewer_->request_back();
-        } else if (is_configuration_page(active_page_) && IsValid(options_widget_)) {
+        } else if (is_options_page(active_page_) && IsValid(options_widget_)) {
             options_widget_->request_back();
         }
         return true;
@@ -122,7 +126,7 @@ auto UMainMenuWidget::NativeOnHandleBackAction() -> bool {
     return true;
 }
 
-auto UMainMenuWidget::is_configuration_page(EMainMenuPage const page) -> bool {
+auto UMainMenuWidget::is_options_page(EMainMenuPage const page) -> bool {
     return page >= EMainMenuPage::Video && page <= EMainMenuPage::System;
 }
 
@@ -142,6 +146,7 @@ auto UMainMenuWidget::options_tab_for_page(EMainMenuPage const page) -> EOptions
             return EOptionsTab::System;
         case EMainMenuPage::SelectMission:
         case EMainMenuPage::DataArchive:
+        case EMainMenuPage::Debug:
             break;
     }
     checkNoEntry();
@@ -179,6 +184,20 @@ void UMainMenuWidget::create_content_widgets() {
                                                             &ThisClass::handle_page_modal_changed);
         }
     }
+    if (!IsValid(debug_settings_widget_)) {
+        debug_settings_widget_ =
+            IsValid(owning_player) ? CreateWidget<UDebugSettingsWidget>(
+                                         owning_player, UDebugSettingsWidget::StaticClass())
+            : IsValid(game_instance) ? CreateWidget<UDebugSettingsWidget>(
+                                           game_instance, UDebugSettingsWidget::StaticClass())
+            : IsValid(world)
+                ? CreateWidget<UDebugSettingsWidget>(world, UDebugSettingsWidget::StaticClass())
+                : nullptr;
+        if (IsValid(debug_settings_widget_)) {
+            debug_settings_widget_->settings_changed.AddUObject(
+                this, &ThisClass::handle_profile_debug_settings_changed);
+        }
+    }
     if (!IsValid(level_select_widget_) && level_select_class_) {
         level_select_widget_ =
             IsValid(owning_player)   ? CreateWidget<ULevelSelectWidget>(owning_player,
@@ -200,8 +219,7 @@ void UMainMenuWidget::request_page(EMainMenuPage const page) {
     if (page == active_page_ || page_modal_visible_) {
         return;
     }
-    if (is_configuration_page(active_page_) && !is_configuration_page(page) &&
-        IsValid(options_widget_)) {
+    if (is_options_page(active_page_) && !is_options_page(page) && IsValid(options_widget_)) {
         options_widget_->request_leave(
             FSimpleDelegate::CreateUObject(this, &ThisClass::show_page, page));
         return;
@@ -210,11 +228,11 @@ void UMainMenuWidget::request_page(EMainMenuPage const page) {
 }
 
 void UMainMenuWidget::show_page(EMainMenuPage const page) {
-    auto const entering_configuration{!configuration_open_ && is_configuration_page(page)};
-    if (!is_configuration_page(page)) {
-        configuration_open_ = false;
-    } else if (entering_configuration) {
-        configuration_open_ = true;
+    auto const entering_options{!options_open_ && is_options_page(page)};
+    if (!is_options_page(page)) {
+        options_open_ = false;
+    } else if (entering_options) {
+        options_open_ = true;
         if (IsValid(options_widget_)) {
             options_widget_->prepare_for_open();
         }
@@ -226,8 +244,10 @@ void UMainMenuWidget::show_page(EMainMenuPage const page) {
     }
     if (page == EMainMenuPage::SelectMission && IsValid(level_select_widget_)) {
         level_select_widget_->refresh();
-    } else if (is_configuration_page(page) && IsValid(options_widget_)) {
+    } else if (is_options_page(page) && IsValid(options_widget_)) {
         options_widget_->select_tab(options_tab_for_page(page));
+    } else if (page == EMainMenuPage::Debug && IsValid(debug_settings_widget_)) {
+        debug_settings_widget_->refresh();
     }
 }
 
@@ -235,7 +255,7 @@ void UMainMenuWidget::request_quit() {
     if (page_modal_visible_) {
         return;
     }
-    if (is_configuration_page(active_page_) && IsValid(options_widget_)) {
+    if (is_options_page(active_page_) && IsValid(options_widget_)) {
         options_widget_->request_leave(FSimpleDelegate::CreateUObject(this, &ThisClass::quit_game));
         return;
     }
@@ -251,8 +271,10 @@ void UMainMenuWidget::focus_active_content() {
         level_select_widget_->focus_primary_action();
     } else if (active_page_ == EMainMenuPage::DataArchive && IsValid(save_game_viewer_)) {
         save_game_viewer_->focus_primary_action();
-    } else if (is_configuration_page(active_page_) && IsValid(options_widget_)) {
+    } else if (is_options_page(active_page_) && IsValid(options_widget_)) {
         options_widget_->focus_content();
+    } else if (active_page_ == EMainMenuPage::Debug && IsValid(debug_settings_widget_)) {
+        debug_settings_widget_->focus_content();
     }
 }
 
@@ -260,6 +282,12 @@ void UMainMenuWidget::handle_page_modal_changed(bool const visible) {
     page_modal_visible_ = visible;
     if (view_.IsValid()) {
         view_->set_navigation_enabled(!visible);
+    }
+}
+
+void UMainMenuWidget::handle_profile_debug_settings_changed() {
+    if (IsValid(level_select_widget_)) {
+        level_select_widget_->refresh();
     }
 }
 } // namespace ml::ioj
