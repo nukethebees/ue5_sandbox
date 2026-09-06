@@ -883,9 +883,7 @@ void ATestBatchOrchestrator::flush_finalized_telemetry_run() {
         return;
     }
 
-    auto const output_directory{
-        FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Telemetry"), TEXT("Runs"))};
-    auto const path{write_level_telemetry_run(*record, output_directory)};
+    auto const path{write_level_telemetry_run(*record, level_telemetry_runs_directory())};
     if (path) {
         UE_LOG(LogSandbox, Display, TEXT("Wrote level telemetry run to '%s'"), **path);
     } else {

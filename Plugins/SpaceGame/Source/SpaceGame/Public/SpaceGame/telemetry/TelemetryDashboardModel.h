@@ -1,0 +1,105 @@
+#pragma once
+
+#include <SpaceGame/telemetry/LevelTelemetryRunRecord.h>
+
+#include <expected>
+
+enum class ETelemetryDashboardMetric : uint8 {
+    TimeScaleAchievement,
+    ObservedTimeScale,
+    TicksPerRealSecond,
+    RealSampleInterval,
+    ActiveEntities,
+    PlayerShips,
+    Turrets,
+    CapitalShips,
+    CapitalShipFighters,
+    TubeSpinners,
+    ActiveLasers,
+    RegistrySlots,
+    OccupiedSpatialCells,
+    SpawnRate,
+    DestructionRate,
+    KillRate,
+    LaserFireRate,
+    GridRebuildRate,
+    RangeQueryRate,
+    LineTraceRate,
+    SweepTraceRate,
+};
+
+struct SPACEGAME_API FTelemetryMetricSeries {
+    ETelemetryDashboardMetric metric{ETelemetryDashboardMetric::TimeScaleAchievement};
+    FString title{};
+    FString units{};
+    TArray<float> real_elapsed_seconds{};
+    TArray<float> values{};
+    TOptional<double> weighted_mean{};
+};
+
+struct SPACEGAME_API FTelemetryRunAnalysis {
+    TArray<float> throughput_real_elapsed_seconds{};
+    TArray<float> observed_time_scale{};
+    TArray<float> requested_time_scale{};
+    TArray<FTelemetryMetricSeries> metrics{};
+
+    [[nodiscard]] auto find_metric(ETelemetryDashboardMetric metric) const
+        -> FTelemetryMetricSeries const*;
+};
+
+SPACEGAME_API auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record)
+    -> FTelemetryRunAnalysis;
+SPACEGAME_API auto telemetry_metric_title(ETelemetryDashboardMetric metric) -> FString;
+SPACEGAME_API auto telemetry_metric_units(ETelemetryDashboardMetric metric) -> FString;
+
+struct SPACEGAME_API FTelemetryRunSummary {
+    FString path{};
+    FString run_id{};
+    FString map_name{};
+    FName level_id{NAME_None};
+    FString level_display_name{};
+    FString launched_utc{};
+    ELevelTelemetryRunEndReason completion_reason{ELevelTelemetryRunEndReason::WorldEnd};
+
+    [[nodiscard]] auto level_label() const -> FString;
+};
+
+class SPACEGAME_API FTelemetryRunCatalog {
+  public:
+    explicit FTelemetryRunCatalog(FString directory = {});
+
+    void refresh();
+    void set_level_filter(FString level_label);
+    bool select_run(FString const& run_id);
+
+    [[nodiscard]] auto get_runs() const -> TConstArrayView<FTelemetryRunSummary> {
+        return filtered_;
+    }
+    [[nodiscard]] auto get_level_filters() const -> TConstArrayView<FString> {
+        return level_filters_;
+    }
+    [[nodiscard]] auto get_selected_run_id() const -> FString const& { return selected_run_id_; }
+    [[nodiscard]] auto get_selected_record() const -> FLevelTelemetryRunRecord const* {
+        return selected_record_.IsSet() ? &selected_record_.GetValue() : nullptr;
+    }
+    [[nodiscard]] auto get_selected_error() const -> FString const& { return selected_error_; }
+    [[nodiscard]] auto get_unreadable_file_count() const noexcept -> int32 {
+        return unreadable_file_count_;
+    }
+    [[nodiscard]] auto directory_exists() const noexcept -> bool { return directory_exists_; }
+    [[nodiscard]] auto get_level_filter() const -> FString const& { return level_filter_; }
+  private:
+    void rebuild_filter();
+    void load_selection();
+
+    FString directory_{};
+    TArray<FTelemetryRunSummary> all_{};
+    TArray<FTelemetryRunSummary> filtered_{};
+    TArray<FString> level_filters_{};
+    FString level_filter_{TEXT("All levels")};
+    FString selected_run_id_{};
+    TOptional<FLevelTelemetryRunRecord> selected_record_{};
+    FString selected_error_{};
+    int32 unreadable_file_count_{};
+    bool directory_exists_{};
+};

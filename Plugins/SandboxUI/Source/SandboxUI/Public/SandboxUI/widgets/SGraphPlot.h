@@ -33,7 +33,11 @@ struct SANDBOXUI_API FGraphPlotStyle {
     int32 target_x_ticks{6};
     int32 target_y_ticks{5};
     bool show_legend{true};
+    FLinearColor crosshair_color{0.85f, 0.85f, 0.9f, 0.7f};
 };
+
+SANDBOXUI_API auto nearest_graph_x(TConstArrayView<FGraphSeries> series, double x)
+    -> TOptional<double>;
 
 class SANDBOXUI_API SGraphPlot : public SLeafWidget {
   public:
@@ -61,6 +65,9 @@ class SANDBOXUI_API SGraphPlot : public SLeafWidget {
                   int32 layer_id,
                   FWidgetStyle const& widget_style,
                   bool parent_enabled) const override;
+    auto OnMouseMove(FGeometry const& geometry, FPointerEvent const& event) -> FReply override;
+    void OnMouseLeave(FPointerEvent const& event) override;
+    [[nodiscard]] auto get_hovered_x() const noexcept -> TOptional<double> { return hovered_x_; }
   private:
     struct FTick {
         FText label;
@@ -68,6 +75,7 @@ class SANDBOXUI_API SGraphPlot : public SLeafWidget {
     };
 
     void update_layout(FVector2f local_size) const;
+    auto clear_hover() -> bool;
     void rebuild_ticks() const;
     void refresh_cache_series();
     static bool is_valid_style(FGraphPlotStyle const& style);
@@ -83,4 +91,5 @@ class SANDBOXUI_API SGraphPlot : public SLeafWidget {
     mutable FVector2f plot_size_{0.0f, 0.0f};
     uint64 data_revision_{0};
     mutable bool ticks_dirty_{true};
+    TOptional<double> hovered_x_{};
 };

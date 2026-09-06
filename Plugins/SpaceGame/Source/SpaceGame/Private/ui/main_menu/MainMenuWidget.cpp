@@ -7,6 +7,7 @@
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
 #include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
 
 #include <Engine/GameInstance.h>
 #include <Kismet/KismetSystemLibrary.h>
@@ -63,6 +64,8 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
                                                              : SNullWidget::NullWidget};
     auto const archive_content{IsValid(save_game_viewer_) ? save_game_viewer_->TakeWidget()
                                                           : SNullWidget::NullWidget};
+    auto const telemetry_content{IsValid(telemetry_dashboard_) ? telemetry_dashboard_->TakeWidget()
+                                                               : SNullWidget::NullWidget};
     auto const options_content{IsValid(options_widget_) ? options_widget_->TakeWidget()
                                                         : SNullWidget::NullWidget};
 
@@ -72,6 +75,7 @@ auto UMainMenuWidget::RebuildWidget() -> TSharedRef<SWidget> {
             .InitialPage(active_page_)
             .MissionContent()[mission_content]
             .ArchiveContent()[archive_content]
+            .TelemetryContent()[telemetry_content]
             .OptionsContent()[options_content]
             .OnPageSelected(FOnMainMenuPageSelected::CreateUObject(this, &ThisClass::request_page))
             .OnQuit(FSimpleDelegate::CreateUObject(this, &ThisClass::request_quit))
@@ -142,6 +146,7 @@ auto UMainMenuWidget::options_tab_for_page(EMainMenuPage const page) -> EOptions
             return EOptionsTab::System;
         case EMainMenuPage::SelectMission:
         case EMainMenuPage::DataArchive:
+        case EMainMenuPage::Telemetry:
             break;
     }
     checkNoEntry();
@@ -178,6 +183,16 @@ void UMainMenuWidget::create_content_widgets() {
             options_widget_->modal_state_changed.AddUObject(this,
                                                             &ThisClass::handle_page_modal_changed);
         }
+    }
+    if (!IsValid(telemetry_dashboard_)) {
+        telemetry_dashboard_ =
+            IsValid(owning_player) ? CreateWidget<UTelemetryDashboardWidget>(
+                                         owning_player, UTelemetryDashboardWidget::StaticClass())
+            : IsValid(game_instance) ? CreateWidget<UTelemetryDashboardWidget>(
+                                           game_instance, UTelemetryDashboardWidget::StaticClass())
+            : IsValid(world) ? CreateWidget<UTelemetryDashboardWidget>(
+                                   world, UTelemetryDashboardWidget::StaticClass())
+                             : nullptr;
     }
     if (!IsValid(level_select_widget_) && level_select_class_) {
         level_select_widget_ =
@@ -226,6 +241,8 @@ void UMainMenuWidget::show_page(EMainMenuPage const page) {
     }
     if (page == EMainMenuPage::SelectMission && IsValid(level_select_widget_)) {
         level_select_widget_->refresh();
+    } else if (page == EMainMenuPage::Telemetry && IsValid(telemetry_dashboard_)) {
+        telemetry_dashboard_->refresh();
     } else if (is_configuration_page(page) && IsValid(options_widget_)) {
         options_widget_->select_tab(options_tab_for_page(page));
     }
@@ -251,6 +268,8 @@ void UMainMenuWidget::focus_active_content() {
         level_select_widget_->focus_primary_action();
     } else if (active_page_ == EMainMenuPage::DataArchive && IsValid(save_game_viewer_)) {
         save_game_viewer_->focus_primary_action();
+    } else if (active_page_ == EMainMenuPage::Telemetry && IsValid(telemetry_dashboard_)) {
+        telemetry_dashboard_->focus_primary_action();
     } else if (is_configuration_page(active_page_) && IsValid(options_widget_)) {
         options_widget_->focus_content();
     }

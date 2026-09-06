@@ -488,6 +488,101 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("JSON contains sparse workload series"),
              root->GetObjectField(TEXT("tick_series")).IsValid());
 
+    root->SetStringField(TEXT("future_field"), TEXT("ignored"));
+    FString json_with_unknown_field;
+    auto unknown_writer{TJsonWriterFactory<>::Create(&json_with_unknown_field)};
+    FJsonSerializer::Serialize(root.ToSharedRef(), unknown_writer);
+    auto const round_trip{deserialize_level_telemetry_run(json_with_unknown_field)};
+    if (TestTrue(TEXT("Schema-v1 JSON deserializes with unknown fields"), round_trip.has_value())) {
+        TestEqual(TEXT("Round trip preserves the run id"),
+                  round_trip->metadata.run_id,
+                  record->metadata.run_id);
+        TestEqual(TEXT("Round trip preserves realtime mappings"),
+                  round_trip->completed_ticks_by_real_time.num(),
+                  realtime.num());
+    }
+    TestFalse(TEXT("Malformed JSON returns an error"),
+              deserialize_level_telemetry_run(TEXT("{")).has_value());
+    auto unsupported_json{json};
+    unsupported_json.ReplaceInline(TEXT("\"schema_version\": 1"), TEXT("\"schema_version\": 2"));
+    TestFalse(TEXT("Unsupported schemas return an error"),
+              deserialize_level_telemetry_run(unsupported_json).has_value());
+
+    auto parse_current_root = [&root]() {
+        FString mutated_json;
+        auto writer{TJsonWriterFactory<>::Create(&mutated_json)};
+        FJsonSerializer::Serialize(root.ToSharedRef(), writer);
+        return deserialize_level_telemetry_run(mutated_json);
+    };
+    auto const completion_json{root->GetObjectField(TEXT("completion"))};
+    auto const original_reason{completion_json->GetStringField(TEXT("reason"))};
+    completion_json->SetStringField(TEXT("reason"), TEXT("future_reason"));
+    TestFalse(TEXT("Unknown completion enums return an error"), parse_current_root().has_value());
+    completion_json->SetStringField(TEXT("reason"), original_reason);
+
+    auto const tick_series_json{root->GetObjectField(TEXT("tick_series"))};
+    auto const active_entities_json{tick_series_json->GetObjectField(TEXT("active_entities"))};
+    auto const original_active_values{active_entities_json->GetArrayField(TEXT("values"))};
+    auto misaligned_active_values{original_active_values};
+    misaligned_active_values.Add(MakeShared<FJsonValueNumber>(0.0));
+    active_entities_json->SetArrayField(TEXT("values"), MoveTemp(misaligned_active_values));
+    TestFalse(TEXT("Misaligned sparse arrays return an error"), parse_current_root().has_value());
+    active_entities_json->SetArrayField(TEXT("values"), original_active_values);
+
+    auto const requested_json{tick_series_json->GetObjectField(TEXT("requested_time_scale"))};
+    auto const original_requested_ticks{requested_json->GetArrayField(TEXT("ticks"))};
+    auto unordered_requested_ticks{original_requested_ticks};
+    if (unordered_requested_ticks.Num() >= 2) {
+        unordered_requested_ticks[1] = unordered_requested_ticks[0];
+        requested_json->SetArrayField(TEXT("ticks"), MoveTemp(unordered_requested_ticks));
+        TestFalse(TEXT("Non-increasing sparse ticks return an error"),
+                  parse_current_root().has_value());
+        requested_json->SetArrayField(TEXT("ticks"), original_requested_ticks);
+    }
+
+    auto const original_realtime_values{realtime_json->GetArrayField(TEXT("real_elapsed_seconds"))};
+    auto unordered_realtime_values{original_realtime_values};
+    if (unordered_realtime_values.Num() >= 2) {
+        unordered_realtime_values[1] = unordered_realtime_values[0];
+        realtime_json->SetArrayField(TEXT("real_elapsed_seconds"),
+                                     MoveTemp(unordered_realtime_values));
+        TestFalse(TEXT("Non-increasing real-time coordinates return an error"),
+                  parse_current_root().has_value());
+        realtime_json->SetArrayField(TEXT("real_elapsed_seconds"), original_realtime_values);
+    }
+
+    auto const spawned_json{tick_series_json->GetObjectField(TEXT("spawned_entities"))};
+    auto const original_spawned_ticks{spawned_json->GetArrayField(TEXT("ticks"))};
+    auto const original_spawned_values{spawned_json->GetArrayField(TEXT("values"))};
+    spawned_json->SetArrayField(TEXT("ticks"), {MakeShared<FJsonValueNumber>(0.0)});
+    spawned_json->SetArrayField(TEXT("values"), {MakeShared<FJsonValueNumber>(-1.0)});
+    TestFalse(TEXT("Negative counter values return an error"), parse_current_root().has_value());
+    spawned_json->SetArrayField(TEXT("ticks"), original_spawned_ticks);
+    spawned_json->SetArrayField(TEXT("values"), original_spawned_values);
+
+    auto const original_mission_mode{completion_json->Values.FindRef(TEXT("mission_mode"))};
+    auto const original_mission_state{completion_json->Values.FindRef(TEXT("mission_state"))};
+    auto const original_mission_fail{completion_json->Values.FindRef(TEXT("mission_fail_reason"))};
+    completion_json->SetField(TEXT("mission_mode"), MakeShared<FJsonValueNull>());
+    completion_json->SetStringField(TEXT("mission_state"), TEXT("running"));
+    completion_json->SetField(TEXT("mission_fail_reason"), MakeShared<FJsonValueNull>());
+    TestFalse(TEXT("Partial optional mission metadata returns an error"),
+              parse_current_root().has_value());
+    completion_json->SetField(TEXT("mission_mode"), original_mission_mode);
+    completion_json->SetField(TEXT("mission_state"), original_mission_state);
+    completion_json->SetField(TEXT("mission_fail_reason"), original_mission_fail);
+    auto const original_mission_elapsed{
+        completion_json->Values.FindRef(TEXT("mission_elapsed_seconds"))};
+    completion_json->RemoveField(TEXT("mission_mode"));
+    completion_json->RemoveField(TEXT("mission_state"));
+    completion_json->RemoveField(TEXT("mission_fail_reason"));
+    completion_json->RemoveField(TEXT("mission_elapsed_seconds"));
+    TestTrue(TEXT("Optional mission fields may be omitted"), parse_current_root().has_value());
+    completion_json->SetField(TEXT("mission_mode"), original_mission_mode);
+    completion_json->SetField(TEXT("mission_state"), original_mission_state);
+    completion_json->SetField(TEXT("mission_fail_reason"), original_mission_fail);
+    completion_json->SetField(TEXT("mission_elapsed_seconds"), original_mission_elapsed);
+
     auto const output_directory{FPaths::Combine(FPaths::ProjectSavedDir(),
                                                 TEXT("Automation"),
                                                 TEXT("Telemetry"),
