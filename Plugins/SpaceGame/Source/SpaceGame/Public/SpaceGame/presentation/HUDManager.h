@@ -241,6 +241,7 @@ struct SPACEGAME_API FHUDManager {
     FString selected_mapping_context;
     FEntityOverlaySettings entity_overlay_settings_;
     FEntityOverlayStyle entity_overlay_style_;
+    FEntityOverlayTeamColours entity_overlay_team_colours_;
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;
     TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
 

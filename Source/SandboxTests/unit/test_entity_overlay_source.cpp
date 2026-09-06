@@ -52,6 +52,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
         auto const result{collect_entity_overlay_instances(make_view(entities),
                                                            objective_roles,
+                                                           {},
                                                            {5000, 50, 20},
                                                            FVector3f::ZeroVector,
                                                            100.0f,
@@ -81,6 +82,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
         static_cast<void>(collect_entity_overlay_instances(make_view(entities),
                                                            objective_roles,
+                                                           {},
                                                            {5000, 50, 20},
                                                            FVector3f::ZeroVector,
                                                            100.0f,

@@ -1,5 +1,6 @@
 #include "SpaceGame/presentation/HUDManager.h"
 
+#include "SpaceGame/entities/TestTeamVisualData.h"
 #include "SpaceGame/missions/TestMissionManager.h"
 #include "SpaceGame/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGame/ships/player/TestSpaceShipSimulation.h"
@@ -78,10 +79,20 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
                        FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f)),
         .inset_pixels = entity_overlay_settings.inset_pixels,
         .maximum_inset_height_ratio = entity_overlay_settings.maximum_inset_height_ratio,
+        .objective_bar_height_scale =
+            FMath::Clamp(entity_overlay_settings.objective_bar_height_scale, 1.0f, 2.0f),
         .objective_frame_pixels = entity_overlay_settings.objective_frame_pixels,
         .screen_edge_padding_pixels = entity_overlay_settings.screen_edge_padding_pixels,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,
+    };
+    entity_overlay_team_colours_ = {
+        .capital_ship = UTestTeamVisualData::build_team_colour_cache(
+            level_config.capital_ships.team_visual_data),
+        .fighter =
+            UTestTeamVisualData::build_team_colour_cache(level_config.fighters.team_visual_data),
+        .turret =
+            UTestTeamVisualData::build_team_colour_cache(level_config.turrets.team_visual_data),
     };
     entity_overlay_maximum_health_ = {
         .capital_ship = level_config.capital_ships.max_health,
@@ -321,6 +332,7 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     auto const result{
         collect_entity_overlay_instances(entity_registry->get_entity_data().get_const_view(),
                                          entity_overlay_objective_roles_,
+                                         entity_overlay_team_colours_,
                                          entity_overlay_maximum_health_,
                                          FVector3f{camera_location},
                                          entity_overlay_settings_.maximum_range,

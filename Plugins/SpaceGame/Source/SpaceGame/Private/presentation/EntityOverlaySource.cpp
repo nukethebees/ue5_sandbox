@@ -27,11 +27,31 @@ auto inverse_maximum_health(ETestEntityType const type,
     }
     return maximum > 0 ? 1.0f / static_cast<float>(maximum) : 0.0f;
 }
+
+auto team_colour(ETestEntityType const type,
+                 ETestTeam const team,
+                 FEntityOverlayTeamColours const& colours) -> FLinearColor {
+    switch (type) {
+        case ETestEntityType::CapitalShip: {
+            return colours.capital_ship[team];
+        }
+        case ETestEntityType::CapitalShipFighter: {
+            return colours.fighter[team];
+        }
+        case ETestEntityType::Turret: {
+            return colours.turret[team];
+        }
+        default: {
+            return FLinearColor::White;
+        }
+    }
+}
 }
 
 auto collect_entity_overlay_instances(
     ml::entity_registry::EntityData::ConstView const entities,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
+    FEntityOverlayTeamColours const& team_colours,
     FEntityOverlayHealthMaximums const& maximum_health,
     FVector3f const origin,
     float const maximum_range,
@@ -56,12 +76,13 @@ auto collect_entity_overlay_instances(
         }
 
         auto const objective_role{objective_roles[index]};
-        static_cast<void>(
-            collector.try_add(entities.locations[index],
-                              static_cast<float>(entities.healths[index]) * inverse_health,
-                              entities.radii[index],
-                              objective_role,
-                              objective_role != EEntityOverlayObjectiveRole::None));
+        static_cast<void>(collector.try_add_colored(
+            entities.locations[index],
+            static_cast<float>(entities.healths[index]) * inverse_health,
+            entities.radii[index],
+            team_colour(entities.entity_types[index], entities.teams[index], team_colours),
+            objective_role,
+            objective_role != EEntityOverlayObjectiveRole::None));
     }
 
     return {.candidate_count = output_instances.Num(),

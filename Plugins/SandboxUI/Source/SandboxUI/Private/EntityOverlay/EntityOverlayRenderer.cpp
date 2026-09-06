@@ -2,6 +2,7 @@
 
 #include "CommonRenderResources.h"
 #include "GlobalShader.h"
+#include "HAL/PlatformTime.h"
 #include "PipelineStateCache.h"
 #include "RenderGraphBuilder.h"
 #include "RenderGraphUtils.h"
@@ -33,6 +34,7 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(float, MaximumWorldRadius)
     SHADER_PARAMETER(float, MinimumBarScale)
     SHADER_PARAMETER(float, MaximumBarScale)
+    SHADER_PARAMETER(float, ObjectiveBarHeightScale)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, ScreenEdgePaddingPixels)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
@@ -53,6 +55,7 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_PARAMETER(float, InsetPixels)
     SHADER_PARAMETER(float, MaximumInsetHeightRatio)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
+    SHADER_PARAMETER(float, TimeSeconds)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
     SHADER_PARAMETER(FVector4f, DefendObjectiveColor)
@@ -118,12 +121,15 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     parameters->VS.MinimumBarScale = FMath::Max(style.minimum_bar_scale, 0.01f);
     parameters->VS.MaximumBarScale =
         FMath::Max(style.maximum_bar_scale, parameters->VS.MinimumBarScale);
+    parameters->VS.ObjectiveBarHeightScale =
+        FMath::Clamp(style.objective_bar_height_scale, 1.0f, 2.0f);
     parameters->VS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
     parameters->VS.ScreenEdgePaddingPixels = FMath::Max(style.screen_edge_padding_pixels, 0.0f);
     parameters->VS.Instances = graph_builder.CreateSRV(instance_buffer);
     parameters->PS.InsetPixels = style.inset_pixels;
     parameters->PS.MaximumInsetHeightRatio = FMath::Max(style.maximum_inset_height_ratio, 0.0f);
     parameters->PS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
+    parameters->PS.TimeSeconds = FMath::Fmod(static_cast<float>(FPlatformTime::Seconds()), 1024.0f);
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
     parameters->PS.DefendObjectiveColor = FVector4f{style.defend_objective_color};
