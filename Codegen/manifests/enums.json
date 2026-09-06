@@ -74,15 +74,111 @@
           "enum_array": true,
           "export_specifier": "SPACEGAME_API",
           "values": [
-            {"name": "None"},
-            {"name": "SurviveTime", "display_name": "Survive Time"},
-            {"name": "KillEnemies", "display_name": "Kill Enemies"},
+            {"name": "None", "serialized_name": "none"},
+            {"name": "SurviveTime", "display_name": "Survive Time", "serialized_name": "survive_time"},
+            {"name": "KillEnemies", "display_name": "Kill Enemies", "serialized_name": "kill_enemies"},
             {
               "name": "KillEnemiesWithinTime",
-              "display_name": "Kill Enemies Within Time"
+              "display_name": "Kill Enemies Within Time",
+              "serialized_name": "kill_enemies_within_time"
             }
           ],
-          "conversions": ["lex_to_string", "string_view", "display_string_view"]
+          "conversions": ["lex_to_string", "string_view", "display_string_view", "lex_to_serialized_string", "try_parse_serialized"]
+        }
+      ]
+    },
+    {
+      "kind": "enum",
+      "name": "mission_states",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionState.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionState.cpp",
+      "header_include": "SpaceGame/missions/TestMissionState.h",
+      "helper_namespace": "ml",
+      "enums": [
+        {
+          "name": "ETestMissionState",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "NotStarted", "serialized_name": "not_started"},
+            {"name": "Running", "serialized_name": "running"},
+            {"name": "Succeeded", "serialized_name": "succeeded"},
+            {"name": "Failed", "serialized_name": "failed"},
+            {"name": "Disabled", "serialized_name": "disabled"}
+          ],
+          "conversions": ["lex_to_serialized_string", "try_parse_serialized"]
+        }
+      ]
+    },
+    {
+      "kind": "enum",
+      "name": "mission_fail_reasons",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionFailReason.cpp",
+      "header_include": "SpaceGame/missions/TestMissionFailReason.h",
+      "helper_namespace": "ml",
+      "enums": [
+        {
+          "name": "ETestMissionFailReason",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "None", "serialized_name": "none"},
+            {"name": "PlayerKilled", "serialized_name": "player_killed"},
+            {"name": "TimeElapsed", "serialized_name": "time_elapsed"},
+            {"name": "DefenceObjectiveFailed", "serialized_name": "defence_objective_failed"}
+          ],
+          "conversions": ["lex_to_serialized_string", "try_parse_serialized"]
+        }
+      ]
+    },
+    {
+      "kind": "enum",
+      "name": "test_teams",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestTeam.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestTeam.cpp",
+      "header_include": "SpaceGame/entities/TestTeam.h",
+      "helper_namespace": "ml",
+      "enums": [
+        {
+          "name": "ETestTeam",
+          "underlying_type": "uint8",
+          "reflection": "uenum",
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "White", "serialized_name": "white"},
+            {"name": "Red", "serialized_name": "red"},
+            {"name": "Green", "serialized_name": "green"},
+            {"name": "Blue", "serialized_name": "blue"},
+            {"name": "Orange", "serialized_name": "orange"},
+            {"name": "Yellow", "serialized_name": "yellow"},
+            {"name": "COUNT", "display_name": "Count", "hidden": true, "serialized_name": "count"}
+          ],
+          "conversions": ["lex_to_serialized_string", "try_parse_serialized"]
+        }
+      ]
+    },
+    {
+      "kind": "enum",
+      "name": "level_telemetry_run_end_reasons",
+      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/telemetry/LevelTelemetryRunEndReason.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/telemetry/LevelTelemetryRunEndReason.cpp",
+      "header_include": "SpaceGame/telemetry/LevelTelemetryRunEndReason.h",
+      "helper_namespace": "ml",
+      "enums": [
+        {
+          "name": "ELevelTelemetryRunEndReason",
+          "underlying_type": "uint8",
+          "export_specifier": "SPACEGAME_API",
+          "values": [
+            {"name": "MissionSucceeded", "serialized_name": "mission_succeeded"},
+            {"name": "MissionFailed", "serialized_name": "mission_failed"},
+            {"name": "OrchestratorReset", "serialized_name": "orchestrator_reset"},
+            {"name": "WorldEnd", "serialized_name": "world_end"}
+          ],
+          "conversions": ["lex_to_serialized_string", "try_parse_serialized"]
         }
       ]
     },
@@ -110,14 +206,14 @@
           "count": "COUNT",
           "export_specifier": "SPACEGAME_API",
           "values": [
-            {"name": "PlayerShip", "display_name": "Player Ship"},
-            {"name": "Turret"},
-            {"name": "CapitalShip", "display_name": "Capital Ship"},
-            {"name": "CapitalShipFighter", "display_name": "Capital Ship Fighter"},
-            {"name": "TubeSpinner", "display_name": "Tube Spinner"},
+            {"name": "PlayerShip", "display_name": "Player Ship", "serialized_name": "player_ship"},
+            {"name": "Turret", "serialized_name": "turret"},
+            {"name": "CapitalShip", "display_name": "Capital Ship", "serialized_name": "capital_ship"},
+            {"name": "CapitalShipFighter", "display_name": "Capital Ship Fighter", "serialized_name": "capital_ship_fighter"},
+            {"name": "TubeSpinner", "display_name": "Tube Spinner", "serialized_name": "tube_spinner"},
             {"name": "COUNT", "hidden": true}
           ],
-          "conversions": ["lex_to_string", "string_view", "display_string_view"]
+          "conversions": ["lex_to_string", "string_view", "display_string_view", "lex_to_serialized_string", "try_parse_serialized"]
         }
       ]
     }

@@ -1,9 +1,12 @@
 #include <HAL/PlatformMisc.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
+
+#include <CoreGlobals.h>
 
 namespace {
 auto make_legacy_level_initialisation(FLevelSimulationInitData const& data)
@@ -61,6 +64,7 @@ auto make_legacy_level_initialisation(FLevelSimulationInitData const& data)
 FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data,
                                    FLevelPresentationResources const* presentation) {
     clock_.initialise(data.clock_settings);
+    telemetry_metadata_ = MoveTemp(data.telemetry_metadata);
     if (data.player.IsSet()) {
         auto const& spawn{data.player.GetValue()};
         auto& player{player_ship_simulation_.Emplace()};
@@ -138,21 +142,46 @@ void FLevelSimulation::finish_initialisation() {
     query_manager_.reset_runtime_telemetry();
     level_telemetry_manager_.initialise(
         clock_, entity_registry_, lasers_simulation_, query_manager_);
+    telemetry_tick_loop_.tick_rate = 1.0;
+    telemetry_tick_loop_.time_scale = 1.0;
+    telemetry_tick_loop_.initialise();
+    if (telemetry_metadata_.IsSet()) {
+        level_telemetry_manager_.begin_run(MoveTemp(telemetry_metadata_.GetValue()));
+        telemetry_metadata_.Reset();
+    }
     event_manager_.configure_mission();
     mission_manager_.begin_play();
     state_ = EOrchestratorState::Paused;
 }
 void FLevelSimulation::start() {
     check(state_ == EOrchestratorState::Paused);
+    telemetry_tick_loop_.initialise();
     state_ = EOrchestratorState::Running;
 }
 void FLevelSimulation::pause() {
     check(state_ != EOrchestratorState::Uninitialised);
+    telemetry_tick_loop_.initialise();
     state_ = EOrchestratorState::Paused;
 }
 void FLevelSimulation::set_time_scale(time_type scale) {
     check(scale > 0.0);
     clock_.tick_loop.time_scale = scale;
+}
+
+void FLevelSimulation::finalize_telemetry_run(ELevelTelemetryRunEndReason const reason,
+                                              FString detail) {
+    level_telemetry_manager_.finalize_interrupted(reason, MoveTemp(detail));
+    persist_finalized_telemetry_run();
+}
+
+auto FLevelSimulation::take_mission_result() -> TOptional<FLevelMissionResult> {
+    auto result{mission_manager_.take_result()};
+    if (!result.IsSet()) {
+        return NullOpt;
+    }
+
+    level_telemetry_manager_.mark_mission_terminal(*result);
+    return result;
 }
 
 void FLevelSimulation::bind_simulation_dependencies() {
@@ -390,10 +419,41 @@ void FLevelSimulation::advance(time_type const dt) {
             on_end_tick(*this);
         }
     }
+    sample_realtime_telemetry(dt);
+    persist_finalized_telemetry_run();
 }
 
 void FLevelSimulation::commit_presentation(time_type const dt) {
     if (presentation_.IsSet()) {
         presentation_->commit_visual_data(dt);
+    }
+}
+
+void FLevelSimulation::sample_realtime_telemetry(time_type const dt) {
+    telemetry_tick_loop_.add_time(dt);
+    bool should_sample{};
+    while (telemetry_tick_loop_.try_tick()) {
+        should_sample = true;
+    }
+    if (should_sample) {
+        level_telemetry_manager_.capture_realtime_sample();
+    }
+}
+
+void FLevelSimulation::persist_finalized_telemetry_run() {
+    if (GIsAutomationTesting) {
+        return;
+    }
+
+    auto record{level_telemetry_manager_.take_finalized_run()};
+    if (!record.IsSet()) {
+        return;
+    }
+
+    auto const path{write_level_telemetry_run(*record, level_telemetry_runs_directory())};
+    if (path) {
+        UE_LOG(LogSandbox, Display, TEXT("Wrote level telemetry run to '%s'"), **path);
+    } else {
+        UE_LOG(LogSandbox, Error, TEXT("Failed to write level telemetry run: %s"), *path.error());
     }
 }

@@ -15,11 +15,15 @@ struct SANDBOXUI_API FHistogramStyle {
     FMargin chart_padding{12.0f};
     float bar_gap{2.0f};
     FLinearColor bar_color{0.2f, 0.55f, 0.9f, 1.0f};
+    FLinearColor hovered_bar_color{0.45f, 0.75f, 1.0f, 1.0f};
+    FLinearColor background_color{0.008f, 0.01f, 0.015f, 0.9f};
+    FLinearColor plot_color{0.015f, 0.02f, 0.03f, 1.0f};
     FLinearColor axis_color{0.5f, 0.52f, 0.56f, 0.9f};
     float axis_thickness{1.0f};
     FSlateFontInfo label_font;
     FLinearColor label_color{0.75f, 0.77f, 0.8f, 1.0f};
     float label_area_height{20.0f};
+    FText empty_text;
 };
 
 struct SANDBOXUI_API FHistogramBarGeometry {
@@ -44,6 +48,10 @@ SANDBOXUI_API auto maximum_histogram_bin_count(TConstArrayView<int32> bins) -> i
 SANDBOXUI_API auto build_histogram_geometry(TConstArrayView<int32> bins,
                                             FVector2f plot_size,
                                             float bar_gap) -> FHistogramGeometry;
+SANDBOXUI_API auto hit_test_histogram_bin(FVector2f point,
+                                          FVector2f plot_origin,
+                                          FVector2f plot_size,
+                                          int32 bin_count) -> int32;
 
 class SANDBOXUI_API SHistogram : public SLeafWidget {
   public:
@@ -61,7 +69,7 @@ class SANDBOXUI_API SHistogram : public SLeafWidget {
 
     void set_samples(TArray<float> samples);
     void clear_samples();
-    void set_bin_configuration(float domain_minimum, float domain_maximum, int32 bin_count);
+    bool set_bin_configuration(float domain_minimum, float domain_maximum, int32 bin_count);
     [[nodiscard]] bool set_style(FHistogramStyle style);
 
     auto get_samples() const noexcept -> TConstArrayView<float> { return samples_; }
@@ -79,6 +87,9 @@ class SANDBOXUI_API SHistogram : public SLeafWidget {
                   int32 layer_id,
                   FWidgetStyle const& widget_style,
                   bool parent_enabled) const override;
+    auto OnMouseMove(FGeometry const& geometry, FPointerEvent const& event) -> FReply override;
+    void OnMouseLeave(FPointerEvent const& event) override;
+    [[nodiscard]] auto get_hovered_bin() const noexcept -> int32 { return hovered_bin_; }
   private:
     static bool is_valid_style(FHistogramStyle const& style);
     void rebuild_bins();
@@ -89,4 +100,5 @@ class SANDBOXUI_API SHistogram : public SLeafWidget {
     float domain_maximum_{1.0f};
     int32 bin_count_{10};
     FHistogramStyle style_;
+    int32 hovered_bin_{INDEX_NONE};
 };

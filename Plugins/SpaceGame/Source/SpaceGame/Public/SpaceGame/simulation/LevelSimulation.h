@@ -49,6 +49,7 @@ struct FLevelSimulationInitData {
     float turret_radius{1.f};
     float spinner_radius{1.f};
     float fighter_fire_point_distance{};
+    TOptional<FLevelTelemetryRunMetadata> telemetry_metadata{};
 };
 
 struct SPACEGAME_API FLevelSimulation {
@@ -68,6 +69,8 @@ struct SPACEGAME_API FLevelSimulation {
     void advance(time_type dt);
     void commit_presentation(time_type dt);
     void set_time_scale(time_type scale);
+    void finalize_telemetry_run(ELevelTelemetryRunEndReason reason, FString detail = {});
+    auto take_mission_result() -> TOptional<FLevelMissionResult>;
     auto get_state() const noexcept -> EOrchestratorState { return state_; }
     auto get_clock() const noexcept -> FSimulationClock const& { return clock_; }
     auto get_time_scale() const noexcept -> time_type { return clock_.get_time_scale(); }
@@ -120,6 +123,8 @@ struct SPACEGAME_API FLevelSimulation {
   private:
     friend class ATestBatchOrchestrator;
     void bind_simulation_dependencies();
+    void sample_realtime_telemetry(time_type dt);
+    void persist_finalized_telemetry_run();
 
     FSimulationClock clock_;
     EOrchestratorState state_{EOrchestratorState::Uninitialised};
@@ -132,6 +137,8 @@ struct SPACEGAME_API FLevelSimulation {
     ml::test_lasers::Simulation lasers_simulation_;
     ml::test_lasers::PhaseInterface lasers_phase_;
     FLevelTelemetryManager level_telemetry_manager_;
+    FFixedTickLoop telemetry_tick_loop_{};
+    TOptional<FLevelTelemetryRunMetadata> telemetry_metadata_{};
     ml::test_capital_ships::Simulation capital_ships_simulation_;
     ml::test_capital_ships::PhaseInterface capital_ships_phase_;
     ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation_;

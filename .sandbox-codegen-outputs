@@ -40,8 +40,11 @@ Plugins/SpaceGame/Source/SpaceGame/Private/entities/RegistryEntityHandles.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityRegistryData.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityTypeEnum.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityUniqueEntityDataSoA.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestTeam.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/levels/LevelDefinitionSoA.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionFailReason.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionMode.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionState.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsPhaseInterface.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsSoA.cpp
@@ -54,6 +57,7 @@ Plugins/SpaceGame/Source/SpaceGame/Private/simulation/EntityCellData.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/LineTraces.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/StaticCollisionSources.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/simulation/TraceHits.cpp
+Plugins/SpaceGame/Source/SpaceGame/Private/telemetry/LevelTelemetryRunEndReason.cpp
 Plugins/SpaceGame/Source/SpaceGame/Private/ui/style/GameUiStyleTypes.cpp
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersSoA.h
@@ -68,8 +72,11 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/RegistryEntityHandl
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityRegistryData.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityType.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityUniqueEntityDataSoA.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestTeam.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelDefinitionSoA.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionState.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/settings/GameSettings.generated.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsPhaseInterface.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsSoA.h
@@ -84,4 +91,5 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/EntityCellData.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/LineTraces.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/TraceHits.h
+Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/telemetry/LevelTelemetryRunEndReason.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ui/style/GameUiStyleTypes.h

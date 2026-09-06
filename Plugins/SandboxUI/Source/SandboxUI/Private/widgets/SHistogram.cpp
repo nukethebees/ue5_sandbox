@@ -51,7 +51,8 @@ auto has_valid_domain(float const minimum, float const maximum) -> bool {
 }
 
 FHistogramStyle::FHistogramStyle()
-    : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)} {}
+    : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)}
+    , empty_text{NSLOCTEXT("SandboxUI", "HistogramEmpty", "No interval data")} {}
 
 auto build_histogram_bins(TConstArrayView<float> const samples,
                           float const domain_minimum,
@@ -126,15 +127,30 @@ auto build_histogram_geometry(TConstArrayView<int32> const bins,
     return geometry;
 }
 
+auto hit_test_histogram_bin(FVector2f const point,
+                            FVector2f const plot_origin,
+                            FVector2f const plot_size,
+                            int32 const bin_count) -> int32 {
+    if (bin_count <= 0 || plot_size.X <= 0.0f || plot_size.Y <= 0.0f || point.X < plot_origin.X ||
+        point.Y < plot_origin.Y || point.X >= plot_origin.X + plot_size.X ||
+        point.Y >= plot_origin.Y + plot_size.Y) {
+        return INDEX_NONE;
+    }
+    return FMath::Clamp(
+        FMath::FloorToInt((point.X - plot_origin.X) / plot_size.X * bin_count), 0, bin_count - 1);
+}
+
 void SHistogram::Construct(FArguments const& args) {
     style_ = args._Style;
     if (!is_valid_style(style_)) {
         style_ = FHistogramStyle{};
     }
 
-    domain_minimum_ = args._DomainMinimum;
-    domain_maximum_ = args._DomainMaximum;
-    bin_count_ = args._BinCount;
+    if (has_valid_domain(args._DomainMinimum, args._DomainMaximum) && args._BinCount > 0) {
+        domain_minimum_ = args._DomainMinimum;
+        domain_maximum_ = args._DomainMaximum;
+        bin_count_ = args._BinCount;
+    }
     rebuild_bins();
 }
 
@@ -154,14 +170,18 @@ void SHistogram::clear_samples() {
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
-void SHistogram::set_bin_configuration(float const domain_minimum,
+bool SHistogram::set_bin_configuration(float const domain_minimum,
                                        float const domain_maximum,
                                        int32 const bin_count) {
+    if (!has_valid_domain(domain_minimum, domain_maximum) || bin_count <= 0) {
+        return false;
+    }
     domain_minimum_ = domain_minimum;
     domain_maximum_ = domain_maximum;
     bin_count_ = bin_count;
     rebuild_bins();
     Invalidate(EInvalidateWidgetReason::Paint);
+    return true;
 }
 
 bool SHistogram::set_style(FHistogramStyle style) {
@@ -201,19 +221,35 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
     auto const histogram_geometry{build_histogram_geometry(bins_, plot_size, style_.bar_gap)};
-    auto const bar_layer{layer_id};
+    draw_histogram_box(out_draw_elements,
+                       layer_id,
+                       allotted_geometry,
+                       FVector2f::ZeroVector,
+                       widget_size,
+                       draw_effect,
+                       style_.background_color * inherited_tint);
+    draw_histogram_box(out_draw_elements,
+                       layer_id + 1,
+                       allotted_geometry,
+                       plot_origin,
+                       plot_size,
+                       draw_effect,
+                       style_.plot_color * inherited_tint);
+    auto const bar_layer{layer_id + 2};
     if (plot_size.X > 0.0f && plot_size.Y > 0.0f) {
         auto const clip_geometry{
             allotted_geometry.ToPaintGeometry(plot_size, FSlateLayoutTransform{plot_origin})};
         out_draw_elements.PushClip(FSlateClippingZone{clip_geometry});
         for (auto const& bar : histogram_geometry.bars) {
-            draw_histogram_box(out_draw_elements,
-                               bar_layer,
-                               allotted_geometry,
-                               plot_origin + bar.position,
-                               bar.size,
-                               draw_effect,
-                               style_.bar_color * inherited_tint);
+            draw_histogram_box(
+                out_draw_elements,
+                bar_layer,
+                allotted_geometry,
+                plot_origin + bar.position,
+                bar.size,
+                draw_effect,
+                (bar.bin_index == hovered_bin_ ? style_.hovered_bar_color : style_.bar_color) *
+                    inherited_tint);
         }
         out_draw_elements.PopClip();
     }
@@ -262,7 +298,73 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                          style_.label_font,
                          draw_effect,
                          label_tint);
+    draw_histogram_label(out_draw_elements,
+                         axis_layer,
+                         allotted_geometry,
+                         {plot_origin.X + 3.0f, plot_origin.Y + 2.0f},
+                         {80.0f, 16.0f},
+                         FText::AsNumber(histogram_geometry.maximum_count),
+                         style_.label_font,
+                         draw_effect,
+                         label_tint);
+    draw_histogram_label(out_draw_elements,
+                         axis_layer,
+                         allotted_geometry,
+                         {plot_origin.X + 3.0f, plot_origin.Y + plot_size.Y - 16.0f},
+                         {80.0f, 16.0f},
+                         FText::AsNumber(0),
+                         style_.label_font,
+                         draw_effect,
+                         label_tint);
+    if (histogram_geometry.maximum_count == 0 && !style_.empty_text.IsEmpty()) {
+        draw_histogram_label(out_draw_elements,
+                             axis_layer,
+                             allotted_geometry,
+                             plot_origin + FVector2f{8.0f, plot_size.Y * 0.5f - 8.0f},
+                             {FMath::Max(0.0f, plot_size.X - 16.0f), 18.0f},
+                             style_.empty_text,
+                             style_.label_font,
+                             draw_effect,
+                             label_tint);
+    }
     return axis_layer;
+}
+
+auto SHistogram::OnMouseMove(FGeometry const& geometry, FPointerEvent const& event) -> FReply {
+    auto const widget_size{FVector2f{geometry.GetLocalSize()}};
+    auto const available_width{
+        FMath::Max(widget_size.X - style_.chart_padding.Left - style_.chart_padding.Right, 0.0f)};
+    auto const available_height{
+        FMath::Max(widget_size.Y - style_.chart_padding.Top - style_.chart_padding.Bottom, 0.0f)};
+    auto const label_height{FMath::Min(style_.label_area_height, available_height)};
+    auto const plot_size{
+        FVector2f{FMath::Max(available_width - style_.axis_thickness, 0.0f),
+                  FMath::Max(available_height - label_height - style_.axis_thickness, 0.0f)}};
+    auto const plot_origin{
+        FVector2f{style_.chart_padding.Left + style_.axis_thickness, style_.chart_padding.Top}};
+    auto const local{FVector2f{geometry.AbsoluteToLocal(event.GetScreenSpacePosition())}};
+    auto const hovered{hit_test_histogram_bin(local, plot_origin, plot_size, bin_count_)};
+    if (hovered != hovered_bin_) {
+        hovered_bin_ = hovered;
+        if (hovered_bin_ != INDEX_NONE && bins_.IsValidIndex(hovered_bin_)) {
+            auto const width{(domain_maximum_ - domain_minimum_) / bin_count_};
+            auto const minimum{domain_minimum_ + width * hovered_bin_};
+            auto const maximum{minimum + width};
+            SetToolTipText(FText::FromString(FString::Printf(
+                TEXT("%.5g – %.5g\n%d intervals"), minimum, maximum, bins_[hovered_bin_])));
+        } else {
+            SetToolTipText(FText::GetEmpty());
+        }
+        Invalidate(EInvalidateWidgetReason::Paint);
+    }
+    return FReply::Handled();
+}
+
+void SHistogram::OnMouseLeave(FPointerEvent const& event) {
+    SLeafWidget::OnMouseLeave(event);
+    hovered_bin_ = INDEX_NONE;
+    SetToolTipText(FText::GetEmpty());
+    Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 bool SHistogram::is_valid_style(FHistogramStyle const& style) {

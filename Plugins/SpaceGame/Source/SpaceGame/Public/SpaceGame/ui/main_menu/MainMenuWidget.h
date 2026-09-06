@@ -13,10 +13,12 @@ class UGameSubsystem;
 class ULevelSelectWidget;
 class UOptionsWidget;
 class USaveGameViewerWidget;
+class UTelemetryDashboardWidget;
 
 enum class EMainMenuPage : uint8 {
     SelectMission,
     DataArchive,
+    Telemetry,
     Video,
     Gameplay,
     Audio,
@@ -48,6 +50,9 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     [[nodiscard]] auto get_save_game_viewer() const -> USaveGameViewerWidget* {
         return save_game_viewer_;
     }
+    [[nodiscard]] auto get_telemetry_dashboard() const -> UTelemetryDashboardWidget* {
+        return telemetry_dashboard_;
+    }
   protected:
     void NativeOnInitialized() override;
     auto RebuildWidget() -> TSharedRef<SWidget> override;
@@ -75,6 +80,8 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     ULevelSelectWidget* level_select_widget_{nullptr};
     UPROPERTY(Transient)
     USaveGameViewerWidget* save_game_viewer_{nullptr};
+    UPROPERTY(Transient)
+    UTelemetryDashboardWidget* telemetry_dashboard_{nullptr};
     UPROPERTY(Transient)
     UOptionsWidget* options_widget_{nullptr};
     UPROPERTY(Transient)

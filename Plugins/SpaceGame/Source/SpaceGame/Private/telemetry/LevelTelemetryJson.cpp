@@ -7,104 +7,7 @@
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
 
-auto LexToString(ELevelTelemetryRunEndReason const value) -> TCHAR const* {
-    switch (value) {
-        case ELevelTelemetryRunEndReason::MissionSucceeded:
-            return TEXT("mission_succeeded");
-        case ELevelTelemetryRunEndReason::MissionFailed:
-            return TEXT("mission_failed");
-        case ELevelTelemetryRunEndReason::OrchestratorReset:
-            return TEXT("orchestrator_reset");
-        case ELevelTelemetryRunEndReason::WorldEnd:
-            return TEXT("world_end");
-    }
-
-    checkNoEntry();
-    return TEXT("unknown");
-}
-
 namespace {
-auto team_name(int32 const index) -> TCHAR const* {
-    switch (static_cast<ETestTeam>(index)) {
-        case ETestTeam::White:
-            return TEXT("white");
-        case ETestTeam::Red:
-            return TEXT("red");
-        case ETestTeam::Green:
-            return TEXT("green");
-        case ETestTeam::Blue:
-            return TEXT("blue");
-        case ETestTeam::Orange:
-            return TEXT("orange");
-        case ETestTeam::Yellow:
-            return TEXT("yellow");
-        case ETestTeam::COUNT:
-            break;
-    }
-    return TEXT("unknown");
-}
-
-auto entity_type_name(int32 const index) -> TCHAR const* {
-    switch (static_cast<ETestEntityType>(index)) {
-        case ETestEntityType::PlayerShip:
-            return TEXT("player_ship");
-        case ETestEntityType::Turret:
-            return TEXT("turret");
-        case ETestEntityType::CapitalShip:
-            return TEXT("capital_ship");
-        case ETestEntityType::CapitalShipFighter:
-            return TEXT("capital_ship_fighter");
-        case ETestEntityType::TubeSpinner:
-            return TEXT("tube_spinner");
-        case ETestEntityType::COUNT:
-            break;
-    }
-    return TEXT("unknown");
-}
-
-auto mission_state_name(ETestMissionState const value) -> TCHAR const* {
-    switch (value) {
-        case ETestMissionState::NotStarted:
-            return TEXT("not_started");
-        case ETestMissionState::Running:
-            return TEXT("running");
-        case ETestMissionState::Succeeded:
-            return TEXT("succeeded");
-        case ETestMissionState::Failed:
-            return TEXT("failed");
-        case ETestMissionState::Disabled:
-            return TEXT("disabled");
-    }
-    return TEXT("unknown");
-}
-
-auto mission_mode_name(ETestMissionMode const value) -> TCHAR const* {
-    switch (value) {
-        case ETestMissionMode::None:
-            return TEXT("none");
-        case ETestMissionMode::SurviveTime:
-            return TEXT("survive_time");
-        case ETestMissionMode::KillEnemies:
-            return TEXT("kill_enemies");
-        case ETestMissionMode::KillEnemiesWithinTime:
-            return TEXT("kill_enemies_within_time");
-    }
-    return TEXT("unknown");
-}
-
-auto mission_fail_reason_name(ETestMissionFailReason const value) -> TCHAR const* {
-    switch (value) {
-        case ETestMissionFailReason::None:
-            return TEXT("none");
-        case ETestMissionFailReason::PlayerKilled:
-            return TEXT("player_killed");
-        case ETestMissionFailReason::TimeElapsed:
-            return TEXT("time_elapsed");
-        case ETestMissionFailReason::DefenceObjectiveFailed:
-            return TEXT("defence_objective_failed");
-    }
-    return TEXT("unknown");
-}
 
 void set_optional_number(FJsonObject& object, FString const& name, TOptional<double> const value) {
     if (value.IsSet()) {
@@ -158,7 +61,7 @@ auto make_tick_series(FLevelTelemetryTickSeries const& source) -> TSharedRef<FJs
     constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
     for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
         active_by_type->SetObjectField(
-            entity_type_name(entity_type_index),
+            LexToSerializedString(static_cast<ETestEntityType>(entity_type_index)),
             make_series(source.active_entities_by_type[entity_type_index]));
     }
     result->SetObjectField(TEXT("active_entities_by_type"), active_by_type);
@@ -170,11 +73,12 @@ auto make_tick_series(FLevelTelemetryTickSeries const& source) -> TSharedRef<FJs
         for (int32 entity_type_index{}; entity_type_index < entity_type_count;
              ++entity_type_index) {
             team->SetObjectField(
-                entity_type_name(entity_type_index),
+                LexToSerializedString(static_cast<ETestEntityType>(entity_type_index)),
                 make_series(
                     source.active_entities_by_team_and_type[team_index][entity_type_index]));
         }
-        active_by_team_and_type->SetObjectField(team_name(team_index), team);
+        active_by_team_and_type->SetObjectField(
+            LexToSerializedString(static_cast<ETestTeam>(team_index)), team);
     }
     result->SetObjectField(TEXT("active_entities_by_team_and_type"), active_by_team_and_type);
 
@@ -193,6 +97,513 @@ auto make_tick_series(FLevelTelemetryTickSeries const& source) -> TSharedRef<FJs
     result->SetObjectField(TEXT("requested_time_scale"), make_series(source.requested_time_scale));
     return result;
 }
+
+auto error_at(FString const& path, FString const& detail) -> FString {
+    return FString::Printf(TEXT("%s: %s"), *path, *detail);
+}
+
+auto required_object(FJsonObject const& source, TCHAR const* const field, FString const& path)
+    -> std::expected<TSharedPtr<FJsonObject>, FString> {
+    TSharedPtr<FJsonObject> const* result{};
+    if (!source.TryGetObjectField(field, result) || !result || !result->IsValid()) {
+        return std::unexpected{error_at(path, TEXT("required object is missing or invalid"))};
+    }
+    return *result;
+}
+
+auto required_string(FJsonObject const& source, TCHAR const* const field, FString const& path)
+    -> std::expected<FString, FString> {
+    FString result;
+    if (!source.TryGetStringField(field, result)) {
+        return std::unexpected{error_at(path, TEXT("required string is missing or invalid"))};
+    }
+    return result;
+}
+
+auto required_bool(FJsonObject const& source, TCHAR const* const field, FString const& path)
+    -> std::expected<bool, FString> {
+    bool result{};
+    if (!source.TryGetBoolField(field, result)) {
+        return std::unexpected{error_at(path, TEXT("required boolean is missing or invalid"))};
+    }
+    return result;
+}
+
+auto required_number(FJsonObject const& source, TCHAR const* const field, FString const& path)
+    -> std::expected<double, FString> {
+    double result{};
+    if (!source.TryGetNumberField(field, result) || !FMath::IsFinite(result)) {
+        return std::unexpected{
+            error_at(path, TEXT("required finite number is missing or invalid"))};
+    }
+    return result;
+}
+
+template <typename Integer>
+auto required_integer(FJsonObject const& source, TCHAR const* const field, FString const& path)
+    -> std::expected<Integer, FString> {
+    auto const number{required_number(source, field, path)};
+    if (!number) {
+        return std::unexpected{number.error()};
+    }
+    auto const value{*number};
+    auto const minimum{static_cast<double>(std::numeric_limits<Integer>::lowest())};
+    auto const maximum{static_cast<double>(std::numeric_limits<Integer>::max())};
+    auto const above_maximum{std::is_same_v<Integer, uint64> ? value >= 18446744073709551616.0
+                                                             : value > maximum};
+    if (FMath::TruncToDouble(value) != value || value < minimum || above_maximum) {
+        return std::unexpected{
+            error_at(path, TEXT("number is outside the required integer range"))};
+    }
+    return static_cast<Integer>(value);
+}
+
+template <typename Value>
+auto parse_tick_series(FJsonObject const& parent,
+                       TCHAR const* const field,
+                       FString const& path,
+                       ml::XYSeriesData<uint64, Value>& output) -> std::expected<void, FString> {
+    auto const object{required_object(parent, field, path)};
+    if (!object) {
+        return std::unexpected{object.error()};
+    }
+    TArray<TSharedPtr<FJsonValue>> const* ticks{};
+    TArray<TSharedPtr<FJsonValue>> const* values{};
+    if (!(*object)->TryGetArrayField(TEXT("ticks"), ticks) ||
+        !(*object)->TryGetArrayField(TEXT("values"), values) || !ticks || !values) {
+        return std::unexpected{error_at(path, TEXT("ticks and values arrays are required"))};
+    }
+    if (ticks->Num() != values->Num()) {
+        return std::unexpected{error_at(path, TEXT("ticks and values arrays are not aligned"))};
+    }
+
+    output.reserve(ticks->Num());
+    uint64 previous_tick{};
+    for (int32 index{}; index < ticks->Num(); ++index) {
+        double tick_number{};
+        double value_number{};
+        if (!(*ticks)[index].IsValid() || !(*ticks)[index]->TryGetNumber(tick_number) ||
+            !FMath::IsFinite(tick_number) || FMath::TruncToDouble(tick_number) != tick_number ||
+            tick_number < 0.0 || tick_number >= 18446744073709551616.0) {
+            return std::unexpected{error_at(path, TEXT("tick coordinate is not a valid uint64"))};
+        }
+        auto const tick{static_cast<uint64>(tick_number)};
+        if (index > 0 && tick <= previous_tick) {
+            return std::unexpected{
+                error_at(path, TEXT("tick coordinates must be strictly increasing"))};
+        }
+        if (!(*values)[index].IsValid() || !(*values)[index]->TryGetNumber(value_number) ||
+            !FMath::IsFinite(value_number)) {
+            return std::unexpected{error_at(path, TEXT("series value is not finite"))};
+        }
+        if constexpr (std::is_integral_v<Value>) {
+            auto const above_maximum{
+                std::is_same_v<Value, uint64>
+                    ? value_number >= 18446744073709551616.0
+                    : value_number > static_cast<double>(std::numeric_limits<Value>::max())};
+            if (FMath::TruncToDouble(value_number) != value_number ||
+                value_number < static_cast<double>(std::numeric_limits<Value>::lowest()) ||
+                above_maximum) {
+                return std::unexpected{
+                    error_at(path, TEXT("series value is outside its integer range"))};
+            }
+        }
+        output.add(tick, static_cast<Value>(value_number));
+        previous_tick = tick;
+    }
+    return {};
+}
+
+template <typename Series>
+auto validate_nonnegative_series(Series const& series, FString const& path)
+    -> std::expected<void, FString> {
+    auto const count{series.num()};
+    for (int32 index{}; index < count; ++index) {
+        if (series.value_at(index) < 0) {
+            return std::unexpected{error_at(path, TEXT("series values must be nonnegative"))};
+        }
+    }
+    return {};
+}
+
+auto parse_realtime_series(FJsonObject const& parent, ml::TimeSeriesData<uint64>& output)
+    -> std::expected<void, FString> {
+    auto const path{FString{TEXT("completed_ticks_by_real_time")}};
+    auto const object{required_object(parent, TEXT("completed_ticks_by_real_time"), path)};
+    if (!object) {
+        return std::unexpected{object.error()};
+    }
+    TArray<TSharedPtr<FJsonValue>> const* times{};
+    TArray<TSharedPtr<FJsonValue>> const* ticks{};
+    if (!(*object)->TryGetArrayField(TEXT("real_elapsed_seconds"), times) ||
+        !(*object)->TryGetArrayField(TEXT("completed_ticks"), ticks) || !times || !ticks) {
+        return std::unexpected{
+            error_at(path, TEXT("real-time and completed-tick arrays are required"))};
+    }
+    if (times->Num() != ticks->Num()) {
+        return std::unexpected{
+            error_at(path, TEXT("real-time and completed-tick arrays are not aligned"))};
+    }
+    output.reserve(times->Num());
+    double previous_time{};
+    uint64 previous_tick{};
+    for (int32 index{}; index < times->Num(); ++index) {
+        double time{};
+        double tick_number{};
+        if (!(*times)[index].IsValid() || !(*times)[index]->TryGetNumber(time) ||
+            !FMath::IsFinite(time) || time < 0.0 || (index > 0 && time <= previous_time)) {
+            return std::unexpected{error_at(
+                path, TEXT("real-time coordinates must be finite, nonnegative, and increasing"))};
+        }
+        if (!(*ticks)[index].IsValid() || !(*ticks)[index]->TryGetNumber(tick_number) ||
+            !FMath::IsFinite(tick_number) || tick_number < 0.0 ||
+            FMath::TruncToDouble(tick_number) != tick_number ||
+            tick_number >= 18446744073709551616.0) {
+            return std::unexpected{error_at(path, TEXT("completed tick is not a valid uint64"))};
+        }
+        auto const tick{static_cast<uint64>(tick_number)};
+        if (index > 0 && tick < previous_tick) {
+            return std::unexpected{error_at(path, TEXT("completed ticks must be nondecreasing"))};
+        }
+        output.add(time, tick);
+        previous_time = time;
+        previous_tick = tick;
+    }
+    return {};
+}
+
+template <typename Enum>
+auto parse_serialized_enum(FString const& value, FString const& path)
+    -> std::expected<Enum, FString> {
+    Enum result{};
+    if (ml::try_parse_serialized(FStringView{value}, result)) {
+        return result;
+    }
+    return std::unexpected{
+        error_at(path, FString::Printf(TEXT("unknown enum value '%s'"), *value))};
+}
+}
+
+auto level_telemetry_runs_directory() -> FString {
+    return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Telemetry"), TEXT("Runs"));
+}
+
+auto read_level_telemetry_run(FString const& path)
+    -> std::expected<FLevelTelemetryRunRecord, FString> {
+    FString json;
+    if (!FFileHelper::LoadFileToString(json, *path)) {
+        return std::unexpected{FString::Printf(TEXT("Could not read telemetry file '%s'"), *path)};
+    }
+    auto result{deserialize_level_telemetry_run(json)};
+    if (!result) {
+        return std::unexpected{FString::Printf(TEXT("%s: %s"), *path, *result.error())};
+    }
+    return result;
+}
+
+auto deserialize_level_telemetry_run(FString const& json)
+    -> std::expected<FLevelTelemetryRunRecord, FString> {
+    TSharedPtr<FJsonObject> root;
+    auto reader{TJsonReaderFactory<>::Create(json)};
+    if (!FJsonSerializer::Deserialize(reader, root) || !root.IsValid()) {
+        return std::unexpected{FString{TEXT("Malformed JSON document")}};
+    }
+
+    auto const schema{
+        required_integer<int32>(*root, TEXT("schema_version"), TEXT("schema_version"))};
+    if (!schema) {
+        return std::unexpected{schema.error()};
+    }
+    if (*schema != FLevelTelemetryRunRecord::schema_version) {
+        return std::unexpected{
+            FString::Printf(TEXT("Unsupported telemetry schema version %d"), *schema)};
+    }
+
+    FLevelTelemetryRunRecord result;
+#define READ_REQUIRED(destination, expression)            \
+    do {                                                  \
+        auto parsed_value{expression};                    \
+        if (!parsed_value) {                              \
+            return std::unexpected{parsed_value.error()}; \
+        }                                                 \
+        destination = MoveTemp(*parsed_value);            \
+    } while (false)
+
+    READ_REQUIRED(result.metadata.run_id, required_string(*root, TEXT("run_id"), TEXT("run_id")));
+    auto const level{required_object(*root, TEXT("level"), TEXT("level"))};
+    auto const timestamps{required_object(*root, TEXT("timestamps"), TEXT("timestamps"))};
+    auto const environment{required_object(*root, TEXT("environment"), TEXT("environment"))};
+    auto const simulation{required_object(*root, TEXT("simulation"), TEXT("simulation"))};
+    auto const completion{required_object(*root, TEXT("completion"), TEXT("completion"))};
+    auto const tick_series{required_object(*root, TEXT("tick_series"), TEXT("tick_series"))};
+    if (!level || !timestamps || !environment || !simulation || !completion || !tick_series) {
+        return std::unexpected{!level         ? level.error()
+                               : !timestamps  ? timestamps.error()
+                               : !environment ? environment.error()
+                               : !simulation  ? simulation.error()
+                               : !completion  ? completion.error()
+                                              : tick_series.error()};
+    }
+
+    READ_REQUIRED(result.metadata.map_name,
+                  required_string(**level, TEXT("map_name"), TEXT("level.map_name")));
+    FString level_id;
+    READ_REQUIRED(level_id, required_string(**level, TEXT("level_id"), TEXT("level.level_id")));
+    result.metadata.level_id = FName{level_id};
+    READ_REQUIRED(result.metadata.level_display_name,
+                  required_string(**level, TEXT("display_name"), TEXT("level.display_name")));
+    READ_REQUIRED(
+        result.metadata.launched_utc,
+        required_string(**timestamps, TEXT("launched_utc"), TEXT("timestamps.launched_utc")));
+    READ_REQUIRED(
+        result.completion.completed_utc,
+        required_string(**timestamps, TEXT("completed_utc"), TEXT("timestamps.completed_utc")));
+
+#define READ_ENV(field)                              \
+    READ_REQUIRED(result.metadata.environment.field, \
+                  required_string(**environment, TEXT(#field), TEXT("environment." #field)))
+    READ_ENV(project_name);
+    READ_ENV(project_version);
+    READ_ENV(engine_version);
+    READ_ENV(build_version);
+    READ_ENV(build_configuration);
+    READ_ENV(execution_mode);
+    READ_ENV(world_type);
+    READ_ENV(platform);
+    READ_ENV(host_architecture);
+    READ_ENV(operating_system_version);
+    READ_ENV(operating_system_subversion);
+    READ_ENV(cpu_vendor);
+    READ_ENV(cpu_brand);
+    READ_ENV(primary_gpu_brand);
+#undef READ_ENV
+    READ_REQUIRED(result.metadata.environment.physical_core_count,
+                  required_integer<int32>(**environment,
+                                          TEXT("physical_core_count"),
+                                          TEXT("environment.physical_core_count")));
+    READ_REQUIRED(result.metadata.environment.logical_core_count,
+                  required_integer<int32>(**environment,
+                                          TEXT("logical_core_count"),
+                                          TEXT("environment.logical_core_count")));
+    READ_REQUIRED(result.metadata.environment.total_physical_memory_bytes,
+                  required_integer<uint64>(**environment,
+                                           TEXT("total_physical_memory_bytes"),
+                                           TEXT("environment.total_physical_memory_bytes")));
+    if (result.metadata.environment.physical_core_count < 0 ||
+        result.metadata.environment.logical_core_count < 0) {
+        return std::unexpected{FString{TEXT("environment core counts must be nonnegative")}};
+    }
+
+    READ_REQUIRED(
+        result.metadata.tick_rate_hz,
+        required_number(**simulation, TEXT("tick_rate_hz"), TEXT("simulation.tick_rate_hz")));
+    READ_REQUIRED(result.metadata.tick_period_seconds,
+                  required_number(**simulation,
+                                  TEXT("tick_period_seconds"),
+                                  TEXT("simulation.tick_period_seconds")));
+    READ_REQUIRED(result.metadata.initial_requested_time_scale,
+                  required_number(**simulation,
+                                  TEXT("initial_requested_time_scale"),
+                                  TEXT("simulation.initial_requested_time_scale")));
+    READ_REQUIRED(result.metadata.presentation_enabled,
+                  required_bool(**simulation,
+                                TEXT("presentation_enabled"),
+                                TEXT("simulation.presentation_enabled")));
+    if (result.metadata.tick_rate_hz <= 0.0 || result.metadata.tick_period_seconds <= 0.0 ||
+        result.metadata.initial_requested_time_scale < 0.0) {
+        return std::unexpected{
+            FString{TEXT("simulation rates and period are outside their valid ranges")}};
+    }
+
+    FString reason_name;
+    READ_REQUIRED(reason_name,
+                  required_string(**completion, TEXT("reason"), TEXT("completion.reason")));
+    READ_REQUIRED(
+        result.completion.reason,
+        parse_serialized_enum<ELevelTelemetryRunEndReason>(reason_name, TEXT("completion.reason")));
+    READ_REQUIRED(result.completion.interrupted,
+                  required_bool(**completion, TEXT("interrupted"), TEXT("completion.interrupted")));
+    READ_REQUIRED(result.completion.world_end_reason,
+                  required_string(
+                      **completion, TEXT("world_end_reason"), TEXT("completion.world_end_reason")));
+    READ_REQUIRED(result.completion.completed_ticks,
+                  required_integer<uint64>(
+                      **completion, TEXT("completed_ticks"), TEXT("completion.completed_ticks")));
+    READ_REQUIRED(result.completion.simulated_elapsed_seconds,
+                  required_number(**completion,
+                                  TEXT("simulated_elapsed_seconds"),
+                                  TEXT("completion.simulated_elapsed_seconds")));
+    READ_REQUIRED(result.completion.wall_elapsed_seconds,
+                  required_number(**completion,
+                                  TEXT("wall_elapsed_seconds"),
+                                  TEXT("completion.wall_elapsed_seconds")));
+    if (result.completion.simulated_elapsed_seconds < 0.0 ||
+        result.completion.wall_elapsed_seconds < 0.0) {
+        return std::unexpected{FString{TEXT("completion durations must be nonnegative")}};
+    }
+
+    auto const* mission_mode_value{(*completion)->Values.Find(TEXT("mission_mode"))};
+    auto const* mission_state_value{(*completion)->Values.Find(TEXT("mission_state"))};
+    auto const* mission_fail_value{(*completion)->Values.Find(TEXT("mission_fail_reason"))};
+    auto const has_mission_mode{mission_mode_value && (*mission_mode_value)->Type != EJson::Null};
+    auto const has_mission_state{mission_state_value &&
+                                 (*mission_state_value)->Type != EJson::Null};
+    auto const has_mission_fail{mission_fail_value && (*mission_fail_value)->Type != EJson::Null};
+    if (has_mission_mode != has_mission_state || has_mission_mode != has_mission_fail) {
+        return std::unexpected{FString{
+            TEXT("completion mission mode, state, and fail reason must be provided together")}};
+    }
+    if (has_mission_mode) {
+        FString mode_name;
+        FString state_name;
+        FString fail_name;
+        READ_REQUIRED(
+            mode_name,
+            required_string(**completion, TEXT("mission_mode"), TEXT("completion.mission_mode")));
+        READ_REQUIRED(
+            state_name,
+            required_string(**completion, TEXT("mission_state"), TEXT("completion.mission_state")));
+        READ_REQUIRED(fail_name,
+                      required_string(**completion,
+                                      TEXT("mission_fail_reason"),
+                                      TEXT("completion.mission_fail_reason")));
+        ETestMissionMode mode{};
+        ETestMissionState state{};
+        ETestMissionFailReason fail{};
+        READ_REQUIRED(
+            mode,
+            parse_serialized_enum<ETestMissionMode>(mode_name, TEXT("completion.mission_mode")));
+        READ_REQUIRED(
+            state,
+            parse_serialized_enum<ETestMissionState>(state_name, TEXT("completion.mission_state")));
+        READ_REQUIRED(fail,
+                      parse_serialized_enum<ETestMissionFailReason>(
+                          fail_name, TEXT("completion.mission_fail_reason")));
+        result.completion.mission_mode = mode;
+        result.completion.mission_state = state;
+        result.completion.mission_fail_reason = fail;
+    }
+    auto const* mission_elapsed{(*completion)->Values.Find(TEXT("mission_elapsed_seconds"))};
+    if (mission_elapsed && (*mission_elapsed)->Type != EJson::Null) {
+        double elapsed{};
+        READ_REQUIRED(elapsed,
+                      required_number(**completion,
+                                      TEXT("mission_elapsed_seconds"),
+                                      TEXT("completion.mission_elapsed_seconds")));
+        if (elapsed < 0.0) {
+            return std::unexpected{
+                FString{TEXT("completion.mission_elapsed_seconds must be nonnegative")}};
+        }
+        result.completion.mission_elapsed_seconds = elapsed;
+    }
+
+#define PARSE_SERIES(field)                                                                       \
+    do {                                                                                          \
+        auto parsed{parse_tick_series(                                                            \
+            **tick_series, TEXT(#field), TEXT("tick_series." #field), result.tick_series.field)}; \
+        if (!parsed) {                                                                            \
+            return std::unexpected{parsed.error()};                                               \
+        }                                                                                         \
+    } while (false)
+    PARSE_SERIES(active_entities);
+    PARSE_SERIES(spawned_entities);
+    PARSE_SERIES(destroyed_entities);
+    PARSE_SERIES(kills);
+    PARSE_SERIES(registry_slot_count);
+    PARSE_SERIES(active_lasers);
+    PARSE_SERIES(lasers_fired);
+    PARSE_SERIES(occupied_spatial_cell_count);
+    PARSE_SERIES(grid_rebuild_count);
+    PARSE_SERIES(range_query_count);
+    PARSE_SERIES(line_trace_count);
+    PARSE_SERIES(sweep_trace_count);
+    PARSE_SERIES(requested_time_scale);
+#undef PARSE_SERIES
+#define VALIDATE_COUNT(field)                                                                    \
+    do {                                                                                         \
+        auto valid{                                                                              \
+            validate_nonnegative_series(result.tick_series.field, TEXT("tick_series." #field))}; \
+        if (!valid) {                                                                            \
+            return std::unexpected{valid.error()};                                               \
+        }                                                                                        \
+    } while (false)
+    VALIDATE_COUNT(active_entities);
+    VALIDATE_COUNT(spawned_entities);
+    VALIDATE_COUNT(destroyed_entities);
+    VALIDATE_COUNT(kills);
+    VALIDATE_COUNT(registry_slot_count);
+    VALIDATE_COUNT(active_lasers);
+    VALIDATE_COUNT(lasers_fired);
+    VALIDATE_COUNT(occupied_spatial_cell_count);
+#undef VALIDATE_COUNT
+    auto requested_valid{validate_nonnegative_series(result.tick_series.requested_time_scale,
+                                                     TEXT("tick_series.requested_time_scale"))};
+    if (!requested_valid) {
+        return std::unexpected{requested_valid.error()};
+    }
+    auto const by_type{required_object(**tick_series,
+                                       TEXT("active_entities_by_type"),
+                                       TEXT("tick_series.active_entities_by_type"))};
+    auto const by_team{required_object(**tick_series,
+                                       TEXT("active_entities_by_team_and_type"),
+                                       TEXT("tick_series.active_entities_by_team_and_type"))};
+    if (!by_type || !by_team) {
+        return std::unexpected{!by_type ? by_type.error() : by_team.error()};
+    }
+    for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+        auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
+        auto parsed{parse_tick_series(
+            **by_type,
+            type_name,
+            FString::Printf(TEXT("tick_series.active_entities_by_type.%s"), type_name),
+            result.tick_series.active_entities_by_type[type])};
+        if (!parsed) {
+            return std::unexpected{parsed.error()};
+        }
+        auto valid{validate_nonnegative_series(
+            result.tick_series.active_entities_by_type[type],
+            FString::Printf(TEXT("tick_series.active_entities_by_type.%s"), type_name))};
+        if (!valid) {
+            return std::unexpected{valid.error()};
+        }
+    }
+    for (int32 team{}; team < FLevelTelemetryTickSeries::team_count; ++team) {
+        auto const* team_name{LexToSerializedString(static_cast<ETestTeam>(team))};
+        auto const team_object{required_object(
+            **by_team,
+            team_name,
+            FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s"), team_name))};
+        if (!team_object) {
+            return std::unexpected{team_object.error()};
+        }
+        for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+            auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
+            auto parsed{parse_tick_series(
+                **team_object,
+                type_name,
+                FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s.%s"),
+                                team_name,
+                                type_name),
+                result.tick_series.active_entities_by_team_and_type[team][type])};
+            if (!parsed) {
+                return std::unexpected{parsed.error()};
+            }
+            auto valid{validate_nonnegative_series(
+                result.tick_series.active_entities_by_team_and_type[team][type],
+                FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s.%s"),
+                                team_name,
+                                type_name))};
+            if (!valid) {
+                return std::unexpected{valid.error()};
+            }
+        }
+    }
+    auto realtime{parse_realtime_series(*root, result.completed_ticks_by_real_time)};
+    if (!realtime) {
+        return std::unexpected{realtime.error()};
+    }
+#undef READ_REQUIRED
+    return result;
 }
 
 auto serialize_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FString {
@@ -243,17 +654,18 @@ auto serialize_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FS
     root->SetObjectField(TEXT("simulation"), simulation);
 
     auto completion{MakeShared<FJsonObject>()};
-    completion->SetStringField(TEXT("reason"), LexToString(record.completion.reason));
+    completion->SetStringField(TEXT("reason"), LexToSerializedString(record.completion.reason));
     completion->SetBoolField(TEXT("interrupted"), record.completion.interrupted);
     completion->SetStringField(TEXT("world_end_reason"), record.completion.world_end_reason);
     if (record.completion.mission_mode.IsSet()) {
-        completion->SetStringField(TEXT("mission_mode"),
-                                   mission_mode_name(record.completion.mission_mode.GetValue()));
-        completion->SetStringField(TEXT("mission_state"),
-                                   mission_state_name(record.completion.mission_state.GetValue()));
+        completion->SetStringField(
+            TEXT("mission_mode"), LexToSerializedString(record.completion.mission_mode.GetValue()));
+        completion->SetStringField(
+            TEXT("mission_state"),
+            LexToSerializedString(record.completion.mission_state.GetValue()));
         completion->SetStringField(
             TEXT("mission_fail_reason"),
-            mission_fail_reason_name(record.completion.mission_fail_reason.GetValue()));
+            LexToSerializedString(record.completion.mission_fail_reason.GetValue()));
     } else {
         completion->SetField(TEXT("mission_mode"), MakeShared<FJsonValueNull>());
         completion->SetField(TEXT("mission_state"), MakeShared<FJsonValueNull>());

@@ -202,9 +202,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void bind_and_destroy_proxies();
     void start_visual_logging();
     void stop_visual_logging();
-    void begin_telemetry_run();
-    void finalize_telemetry_run(ELevelTelemetryRunEndReason reason, FString detail = {});
-    void flush_finalized_telemetry_run();
     void refresh_collision_grid_visualization();
     void update_collision_bounds_visualization();
 
@@ -233,7 +230,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     float collision_bounds_max_draw_distance{200000.f};
 
     FFixedTickLoop hud_tick_loop{};
-    FFixedTickLoop telemetry_tick_loop{};
 
     FHUDManager hud_manager;
     TOptional<FLevelSimulation> level_simulation_;

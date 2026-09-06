@@ -1,5 +1,6 @@
 #include "SpaceGame/entities/TestTeamVisualData.h"
 
+#include <SpaceGame/entities/TestTeamUtils.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_utils.h>

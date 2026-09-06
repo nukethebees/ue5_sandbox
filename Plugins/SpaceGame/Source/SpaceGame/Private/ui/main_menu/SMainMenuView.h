@@ -22,6 +22,7 @@ class SMainMenuView final : public SCompoundWidget {
     SLATE_ARGUMENT(EMainMenuPage, InitialPage)
     SLATE_NAMED_SLOT(FArguments, MissionContent)
     SLATE_NAMED_SLOT(FArguments, ArchiveContent)
+    SLATE_NAMED_SLOT(FArguments, TelemetryContent)
     SLATE_NAMED_SLOT(FArguments, OptionsContent)
     SLATE_NAMED_SLOT(FArguments, DebugContent)
     SLATE_EVENT(FOnMainMenuPageSelected, OnPageSelected)

@@ -34,10 +34,14 @@ struct TEnumTraits<ETestEntityType> {
 
 SPACEGAME_API auto LexToString(ETestEntityType const value) -> TCHAR const*;
 
+SPACEGAME_API auto LexToSerializedString(ETestEntityType const value) -> TCHAR const*;
+
 namespace ml {
 SPACEGAME_API auto to_string_view(ETestEntityType const value) -> FStringView;
 
 SPACEGAME_API auto to_display_string_view(ETestEntityType const value) -> FStringView;
+
+SPACEGAME_API auto try_parse_serialized(FStringView const value, ETestEntityType& result) -> bool;
 
 
 } // namespace ml

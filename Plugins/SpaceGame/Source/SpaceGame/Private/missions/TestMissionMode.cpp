@@ -46,11 +46,37 @@ auto get_test_mission_mode_display_name(ETestMissionMode const value) -> TCHAR c
     return get_test_mission_mode_name(value);
 }
 
+auto get_test_mission_mode_serialized_name(ETestMissionMode const value) -> TCHAR const* {
+    switch (value) {
+    case ETestMissionMode::None: {
+        return TEXT("none");
+    }
+    case ETestMissionMode::SurviveTime: {
+        return TEXT("survive_time");
+    }
+    case ETestMissionMode::KillEnemies: {
+        return TEXT("kill_enemies");
+    }
+    case ETestMissionMode::KillEnemiesWithinTime: {
+        return TEXT("kill_enemies_within_time");
+    }
+    }
+
+    ensureMsgf(false,
+               TEXT("Unhandled serialized ETestMissionMode value: %lld"),
+               static_cast<int64>(value));
+    return TEXT("<invalid ETestMissionMode>");
+}
+
 
 } // namespace
 
 auto LexToString(ETestMissionMode const value) -> TCHAR const* {
     return get_test_mission_mode_name(value);
+}
+
+auto LexToSerializedString(ETestMissionMode const value) -> TCHAR const* {
+    return get_test_mission_mode_serialized_name(value);
 }
 
 namespace ml {
@@ -60,6 +86,26 @@ auto to_string_view(ETestMissionMode const value) -> FStringView {
 
 auto to_display_string_view(ETestMissionMode const value) -> FStringView {
     return FStringView{get_test_mission_mode_display_name(value)};
+}
+
+auto try_parse_serialized(FStringView const value, ETestMissionMode& result) -> bool {
+    if (value == TEXT("none")) {
+        result = ETestMissionMode::None;
+        return true;
+    }
+    if (value == TEXT("survive_time")) {
+        result = ETestMissionMode::SurviveTime;
+        return true;
+    }
+    if (value == TEXT("kill_enemies")) {
+        result = ETestMissionMode::KillEnemies;
+        return true;
+    }
+    if (value == TEXT("kill_enemies_within_time")) {
+        result = ETestMissionMode::KillEnemiesWithinTime;
+        return true;
+    }
+    return false;
 }
 
 

@@ -1,0 +1,46 @@
+#pragma once
+
+#include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
+
+#include <Widgets/SCompoundWidget.h>
+
+class SButton;
+
+namespace ml::ioj {
+DECLARE_DELEGATE_OneParam(FOnTelemetryRunSelected, FString);
+DECLARE_DELEGATE_OneParam(FOnTelemetryLevelFilterSelected, FString);
+DECLARE_DELEGATE_OneParam(FOnTelemetryMetricSelected, ETelemetryDashboardMetric);
+
+class STelemetryDashboardView final : public SCompoundWidget {
+  public:
+    SLATE_BEGIN_ARGS(STelemetryDashboardView)
+        : _Style(nullptr) {}
+    SLATE_ARGUMENT(FGameUiStyle const*, Style)
+    SLATE_EVENT(FSimpleDelegate, OnRefresh)
+    SLATE_EVENT(FOnTelemetryRunSelected, OnRunSelected)
+    SLATE_EVENT(FOnTelemetryLevelFilterSelected, OnLevelFilterSelected)
+    SLATE_EVENT(FOnTelemetryMetricSelected, OnMetricSelected)
+    SLATE_END_ARGS()
+
+    void Construct(FArguments const& args);
+    void replace_state(FTelemetryDashboardViewState const& state);
+    void focus_primary_action();
+    auto SupportsKeyboardFocus() const -> bool override { return true; }
+  private:
+    auto build() -> TSharedRef<SWidget>;
+    auto build_sidebar() -> TSharedRef<SWidget>;
+    auto build_detail() -> TSharedRef<SWidget>;
+    auto handle_refresh() -> FReply;
+    auto handle_filter() -> FReply;
+    auto handle_run(FString run_id) -> FReply;
+    auto handle_metric() -> FReply;
+
+    FGameUiStyle const* style_{};
+    FTelemetryDashboardViewState state_{};
+    FSimpleDelegate on_refresh_{};
+    FOnTelemetryRunSelected on_run_selected_{};
+    FOnTelemetryLevelFilterSelected on_level_filter_selected_{};
+    FOnTelemetryMetricSelected on_metric_selected_{};
+    TSharedPtr<SButton> primary_button_{};
+};
+} // namespace ml::ioj

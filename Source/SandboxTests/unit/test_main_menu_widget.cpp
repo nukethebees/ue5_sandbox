@@ -6,6 +6,7 @@
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 #include <SpaceGame/ui/style/SpaceGameUiSettings.h>
 #include <SpaceGame/ui/style/SpaceGameUiTheme.h>
+#include <SpaceGame/ui/telemetry/TelemetryDashboardWidget.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include <CommonInputSettings.h>
@@ -176,9 +177,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         auto* const options_widget{widget->get_options_widget()};
         auto* const debug_settings_widget{widget->get_debug_settings_widget()};
         auto* const save_game_viewer{widget->get_save_game_viewer()};
+        auto* const telemetry_dashboard{widget->get_telemetry_dashboard()};
         if (!TestRunner->TestTrue(TEXT("All command-deck pages are created"),
                                   IsValid(level_select_widget) && IsValid(options_widget) &&
-                                      IsValid(save_game_viewer) &&
+                                      IsValid(save_game_viewer) && IsValid(telemetry_dashboard) &&
                                       IsValid(debug_settings_widget))) {
             return;
         }
@@ -224,6 +226,10 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         widget->select_page(ml::ioj::EMainMenuPage::DataArchive);
         TestRunner->TestTrue(TEXT("Data Archive is selectable"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::DataArchive);
+
+        widget->select_page(ml::ioj::EMainMenuPage::Telemetry);
+        TestRunner->TestTrue(TEXT("Telemetry is selectable"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::Telemetry);
 
         widget->select_page(ml::ioj::EMainMenuPage::Video);
         TestRunner->TestTrue(TEXT("Video configuration is selectable"),

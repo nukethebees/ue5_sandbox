@@ -107,6 +107,22 @@ TEST_CLASS(HistogramGeometry, "SandboxUI.UnitTests")
         test_histogram_float(
             *TestRunner, TEXT("Zero bins retain stable slots"), zero.slot_width, 50.0f);
     }
+
+    TEST_METHOD(HitTestsBinsDeterministically)
+    {
+        TestRunner->TestEqual(
+            TEXT("Outside points do not hit"),
+            hit_test_histogram_bin({9.0f, 20.0f}, {10.0f, 10.0f}, {100.0f, 50.0f}, 4),
+            INDEX_NONE);
+        TestRunner->TestEqual(
+            TEXT("The first slot hits its bin"),
+            hit_test_histogram_bin({10.0f, 20.0f}, {10.0f, 10.0f}, {100.0f, 50.0f}, 4),
+            0);
+        TestRunner->TestEqual(
+            TEXT("Internal slots map to their bin"),
+            hit_test_histogram_bin({61.0f, 20.0f}, {10.0f, 10.0f}, {100.0f, 50.0f}, 4),
+            2);
+    }
 };
 
 TEST_CLASS(HistogramData, "SandboxUI.UnitTests")
@@ -141,5 +157,10 @@ TEST_CLASS(HistogramData, "SandboxUI.UnitTests")
         TestRunner->TestEqual(TEXT("Clearing resets accumulated counts"),
                               maximum_histogram_bin_count(widget->get_bins()),
                               0);
+
+        TestRunner->TestFalse(TEXT("Invalid configurations are rejected"),
+                              widget->set_bin_configuration(3.0f, 2.0f, 0));
+        TestRunner->TestEqual(
+            TEXT("Rejected configurations preserve the bins"), widget->get_bin_count(), 2);
     }
 };

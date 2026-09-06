@@ -3,6 +3,8 @@
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
 
+#include <Framework/Application/SlateApplication.h>
+
 namespace {
 void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
                          int32 layer_id,
@@ -25,6 +27,30 @@ void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
 }
 } // namespace
 
+auto nearest_graph_x(TConstArrayView<FGraphSeries> const series, double const x)
+    -> TOptional<double> {
+    TOptional<double> result;
+    double best_distance{TNumericLimits<double>::Max()};
+    for (auto const& item : series) {
+        auto const count{item.y.Num()};
+        if (!item.x.IsEmpty() && item.x.Num() != count) {
+            continue;
+        }
+        for (int32 index{}; index < count; ++index) {
+            auto const candidate{item.x.IsEmpty() ? static_cast<double>(index) : item.x[index]};
+            if (!FMath::IsFinite(candidate)) {
+                continue;
+            }
+            auto const distance{FMath::Abs(candidate - x)};
+            if (distance < best_distance) {
+                best_distance = distance;
+                result = candidate;
+            }
+        }
+    }
+    return result;
+}
+
 FGraphPlotStyle::FGraphPlotStyle()
     : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)}
     , empty_text{NSLOCTEXT("SandboxUI", "GraphPlotEmpty", "No data")} {}
@@ -38,6 +64,7 @@ void SGraphPlot::Construct(FArguments const& args) {
 }
 
 void SGraphPlot::set_series(TArray<FGraphSeries> series) {
+    clear_hover();
     series_ = MoveTemp(series);
     refresh_cache_series();
     Invalidate(EInvalidateWidgetReason::Paint);
@@ -48,6 +75,7 @@ void SGraphPlot::clear_series() {
         return;
     }
 
+    clear_hover();
     series_.Reset();
     refresh_cache_series();
     Invalidate(EInvalidateWidgetReason::Paint);
@@ -57,6 +85,7 @@ bool SGraphPlot::set_axis_settings(FGraphAxisSettings const x_axis,
                                    FGraphAxisSettings const y_axis) {
     auto const changed{cache_.set_axis_settings(x_axis, y_axis)};
     if (changed) {
+        clear_hover();
         Invalidate(EInvalidateWidgetReason::Paint);
     }
     return changed;
@@ -87,6 +116,15 @@ void SGraphPlot::update_layout(FVector2f const local_size) const {
         rebuild_ticks();
         ticks_dirty_ = false;
     }
+}
+
+auto SGraphPlot::clear_hover() -> bool {
+    if (!hovered_x_.IsSet()) {
+        return false;
+    }
+    hovered_x_.Reset();
+    SetToolTipText(FText::GetEmpty());
+    return true;
 }
 
 int32 SGraphPlot::OnPaint(FPaintArgs const&,
@@ -219,6 +257,19 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
                                 series.style.color * inherited_tint);
         }
     }
+    if (hovered_x_.IsSet() && x_range.max > x_range.min) {
+        auto const alpha{static_cast<float>((hovered_x_.GetValue() - x_range.min) /
+                                            (x_range.max - x_range.min))};
+        if (alpha >= 0.0f && alpha <= 1.0f) {
+            draw_graph_plot_box(out_draw_elements,
+                                series_layer + 1,
+                                allotted_geometry,
+                                plot_origin_ + FVector2f{alpha * plot_size_.X, 0.0f},
+                                {1.0f, plot_size_.Y},
+                                draw_effect,
+                                style_.crosshair_color * inherited_tint);
+        }
+    }
     out_draw_elements.PopClip();
 
     auto const text_layer{series_layer + 1};
@@ -299,6 +350,64 @@ int32 SGraphPlot::OnPaint(FPaintArgs const&,
     out_draw_elements.PopClip();
 
     return text_layer;
+}
+
+auto SGraphPlot::OnMouseMove(FGeometry const& geometry, FPointerEvent const& event) -> FReply {
+    update_layout(FVector2f{geometry.GetLocalSize()});
+    auto const local{FVector2f{geometry.AbsoluteToLocal(event.GetScreenSpacePosition())}};
+    if (plot_size_.X <= 0.0f || local.X < plot_origin_.X ||
+        local.X > plot_origin_.X + plot_size_.X || local.Y < plot_origin_.Y ||
+        local.Y > plot_origin_.Y + plot_size_.Y) {
+        if (clear_hover()) {
+            Invalidate(EInvalidateWidgetReason::Paint);
+        }
+        return FReply::Handled();
+    }
+    auto const range{cache_.get_x_range()};
+    auto const cursor_x{range.min +
+                        (local.X - plot_origin_.X) / plot_size_.X * (range.max - range.min)};
+    auto const nearest_x{nearest_graph_x(series_, cursor_x)};
+    if (!nearest_x.IsSet()) {
+        if (clear_hover()) {
+            Invalidate(EInvalidateWidgetReason::Paint);
+        }
+        return FReply::Handled();
+    }
+    if (hovered_x_.IsSet() && hovered_x_.GetValue() == nearest_x.GetValue()) {
+        return FReply::Handled();
+    }
+    hovered_x_ = nearest_x;
+    auto tooltip{FString::Printf(TEXT("x: %.5g"), hovered_x_.GetValue())};
+    for (auto const& series : series_) {
+        auto const count{series.y.Num()};
+        if (count == 0 || (!series.x.IsEmpty() && series.x.Num() != count)) {
+            continue;
+        }
+        int32 nearest{};
+        double distance{TNumericLimits<double>::Max()};
+        for (int32 index{}; index < count; ++index) {
+            auto const value_x{series.x.IsEmpty() ? static_cast<double>(index) : series.x[index]};
+            auto const candidate{FMath::Abs(value_x - hovered_x_.GetValue())};
+            if (candidate < distance) {
+                distance = candidate;
+                nearest = index;
+            }
+        }
+        if (FMath::IsFinite(series.y[nearest])) {
+            tooltip +=
+                FString::Printf(TEXT("\n%s: %.5g"), *series.name.ToString(), series.y[nearest]);
+        }
+    }
+    SetToolTipText(FText::FromString(MoveTemp(tooltip)));
+    Invalidate(EInvalidateWidgetReason::Paint);
+    return FReply::Handled();
+}
+
+void SGraphPlot::OnMouseLeave(FPointerEvent const& event) {
+    SLeafWidget::OnMouseLeave(event);
+    if (clear_hover()) {
+        Invalidate(EInvalidateWidgetReason::Paint);
+    }
 }
 
 void SGraphPlot::rebuild_ticks() const {

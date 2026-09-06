@@ -1,6 +1,7 @@
 #include "SpaceGame/ships/capital/TestCapitalShipProxy.h"
 
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
+#include "SpaceGame/entities/TestTeamUtils.h"
 #include "SpaceGame/entities/TestTeamVisualData.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 

@@ -23,6 +23,7 @@ void SMainMenuView::Construct(FArguments const& args) {
     SAssignNew(content_switcher_, SWidgetSwitcher) +
         SWidgetSwitcher::Slot()[mission_content_.ToSharedRef()] +
         SWidgetSwitcher::Slot()[args._ArchiveContent.Widget] +
+        SWidgetSwitcher::Slot()[args._TelemetryContent.Widget] +
         SWidgetSwitcher::Slot()[args._OptionsContent.Widget] +
         SWidgetSwitcher::Slot()[args._DebugContent.Widget];
 
@@ -182,6 +183,10 @@ auto SMainMenuView::build_navigation() -> TSharedRef<SWidget> {
              EMainMenuPage::DataArchive,
              NSLOCTEXT("MainMenu", "DataArchive", "Data Archive"),
              EGameUiIcon::Hive);
+    add_page(navigation,
+             EMainMenuPage::Telemetry,
+             NSLOCTEXT("MainMenu", "Telemetry", "Telemetry"),
+             EGameUiIcon::Hive);
 
     add_section(navigation, NSLOCTEXT("MainMenu", "ConfigurationSection", "CONFIGURATION"));
     add_page(navigation,
@@ -293,10 +298,13 @@ auto SMainMenuView::page_content_index(EMainMenuPage const page) const -> int32 
     if (page == EMainMenuPage::DataArchive) {
         return 1;
     }
-    if (page == EMainMenuPage::Debug) {
-        return 3;
+    if (page == EMainMenuPage::Telemetry) {
+        return 2;
     }
-    return 2;
+    if (page == EMainMenuPage::Debug) {
+        return 4;
+    }
+    return 3;
 }
 
 auto SMainMenuView::navigation_has_focus() const -> bool {

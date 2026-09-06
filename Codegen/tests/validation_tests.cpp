@@ -155,6 +155,19 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
+    auto module{valid_enum_module()};
+    module.enums.front().conversions.push_back(EnumConversion::try_parse_serialized);
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().values.front().serialized_name = "value";
+    module.enums.front().values.push_back(
+        EnumeratorSchema{"Other", std::nullopt, std::nullopt, false, "value"});
+    module.enums.front().conversions.push_back(EnumConversion::try_parse_serialized);
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
 TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     auto module{valid_enum_module()};
     module.enums.front().enum_array = true;
