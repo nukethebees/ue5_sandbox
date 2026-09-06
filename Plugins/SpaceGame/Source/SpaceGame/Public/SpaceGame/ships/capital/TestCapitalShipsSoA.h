@@ -706,6 +706,11 @@ struct SPACEGAME_API FighterReassignmentView {
     using View = FighterReassignmentView;
     using ConstView = FighterReassignmentConstView;
 
+    void set(int32 const index, FRegistryEntityHandle const new_capital_handles, FRegistryEntityHandle const new_fighter_handles) const {
+        capital_handles[index] = new_capital_handles;
+        fighter_handles[index] = new_fighter_handles;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -741,6 +746,11 @@ struct SPACEGAME_API FighterReassignment {
     void add(FRegistryEntityHandle const ch, FRegistryEntityHandle const fh) {
         capital_handles.Add(ch);
         fighter_handles.Add(fh);
+    }
+
+    void set(int32 const index, FRegistryEntityHandle const new_capital_handles, FRegistryEntityHandle const new_fighter_handles) {
+        capital_handles[index] = new_capital_handles;
+        fighter_handles[index] = new_fighter_handles;
     }
 
     void reset();

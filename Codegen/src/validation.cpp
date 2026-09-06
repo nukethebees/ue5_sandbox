@@ -164,6 +164,7 @@ auto is_generated_mutation_name(std::string_view const value) -> bool {
         "remove_at_swap",
         "reserve",
         "reset",
+        "set",
         "set_num",
         "set_num_uninitialised",
     };

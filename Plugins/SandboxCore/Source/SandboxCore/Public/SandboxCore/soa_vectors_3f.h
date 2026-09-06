@@ -478,6 +478,8 @@ struct TFixedVectors3f {
         return (*this)[index];
     }
 
+    void set(int32 const i, float const x, float const y, float const z) { get_view().set(i, x, y, z); }
+    void set(int32 const i, FVector3f const value) { get_view().set(i, value); }
     template <typename TArg0, typename TArg1, typename TArg2>
         requires (std::is_constructible_v<float, TArg0&&> && std::is_constructible_v<float, TArg1&&> && std::is_constructible_v<float, TArg2&&>)
     auto emplace_back(TArg0&& new_xs, TArg1&& new_ys, TArg2&& new_zs) -> size_type {

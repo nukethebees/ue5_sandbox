@@ -53,6 +53,11 @@ struct FTestFixedChildView {
     using View = FTestFixedChildView;
     using ConstView = FTestFixedChildConstView;
 
+    void set(int32 const index, FString const& new_names, TSharedPtr<int32> const& new_references) const {
+        names[index] = new_names;
+        references[index] = new_references;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -84,6 +89,11 @@ struct FTestFixedChildView {
 struct FTestFixedChild {
     using View = FTestFixedChildView;
     using ConstView = FTestFixedChildConstView;
+
+    void set(int32 const index, FString const& new_names, TSharedPtr<int32> const& new_references) {
+        names[index] = new_names;
+        references[index] = new_references;
+    }
 
     void apply_permutation(TArrayView<int32> indices);
 

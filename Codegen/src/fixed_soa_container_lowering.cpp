@@ -383,6 +383,38 @@ auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
     return result.build();
 }
 
+auto fixed_container_set_nodes(SoaSchema const& schema,
+                               std::map<std::string, CppType> const& types) -> Nodes {
+    auto const members{resolve_members(schema, types)};
+    std::vector<FunctionSpec> setters;
+    if (auto set{soa_set_spec(schema, members, false)}; set.has_value()) {
+        setters.push_back(std::move(*set));
+    } else {
+        for (auto const& function : schema.mutable_view_functions) {
+            if (function.name == "set") {
+                setters.push_back(soa_function_spec(function, types));
+            }
+        }
+    }
+
+    NodeListBuilder result;
+    for (auto& setter : setters) {
+        std::vector<std::string> arguments;
+        arguments.reserve(setter.parameters.size());
+        for (auto const& parameter : setter.parameters) {
+            arguments.push_back(parameter.name);
+        }
+        setter.body = {ExpressionStatement{"get_view().set(" + join(arguments, ", ") + ")"}};
+        setter.qualifiers.is_const = false;
+        setter.formatting = compact_function_formatting();
+        result.add(header_function(setter), 1);
+    }
+    if (!setters.empty()) {
+        result.new_lines();
+    }
+    return result.build();
+}
+
 auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
     std::vector<std::string> template_parameters;
     std::vector<FunctionParameter> parameters;
@@ -616,6 +648,7 @@ auto fixed_container_node(FixedLayout const& layout,
     children.append(fixed_container_prelude_nodes(schema, types))
         .append(fixed_container_lifecycle_nodes(layout, name))
         .append(fixed_container_access_nodes(schema))
+        .append(fixed_container_set_nodes(schema, types))
         .append(fixed_container_construction_nodes(layout))
         .append(fixed_container_mutation_nodes())
         .append(fixed_container_private_nodes(schema));

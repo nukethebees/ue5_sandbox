@@ -51,20 +51,21 @@ auto view_struct(std::string name,
                  std::string const& view_name,
                  std::string const& const_view_name,
                  std::vector<ResolvedMember> const& members,
-                 std::optional<TypeRef> const& equivalent,
-                 std::vector<FunctionSchema> const& mutable_view_functions,
+                 SoaSchema const& schema,
                  std::map<std::string, CppType> const& types,
-                 std::optional<std::string> const& export_specifier,
                  bool const_only) -> Struct {
     NodeListBuilder nodes;
     nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
         .add(UsingDeclaration{"ConstView", CppType{const_view_name}}, 2);
-    if (equivalent.has_value()) {
-        nodes.append(soa_equivalent_nodes(*equivalent, members, types)).new_lines(2);
+    if (schema.equivalent_type.has_value()) {
+        nodes.append(soa_equivalent_nodes(*schema.equivalent_type, members, types)).new_lines(2);
     }
     if (!const_only) {
-        for (auto const& function : mutable_view_functions) {
+        for (auto const& function : schema.mutable_view_functions) {
             nodes.add(header_function(soa_function_spec(function, types)), 2);
+        }
+        if (auto set{soa_set_spec(schema, members, true)}; set.has_value()) {
+            nodes.add(header_function(*set), 2);
         }
     }
     nodes.add(column_apply_arrays_function(column_names(members)), 2)
@@ -80,7 +81,7 @@ auto view_struct(std::string name,
     return Struct{
         .name = std::move(name),
         .children = nodes.build(),
-        .export_specifier = export_specifier,
+        .export_specifier = schema.export_specifier,
     };
 }
 
@@ -252,20 +253,16 @@ auto soa_view_struct_nodes(SoaSchema const& schema,
                          view_name,
                          const_view_name,
                          members,
-                         schema.equivalent_type,
-                         schema.mutable_view_functions,
+                         schema,
                          types,
-                         schema.export_specifier,
                          true),
              2)
         .add(view_struct(view_name,
                          view_name,
                          const_view_name,
                          members,
-                         schema.equivalent_type,
-                         schema.mutable_view_functions,
+                         schema,
                          types,
-                         schema.export_specifier,
                          false),
              2)
         .build();

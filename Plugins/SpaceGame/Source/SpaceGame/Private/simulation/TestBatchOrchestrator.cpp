@@ -455,12 +455,12 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         for (int32 i{0}; i < n_to_add; ++i) {
             auto const transform{turret_proxies[i]->GetActorTransform()};
             initial_transforms[i] = transform;
-            ml::assign(spawn_data.locations, i, transform.GetLocation());
-            spawn_data.teams[i] = turret_proxies[i]->get_team();
-            spawn_data.healths[i] =
-                turret_proxies[i]->get_health().Get(level_config->turrets.max_health);
-            spawn_data.laser_damages[i] =
-                turret_proxies[i]->get_laser_damage().Get(level_config->turrets.laser.damage);
+            spawn_data.set(
+                i,
+                FVector3f{transform.GetLocation()},
+                turret_proxies[i]->get_team(),
+                turret_proxies[i]->get_health().Get(level_config->turrets.max_health),
+                turret_proxies[i]->get_laser_damage().Get(level_config->turrets.laser.damage));
         }
         data.turret_spawns = MoveTemp(spawn_data);
         data.turret_transforms = MoveTemp(initial_transforms);

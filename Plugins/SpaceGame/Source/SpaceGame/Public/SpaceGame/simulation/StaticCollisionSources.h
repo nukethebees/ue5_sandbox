@@ -49,6 +49,11 @@ struct SPACEGAME_API FStaticCollisionSourcesView {
     using View = FStaticCollisionSourcesView;
     using ConstView = FStaticCollisionSourcesConstView;
 
+    void set(int32 const index, TWeakObjectPtr<UPrimitiveComponent> const new_components, ECollisionEnabled::Type const new_original_collision_modes) const {
+        components[index] = new_components;
+        original_collision_modes[index] = new_original_collision_modes;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -82,6 +87,11 @@ struct SPACEGAME_API FStaticCollisionSources {
     using ConstView = FStaticCollisionSourcesConstView;
 
     void add(UPrimitiveComponent* component, ECollisionEnabled::Type const original_collision_mode);
+
+    void set(int32 const index, TWeakObjectPtr<UPrimitiveComponent> const new_components, ECollisionEnabled::Type const new_original_collision_modes) {
+        components[index] = new_components;
+        original_collision_modes[index] = new_original_collision_modes;
+    }
 
     void reset();
 

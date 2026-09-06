@@ -57,6 +57,13 @@ struct SPACEGAME_API FTraceHitsView {
     using View = FTraceHitsView;
     using ConstView = FTraceHitsConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRegistryEntityHandle const new_entities, int32 const new_static_geometry_indices, uint8 const new_hits) const {
+        locations.set(index, new_locations);
+        entities[index] = new_entities;
+        static_geometry_indices[index] = new_static_geometry_indices;
+        hits[index] = new_hits;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -92,6 +99,13 @@ struct SPACEGAME_API FTraceHitsView {
 struct SPACEGAME_API FTraceHits {
     using View = FTraceHitsView;
     using ConstView = FTraceHitsConstView;
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRegistryEntityHandle const new_entities, int32 const new_static_geometry_indices, uint8 const new_hits) {
+        locations.set(index, new_locations);
+        entities[index] = new_entities;
+        static_geometry_indices[index] = new_static_geometry_indices;
+        hits[index] = new_hits;
+    }
 
     void reset();
 

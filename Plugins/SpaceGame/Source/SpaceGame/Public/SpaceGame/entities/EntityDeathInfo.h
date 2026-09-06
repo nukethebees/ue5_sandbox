@@ -54,6 +54,12 @@ struct SPACEGAME_API EntityDeathInfoView {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
 
+    void set(int32 const index, ETestDeathReason const new_reasons, FRegistryEntityHandle const new_victims, FRegistryEntityHandle const new_killers) const {
+        reasons[index] = new_reasons;
+        victims[index] = new_victims;
+        killers[index] = new_killers;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -92,6 +98,12 @@ struct SPACEGAME_API EntityDeathInfo {
 
     void add(ETestDeathReason const reason, FRegistryEntityHandle const victim) {
         add(reason, victim, FRegistryEntityHandle{});
+    }
+
+    void set(int32 const index, ETestDeathReason const new_reasons, FRegistryEntityHandle const new_victims, FRegistryEntityHandle const new_killers) {
+        reasons[index] = new_reasons;
+        victims[index] = new_victims;
+        killers[index] = new_killers;
     }
 
     void reset();

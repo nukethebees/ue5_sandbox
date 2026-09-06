@@ -281,6 +281,45 @@ TEST(Lowering, UsesRegisteredAndGenericNestedRemovalOperations) {
               std::string::npos);
 }
 
+TEST(Lowering, EmitsLogicalElementSettersForArraysAndSupportedNestedMembers) {
+    CppType vectors{"FVectors3f", "Project/Vectors.h"};
+    vectors.member_operations.emplace(TypeOperation::set_element, "set");
+    vectors.member_operation_parameter_passing.emplace(TypeOperation::set_element,
+                                                       ParameterPassing::value);
+    auto schema{SoaSchema{
+        .name = "FData",
+        .members =
+            {
+                SoaMemberSchema{"locations", SoaMemberKind::nested, TypeRef{"@vectors"}},
+                SoaMemberSchema{"teams", SoaMemberKind::array, TypeRef{"ETeam"}},
+                SoaMemberSchema{"healths", SoaMemberKind::array, TypeRef{"int32"}},
+            },
+    }};
+
+    auto const output{render_soa(std::move(schema), {{"vectors", std::move(vectors)}})};
+
+    EXPECT_EQ(occurrences(output.header,
+                          "void set(int32 const index, FVectors3f::equivalent_type const "
+                          "new_locations, ETeam const& new_teams, int32 const new_healths)"),
+              2);
+    EXPECT_NE(output.header.find("locations.set(index, new_locations);"), std::string::npos);
+    EXPECT_NE(output.header.find("teams[index] = new_teams;"), std::string::npos);
+    EXPECT_NE(output.header.find("healths[index] = new_healths;"), std::string::npos);
+}
+
+TEST(Lowering, OmitsLogicalElementSetterForUnsupportedNestedMembers) {
+    auto schema{SoaSchema{
+        .name = "FData",
+        .members = {
+            SoaMemberSchema{"values", SoaMemberKind::nested, TypeRef{"@nested"}},
+        },
+    }};
+
+    auto const output{render_soa(std::move(schema), {{"nested", CppType{"FNested"}}})};
+
+    EXPECT_EQ(output.header.find("void set("), std::string::npos);
+}
+
 TEST(Lowering, SupportsMemberwiseCopying) {
     auto schema{basic_schema()};
     schema.operations = {StorageOperation::copy_element};
@@ -352,6 +391,11 @@ TEST(Lowering, FixedContainersOwnOneSizeAndImplementValueSemantics) {
     EXPECT_NE(output.header.find("TFixedData(TFixedData&& other)"), std::string::npos);
     EXPECT_NE(output.header.find("~TFixedData() { reset(); }"), std::string::npos);
     EXPECT_NE(output.header.find("auto operator=(TFixedData const& other)"), std::string::npos);
+    EXPECT_NE(output.header.find("void set(int32 const index, int32 const new_ids, float const "
+                                 "new_weights)"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("get_view().set(index, new_ids, new_weights);"),
+              std::string::npos);
     EXPECT_NE(output.header.find("requires (Capacity >= 0)"), std::string::npos);
     EXPECT_EQ(occurrences(output.header, "size_type size_{};"), 1);
 }

@@ -64,6 +64,16 @@ struct EntityDataView {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) const {
+        locations.set(index, new_locations);
+        velocities.set(index, new_velocities);
+        radii[index] = new_radii;
+        healths[index] = new_healths;
+        teams[index] = new_teams;
+        entity_types[index] = new_entity_types;
+        alive[index] = new_alive;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -113,6 +123,16 @@ struct EntityData {
     void set_all_velocities(float const value);
 
     void set_all_entity_types(ETestEntityType const value);
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) {
+        locations.set(index, new_locations);
+        velocities.set(index, new_velocities);
+        radii[index] = new_radii;
+        healths[index] = new_healths;
+        teams[index] = new_teams;
+        entity_types[index] = new_entity_types;
+        alive[index] = new_alive;
+    }
 
     void reset();
 

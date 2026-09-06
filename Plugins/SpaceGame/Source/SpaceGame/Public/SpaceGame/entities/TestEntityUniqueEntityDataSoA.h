@@ -67,6 +67,17 @@ struct SPACEGAME_API TestEntityUniqueEntityDataView {
     using View = TestEntityUniqueEntityDataView;
     using ConstView = TestEntityUniqueEntityDataConstView;
 
+    void set(int32 const index, FRegistryEntityHandle::index_type const new_registry_indices, FRegistryEntityHandle::generation_type const new_registry_generations, ETestEntityType const new_entity_types, ETestTeam const new_teams, uint32 const new_kills, uint8 const new_alive, TestEntityUniqueId const new_killed_by, ETestDeathReason const new_death_reason) const {
+        registry_indices[index] = new_registry_indices;
+        registry_generations[index] = new_registry_generations;
+        entity_types[index] = new_entity_types;
+        teams[index] = new_teams;
+        kills[index] = new_kills;
+        alive[index] = new_alive;
+        killed_by[index] = new_killed_by;
+        death_reason[index] = new_death_reason;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -112,6 +123,17 @@ struct SPACEGAME_API TestEntityUniqueEntityData {
     using ConstView = TestEntityUniqueEntityDataConstView;
 
     using kills_type = uint32;
+
+    void set(int32 const index, FRegistryEntityHandle::index_type const new_registry_indices, FRegistryEntityHandle::generation_type const new_registry_generations, ETestEntityType const new_entity_types, ETestTeam const new_teams, uint32 const new_kills, uint8 const new_alive, TestEntityUniqueId const new_killed_by, ETestDeathReason const new_death_reason) {
+        registry_indices[index] = new_registry_indices;
+        registry_generations[index] = new_registry_generations;
+        entity_types[index] = new_entity_types;
+        teams[index] = new_teams;
+        kills[index] = new_kills;
+        alive[index] = new_alive;
+        killed_by[index] = new_killed_by;
+        death_reason[index] = new_death_reason;
+    }
 
     void reset();
 

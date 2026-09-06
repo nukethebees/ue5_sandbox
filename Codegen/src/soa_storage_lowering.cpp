@@ -59,6 +59,58 @@ auto soa_function_spec(FunctionSchema const& schema,
     return function_spec(schema, types);
 }
 
+auto soa_set_spec(SoaSchema const& schema,
+                  std::vector<ResolvedMember> const& members,
+                  bool const is_const) -> std::optional<FunctionSpec> {
+    auto const has_custom_set = [](std::vector<FunctionSchema> const& functions) {
+        return std::ranges::any_of(functions,
+                                   [](FunctionSchema const& function) {
+                                       return function.name == "set";
+                                   });
+    };
+    if (has_custom_set(schema.functions) || has_custom_set(schema.mutable_view_functions)) {
+        return std::nullopt;
+    }
+
+    std::vector<FunctionParameter> parameters{FunctionParameter{"int32 const", "index"}};
+    NodeListBuilder body;
+    auto const parameter_type = [](CppType type, ParameterPassing const passing) {
+        return qualify(std::move(type),
+                       passing == ParameterPassing::value ? " const" : " const&");
+    };
+    for (auto const& member : members) {
+        auto const argument{"new_" + member.name};
+        if (member.kind == SoaMemberKind::array) {
+            parameters.emplace_back(
+                parameter_type(member.element_type, member.element_type.parameter_passing),
+                argument);
+            body.add(AssignmentStatement{member.name + "[index]", argument});
+            continue;
+        }
+
+        auto const operation{member.container_type.operation(TypeOperation::set_element)};
+        if (!operation.has_value()) {
+            return std::nullopt;
+        }
+        auto equivalent_type{qualify(member.element_type, "::equivalent_type")};
+        parameters.emplace_back(
+            parameter_type(std::move(equivalent_type),
+                           member.container_type.operation_parameter_passing(
+                               TypeOperation::set_element)),
+            argument);
+        body.add(ExpressionStatement{
+            member.name + "." + *operation + "(index, " + argument + ")"});
+    }
+    return FunctionSpec{
+        .name = "set",
+        .return_type = "void",
+        .parameters = std::move(parameters),
+        .body = body.build(),
+        .qualifiers = {.is_const = is_const},
+        .is_inline = true,
+    };
+}
+
 auto soa_storage_operation_specs(SoaSchema const& schema,
                                  std::vector<ResolvedMember> const& members)
     -> std::vector<FunctionSpec> {
@@ -288,6 +340,9 @@ auto soa_storage_node(SoaSchema const& schema,
         } else {
             nodes.add(header_function(spec), 2);
         }
+    }
+    if (auto set{soa_set_spec(schema, members, false)}; set.has_value()) {
+        nodes.add(header_function(*set), 2);
     }
     auto operations{soa_storage_operation_specs(schema, members)};
     for (auto const& spec : operations) {
