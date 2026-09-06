@@ -1,10 +1,7 @@
 #pragma once
 
-#include <SpaceGame/entities/TestEntityType.h>
-#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
-#include <SpaceGame/ships/common/ShipHealth.h>
 #include <SpaceGame/ui/style/GameUiStyle.h>
 
 #include <Blueprint/UserWidget.h>
@@ -12,9 +9,7 @@
 
 #include "MissionStatusWidget.generated.h"
 
-class UMissionEntityHealthRowWidget;
 class UValueWidget;
-class UVerticalBox;
 
 namespace ml::hud_manager {
 struct FMissionDataCache;
@@ -49,12 +44,6 @@ class SPACEGAME_API UMissionStatusWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UValueWidget* time_remaining_widget{nullptr};
 
-    UPROPERTY(meta = (BindWidget))
-    UVerticalBox* surviving_entities_box{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UVerticalBox* required_kill_entities_box{nullptr};
-
     UPROPERTY(EditAnywhere, Category = "UI|Format")
     FName mission_mode_format{TEXT("{0} ({1})")};
 
@@ -75,28 +64,9 @@ class SPACEGAME_API UMissionStatusWidget : public UUserWidget {
                             ETestMissionState const mission_state,
                             float const mission_time,
                             float const time_remaining,
-                            int32 const enemies_remaining,
-                            TConstArrayView<TestEntityUniqueId> const surviving_entity_ids,
-                            TConstArrayView<ETestEntityType> const surviving_entity_types,
-                            TConstArrayView<FShipHealth> const surviving_entity_health,
-                            TConstArrayView<TestEntityUniqueId> const required_kill_entity_ids,
-                            TConstArrayView<ETestEntityType> const required_kill_entity_types,
-                            TConstArrayView<FShipHealth> const required_kill_entity_health);
+                            int32 const enemies_remaining);
     auto check_widget_bindings() const -> bool;
     void apply_mission_state_style(ETestMissionState state);
-    auto update_entity_widgets(UVerticalBox& entity_box,
-                               FStringView widget_name_prefix,
-                               TConstArrayView<TestEntityUniqueId> entity_ids,
-                               TConstArrayView<ETestEntityType> entity_types,
-                               TConstArrayView<FShipHealth> health_values,
-                               TArray<TestEntityUniqueId>& cached_entity_ids,
-                               TArray<TObjectPtr<UMissionEntityHealthRowWidget>>& entity_widgets)
-        -> bool;
-
-    TArray<TestEntityUniqueId> surviving_entity_ids{};
-    TArray<TObjectPtr<UMissionEntityHealthRowWidget>> surviving_entity_widgets{};
-    TArray<TestEntityUniqueId> required_kill_entity_ids{};
-    TArray<TObjectPtr<UMissionEntityHealthRowWidget>> required_kill_entity_widgets{};
     ETestMissionMode current_mission_mode{ETestMissionMode::None};
     TOptional<ml::ioj::FGameHudStyle> hud_style_{};
 };

@@ -145,7 +145,6 @@ void UShipHudWidget::set_common_widget_properties() {
                              health_widget,
                              points_widget,
                              stopwatch_widget,
-                             mission_status_widget,
                              fire_rate_widget,
                              target_speed_widget,
                              selected_imc_widget,
@@ -189,7 +188,6 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
         }
     }};
     apply_value_style(stopwatch_widget, hud_style.secondary_text);
-    apply_value_style(mission_status_widget, hud_style.accent_text);
     apply_value_style(fire_rate_widget, hud_style.secondary_text);
     apply_value_style(target_speed_widget, hud_style.secondary_text);
     apply_value_style(selected_imc_widget, hud_style.caption_text);
@@ -199,7 +197,6 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     apply_value_style(flight_mode_widget, hud_style.secondary_text);
 
     stopwatch_widget->set_format_spec(TEXT("MISSION TIME // {0}:{1}:{2}"));
-    mission_status_widget->set_format_spec(TEXT("STATUS // {0}"));
     fire_rate_widget->set_format_spec(TEXT("FIRE RATE // {0}"));
     target_speed_widget->set_format_spec(TEXT("TARGET SPEED // {0}"));
     selected_imc_widget->set_format_spec(TEXT("IMC // {0}"));
@@ -294,19 +291,6 @@ void UShipHudWidget::set_stopwatch_time(float const time_s) {
 }
 void UShipHudWidget::set_stopwatch_widget_visibility(ESlateVisibility const new_visibility) {
     set_widget_visibility_checked(stopwatch_widget, new_visibility);
-}
-
-void UShipHudWidget::set_mission_status(FStringView const value) {
-    check(IsValid(mission_status_widget));
-    mission_status_widget->update(value);
-}
-void UShipHudWidget::set_mission_status_widget_visibility(ESlateVisibility const new_visibility) {
-    if (mission_status_widget) {
-        mission_status_widget->SetVisibility(new_visibility);
-    }
-    if (mission_status_panel) {
-        mission_status_panel->SetVisibility(new_visibility);
-    }
 }
 
 void UShipHudWidget::set_fire_rate(FStringView const value) {

@@ -56,9 +56,6 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void set_stopwatch_time(float const time_s);
     void set_stopwatch_widget_visibility(ESlateVisibility const new_visibility);
 
-    void set_mission_status(FStringView const mission_status);
-    void set_mission_status_widget_visibility(ESlateVisibility const new_visibility);
-
     void set_fire_rate(FStringView const mission_status);
     void set_fire_rate_visibility(ESlateVisibility const new_visibility);
 
@@ -126,8 +123,6 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     UShipPointsWidget* points_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* stopwatch_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UValueWidget* mission_status_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* fire_rate_widget{nullptr};
 
