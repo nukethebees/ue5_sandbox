@@ -16,6 +16,7 @@
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/support/mesh.h>
+#include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/invoke.h>
@@ -40,6 +41,12 @@
 #include <GameFramework/WorldSettings.h>
 #include <HAL/PlatformMisc.h>
 #include <Kismet/GameplayStatics.h>
+#include <Misc/App.h>
+#include <Misc/ConfigCacheIni.h>
+#include <Misc/DateTime.h>
+#include <Misc/EngineVersion.h>
+#include <Misc/Guid.h>
+#include <Misc/Paths.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <VisualLogger/VisualLogger.h>
@@ -49,6 +56,42 @@
 #endif
 
 namespace {
+auto world_type_name(EWorldType::Type const world_type) -> FString {
+    switch (world_type) {
+        case EWorldType::Game:
+            return TEXT("game");
+        case EWorldType::Editor:
+            return TEXT("editor");
+        case EWorldType::PIE:
+            return TEXT("pie");
+        case EWorldType::EditorPreview:
+            return TEXT("editor_preview");
+        case EWorldType::GamePreview:
+            return TEXT("game_preview");
+        case EWorldType::Inactive:
+            return TEXT("inactive");
+        default:
+            return TEXT("other");
+    }
+}
+
+auto end_play_reason_name(EEndPlayReason::Type const reason) -> FString {
+    switch (reason) {
+        case EEndPlayReason::Destroyed:
+            return TEXT("destroyed");
+        case EEndPlayReason::LevelTransition:
+            return TEXT("level_transition");
+        case EEndPlayReason::EndPlayInEditor:
+            return TEXT("end_play_in_editor");
+        case EEndPlayReason::RemovedFromWorld:
+            return TEXT("removed_from_world");
+        case EEndPlayReason::Quit:
+            return TEXT("quit");
+    }
+
+    return TEXT("unknown");
+}
+
 template <typename TActor, typename TConfig>
 void apply_actor_config(TActor& actor, TConfig* const config) {
 #if WITH_EDITOR
@@ -146,6 +189,9 @@ void ATestBatchOrchestrator::BeginPlay() {
     }
 }
 void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason) {
+    finalize_telemetry_run(ELevelTelemetryRunEndReason::WorldEnd,
+                           end_play_reason_name(end_play_reason));
+    flush_finalized_telemetry_run();
     hud_manager.deactivate();
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
@@ -169,17 +215,22 @@ void ATestBatchOrchestrator::start_simulation() {
         return;
     }
     level_simulation_->start();
+    telemetry_tick_loop.initialise();
     SetActorTickEnabled(true);
     start_visual_logging();
 }
 void ATestBatchOrchestrator::pause_simulation() {
     if (level_simulation_.IsSet()) {
+        telemetry_tick_loop.initialise();
         level_simulation_->pause();
     }
     SetActorTickEnabled(false);
 }
 void ATestBatchOrchestrator::reset_for_new_level() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestBatchOrchestrator::reset_for_new_level);
+
+    finalize_telemetry_run(ELevelTelemetryRunEndReason::OrchestratorReset, TEXT("reset"));
+    flush_finalized_telemetry_run();
 
     auto* const world{GetWorld()};
     if (!IsValid(world)) {
@@ -608,6 +659,9 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     }
     set_level_config(*level_config);
     hud_tick_loop.initialise();
+    telemetry_tick_loop.tick_rate = 1.0;
+    telemetry_tick_loop.time_scale = 1.0;
+    telemetry_tick_loop.initialise();
     ml::FLevelStartErrors simulation_errors;
     if (!initialise_simulation(simulation_errors)) {
         handle_level_start_failure(
@@ -637,6 +691,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         start_mode == EOrchestratorStartMode::Automatic ||
         start_mode == EOrchestratorStartMode::AuthoredLevel ||
         (start_mode == EOrchestratorStartMode::PausedInTest && !GIsAutomationTesting)};
+    begin_telemetry_run();
     if (automatic) {
         level_simulation_->start();
         start_visual_logging();
@@ -753,6 +808,91 @@ void ATestBatchOrchestrator::stop_visual_logging() {
 #endif
 }
 
+void ATestBatchOrchestrator::begin_telemetry_run() {
+    check(level_simulation_.IsSet());
+
+    auto const* const world{GetWorld()};
+    FLevelTelemetryEnvironment environment{
+        .project_name = FApp::GetProjectName(),
+        .engine_version = FEngineVersion::Current().ToString(),
+        .build_version = FApp::GetBuildVersion(),
+        .build_configuration = LexToString(FApp::GetBuildConfiguration()),
+        .execution_mode = FApp::IsGame() ? TEXT("game") : TEXT("editor"),
+        .world_type = IsValid(world) ? world_type_name(world->WorldType) : TEXT("unknown"),
+    };
+    if (GConfig != nullptr) {
+        GConfig->GetString(TEXT("/Script/EngineSettings.GeneralProjectSettings"),
+                           TEXT("ProjectVersion"),
+                           environment.project_version,
+                           GGameIni);
+    }
+
+    auto const* const game_instance{IsValid(world) ? world->GetGameInstance() : nullptr};
+    auto const* const subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    if (IsValid(subsystem)) {
+        auto const& capabilities{subsystem->get_platform_capabilities()};
+        environment.platform = capabilities.platform_name;
+        environment.host_architecture = capabilities.host_architecture;
+        environment.operating_system_version = capabilities.operating_system_version;
+        environment.operating_system_subversion = capabilities.operating_system_subversion;
+        environment.cpu_vendor = capabilities.cpu_vendor;
+        environment.cpu_brand = capabilities.cpu_brand;
+        environment.physical_core_count = capabilities.physical_core_count;
+        environment.logical_core_count = capabilities.logical_core_count;
+        environment.primary_gpu_brand = capabilities.primary_gpu_brand;
+        environment.total_physical_memory_bytes = capabilities.total_physical_memory_bytes;
+    } else {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("Telemetry environment metadata is incomplete: game subsystem is unavailable"));
+    }
+
+    FLevelTelemetryRunMetadata metadata{
+        .run_id = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower),
+        .map_name = IsValid(world) ? UGameplayStatics::GetCurrentLevelName(world) : FString{},
+        .level_id = mission_definition.level_id,
+        .level_display_name = mission_definition.level_display_name,
+        .launched_utc = FDateTime::UtcNow().ToIso8601(),
+        .environment = MoveTemp(environment),
+        .presentation_enabled = presentation_enabled,
+    };
+    auto& telemetry{get_level_telemetry_manager()};
+    telemetry.begin_run(MoveTemp(metadata));
+}
+
+void ATestBatchOrchestrator::finalize_telemetry_run(ELevelTelemetryRunEndReason const reason,
+                                                    FString detail) {
+    if (!level_simulation_.IsSet() || !get_level_telemetry_manager().is_run_recording()) {
+        return;
+    }
+
+    get_level_telemetry_manager().finalize_interrupted(reason, MoveTemp(detail));
+}
+
+void ATestBatchOrchestrator::flush_finalized_telemetry_run() {
+    if (!level_simulation_.IsSet()) {
+        return;
+    }
+
+    auto record{get_level_telemetry_manager().take_finalized_run()};
+    if (!record.IsSet()) {
+        return;
+    }
+    if (GIsAutomationTesting) {
+        return;
+    }
+
+    auto const output_directory{
+        FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Telemetry"), TEXT("Runs"))};
+    auto const path{write_level_telemetry_run(*record, output_directory)};
+    if (path) {
+        UE_LOG(LogSandbox, Display, TEXT("Wrote level telemetry run to '%s'"), **path);
+    } else {
+        UE_LOG(LogSandbox, Error, TEXT("Failed to write level telemetry run: %s"), *path.error());
+    }
+}
+
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     if (!IsValid(collision_grid_visualization)) {
         UE_LOG(LogSandbox,
@@ -817,6 +957,15 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
         }
     }
     level_simulation_->commit_presentation(dt);
+    telemetry_tick_loop.add_time(dt);
+    bool sample_telemetry{};
+    while (telemetry_tick_loop.try_tick()) {
+        sample_telemetry = true;
+    }
+    if (sample_telemetry) {
+        get_level_telemetry_manager().capture_realtime_sample();
+    }
+    flush_finalized_telemetry_run();
 }
 
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
@@ -898,6 +1047,7 @@ void ATestBatchOrchestrator::process_mission_result() {
     if (!result.IsSet()) {
         return;
     }
+    get_level_telemetry_manager().mark_mission_terminal(*result);
     bool persisted{};
     if (result->save_results) {
         auto* game_instance{GetGameInstance()};
