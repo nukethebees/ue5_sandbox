@@ -19,6 +19,7 @@ class UImage;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
 class UNativeWidgetHost;
+class UBorder;
 
 class UShipSpeedWidget;
 class UShipHealthWidget;
@@ -194,6 +195,8 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
 
     UPROPERTY(meta = (BindWidget))
     UNativeWidgetHost* radar_host{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UBorder* radar_background{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* lock_on_widget{nullptr};

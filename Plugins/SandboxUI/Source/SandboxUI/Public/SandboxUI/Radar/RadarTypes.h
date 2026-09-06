@@ -45,14 +45,14 @@ struct SANDBOXUI_API FRadarFrame {
 };
 
 struct SANDBOXUI_API FRadarStyle {
-    FLinearColor structure_color{0.95f, 0.55f, 0.12f, 1.0f};
-    FLinearColor emphasis_color{1.0f, 0.72f, 0.18f, 1.0f};
+    FLinearColor structure_color{1.0f, 0.7f, 0.12f, 1.0f};
+    FLinearColor emphasis_color{1.0f, 0.85f, 0.25f, 1.0f};
     FLinearColor neutral_color{0.72f, 0.78f, 0.82f, 1.0f};
-    FLinearColor plane_color{0.16f, 0.09f, 0.025f, 0.10f};
-    float structure_opacity{0.72f};
-    float grid_opacity{0.18f};
-    float stem_opacity{0.42f};
-    float glyph_intensity{1.0f};
+    FLinearColor plane_color{FLinearColor::Transparent};
+    float structure_opacity{0.9f};
+    float grid_opacity{0.28f};
+    float stem_opacity{0.55f};
+    float glyph_intensity{1.25f};
 };
 
 [[nodiscard]] SANDBOXUI_API auto pack_radar_color(FLinearColor color) -> uint32;

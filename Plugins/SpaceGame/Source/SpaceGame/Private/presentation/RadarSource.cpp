@@ -3,6 +3,10 @@
 #include "SpaceGame/entities/TestEntityType.h"
 
 namespace ml::radar_source {
+inline constexpr float automatic_range_padding{1.15f};
+inline constexpr float automatic_range_percentile{0.9f};
+inline constexpr float automatic_range_step{100000.0f};
+
 auto glyph(ETestEntityType const type) -> ERadarGlyph {
     switch (type) {
         case ETestEntityType::PlayerShip: {
@@ -83,6 +87,57 @@ auto to_radar_position(FVector3f const local_delta, float const maximum_range) -
     }
     return {mapped_planar.X, mapped_planar.Y, local_delta.Z / maximum_range};
 }
+
+auto calculate_display_range(ml::entity_registry::EntityData::ConstView const entities,
+                             TConstArrayView<int32> const generations,
+                             FRegistryEntityHandle const player_handle,
+                             FRegistryEntityHandle const selected_handle,
+                             FVector3f const player_origin,
+                             float const minimum_range,
+                             float const maximum_range) -> float {
+    TArray<float, TInlineAllocator<128>> distances;
+    auto selected_distance{0.0f};
+    auto const maximum_range_squared{maximum_range * maximum_range};
+    auto const count{entities.num()};
+    distances.Reserve(count);
+    for (int32 index{0}; index < count; ++index) {
+        if (entities.alive[index] == 0 ||
+            entities.entity_types[index] == ETestEntityType::PlayerShip) {
+            continue;
+        }
+
+        FRegistryEntityHandle const handle{index, generations[index]};
+        if (handle == player_handle) {
+            continue;
+        }
+
+        auto const distance_squared{(entities.locations[index] - player_origin).SizeSquared()};
+        if (distance_squared >= maximum_range_squared) {
+            continue;
+        }
+
+        auto const distance{FMath::Sqrt(distance_squared)};
+        distances.Add(distance);
+        if (handle == selected_handle) {
+            selected_distance = distance;
+        }
+    }
+
+    auto desired_range{0.0f};
+    if (!distances.IsEmpty()) {
+        distances.Sort();
+        auto const percentile_index{FMath::Clamp(
+            FMath::CeilToInt(static_cast<float>(distances.Num()) * automatic_range_percentile) - 1,
+            0,
+            distances.Num() - 1)};
+        desired_range = distances[percentile_index];
+    }
+    desired_range = FMath::Max(
+        minimum_range, FMath::Max(desired_range, selected_distance) * automatic_range_padding);
+    auto const stepped_range{FMath::CeilToFloat(desired_range / automatic_range_step) *
+                             automatic_range_step};
+    return FMath::Clamp(stepped_range, minimum_range, maximum_range);
+}
 } // namespace ml::radar_source
 
 auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const entities,
@@ -92,6 +147,8 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
                              FTransform const& player_transform,
                              FRegistryEntityHandle const player_handle,
                              FRegistryEntityHandle const selected_handle,
+                             bool const automatic_range,
+                             float const minimum_range,
                              float const maximum_range,
                              TArray<FRadarInstance>& output_instances) -> FRadarCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(Radar::CollectRegistrySource);
@@ -100,12 +157,22 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
     check(objective_roles.Num() == entities.num());
     output_instances.Reset();
 
-    auto const range{FMath::Max(maximum_range, UE_SMALL_NUMBER)};
-    auto const range_squared{range * range};
+    auto const range_limit{FMath::Max(maximum_range, UE_SMALL_NUMBER)};
+    auto const range_floor{FMath::Clamp(minimum_range, UE_SMALL_NUMBER, range_limit)};
     auto const rotation{player_transform.Rotator()};
     FTransform const no_roll_transform{FRotator{rotation.Pitch, rotation.Yaw, 0.0f},
                                        player_transform.GetLocation()};
     auto const player_origin{FVector3f{player_transform.GetLocation()}};
+    auto const range{automatic_range && maximum_range > 0.0f
+                         ? ml::radar_source::calculate_display_range(entities,
+                                                                     generations,
+                                                                     player_handle,
+                                                                     selected_handle,
+                                                                     player_origin,
+                                                                     range_floor,
+                                                                     range_limit)
+                         : range_limit};
+    auto const range_squared{range * range};
     auto const count{entities.num()};
     output_instances.Reserve(count + 1);
 

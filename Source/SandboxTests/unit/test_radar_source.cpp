@@ -86,6 +86,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   FTransform::Identity,
                                                   {0, 7},
                                                   {2, 7},
+                                                  false,
+                                                  0.0f,
                                                   100.0f,
                                                   instances)};
 
@@ -116,9 +118,11 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                               ERadarGlyph::Player);
         TestRunner->TestTrue(TEXT("Player is central"),
                              instances.Last().radar_position.IsNearlyZero());
-        TestRunner->TestEqual(TEXT("Fighter preserves its team colour"),
-                              instances[0].packed_color,
-                              pack_radar_color(FLinearColor{1.0f, 0.0f, 0.0f, 1.0f}));
+        TestRunner->TestEqual(
+            TEXT("Fighter preserves its team colour"), instances[0].packed_color, 0xff0000ffu);
+        TestRunner->TestEqual(TEXT("Blue occupies the shader's blue channel"),
+                              pack_radar_color(FLinearColor{0.0f, 0.0f, 1.0f, 1.0f}),
+                              0xffff0000u);
 
         auto const zero_range_result{
             collect_radar_instances(ml::test_radar_source::make_view(entities),
@@ -128,6 +132,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     FTransform::Identity,
                                     {0, 7},
                                     {},
+                                    false,
+                                    0.0f,
                                     0.0f,
                                     instances)};
         TestRunner->TestEqual(
@@ -162,6 +168,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   FTransform{no_roll_rotation, player_location},
                                                   {0, 3},
                                                   {},
+                                                  false,
+                                                  0.0f,
                                                   100.0f,
                                                   no_roll_instances));
         static_cast<void>(
@@ -172,6 +180,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     FTransform{FRotator{28.0, 37.0, 120.0}, player_location},
                                     {0, 3},
                                     {},
+                                    false,
+                                    0.0f,
                                     100.0f,
                                     rolled_instances));
 
@@ -190,5 +200,63 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                              no_roll_instances[0].radar_position.X > 0.0f);
         TestRunner->TestTrue(TEXT("Right remains positive on the radar"),
                              no_roll_instances[0].radar_position.Y > 0.0f);
+    }
+
+    TEST_METHOD(AutomaticRangeIgnoresAnOutlierButIncludesSelection)
+    {
+        ml::entity_registry::EntityData entities;
+        ml::test_radar_source::add_entity(
+            entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
+        for (int32 index{1}; index <= 9; ++index) {
+            ml::test_radar_source::add_entity(entities,
+                                              {static_cast<float>(index) * 10000.0f, 0.0f, 0.0f},
+                                              ETestTeam::Red,
+                                              ETestEntityType::CapitalShipFighter);
+        }
+        ml::test_radar_source::add_entity(
+            entities, {900000.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShipFighter);
+
+        TArray<int32> generations;
+        generations.Init(1, entities.alive.Num());
+        TArray<EEntityOverlayObjectiveRole> objective_roles;
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        FRadarTeamColours colours;
+        TArray<FRadarInstance> instances;
+
+        auto const automatic_result{
+            collect_radar_instances(ml::test_radar_source::make_view(entities),
+                                    generations,
+                                    objective_roles,
+                                    colours,
+                                    FTransform::Identity,
+                                    {0, 1},
+                                    {},
+                                    true,
+                                    100000.0f,
+                                    1000000.0f,
+                                    instances)};
+        TestRunner->TestEqual(
+            TEXT("Automatic range omits the distant outlier"), automatic_result.visible_count, 10);
+        TestRunner->TestTrue(TEXT("Automatic range snaps the nearby formation to a 2 km display"),
+                             FMath::IsNearlyEqual(instances[8].radar_position.X, 0.45f, 0.0001f));
+
+        auto const selected_result{
+            collect_radar_instances(ml::test_radar_source::make_view(entities),
+                                    generations,
+                                    objective_roles,
+                                    colours,
+                                    FTransform::Identity,
+                                    {0, 1},
+                                    {10, 1},
+                                    true,
+                                    100000.0f,
+                                    1000000.0f,
+                                    instances)};
+        TestRunner->TestEqual(TEXT("Automatic range includes a distant selection"),
+                              selected_result.visible_count,
+                              11);
+        TestRunner->TestEqual(TEXT("Selected outlier retains selection emphasis"),
+                              ml::test_radar_source::flags(instances[9]),
+                              ERadarContactFlags::Selected);
     }
 };

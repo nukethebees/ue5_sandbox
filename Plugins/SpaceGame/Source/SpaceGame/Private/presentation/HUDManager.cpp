@@ -571,6 +571,8 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
                                               player_ship->transform,
                                               player_ship->registry_handle,
                                               player_ship->lock_on_target,
+                                              radar_settings_.automatic_range,
+                                              radar_settings_.minimum_range,
                                               radar_settings_.maximum_range,
                                               frame.instances)};
     registration.radar_frame_store->publish();

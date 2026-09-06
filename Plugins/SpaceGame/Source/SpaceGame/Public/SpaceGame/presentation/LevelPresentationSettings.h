@@ -112,6 +112,12 @@ struct FRadarSettings {
     UPROPERTY(EditAnywhere, Category = "Radar")
     bool enabled{true};
 
+    UPROPERTY(EditAnywhere, Category = "Radar")
+    bool automatic_range{true};
+
+    UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", Units = "cm"))
+    float minimum_range{100000.0f};
+
     UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", Units = "cm"))
     float maximum_range{1000000.0f};
 };

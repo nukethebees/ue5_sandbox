@@ -9,7 +9,7 @@
 
 class SANDBOXUI_API SRadarWidget final : public SCompoundWidget {
   public:
-    static constexpr int32 output_texture_dimension{512};
+    static constexpr int32 output_texture_dimension{1024};
 
     SLATE_BEGIN_ARGS(SRadarWidget) {}
     SLATE_END_ARGS()

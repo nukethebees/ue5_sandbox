@@ -18,6 +18,7 @@
 #include "SpaceGame/ui/style/GameUiStyle.h"
 
 #include <Blueprint/WidgetTree.h>
+#include <Components/Border.h>
 #include <Components/CanvasPanelSlot.h>
 #include <Components/Image.h>
 #include <Components/NativeWidgetHost.h>
@@ -51,14 +52,39 @@ void set_font_size_on_widgets(int32 const font_size, WidgetTypes* const... widge
 }
 }
 
+namespace ml::ship_hud {
+inline constexpr float radar_display_dimension{640.0f};
+inline constexpr float radar_viewport_margin{32.0f};
+
+void configure_radar_canvas_slot(UWidget* const widget) {
+    auto* const slot{Cast<UCanvasPanelSlot>(widget->Slot)};
+    if (slot == nullptr) {
+        return;
+    }
+
+    slot->SetAnchors(FAnchors{1.0f, 1.0f});
+    slot->SetAlignment(FVector2D{1.0, 1.0});
+    slot->SetPosition(FVector2D{-radar_viewport_margin, -radar_viewport_margin});
+    slot->SetSize(FVector2D{radar_display_dimension, radar_display_dimension});
+    slot->SetAutoSize(false);
+}
+} // namespace ml::ship_hud
+
 auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
+    if (IsValid(radar_background)) {
+        radar_background->SetBrushColor(FLinearColor::Transparent);
+        ml::ship_hud::configure_radar_canvas_slot(radar_background);
+    } else {
+        UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar background."));
+    }
     auto const radar{SAssignNew(radar_widget_, SRadarWidget)};
     radar_widget_->set_frame_store(radar_frame_store_);
     radar_widget_->set_style(radar_style_);
     radar_widget_->SetVisibility(radar_frame_store_.IsValid() ? EVisibility::HitTestInvisible
                                                               : EVisibility::Collapsed);
     if (IsValid(radar_host)) {
+        ml::ship_hud::configure_radar_canvas_slot(radar_host);
         radar_host->SetContent(radar);
     } else {
         UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar NativeWidgetHost."));
@@ -491,7 +517,7 @@ void UShipHudWidget::apply_radar_colours() {
 
     radar_style_.emphasis_color = entity_overlay_defend_colour_;
     radar_style_.structure_color = entity_overlay_defend_colour_;
-    radar_style_.plane_color = entity_overlay_background_colour_.CopyWithNewOpacity(0.12f);
+    radar_style_.plane_color = FLinearColor::Transparent;
     if (radar_widget_.IsValid()) {
         radar_widget_->set_style(radar_style_);
     }

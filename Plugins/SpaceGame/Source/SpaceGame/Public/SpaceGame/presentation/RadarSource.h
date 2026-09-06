@@ -26,5 +26,7 @@ struct SPACEGAME_API FRadarCollectionResult {
                             FTransform const& player_transform,
                             FRegistryEntityHandle player_handle,
                             FRegistryEntityHandle selected_handle,
+                            bool automatic_range,
+                            float minimum_range,
                             float maximum_range,
                             TArray<FRadarInstance>& output_instances) -> FRadarCollectionResult;
