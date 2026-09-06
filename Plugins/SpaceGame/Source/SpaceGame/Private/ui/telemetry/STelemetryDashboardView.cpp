@@ -296,6 +296,12 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
                         .BorderImage(&style_->panel().background)
                         .Padding(style_->panel().padding)[telemetry_dashboard_view::text(
                             *style_, state_.summary, EGameTextStyle::HudPrimary)]];
+    content->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 0.0f)[telemetry_dashboard_view::text(
+        *style_,
+        NSLOCTEXT("TelemetryDashboard",
+                  "WarmupIntervalOmitted",
+                  "INTERVAL ANALYSIS // FIRST ~1 HZ WARM-UP INTERVAL OMITTED"),
+        EGameTextStyle::BodySecondary)];
     content->AddSlot().AutoHeight().Padding(0.0f, 6.0f)[telemetry_dashboard_view::chart_title(
         *style_, TEXT("THROUGHPUT // TIME SCALE (x) BY REAL ELAPSED TIME (s)"))];
     content->AddSlot().AutoHeight()[throughput];

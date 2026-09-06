@@ -237,10 +237,12 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
 
     auto const& realtime{record.completed_ticks_by_real_time};
     auto const count{realtime.num()};
-    result.throughput_real_elapsed_seconds.Reserve(FMath::Max(0, count - 1));
-    result.observed_time_scale.Reserve(FMath::Max(0, count - 1));
-    result.requested_time_scale.Reserve(FMath::Max(0, count - 1));
-    for (int32 index{1}; index < count; ++index) {
+    constexpr int32 first_measured_sample_index{2};
+    auto const measured_interval_count{FMath::Max(0, count - first_measured_sample_index)};
+    result.throughput_real_elapsed_seconds.Reserve(measured_interval_count);
+    result.observed_time_scale.Reserve(measured_interval_count);
+    result.requested_time_scale.Reserve(measured_interval_count);
+    for (int32 index{first_measured_sample_index}; index < count; ++index) {
         auto const begin_time{realtime.time_at(index - 1)};
         auto const end_time{realtime.time_at(index)};
         auto const real_delta{end_time - begin_time};
