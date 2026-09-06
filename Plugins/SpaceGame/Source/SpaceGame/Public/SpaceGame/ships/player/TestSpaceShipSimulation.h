@@ -93,6 +93,7 @@ struct SPACEGAME_API Simulation {
     auto get_energy() const -> float;
     auto energy_is_full() const -> bool;
     auto get_middle_socket() const -> FTransform;
+    auto get_laser_effective_range() const noexcept -> float;
 
     TestEntityUniqueId unique_entity_id;
     FRegistryEntityHandle registry_handle{};

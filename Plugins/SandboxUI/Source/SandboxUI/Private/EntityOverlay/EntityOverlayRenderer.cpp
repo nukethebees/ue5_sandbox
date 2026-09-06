@@ -37,6 +37,16 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(float, ObjectiveBarHeightScale)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, ScreenEdgePaddingPixels)
+    SHADER_PARAMETER(float, SoftTargetRadiusPixels)
+    SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
+    SHADER_PARAMETER(float, SoftTargetRangeProgress)
+    SHADER_PARAMETER(float, SoftTargetPulse)
+    SHADER_PARAMETER(float, SoftTargetVisibility)
+    SHADER_PARAMETER(float, SoftTargetInRange)
+    SHADER_PARAMETER(float, FadingSoftTargetRadiusPixels)
+    SHADER_PARAMETER(float, FadingSoftTargetRangeProgress)
+    SHADER_PARAMETER(float, FadingSoftTargetVisibility)
+    SHADER_PARAMETER(float, FadingSoftTargetInRange)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
     END_SHADER_PARAMETER_STRUCT()
 
@@ -56,10 +66,16 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_PARAMETER(float, MaximumInsetHeightRatio)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, TimeSeconds)
+    SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
+    SHADER_PARAMETER(float, SoftTargetOpacity)
+    SHADER_PARAMETER(float, SoftTargetGlowOpacity)
+    SHADER_PARAMETER(float, SoftTargetPulseOpacityBoost)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
     SHADER_PARAMETER(FVector4f, DefendObjectiveColor)
     SHADER_PARAMETER(FVector4f, DestroyObjectiveColor)
+    SHADER_PARAMETER(FVector4f, SoftTargetNeutralColor)
+    SHADER_PARAMETER(FVector4f, SoftTargetInRangeColor)
     END_SHADER_PARAMETER_STRUCT()
 
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
@@ -125,15 +141,38 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
         FMath::Clamp(style.objective_bar_height_scale, 1.0f, 2.0f);
     parameters->VS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
     parameters->VS.ScreenEdgePaddingPixels = FMath::Max(style.screen_edge_padding_pixels, 0.0f);
+    parameters->VS.SoftTargetRadiusPixels = FMath::Max(frame.soft_target_radius_pixels, 1.0f);
+    parameters->VS.SoftTargetBracketStartRadiusMultiplier =
+        FMath::Max(style.soft_target_bracket_start_radius_multiplier, 1.0f);
+    parameters->VS.SoftTargetRangeProgress =
+        FMath::Clamp(frame.soft_target_range_progress, 0.0f, 1.0f);
+    parameters->VS.SoftTargetPulse = FMath::Clamp(frame.soft_target_pulse, 0.0f, 1.0f);
+    parameters->VS.SoftTargetVisibility = FMath::Clamp(frame.soft_target_visibility, 0.0f, 1.0f);
+    parameters->VS.SoftTargetInRange = frame.soft_target_in_range ? 1.0f : 0.0f;
+    parameters->VS.FadingSoftTargetRadiusPixels =
+        FMath::Max(frame.fading_soft_target_radius_pixels, 1.0f);
+    parameters->VS.FadingSoftTargetRangeProgress =
+        FMath::Clamp(frame.fading_soft_target_range_progress, 0.0f, 1.0f);
+    parameters->VS.FadingSoftTargetVisibility =
+        FMath::Clamp(frame.fading_soft_target_visibility, 0.0f, 1.0f);
+    parameters->VS.FadingSoftTargetInRange = frame.fading_soft_target_in_range ? 1.0f : 0.0f;
     parameters->VS.Instances = graph_builder.CreateSRV(instance_buffer);
     parameters->PS.InsetPixels = style.inset_pixels;
     parameters->PS.MaximumInsetHeightRatio = FMath::Max(style.maximum_inset_height_ratio, 0.0f);
     parameters->PS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
     parameters->PS.TimeSeconds = FMath::Fmod(static_cast<float>(FPlatformTime::Seconds()), 1024.0f);
+    parameters->PS.SoftTargetBracketStartRadiusMultiplier =
+        FMath::Max(style.soft_target_bracket_start_radius_multiplier, 1.0f);
+    parameters->PS.SoftTargetOpacity = FMath::Clamp(style.soft_target_opacity, 0.0f, 1.0f);
+    parameters->PS.SoftTargetGlowOpacity = FMath::Clamp(style.soft_target_glow_opacity, 0.0f, 1.0f);
+    parameters->PS.SoftTargetPulseOpacityBoost =
+        FMath::Clamp(style.soft_target_pulse_opacity_boost, 0.0f, 1.0f);
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
     parameters->PS.DefendObjectiveColor = FVector4f{style.defend_objective_color};
     parameters->PS.DestroyObjectiveColor = FVector4f{style.destroy_objective_color};
+    parameters->PS.SoftTargetNeutralColor = FVector4f{style.soft_target_neutral_color};
+    parameters->PS.SoftTargetInRangeColor = FVector4f{style.soft_target_in_range_color};
     parameters->RenderTargets[0] =
         FRenderTargetBinding{output_texture, ERenderTargetLoadAction::EClear};
 

@@ -43,6 +43,60 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere, Category = "Entity Overlay|Objectives", meta = (ClampMin = "0.0"))
     float screen_edge_padding_pixels{12.0f};
 
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
+    float soft_target_acquisition_radius_pixels{72.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
+    float soft_target_retention_radius_pixels{96.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "0.0"))
+    float soft_target_centre_tie_radius_pixels{4.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Soft Target",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float soft_target_switch_improvement_ratio{0.75f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
+    float soft_target_approach_range_multiplier{4.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
+    float soft_target_minimum_radius_pixels{28.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
+    float soft_target_maximum_radius_pixels{96.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "0.0"))
+    float soft_target_bounds_padding_pixels{10.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
+    float soft_target_bracket_start_radius_multiplier{2.5f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Soft Target",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float soft_target_opacity{0.70f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Soft Target",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float soft_target_glow_opacity{0.045f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Soft Target",
+              meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float soft_target_pulse_opacity_boost{0.08f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Soft Target",
+              meta = (ClampMin = "0.0", Units = "s"))
+    float soft_target_pulse_duration{0.15f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Soft Target",
+              meta = (ClampMin = "0.0", Units = "s"))
+    float soft_target_fade_out_duration{0.15f};
+
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};
 

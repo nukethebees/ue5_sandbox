@@ -18,11 +18,29 @@ enum class EEntityOverlayObjectiveRole : uint32 {
     Destroy,
 };
 
+enum class EEntityOverlaySoftTargetRole : uint32 {
+    None,
+    Active,
+    Fading,
+};
+
 struct SANDBOXUI_API FEntityOverlayInstance {
+    static constexpr uint32 soft_target_role_shift{3};
+    static constexpr uint32 soft_target_role_mask{0x3u << soft_target_role_shift};
+
     FVector3f world_position{FVector3f::ZeroVector};
     float health{0.0f};
     float world_radius{0.0f};
     uint32 display_data{0};
+
+    [[nodiscard]] auto is_soft_target() const noexcept -> bool {
+        return (display_data & soft_target_role_mask) != 0;
+    }
+
+    [[nodiscard]] auto soft_target_role() const noexcept -> EEntityOverlaySoftTargetRole {
+        return static_cast<EEntityOverlaySoftTargetRole>((display_data & soft_target_role_mask) >>
+                                                         soft_target_role_shift);
+    }
 };
 
 static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 6);
@@ -55,10 +73,16 @@ struct SANDBOXUI_API FEntityOverlayStyle {
     float objective_bar_height_scale{1.4f};
     float objective_frame_pixels{3.0f};
     float screen_edge_padding_pixels{12.0f};
+    float soft_target_bracket_start_radius_multiplier{2.5f};
+    float soft_target_opacity{0.70f};
+    float soft_target_glow_opacity{0.045f};
+    float soft_target_pulse_opacity_boost{0.08f};
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
     FLinearColor defend_objective_color{0.85f, 0.60f, 0.08f, 1.0f};
     FLinearColor destroy_objective_color{0.75f, 0.15f, 0.08f, 1.0f};
+    FLinearColor soft_target_neutral_color{0.72f, 0.70f, 0.65f, 1.0f};
+    FLinearColor soft_target_in_range_color{0.84f, 0.65f, 0.23f, 1.0f};
 };
 
 struct SANDBOXUI_API FEntityOverlayView {
@@ -75,6 +99,15 @@ struct SANDBOXUI_API FEntityOverlayView {
 
 struct SANDBOXUI_API FEntityOverlayFrame {
     TArray<FEntityOverlayInstance> instances;
+    float soft_target_range_progress{0.0f};
+    float soft_target_radius_pixels{0.0f};
+    float soft_target_pulse{0.0f};
+    float soft_target_visibility{1.0f};
+    bool soft_target_in_range{false};
+    float fading_soft_target_range_progress{0.0f};
+    float fading_soft_target_radius_pixels{0.0f};
+    float fading_soft_target_visibility{0.0f};
+    bool fading_soft_target_in_range{false};
 };
 
 class FEntityOverlayCollector {
@@ -89,14 +122,17 @@ class FEntityOverlayCollector {
                 float normalized_health,
                 float world_radius,
                 EEntityOverlayObjectiveRole objective_role = EEntityOverlayObjectiveRole::None,
-                bool bypass_range = false) -> bool;
+                bool bypass_range = false,
+                EEntityOverlaySoftTargetRole soft_target_role = EEntityOverlaySoftTargetRole::None)
+            -> bool;
     [[nodiscard]] SANDBOXUI_API auto try_add_colored(
         FVector3f position,
         float normalized_health,
         float world_radius,
         FLinearColor fill_color,
         EEntityOverlayObjectiveRole objective_role = EEntityOverlayObjectiveRole::None,
-        bool bypass_range = false) -> bool;
+        bool bypass_range = false,
+        EEntityOverlaySoftTargetRole soft_target_role = EEntityOverlaySoftTargetRole::None) -> bool;
     [[nodiscard]] SANDBOXUI_API auto append(FEntityOverlaySourceView source) -> int32;
 
     [[nodiscard]] auto invalid_health_count() const noexcept -> int32 {
