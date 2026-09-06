@@ -141,7 +141,6 @@ struct FSampledSpeedDataCache {
 struct FDataChanges {
     bool mission{false};
     bool entity_counts{false};
-    bool kill_data{false};
     bool player_status{false};
     bool player_flight{false};
 #if WITH_EDITOR
@@ -201,7 +200,7 @@ struct SPACEGAME_API FHUDManager {
     bool collect_mission_data();
     void read_mission_data(ml::hud_manager::FMissionDataCache& out) const;
     bool collect_entity_count_data();
-    bool collect_kill_data();
+    void collect_kill_data();
     bool collect_player_status_data();
     bool collect_player_flight_data();
     void update_entity_overlays();
@@ -215,7 +214,6 @@ struct SPACEGAME_API FHUDManager {
     void synchronise_hud(UShipHudWidget& hud) const;
     void update_mission_hud(UShipHudWidget& hud) const;
     void update_entity_count_hud(UShipHudWidget& hud) const;
-    void update_kill_data_hud(UShipHudWidget& hud) const;
     void update_player_status_hud(UShipHudWidget& hud) const;
     void update_player_flight_hud(UShipHudWidget& hud) const;
 #if WITH_EDITOR

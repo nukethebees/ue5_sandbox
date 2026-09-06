@@ -56,8 +56,8 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
     return true;
 }
 
-auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action,
-                                        FLevelTelemetrySnapshot snapshot) -> UPauseMenuWidget* {
+auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuData data)
+    -> UPauseMenuWidget* {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(modal_stack)) {
         UE_LOG(LogSandboxUI,
@@ -79,8 +79,8 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action,
     auto const pause_menu_class{ui_data->get_widget_class<UPauseMenuWidget>()};
     auto* const pause_menu{modal_stack->AddWidget<UPauseMenuWidget>(
         pause_menu_class,
-        [&toggle_action, snapshot = MoveTemp(snapshot)](UPauseMenuWidget& widget) mutable {
-            widget.prepare_for_open(toggle_action, MoveTemp(snapshot));
+        [&toggle_action, data = MoveTemp(data)](UPauseMenuWidget& widget) mutable {
+            widget.prepare_for_open(toggle_action, MoveTemp(data));
         })};
     if (!IsValid(pause_menu)) {
         UE_LOG(LogSandboxUI,

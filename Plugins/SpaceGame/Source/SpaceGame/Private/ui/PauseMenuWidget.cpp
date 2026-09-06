@@ -1,6 +1,8 @@
 #include "SpaceGame/ui/PauseMenuWidget.h"
 
 #include "LevelTelemetryPresentation.h"
+#include "SpaceGame/presentation/widgets/TeamEntityTableWidget.h"
+#include "SpaceGame/presentation/widgets/TopKillersWidget.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/common/MenuButtonWidget.h"
@@ -23,20 +25,24 @@ namespace ml::ioj {
 void UPauseMenuWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    if (!IsValid(resume_button) || !IsValid(overview_button) || !IsValid(stats_button) ||
-        !IsValid(options_button) || !IsValid(return_to_level_select_button) ||
-        !IsValid(quit_button) || !IsValid(page_heading) || !IsValid(paused_heading) ||
-        !IsValid(page_switcher) || !IsValid(overview_placeholder) ||
-        !IsValid(options_placeholder) || !IsValid(stats_summary_panel) ||
-        !IsValid(stats_summary_heading) || !IsValid(stats_label_elapsed_time) ||
-        !IsValid(stats_label_entities_spawned) || !IsValid(stats_label_entities_active) ||
-        !IsValid(stats_label_entities_destroyed) || !IsValid(stats_label_kills) ||
-        !IsValid(stats_label_lasers_fired) || !IsValid(stats_label_lasers_active) ||
+    if (!IsValid(resume_button) || !IsValid(overview_button) || !IsValid(forces_button) ||
+        !IsValid(combat_button) || !IsValid(telemetry_button) || !IsValid(options_button) ||
+        !IsValid(return_to_level_select_button) || !IsValid(quit_button) ||
+        !IsValid(page_heading) || !IsValid(paused_heading) || !IsValid(page_switcher) ||
+        !IsValid(options_placeholder) || !IsValid(overview_summary_panel) ||
+        !IsValid(overview_summary_heading) || !IsValid(overview_label_elapsed_time) ||
+        !IsValid(overview_label_entities_spawned) || !IsValid(overview_label_entities_active) ||
+        !IsValid(overview_label_entities_destroyed) || !IsValid(overview_label_kills) ||
         !IsValid(elapsed_time_value) || !IsValid(entities_spawned_value) ||
         !IsValid(entities_active_value) || !IsValid(entities_destroyed_value) ||
-        !IsValid(kills_value) || !IsValid(lasers_fired_value) || !IsValid(lasers_active_value) ||
-        !IsValid(stats_graph_heading) || !IsValid(stats_graph_description) ||
-        !IsValid(stats_graph_host)) {
+        !IsValid(kills_value) || !IsValid(forces_counts_heading) || !IsValid(forces_table) ||
+        !IsValid(combat_top_killers_heading) || !IsValid(combat_top_killers_table) ||
+        !IsValid(combat_team_kills_heading) || !IsValid(combat_team_kills_table) ||
+        !IsValid(telemetry_summary_panel) || !IsValid(telemetry_summary_heading) ||
+        !IsValid(telemetry_label_lasers_fired) || !IsValid(telemetry_label_lasers_active) ||
+        !IsValid(lasers_fired_value) || !IsValid(lasers_active_value) ||
+        !IsValid(telemetry_graph_heading) || !IsValid(telemetry_graph_description) ||
+        !IsValid(telemetry_graph_host)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UPauseMenuWidget::NativeOnInitialized: One or more bound widgets are "
@@ -46,17 +52,19 @@ void UPauseMenuWidget::NativeOnInitialized() {
 
     resume_button->OnClicked().AddUObject(this, &ThisClass::handle_resume);
     overview_button->OnClicked().AddUObject(this, &ThisClass::handle_overview);
-    stats_button->OnClicked().AddUObject(this, &ThisClass::handle_stats);
+    forces_button->OnClicked().AddUObject(this, &ThisClass::handle_forces);
+    combat_button->OnClicked().AddUObject(this, &ThisClass::handle_combat);
+    telemetry_button->OnClicked().AddUObject(this, &ThisClass::handle_telemetry);
     options_button->OnClicked().AddUObject(this, &ThisClass::handle_options);
     return_to_level_select_button->OnClicked().AddUObject(
         this, &ThisClass::handle_return_to_level_select);
     quit_button->OnClicked().AddUObject(this, &ThisClass::handle_quit);
-    overview_button->SetIsSelectable(true);
-    overview_button->SetIsToggleable(true);
-    stats_button->SetIsSelectable(true);
-    stats_button->SetIsToggleable(true);
-    options_button->SetIsSelectable(true);
-    options_button->SetIsToggleable(true);
+
+    for (auto* const button :
+         {overview_button, forces_button, combat_button, telemetry_button, options_button}) {
+        button->SetIsSelectable(true);
+        button->SetIsToggleable(true);
+    }
 
     set_active_tab(EPauseMenuTab::Overview);
 }
@@ -64,27 +72,26 @@ void UPauseMenuWidget::NativeOnInitialized() {
 void UPauseMenuWidget::NativeConstruct() {
     Super::NativeConstruct();
 
-    if (!IsValid(stats_graph_host)) {
+    if (!IsValid(telemetry_graph_host)) {
         UE_LOG(LogSandboxUI,
                Error,
-               TEXT("UPauseMenuWidget::NativeConstruct: Stats graph host is invalid."));
+               TEXT("UPauseMenuWidget::NativeConstruct: Telemetry graph host is invalid."));
         return;
     }
 
-    if (!stats_graph_.IsValid()) {
-        SAssignNew(stats_graph_, SGraphPlot);
+    if (!telemetry_graph_.IsValid()) {
+        SAssignNew(telemetry_graph_, SGraphPlot);
     }
-    stats_graph_host->SetContent(stats_graph_.ToSharedRef());
+    telemetry_graph_host->SetContent(telemetry_graph_.ToSharedRef());
     apply_ui_style();
-    update_stats_view();
+    update_views();
 }
 
-void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action,
-                                        FLevelTelemetrySnapshot snapshot) {
+void UPauseMenuWidget::prepare_for_open(UInputAction& toggle_action, FPauseMenuData data) {
     toggle_action_ = &toggle_action;
-    stats_snapshot_ = MoveTemp(snapshot);
+    data_ = MoveTemp(data);
     terminal_action_requested_ = false;
-    update_stats_view();
+    update_views();
     set_active_tab(EPauseMenuTab::Overview);
 }
 
@@ -114,22 +121,29 @@ auto UPauseMenuWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
 
 void UPauseMenuWidget::ReleaseSlateResources(bool const release_children) {
     Super::ReleaseSlateResources(release_children);
-    stats_graph_.Reset();
+    telemetry_graph_.Reset();
 }
 
 void UPauseMenuWidget::handle_resume() {
-    if (terminal_action_requested_) {
-        return;
+    if (!terminal_action_requested_) {
+        DeactivateWidget();
     }
-    DeactivateWidget();
 }
 
 void UPauseMenuWidget::handle_overview() {
     set_active_tab(EPauseMenuTab::Overview);
 }
 
-void UPauseMenuWidget::handle_stats() {
-    set_active_tab(EPauseMenuTab::Stats);
+void UPauseMenuWidget::handle_forces() {
+    set_active_tab(EPauseMenuTab::Forces);
+}
+
+void UPauseMenuWidget::handle_combat() {
+    set_active_tab(EPauseMenuTab::Combat);
+}
+
+void UPauseMenuWidget::handle_telemetry() {
+    set_active_tab(EPauseMenuTab::Telemetry);
 }
 
 void UPauseMenuWidget::handle_options() {
@@ -153,15 +167,15 @@ void UPauseMenuWidget::handle_quit() {
 }
 
 void UPauseMenuWidget::handle_toggle_action() {
-    if (terminal_action_requested_) {
-        return;
+    if (!terminal_action_requested_) {
+        DeactivateWidget();
     }
-    DeactivateWidget();
 }
 
 void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
     if (!IsValid(page_heading) || !IsValid(page_switcher) || !IsValid(overview_button) ||
-        !IsValid(stats_button) || !IsValid(options_button)) {
+        !IsValid(forces_button) || !IsValid(combat_button) || !IsValid(telemetry_button) ||
+        !IsValid(options_button)) {
         UE_LOG(LogSandboxUI,
                Error,
                TEXT("UPauseMenuWidget::set_active_tab: One or more bound widgets are invalid."));
@@ -174,8 +188,16 @@ void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
             heading = NSLOCTEXT("PauseMenu", "OverviewHeading", "Overview");
             break;
         }
-        case EPauseMenuTab::Stats: {
-            heading = NSLOCTEXT("PauseMenu", "StatsHeading", "Stats");
+        case EPauseMenuTab::Forces: {
+            heading = NSLOCTEXT("PauseMenu", "ForcesHeading", "Forces");
+            break;
+        }
+        case EPauseMenuTab::Combat: {
+            heading = NSLOCTEXT("PauseMenu", "CombatHeading", "Combat");
+            break;
+        }
+        case EPauseMenuTab::Telemetry: {
+            heading = NSLOCTEXT("PauseMenu", "TelemetryHeading", "Telemetry");
             break;
         }
         case EPauseMenuTab::Options: {
@@ -195,7 +217,9 @@ void UPauseMenuWidget::set_active_tab(EPauseMenuTab const tab) {
     page_heading->SetText(heading);
     page_switcher->SetActiveWidgetIndex(static_cast<int32>(tab));
     overview_button->SetIsSelected(tab == EPauseMenuTab::Overview);
-    stats_button->SetIsSelected(tab == EPauseMenuTab::Stats);
+    forces_button->SetIsSelected(tab == EPauseMenuTab::Forces);
+    combat_button->SetIsSelected(tab == EPauseMenuTab::Combat);
+    telemetry_button->SetIsSelected(tab == EPauseMenuTab::Telemetry);
     options_button->SetIsSelected(tab == EPauseMenuTab::Options);
 }
 
@@ -214,69 +238,95 @@ void UPauseMenuWidget::apply_ui_style() {
 
     apply_text_style(*paused_heading, style.text(EGameTextStyle::Heading1));
     apply_text_style(*page_heading, style.text(EGameTextStyle::Heading1));
-    apply_text_style(*overview_placeholder, style.text(EGameTextStyle::BodySecondary));
     apply_text_style(*options_placeholder, style.text(EGameTextStyle::BodySecondary));
-    apply_text_style(*stats_summary_heading, style.text(EGameTextStyle::Heading3));
-    apply_text_style(*stats_graph_heading, style.text(EGameTextStyle::Heading3));
-    apply_text_style(*stats_graph_description, style.text(EGameTextStyle::Caption));
+    for (auto* const heading : {overview_summary_heading,
+                                forces_counts_heading,
+                                combat_top_killers_heading,
+                                combat_team_kills_heading,
+                                telemetry_summary_heading,
+                                telemetry_graph_heading}) {
+        apply_text_style(*heading, style.text(EGameTextStyle::Heading3));
+    }
+    apply_text_style(*telemetry_graph_description, style.text(EGameTextStyle::Caption));
+
     auto const& label_style{style.text(EGameTextStyle::BodySecondary)};
-    apply_text_style(*stats_label_elapsed_time, label_style);
-    apply_text_style(*stats_label_entities_spawned, label_style);
-    apply_text_style(*stats_label_entities_active, label_style);
-    apply_text_style(*stats_label_entities_destroyed, label_style);
-    apply_text_style(*stats_label_kills, label_style);
-    apply_text_style(*stats_label_lasers_fired, label_style);
-    apply_text_style(*stats_label_lasers_active, label_style);
+    for (auto* const label : {overview_label_elapsed_time,
+                              overview_label_entities_spawned,
+                              overview_label_entities_active,
+                              overview_label_entities_destroyed,
+                              overview_label_kills,
+                              telemetry_label_lasers_fired,
+                              telemetry_label_lasers_active}) {
+        apply_text_style(*label, label_style);
+    }
 
     auto const& value_style{style.text(EGameTextStyle::Body)};
-    apply_text_style(*elapsed_time_value, value_style);
-    apply_text_style(*entities_spawned_value, value_style);
-    apply_text_style(*entities_active_value, value_style);
-    apply_text_style(*entities_destroyed_value, value_style);
-    apply_text_style(*kills_value, value_style);
-    apply_text_style(*lasers_fired_value, value_style);
-    apply_text_style(*lasers_active_value, value_style);
+    for (auto* const value : {elapsed_time_value,
+                              entities_spawned_value,
+                              entities_active_value,
+                              entities_destroyed_value,
+                              kills_value,
+                              lasers_fired_value,
+                              lasers_active_value}) {
+        apply_text_style(*value, value_style);
+    }
 
-    stats_summary_panel->SetBrush(style.panel().background);
-    stats_summary_panel->SetPadding(style.panel().padding);
+    for (auto* const panel : {overview_summary_panel, telemetry_summary_panel}) {
+        panel->SetBrush(style.panel().background);
+        panel->SetPadding(style.panel().padding);
+    }
 
-    if (!stats_graph_.IsValid()) {
+    forces_table->apply_hud_style(style.hud());
+    combat_top_killers_table->apply_hud_style(style.hud());
+    combat_team_kills_table->apply_hud_style(style.hud());
+
+    if (!telemetry_graph_.IsValid()) {
         return;
     }
 
     active_entity_series_color_ = style.palette().honey;
     kills_series_color_ = style.palette().danger;
     level_telemetry_presentation::apply_activity_graph_style(
-        *stats_graph_,
+        *telemetry_graph_,
         style,
-        NSLOCTEXT("PauseMenu", "StatsGraphEmpty", "No level activity recorded"),
+        NSLOCTEXT("PauseMenu", "TelemetryGraphEmpty", "No level activity recorded"),
         {640.0f, 260.0f});
 }
 
-void UPauseMenuWidget::update_stats_view() {
+void UPauseMenuWidget::update_views() {
     if (!IsValid(elapsed_time_value) || !IsValid(entities_spawned_value) ||
         !IsValid(entities_active_value) || !IsValid(entities_destroyed_value) ||
-        !IsValid(kills_value) || !IsValid(lasers_fired_value) || !IsValid(lasers_active_value)) {
+        !IsValid(kills_value) || !IsValid(lasers_fired_value) || !IsValid(lasers_active_value) ||
+        !IsValid(forces_table) || !IsValid(combat_top_killers_table) ||
+        !IsValid(combat_team_kills_table)) {
         return;
     }
 
+    auto const& telemetry{data_.telemetry};
     elapsed_time_value->SetText(
-        level_telemetry_presentation::format_elapsed_time(stats_snapshot_.elapsed_seconds));
-    entities_spawned_value->SetText(FText::AsNumber(stats_snapshot_.spawned_entities));
-    entities_active_value->SetText(FText::AsNumber(stats_snapshot_.active_entities));
-    entities_destroyed_value->SetText(FText::AsNumber(stats_snapshot_.destroyed_entities));
-    kills_value->SetText(FText::AsNumber(stats_snapshot_.kills));
-    lasers_fired_value->SetText(FText::AsNumber(stats_snapshot_.lasers_fired));
-    lasers_active_value->SetText(FText::AsNumber(stats_snapshot_.active_lasers));
-    update_stats_graph();
+        level_telemetry_presentation::format_elapsed_time(telemetry.elapsed_seconds));
+    entities_spawned_value->SetText(FText::AsNumber(telemetry.spawned_entities));
+    entities_active_value->SetText(FText::AsNumber(telemetry.active_entities));
+    entities_destroyed_value->SetText(FText::AsNumber(telemetry.destroyed_entities));
+    kills_value->SetText(FText::AsNumber(telemetry.kills));
+    lasers_fired_value->SetText(FText::AsNumber(telemetry.lasers_fired));
+    lasers_active_value->SetText(FText::AsNumber(telemetry.active_lasers));
+
+    forces_table->set_show_team_totals(true);
+    forces_table->set_team_colours(data_.team_colours);
+    forces_table->set_entity_counts(data_.alive_per_team_and_type);
+    combat_top_killers_table->set_team_colours(data_.team_colours);
+    combat_top_killers_table->set_top_killers(data_.top_killers);
+    combat_team_kills_table->set_show_team_totals(true);
+    combat_team_kills_table->set_team_colours(data_.team_colours);
+    combat_team_kills_table->set_team_kill_matrix(data_.team_kill_matrix);
+    update_telemetry_graph();
 }
 
-void UPauseMenuWidget::update_stats_graph() {
-    if (!stats_graph_.IsValid()) {
-        return;
+void UPauseMenuWidget::update_telemetry_graph() {
+    if (telemetry_graph_.IsValid()) {
+        level_telemetry_presentation::update_activity_graph(
+            *telemetry_graph_, data_.telemetry, active_entity_series_color_, kills_series_color_);
     }
-
-    level_telemetry_presentation::update_activity_graph(
-        *stats_graph_, stats_snapshot_, active_entity_series_color_, kills_series_color_);
 }
 }

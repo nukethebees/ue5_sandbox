@@ -6,7 +6,6 @@
 #include "SpaceGame/entities/TestTeamVisualData.h"
 #include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/presentation/HudCrosshairDistances.h"
-#include "SpaceGame/presentation/widgets/ShipHudKillData.h"
 #include "SpaceGame/ships/common/ShipHealth.h"
 
 #include "CoreMinimal.h"
@@ -26,9 +25,8 @@ class UShipPointsWidget;
 class UValueWidget;
 class UVector2DWidget;
 class UDebugGraphWidget;
-class UTeamEntityTableWidget;
+class UForceStatusWidget;
 class UMissionStatusWidget;
-class UTopKillersWidget;
 class SEntityOverlayWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
@@ -93,8 +91,6 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_entity_counts(FTestEntityRegistry::EntityCounts const& counts);
     void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
-    void set_top_killers(ml::ship_hud::FTopKillerEntries const& entries);
-    void set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix const& matrix);
     void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
     void set_mission_state(ETestMissionState const new_state);
     void set_mission_time(float const mission_time);
@@ -155,13 +151,7 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     UValueWidget* flight_mode_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
-    UTeamEntityTableWidget* entity_count_table{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UTopKillersWidget* top_killers_widget{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UTeamEntityTableWidget* team_kill_matrix_widget{nullptr};
+    UForceStatusWidget* force_status_widget{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UMissionStatusWidget* mission_status_panel{nullptr};

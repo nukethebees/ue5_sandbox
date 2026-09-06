@@ -621,7 +621,8 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
 auto ASpaceGamePlayerController::open_pause_menu() -> bool {
     auto* const orchestrator{hud_orchestrator.Get()};
     if (!IsValid(orchestrator) || orchestrator->get_state() != EOrchestratorState::Paused ||
-        !IsValid(ui_root) || !IsValid(global_input.toggle_menu)) {
+        !IsValid(ui_root) || !IsValid(global_input.toggle_menu) || !IsValid(ui_data) ||
+        !IsValid(ui_data->team_visual_data)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::open_pause_menu: Paused gameplay UI is not "
@@ -629,9 +630,19 @@ auto ASpaceGamePlayerController::open_pause_menu() -> bool {
         return false;
     }
 
-    auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot(
-        orchestrator->get_completed_ticks(), orchestrator->get_tick_period())};
-    pause_menu = ui_root->show_pause_menu(*global_input.toggle_menu, MoveTemp(stats_snapshot));
+    auto& hud_manager{orchestrator->get_hud_manager()};
+    hud_manager.force_sample();
+    auto const& entity_counts{hud_manager.get_entity_count_data()};
+    auto const& kill_data{hud_manager.get_kill_data()};
+
+    ml::ioj::FPauseMenuData pause_data;
+    pause_data.telemetry = orchestrator->get_level_telemetry_manager().make_snapshot(
+        orchestrator->get_completed_ticks(), orchestrator->get_tick_period());
+    pause_data.alive_per_team_and_type = entity_counts.alive_per_team_and_type;
+    pause_data.top_killers = kill_data.top_killers;
+    pause_data.team_kill_matrix = kill_data.team_kill_matrix;
+    pause_data.team_colours = ui_data->team_visual_data->build_team_colour_cache();
+    pause_menu = ui_root->show_pause_menu(*global_input.toggle_menu, MoveTemp(pause_data));
     if (!IsValid(pause_menu)) {
         return false;
     }
