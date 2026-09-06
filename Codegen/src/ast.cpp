@@ -105,6 +105,9 @@ void validate_function(Function const& function) {
 
 void validate_member(Member const& member) {
     auto const context{"Member '" + member.name + "'"};
+    if (member.qualifiers.is_inline && !member.qualifiers.is_static) {
+        throw std::invalid_argument{context + " inline data member must be static"};
+    }
     if (member.qualifiers.is_constexpr && !member.qualifiers.is_static) {
         throw std::invalid_argument{context + " constexpr data member must be static"};
     }
@@ -290,11 +293,13 @@ Member::Member(CppType value_type, std::string value_name, std::string value_ini
 Member::Member(CppType value_type,
                std::string value_name,
                std::optional<std::string> value_initializer,
-               MemberQualifiers value_qualifiers)
+               MemberQualifiers value_qualifiers,
+               std::optional<std::string> value_template_parameters)
     : type{std::move(value_type)}
     , name{std::move(value_name)}
     , initializer{std::move(value_initializer)}
-    , qualifiers{value_qualifiers} {}
+    , qualifiers{value_qualifiers}
+    , template_parameters{std::move(value_template_parameters)} {}
 
 FunctionParameter::FunctionParameter(CppType value_type, std::string value_name)
     : type{std::move(value_type)}
@@ -471,10 +476,14 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 validate_member(value);
                 auto initializer{value.initializer.has_value() ? "{" + *value.initializer + "}"
                                                                : ""};
-                return context.apply_indent(
-                    declaration_specifier_prefix(value.qualifiers.is_static,
-                                                 value.qualifiers.is_constexpr) +
-                    value.type.spelling + " " + value.name + initializer + ";");
+                auto declaration{std::string{value.qualifiers.is_inline ? "inline " : ""} +
+                                 declaration_specifier_prefix(value.qualifiers.is_static,
+                                                              value.qualifiers.is_constexpr) +
+                                 value.type.spelling + " " + value.name + initializer + ";"};
+                if (value.template_parameters.has_value()) {
+                    declaration = "template <" + *value.template_parameters + ">\n" + declaration;
+                }
+                return context.apply_indent(declaration);
             } else if constexpr (std::is_same_v<T, Function>) {
                 auto const signature{context.apply_indent(render_signature(value))};
                 if (value.declaration ||

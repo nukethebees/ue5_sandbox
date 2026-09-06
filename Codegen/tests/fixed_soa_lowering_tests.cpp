@@ -115,12 +115,30 @@ TEST(FixedSoaLowering, EmitsCheckedEquivalentAccessAndBoundedMutation) {
     EXPECT_NE(header.find("destroy_from(size_ - count);"), std::string::npos);
 }
 
-TEST(FixedSoaLowering, GeneratesTrivialOnlyUninitialisedOperations) {
+TEST(FixedSoaLowering, GeneratesNamedCapabilitiesForFixedOperations) {
     auto const header{
         render_fixed({child_schema(), parent_schema()}, fixed_types())};
 
-    EXPECT_NE(header.find("std::is_trivially_copyable_v<int32>"), std::string::npos);
-    EXPECT_NE(header.find("std::is_trivially_copyable_v<FString>"), std::string::npos);
+    EXPECT_NE(header.find("inline static constexpr bool supports_copy_construction"),
+              std::string::npos);
+    EXPECT_NE(header.find("inline static constexpr bool supports_move_construction"),
+              std::string::npos);
+    EXPECT_NE(header.find("inline static constexpr bool supports_nothrow_move_construction"),
+              std::string::npos);
+    EXPECT_NE(header.find("inline static constexpr bool supports_default_construction"),
+              std::string::npos);
+    EXPECT_NE(header.find("inline static constexpr bool supports_uninitialised_storage"),
+              std::string::npos);
+    EXPECT_NE(header.find("inline static constexpr bool supports_element_construction_from"),
+              std::string::npos);
+    EXPECT_EQ(occurrences(header, "std::is_trivially_copyable_v<int32>"), 1);
+    EXPECT_EQ(occurrences(header, "std::is_trivially_copyable_v<FString>"), 1);
+    EXPECT_EQ(occurrences(header, "std::is_trivially_destructible_v<int32>"), 1);
+    EXPECT_EQ(occurrences(header, "std::is_trivially_destructible_v<FString>"), 1);
+    EXPECT_EQ(occurrences(header, "requires supports_uninitialised_storage"), 3);
+    EXPECT_EQ(occurrences(header, "requires supports_default_construction"), 3);
+    EXPECT_EQ(occurrences(header, "requires supports_element_construction_from<"), 2);
+    EXPECT_NE(header.find("noexcept(supports_nothrow_move_construction)"), std::string::npos);
     EXPECT_NE(header.find("void set_num_uninitialised(size_type const new_size)"),
               std::string::npos);
     EXPECT_NE(header.find("void add_uninitialised(size_type const count)"),

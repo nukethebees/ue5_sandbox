@@ -13,13 +13,15 @@ struct Member {
     std::string name;
     std::optional<std::string> initializer;
     MemberQualifiers qualifiers;
+    std::optional<std::string> template_parameters;
 
     Member(CppType type, std::string name);
     Member(CppType type, std::string name, std::string initializer);
     Member(CppType type,
            std::string name,
            std::optional<std::string> initializer,
-           MemberQualifiers qualifiers);
+           MemberQualifiers qualifiers,
+           std::optional<std::string> template_parameters = std::nullopt);
 };
 
 } // namespace codegen
