@@ -2,6 +2,7 @@
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 
+#include "Components/HorizontalBoxSlot.h"
 #include "Components/ProgressBar.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
@@ -30,9 +31,22 @@ void UShipHealthWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
     hud_style_ = style;
     if (health_bar) {
         health_bar->SetWidgetStyle(style.health_bar);
+
+        if (auto* const health_bar_slot{Cast<UHorizontalBoxSlot>(health_bar->Slot)}) {
+            health_bar_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+            health_bar_slot->SetHorizontalAlignment(HAlign_Fill);
+            health_bar_slot->SetVerticalAlignment(VAlign_Fill);
+        }
     }
     if (health_text) {
         health_text->set_text_style(style.primary_text);
+
+        if (auto* const health_text_slot{Cast<UHorizontalBoxSlot>(health_text->Slot)}) {
+            health_text_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+            health_text_slot->SetPadding(
+                FMargin{style.table_cell_padding.Left, 0.0f, style.table_cell_padding.Right, 0.0f});
+            health_text_slot->SetVerticalAlignment(VAlign_Center);
+        }
     }
 }
 

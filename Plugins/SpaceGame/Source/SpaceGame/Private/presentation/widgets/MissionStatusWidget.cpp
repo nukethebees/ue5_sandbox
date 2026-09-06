@@ -11,6 +11,7 @@
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/VerticalBox.h>
+#include <Components/VerticalBoxSlot.h>
 
 void UMissionStatusWidget::NativeConstruct() {
     Super::NativeConstruct();
@@ -292,7 +293,8 @@ auto UMissionStatusWidget::update_entity_widgets(
                 health_widget->apply_hud_style(hud_style_.GetValue());
             }
             health_widget->set_health(health_values[i]);
-            entity_box.AddChild(health_widget);
+            auto* const row_slot{entity_box.AddChildToVerticalBox(health_widget)};
+            row_slot->SetHorizontalAlignment(HAlign_Fill);
             cached_entity_ids.Add(entity_ids[i]);
             entity_widgets.Add(health_widget);
         }

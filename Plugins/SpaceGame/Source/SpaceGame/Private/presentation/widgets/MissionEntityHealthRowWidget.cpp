@@ -7,6 +7,7 @@
 #include <SpaceGame/ui/style/GameUiStyle.h>
 
 #include <Components/HorizontalBox.h>
+#include <Components/HorizontalBoxSlot.h>
 #include <Components/TextBlock.h>
 
 void UMissionEntityHealthRowWidget::NativeConstruct() {
@@ -48,6 +49,23 @@ void UMissionEntityHealthRowWidget::set_health(FShipHealth const health) {
 void UMissionEntityHealthRowWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
     ml::ioj::apply_text_style(*entity_name, style.caption_text);
     health_widget->apply_hud_style(style);
+
+    auto* const entity_slot{Cast<UHorizontalBoxSlot>(entity_name->Slot)};
+    auto* const health_slot{Cast<UHorizontalBoxSlot>(health_widget->Slot)};
+    if (!entity_slot || !health_slot) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UMissionEntityHealthRowWidget: Expected horizontal box child slots."));
+        return;
+    }
+
+    entity_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+    entity_slot->SetPadding(FMargin{0.0f, 0.0f, style.panel_padding.Right, 0.0f});
+    entity_slot->SetVerticalAlignment(VAlign_Center);
+
+    health_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+    health_slot->SetHorizontalAlignment(HAlign_Fill);
+    health_slot->SetVerticalAlignment(VAlign_Center);
 }
 
 void UMissionEntityHealthRowWidget::set_font_size(int32 const new_font_size) {
