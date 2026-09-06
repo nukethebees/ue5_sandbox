@@ -91,8 +91,8 @@ float honeycomb_boundary(float2 const radar_position, float const cell_radius) {
     } else {
         rounded.z = -rounded.x - rounded.y;
     }
-    float2 const centre =
-        float2(1.5 * cell_radius * rounded.x, 1.7320508 * cell_radius * (rounded.y - rounded.z));
+    float2 const centre = float2(1.5 * cell_radius * rounded.x,
+                                 1.7320508 * cell_radius * (rounded.y + rounded.x * 0.5));
     float const cell_distance = abs(hex_sdf(radar_position - centre, cell_radius));
     float const antialias = max(fwidth(cell_distance), 0.001);
     return 1.0 - smoothstep(antialias, antialias * 2.5, cell_distance);
@@ -129,15 +129,15 @@ float4 radar_plane_ps(PlaneOutput input)
     float const beyond_tactical = smoothstep(TacticalDisplayRadius - transition_width,
                                              TacticalDisplayRadius + transition_width,
                                              zone_radius);
-    float const combat_grid = honeycomb_boundary(input.radar_position, 0.285);
-    float const tactical_grid = honeycomb_boundary(input.radar_position, 0.1425);
-    float const strategic_grid = honeycomb_boundary(input.radar_position, 0.07125);
+    float const combat_grid = honeycomb_boundary(input.radar_position, 0.18);
+    float const tactical_grid = honeycomb_boundary(input.radar_position, 0.09);
+    float const strategic_grid = honeycomb_boundary(input.radar_position, 0.045);
     float const boundary = combat_grid * (1.0 - beyond_combat) +
-                           tactical_grid * beyond_combat * (1.0 - beyond_tactical) * 0.68 +
-                           strategic_grid * beyond_tactical * 0.42;
+                           tactical_grid * beyond_combat * (1.0 - beyond_tactical) * 0.8 +
+                           strategic_grid * beyond_tactical * 0.58;
     float const edge_fade = saturate((-outer_distance) / 0.28);
     float const alpha = PlaneColor.a + boundary * GridOpacity * edge_fade;
-    float3 const color = lerp(PlaneColor.rgb, StructureColor.rgb, boundary * 0.6);
+    float3 const color = lerp(PlaneColor.rgb, StructureColor.rgb, saturate(boundary));
     return float4(color, alpha);
 }
 
@@ -310,21 +310,21 @@ struct GlyphOutput {
 
 float glyph_base_size(uint const glyph) {
     if (glyph == glyph_player) {
-        return 13.0;
+        return 10.0;
     }
     if (glyph == glyph_fighter) {
-        return 8.0;
+        return 5.5;
     }
     if (glyph == glyph_capital_ship) {
-        return 8.0;
+        return 6.0;
     }
     if (glyph == glyph_turret) {
-        return 10.0;
+        return 7.0;
     }
     if (glyph == glyph_missile || glyph == glyph_waypoint) {
-        return 10.0;
+        return 7.0;
     }
-    return 8.0;
+    return 6.0;
 }
 
 GlyphOutput radar_glyph_vs(uint const vertex_id : SV_VertexID,
@@ -405,10 +405,10 @@ float4 radar_glyph_ps(GlyphOutput input)
         (input.flags & (flag_defend_objective | flag_destroy_objective)) != 0u ? 1.0 : 0.0;
     float const emphasized = max(selected, objective);
     float const player = input.glyph == glyph_player ? 1.0 : 0.0;
-    float glow_radius = lerp(2.5, 5.0, emphasized) * input.pixel_scale;
-    glow_radius = max(glow_radius, player * 3.5 * input.pixel_scale);
+    float glow_radius = lerp(1.25, 2.5, emphasized) * input.pixel_scale;
+    glow_radius = max(glow_radius, player * 2.0 * input.pixel_scale);
     float glow_opacity = lerp(ContactGlowOpacity, EmphasizedGlowOpacity, emphasized);
-    glow_opacity = max(glow_opacity, player * 0.22);
+    glow_opacity = max(glow_opacity, player * 0.14);
     float const glow = (1.0 - smoothstep(0.0, glow_radius, max(sdf, 0.0))) * glow_opacity;
 
     float const objective_distance =
