@@ -7,6 +7,9 @@
 
 #include "SparkRendererComponent.generated.h"
 
+struct FSparkStagingState;
+struct FSparkUploadBuffer;
+
 UCLASS(ClassGroup = (Rendering))
 class SPACEGAMERENDERING_API USparkRendererComponent final : public UPrimitiveComponent {
     GENERATED_BODY()
@@ -32,8 +35,8 @@ class SPACEGAMERENDERING_API USparkRendererComponent final : public UPrimitiveCo
 
     FSparkRendererSettings settings_;
     TArray<FSparkParticleRecord> particle_data_;
-    TArray<int32> pending_upload_first_indices_;
-    TArray<TArray<FSparkParticleRecord>> pending_upload_particles_;
+    TSharedPtr<FSparkStagingState, ESPMode::ThreadSafe> staging_state_;
+    FSparkUploadBuffer* pending_upload_buffer_{nullptr};
     int32 allocation_cursor_{0};
     float effect_time_{0.0f};
     float latest_expiry_time_{0.0f};

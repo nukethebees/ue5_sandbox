@@ -21,6 +21,7 @@ public class SpaceGameRendering : ModuleRules
             "Projects",
             "RenderCore",
             "RHI",
+            "SandboxCore",
         });
     }
 }

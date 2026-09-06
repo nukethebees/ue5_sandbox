@@ -1,5 +1,8 @@
 #include "SpaceGameRendering/SparkRendererComponent.h"
 
+#include "SparkStagingState.h"
+#include "SparkUploadBuffer.h"
+
 #include "Containers/ResourceArray.h"
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
@@ -33,11 +36,6 @@ struct FRenderParameters {
     float maximum_thickness_pixels{0.0f};
     float maximum_length_pixels{0.0f};
     float latest_expiry_time{0.0f};
-};
-
-struct FRenderUploadRange {
-    int32 first_index{0};
-    TArray<FSparkParticleRecord> particles;
 };
 
 class FQuadVertexBuffer : public FVertexBuffer {
@@ -185,22 +183,30 @@ class FParticleBuffer final : public FRenderResource {
         buffer_.SafeRelease();
     }
 
-    void upload(FRHICommandListBase& rhi_command_list,
-                TConstArrayView<FRenderUploadRange> const ranges) {
+    void upload(FRHICommandListBase& rhi_command_list, FSparkUploadBuffer const& upload_buffer) {
         auto const start_cycles{FPlatformTime::Cycles64()};
         int64 upload_bytes{0};
-        for (auto const& range : ranges) {
-            auto const byte_count{range.particles.Num() * sizeof(FSparkParticleRecord)};
+        check(upload_buffer.destinations.Num() == upload_buffer.counts.Num());
+        int32 source_index{0};
+        auto const range_count{upload_buffer.counts.Num()};
+        for (int32 range_index{0}; range_index < range_count; ++range_index) {
+            auto const particle_count{upload_buffer.counts[range_index]};
+            auto const byte_count{particle_count * sizeof(FSparkParticleRecord)};
             if (byte_count <= 0) {
                 continue;
             }
-            auto const byte_offset{range.first_index * sizeof(FSparkParticleRecord)};
+            check(source_index + particle_count <= upload_buffer.particles.Num());
+            auto const byte_offset{upload_buffer.destinations[range_index] *
+                                   sizeof(FSparkParticleRecord)};
             auto* const destination{
                 rhi_command_list.LockBuffer(buffer_, byte_offset, byte_count, RLM_WriteOnly)};
-            FMemory::Memcpy(destination, range.particles.GetData(), byte_count);
+            FMemory::Memcpy(
+                destination, upload_buffer.particles.GetData() + source_index, byte_count);
             rhi_command_list.UnlockBuffer(buffer_);
+            source_index += particle_count;
             upload_bytes += byte_count;
         }
+        check(source_index == upload_buffer.particles.Num());
         TRACE_COUNTER_SET_ALWAYS(SandboxSparkUploadBytes, upload_bytes);
         TRACE_COUNTER_SET_ALWAYS(
             SandboxSparkRenderThreadUploadMs,
@@ -303,10 +309,13 @@ class FSceneProxy final : public FPrimitiveSceneProxy {
     }
 
     void update(FRHICommandListBase& rhi_command_list,
-                TConstArrayView<FRenderUploadRange> const uploads,
+                FSparkUploadBuffer* const upload_buffer,
                 FRenderParameters const parameters) {
         check(IsInRenderingThread());
-        particle_buffer_.upload(rhi_command_list, uploads);
+        if (upload_buffer != nullptr) {
+            particle_buffer_.upload(rhi_command_list, *upload_buffer);
+            upload_buffer->in_flight.Store(false);
+        }
         parameters_ = parameters;
     }
   private:
@@ -336,7 +345,8 @@ auto make_parameters(USparkRendererComponent const& component,
 }
 } // namespace SpaceGame::Sparks::Private
 
-USparkRendererComponent::USparkRendererComponent() {
+USparkRendererComponent::USparkRendererComponent()
+    : staging_state_{MakeShared<FSparkStagingState, ESPMode::ThreadSafe>()} {
     PrimaryComponentTick.bCanEverTick = false;
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
     SetGenerateOverlapEvents(false);
@@ -375,8 +385,8 @@ void USparkRendererComponent::initialise(FSparkRendererSettings const& settings)
                                         : defaults.maximum_length_pixels;
     particle_data_.Reset();
     particle_data_.SetNumZeroed(settings_.capacity);
-    pending_upload_first_indices_.Reset();
-    pending_upload_particles_.Reset();
+    staging_state_ = MakeShared<FSparkStagingState, ESPMode::ThreadSafe>();
+    pending_upload_buffer_ = nullptr;
     allocation_cursor_ = 0;
     effect_time_ = 0.0f;
     latest_expiry_time_ = 0.0f;
@@ -386,8 +396,8 @@ void USparkRendererComponent::initialise(FSparkRendererSettings const& settings)
 
 void USparkRendererComponent::clear_sparks() {
     FMemory::Memzero(particle_data_.GetData(), particle_data_.Num() * sizeof(FSparkParticleRecord));
-    pending_upload_first_indices_.Reset();
-    pending_upload_particles_.Reset();
+    staging_state_ = MakeShared<FSparkStagingState, ESPMode::ThreadSafe>();
+    pending_upload_buffer_ = nullptr;
     allocation_cursor_ = 0;
     effect_time_ = 0.0f;
     latest_expiry_time_ = 0.0f;
@@ -406,6 +416,19 @@ auto
 
     auto const count{FMath::Min(particles.Num(), particle_data_.Num())};
     auto overwritten{0};
+    if (pending_upload_buffer_ == nullptr) {
+        auto& upload_buffer{staging_state_->buffers.next()};
+        if (upload_buffer.in_flight.Load()) {
+            TRACE_CPUPROFILER_EVENT_SCOPE(
+                USparkRendererComponent::submit_particles::WaitForUploadBuffer);
+            FlushRenderingCommands();
+            check(!upload_buffer.in_flight.Load());
+        }
+        upload_buffer.particles.Reset();
+        upload_buffer.destinations.Reset();
+        upload_buffer.counts.Reset();
+        pending_upload_buffer_ = &upload_buffer;
+    }
     auto const first_count{FMath::Min(count, particle_data_.Num() - allocation_cursor_)};
     auto const append_range =
         [this, &particles, &overwritten, effect_time](
@@ -424,9 +447,9 @@ auto
             FMemory::Memcpy(particle_data_.GetData() + destination,
                             particles.GetData() + source,
                             range_count * sizeof(FSparkParticleRecord));
-            pending_upload_first_indices_.Add(destination);
-            auto& upload_particles{pending_upload_particles_.AddDefaulted_GetRef()};
-            upload_particles.Append(particles.GetData() + source, range_count);
+            pending_upload_buffer_->destinations.Add(destination);
+            pending_upload_buffer_->counts.Add(range_count);
+            pending_upload_buffer_->particles.Append(particles.GetData() + source, range_count);
         };
 
     append_range(allocation_cursor_, 0, first_count);
@@ -463,28 +486,32 @@ FBoxSphereBounds USparkRendererComponent::CalcBounds(FTransform const& local_to_
 void USparkRendererComponent::SendRenderDynamicData_Concurrent() {
     Super::SendRenderDynamicData_Concurrent();
     if (SceneProxy == nullptr) {
-        pending_upload_first_indices_.Reset();
-        pending_upload_particles_.Reset();
+        if (pending_upload_buffer_ != nullptr) {
+            pending_upload_buffer_->particles.Reset();
+            pending_upload_buffer_->destinations.Reset();
+            pending_upload_buffer_->counts.Reset();
+            pending_upload_buffer_ = nullptr;
+        }
         return;
     }
 
-    check(pending_upload_first_indices_.Num() == pending_upload_particles_.Num());
-    TArray<SpaceGame::Sparks::Private::FRenderUploadRange> uploads;
-    auto const upload_count{pending_upload_particles_.Num()};
-    uploads.Reserve(upload_count);
-    for (int32 index{0}; index < upload_count; ++index) {
-        uploads.Add({.first_index = pending_upload_first_indices_[index],
-                     .particles = MoveTemp(pending_upload_particles_[index])});
+    auto* const upload_buffer{pending_upload_buffer_};
+    pending_upload_buffer_ = nullptr;
+    if (upload_buffer != nullptr) {
+        staging_state_->buffers.cycle();
+        check(&staging_state_->buffers.current() == upload_buffer);
+        check(!upload_buffer->in_flight.Load());
+        upload_buffer->in_flight.Store(true);
     }
-    pending_upload_first_indices_.Reset();
-    pending_upload_particles_.Reset();
     auto const parameters{SpaceGame::Sparks::Private::make_parameters(
         *this, settings_, effect_time_, latest_expiry_time_)};
     auto* const scene_proxy{static_cast<SpaceGame::Sparks::Private::FSceneProxy*>(SceneProxy)};
+    auto staging_state{staging_state_};
     ENQUEUE_RENDER_COMMAND(UpdateSparkRenderer)
-    ([scene_proxy, uploads = MoveTemp(uploads), parameters](
+    ([scene_proxy, upload_buffer, staging_state = MoveTemp(staging_state), parameters](
          FRHICommandListImmediate& command_list) {
-        scene_proxy->update(command_list, uploads, parameters);
+        static_cast<void>(staging_state);
+        scene_proxy->update(command_list, upload_buffer, parameters);
     });
 }
 
