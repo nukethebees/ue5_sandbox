@@ -6,8 +6,6 @@
 
 #include "ScriptLevelSelectWidget.generated.h"
 
-class UNativeWidgetHost;
-
 namespace ml::ioj {
 enum class ELevelLaunchMode : uint8;
 class UGameSubsystem;
@@ -54,10 +52,11 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
         return view_state_.can_launch;
     }
+    void refresh() override;
+    void focus_primary_action() override;
   protected:
     void NativeOnInitialized() override;
-    void NativeOnActivated() override;
-    auto NativeGetDesiredFocusTarget() const -> UWidget* override;
+    auto RebuildWidget() -> TSharedRef<SWidget> override;
     void ReleaseSlateResources(bool release_children) override;
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
@@ -70,12 +69,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void handle_refresh();
     void handle_launch();
     void handle_start_paused();
-    void handle_back();
     void publish_view();
     void publish_catalog();
-
-    UPROPERTY(meta = (BindWidget))
-    UNativeWidgetHost* view_host{nullptr};
 
     TArray<FLevelScriptEntry> entries_{};
     TArray<int32> level_entry_indices_{};

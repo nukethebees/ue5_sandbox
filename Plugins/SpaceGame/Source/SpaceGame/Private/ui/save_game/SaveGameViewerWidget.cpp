@@ -8,7 +8,6 @@
 #include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 #include "SSaveGameViewerView.h"
 
-#include <Components/NativeWidgetHost.h>
 #include <Engine/GameInstance.h>
 
 namespace ml::ioj {
@@ -50,15 +49,12 @@ void USaveGameViewerWidget::NativeOnInitialized() {
         fallback_style_ = default_theme->compile();
     }
 
-    if (!IsValid(view_host)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("USaveGameViewerWidget: The native view host is unavailable."));
-        return;
-    }
+    rebuild_profiles();
+}
 
+auto USaveGameViewerWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
-    view_host->SetContent(
+    auto result{
         SAssignNew(view_, SSaveGameViewerView)
             .Style(style)
             .OnProfileSelected(
@@ -71,9 +67,9 @@ void USaveGameViewerWidget::NativeOnInitialized() {
             .OnCancelCreate(FSimpleDelegate::CreateUObject(this, &ThisClass::cancel_create_profile))
             .OnActivate(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_activate_profile))
             .OnResetTestProfile(
-                FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset_test_profile))
-            .OnBack(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_back)));
-    rebuild_profiles();
+                FSimpleDelegate::CreateUObject(this, &ThisClass::handle_reset_test_profile))};
+    publish_all();
+    return result;
 }
 
 void USaveGameViewerWidget::ReleaseSlateResources(bool const release_children) {
@@ -122,6 +118,7 @@ void USaveGameViewerWidget::begin_create_profile() {
     if (view_.IsValid()) {
         view_->show_create_profile();
     }
+    modal_state_changed.Broadcast(true);
 }
 
 void USaveGameViewerWidget::cancel_create_profile() {
@@ -129,6 +126,7 @@ void USaveGameViewerWidget::cancel_create_profile() {
     if (view_.IsValid()) {
         view_->hide_create_profile();
     }
+    modal_state_changed.Broadcast(false);
 }
 
 void USaveGameViewerWidget::request_back() {
@@ -136,7 +134,6 @@ void USaveGameViewerWidget::request_back() {
         cancel_create_profile();
         return;
     }
-    back_requested.Broadcast();
 }
 
 void USaveGameViewerWidget::handle_create_profile(FString const& display_name) {
@@ -206,10 +203,6 @@ void USaveGameViewerWidget::handle_reset_test_profile() {
 
     refresh_and_select(save_subsystem->get_active_profile_id());
 #endif
-}
-
-void USaveGameViewerWidget::handle_back() {
-    request_back();
 }
 
 auto USaveGameViewerWidget::resolve_browser() -> FSaveGameBrowser* {

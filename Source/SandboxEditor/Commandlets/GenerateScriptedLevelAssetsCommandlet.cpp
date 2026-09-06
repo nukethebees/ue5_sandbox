@@ -11,9 +11,7 @@
 #include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
-#include <SpaceGame/ui/main_menu/MainMenuLandingWidget.h>
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
-#include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
@@ -76,8 +74,6 @@ constexpr TCHAR menu_button_object_path[]{
 constexpr TCHAR root_layout_package_name[]{TEXT("/SpaceGame/UI/Common/WBP_GameUiRoot")};
 constexpr TCHAR root_layout_object_path[]{
     TEXT("/SpaceGame/UI/Common/WBP_GameUiRoot.WBP_GameUiRoot")};
-constexpr TCHAR options_widget_class_path[]{
-    TEXT("/SpaceGame/UI/MainMenu/WBP_Options.WBP_Options_C")};
 constexpr TCHAR save_game_viewer_object_path[]{
     TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameViewer.WBP_SaveGameViewer")};
 constexpr TCHAR save_game_viewer_package_name[]{TEXT("/SpaceGame/UI/SaveGame/WBP_SaveGameViewer")};
@@ -478,13 +474,7 @@ auto generate_level_completion_widget() -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-auto generate_main_menu_widget(UClass& save_viewer_class) -> UClass* {
-    auto* const options_class{
-        LoadClass<ml::ioj::UOptionsWidget>(nullptr, options_widget_class_path)};
-    if (!IsValid(options_class)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load nested main-menu widget classes"));
-        return nullptr;
-    }
+auto generate_main_menu_widget() -> UClass* {
     auto* const blueprint{
         load_or_create_widget_blueprint(main_menu_widget_object_path,
                                         main_menu_widget_package_name,
@@ -493,26 +483,7 @@ auto generate_main_menu_widget(UClass& save_viewer_class) -> UClass* {
     if (!IsValid(blueprint)) {
         return nullptr;
     }
-    auto& tree{*blueprint->WidgetTree};
-    auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
-    auto* const switcher{make_widget<UWidgetSwitcher>(tree, TEXT("page_switcher"))};
-    auto* const switcher_slot{root->AddChildToOverlay(switcher)};
-    switcher_slot->SetHorizontalAlignment(HAlign_Fill);
-    switcher_slot->SetVerticalAlignment(VAlign_Fill);
-
-    auto* const main_page{make_widget<ml::ioj::UMainMenuLandingWidget>(tree, TEXT("main_page"))};
-    switcher->AddChild(main_page);
-
-    auto* const save_viewer{tree.ConstructWidget<ml::ioj::USaveGameViewerWidget>(
-        &save_viewer_class, TEXT("save_game_viewer"))};
-    save_viewer->bIsVariable = true;
-    switcher->AddChild(save_viewer);
-
-    auto* const options{
-        tree.ConstructWidget<ml::ioj::UOptionsWidget>(options_class, TEXT("options_widget"))};
-    options->bIsVariable = true;
-    switcher->AddChild(options);
-    tree.RootWidget = root;
+    blueprint->WidgetTree->RootWidget = nullptr;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
@@ -595,8 +566,7 @@ auto generate_level_select_widget() -> UClass* {
         return nullptr;
     }
 
-    auto* const root{make_widget<UNativeWidgetHost>(*blueprint->WidgetTree, TEXT("view_host"))};
-    blueprint->WidgetTree->RootWidget = root;
+    blueprint->WidgetTree->RootWidget = nullptr;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
@@ -610,8 +580,7 @@ auto generate_save_game_viewer_widget() -> UClass* {
         return nullptr;
     }
 
-    auto* const root{make_widget<UNativeWidgetHost>(*blueprint->WidgetTree, TEXT("view_host"))};
-    blueprint->WidgetTree->RootWidget = root;
+    blueprint->WidgetTree->RootWidget = nullptr;
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
@@ -770,12 +739,11 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
                                                   : nullptr};
     auto* const completion_class{generate_level_completion_widget()};
-    auto* const save_viewer_class{generate_save_game_viewer_widget()};
-    auto* const main_class{
-        IsValid(save_viewer_class) ? generate_main_menu_widget(*save_viewer_class) : nullptr};
+    auto const save_viewer_generated{IsValid(generate_save_game_viewer_widget())};
+    auto* const main_class{generate_main_menu_widget()};
     auto* const level_class{generate_level_select_widget()};
-    auto const ui_generated{IsValid(root_class) && IsValid(button_class) && IsValid(main_class) &&
-                            IsValid(level_class) && IsValid(pause_class) &&
+    auto const ui_generated{save_viewer_generated && IsValid(root_class) && IsValid(button_class) &&
+                            IsValid(main_class) && IsValid(level_class) && IsValid(pause_class) &&
                             IsValid(completion_class) &&
                             configure_ui_data(*root_class,
                                               *button_class,

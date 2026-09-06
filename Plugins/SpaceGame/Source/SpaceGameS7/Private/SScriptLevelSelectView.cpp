@@ -32,20 +32,17 @@ void SScriptLevelSelectView::Construct(FArguments const& args) {
     on_refresh_ = args._OnRefresh;
     on_launch_ = args._OnLaunch;
     on_start_paused_ = args._OnStartPaused;
-    on_back_ = args._OnBack;
 
     auto const body{SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_catalog()] +
                     SHorizontalBox::Slot().FillWidth(1.0f).Padding(
                         FMargin{2.0f, 0.0f, 0.0f, 0.0f})[build_details()]};
 
     ChildSlot[SNew(SBorder)
-                  .BorderImage(&style_->chrome().canvas)
-                  .Padding(FMargin{})[SNew(ml::ioj::SHiveFrame)
-                                          .Style(&style_->chrome())
-                                              [SNew(SVerticalBox) +
-                                               SVerticalBox::Slot().AutoHeight()[build_header()] +
-                                               SVerticalBox::Slot().FillHeight(1.0f)[body] +
-                                               SVerticalBox::Slot().AutoHeight()[build_footer()]]]];
+                  .BorderImage(&style_->chrome().body_background)
+                  .Padding(FMargin{24.0f})
+                      [SNew(SVerticalBox) + SVerticalBox::Slot().AutoHeight()[build_header()] +
+                       SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{0.0f, 18.0f})[body] +
+                       SVerticalBox::Slot().AutoHeight()[build_footer()]]];
 }
 
 void SScriptLevelSelectView::replace_catalog(FLevelSelectViewState const& state) {
@@ -115,28 +112,17 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
 }
 
 auto SScriptLevelSelectView::build_header() const -> TSharedRef<SWidget> {
-    return SNew(SBorder)
-        .BorderImage(&style_->chrome().header_background)
-        .Padding(style_->chrome().header_padding)
-            [SNew(SHorizontalBox) +
-             SHorizontalBox::Slot().AutoWidth().VAlign(
-                 VAlign_Center)[SNew(SImage)
-                                    .Image(&style_->icon(EGameUiIcon::Hive))
-                                    .ColorAndOpacity(style_->palette().honey)
-                                    .DesiredSizeOverride(FVector2D{28.0f, 28.0f})] +
-             SHorizontalBox::Slot()
-                 .FillWidth(1.0f)
-                 .Padding(FMargin{14.0f, 0.0f})
-                 .VAlign(
-                     VAlign_Center)[SNew(STextBlock)
+    return SNew(SVerticalBox) +
+           SVerticalBox::Slot()
+               .AutoHeight()[SNew(STextBlock)
+                                 .Text(NSLOCTEXT("LevelSelect",
+                                                 "SystemContext",
+                                                 "TACTICAL OPERATIONS // LEVEL CATALOG"))
+                                 .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+           SVerticalBox::Slot().AutoHeight().Padding(
+               FMargin{0.0f, 4.0f})[SNew(STextBlock)
                                         .Text(NSLOCTEXT("LevelSelect", "Title", "MISSION CONTROL"))
-                                        .TextStyle(&style_->text(EGameTextStyle::Heading2))] +
-             SHorizontalBox::Slot().AutoWidth().VAlign(
-                 VAlign_Center)[SNew(STextBlock)
-                                    .Text(NSLOCTEXT("LevelSelect",
-                                                    "SystemContext",
-                                                    "TACTICAL OPERATIONS // LEVEL CATALOG"))
-                                    .TextStyle(&style_->text(EGameTextStyle::Caption))]];
+                                        .TextStyle(&style_->text(EGameTextStyle::Heading1))];
 }
 
 auto SScriptLevelSelectView::build_catalog() -> TSharedRef<SWidget> {
@@ -210,14 +196,7 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
 }
 
 auto SScriptLevelSelectView::build_footer() -> TSharedRef<SWidget> {
-    TSharedPtr<ml::ioj::SGameButton> back_button;
     TSharedPtr<ml::ioj::SGameButton> refresh_button;
-    auto const back{action_button(
-        back_button,
-        *style_,
-        EGameButtonStyle::Secondary,
-        NSLOCTEXT("LevelSelect", "Back", "Back"),
-        FOnClicked::CreateSP(this, &SScriptLevelSelectView::handle_action, on_back_))};
     auto const refresh{action_button(
         refresh_button,
         *style_,
@@ -240,8 +219,7 @@ auto SScriptLevelSelectView::build_footer() -> TSharedRef<SWidget> {
     return SNew(SBorder)
         .BorderImage(&style_->chrome().footer_background)
         .Padding(style_->chrome().footer_padding)
-            [SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[back] +
-             SHorizontalBox::Slot().FillWidth(1.0f) +
+            [SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.0f) +
              SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})[refresh] +
              SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})[paused] +
              SHorizontalBox::Slot().AutoWidth()[launch]];

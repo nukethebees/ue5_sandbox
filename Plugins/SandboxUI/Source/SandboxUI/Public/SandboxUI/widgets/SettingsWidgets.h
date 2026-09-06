@@ -179,6 +179,7 @@ class SANDBOXUI_API SSettingsSlider : public SCompoundWidget {
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
+    void focus();
 
     static auto normalize(float value, float minimum, float maximum) -> float;
     static auto denormalize(float value, float minimum, float maximum, float step) -> float;
@@ -188,6 +189,7 @@ class SANDBOXUI_API SSettingsSlider : public SCompoundWidget {
 
     TAttribute<float> value_{};
     FOnFloatValueChanged on_value_changed_{};
+    TSharedPtr<SSlider> slider_{};
     float minimum_{};
     float maximum_{1.0f};
     float step_{0.01f};
@@ -213,6 +215,7 @@ class SANDBOXUI_API SSettingsChoice : public SCompoundWidget {
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
+    void focus();
   private:
     auto make_option_widget(TSharedPtr<FText> option) const -> TSharedRef<SWidget>;
     auto selected_text() const -> FText;
@@ -244,6 +247,9 @@ class SANDBOXUI_API SSettingsToggle : public SCompoundWidget {
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
+    void focus();
+  private:
+    TSharedPtr<SCheckBox> toggle_{};
 };
 
 class SANDBOXUI_API SSettingsReadOnlyRow : public SCompoundWidget {

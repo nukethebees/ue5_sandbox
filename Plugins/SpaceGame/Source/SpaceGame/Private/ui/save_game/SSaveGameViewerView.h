@@ -29,7 +29,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
     SLATE_EVENT(FSimpleDelegate, OnCancelCreate)
     SLATE_EVENT(FSimpleDelegate, OnActivate)
     SLATE_EVENT(FSimpleDelegate, OnResetTestProfile)
-    SLATE_EVENT(FSimpleDelegate, OnBack)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
@@ -74,7 +73,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
     FSimpleDelegate on_cancel_create_{};
     FSimpleDelegate on_activate_{};
     FSimpleDelegate on_reset_test_profile_{};
-    FSimpleDelegate on_back_{};
 
     TSharedPtr<SVerticalBox> profile_rows_{};
     TSharedPtr<SVerticalBox> outcome_rows_{};
@@ -89,7 +87,6 @@ class SSaveGameViewerView final : public SCompoundWidget {
     TSharedPtr<SGameButton> activate_button_{};
     TSharedPtr<SGameButton> refresh_button_{};
     TSharedPtr<SGameButton> create_button_{};
-    TSharedPtr<SGameButton> back_button_{};
     TSharedPtr<SBox> create_prompt_{};
     TSharedPtr<SEditableText> profile_name_input_{};
     TSharedPtr<STextBlock> create_error_{};

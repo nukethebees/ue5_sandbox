@@ -21,7 +21,6 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     SLATE_EVENT(FSimpleDelegate, OnRefresh)
     SLATE_EVENT(FSimpleDelegate, OnLaunch)
     SLATE_EVENT(FSimpleDelegate, OnStartPaused)
-    SLATE_EVENT(FSimpleDelegate, OnBack)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
@@ -49,7 +48,6 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     FSimpleDelegate on_refresh_{};
     FSimpleDelegate on_launch_{};
     FSimpleDelegate on_start_paused_{};
-    FSimpleDelegate on_back_{};
 
     TSharedPtr<SVerticalBox> catalog_rows_{};
     TSharedPtr<STextBlock> title_{};

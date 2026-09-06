@@ -97,13 +97,13 @@ void SSettingsSlider::Construct(FArguments const& args) {
     auto const range{maximum_ - minimum_};
     auto const normalized_step{range > UE_SMALL_NUMBER ? FMath::Clamp(step_ / range, 0.0f, 1.0f)
                                                        : 1.0f};
-    auto slider{SNew(SSlider)
-                    .Style(&style.slider)
-                    .Value(this, &SSettingsSlider::normalized_value)
-                    .StepSize(normalized_step)
-                    .MouseUsesStep(true)
-                    .RequiresControllerLock(false)
-                    .OnValueChanged(this, &SSettingsSlider::handle_value_changed)};
+    SAssignNew(slider_, SSlider)
+        .Style(&style.slider)
+        .Value(this, &SSettingsSlider::normalized_value)
+        .StepSize(normalized_step)
+        .MouseUsesStep(true)
+        .RequiresControllerLock(false)
+        .OnValueChanged(this, &SSettingsSlider::handle_value_changed);
     auto value_text{SNew(SBorder)
                         .BorderImage(&style.value_background)
                         .Padding(FMargin{6.0f, 2.0f})[SNew(STextBlock)
@@ -118,8 +118,14 @@ void SSettingsSlider::Construct(FArguments const& args) {
                                                                   args._ControlEnabled,
                                                                   value_padding,
                                                                   style.value_text_width,
-                                                                  slider,
+                                                                  slider_.ToSharedRef(),
                                                                   value_text)];
+}
+
+void SSettingsSlider::focus() {
+    if (slider_.IsValid()) {
+        FSlateApplication::Get().SetKeyboardFocus(slider_, EFocusCause::SetDirectly);
+    }
 }
 
 auto SSettingsSlider::normalize(float const value, float const minimum, float const maximum)
@@ -183,6 +189,12 @@ void SSettingsChoice::Construct(FArguments const& args) {
                   .ControlEnabled(args._ControlEnabled)[combo_box_.ToSharedRef()]];
 }
 
+void SSettingsChoice::focus() {
+    if (combo_box_.IsValid()) {
+        FSlateApplication::Get().SetKeyboardFocus(combo_box_, EFocusCause::SetDirectly);
+    }
+}
+
 auto SSettingsChoice::make_option_widget(TSharedPtr<FText> option) const -> TSharedRef<SWidget> {
     return SNew(STextBlock)
         .Text(option.IsValid() ? *option : FText::GetEmpty())
@@ -219,17 +231,23 @@ void SSettingsChoice::handle_selection_changed(TSharedPtr<FText> const option,
 void SSettingsToggle::Construct(FArguments const& args) {
     auto const& style{valid_style(args._Style)};
     auto checked{args._Checked};
-    auto toggle{SNew(SCheckBox)
-                    .Style(&style.toggle)
-                    .IsChecked_Lambda([checked]() {
-                        return checked.Get() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
-                    })
-                    .OnCheckStateChanged(args._OnCheckStateChanged)};
+    SAssignNew(toggle_, SCheckBox)
+        .Style(&style.toggle)
+        .IsChecked_Lambda([checked]() {
+            return checked.Get() ? ECheckBoxState::Checked : ECheckBoxState::Unchecked;
+        })
+        .OnCheckStateChanged(args._OnCheckStateChanged);
     ChildSlot[SNew(SSettingsRow)
                   .Style(args._Style)
                   .Label(args._Label)
                   .ToolTipText(args._ToolTipText)
-                  .ControlEnabled(args._ControlEnabled)[toggle]];
+                  .ControlEnabled(args._ControlEnabled)[toggle_.ToSharedRef()]];
+}
+
+void SSettingsToggle::focus() {
+    if (toggle_.IsValid()) {
+        FSlateApplication::Get().SetKeyboardFocus(toggle_, EFocusCause::SetDirectly);
+    }
 }
 
 void SSettingsReadOnlyRow::Construct(FArguments const& args) {

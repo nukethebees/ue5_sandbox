@@ -48,7 +48,6 @@ void SSaveGameViewerView::Construct(FArguments const& args) {
     on_cancel_create_ = args._OnCancelCreate;
     on_activate_ = args._OnActivate;
     on_reset_test_profile_ = args._OnResetTestProfile;
-    on_back_ = args._OnBack;
 
     auto const body{
         SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_profiles()] +
@@ -56,13 +55,11 @@ void SSaveGameViewerView::Construct(FArguments const& args) {
         SHorizontalBox::Slot().FillWidth(1.0f)[build_report()]};
     auto const frame{
         SNew(SBorder)
-            .BorderImage(&style_->chrome().canvas)
-            .Padding(FMargin{})
-                [SNew(SHiveFrame)
-                     .Style(&style_->chrome())[SNew(SVerticalBox) +
-                                               SVerticalBox::Slot().AutoHeight()[build_header()] +
-                                               SVerticalBox::Slot().FillHeight(1.0f)[body] +
-                                               SVerticalBox::Slot().AutoHeight()[build_footer()]]]};
+            .BorderImage(&style_->chrome().body_background)
+            .Padding(FMargin{
+                24.0f})[SNew(SVerticalBox) + SVerticalBox::Slot().AutoHeight()[build_header()] +
+                        SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{0.0f, 18.0f})[body] +
+                        SVerticalBox::Slot().AutoHeight()[build_footer()]]};
 
     SAssignNew(create_prompt_, SBox);
     create_prompt_->SetVisibility(EVisibility::Collapsed);
@@ -154,57 +151,72 @@ auto SSaveGameViewerView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& 
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
 
-    auto direction{0};
     auto const key{key_event.GetKey()};
+    auto const profile_focused{
+        profile_buttons_.ContainsByPredicate([](TSharedPtr<SGameButton> const& button) {
+            return button.IsValid() && button->has_focus();
+        })};
+    auto const outcome_focused{
+        outcome_buttons_.ContainsByPredicate([](TSharedPtr<SGameButton> const& button) {
+            return button.IsValid() && button->has_focus();
+        })};
+    if (profile_focused && (key == EKeys::Right || key == EKeys::Gamepad_DPad_Right) &&
+        !outcome_buttons_.IsEmpty()) {
+        auto const index{outcome_buttons_.IsValidIndex(state_.selected_outcome_index)
+                             ? state_.selected_outcome_index
+                             : 0};
+        outcome_buttons_[index]->focus();
+        return FReply::Handled();
+    }
+    if (outcome_focused && (key == EKeys::Left || key == EKeys::Gamepad_DPad_Left)) {
+        focus_selected_profile();
+        return FReply::Handled();
+    }
+
+    auto direction{0};
     if (key == EKeys::Up || key == EKeys::Gamepad_DPad_Up) {
         direction = -1;
     } else if (key == EKeys::Down || key == EKeys::Gamepad_DPad_Down) {
         direction = 1;
     }
-    if (direction == 0 || profile_buttons_.IsEmpty()) {
+    if (direction == 0) {
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
 
-    auto current_index{state_.selected_profile_index};
-    auto const button_count{profile_buttons_.Num()};
+    auto const& buttons{outcome_focused ? outcome_buttons_ : profile_buttons_};
+    if (buttons.IsEmpty()) {
+        return SCompoundWidget::OnKeyDown(geometry, key_event);
+    }
+    auto current_index{outcome_focused ? state_.selected_outcome_index
+                                       : state_.selected_profile_index};
+    auto const button_count{buttons.Num()};
     for (int32 index{}; index < button_count; ++index) {
-        if (profile_buttons_[index]->has_focus()) {
+        if (buttons[index]->has_focus()) {
             current_index = index;
             break;
         }
     }
-    if (!profile_buttons_.IsValidIndex(current_index)) {
+    if (!buttons.IsValidIndex(current_index)) {
         current_index = direction > 0 ? 0 : button_count - 1;
     } else {
         current_index = (current_index + direction + button_count) % button_count;
     }
-    profile_buttons_[current_index]->focus();
+    buttons[current_index]->focus();
     return FReply::Handled();
 }
 
 auto SSaveGameViewerView::build_header() const -> TSharedRef<SWidget> {
-    return SNew(SBorder)
-        .BorderImage(&style_->chrome().header_background)
-        .Padding(style_->chrome().header_padding)
-            [SNew(SHorizontalBox) +
-             SHorizontalBox::Slot().AutoWidth().VAlign(
-                 VAlign_Center)[SNew(SImage)
-                                    .Image(&style_->icon(EGameUiIcon::Hive))
-                                    .ColorAndOpacity(style_->palette().honey)
-                                    .DesiredSizeOverride(FVector2D{28.0f, 28.0f})] +
-             SHorizontalBox::Slot()
-                 .FillWidth(1.0f)
-                 .Padding(FMargin{14.0f, 0.0f})
-                 .VAlign(
-                     VAlign_Center)[SNew(STextBlock)
+    return SNew(SVerticalBox) +
+           SVerticalBox::Slot()
+               .AutoHeight()[SNew(STextBlock)
+                                 .Text(NSLOCTEXT("SaveGameViewer",
+                                                 "SystemContext",
+                                                 "SERVICE RECORDS // OPERATION HISTORY"))
+                                 .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+           SVerticalBox::Slot().AutoHeight().Padding(
+               FMargin{0.0f, 4.0f})[SNew(STextBlock)
                                         .Text(NSLOCTEXT("SaveGameViewer", "Title", "DATA ARCHIVE"))
-                                        .TextStyle(&style_->text(EGameTextStyle::Heading2))] +
-             SHorizontalBox::Slot().AutoWidth().VAlign(
-                 VAlign_Center)[SNew(STextBlock)
-                                    .Text(NSLOCTEXT("SaveGameViewer",
-                                                    "SystemContext",
-                                                    "HIVE SYSTEMS // SERVICE RECORDS"))
-                                    .TextStyle(&style_->text(EGameTextStyle::Caption))]];
+                                        .TextStyle(&style_->text(EGameTextStyle::Heading1))];
 }
 
 auto SSaveGameViewerView::build_profiles() -> TSharedRef<SWidget> {
@@ -335,12 +347,6 @@ auto SSaveGameViewerView::build_report() -> TSharedRef<SWidget> {
 auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
     auto footer{SNew(SHorizontalBox)};
     footer->AddSlot().AutoWidth()[action_button(
-        back_button_,
-        *style_,
-        EGameButtonStyle::Secondary,
-        NSLOCTEXT("SaveGameViewer", "Back", "Back"),
-        FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_back_))];
-    footer->AddSlot().AutoWidth().Padding(FMargin{10.0f, 0.0f})[action_button(
         create_button_,
         *style_,
         EGameButtonStyle::Primary,
