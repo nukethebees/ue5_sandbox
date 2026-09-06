@@ -417,22 +417,27 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryRunRecordTest,
                                      EAutomationTestFlags::EngineFilter)
 
 auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
-    FLevelSimulation simulation{make_battle()};
+    auto data{make_battle()};
+    data.telemetry_metadata = FLevelTelemetryRunMetadata{
+        .run_id = TEXT("12345678-1234-1234-1234-123456789abc"),
+        .map_name = TEXT("TelemetryTest"),
+        .level_id = TEXT("telemetry-test"),
+        .level_display_name = TEXT("Telemetry Test"),
+        .launched_utc = TEXT("2026-09-06T12:00:00Z"),
+    };
+    FLevelSimulation simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
 
     auto& telemetry{simulation.get_level_telemetry_manager()};
-    telemetry.begin_run({.run_id = TEXT("12345678-1234-1234-1234-123456789abc"),
-                         .map_name = TEXT("TelemetryTest"),
-                         .level_id = TEXT("telemetry-test"),
-                         .level_display_name = TEXT("Telemetry Test"),
-                         .launched_utc = TEXT("2026-09-06T12:00:00Z")});
+    TestTrue(TEXT("Simulation initialization starts telemetry recording"),
+             telemetry.is_run_recording());
 
-    simulation.advance(simulation.get_clock().get_tick_period());
-    telemetry.capture_realtime_sample();
+    simulation.advance(1.0);
+    auto const time_scale_change_tick{simulation.get_clock().get_completed_ticks() + 1};
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
-    telemetry.finalize_interrupted(ELevelTelemetryRunEndReason::WorldEnd, TEXT("test"));
+    simulation.finalize_telemetry_run(ELevelTelemetryRunEndReason::WorldEnd, TEXT("test"));
 
     auto record{telemetry.take_finalized_run()};
     if (!TestTrue(TEXT("Finalized manager yields one run record"), record.IsSet())) {
@@ -462,7 +467,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
               2);
     TestEqual(TEXT("Changed requested time scale is indexed by its first simulation tick"),
               series.requested_time_scale.last_time(),
-              uint64{2});
+              time_scale_change_tick);
     TestEqual(TEXT("Changed requested time scale is retained"),
               series.requested_time_scale.last_value(),
               4.0);
@@ -600,5 +605,47 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     TestTrue(TEXT("Atomic writer removes its temporary file"),
              IFileManager::Get().FileSize(*(*output_path + TEXT(".tmp"))) < 0);
 
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryMissionCompletionTest,
+                                 "Sandbox.UnitTests.LevelTelemetryMissionCompletion",
+                                 EAutomationTestFlags::EditorContext |
+                                     EAutomationTestFlags::EngineFilter)
+
+auto FLevelTelemetryMissionCompletionTest::RunTest(FString const&) -> bool {
+    auto data{make_battle()};
+    data.telemetry_metadata = FLevelTelemetryRunMetadata{
+        .run_id = TEXT("12345678-1234-1234-1234-123456789abc"),
+        .map_name = TEXT("TelemetryMissionTest"),
+        .launched_utc = TEXT("2026-09-06T12:00:00Z"),
+    };
+    FLevelSimulation simulation{MoveTemp(data)};
+    prepare_mission(simulation);
+    simulation.start();
+
+    auto const dt{simulation.get_clock().get_tick_period()};
+    simulation.advance(dt);
+    kill_enemy(simulation);
+    simulation.advance(dt);
+
+    auto const mission_result{simulation.take_mission_result()};
+    if (!TestTrue(TEXT("Simulation yields the completed mission"), mission_result.IsSet())) {
+        return false;
+    }
+
+    auto record{simulation.get_level_telemetry_manager().take_finalized_run()};
+    if (!TestTrue(TEXT("Taking the mission result finalizes telemetry"), record.IsSet())) {
+        return false;
+    }
+    TestEqual(TEXT("Mission success selects the telemetry completion reason"),
+              record->completion.reason,
+              ELevelTelemetryRunEndReason::MissionSucceeded);
+    TestFalse(TEXT("Mission completion is not interrupted"), record->completion.interrupted);
+    if (TestTrue(TEXT("Mission state is present"), record->completion.mission_state.IsSet())) {
+        TestEqual(TEXT("Mission state is retained"),
+                  record->completion.mission_state.GetValue(),
+                  ETestMissionState::Succeeded);
+    }
     return true;
 }
