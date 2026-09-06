@@ -21,37 +21,28 @@ TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStatic
 
 namespace ml::test_static_turrets {
 
+/* **************************************** */
+// Configuration
+/* **************************************** */
 void Simulation::set_config(FTurretSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
-
+void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
+    simulation_clock.bind(clock);
+}
 void Simulation::set_entity_registry(FTestEntityRegistry& new_registry) noexcept {
     entity_registry = &new_registry;
 }
-
 void Simulation::set_spatial_query_manager(FSpatialQueryManager const& manager) noexcept {
     spatial_query_manager = &manager;
 }
-
 void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept {
     laser_simulation = &new_simulation;
 }
 
-void Simulation::begin_play() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::begin_play);
-    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
-    check(entity_registry);
-    check(spatial_query_manager);
-    check(laser_simulation);
-    check(entity_radius > 0.f);
-    check(search_slice_size > 0);
-
-    auto const cooldown_tick_period{
-        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
-    entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
-    validate_array_sizes();
-}
-
+/* **************************************** */
+// Spawning
+/* **************************************** */
 auto Simulation::register_turrets(SpawnDataConstView const spawn_data)
     -> TArray<FRegistryEntityHandle> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::register_turrets);
@@ -127,6 +118,9 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data)
     return new_handles;
 }
 
+/* **************************************** */
+// Death handling
+/* **************************************** */
 void Simulation::handle_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::handle_dead_entities);
     if (local_indices_to_remove.IsEmpty()) {
@@ -142,37 +136,42 @@ void Simulation::handle_dead_entities() {
     ml::remove_at_swap_many_sorted_desc(local_indices_to_remove, entities);
 }
 
-void Simulation::validate_array_sizes() const {
-    entities.validate_array_sizes();
-}
+/* **************************************** */
+// Simulation phases
+/* **************************************** */
+void Simulation::begin_play() {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::begin_play);
+    TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
+    check(entity_registry);
+    check(spatial_query_manager);
+    check(laser_simulation);
+    check(entity_radius > 0.f);
+    check(search_slice_size > 0);
 
-void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
-    simulation_clock.bind(clock);
+    auto const cooldown_tick_period{
+        simulation_clock.duration_to_tick_period(config.laser.fire_cooldown)};
+    entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
+    validate_array_sizes();
 }
-
 void Simulation::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::begin_tick);
     clear_tick_buffers();
 }
-
 void Simulation::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::update_timers);
 
     entities.laser_cooldowns.tick();
     entities.target_refresh_countdowns.tick();
 }
-
 void Simulation::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::make_decisions);
     perform_search();
 }
-
 void Simulation::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::queue_commands);
 
     fire_at_enemies();
 }
-
 void Simulation::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::resolve_damage_events);
 
@@ -183,7 +182,6 @@ void Simulation::resolve_damage_events() {
                                      entity_death_info);
     validate_array_sizes();
 }
-
 void Simulation::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::update_entity_registry);
 
@@ -196,7 +194,6 @@ void Simulation::update_entity_registry() {
         },
         entity_death_info);
 }
-
 void Simulation::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::sync_from_registry);
 
@@ -207,7 +204,6 @@ void Simulation::sync_from_registry() {
 
     handle_dead_entities();
 }
-
 void Simulation::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::end_tick);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, get_num_instances());
@@ -215,6 +211,9 @@ void Simulation::end_tick() {
     validate_array_sizes();
 }
 
+/* **************************************** */
+// Entity data
+/* **************************************** */
 void Simulation::prepare_entity_update_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_static_turrets::Simulation::prepare_entity_update_data);
@@ -236,14 +235,19 @@ void Simulation::prepare_entity_update_data() {
     }
 }
 
+/* **************************************** */
+// Accessors
+/* **************************************** */
 auto Simulation::get_num_instances() const noexcept -> int32 {
     return entities.handles.Num();
 }
-
 auto Simulation::get_target_handles() const -> TConstArrayView<FRegistryEntityHandle> {
     return entities.target_handles;
 }
 
+/* **************************************** */
+// Searching
+/* **************************************** */
 void Simulation::perform_search() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::perform_search);
 
@@ -264,7 +268,6 @@ void Simulation::perform_search() {
         perform_search_on_slice(i, n_turrets, turrets_per_job, radius);
     });
 }
-
 void Simulation::perform_search_on_slice(int32 const job_index,
                                          int32 const n_turrets,
                                          int32 const turrets_per_job,
@@ -331,6 +334,9 @@ void Simulation::perform_search_on_slice(int32 const job_index,
     }
 }
 
+/* **************************************** */
+// Attacking
+/* **************************************** */
 void Simulation::fire_at_enemies() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::fire_at_enemies);
 
@@ -427,11 +433,13 @@ void Simulation::fire_at_enemies() {
 
     laser_simulation->queue_laser_spawns(new_lasers);
 }
-
 auto Simulation::get_disengage_radius() const -> float {
     return config.detection_radius * 1.2f;
 }
 
+/* **************************************** */
+// Misc
+/* **************************************** */
 void Simulation::clear_tick_buffers() {
     ml::reset(entity_death_info,
               entity_update_data,
@@ -448,6 +456,12 @@ void Simulation::clear_tick_buffers() {
     presentation_spawn_count = 0;
 }
 
+/* **************************************** */
+// Checks
+/* **************************************** */
+void Simulation::validate_array_sizes() const {
+    entities.validate_array_sizes();
+}
 void Simulation::validate_proxy_handles() const {
     entity_registry->validate_handles(entities.handles);
 }

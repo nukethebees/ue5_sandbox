@@ -21,10 +21,13 @@ TRACE_DECLARE_INT_COUNTER(SandboxFightersAvoiding, TEXT("Sandbox/FightersAvoidin
 TRACE_DECLARE_INT_COUNTER(SandboxFighterNavigationTraces, TEXT("Sandbox/FighterNavigationTraces"));
 
 namespace ml::test_capital_ship_fighters {
+
+/* **************************************** */
+// Navigation helpers
+/* **************************************** */
 auto Simulation::is_avoidance_direction_choice(int8 const choice) -> bool {
     return choice >= 0 && choice < n_avoidance_choices;
 }
-
 auto Simulation::make_avoidance_frame(FVector3f const preferred_direction, float const float_bias)
     -> AvoidanceFrame {
     auto const reference_axis{FMath::Abs(preferred_direction.Z) < 0.9f ? FVector3f::UpVector
@@ -46,7 +49,6 @@ auto Simulation::make_avoidance_frame(FVector3f const preferred_direction, float
         roll_cos,
     };
 }
-
 auto Simulation::make_avoidance_direction(AvoidanceFrame const& frame, int8 const choice)
     -> FVector3f {
     check(is_avoidance_direction_choice(choice));
@@ -77,7 +79,6 @@ auto Simulation::make_avoidance_direction(AvoidanceFrame const& frame, int8 cons
     auto const lateral_weight{ring == 0 ? half_weight : sqrt_three_over_two};
     return frame.preferred_direction * forward_weight + lateral_direction * lateral_weight;
 }
-
 auto Simulation::make_avoidance_directions(AvoidanceFrame const& frame)
     -> TStaticArray<FVector3f, n_avoidance_choices> {
     TStaticArray<FVector3f, 4> const lateral_directions{
@@ -97,7 +98,6 @@ auto Simulation::make_avoidance_directions(AvoidanceFrame const& frame)
     }
     return directions;
 }
-
 auto Simulation::make_avoidance_choice_order(uint32 const integral_bias, int8 const previous_choice)
     -> TStaticArray<int8, n_avoidance_choices> {
     TStaticArray<int8, n_avoidance_choices> result;
@@ -121,6 +121,9 @@ auto Simulation::make_avoidance_choice_order(uint32 const integral_bias, int8 co
     return result;
 }
 
+/* **************************************** */
+// Combat helpers
+/* **************************************** */
 auto Simulation::make_fire_point_candidate(FVector3f const target_location,
                                            FVector3f const reference_location,
                                            float const fire_point_distance,
@@ -152,26 +155,29 @@ auto Simulation::make_fire_point_candidate(FVector3f const target_location,
     auto const trace_end{trace_target - trace_direction * trace_end_offset};
     return {candidate_location, FVector3f{trace_start}, FVector3f{trace_end}};
 }
+
+/* **************************************** */
+// Configuration
+/* **************************************** */
 void Simulation::set_config(FFighterSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
-
 void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
     simulation_clock.bind(clock);
 }
-
 void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
     entity_registry = &new_entity_registry;
 }
-
 void Simulation::set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept {
     spatial_query_manager = &new_query_manager;
 }
-
 void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept {
     laser_simulation = &new_simulation;
 }
 
+/* **************************************** */
+// Simulation phases
+/* **************************************** */
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestFighterCount, 0);
@@ -218,7 +224,6 @@ void Simulation::begin_play() {
 
     check(config.attack_distance_band.values_are_valid());
 }
-
 void Simulation::begin_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::begin_tick);
 
@@ -230,12 +235,10 @@ void Simulation::begin_tick() {
     clear_tick_buffers();
     clear_presentation_events();
 }
-
 void Simulation::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::update_timers);
     entity_buffers.current().attack_cooldowns.tick();
 }
-
 void Simulation::make_decisions() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::make_decisions);
 
@@ -275,7 +278,6 @@ void Simulation::make_decisions() {
         }
     }
 }
-
 void Simulation::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::move);
 
@@ -360,12 +362,10 @@ void Simulation::move(float const dt) {
                          attack_view.locations,
                          attack_view.target_locations);
 }
-
 void Simulation::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_commands);
     handle_firing(get_task_view(Task::Attack));
 }
-
 void Simulation::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::resolve_damage_events);
@@ -388,7 +388,6 @@ void Simulation::resolve_damage_events() {
 
     validate_array_sizes();
 }
-
 void Simulation::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::update_entity_registry);
@@ -397,7 +396,6 @@ void Simulation::update_entity_registry() {
                                               registry_update_data.get_const_view()};
     entity_registry->queue_entity_updates(view, entity_death_info);
 }
-
 void Simulation::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::sync_from_registry);
@@ -413,13 +411,15 @@ void Simulation::sync_from_registry() {
     refresh_task_views();
     checkCode(entity_buffers.current().validate_array_sizes());
 }
-
 void Simulation::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::end_tick);
     TRACE_COUNTER_SET(SandboxTestFighterCount, get_num_instances());
     validate_array_sizes();
 }
 
+/* **************************************** */
+// Movement
+/* **************************************** */
 void Simulation::move(float const dt, TaskView const& fighters) {
     check(dt > 0.f);
     auto const n{fighters.num()};
@@ -436,7 +436,6 @@ void Simulation::move(float const dt, TaskView const& fighters) {
                             TConstArrayView<float>{fighters.move_distances},
                             1.f);
 }
-
 void Simulation::update_navigation_steering() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::update_navigation_steering);
@@ -666,54 +665,46 @@ void Simulation::update_navigation_steering() {
     TRACE_COUNTER_SET(SandboxFighterNavigationTraces, trace_count);
 }
 
+/* **************************************** */
+// Accessors
+/* **************************************** */
 auto Simulation::get_num_instances() const noexcept -> int32 {
     return entity_buffers.current().num();
 }
-
 auto Simulation::get_view(int32 const offset, int32 const width) -> EntityData::View {
     return entity_buffers.current().get_view(offset, width);
 }
-
 auto Simulation::get_const_view(int32 const offset, int32 const width) const
     -> EntityData::ConstView {
     return entity_buffers.current().get_const_view(offset, width);
 }
-
 auto Simulation::get_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
     return entity_buffers.current().entity_handles;
 }
-
 auto Simulation::has_handle(FRegistryEntityHandle const fighter_handle) const -> bool {
     return find_index(fighter_handle) != INDEX_NONE;
 }
-
 auto Simulation::get_target_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {
     return entity_buffers.current().target_handles;
 }
-
 auto Simulation::get_target_handle(FRegistryEntityHandle const fighter_handle) const noexcept
     -> FRegistryEntityHandle {
     return entity_buffers.current().target_handles[find_index(fighter_handle)];
 }
-
 auto Simulation::get_target_location(FRegistryEntityHandle const fighter_handle) const
     -> FVector3f {
     return ml::get_vector3f(entity_buffers.current().target_locations, find_index(fighter_handle));
 }
-
 auto Simulation::get_tasks() const -> TConstArrayView<Task> {
     return entity_buffers.current().tasks;
 }
-
 auto Simulation::get_teams() const -> TConstArrayView<ETestTeam> {
     return entity_buffers.current().teams;
 }
-
 auto Simulation::get_task_spans() const -> TaskSpans {
     check_fighter_tasks();
     return task_spans;
 }
-
 auto Simulation::get_task_counts() const -> TaskCounts {
     TaskCounts counts{};
     auto const& data{entity_buffers.current()};
@@ -723,25 +714,43 @@ auto Simulation::get_task_counts() const -> TaskCounts {
     }
     return counts;
 }
-
 auto Simulation::get_task_view(Task const task) noexcept -> TaskView const& {
     return task_views[std::to_underlying(task)];
 }
-
 auto Simulation::get_const_task_view(Task const task) const noexcept -> ConstTaskView const& {
     return const_task_views[std::to_underlying(task)];
 }
+auto Simulation::find_index(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {
+    return entity_buffers.current().entity_handles.Find(fighter_handle);
+}
+auto Simulation::get_task_span(Task const task) const -> FIndexSpan {
+    return task_spans[std::to_underlying(task)];
+}
 
+/* **************************************** */
+// Targets
+/* **************************************** */
 void Simulation::set_target_handle_unchecked(int32 const fighter_index,
                                              FRegistryEntityHandle const new_target) noexcept {
     entity_buffers.current().target_handles[fighter_index] = new_target;
 }
-
 void Simulation::set_target_handle(FRegistryEntityHandle const fighter_handle,
                                    FRegistryEntityHandle const new_target) noexcept {
     set_target_handle_unchecked(find_index(fighter_handle), new_target);
 }
+void Simulation::refresh_target_data() {
+    auto& data{entity_buffers.current()};
+    entity_registry->refresh_entity_data(data.target_handles,
+                                         data.target_locations.get_view(),
+                                         data.target_velocities.get_view(),
+                                         data.target_radii);
+    ml::dist_and_dist_sq(
+        data.target_distances, data.target_distance_sq, data.locations, data.target_locations);
+}
 
+/* **************************************** */
+// Tasks
+/* **************************************** */
 void Simulation::set_task_unchecked(int32 const index, Task const task) noexcept {
     auto& data{entity_buffers.current()};
     if (data.tasks[index] == task) {
@@ -753,19 +762,22 @@ void Simulation::set_task_unchecked(int32 const index, Task const task) noexcept
     data.avoidance_clear_scan_counts[index] = 0;
     data.navigation_update_countdowns.zero_counter(index);
 }
-
 void Simulation::set_task(FRegistryEntityHandle const handle, Task const task) noexcept {
     set_task_unchecked(find_index(handle), task);
 }
-
-auto Simulation::find_index(FRegistryEntityHandle const fighter_handle) const noexcept -> int32 {
-    return entity_buffers.current().entity_handles.Find(fighter_handle);
+void Simulation::refresh_task_views() {
+    auto const n{task_spans.Num()};
+    auto& data{entity_buffers.current()};
+    for (int32 i{0}; i < n; ++i) {
+        auto const span{task_spans[i]};
+        const_task_views[i] = data.get_const_view(span.offset, span.count);
+        task_views[i] = data.get_view(span.offset, span.count);
+    }
 }
 
-auto Simulation::get_task_span(Task const task) const -> FIndexSpan {
-    return task_spans[std::to_underlying(task)];
-}
-
+/* **************************************** */
+// Entity data
+/* **************************************** */
 void Simulation::prepare_entity_update_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::prepare_entity_update_data);
@@ -787,7 +799,6 @@ void Simulation::prepare_entity_update_data() {
     }
     registry_update_data.validate_array_sizes();
 }
-
 bool Simulation::tasks_are_contiguous() const noexcept {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::tasks_are_contiguous);
@@ -815,7 +826,6 @@ bool Simulation::tasks_are_contiguous() const noexcept {
     }
     return true;
 }
-
 void Simulation::refresh_layout() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::refresh_layout);
 
@@ -847,11 +857,13 @@ void Simulation::refresh_layout() {
     check_fighter_tasks();
 }
 
+/* **************************************** */
+// Spawning
+/* **************************************** */
 void Simulation::queue_spawns(TestCapitalShipFighterSpawnQueue const& new_spawns) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_spawns);
     spawn_queue.append_from(new_spawns);
 }
-
 void Simulation::commit_spawns() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::commit_spawns);
 
@@ -938,6 +950,9 @@ void Simulation::commit_spawns() {
     validate_array_sizes();
 }
 
+/* **************************************** */
+// Destruction
+/* **************************************** */
 void Simulation::self_destruct_fighter(FRegistryEntityHandle const handle) {
     auto& data{entity_buffers.current()};
     auto const index{data.entity_handles.Find(handle)};
@@ -947,7 +962,6 @@ void Simulation::self_destruct_fighter(FRegistryEntityHandle const handle) {
         local_indices_to_remove.Add(index);
     }
 }
-
 void Simulation::remove_dead_entities() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::remove_dead_entities);
@@ -958,6 +972,9 @@ void Simulation::remove_dead_entities() {
     validate_array_sizes();
 }
 
+/* **************************************** */
+// Combat
+/* **************************************** */
 void Simulation::handle_firing(TaskView const& data) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::handle_firing);
 
@@ -1102,21 +1119,13 @@ void Simulation::handle_firing(TaskView const& data) {
     laser_simulation->queue_laser_spawns(new_lasers);
 }
 
-void Simulation::refresh_task_views() {
-    auto const n{task_spans.Num()};
-    auto& data{entity_buffers.current()};
-    for (int32 i{0}; i < n; ++i) {
-        auto const span{task_spans[i]};
-        const_task_views[i] = data.get_const_view(span.offset, span.count);
-        task_views[i] = data.get_view(span.offset, span.count);
-    }
-}
-
+/* **************************************** */
+// Orders
+/* **************************************** */
 void Simulation::queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::queue_orders);
     order_queue.append_from(queue);
 }
-
 void Simulation::commit_orders() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ship_fighters::Simulation::commit_orders);
 
@@ -1157,31 +1166,25 @@ void Simulation::commit_orders() {
     }
 }
 
-void Simulation::refresh_target_data() {
-    auto& data{entity_buffers.current()};
-    entity_registry->refresh_entity_data(data.target_handles,
-                                         data.target_locations.get_view(),
-                                         data.target_velocities.get_view(),
-                                         data.target_radii);
-    ml::dist_and_dist_sq(
-        data.target_distances, data.target_distance_sq, data.locations, data.target_locations);
-}
-
+/* **************************************** */
+// Misc
+/* **************************************** */
 void Simulation::clear_tick_buffers() {
     ml::reset(local_indices_to_remove, new_lasers, entity_death_info, spawn_queue, order_queue);
 }
-
 void Simulation::clear_presentation_events() {
     presentation_indices_to_remove.Reset();
     presentation_spawn_offset = 0;
     presentation_spawn_count = 0;
 }
 
+/* **************************************** */
+// Checks
+/* **************************************** */
 #if DO_CHECK
 void Simulation::validate_array_sizes() const {
     entity_buffers.current().validate_array_sizes();
 }
-
 void Simulation::check_fighter_tasks() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::test_capital_ship_fighters::Simulation::check_fighter_tasks);

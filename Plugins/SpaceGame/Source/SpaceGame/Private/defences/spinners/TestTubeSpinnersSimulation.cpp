@@ -10,18 +10,26 @@
 #include <SandboxCore/soa_vector_utils.h>
 
 namespace ml::test_tube_spinners {
+
+/* **************************************** */
+// Configuration
+/* **************************************** */
 void Simulation::set_config(FSpinnerSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
-
+void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
+    simulation_clock.bind(clock);
+}
 void Simulation::set_entity_registry(FTestEntityRegistry& new_registry) noexcept {
     entity_registry = &new_registry;
 }
-
 void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept {
     laser_simulation = &new_simulation;
 }
 
+/* **************************************** */
+// Simulation phases
+/* **************************************** */
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::begin_play);
     check(entity_registry);
@@ -33,39 +41,37 @@ void Simulation::begin_play() {
     entities.laser_cooldowns.set_tick_value(cooldown_tick_period);
     validate_array_sizes();
 }
-
-void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
-    simulation_clock.bind(clock);
-}
-
 void Simulation::update_timers(float const) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::update_timers);
 
     entities.laser_cooldowns.tick();
 }
-
 void Simulation::move(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::move);
 
     rotate_instances(dt);
 }
-
 void Simulation::queue_commands() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::queue_commands);
 
     fire_lasers();
 }
-
 void Simulation::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::end_tick);
 
     ml::reset(indices_ready_to_fire, new_lasers);
 }
 
+/* **************************************** */
+// Accessors
+/* **************************************** */
 auto Simulation::get_num_instances() const noexcept -> int32 {
     return entities.num();
 }
 
+/* **************************************** */
+// Spawning
+/* **************************************** */
 void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
                                  TConstArrayView<float> const new_yaws,
                                  TConstArrayView<int32> const new_fire_point_indices) {
@@ -108,6 +114,9 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
     checkCode(validate_array_sizes());
 }
 
+/* **************************************** */
+// Movement
+/* **************************************** */
 void Simulation::rotate_instances(float const dt) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::rotate_instances);
 
@@ -117,6 +126,9 @@ void Simulation::rotate_instances(float const dt) {
     ml::add_in_place(TArrayView<float>(entities.yaws), delta_yaw_degrees);
 }
 
+/* **************************************** */
+// Firing
+/* **************************************** */
 void Simulation::fire_lasers() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::fire_lasers);
 
@@ -178,6 +190,9 @@ void Simulation::fire_lasers() {
     laser_simulation->queue_laser_spawns(new_lasers);
 }
 
+/* **************************************** */
+// Checks
+/* **************************************** */
 void Simulation::validate_array_sizes() const {
     entities.validate_array_sizes();
 }

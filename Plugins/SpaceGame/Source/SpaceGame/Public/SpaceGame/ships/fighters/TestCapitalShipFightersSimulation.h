@@ -54,12 +54,18 @@ struct SPACEGAME_API Simulation {
     using TaskViews = TStaticArray<TaskView, n_task_types>;
     using ConstTaskViews = TStaticArray<ConstTaskView, n_task_types>;
 
+    /* **************************************** */
+    // Configuration
+    /* **************************************** */
     void set_config(FFighterSimulationConfig const& new_config) noexcept;
     void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
     void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
 
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
     auto get_entity_registry() const noexcept -> FTestEntityRegistry const* {
         return entity_registry;
@@ -82,6 +88,9 @@ struct SPACEGAME_API Simulation {
     auto get_tasks() const -> TConstArrayView<Task>;
     auto get_teams() const -> TConstArrayView<ETestTeam>;
 
+    /* **************************************** */
+    // Checks
+    /* **************************************** */
 #if DO_CHECK
     void validate_array_sizes() const;
     void check_fighter_tasks() const;
@@ -136,6 +145,9 @@ struct SPACEGAME_API Simulation {
         {-45.f, -35.f},
     }};
 
+    /* **************************************** */
+    // Navigation
+    /* **************************************** */
     static auto is_avoidance_direction_choice(int8 choice) -> bool;
     static auto make_avoidance_frame(FVector3f preferred_direction, float float_bias)
         -> AvoidanceFrame;
@@ -144,6 +156,10 @@ struct SPACEGAME_API Simulation {
         -> TStaticArray<FVector3f, n_avoidance_choices>;
     static auto make_avoidance_choice_order(uint32 integral_bias, int8 previous_choice)
         -> TStaticArray<int8, n_avoidance_choices>;
+
+    /* **************************************** */
+    // Combat
+    /* **************************************** */
     static auto make_fire_point_candidate(FVector3f target_location,
                                           FVector3f reference_location,
                                           float fire_point_distance,
@@ -153,6 +169,9 @@ struct SPACEGAME_API Simulation {
                                           float float_bias,
                                           uint32 candidate_order) -> FirePointCandidate;
 
+    /* **************************************** */
+    // Simulation phases
+    /* **************************************** */
     void begin_play();
     void begin_tick();
     void update_timers(float dt);
@@ -164,37 +183,74 @@ struct SPACEGAME_API Simulation {
     void sync_from_registry();
     void end_tick();
 
-    void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
-    void queue_orders(TestCapitalShipFighterOrderQueue const& queue);
-    void self_destruct_fighter(FRegistryEntityHandle handle);
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     auto get_new_spawn_entity_data() const -> auto const& { return new_spawn_entity_data; }
     auto get_new_spawn_entity_handles() const -> auto const& { return new_spawn_entity_handles; }
-
     auto get_task_view(Task task) noexcept -> TaskView const&;
     auto get_const_task_view(Task task) const noexcept -> ConstTaskView const&;
-    void set_target_handle_unchecked(int32 fighter_index,
-                                     FRegistryEntityHandle new_target) noexcept;
-    void set_target_handle(FRegistryEntityHandle fighter_handle,
-                           FRegistryEntityHandle new_target) noexcept;
-    void set_task_unchecked(int32 index, Task task) noexcept;
-    void set_task(FRegistryEntityHandle handle, Task task) noexcept;
     auto find_index(FRegistryEntityHandle fighter_handle) const noexcept -> int32;
     auto get_task_spans() const -> TaskSpans;
     auto get_task_span(Task task) const -> FIndexSpan;
     auto get_task_counts() const -> TaskCounts;
 
+    /* **************************************** */
+    // Movement
+    /* **************************************** */
     void move(float dt, TaskView const& task_span);
     void update_navigation_steering();
+
+    /* **************************************** */
+    // Combat
+    /* **************************************** */
     void handle_firing(TaskView const& data);
+
+    /* **************************************** */
+    // Spawning
+    /* **************************************** */
+    void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue);
     void commit_spawns();
+
+    /* **************************************** */
+    // Destruction
+    /* **************************************** */
+    void self_destruct_fighter(FRegistryEntityHandle handle);
+    void remove_dead_entities();
+
+    /* **************************************** */
+    // Entity data
+    /* **************************************** */
     void prepare_entity_update_data();
     bool tasks_are_contiguous() const noexcept;
     void refresh_layout();
-    void refresh_task_views();
-    void commit_orders();
+
+    /* **************************************** */
+    // Targets
+    /* **************************************** */
+    void set_target_handle_unchecked(int32 fighter_index,
+                                     FRegistryEntityHandle new_target) noexcept;
+    void set_target_handle(FRegistryEntityHandle fighter_handle,
+                           FRegistryEntityHandle new_target) noexcept;
     void refresh_target_data();
+
+    /* **************************************** */
+    // Tasks
+    /* **************************************** */
+    void set_task_unchecked(int32 index, Task task) noexcept;
+    void set_task(FRegistryEntityHandle handle, Task task) noexcept;
+    void refresh_task_views();
+
+    /* **************************************** */
+    // Orders
+    /* **************************************** */
+    void queue_orders(TestCapitalShipFighterOrderQueue const& queue);
+    void commit_orders();
+
+    /* **************************************** */
+    // Misc
+    /* **************************************** */
     void clear_tick_buffers();
-    void remove_dead_entities();
     void clear_presentation_events();
 
     friend class CommandInterface;

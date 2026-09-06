@@ -29,24 +29,37 @@ struct SPACEGAME_API Simulation {
     using EntityData = ml::test_static_turrets::EntityData;
     using SpawnData = ml::test_static_turrets::SpawnData;
 
+    /* **************************************** */
+    // Configuration
+    /* **************************************** */
     void set_config(FTurretSimulationConfig const& new_config) noexcept;
     void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& manager) noexcept;
     void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
 
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
     auto get_target_handles() const -> TConstArrayView<FRegistryEntityHandle>;
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
         return laser_simulation;
     }
+
+    /* **************************************** */
+    // Checks
+    /* **************************************** */
     void validate_array_sizes() const;
     void validate_proxy_handles() const;
 
     float entity_radius{0.f};
     int32 search_slice_size{64};
   private:
+    /* **************************************** */
+    // Simulation phases
+    /* **************************************** */
     void begin_play();
     void begin_tick();
     void update_timers(float dt);
@@ -57,16 +70,39 @@ struct SPACEGAME_API Simulation {
     void sync_from_registry();
     void end_tick();
 
+    /* **************************************** */
+    // Spawning
+    /* **************************************** */
     auto register_turrets(SpawnDataConstView spawn_data) -> TArray<FRegistryEntityHandle>;
+
+    /* **************************************** */
+    // Entity data
+    /* **************************************** */
     void prepare_entity_update_data();
+
+    /* **************************************** */
+    // Searching
+    /* **************************************** */
     void perform_search();
     void perform_search_on_slice(int32 job_index,
                                  int32 n_turrets,
                                  int32 turrets_per_job,
                                  float radius);
+
+    /* **************************************** */
+    // Attacking
+    /* **************************************** */
     void fire_at_enemies();
     auto get_disengage_radius() const -> float;
+
+    /* **************************************** */
+    // Death handling
+    /* **************************************** */
     void handle_dead_entities();
+
+    /* **************************************** */
+    // Misc
+    /* **************************************** */
     void clear_tick_buffers();
 
     friend class PhaseInterface;

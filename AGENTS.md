@@ -46,7 +46,13 @@ Unreal Engine 5.8 project.
 * Prefer SOA layouts for related performance-sensitive collections.
 * Save loop bounds as const locals.
 * Log warnings/errors when null checks fail rather than returning silently.
-* Group functions by category and use blank lines between logical sections.
+* In large classes with many member functions, group declarations and definitions by category using this banner style:
+  ```cpp
+  /* **************************************** */
+  // Category
+  /* **************************************** */
+  ```
+* In `.cpp` category groups, do not put blank lines between adjacent member-function definitions. Separate categories with blank lines around their banners.
 * When returning `std::expected`, prefer `std::in_place` / `std::unexpect` when they avoid unnecessary copies or moves.
 * For UObject types in a dedicated plugin and namespace, prefer concise names.
 * Avoid anonymous-namespace constants in `.cpp` files because Unreal unity builds can merge translation units. Prefer `inline static constexpr` members or `inline constexpr` constants in a specific named namespace.

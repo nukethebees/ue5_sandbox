@@ -43,11 +43,17 @@ struct SPACEGAME_API Simulation {
     using FighterReassignment = ml::test_capital_ships::FighterReassignment;
     using EntityBuffers = ml::MultiBuffer<EntityTickData, 2>;
 
+    /* **************************************** */
+    // Configuration
+    /* **************************************** */
     void set_config(FCapitalSimulationConfig const& new_config) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
     void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
     void bind_fighters(ml::test_capital_ship_fighters::Simulation& fighters);
 
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
     auto is_valid(FRegistryEntityHandle handle) const noexcept -> bool;
     auto get_entity_registry() const noexcept -> FTestEntityRegistry const* {
@@ -81,11 +87,17 @@ struct SPACEGAME_API Simulation {
     auto find_first_handle_on_team(ETestTeam team) const noexcept
         -> std::optional<FRegistryEntityHandle>;
 
+    /* **************************************** */
+    // Checks
+    /* **************************************** */
     void validate_array_sizes() const;
     void validate_proxy_handles() const;
 
     float entity_radius{0.f};
   private:
+    /* **************************************** */
+    // Simulation phases
+    /* **************************************** */
     void begin_play();
     void begin_tick();
     void update_timers(float dt);
@@ -95,15 +107,42 @@ struct SPACEGAME_API Simulation {
     void sync_from_registry();
     void end_tick();
 
+    /* **************************************** */
+    // Ship spawning
+    /* **************************************** */
     auto register_ships(SpawnDataConstView spawn_data) -> TArray<FRegistryEntityHandle>;
-    void set_target_handle(FRegistryEntityHandle ship_handle, FRegistryEntityHandle target_handle);
     void spawn_ships(SpawnDataConstView spawn_data);
+
+    /* **************************************** */
+    // Entity data
+    /* **************************************** */
     void prepare_entity_update_data();
+
+    /* **************************************** */
+    // Fighter spawning
+    /* **************************************** */
     void queue_fighter_spawns();
     void refresh_fighter_handles();
+
+    /* **************************************** */
+    // Orders
+    /* **************************************** */
     void queue_fighter_orders();
+
+    /* **************************************** */
+    // Targets
+    /* **************************************** */
+    void set_target_handle(FRegistryEntityHandle ship_handle, FRegistryEntityHandle target_handle);
+
+    /* **************************************** */
+    // Death handling
+    /* **************************************** */
     void handle_dead_entities();
     void reassign_fighter_handles_of_dying_capital();
+
+    /* **************************************** */
+    // Misc
+    /* **************************************** */
     void clear_tick_buffers();
     void clear_presentation_events();
 

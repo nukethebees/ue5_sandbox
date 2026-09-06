@@ -20,30 +20,54 @@ class PhaseInterface;
 struct SPACEGAME_API Simulation {
     using EntityData = ml::test_tube_spinners::EntityData;
 
+    /* **************************************** */
+    // Configuration
+    /* **************************************** */
     void set_config(FSpinnerSimulationConfig const& new_config) noexcept;
     void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void set_entity_registry(FTestEntityRegistry& new_registry) noexcept;
     void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
 
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
     auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
     auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
         return laser_simulation;
     }
+
+    /* **************************************** */
+    // Checks
+    /* **************************************** */
     void validate_array_sizes() const;
 
     float entity_radius{0.f};
   private:
+    /* **************************************** */
+    // Simulation phases
+    /* **************************************** */
     void begin_play();
     void update_timers(float dt);
     void move(float dt);
     void queue_commands();
     void end_tick();
 
+    /* **************************************** */
+    // Spawning
+    /* **************************************** */
     void spawn_instances(FVectors3f::ConstView new_locations,
                          TConstArrayView<float> new_yaws,
                          TConstArrayView<int32> new_fire_point_indices);
+
+    /* **************************************** */
+    // Movement
+    /* **************************************** */
     void rotate_instances(float dt);
+
+    /* **************************************** */
+    // Firing
+    /* **************************************** */
     void fire_lasers();
 
     friend class PhaseInterface;
