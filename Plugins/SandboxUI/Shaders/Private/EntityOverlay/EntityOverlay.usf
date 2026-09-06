@@ -81,6 +81,15 @@ bool inside_hex(float2 const position, float2 const half_size) {
     return absolute_position.y <= half_size.y && absolute_position.x <= horizontal_limit;
 }
 
+float objective_badge_size(float2 const bar_size, float const frame_pixels) {
+    float const framed_bar_height = bar_size.y + frame_pixels * 2.0;
+    return max(framed_bar_height * 1.5, 24.0);
+}
+
+float objective_end_cap_size(float2 const bar_size, float const frame_pixels) {
+    return objective_badge_size(bar_size, frame_pixels) * 0.5;
+}
+
 void objective_layout(float2 const bar_size,
                       float const frame_pixels,
                       float2 const label_size,
@@ -90,19 +99,24 @@ void objective_layout(float2 const bar_size,
                       out float2 end_cap_center,
                       out float2 label_center) {
     float2 const bar_half_size = bar_size * 0.5;
-    float const icon_size = max(bar_size.y + frame_pixels * 2.0, 16.0);
-    float const end_cap_size = icon_size * 0.78;
-    icon_center =
-        float2(-bar_half_size.x - frame_pixels - icon_size * 0.5 + frame_pixels * 0.5, 0.0);
+    float const icon_size = objective_badge_size(bar_size, frame_pixels);
+    float const end_cap_size = objective_end_cap_size(bar_size, frame_pixels);
+    icon_center = float2(-bar_half_size.x - icon_size * 0.5 + frame_pixels * 1.25, 0.0);
     end_cap_center =
         float2(bar_half_size.x + frame_pixels + end_cap_size * 0.5 - frame_pixels * 0.5, 0.0);
     float const label_gap = max(frame_pixels * 0.4, 0.5);
-    label_center = float2(0.0, -bar_half_size.y - frame_pixels - label_gap - label_size.y * 0.5);
+    float const label_left = -bar_half_size.x + frame_pixels;
+    label_center = float2(label_left + label_size.x * 0.5,
+                          -bar_half_size.y - frame_pixels - label_gap - label_size.y * 0.5);
 
-    content_min = float2(min(icon_center.x - icon_size * 0.5, -label_size.x * 0.5),
-                         label_center.y - label_size.y * 0.5);
-    content_max = float2(max(end_cap_center.x + end_cap_size * 0.5, label_size.x * 0.5),
-                         bar_half_size.y + frame_pixels);
+    float const plaque_left_accent = max(frame_pixels * 4.0, 8.0);
+    float const plaque_right_accent = max(frame_pixels * 2.0, 4.0);
+    content_min = float2(min(icon_center.x - icon_size * 0.5,
+                             label_center.x - label_size.x * 0.5 - plaque_left_accent),
+                         min(label_center.y - label_size.y * 0.5, icon_center.y - icon_size * 0.5));
+    content_max = float2(max(end_cap_center.x + end_cap_size * 0.5,
+                             label_center.x + label_size.x * 0.5 + plaque_right_accent),
+                         max(bar_half_size.y + frame_pixels, icon_center.y + icon_size * 0.5));
 }
 
 struct EntityOverlayVertexOutput {
@@ -283,29 +297,6 @@ bool inside_edge_cue(float2 const local_position,
            across <= half_width * (1.0 - along / max(cue_length, 0.001));
 }
 
-bool inside_shield(float2 const position) {
-    float const y = position.y;
-    float const horizontal_limit = y <= 0.05 ? 0.58 : 0.58 * (1.0 - (y - 0.05) / 0.75);
-    return y >= -0.62 && y <= 0.72 && abs(position.x) <= max(horizontal_limit, 0.0);
-}
-
-bool inside_shield_icon(float2 const position) {
-    bool const outer = inside_shield(position);
-    bool const inner = inside_shield(position / 0.72);
-    return outer && !inner;
-}
-
-bool inside_attack_icon(float2 const position) {
-    float const radius = length(position);
-    bool const ring = abs(radius - 0.43) <= 0.08;
-    bool const vertical_ticks =
-        abs(position.x) <= 0.055 && abs(position.y) >= 0.46 && abs(position.y) <= 0.78;
-    bool const horizontal_ticks =
-        abs(position.y) <= 0.055 && abs(position.x) >= 0.46 && abs(position.x) <= 0.78;
-    bool const center = radius <= 0.085;
-    return ring || vertical_ticks || horizontal_ticks || center;
-}
-
 uint label_glyph(uint const role, uint const index) {
     if (role == ObjectiveRoleDefend) {
         if (index == 0 || index == 5) return GlyphD;
@@ -334,6 +325,115 @@ float distance_to_segment(float2 const position, float2 const start, float2 cons
     float2 const segment = end - start;
     float const alpha = saturate(dot(offset, segment) / max(dot(segment, segment), 0.0001));
     return length(offset - segment * alpha);
+}
+
+float ellipse_distance(float2 const position, float2 const radii) {
+    return (length(position / max(radii, 0.001)) - 1.0) * min(radii.x, radii.y);
+}
+
+float rotated_ellipse_distance(float2 const position,
+                               float2 const center,
+                               float2 const radii,
+                               float const radians) {
+    float sine;
+    float cosine;
+    sincos(radians, sine, cosine);
+    float2 const offset = position - center;
+    float2 const rotated =
+        float2(cosine * offset.x - sine * offset.y, sine * offset.x + cosine * offset.y);
+    return ellipse_distance(rotated, radii);
+}
+
+float shape_coverage(float const signed_distance) {
+    float const antialias_width = max(fwidth(signed_distance), 0.012);
+    return 1.0 - smoothstep(-antialias_width, antialias_width, signed_distance);
+}
+
+float bee_distance(float2 const position) {
+    float distance = ellipse_distance(position - float2(0.0, -0.32), float2(0.14, 0.14));
+    distance = min(distance, ellipse_distance(position - float2(0.0, -0.07), float2(0.17, 0.22)));
+    distance = min(distance, ellipse_distance(position - float2(0.0, 0.24), float2(0.18, 0.30)));
+
+    float const left_wing =
+        abs(rotated_ellipse_distance(position, float2(-0.29, -0.05), float2(0.26, 0.13), -0.48)) -
+        0.035;
+    float const right_wing =
+        abs(rotated_ellipse_distance(position, float2(0.29, -0.05), float2(0.26, 0.13), 0.48)) -
+        0.035;
+    distance = min(distance, min(left_wing, right_wing));
+
+    distance =
+        min(distance,
+            distance_to_segment(position, float2(-0.07, -0.43), float2(-0.23, -0.65)) - 0.025);
+    distance = min(distance,
+                   distance_to_segment(position, float2(0.07, -0.43), float2(0.23, -0.65)) - 0.025);
+    distance = min(
+        distance, distance_to_segment(position, float2(-0.13, -0.02), float2(-0.37, 0.11)) - 0.022);
+    distance = min(distance,
+                   distance_to_segment(position, float2(0.13, -0.02), float2(0.37, 0.11)) - 0.022);
+    distance = min(distance,
+                   distance_to_segment(position, float2(-0.13, 0.16), float2(-0.34, 0.34)) - 0.022);
+    distance = min(distance,
+                   distance_to_segment(position, float2(0.13, 0.16), float2(0.34, 0.34)) - 0.022);
+    distance =
+        min(distance, distance_to_segment(position, float2(0.0, 0.49), float2(0.0, 0.66)) - 0.03);
+    return distance;
+}
+
+float bee_stripe_coverage(float2 const position) {
+    float const abdomen = ellipse_distance(position - float2(0.0, 0.24), float2(0.18, 0.30));
+    float const stripes = min(abs(position.y - 0.16), abs(position.y - 0.32)) - 0.035;
+    return shape_coverage(max(abdomen, stripes));
+}
+
+float defend_bee_cue_distance(float2 const position) {
+    float distance =
+        distance_to_segment(position, float2(-0.53, -0.50), float2(0.53, -0.50)) - 0.018;
+    distance = min(distance,
+                   distance_to_segment(position, float2(0.53, -0.50), float2(0.47, 0.24)) - 0.018);
+    distance =
+        min(distance, distance_to_segment(position, float2(0.47, 0.24), float2(0.0, 0.72)) - 0.018);
+    distance = min(distance,
+                   distance_to_segment(position, float2(0.0, 0.72), float2(-0.47, 0.24)) - 0.018);
+    distance = min(
+        distance, distance_to_segment(position, float2(-0.47, 0.24), float2(-0.53, -0.50)) - 0.018);
+    return distance;
+}
+
+float attack_bee_cue_distance(float2 const position) {
+    float distance = distance_to_segment(position, float2(-0.72, 0.0), float2(-0.56, 0.0)) - 0.026;
+    distance =
+        min(distance, distance_to_segment(position, float2(0.56, 0.0), float2(0.72, 0.0)) - 0.026);
+    distance = min(distance,
+                   distance_to_segment(position, float2(0.0, -0.72), float2(0.0, -0.56)) - 0.026);
+    distance =
+        min(distance, distance_to_segment(position, float2(0.0, 0.56), float2(0.0, 0.78)) - 0.026);
+    return distance;
+}
+
+bool inside_plaque_accents(float2 const position,
+                           float2 const plaque_center,
+                           float2 const plaque_half_size,
+                           float const frame_pixels) {
+    float const left = plaque_center.x - plaque_half_size.x;
+    float const right = plaque_center.x + plaque_half_size.x;
+    float const half_line = max(frame_pixels * 0.22, 0.55);
+    bool const left_upper =
+        position.x >= left - frame_pixels * 2.6 && position.x <= left - frame_pixels * 0.5 &&
+        abs(position.y - (plaque_center.y - plaque_half_size.y * 0.36)) <= half_line;
+    bool const left_middle = position.x >= left - frame_pixels * 4.0 &&
+                             position.x <= left - frame_pixels * 0.5 &&
+                             abs(position.y - plaque_center.y) <= half_line;
+    bool const left_lower =
+        position.x >= left - frame_pixels * 2.0 && position.x <= left - frame_pixels * 0.5 &&
+        abs(position.y - (plaque_center.y + plaque_half_size.y * 0.36)) <= half_line;
+    bool const right_upper =
+        position.x >= right + frame_pixels * 0.5 && position.x <= right + frame_pixels * 1.8 &&
+        abs(position.y - (plaque_center.y - plaque_half_size.y * 0.24)) <= half_line;
+    bool const right_lower =
+        position.x >= right + frame_pixels * 0.5 && position.x <= right + frame_pixels * 1.2 &&
+        abs(position.y - (plaque_center.y + plaque_half_size.y * 0.28)) <= half_line;
+    return left_upper || left_middle || left_lower || right_upper || right_lower;
 }
 
 float glyph_distance(uint const glyph, float2 const position) {
@@ -509,6 +609,12 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
 
     float2 const label_half_size = input.label_size_pixels * 0.5;
     float const label_chamfer = max(frame_pixels * 1.4, 2.0);
+    if (inside_plaque_accents(
+            local_position, label_center, label_half_size, max(frame_pixels, 1.0))) {
+        return metallic_gold(
+            local_position, label_center - label_half_size, label_center + label_half_size);
+    }
+
     if (inside_chamfered_box(local_position - label_center, label_half_size, label_chamfer)) {
         float2 const label_inner_half = max(label_half_size - max(frame_pixels * 0.7, 1.5), 0.0);
         bool const label_inner = inside_chamfered_box(
@@ -530,14 +636,7 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
         return lerp(plaque_background, text_color, text_coverage);
     }
 
-    float const connector_top = label_center.y + label_half_size.y;
-    float const connector_bottom = -bar_half_size.y - frame_pixels;
-    if (abs(local_position.x) <= max(frame_pixels * 0.5, 0.75) &&
-        local_position.y >= connector_top && local_position.y <= connector_bottom) {
-        return metallic_gold(local_position, content_min, content_max);
-    }
-
-    float const icon_size = max(input.bar_size_pixels.y + frame_pixels * 2.0, 16.0);
+    float const icon_size = objective_badge_size(input.bar_size_pixels, frame_pixels);
     float2 const icon_half_size = icon_size * 0.5;
     float2 const icon_position = local_position - icon_center;
     if (inside_hex(icon_position, icon_half_size)) {
@@ -546,20 +645,32 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
             return metallic_gold(local_position, content_min, content_max);
         }
 
-        float2 const normalized_icon_position = icon_position / max(icon_inner_half * 0.78, 0.5);
-        bool const icon_pixel = objective_role == ObjectiveRoleDefend
-                                  ? inside_shield_icon(normalized_icon_position)
-                                  : inside_attack_icon(normalized_icon_position);
-        if (icon_pixel) {
-            float3 const attack_tint = lerp(DefendObjectiveColor.rgb,
-                                            DestroyObjectiveColor.rgb,
-                                            objective_role == ObjectiveRoleDestroy ? 0.2 : 0.0);
-            return float4(lerp(attack_tint, 1.0, 0.18), DefendObjectiveColor.a);
-        }
-        return float4(BackgroundColor.rgb * 0.5, max(BackgroundColor.a, 0.9));
+        float2 const normalized_icon_position = icon_position / max(icon_inner_half * 0.82, 0.5);
+        float4 const badge_gold = metallic_gold(
+            local_position, icon_center - icon_half_size, icon_center + icon_half_size);
+        float const vertical_badge_alpha =
+            saturate(icon_position.y / max(icon_inner_half.y, 0.001) * 0.5 + 0.5);
+        float4 const badge_background = float4(lerp(BackgroundColor.rgb * 0.34,
+                                                    DefendObjectiveColor.rgb * 0.11,
+                                                    0.22 * (1.0 - vertical_badge_alpha)),
+                                               max(BackgroundColor.a, 0.95));
+
+        float const cue_distance = objective_role == ObjectiveRoleDefend
+                                     ? defend_bee_cue_distance(normalized_icon_position)
+                                     : attack_bee_cue_distance(normalized_icon_position);
+        float const cue_coverage = shape_coverage(cue_distance) * 0.52;
+        float const bee_coverage = shape_coverage(bee_distance(normalized_icon_position));
+        float const stripe_coverage = bee_stripe_coverage(normalized_icon_position) * bee_coverage;
+        float4 const cue_color = float4(badge_gold.rgb * 0.72, badge_gold.a);
+        float4 const bee_color =
+            float4(lerp(badge_gold.rgb, float3(1.0, 0.93, 0.58), 0.46), badge_gold.a);
+        float4 emblem = lerp(badge_background, cue_color, cue_coverage);
+        emblem = lerp(emblem, bee_color, bee_coverage);
+        emblem = lerp(emblem, badge_background * float4(0.7, 0.7, 0.7, 1.0), stripe_coverage);
+        return emblem;
     }
 
-    float const end_cap_size = icon_size * 0.78;
+    float const end_cap_size = objective_end_cap_size(input.bar_size_pixels, frame_pixels);
     float2 const end_cap_half_size = end_cap_size * 0.5;
     float2 const end_cap_position = local_position - end_cap_center;
     if (inside_hex(end_cap_position, end_cap_half_size)) {
@@ -585,8 +696,8 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
             float const edge_band =
                 abs(abs(local_position.y) - (bar_half_size.y + frame_pixels * 0.5));
             float const honey_detail =
-                0.06 * smoothstep(0.8, 0.0, edge_band) *
-                smoothstep(0.36, 0.48, abs(frac(local_position.x / 8.0) - 0.5));
+                0.14 * smoothstep(1.0, 0.0, edge_band) *
+                smoothstep(0.24, 0.48, abs(frac(local_position.x / 9.0) - 0.5));
             gold.rgb = lerp(gold.rgb, 1.0, honey_detail);
             return gold;
         }
