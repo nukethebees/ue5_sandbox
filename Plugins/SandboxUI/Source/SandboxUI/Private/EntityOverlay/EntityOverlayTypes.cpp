@@ -21,8 +21,10 @@ auto pack_display_data(EEntityOverlayObjectiveRole const objective_role) -> uint
 
 auto pack_display_data(EEntityOverlayObjectiveRole const objective_role,
                        FLinearColor const fill_color,
-                       bool const soft_target) -> uint32 {
-    auto const soft_target_data{soft_target ? FEntityOverlayInstance::soft_target_mask : 0u};
+                       EEntityOverlaySoftTargetRole const soft_target_role) -> uint32 {
+    auto const soft_target_data{static_cast<uint32>(soft_target_role)
+                                << FEntityOverlayInstance::soft_target_role_shift};
+    check((soft_target_data & ~FEntityOverlayInstance::soft_target_role_mask) == 0);
     return pack_display_data(objective_role) | has_fill_color_mask | soft_target_data |
            (pack_unorm8(fill_color.R) << fill_color_red_shift) |
            (pack_unorm8(fill_color.G) << fill_color_green_shift) |
@@ -48,11 +50,12 @@ auto FEntityOverlayCollector::try_add(FVector3f const position,
                                       float world_radius,
                                       EEntityOverlayObjectiveRole const objective_role,
                                       bool const bypass_range,
-                                      bool const soft_target) -> bool {
+                                      EEntityOverlaySoftTargetRole const soft_target_role) -> bool {
     auto display_data{ml::ui::entity_overlay::pack_display_data(objective_role)};
-    if (soft_target) {
-        display_data |= FEntityOverlayInstance::soft_target_mask;
-    }
+    display_data |= static_cast<uint32>(soft_target_role)
+                 << FEntityOverlayInstance::soft_target_role_shift;
+    check((display_data & FEntityOverlayInstance::soft_target_role_mask) ==
+          static_cast<uint32>(soft_target_role) << FEntityOverlayInstance::soft_target_role_shift);
     return try_add_impl(position, normalized_health, world_radius, display_data, bypass_range);
 }
 
@@ -62,12 +65,13 @@ auto FEntityOverlayCollector::try_add_colored(FVector3f const position,
                                               FLinearColor const fill_color,
                                               EEntityOverlayObjectiveRole const objective_role,
                                               bool const bypass_range,
-                                              bool const soft_target) -> bool {
+                                              EEntityOverlaySoftTargetRole const soft_target_role)
+    -> bool {
     return try_add_impl(
         position,
         normalized_health,
         world_radius,
-        ml::ui::entity_overlay::pack_display_data(objective_role, fill_color, soft_target),
+        ml::ui::entity_overlay::pack_display_data(objective_role, fill_color, soft_target_role),
         bypass_range);
 }
 

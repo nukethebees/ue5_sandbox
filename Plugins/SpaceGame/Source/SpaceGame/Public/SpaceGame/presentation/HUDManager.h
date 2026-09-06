@@ -194,9 +194,15 @@ struct SPACEGAME_API FHUDManager {
         FEntityOverlayFrameStorePtr frame_store;
         FEntityOverlayCollector collector;
         FRegistryEntityHandle soft_target{};
+        float soft_target_range_progress{0.0f};
+        float soft_target_radius_pixels{0.0f};
         float soft_target_pulse_remaining{0.0f};
-        float soft_target_fade_remaining{0.0f};
         bool soft_target_in_range{false};
+        FRegistryEntityHandle fading_soft_target{};
+        float fading_soft_target_range_progress{0.0f};
+        float fading_soft_target_radius_pixels{0.0f};
+        float fading_soft_target_visibility_remaining{0.0f};
+        bool fading_soft_target_in_range{false};
     };
 
     auto collect_data(FPeriodicTickCountdown8::counter_type num_ticks)

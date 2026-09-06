@@ -18,8 +18,15 @@ enum class EEntityOverlayObjectiveRole : uint32 {
     Destroy,
 };
 
+enum class EEntityOverlaySoftTargetRole : uint32 {
+    None,
+    Active,
+    Fading,
+};
+
 struct SANDBOXUI_API FEntityOverlayInstance {
-    static constexpr uint32 soft_target_mask{1u << 3};
+    static constexpr uint32 soft_target_role_shift{3};
+    static constexpr uint32 soft_target_role_mask{0x3u << soft_target_role_shift};
 
     FVector3f world_position{FVector3f::ZeroVector};
     float health{0.0f};
@@ -27,7 +34,12 @@ struct SANDBOXUI_API FEntityOverlayInstance {
     uint32 display_data{0};
 
     [[nodiscard]] auto is_soft_target() const noexcept -> bool {
-        return (display_data & soft_target_mask) != 0;
+        return (display_data & soft_target_role_mask) != 0;
+    }
+
+    [[nodiscard]] auto soft_target_role() const noexcept -> EEntityOverlaySoftTargetRole {
+        return static_cast<EEntityOverlaySoftTargetRole>((display_data & soft_target_role_mask) >>
+                                                         soft_target_role_shift);
     }
 };
 
@@ -92,6 +104,10 @@ struct SANDBOXUI_API FEntityOverlayFrame {
     float soft_target_pulse{0.0f};
     float soft_target_visibility{1.0f};
     bool soft_target_in_range{false};
+    float fading_soft_target_range_progress{0.0f};
+    float fading_soft_target_radius_pixels{0.0f};
+    float fading_soft_target_visibility{0.0f};
+    bool fading_soft_target_in_range{false};
 };
 
 class FEntityOverlayCollector {
@@ -107,7 +123,8 @@ class FEntityOverlayCollector {
                 float world_radius,
                 EEntityOverlayObjectiveRole objective_role = EEntityOverlayObjectiveRole::None,
                 bool bypass_range = false,
-                bool soft_target = false) -> bool;
+                EEntityOverlaySoftTargetRole soft_target_role = EEntityOverlaySoftTargetRole::None)
+            -> bool;
     [[nodiscard]] SANDBOXUI_API auto try_add_colored(
         FVector3f position,
         float normalized_health,
@@ -115,7 +132,7 @@ class FEntityOverlayCollector {
         FLinearColor fill_color,
         EEntityOverlayObjectiveRole objective_role = EEntityOverlayObjectiveRole::None,
         bool bypass_range = false,
-        bool soft_target = false) -> bool;
+        EEntityOverlaySoftTargetRole soft_target_role = EEntityOverlaySoftTargetRole::None) -> bool;
     [[nodiscard]] SANDBOXUI_API auto append(FEntityOverlaySourceView source) -> int32;
 
     [[nodiscard]] auto invalid_health_count() const noexcept -> int32 {

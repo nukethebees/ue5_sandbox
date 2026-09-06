@@ -70,5 +70,6 @@ struct SPACEGAME_API FEntityOverlayCollectionResult {
                                      float maximum_range,
                                      TArray<FEntityOverlayInstance>& output_instances,
                                      FEntityOverlayCollector& collector,
-                                     int32 soft_target_entity_index = INDEX_NONE)
+                                     int32 soft_target_entity_index = INDEX_NONE,
+                                     int32 fading_soft_target_entity_index = INDEX_NONE)
         -> FEntityOverlayCollectionResult;

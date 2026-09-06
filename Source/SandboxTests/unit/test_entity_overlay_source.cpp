@@ -275,11 +275,12 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("In-range progress is complete"), in_range.range_progress, 1.0f);
     }
 
-    TEST_METHOD(MarksOnlyTheSelectedOverlayInstance)
+    TEST_METHOD(MarksActiveAndFadingOverlayInstances)
     {
         ml::entity_registry::EntityData entities;
         add_entity(entities, {10.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
         add_entity(entities, {20.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
+        add_entity(entities, {30.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret);
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
@@ -293,9 +294,16 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                                                            100.0f,
                                                            output,
                                                            collector,
-                                                           1));
+                                                           1,
+                                                           2));
 
         TestRunner->TestFalse(TEXT("Unselected instance is unmarked"), output[0].is_soft_target());
         TestRunner->TestTrue(TEXT("Selected instance is marked"), output[1].is_soft_target());
+        TestRunner->TestEqual(TEXT("Selected instance is active"),
+                              output[1].soft_target_role(),
+                              EEntityOverlaySoftTargetRole::Active);
+        TestRunner->TestEqual(TEXT("Previous instance is fading"),
+                              output[2].soft_target_role(),
+                              EEntityOverlaySoftTargetRole::Fading);
     }
 };

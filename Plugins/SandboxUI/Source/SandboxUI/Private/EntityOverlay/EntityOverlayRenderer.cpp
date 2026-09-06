@@ -41,6 +41,12 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
     SHADER_PARAMETER(float, SoftTargetRangeProgress)
     SHADER_PARAMETER(float, SoftTargetPulse)
+    SHADER_PARAMETER(float, SoftTargetVisibility)
+    SHADER_PARAMETER(float, SoftTargetInRange)
+    SHADER_PARAMETER(float, FadingSoftTargetRadiusPixels)
+    SHADER_PARAMETER(float, FadingSoftTargetRangeProgress)
+    SHADER_PARAMETER(float, FadingSoftTargetVisibility)
+    SHADER_PARAMETER(float, FadingSoftTargetInRange)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
     END_SHADER_PARAMETER_STRUCT()
 
@@ -64,8 +70,6 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_PARAMETER(float, SoftTargetOpacity)
     SHADER_PARAMETER(float, SoftTargetGlowOpacity)
     SHADER_PARAMETER(float, SoftTargetPulseOpacityBoost)
-    SHADER_PARAMETER(float, SoftTargetVisibility)
-    SHADER_PARAMETER(float, SoftTargetInRange)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
     SHADER_PARAMETER(FVector4f, DefendObjectiveColor)
@@ -143,6 +147,15 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     parameters->VS.SoftTargetRangeProgress =
         FMath::Clamp(frame.soft_target_range_progress, 0.0f, 1.0f);
     parameters->VS.SoftTargetPulse = FMath::Clamp(frame.soft_target_pulse, 0.0f, 1.0f);
+    parameters->VS.SoftTargetVisibility = FMath::Clamp(frame.soft_target_visibility, 0.0f, 1.0f);
+    parameters->VS.SoftTargetInRange = frame.soft_target_in_range ? 1.0f : 0.0f;
+    parameters->VS.FadingSoftTargetRadiusPixels =
+        FMath::Max(frame.fading_soft_target_radius_pixels, 1.0f);
+    parameters->VS.FadingSoftTargetRangeProgress =
+        FMath::Clamp(frame.fading_soft_target_range_progress, 0.0f, 1.0f);
+    parameters->VS.FadingSoftTargetVisibility =
+        FMath::Clamp(frame.fading_soft_target_visibility, 0.0f, 1.0f);
+    parameters->VS.FadingSoftTargetInRange = frame.fading_soft_target_in_range ? 1.0f : 0.0f;
     parameters->VS.Instances = graph_builder.CreateSRV(instance_buffer);
     parameters->PS.InsetPixels = style.inset_pixels;
     parameters->PS.MaximumInsetHeightRatio = FMath::Max(style.maximum_inset_height_ratio, 0.0f);
@@ -154,8 +167,6 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     parameters->PS.SoftTargetGlowOpacity = FMath::Clamp(style.soft_target_glow_opacity, 0.0f, 1.0f);
     parameters->PS.SoftTargetPulseOpacityBoost =
         FMath::Clamp(style.soft_target_pulse_opacity_boost, 0.0f, 1.0f);
-    parameters->PS.SoftTargetVisibility = FMath::Clamp(frame.soft_target_visibility, 0.0f, 1.0f);
-    parameters->PS.SoftTargetInRange = frame.soft_target_in_range ? 1.0f : 0.0f;
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
     parameters->PS.DefendObjectiveColor = FVector4f{style.defend_objective_color};

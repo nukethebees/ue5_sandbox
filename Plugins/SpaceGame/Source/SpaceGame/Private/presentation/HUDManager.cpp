@@ -150,9 +150,15 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     }
     for (auto& registration : registered_huds) {
         registration.soft_target = {};
+        registration.soft_target_range_progress = 0.0f;
+        registration.soft_target_radius_pixels = 0.0f;
         registration.soft_target_pulse_remaining = 0.0f;
-        registration.soft_target_fade_remaining = 0.0f;
         registration.soft_target_in_range = false;
+        registration.fading_soft_target = {};
+        registration.fading_soft_target_range_progress = 0.0f;
+        registration.fading_soft_target_radius_pixels = 0.0f;
+        registration.fading_soft_target_visibility_remaining = 0.0f;
+        registration.fading_soft_target_in_range = false;
     }
     update_entity_overlays(0.0f);
 }
@@ -351,11 +357,27 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     frame.soft_target_pulse = 0.0f;
     frame.soft_target_visibility = 1.0f;
     frame.soft_target_in_range = false;
-    auto const clear_soft_target_state = [&registration] {
+    frame.fading_soft_target_range_progress = 0.0f;
+    frame.fading_soft_target_radius_pixels = 0.0f;
+    frame.fading_soft_target_visibility = 0.0f;
+    frame.fading_soft_target_in_range = false;
+    auto const clear_active_soft_target = [&registration] {
         registration.soft_target = {};
+        registration.soft_target_range_progress = 0.0f;
+        registration.soft_target_radius_pixels = 0.0f;
         registration.soft_target_pulse_remaining = 0.0f;
-        registration.soft_target_fade_remaining = 0.0f;
         registration.soft_target_in_range = false;
+    };
+    auto const clear_fading_soft_target = [&registration] {
+        registration.fading_soft_target = {};
+        registration.fading_soft_target_range_progress = 0.0f;
+        registration.fading_soft_target_radius_pixels = 0.0f;
+        registration.fading_soft_target_visibility_remaining = 0.0f;
+        registration.fading_soft_target_in_range = false;
+    };
+    auto const clear_soft_target_state = [&clear_active_soft_target, &clear_fading_soft_target] {
+        clear_active_soft_target();
+        clear_fading_soft_target();
     };
 
     FEntityOverlayView overlay_view;
@@ -403,44 +425,63 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     auto const elapsed_seconds{FMath::Max(delta_seconds, 0.0f)};
     registration.soft_target_pulse_remaining =
         FMath::Max(registration.soft_target_pulse_remaining - elapsed_seconds, 0.0f);
-    auto displayed_soft_target{soft_target};
+    if (registration.fading_soft_target.is_valid()) {
+        registration.fading_soft_target_visibility_remaining = FMath::Max(
+            registration.fading_soft_target_visibility_remaining - elapsed_seconds, 0.0f);
+        if (!entity_registry->is_valid_alive(registration.fading_soft_target) ||
+            registration.fading_soft_target_visibility_remaining <= 0.0f) {
+            clear_fading_soft_target();
+        }
+    }
+
+    auto const begin_active_soft_target_fade = [&] {
+        if (!registration.soft_target.is_valid() ||
+            !entity_registry->is_valid_alive(registration.soft_target) ||
+            soft_target_fade_out_duration_ <= 0.0f) {
+            return;
+        }
+        registration.fading_soft_target = registration.soft_target;
+        registration.fading_soft_target_range_progress = registration.soft_target_range_progress;
+        registration.fading_soft_target_radius_pixels = registration.soft_target_radius_pixels;
+        registration.fading_soft_target_visibility_remaining = soft_target_fade_out_duration_;
+        registration.fading_soft_target_in_range = registration.soft_target_in_range;
+    };
+
     if (soft_target.handle.is_valid()) {
         if (soft_target.handle != registration.soft_target) {
+            if (soft_target.handle == registration.fading_soft_target) {
+                clear_fading_soft_target();
+            }
+            begin_active_soft_target_fade();
             registration.soft_target_pulse_remaining = 0.0f;
         } else if (!registration.soft_target_in_range && soft_target.in_range) {
             registration.soft_target_pulse_remaining = soft_target_pulse_duration_;
         }
         registration.soft_target = soft_target.handle;
-        registration.soft_target_fade_remaining = 0.0f;
+        registration.soft_target_range_progress = soft_target.range_progress;
+        registration.soft_target_radius_pixels = soft_target.indicator_radius_pixels;
         registration.soft_target_in_range = soft_target.in_range;
-    } else if (soft_target.previous_target_can_fade &&
-               entity_registry->is_valid_alive(registration.soft_target) &&
-               soft_target_fade_out_duration_ > 0.0f) {
-        registration.soft_target_pulse_remaining = 0.0f;
-        if (registration.soft_target_fade_remaining <= 0.0f) {
-            registration.soft_target_fade_remaining = soft_target_fade_out_duration_;
-        }
-        registration.soft_target_fade_remaining =
-            FMath::Max(registration.soft_target_fade_remaining - elapsed_seconds, 0.0f);
-        if (registration.soft_target_fade_remaining > 0.0f) {
-            displayed_soft_target.handle = registration.soft_target;
-            registration.soft_target_in_range = soft_target.in_range;
-            frame.soft_target_visibility =
-                registration.soft_target_fade_remaining / soft_target_fade_out_duration_;
-        } else {
-            clear_soft_target_state();
-        }
     } else {
-        clear_soft_target_state();
+        if (soft_target.previous_target_can_fade) {
+            begin_active_soft_target_fade();
+        }
+        clear_active_soft_target();
     }
 
-    frame.soft_target_range_progress = displayed_soft_target.range_progress;
-    frame.soft_target_radius_pixels = displayed_soft_target.indicator_radius_pixels;
+    frame.soft_target_range_progress = registration.soft_target_range_progress;
+    frame.soft_target_radius_pixels = registration.soft_target_radius_pixels;
     frame.soft_target_pulse =
         soft_target_pulse_duration_ > 0.0f
             ? registration.soft_target_pulse_remaining / soft_target_pulse_duration_
             : 0.0f;
-    frame.soft_target_in_range = displayed_soft_target.in_range;
+    frame.soft_target_in_range = registration.soft_target_in_range;
+    frame.fading_soft_target_range_progress = registration.fading_soft_target_range_progress;
+    frame.fading_soft_target_radius_pixels = registration.fading_soft_target_radius_pixels;
+    frame.fading_soft_target_visibility =
+        soft_target_fade_out_duration_ > 0.0f
+            ? registration.fading_soft_target_visibility_remaining / soft_target_fade_out_duration_
+            : 0.0f;
+    frame.fading_soft_target_in_range = registration.fading_soft_target_in_range;
 
     auto const result{collect_entity_overlay_instances(
         entity_registry->get_entity_data().get_const_view(),
@@ -451,7 +492,9 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
         entity_overlay_settings_.maximum_range,
         frame.instances,
         registration.collector,
-        displayed_soft_target.handle.is_valid() ? displayed_soft_target.handle.index : INDEX_NONE)};
+        registration.soft_target.is_valid() ? registration.soft_target.index : INDEX_NONE,
+        registration.fading_soft_target.is_valid() ? registration.fading_soft_target.index
+                                                   : INDEX_NONE)};
     registration.frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, result.candidate_count);
