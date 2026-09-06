@@ -14,7 +14,7 @@ DEFINE_LOG_CATEGORY_STATIC(LogSbxMeshAssemblyRecipe, Log, All);
 namespace SandboxMesh {
 namespace {
 FString const recipe_package_path{TEXT("/SandboxMesh/MeshGenLab/Recipes")};
-FString const generated_package_path{TEXT("/SandboxMesh/MeshGenLab/Generated")};
+FString const generated_recipe_package_path{TEXT("/SandboxMesh/MeshGenLab/Generated")};
 
 auto ensure_content_directory(FString const& subdirectory) -> bool {
     auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxMesh"))};
@@ -122,8 +122,12 @@ auto write_generated_mesh_assembly_recipe_asset(FName const recipe_name,
                                                 TArray<FSbxMeshAssemblyRecipePart> const& parts,
                                                 TArray<FSbxMeshAssemblyRecipeGroup> const& groups)
     -> USbxMeshAssemblyRecipe* {
-    return write_recipe_asset(
-        generated_package_path, TEXT("Generated"), recipe_name, output_asset_name, parts, groups);
+    return write_recipe_asset(generated_recipe_package_path,
+                              TEXT("Generated"),
+                              recipe_name,
+                              output_asset_name,
+                              parts,
+                              groups);
 }
 
 }

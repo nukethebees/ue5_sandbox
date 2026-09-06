@@ -6,11 +6,12 @@
     {
       "id": "A314B0D84F92AC5E45A0BBBE5AE6A257",
       "parent_id": "00000000000000000000000000000000",
-      "shape": "Box",
+      "shape": "BeveledBox",
       "translation": "(X=0.000000,Y=0.000000,Z=0.000000)",
       "rotation": "(Pitch=0.000000,Yaw=0.000000,Roll=0.000000)",
       "scale": "(X=1.000000,Y=1.000000,Z=1.000000)",
-      "box_dimensions": "(X=160.000000,Y=100.000000,Z=50.000000)"
+      "beveled_box_dimensions": "(X=160.000000,Y=100.000000,Z=50.000000)",
+      "beveled_box_bevel_width": 8.0
     },
     {
       "id": "7AE516614E0315B26445FEA789039D1E",
@@ -23,6 +24,17 @@
       "hex_frame_wall_thickness": 9.0,
       "hex_frame_depth": 24.0,
       "hex_frame_pointy_top": false
+    },
+    {
+      "id": "5574389A4CB7EFF7526E98ABF6CE244D",
+      "parent_id": "00000000000000000000000000000000",
+      "shape": "Wedge",
+      "translation": "(X=-105.000000,Y=0.000000,Z=0.000000)",
+      "rotation": "(Pitch=0.000000,Yaw=0.000000,Roll=0.000000)",
+      "scale": "(X=1.000000,Y=1.000000,Z=1.000000)",
+      "wedge_dimensions": "(X=70.000000,Y=100.000000,Z=45.000000)",
+      "wedge_top_length": 25.0,
+      "wedge_top_offset": 15.0
     }
   ],
   "groups": []

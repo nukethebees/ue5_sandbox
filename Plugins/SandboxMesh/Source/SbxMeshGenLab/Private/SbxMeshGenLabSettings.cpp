@@ -6,6 +6,8 @@ auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
     request.box.dimensions = FVector3f{static_cast<float>(box_dimensions.X),
                                        static_cast<float>(box_dimensions.Y),
                                        static_cast<float>(box_dimensions.Z)};
+    request.beveled_box = {FVector3f{beveled_box_dimensions}, beveled_box_bevel_width};
+    request.wedge = {FVector3f{wedge_dimensions}, wedge_top_length, wedge_top_offset};
     request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
     request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
     request.cone = {cone_radius, cone_height, cone_radial_segments};
@@ -30,6 +32,11 @@ void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& reque
     shape = request.shape;
     asset_name = request.asset_name;
     box_dimensions = FVector{request.box.dimensions};
+    beveled_box_dimensions = FVector{request.beveled_box.dimensions};
+    beveled_box_bevel_width = request.beveled_box.bevel_width;
+    wedge_dimensions = FVector{request.wedge.dimensions};
+    wedge_top_length = request.wedge.top_length;
+    wedge_top_offset = request.wedge.top_offset;
     cylinder_radius = request.cylinder.radius;
     cylinder_height = request.cylinder.height;
     cylinder_radial_segments = request.cylinder.radial_segments;

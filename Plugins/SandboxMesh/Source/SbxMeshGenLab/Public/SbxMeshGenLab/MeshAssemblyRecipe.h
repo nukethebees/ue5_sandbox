@@ -30,6 +30,21 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     UPROPERTY(EditAnywhere, Category = "Box")
     FVector box_dimensions{100.0, 100.0, 100.0};
 
+    UPROPERTY(EditAnywhere, Category = "Beveled Box")
+    FVector beveled_box_dimensions{100.0, 100.0, 100.0};
+
+    UPROPERTY(EditAnywhere, Category = "Beveled Box")
+    float beveled_box_bevel_width{10.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Wedge")
+    FVector wedge_dimensions{100.0, 100.0, 50.0};
+
+    UPROPERTY(EditAnywhere, Category = "Wedge")
+    float wedge_top_length{50.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Wedge")
+    float wedge_top_offset{};
+
     UPROPERTY(EditAnywhere, Category = "Cylinder")
     float cylinder_radius{50.0f};
 

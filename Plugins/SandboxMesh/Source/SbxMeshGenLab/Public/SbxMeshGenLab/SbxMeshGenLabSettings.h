@@ -71,6 +71,39 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     FVector box_dimensions{100.0, 100.0, 100.0};
 
     UPROPERTY(EditAnywhere,
+              Category = "Beveled Box",
+              meta = (EditCondition = "shape == ESbxMeshShape::BeveledBox",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    FVector beveled_box_dimensions{100.0, 100.0, 100.0};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Beveled Box",
+              meta = (EditCondition = "shape == ESbxMeshShape::BeveledBox",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float beveled_box_bevel_width{10.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Wedge",
+              meta = (EditCondition = "shape == ESbxMeshShape::Wedge",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    FVector wedge_dimensions{100.0, 100.0, 50.0};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Wedge",
+              meta = (EditCondition = "shape == ESbxMeshShape::Wedge",
+                      EditConditionHides,
+                      ClampMin = "0.001"))
+    float wedge_top_length{50.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Wedge",
+              meta = (EditCondition = "shape == ESbxMeshShape::Wedge", EditConditionHides))
+    float wedge_top_offset{};
+
+    UPROPERTY(EditAnywhere,
               Category = "Cylinder",
               meta = (EditCondition = "shape == ESbxMeshShape::Cylinder",
                       EditConditionHides,

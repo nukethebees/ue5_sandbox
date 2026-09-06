@@ -29,6 +29,12 @@ auto make_default_mesh_request(ESbxMeshShape const shape) -> FSbxMeshGenerationR
         case ESbxMeshShape::HoneycombPanel:
             request.asset_name = TEXT("SM_GeneratedHoneycombPanel");
             break;
+        case ESbxMeshShape::BeveledBox:
+            request.asset_name = TEXT("SM_GeneratedBeveledBox");
+            break;
+        case ESbxMeshShape::Wedge:
+            request.asset_name = TEXT("SM_GeneratedWedge");
+            break;
     }
     return request;
 }
@@ -101,6 +107,26 @@ auto validate_mesh_request(FSbxMeshGenerationRequest const& request) -> FString 
                 return TEXT("Honeycomb wall thickness must be less than its cell radius.");
             }
             break;
+        case ESbxMeshShape::BeveledBox:
+            if (request.beveled_box.dimensions.GetMin() <= 0.0f ||
+                request.beveled_box.bevel_width <= 0.0f) {
+                return TEXT("Beveled-box dimensions and bevel width must be positive.");
+            }
+            if (request.beveled_box.bevel_width >= request.beveled_box.dimensions.GetMin() * 0.5f) {
+                return TEXT("Beveled-box bevel width must be less than half its smallest "
+                            "dimension.");
+            }
+            break;
+        case ESbxMeshShape::Wedge:
+            if (request.wedge.dimensions.GetMin() <= 0.0f || request.wedge.top_length <= 0.0f) {
+                return TEXT("Wedge dimensions and top length must be positive.");
+            }
+            if (request.wedge.top_length > request.wedge.dimensions.X ||
+                FMath::Abs(request.wedge.top_offset) + request.wedge.top_length * 0.5f >
+                    request.wedge.dimensions.X * 0.5f) {
+                return TEXT("Wedge top length and offset must keep the top within its base.");
+            }
+            break;
     }
 
     return {};
@@ -123,6 +149,10 @@ auto generate_mesh(FSbxMeshGenerationRequest const& request) -> FSbxMeshData {
             return generate_hex_frame(request.hex_frame);
         case ESbxMeshShape::HoneycombPanel:
             return generate_honeycomb_panel(request.honeycomb_panel);
+        case ESbxMeshShape::BeveledBox:
+            return generate_beveled_box(request.beveled_box);
+        case ESbxMeshShape::Wedge:
+            return generate_wedge(request.wedge);
     }
 
     checkNoEntry();
@@ -174,6 +204,16 @@ auto describe_mesh_request(FSbxMeshGenerationRequest const& request) -> FString 
                                    request.honeycomb_panel.depth,
                                    request.honeycomb_panel.pointy_top ? TEXT("true")
                                                                       : TEXT("false"));
+        case ESbxMeshShape::BeveledBox:
+            return FString::Printf(TEXT("version=1;shape=beveled_box;dimensions=%s;bevel_width=%g"),
+                                   *request.beveled_box.dimensions.ToString(),
+                                   request.beveled_box.bevel_width);
+        case ESbxMeshShape::Wedge:
+            return FString::Printf(
+                TEXT("version=1;shape=wedge;dimensions=%s;top_length=%g;top_offset=%g"),
+                *request.wedge.dimensions.ToString(),
+                request.wedge.top_length,
+                request.wedge.top_offset);
     }
 
     checkNoEntry();

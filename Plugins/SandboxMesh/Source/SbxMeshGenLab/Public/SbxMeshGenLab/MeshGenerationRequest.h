@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SbxMeshGenLab/BeveledBoxGenerator.h"
 #include "SbxMeshGenLab/BoxGenerator.h"
 #include "SbxMeshGenLab/ConeGenerator.h"
 #include "SbxMeshGenLab/CylinderGenerator.h"
@@ -7,6 +8,7 @@
 #include "SbxMeshGenLab/HexTileGenerator.h"
 #include "SbxMeshGenLab/HoneycombPanelGenerator.h"
 #include "SbxMeshGenLab/SphereGenerator.h"
+#include "SbxMeshGenLab/WedgeGenerator.h"
 
 #include "MeshGenerationRequest.generated.h"
 
@@ -19,6 +21,8 @@ enum class ESbxMeshShape : uint8 {
     HexTile UMETA(DisplayName = "Hex Tile"),
     HexFrame UMETA(DisplayName = "Hex Frame"),
     HoneycombPanel UMETA(DisplayName = "Honeycomb Panel"),
+    BeveledBox UMETA(DisplayName = "Beveled Box"),
+    Wedge UMETA(DisplayName = "Wedge"),
 };
 
 struct FSbxMeshGenerationRequest {
@@ -31,6 +35,8 @@ struct FSbxMeshGenerationRequest {
     FSbxHexTileParameters hex_tile;
     FSbxHexFrameParameters hex_frame;
     FSbxHoneycombPanelParameters honeycomb_panel;
+    FSbxBeveledBoxParameters beveled_box;
+    FSbxWedgeParameters wedge;
 };
 
 namespace SandboxMesh {

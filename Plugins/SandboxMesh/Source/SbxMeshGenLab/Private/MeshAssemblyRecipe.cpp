@@ -11,6 +11,11 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
     recipe_part.rotation = FRotator{part.transform.rotation};
     recipe_part.scale = FVector{part.transform.scale};
     recipe_part.box_dimensions = FVector{part.mesh.box.dimensions};
+    recipe_part.beveled_box_dimensions = FVector{part.mesh.beveled_box.dimensions};
+    recipe_part.beveled_box_bevel_width = part.mesh.beveled_box.bevel_width;
+    recipe_part.wedge_dimensions = FVector{part.mesh.wedge.dimensions};
+    recipe_part.wedge_top_length = part.mesh.wedge.top_length;
+    recipe_part.wedge_top_offset = part.mesh.wedge.top_offset;
     recipe_part.cylinder_radius = part.mesh.cylinder.radius;
     recipe_part.cylinder_height = part.mesh.cylinder.height;
     recipe_part.cylinder_radial_segments = part.mesh.cylinder.radial_segments;
@@ -42,6 +47,8 @@ auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
     auto request{SandboxMesh::make_default_mesh_request(shape)};
     request.asset_name = output_asset_name;
     request.box.dimensions = FVector3f{box_dimensions};
+    request.beveled_box = {FVector3f{beveled_box_dimensions}, beveled_box_bevel_width};
+    request.wedge = {FVector3f{wedge_dimensions}, wedge_top_length, wedge_top_offset};
     request.cylinder = {cylinder_radius, cylinder_height, cylinder_radial_segments};
     request.sphere = {sphere_radius, sphere_longitude_segments, sphere_latitude_segments};
     request.cone = {cone_radius, cone_height, cone_radial_segments};
