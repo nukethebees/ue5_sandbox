@@ -43,6 +43,7 @@ public class SandboxTests : ModuleRules
             "SlateCore",
             "UnrealEd",
             "LevelEditor",
+            "Json",
             "CommonInput",
             "CommonUI",
             "CQTest",

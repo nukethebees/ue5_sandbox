@@ -13,6 +13,7 @@
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelTelemetryManager.h>
+#include <SpaceGame/simulation/SimulationClock.h>
 #include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -153,7 +154,6 @@ void FTestBatchOrchestratorSetupScenario::begin_level_telemetry() {
 void FTestBatchOrchestratorSetupScenario::kill_telemetry_test_entity() {
     auto const& telemetry_manager{test_driver->orchestrator.get_level_telemetry_manager()};
     telemetry_samples_before_change = telemetry_manager.get_active_entity_count_data().num();
-    composition_samples_before_change = telemetry_manager.get_active_entity_counts_data().num();
     kill_samples_before_change = telemetry_manager.get_cumulative_kill_count_data().num();
 
     TStaticArray<FRegistryEntityHandle, 1> const targets{
@@ -165,18 +165,12 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
     ATestBatchOrchestrator& orchestrator) {
     auto const& telemetry_manager{orchestrator.get_level_telemetry_manager()};
     auto const& entity_count_data{telemetry_manager.get_active_entity_count_data()};
-    auto const& entity_counts_data{telemetry_manager.get_active_entity_counts_data()};
     auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
-    auto const& slot_count_data{telemetry_manager.get_registry_slot_count_data()};
-    auto const& issued_unique_id_count_data{telemetry_manager.get_issued_unique_id_count_data()};
+    auto const& current_state{telemetry_manager.get_current_state()};
     check(!entity_count_data.is_empty());
-    check(!entity_counts_data.is_empty());
     check(!kill_count_data.is_empty());
-    check(!slot_count_data.is_empty());
-    check(!issued_unique_id_count_data.is_empty());
 
     auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
-    auto const& telemetry_entity_counts{entity_counts_data.last_value()};
     auto const registry_entity_counts{test_driver->get_registry().count_alive_per_team_and_type()};
 
     telemetry_observations.add(
@@ -187,19 +181,16 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
             .last_telemetry_tick = entity_count_data.last_time(),
             .telemetry_entity_count = entity_count_data.last_value(),
             .registry_entity_count = test_driver->get_registry().get_num_alive_active_entities(),
-            .composition_sample_count = entity_counts_data.num(),
-            .last_composition_tick = entity_counts_data.last_time(),
             .telemetry_player_ship_count =
-                telemetry_entity_counts[telemetry_player_team_index][player_type],
+                current_state
+                    .active_entities_by_team_and_type[telemetry_player_team_index][player_type],
             .registry_player_ship_count =
                 registry_entity_counts[telemetry_player_team_index][player_type],
             .kill_sample_count = kill_count_data.num(),
             .last_kill_tick = kill_count_data.last_time(),
             .cumulative_kill_count = kill_count_data.last_value(),
-            .slot_sample_count = slot_count_data.num(),
-            .registry_slot_count = slot_count_data.last_value(),
-            .issued_unique_id_sample_count = issued_unique_id_count_data.num(),
-            .issued_unique_id_count = issued_unique_id_count_data.last_value(),
+            .registry_slot_count = current_state.registry_slot_count,
+            .issued_unique_id_count = current_state.spawned_entities,
         });
     test_driver->advance_timeline();
 }
@@ -222,32 +213,21 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(initial_active_entity_count,
                      initial_observation.telemetry_entity_count,
                      TEXT("Baseline records initial active entities"));
-    checks.are_equal(int32{1},
-                     initial_observation.composition_sample_count,
-                     TEXT("Tick-zero composition baseline recorded"));
-    checks.are_equal(uint64{0},
-                     initial_observation.last_composition_tick,
-                     TEXT("Composition baseline uses tick zero"));
     checks.are_equal(initial_observation.registry_player_ship_count,
                      initial_observation.telemetry_player_ship_count,
-                     TEXT("Baseline composition records the player ship"));
+                     TEXT("Current state records the player ship"));
     checks.are_equal(
         int32{1}, initial_observation.kill_sample_count, TEXT("Tick-zero kill baseline recorded"));
     checks.are_equal(
         uint64{0}, initial_observation.last_kill_tick, TEXT("Kill baseline uses tick zero"));
     checks.are_equal(
         int32{0}, initial_observation.cumulative_kill_count, TEXT("Kill baseline starts at zero"));
-    checks.are_equal(
-        int32{1}, initial_observation.slot_sample_count, TEXT("Tick-zero slot baseline recorded"));
     checks.are_equal(initial_registry_slot_count,
                      initial_observation.registry_slot_count,
-                     TEXT("Slot baseline matches the registry"));
-    checks.are_equal(int32{1},
-                     initial_observation.issued_unique_id_sample_count,
-                     TEXT("Tick-zero issued-ID baseline recorded"));
+                     TEXT("Current state slots match the registry"));
     checks.are_equal(initial_issued_unique_id_count,
                      initial_observation.issued_unique_id_count,
-                     TEXT("Issued-ID baseline matches the registry"));
+                     TEXT("Current state issued IDs match the registry"));
 
     int32 changed_observation_index{INDEX_NONE};
     auto const observation_count{telemetry_observations.num()};
@@ -275,15 +255,9 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(initial_active_entity_count - 1,
                      changed_observation.telemetry_entity_count,
                      TEXT("Killed entity changes the telemetry count"));
-    checks.are_equal(composition_samples_before_change + 1,
-                     changed_observation.composition_sample_count,
-                     TEXT("Killed entity changes composition telemetry"));
-    checks.are_equal(changed_observation.completed_ticks,
-                     changed_observation.last_composition_tick,
-                     TEXT("Composition updates before the end-tick hook"));
     checks.are_equal(changed_observation.registry_player_ship_count,
                      changed_observation.telemetry_player_ship_count,
-                     TEXT("Composition records the destroyed player ship"));
+                     TEXT("Current state records the destroyed player ship"));
     checks.are_equal(int32{0},
                      changed_observation.telemetry_player_ship_count,
                      TEXT("Destroyed player is removed from composition"));
@@ -296,15 +270,9 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
     checks.are_equal(int32{1},
                      changed_observation.cumulative_kill_count,
                      TEXT("Killed entity increments the cumulative kill count"));
-    checks.are_equal(int32{1},
-                     changed_observation.slot_sample_count,
-                     TEXT("Killing an entity does not change slot telemetry"));
     checks.are_equal(initial_registry_slot_count,
                      changed_observation.registry_slot_count,
                      TEXT("Killing an entity preserves registry slots"));
-    checks.are_equal(int32{1},
-                     changed_observation.issued_unique_id_sample_count,
-                     TEXT("Killing an entity does not change issued-ID telemetry"));
     checks.are_equal(initial_issued_unique_id_count,
                      changed_observation.issued_unique_id_count,
                      TEXT("Killing an entity preserves issued IDs"));
@@ -317,8 +285,7 @@ void FTestBatchOrchestratorSetupScenario::check_level_telemetry() {
                            final_observation.last_telemetry_tick,
                            TEXT("Simulation continues after the last changed sample"));
 
-    auto const snapshot{test_driver->orchestrator.get_level_telemetry_manager().make_snapshot(
-        final_observation.completed_ticks, test_driver->orchestrator.get_tick_period())};
+    auto const snapshot{test_driver->orchestrator.get_level_telemetry_manager().make_snapshot()};
     checks.are_equal(final_observation.telemetry_entity_count,
                      snapshot.active_entities,
                      TEXT("Snapshot records the final active entity count"));
@@ -357,84 +324,65 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryManagerTest,
                                      EAutomationTestFlags::EngineFilter)
 
 auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
+    FSimulationClock clock;
+    clock.initialise({});
     FTestEntityRegistry entity_registry;
+    ml::test_lasers::Simulation lasers;
+    ml::FSpatialQueryManager spatial_queries;
     FLevelTelemetryManager telemetry_manager;
 
-    telemetry_manager.initialise(entity_registry, {});
+    telemetry_manager.initialise(clock, entity_registry, lasers, spatial_queries);
     auto const& active_count_data{telemetry_manager.get_active_entity_count_data()};
-    auto const& active_counts_data{telemetry_manager.get_active_entity_counts_data()};
     auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
-    auto const& slot_count_data{telemetry_manager.get_registry_slot_count_data()};
-    auto const& issued_unique_id_count_data{telemetry_manager.get_issued_unique_id_count_data()};
-    auto const& active_laser_count_data{telemetry_manager.get_active_laser_count_data()};
-    auto const& cumulative_laser_spawn_count_data{
-        telemetry_manager.get_cumulative_laser_spawn_count_data()};
+    auto const& tick_series{telemetry_manager.get_tick_series()};
+    auto const& initial_state{telemetry_manager.get_current_state()};
     TestEqual(
         TEXT("Initialisation records one active-count sample"), active_count_data.num(), int32{1});
     TestEqual(TEXT("Initial active-count sample uses tick zero"),
               active_count_data.last_time(),
               uint64{0});
     TestEqual(TEXT("Initial active-count sample records zero"), active_count_data.last_value(), 0);
-    TestEqual(
-        TEXT("Initialisation records one composition sample"), active_counts_data.num(), int32{1});
-    TestEqual(TEXT("Initial composition sample uses tick zero"),
-              active_counts_data.last_time(),
-              uint64{0});
-    TestEqual(TEXT("Initial composition has no player ships"),
-              active_counts_data.last_value()[std::to_underlying(ETestTeam::Green)]
-                                             [std::to_underlying(ETestEntityType::PlayerShip)],
-              0);
     TestEqual(TEXT("Initialisation records one kill sample"), kill_count_data.num(), int32{1});
     TestEqual(TEXT("Initial kill sample records zero"), kill_count_data.last_value(), 0);
-    TestEqual(TEXT("Initialisation records one slot sample"), slot_count_data.num(), int32{1});
-    TestEqual(TEXT("Initial slot sample records zero"), slot_count_data.last_value(), 0);
-    TestEqual(TEXT("Initialisation records one issued-ID sample"),
-              issued_unique_id_count_data.num(),
-              int32{1});
-    TestEqual(
-        TEXT("Initial issued-ID sample records zero"), issued_unique_id_count_data.last_value(), 0);
-    TestEqual(TEXT("Initialisation records one active-laser sample"),
-              active_laser_count_data.num(),
-              int32{1});
-    TestEqual(TEXT("Initial active-laser sample records zero"),
-              active_laser_count_data.last_value(),
+    TestEqual(TEXT("Initial current state records zero slots"),
+              initial_state.registry_slot_count,
               int32{0});
-    TestEqual(TEXT("Initialisation records one fired-laser sample"),
-              cumulative_laser_spawn_count_data.num(),
-              int32{1});
-    TestEqual(TEXT("Initial fired-laser sample records zero"),
-              cumulative_laser_spawn_count_data.last_value(),
+    TestEqual(TEXT("Initial current state records zero active lasers"),
+              initial_state.active_lasers,
               int32{0});
+    TestEqual(TEXT("Initialisation records one sample for each workload series"),
+              tick_series.active_lasers.num(),
+              int32{1});
 
-    telemetry_manager.tick(1, entity_registry, {});
+    clock.completed_ticks = 1;
+    telemetry_manager.tick();
     TestEqual(
         TEXT("Unchanged active count does not add a sample"), active_count_data.num(), int32{1});
-    TestEqual(
-        TEXT("Unchanged composition does not add a sample"), active_counts_data.num(), int32{1});
     TestEqual(TEXT("Unchanged kills do not add a sample"), kill_count_data.num(), int32{1});
-    TestEqual(TEXT("Unchanged slots do not add a sample"), slot_count_data.num(), int32{1});
-    TestEqual(TEXT("Unchanged issued IDs do not add a sample"),
-              issued_unique_id_count_data.num(),
+    TestEqual(TEXT("Unchanged laser count does not add a sample"),
+              tick_series.active_lasers.num(),
               int32{1});
-    TestEqual(TEXT("Unchanged active lasers do not add a sample"),
-              active_laser_count_data.num(),
-              int32{1});
-    TestEqual(TEXT("Unchanged fired lasers do not add a sample"),
-              cumulative_laser_spawn_count_data.num(),
+    TestEqual(TEXT("Unchanged range-query count does not add a sample"),
+              tick_series.range_query_count.num(),
               int32{1});
 
-    telemetry_manager.tick(2, entity_registry, {.active_count = 3, .cumulative_spawn_count = 11});
-    TestEqual(
-        TEXT("Active laser changes are sampled"), active_laser_count_data.last_value(), int32{3});
-    TestEqual(TEXT("Fired laser changes are sampled"),
-              cumulative_laser_spawn_count_data.last_value(),
-              int32{11});
+    clock.completed_ticks = 2;
+    clock.tick_loop.time_scale = 4.0;
+    telemetry_manager.tick();
+    TestEqual(TEXT("Changed time scale adds one tick-indexed sample"),
+              tick_series.requested_time_scale.num(),
+              int32{2});
+    TestEqual(TEXT("Changed time scale records its simulation tick"),
+              tick_series.requested_time_scale.last_time(),
+              uint64{2});
 
-    auto const laser_snapshot{telemetry_manager.make_snapshot(5, 0.25)};
+    clock.completed_ticks = 5;
+    clock.tick_loop.tick_period = 0.25;
+    auto const laser_snapshot{telemetry_manager.make_snapshot()};
     TestEqual(
         TEXT("Snapshot records elapsed simulation time"), laser_snapshot.elapsed_seconds, 1.25);
-    TestEqual(TEXT("Snapshot records active lasers"), laser_snapshot.active_lasers, int32{3});
-    TestEqual(TEXT("Snapshot records fired lasers"), laser_snapshot.lasers_fired, int32{11});
+    TestEqual(TEXT("Snapshot records active lasers"), laser_snapshot.active_lasers, int32{0});
+    TestEqual(TEXT("Snapshot records fired lasers"), laser_snapshot.lasers_fired, int32{0});
     TestEqual(TEXT("Snapshot extends active entities to its terminal tick"),
               laser_snapshot.active_entity_count_data.last_time(),
               uint64{5});
@@ -450,15 +398,13 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
 
     telemetry_manager.reset();
     TestTrue(TEXT("Reset clears active-count telemetry"), active_count_data.is_empty());
-    TestTrue(TEXT("Reset clears composition telemetry"), active_counts_data.is_empty());
     TestTrue(TEXT("Reset clears kill telemetry"), kill_count_data.is_empty());
-    TestTrue(TEXT("Reset clears slot telemetry"), slot_count_data.is_empty());
-    TestTrue(TEXT("Reset clears issued-ID telemetry"), issued_unique_id_count_data.is_empty());
-    TestTrue(TEXT("Reset clears active-laser telemetry"), active_laser_count_data.is_empty());
-    TestTrue(TEXT("Reset clears fired-laser telemetry"),
-             cumulative_laser_spawn_count_data.is_empty());
+    TestEqual(TEXT("Reset clears current workload state"),
+              telemetry_manager.get_current_state().active_lasers,
+              int32{0});
 
-    telemetry_manager.initialise(entity_registry, {});
+    clock.initialise({});
+    telemetry_manager.initialise(clock, entity_registry, lasers, spatial_queries);
     TestEqual(TEXT("Reinitialisation records one active-count sample"),
               active_count_data.num(),
               int32{1});
@@ -492,45 +438,51 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     };
     entity_registry.add_entities(fixture_entity_data);
 
-    telemetry_manager.tick(2, entity_registry, {});
+    clock.completed_ticks = 2;
+    telemetry_manager.tick();
     TestEqual(TEXT("Entity additions update active-count telemetry"),
               active_count_data.last_value(),
               int32{3});
     TestEqual(TEXT("Entity additions update active-count telemetry at their tick"),
               active_count_data.last_time(),
               uint64{2});
-    TestEqual(TEXT("Composition records the green player ship"),
-              active_counts_data.last_value()[std::to_underlying(ETestTeam::Green)]
-                                             [std::to_underlying(ETestEntityType::PlayerShip)],
+    auto const& entity_state{telemetry_manager.get_current_state()};
+    TestEqual(TEXT("Current state records the green player ship"),
+              entity_state.active_entities_by_team_and_type[std::to_underlying(
+                  ETestTeam::Green)][std::to_underlying(ETestEntityType::PlayerShip)],
               1);
-    TestEqual(TEXT("Composition records the red capital ship"),
-              active_counts_data.last_value()[std::to_underlying(ETestTeam::Red)]
-                                             [std::to_underlying(ETestEntityType::CapitalShip)],
+    TestEqual(TEXT("Current state records the red capital ship"),
+              entity_state.active_entities_by_team_and_type[std::to_underlying(
+                  ETestTeam::Red)][std::to_underlying(ETestEntityType::CapitalShip)],
               1);
-    TestEqual(TEXT("Composition records the red fighter"),
-              active_counts_data.last_value()[std::to_underlying(
+    TestEqual(TEXT("Current state records the red fighter"),
+              entity_state.active_entities_by_team_and_type[std::to_underlying(
                   ETestTeam::Red)][std::to_underlying(ETestEntityType::CapitalShipFighter)],
               1);
-    TestEqual(
-        TEXT("Entity additions update slot telemetry"), slot_count_data.last_value(), int32{3});
-    TestEqual(TEXT("Entity additions update issued-ID telemetry"),
-              issued_unique_id_count_data.last_value(),
+    auto const green_index{std::to_underlying(ETestTeam::Green)};
+    auto const player_ship_index{std::to_underlying(ETestEntityType::PlayerShip)};
+    auto const white_index{std::to_underlying(ETestTeam::White)};
+    TestEqual(TEXT("Changed team/type count adds one sample"),
+              tick_series.active_entities_by_team_and_type[green_index][player_ship_index].num(),
+              int32{2});
+    TestEqual(TEXT("Unchanged team/type count retains its initial sample"),
+              tick_series.active_entities_by_team_and_type[white_index][player_ship_index].num(),
+              int32{1});
+    TestEqual(TEXT("Entity additions update current slot count"),
+              entity_state.registry_slot_count,
+              int32{3});
+    TestEqual(TEXT("Entity additions update current spawned count"),
+              entity_state.spawned_entities,
               int32{3});
 
-    telemetry_manager.tick(3, entity_registry, {});
+    clock.completed_ticks = 3;
+    telemetry_manager.tick();
     TestEqual(TEXT("Unchanged fixture does not add active-count telemetry"),
               active_count_data.num(),
               int32{2});
-    TestEqual(TEXT("Unchanged fixture does not add composition telemetry"),
-              active_counts_data.num(),
-              int32{2});
-    TestEqual(
-        TEXT("Unchanged fixture does not add slot telemetry"), slot_count_data.num(), int32{2});
-    TestEqual(TEXT("Unchanged fixture does not add issued-ID telemetry"),
-              issued_unique_id_count_data.num(),
-              int32{2});
 
-    auto const entity_snapshot{telemetry_manager.make_snapshot(3, 0.5)};
+    clock.tick_loop.tick_period = 0.5;
+    auto const entity_snapshot{telemetry_manager.make_snapshot()};
     TestEqual(TEXT("Entity snapshot records elapsed time"), entity_snapshot.elapsed_seconds, 1.5);
     TestEqual(TEXT("Entity snapshot records spawned entities"),
               entity_snapshot.spawned_entities,

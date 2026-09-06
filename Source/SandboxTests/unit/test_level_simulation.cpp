@@ -4,12 +4,19 @@
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/levels/LevelEventManager.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
+#include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 
+#include <Dom/JsonObject.h>
 #include <Engine/World.h>
+#include <HAL/FileManager.h>
 #include <Misc/AutomationTest.h>
+#include <Misc/FileHelper.h>
+#include <Misc/Guid.h>
+#include <Misc/Paths.h>
 #include <Misc/ScopeExit.h>
+#include <Serialization/JsonSerializer.h>
 
 namespace {
 auto make_battle() -> FLevelSimulationInitData {
@@ -401,5 +408,102 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
     TestTrue(TEXT("The test exercises removal churn"),
              lasers->get_number_spawned() > lasers->get_num_instances());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(FLevelTelemetryRunRecordTest,
+                                 "Sandbox.UnitTests.LevelTelemetryRunRecord",
+                                 EAutomationTestFlags::EditorContext |
+                                     EAutomationTestFlags::EngineFilter)
+
+auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
+    FLevelSimulation simulation{make_battle()};
+    simulation.finish_initialisation();
+    simulation.start();
+
+    auto& telemetry{simulation.get_level_telemetry_manager()};
+    telemetry.begin_run({.run_id = TEXT("12345678-1234-1234-1234-123456789abc"),
+                         .map_name = TEXT("TelemetryTest"),
+                         .level_id = TEXT("telemetry-test"),
+                         .level_display_name = TEXT("Telemetry Test"),
+                         .launched_utc = TEXT("2026-09-06T12:00:00Z")});
+
+    simulation.advance(simulation.get_clock().get_tick_period());
+    telemetry.capture_realtime_sample();
+    simulation.set_time_scale(4.0);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    telemetry.finalize_interrupted(ELevelTelemetryRunEndReason::WorldEnd, TEXT("test"));
+
+    auto record{telemetry.take_finalized_run()};
+    if (!TestTrue(TEXT("Finalized manager yields one run record"), record.IsSet())) {
+        return false;
+    }
+    TestFalse(TEXT("A finalized run record is yielded only once"),
+              telemetry.take_finalized_run().IsSet());
+    TestEqual(TEXT("Completion preserves its end reason"),
+              record->completion.reason,
+              ELevelTelemetryRunEndReason::WorldEnd);
+    TestEqual(TEXT("Completion preserves completed ticks"),
+              record->completion.completed_ticks,
+              simulation.get_clock().get_completed_ticks());
+    auto const& realtime{record->completed_ticks_by_real_time};
+    TestTrue(TEXT("Recorder emits start, periodic, and final realtime mappings"),
+             realtime.num() >= 3);
+    TestEqual(TEXT("Realtime mapping starts at tick zero"), realtime.value_at(0), uint64{0});
+    TestEqual(TEXT("Realtime mapping ends at the completed tick"),
+              realtime.last_value(),
+              simulation.get_clock().get_completed_ticks());
+
+    auto const& series{record->tick_series};
+    TestEqual(
+        TEXT("An unchanged entity count is only stored once"), series.active_entities.num(), 1);
+    TestEqual(TEXT("Requested time scale is only stored when it changes"),
+              series.requested_time_scale.num(),
+              2);
+    TestEqual(TEXT("Changed requested time scale is indexed by its first simulation tick"),
+              series.requested_time_scale.last_time(),
+              uint64{2});
+    TestEqual(TEXT("Changed requested time scale is retained"),
+              series.requested_time_scale.last_value(),
+              4.0);
+
+    auto const json{serialize_level_telemetry_run(*record)};
+    TSharedPtr<FJsonObject> root;
+    auto reader{TJsonReaderFactory<>::Create(json)};
+    if (!TestTrue(TEXT("Serialized run is valid JSON"),
+                  FJsonSerializer::Deserialize(reader, root)) ||
+        !TestNotNull(TEXT("Serialized run has a root object"), root.Get())) {
+        return false;
+    }
+    TestEqual(TEXT("JSON records schema version one"),
+              root->GetIntegerField(TEXT("schema_version")),
+              FLevelTelemetryRunRecord::schema_version);
+    auto const realtime_json{root->GetObjectField(TEXT("completed_ticks_by_real_time"))};
+    TestEqual(TEXT("JSON contains realtime elapsed times"),
+              realtime_json->GetArrayField(TEXT("real_elapsed_seconds")).Num(),
+              realtime.num());
+    TestEqual(TEXT("JSON contains corresponding completed ticks"),
+              realtime_json->GetArrayField(TEXT("completed_ticks")).Num(),
+              realtime.num());
+    TestTrue(TEXT("JSON contains sparse workload series"),
+             root->GetObjectField(TEXT("tick_series")).IsValid());
+
+    auto const output_directory{FPaths::Combine(FPaths::ProjectSavedDir(),
+                                                TEXT("Automation"),
+                                                TEXT("Telemetry"),
+                                                FGuid::NewGuid().ToString())};
+    ON_SCOPE_EXIT {
+        IFileManager::Get().DeleteDirectory(*output_directory, false, true);
+    };
+    auto const output_path{write_level_telemetry_run(*record, output_directory)};
+    if (!TestTrue(TEXT("Run writer creates an output file"), output_path.has_value())) {
+        return false;
+    }
+    FString written_json;
+    TestTrue(TEXT("Written output can be read"),
+             FFileHelper::LoadFileToString(written_json, **output_path));
+    TestTrue(TEXT("Atomic writer removes its temporary file"),
+             IFileManager::Get().FileSize(*(*output_path + TEXT(".tmp"))) < 0);
+
     return true;
 }
