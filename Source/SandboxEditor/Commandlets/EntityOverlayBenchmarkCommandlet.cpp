@@ -24,6 +24,17 @@ auto make_view(FTestEntityRegistry::EntityData const& entities)
             .alive = entities.alive};
 }
 
+auto make_team_colours() -> FEntityOverlayTeamColours {
+    FTeamColours colours;
+    colours[ETestTeam::White] = FLinearColor::White;
+    colours[ETestTeam::Red] = FLinearColor::Red;
+    colours[ETestTeam::Green] = FLinearColor::Green;
+    colours[ETestTeam::Blue] = FLinearColor::Blue;
+    colours[ETestTeam::Orange] = FLinearColor{1.0f, 0.35f, 0.0f};
+    colours[ETestTeam::Yellow] = FLinearColor::Yellow;
+    return {.capital_ship = colours, .fighter = colours, .turret = colours};
+}
+
 auto write_debug_frames(FString const& output_directory) -> bool {
     FTestEntityRegistry registry;
     FTestEntityRegistry::EntityData entities;
@@ -48,7 +59,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         entities.velocities.add(FVector3f::ZeroVector);
         entities.radii.Add(radii[index]);
         entities.healths.Add(health[index]);
-        entities.teams.Add(ETestTeam::White);
+        entities.teams.Add(static_cast<ETestTeam>(index % static_cast<int32>(ETestTeam::COUNT)));
         entities.entity_types.Add(ETestEntityType::Turret);
         entities.alive.Add(1);
     }
@@ -78,6 +89,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     auto& frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(registry.get_entity_data()),
                                                        objective_roles,
+                                                       make_team_colours(),
                                                        {100, 100, 100},
                                                        FVector3f::ZeroVector,
                                                        10000.0f,
@@ -95,6 +107,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     auto& moved_frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(moved_registry.get_entity_data()),
                                                        objective_roles,
+                                                       make_team_colours(),
                                                        {100, 100, 100},
                                                        FVector3f::ZeroVector,
                                                        10000.0f,
