@@ -3,6 +3,7 @@
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SandboxUI/Radar/RadarTypes.h"
 #include "SpaceGame/entities/TestEntityRegistryData.h"
+#include "SpaceGame/presentation/LevelPresentationSettings.h"
 
 #include "SandboxNative/RegistryEntityHandle.h"
 
@@ -17,6 +18,15 @@ struct SPACEGAME_API FRadarCollectionResult {
     int32 visible_count{0};
 };
 
+[[nodiscard]] SPACEGAME_API auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings;
+
+namespace ml::radar_source {
+[[nodiscard]] SPACEGAME_API auto to_radar_display_radius(float world_distance,
+                                                         FRadarSettings const& settings) -> float;
+[[nodiscard]] SPACEGAME_API auto to_radar_position(FVector3f local_delta,
+                                                   FRadarSettings const& settings) -> FVector3f;
+}
+
 [[nodiscard]] SPACEGAME_API auto
     collect_radar_instances(ml::entity_registry::EntityData::ConstView entities,
                             TConstArrayView<int32> generations,
@@ -26,7 +36,5 @@ struct SPACEGAME_API FRadarCollectionResult {
                             FRegistryEntityHandle player_handle,
                             FRegistryEntityHandle selected_handle,
                             ETestTeam player_team,
-                            bool automatic_range,
-                            float minimum_range,
-                            float maximum_range,
-                            TArray<FRadarInstance>& output_instances) -> FRadarCollectionResult;
+                            FRadarSettings const& settings,
+                            FRadarFrame& output_frame) -> FRadarCollectionResult;

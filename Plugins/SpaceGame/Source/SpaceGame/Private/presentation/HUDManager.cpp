@@ -71,7 +71,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     entity_registry = &new_entity_registry;
     player_ship = new_player_ship;
     entity_overlay_settings_ = entity_overlay_settings;
-    radar_settings_ = radar_settings;
+    radar_settings_ = sanitize_radar_settings(radar_settings);
     auto const fighter_radius{ml::get_mesh_sphere_bounds(*level_config.fighters.mesh)};
     auto const capital_radius{ml::get_mesh_sphere_bounds(*level_config.capital_ships.mesh)};
     entity_overlay_style_ = {
@@ -365,8 +365,7 @@ void FHUDManager::update_entity_overlay_objective_roles() {
                 EEntityOverlayObjectiveRole::Destroy);
 }
 
-void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
-                                        float const delta_seconds) {
+void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float const delta_seconds) {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::Collect);
     auto* const hud{registration.hud.Get()};
     if (!IsValid(hud)) {
@@ -567,10 +566,8 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
                                               player_ship->registry_handle,
                                               player_ship->lock_on_target,
                                               player_ship->team,
-                                              radar_settings_.automatic_range,
-                                              radar_settings_.minimum_range,
-                                              radar_settings_.maximum_range,
-                                              frame.instances)};
+                                              radar_settings_,
+                                              frame)};
     registration.radar_frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxRadarCandidateCount, result.candidate_count);

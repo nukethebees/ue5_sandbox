@@ -39,7 +39,10 @@ void URadar3DShowcase::set_contact_count(int32 const contact_count) {
 }
 
 void URadar3DShowcase::populate_frame(int32 const contact_count) {
-    auto& instances{radar_frame_store_->next().instances};
+    auto& frame{radar_frame_store_->next()};
+    frame.combat_display_radius = 0.45f;
+    frame.tactical_display_radius = 0.8f;
+    auto& instances{frame.instances};
     instances.Reset();
     instances.Reserve(contact_count);
     FLinearColor const colors[]{
@@ -64,10 +67,18 @@ void URadar3DShowcase::populate_frame(int32 const contact_count) {
             if (draw_priority != priority) {
                 continue;
             }
-            auto const radius{0.18f + 0.72f * FMath::Fmod(index * 0.618034f, 1.0f)};
             auto const angle{static_cast<float>(index) * 2.399963f};
-            auto radar_position{FVector3f{radius * FMath::Cos(angle),
-                                          radius * FMath::Sin(angle),
+            FVector2f const direction{FMath::Cos(angle), FMath::Sin(angle)};
+            auto const hex_denominator{
+                FMath::Max(FMath::Abs(direction.X) * 0.8660254f + FMath::Abs(direction.Y) * 0.5f,
+                           FMath::Abs(direction.Y))};
+            auto const boundary_radius{0.8660254f / hex_denominator};
+            auto const zone_fraction{FMath::Fmod(index * 0.618034f, 1.0f)};
+            auto const radius_fraction{index % 3 == 0   ? 0.12f + 0.28f * zone_fraction
+                                       : index % 3 == 1 ? 0.50f + 0.22f * zone_fraction
+                                                        : 0.83f + 0.13f * zone_fraction};
+            auto radar_position{FVector3f{direction.X * radius_fraction * boundary_radius,
+                                          direction.Y * radius_fraction * boundary_radius,
                                           -0.72f + 0.72f * static_cast<float>(index % 3)}};
             if (index >= 12 && index < 15) {
                 radar_position = {0.22f + 0.015f * static_cast<float>(index - 12),

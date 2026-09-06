@@ -43,6 +43,8 @@ static_assert(offsetof(FRadarInstance, packed_glyph_and_flags) == 20);
 
 struct SANDBOXUI_API FRadarFrame {
     TArray<FRadarInstance> instances;
+    float combat_display_radius{0.45f};
+    float tactical_display_radius{0.8f};
 };
 
 struct SANDBOXUI_API FRadarStyle {

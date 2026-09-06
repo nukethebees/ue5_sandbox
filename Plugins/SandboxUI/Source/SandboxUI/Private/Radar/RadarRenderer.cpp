@@ -17,7 +17,7 @@
 DEFINE_LOG_CATEGORY_STATIC(LogRadarRenderer, Log, All);
 
 namespace ml::ui::radar {
-inline constexpr uint32 structure_line_count{14};
+inline constexpr uint32 structure_line_count{26};
 
 class FPlaneVS final : public FGlobalShader {
   public:
@@ -40,6 +40,8 @@ class FPlanePS final : public FGlobalShader {
     SHADER_PARAMETER(FVector4f, PlaneColor)
     SHADER_PARAMETER(FVector4f, StructureColor)
     SHADER_PARAMETER(float, GridOpacity)
+    SHADER_PARAMETER(float, CombatDisplayRadius)
+    SHADER_PARAMETER(float, TacticalDisplayRadius)
     END_SHADER_PARAMETER_STRUCT()
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
         -> bool {
@@ -55,6 +57,8 @@ class FStructureVS final : public FGlobalShader {
     SHADER_PARAMETER(FIntPoint, OutputSize)
     SHADER_PARAMETER(FVector4f, StructureColor)
     SHADER_PARAMETER(float, StructureOpacity)
+    SHADER_PARAMETER(float, CombatDisplayRadius)
+    SHADER_PARAMETER(float, TacticalDisplayRadius)
     END_SHADER_PARAMETER_STRUCT()
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
         -> bool {
@@ -213,6 +217,8 @@ void execute_graph(FRHICommandListImmediate& command_list,
     plane->PS.PlaneColor = FVector4f{style.plane_color};
     plane->PS.StructureColor = FVector4f{style.structure_color};
     plane->PS.GridOpacity = style.grid_opacity;
+    plane->PS.CombatDisplayRadius = frame.combat_display_radius;
+    plane->PS.TacticalDisplayRadius = frame.tactical_display_radius;
     plane->RenderTargets[0] = FRenderTargetBinding{output, ERenderTargetLoadAction::EClear};
     auto const plane_vs{TShaderMapRef<FPlaneVS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
     auto const plane_ps{TShaderMapRef<FPlanePS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
@@ -231,6 +237,8 @@ void execute_graph(FRHICommandListImmediate& command_list,
     structure->VS.OutputSize = size;
     structure->VS.StructureColor = FVector4f{style.structure_color};
     structure->VS.StructureOpacity = style.structure_opacity;
+    structure->VS.CombatDisplayRadius = frame.combat_display_radius;
+    structure->VS.TacticalDisplayRadius = frame.tactical_display_radius;
     structure->RenderTargets[0] = FRenderTargetBinding{output, ERenderTargetLoadAction::ELoad};
     auto const structure_vs{TShaderMapRef<FStructureVS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
     auto const line_ps{TShaderMapRef<FLinePS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
