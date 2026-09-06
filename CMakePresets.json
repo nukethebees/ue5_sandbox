@@ -207,6 +207,11 @@
       "targets": ["resave-assets"]
     },
     {
+      "name": "generate-lab-mesh-assemblies",
+      "configurePreset": "debug-game",
+      "targets": ["generate-lab-mesh-assemblies"]
+    },
+    {
       "name": "generate-project-files",
       "configurePreset": "debug-game",
       "targets": ["generate-project-files"]
@@ -627,6 +632,13 @@
       "steps": [
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "resave-assets" }
+      ]
+    },
+    {
+      "name": "generate-lab-mesh-assemblies",
+      "steps": [
+        { "type": "configure", "name": "debug-game" },
+        { "type": "build", "name": "generate-lab-mesh-assemblies" }
       ]
     },
     {

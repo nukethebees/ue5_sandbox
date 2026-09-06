@@ -4,12 +4,14 @@
 #include "Generation/MeshAssemblyRecipeAsset.h"
 #include "Generation/MeshAssetWriter.h"
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
+#include "SbxMeshGenLab/MeshAssemblyRecipeJson.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
 #include "CanvasItem.h"
 #include "CanvasTypes.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
+#include "DesktopPlatformModule.h"
 #include "Editor.h"
 #include "EditorViewportClient.h"
 #include "Engine/Engine.h"
@@ -17,8 +19,11 @@
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
+#include "Framework/Application/SlateApplication.h"
 #include "GameFramework/Actor.h"
 #include "HitProxies.h"
+#include "IDesktopPlatform.h"
+#include "Interfaces/IPluginManager.h"
 #include "LevelEditorViewport.h"
 #include "SceneManagement.h"
 #include "SceneView.h"
@@ -40,6 +45,16 @@ auto is_safe_preview_transform(FTransform const& transform) -> bool {
     return !location.ContainsNaN() && !scale.ContainsNaN() && !rotation.ContainsNaN() &&
            location.GetAbsMax() <= max_safe_preview_coordinate && scale.GetMin() >= 0.001 &&
            scale.GetAbsMax() <= max_safe_preview_coordinate && rotation.IsNormalized();
+}
+
+auto get_json_recipes_directory() -> FString {
+    auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxMesh"))};
+    return plugin.IsValid() ? FPaths::Combine(plugin->GetBaseDir(), TEXT("Recipes"))
+                            : FPaths::ProjectDir();
+}
+
+auto get_dialog_parent_window() -> void const* {
+    return FSlateApplication::Get().FindBestParentWindowHandleForDialogs(nullptr);
 }
 
 }
@@ -1279,20 +1294,118 @@ void USbxMeshGenLabEditorMode::load_recipe() {
             part.parent_id.Invalidate();
         }
     }
+    replace_session_from_recipe(MoveTemp(recipe_parts),
+                                MoveTemp(recipe_groups),
+                                selected_recipe->output_asset_name,
+                                selected_recipe->GetFName(),
+                                selected_recipe,
+                                false,
+                                FText::Format(LOCTEXT("RecipeLoaded", "Loaded recipe {0}."),
+                                              FText::FromString(selected_recipe->GetPathName())));
+}
+
+void USbxMeshGenLabEditorMode::export_recipe_json() {
+    apply_settings(false);
+
+    auto* const desktop_platform{FDesktopPlatformModule::Get()};
+    if (desktop_platform == nullptr) {
+        status_ = LOCTEXT("JsonExportUnavailable", "The desktop file dialog is unavailable.");
+        notify_session_changed();
+        return;
+    }
+
+    auto* const settings{get_settings()};
+    auto const default_filename{settings->recipe_name.ToString() + TEXT(".json")};
+    TArray<FString> filenames;
+    if (!desktop_platform->SaveFileDialog(get_dialog_parent_window(),
+                                          TEXT("Export Sandbox Mesh Recipe"),
+                                          get_json_recipes_directory(),
+                                          default_filename,
+                                          TEXT("Sandbox Mesh recipe (*.json)|*.json"),
+                                          EFileDialogFlags::None,
+                                          filenames) ||
+        filenames.IsEmpty()) {
+        return;
+    }
+
+    FSbxMeshAssemblyRecipeJsonDocument document;
+    document.recipe_name = settings->recipe_name;
+    document.output_asset_name = settings->asset_name;
+    document.parts = session_state_->parts;
+    document.groups = session_state_->groups;
+    FString error;
+    if (!SandboxMesh::save_mesh_assembly_recipe_json(filenames[0], document, error)) {
+        status_ = FText::FromString(error);
+        notify_session_changed();
+        return;
+    }
+
+    status_ = FText::Format(LOCTEXT("JsonExported", "Exported JSON recipe to {0}."),
+                            FText::FromString(filenames[0]));
+    notify_session_changed();
+}
+
+void USbxMeshGenLabEditorMode::import_recipe_json() {
+    auto* const desktop_platform{FDesktopPlatformModule::Get()};
+    if (desktop_platform == nullptr) {
+        status_ = LOCTEXT("JsonImportUnavailable", "The desktop file dialog is unavailable.");
+        notify_session_changed();
+        return;
+    }
+
+    TArray<FString> filenames;
+    if (!desktop_platform->OpenFileDialog(get_dialog_parent_window(),
+                                          TEXT("Import Sandbox Mesh Recipe"),
+                                          get_json_recipes_directory(),
+                                          FString{},
+                                          TEXT("Sandbox Mesh recipe (*.json)|*.json"),
+                                          EFileDialogFlags::None,
+                                          filenames) ||
+        filenames.IsEmpty()) {
+        return;
+    }
+
+    FSbxMeshAssemblyRecipeJsonDocument document;
+    FString error;
+    if (!SandboxMesh::load_mesh_assembly_recipe_json(filenames[0], document, error)) {
+        status_ = FText::FromString(error);
+        notify_session_changed();
+        return;
+    }
+
+    replace_session_from_recipe(
+        MoveTemp(document.parts),
+        MoveTemp(document.groups),
+        document.output_asset_name,
+        document.recipe_name,
+        nullptr,
+        true,
+        FText::Format(LOCTEXT("JsonImported", "Imported JSON recipe from {0}."),
+                      FText::FromString(filenames[0])));
+}
+
+auto USbxMeshGenLabEditorMode::replace_session_from_recipe(
+    TArray<FSbxMeshAssemblyRecipePart> recipe_parts,
+    TArray<FSbxMeshAssemblyRecipeGroup> recipe_groups,
+    FName const output_asset_name,
+    FName const recipe_name,
+    USbxMeshAssemblyRecipe* const current_recipe,
+    bool const dirty,
+    FText const& success_status) -> bool {
     auto const hierarchy_error{
         SandboxMesh::validate_mesh_assembly_hierarchy(recipe_parts, recipe_groups)};
     if (!hierarchy_error.IsEmpty()) {
         status_ = FText::FromString(hierarchy_error);
         notify_session_changed();
-        return;
+        return false;
     }
     auto parts{SandboxMesh::resolve_mesh_assembly_hierarchy(
-        recipe_parts, recipe_groups, selected_recipe->output_asset_name)};
+        recipe_parts, recipe_groups, output_asset_name)};
     auto const validation_error{SandboxMesh::validate_mesh_assembly(parts)};
     if (!validation_error.IsEmpty()) {
         status_ = FText::FromString(validation_error);
         notify_session_changed();
-        return;
+        return false;
     }
 
     if (GEditor != nullptr) {
@@ -1301,6 +1414,8 @@ void USbxMeshGenLabEditorMode::load_recipe() {
         changing_selection_ = false;
     }
     destroy_preview();
+    snap_target_group_id_.Invalidate();
+    snap_target_connector_index_ = INDEX_NONE;
     session_state_->on_undo().RemoveAll(this);
     session_state_ = NewObject<USbxMeshAssemblySessionState>(this, NAME_None, RF_Transactional);
     session_state_->on_undo().AddUObject(this,
@@ -1314,9 +1429,12 @@ void USbxMeshGenLabEditorMode::load_recipe() {
         part_ids_.Add(part.id);
     }
     rebuild_part_index_map();
-    settings->asset_name = selected_recipe->output_asset_name;
-    settings->recipe_name = selected_recipe->GetFName();
-    current_recipe_ = selected_recipe;
+
+    auto* const settings{get_settings()};
+    settings->asset_name = output_asset_name;
+    settings->recipe_name = recipe_name;
+    settings->recipe = current_recipe;
+    current_recipe_ = current_recipe;
 
     auto const part_count{parts_.Num()};
     for (int32 part_index{0}; part_index < part_count; ++part_index) {
@@ -1326,10 +1444,10 @@ void USbxMeshGenLabEditorMode::load_recipe() {
     selected_part_indices_.Reset();
     selected_group_index_ = INDEX_NONE;
     select_part(0);
-    status_ = FText::Format(LOCTEXT("RecipeLoaded", "Loaded recipe {0}."),
-                            FText::FromString(selected_recipe->GetPathName()));
-    recipe_dirty_ = false;
+    status_ = success_status;
+    recipe_dirty_ = dirty;
     notify_session_changed();
+    return true;
 }
 
 void USbxMeshGenLabEditorMode::apply_settings() {

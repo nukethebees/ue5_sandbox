@@ -168,7 +168,7 @@ auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data,
 
     auto const package_name{get_generated_asset_package_name(asset_name)};
     auto const object_path{get_generated_asset_object_path(asset_name)};
-    auto* static_mesh{LoadObject<UStaticMesh>(nullptr, *object_path)};
+    auto* static_mesh{LoadObject<UStaticMesh>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
     auto const is_new_asset{static_mesh == nullptr};
     auto* const package{is_new_asset ? CreatePackage(*package_name) : static_mesh->GetOutermost()};
     if (package == nullptr) {

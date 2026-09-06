@@ -61,6 +61,8 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
     auto save_recipe() -> FReply;
     auto save_recipe_as() -> FReply;
     auto load_recipe() -> FReply;
+    auto export_recipe_json() -> FReply;
+    auto import_recipe_json() -> FReply;
     auto save_generated_mesh() -> FReply;
 
     TWeakObjectPtr<USbxMeshGenLabEditorMode> mode_;

@@ -133,6 +133,8 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void save_recipe();
     void save_recipe_as();
     void load_recipe();
+    void export_recipe_json();
+    void import_recipe_json();
     void apply_settings();
     void save_generated_mesh();
   private:
@@ -159,6 +161,13 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     [[nodiscard]] auto get_descendant_group_indices(FGuid group_id) const -> TArray<int32>;
     void apply_settings(bool mark_dirty);
     void save_recipe_with_name(FName recipe_name);
+    auto replace_session_from_recipe(TArray<FSbxMeshAssemblyRecipePart> recipe_parts,
+                                     TArray<FSbxMeshAssemblyRecipeGroup> recipe_groups,
+                                     FName output_asset_name,
+                                     FName recipe_name,
+                                     USbxMeshAssemblyRecipe* current_recipe,
+                                     bool recipe_dirty,
+                                     FText const& success_status) -> bool;
     void mark_recipe_dirty();
     void notify_session_changed(bool refresh_controls = true);
     [[nodiscard]] auto find_preview_part(UInstancedStaticMeshComponent const* component,

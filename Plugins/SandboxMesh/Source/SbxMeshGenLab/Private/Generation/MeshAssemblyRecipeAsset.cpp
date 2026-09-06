@@ -14,8 +14,9 @@ DEFINE_LOG_CATEGORY_STATIC(LogSbxMeshAssemblyRecipe, Log, All);
 namespace SandboxMesh {
 namespace {
 FString const recipe_package_path{TEXT("/SandboxMesh/MeshGenLab/Recipes")};
+FString const generated_package_path{TEXT("/SandboxMesh/MeshGenLab/Generated")};
 
-auto ensure_recipe_content_directory() -> bool {
+auto ensure_content_directory(FString const& subdirectory) -> bool {
     auto const plugin{IPluginManager::Get().FindPlugin(TEXT("SandboxMesh"))};
     if (!plugin.IsValid()) {
         UE_LOG(LogSbxMeshAssemblyRecipe, Error, TEXT("SandboxMesh plugin was not found."));
@@ -23,7 +24,7 @@ auto ensure_recipe_content_directory() -> bool {
     }
 
     auto const output_directory{
-        FPaths::Combine(plugin->GetContentDir(), TEXT("MeshGenLab"), TEXT("Recipes"))};
+        FPaths::Combine(plugin->GetContentDir(), TEXT("MeshGenLab"), subdirectory)};
     auto& file_manager{IFileManager::Get()};
     if (!file_manager.MakeDirectory(*output_directory, true) &&
         !file_manager.DirectoryExists(*output_directory)) {
@@ -35,16 +36,16 @@ auto ensure_recipe_content_directory() -> bool {
     }
     return true;
 }
-}
 
-auto write_mesh_assembly_recipe_asset(FName const recipe_name,
-                                      FName const output_asset_name,
-                                      TArray<FSbxMeshAssemblyRecipePart> const& parts,
-                                      TArray<FSbxMeshAssemblyRecipeGroup> const& groups)
+auto write_recipe_asset(FString const& package_path,
+                        FString const& content_subdirectory,
+                        FName const recipe_name,
+                        FName const output_asset_name,
+                        TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                        TArray<FSbxMeshAssemblyRecipeGroup> const& groups)
     -> USbxMeshAssemblyRecipe* {
     auto const recipe_name_string{recipe_name.ToString()};
-    auto const package_name{
-        FString::Printf(TEXT("%s/%s"), *recipe_package_path, *recipe_name_string)};
+    auto const package_name{FString::Printf(TEXT("%s/%s"), *package_path, *recipe_name_string)};
     auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, *recipe_name_string)};
     FText invalid_name_reason;
     if (recipe_name.IsNone() ||
@@ -56,11 +57,11 @@ auto write_mesh_assembly_recipe_asset(FName const recipe_name,
                *invalid_name_reason.ToString());
         return nullptr;
     }
-    if (!ensure_recipe_content_directory()) {
+    if (!ensure_content_directory(content_subdirectory)) {
         return nullptr;
     }
 
-    auto* recipe{LoadObject<USbxMeshAssemblyRecipe>(nullptr, *object_path)};
+    auto* recipe{LoadObject<USbxMeshAssemblyRecipe>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
     auto const is_new_asset{recipe == nullptr};
     auto* const package{is_new_asset ? CreatePackage(*package_name) : recipe->GetOutermost()};
     if (package == nullptr) {
@@ -104,6 +105,25 @@ auto write_mesh_assembly_recipe_asset(FName const recipe_name,
            TEXT("Saved mesh assembly recipe: %s"),
            *recipe->GetPathName());
     return recipe;
+}
+}
+
+auto write_mesh_assembly_recipe_asset(FName const recipe_name,
+                                      FName const output_asset_name,
+                                      TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                      TArray<FSbxMeshAssemblyRecipeGroup> const& groups)
+    -> USbxMeshAssemblyRecipe* {
+    return write_recipe_asset(
+        recipe_package_path, TEXT("Recipes"), recipe_name, output_asset_name, parts, groups);
+}
+
+auto write_generated_mesh_assembly_recipe_asset(FName const recipe_name,
+                                                FName const output_asset_name,
+                                                TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                                                TArray<FSbxMeshAssemblyRecipeGroup> const& groups)
+    -> USbxMeshAssemblyRecipe* {
+    return write_recipe_asset(
+        generated_package_path, TEXT("Generated"), recipe_name, output_asset_name, parts, groups);
 }
 
 }

@@ -104,6 +104,24 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                                })
                                .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::load_recipe)]] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("ImportJsonRecipe", "Import JSON"))
+                               .ToolTipText(LOCTEXT(
+                                   "ImportJsonRecipeTooltip",
+                                   "Replace the live assembly with a Sandbox Mesh JSON recipe."))
+                               .OnClicked(this,
+                                          &FSbxMeshGenLabEditorModeToolkit::import_recipe_json)] +
+                      SHorizontalBox::Slot().AutoWidth()
+                          [SNew(SButton)
+                               .Text(LOCTEXT("ExportJsonRecipe", "Export JSON"))
+                               .ToolTipText(
+                                   LOCTEXT("ExportJsonRecipeTooltip",
+                                           "Export the live assembly as an editable JSON recipe."))
+                               .OnClicked(this,
+                                          &FSbxMeshGenLabEditorModeToolkit::export_recipe_json)]] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SAssignNew(recipe_document_text_, STextBlock)
                           .Font(FAppStyle::Get().GetFontStyle("NormalFontBold"))
                           .AutoWrapText(true)] +
@@ -572,6 +590,16 @@ auto FSbxMeshGenLabEditorModeToolkit::save_recipe_as() -> FReply {
 
 auto FSbxMeshGenLabEditorModeToolkit::load_recipe() -> FReply {
     mode_->load_recipe();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::import_recipe_json() -> FReply {
+    mode_->import_recipe_json();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::export_recipe_json() -> FReply {
+    mode_->export_recipe_json();
     return FReply::Handled();
 }
 
