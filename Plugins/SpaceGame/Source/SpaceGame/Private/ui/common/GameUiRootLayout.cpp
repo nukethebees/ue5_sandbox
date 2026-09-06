@@ -90,7 +90,8 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action,
     return pause_menu;
 }
 
-auto UGameUiRootLayout::show_level_completion(FString level_display_name)
+auto UGameUiRootLayout::show_level_completion(FString level_display_name,
+                                              FLevelTelemetrySnapshot snapshot)
     -> ULevelCompletionWidget* {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(modal_stack)) {
@@ -113,8 +114,9 @@ auto UGameUiRootLayout::show_level_completion(FString level_display_name)
     auto const completion_class{ui_data->get_widget_class<ULevelCompletionWidget>()};
     auto* const completion{modal_stack->AddWidget<ULevelCompletionWidget>(
         completion_class,
-        [name = MoveTemp(level_display_name)](ULevelCompletionWidget& widget) mutable {
-            widget.prepare_for_open(MoveTemp(name));
+        [name = MoveTemp(level_display_name),
+         snapshot = MoveTemp(snapshot)](ULevelCompletionWidget& widget) mutable {
+            widget.prepare_for_open(MoveTemp(name), MoveTemp(snapshot));
         })};
     if (!IsValid(completion)) {
         UE_LOG(LogSandboxUI,

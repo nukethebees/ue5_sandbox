@@ -396,7 +396,7 @@ auto generate_pause_menu_widget(UClass& button_class) -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-auto generate_level_completion_widget(UClass& button_class) -> UClass* {
+auto generate_level_completion_widget() -> UClass* {
     auto* const blueprint{
         load_or_create_widget_blueprint(completion_widget_object_path,
                                         completion_widget_package_name,
@@ -407,36 +407,7 @@ auto generate_level_completion_widget(UClass& button_class) -> UClass* {
     }
 
     auto& tree{*blueprint->WidgetTree};
-    auto* const root{make_widget<UOverlay>(tree, TEXT("root_widget"))};
-    auto* const panel{tree.ConstructWidget<UVerticalBox>()};
-    auto* const panel_slot{root->AddChildToOverlay(panel)};
-    panel_slot->SetPadding(FMargin{80.0f});
-    panel_slot->SetHorizontalAlignment(HAlign_Center);
-    panel_slot->SetVerticalAlignment(VAlign_Center);
-
-    auto* const heading{make_widget<UTextBlock>(tree, TEXT("mission_complete_text"))};
-    heading->SetText(FText::FromString(TEXT("Mission Complete")));
-    auto heading_font{heading->GetFont()};
-    heading_font.Size = 38;
-    heading->SetFont(heading_font);
-    panel->AddChildToVerticalBox(heading)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 12.0f});
-
-    auto* const level_name{make_widget<UTextBlock>(tree, TEXT("level_name_text"))};
-    auto level_name_font{level_name->GetFont()};
-    level_name_font.Size = 28;
-    level_name->SetFont(level_name_font);
-    panel->AddChildToVerticalBox(level_name)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 24.0f});
-
-    auto* const statistics{make_widget<UVerticalBox>(tree, TEXT("statistics_container"))};
-    panel->AddChildToVerticalBox(statistics)->SetPadding(FMargin{0.0f, 0.0f, 0.0f, 24.0f});
-    make_menu_button(tree,
-                     *panel,
-                     button_class,
-                     TEXT("return_to_level_select_button"),
-                     TEXT("Return to Level Select"));
-    make_menu_button(tree, *panel, button_class, TEXT("keep_playing_button"), TEXT("Keep Playing"));
-
-    tree.RootWidget = root;
+    tree.RootWidget = make_widget<UNativeWidgetHost>(tree, TEXT("view_host"));
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
@@ -731,8 +702,7 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     auto* const root_class{generate_root_layout_widget()};
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
                                                   : nullptr};
-    auto* const completion_class{
-        IsValid(button_class) ? generate_level_completion_widget(*button_class) : nullptr};
+    auto* const completion_class{generate_level_completion_widget()};
     auto* const save_viewer_class{generate_save_game_viewer_widget()};
     auto* const main_class{
         IsValid(save_viewer_class) ? generate_main_menu_widget(*save_viewer_class) : nullptr};

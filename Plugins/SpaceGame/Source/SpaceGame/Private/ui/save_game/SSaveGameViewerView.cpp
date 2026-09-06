@@ -16,15 +16,15 @@
 
 namespace ml::ioj {
 namespace {
-auto fixed_button(TSharedPtr<SGameButton>& button,
-                  FGameUiStyle const& style,
-                  EGameButtonStyle const button_style,
-                  FText text,
-                  FOnClicked on_clicked) -> TSharedRef<SWidget> {
-    return SNew(SBox).WidthOverride(190.0f)[SAssignNew(button, SGameButton)
-                                                .Style(&style.button(button_style))
-                                                .Text(MoveTemp(text))
-                                                .OnClicked(MoveTemp(on_clicked))];
+auto action_button(TSharedPtr<SGameButton>& button,
+                   FGameUiStyle const& style,
+                   EGameButtonStyle const button_style,
+                   FText text,
+                   FOnClicked on_clicked) -> TSharedRef<SWidget> {
+    return SNew(SBox).MinDesiredWidth(190.0f)[SAssignNew(button, SGameButton)
+                                                  .Style(&style.button(button_style))
+                                                  .Text(MoveTemp(text))
+                                                  .OnClicked(MoveTemp(on_clicked))];
 }
 
 auto metadata_text(FText const& first, FText const& second, FText const& third, FText const& fourth)
@@ -284,7 +284,7 @@ auto SSaveGameViewerView::build_report() -> TSharedRef<SWidget> {
         SHorizontalBox::Slot()
             .AutoWidth()
             .Padding(FMargin{24.0f, 0.0f})
-            .VAlign(VAlign_Top)[fixed_button(
+            .VAlign(VAlign_Top)[action_button(
                 activate_button_,
                 *style_,
                 EGameButtonStyle::Primary,
@@ -334,13 +334,13 @@ auto SSaveGameViewerView::build_report() -> TSharedRef<SWidget> {
 
 auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
     auto footer{SNew(SHorizontalBox)};
-    footer->AddSlot().AutoWidth()[fixed_button(
+    footer->AddSlot().AutoWidth()[action_button(
         back_button_,
         *style_,
         EGameButtonStyle::Secondary,
         NSLOCTEXT("SaveGameViewer", "Back", "Back"),
         FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_back_))];
-    footer->AddSlot().AutoWidth().Padding(FMargin{10.0f, 0.0f})[fixed_button(
+    footer->AddSlot().AutoWidth().Padding(FMargin{10.0f, 0.0f})[action_button(
         create_button_,
         *style_,
         EGameButtonStyle::Primary,
@@ -348,7 +348,7 @@ auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
         FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_begin_create_))];
 #if !UE_BUILD_SHIPPING
     TSharedPtr<SGameButton> reset_button;
-    footer->AddSlot().AutoWidth()[fixed_button(
+    footer->AddSlot().AutoWidth()[action_button(
         reset_button,
         *style_,
         EGameButtonStyle::Secondary,
@@ -356,7 +356,7 @@ auto SSaveGameViewerView::build_footer() -> TSharedRef<SWidget> {
         FOnClicked::CreateSP(this, &SSaveGameViewerView::handle_action, on_reset_test_profile_))];
 #endif
     footer->AddSlot().FillWidth(1.0f);
-    footer->AddSlot().AutoWidth()[fixed_button(
+    footer->AddSlot().AutoWidth()[action_button(
         refresh_button_,
         *style_,
         EGameButtonStyle::Secondary,
@@ -420,7 +420,7 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
                                   SVerticalBox::Slot().AutoHeight()
                                       [SNew(SHorizontalBox) +
                                        SHorizontalBox::Slot().FillWidth(1.0f) +
-                                       SHorizontalBox::Slot().AutoWidth()[fixed_button(
+                                       SHorizontalBox::Slot().AutoWidth()[action_button(
                                            cancel_button,
                                            *style_,
                                            EGameButtonStyle::Secondary,
@@ -429,7 +429,7 @@ auto SSaveGameViewerView::build_create_prompt() -> TSharedRef<SWidget> {
                                                                 &SSaveGameViewerView::handle_action,
                                                                 on_cancel_create_))] +
                                        SHorizontalBox::Slot().AutoWidth().Padding(
-                                           FMargin{10.0f, 0.0f, 0.0f, 0.0f})[fixed_button(
+                                           FMargin{10.0f, 0.0f, 0.0f, 0.0f})[action_button(
                                            confirm_button,
                                            *style_,
                                            EGameButtonStyle::Primary,

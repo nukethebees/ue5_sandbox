@@ -122,8 +122,6 @@ class SPACEGAME_API UPauseMenuWidget : public UMenuActivatableWidget {
     void apply_ui_style();
     void update_stats_view();
     void update_stats_graph();
-    static auto format_elapsed_time(double elapsed_seconds) -> FText;
-
     EPauseMenuTab active_tab{EPauseMenuTab::Overview};
     FLevelTelemetrySnapshot stats_snapshot_;
     TSharedPtr<SGraphPlot> stats_graph_;

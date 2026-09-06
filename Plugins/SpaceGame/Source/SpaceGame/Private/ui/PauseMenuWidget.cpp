@@ -1,5 +1,6 @@
 #include "SpaceGame/ui/PauseMenuWidget.h"
 
+#include "LevelTelemetryPresentation.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/common/MenuButtonWidget.h"
@@ -26,28 +27,6 @@ void apply_pause_menu_text_style(UTextBlock& text, FTextBlockStyle const& style)
     text.SetStrikeBrush(style.StrikeBrush);
     text.SetTextTransformPolicy(style.TransformPolicy);
     text.SetTextOverflowPolicy(style.OverflowPolicy);
-}
-
-template <typename Data>
-auto make_graph_series(FText name,
-                       Data const& data,
-                       double const tick_period,
-                       FLinearColor const color) -> FGraphSeries {
-    FGraphSeries series;
-    series.name = MoveTemp(name);
-    series.style = {.color = color,
-                    .thickness = 1.5f,
-                    .antialias = true,
-                    .interpolation = EGraphSeriesInterpolation::StepAfter};
-
-    auto const sample_count{data.num()};
-    series.x.Reserve(sample_count);
-    series.y.Reserve(sample_count);
-    for (int32 i{0}; i < sample_count; ++i) {
-        series.x.Add(static_cast<float>(static_cast<double>(data.time_at(i)) * tick_period));
-        series.y.Add(static_cast<float>(data.value_at(i)));
-    }
-    return series;
 }
 }
 
@@ -276,22 +255,13 @@ void UPauseMenuWidget::apply_ui_style() {
         return;
     }
 
-    auto graph_style{FGraphPlotStyle{}};
-    graph_style.desired_size = {640.0f, 260.0f};
-    graph_style.label_font = style.text(EGameTextStyle::Caption).Font;
-    graph_style.label_color =
-        style.text(EGameTextStyle::Caption).ColorAndOpacity.GetSpecifiedColor();
-    graph_style.axis_color =
-        style.text(EGameTextStyle::BodySecondary).ColorAndOpacity.GetSpecifiedColor();
-    graph_style.grid_color = graph_style.axis_color.CopyWithNewOpacity(0.25f);
-    auto const panel_color{style.panel().background.TintColor.GetSpecifiedColor()};
-    graph_style.background_color = panel_color;
-    graph_style.plot_color = panel_color.CopyWithNewOpacity(panel_color.A * 0.35f);
-    graph_style.empty_text =
-        NSLOCTEXT("PauseMenu", "StatsGraphEmpty", "No level activity recorded");
     active_entity_series_color_ = style.palette().honey;
     kills_series_color_ = style.palette().danger;
-    (void)stats_graph_->set_style(MoveTemp(graph_style));
+    level_telemetry_presentation::apply_activity_graph_style(
+        *stats_graph_,
+        style,
+        NSLOCTEXT("PauseMenu", "StatsGraphEmpty", "No level activity recorded"),
+        {640.0f, 260.0f});
 }
 
 void UPauseMenuWidget::update_stats_view() {
@@ -301,7 +271,8 @@ void UPauseMenuWidget::update_stats_view() {
         return;
     }
 
-    elapsed_time_value->SetText(format_elapsed_time(stats_snapshot_.elapsed_seconds));
+    elapsed_time_value->SetText(
+        level_telemetry_presentation::format_elapsed_time(stats_snapshot_.elapsed_seconds));
     entities_spawned_value->SetText(FText::AsNumber(stats_snapshot_.spawned_entities));
     entities_active_value->SetText(FText::AsNumber(stats_snapshot_.active_entities));
     entities_destroyed_value->SetText(FText::AsNumber(stats_snapshot_.destroyed_entities));
@@ -316,40 +287,7 @@ void UPauseMenuWidget::update_stats_graph() {
         return;
     }
 
-    auto const tick_period{stats_snapshot_.tick_period};
-    if (tick_period <= 0.0) {
-        stats_graph_->clear_series();
-        return;
-    }
-
-    TArray<FGraphSeries> series;
-    series.Reserve(2);
-    series.Add(make_graph_series(NSLOCTEXT("PauseMenu", "ActiveEntitiesSeries", "Active entities"),
-                                 stats_snapshot_.active_entity_count_data,
-                                 tick_period,
-                                 active_entity_series_color_));
-    series.Add(make_graph_series(NSLOCTEXT("PauseMenu", "KillsSeries", "Kills"),
-                                 stats_snapshot_.cumulative_kill_count_data,
-                                 tick_period,
-                                 kills_series_color_));
-    stats_graph_->set_series(MoveTemp(series));
-
-    auto const x_max{FMath::Max(stats_snapshot_.elapsed_seconds, 1.0)};
-    (void)stats_graph_->set_axis_settings(
-        {.range_mode = EGraphRangeMode::Fixed, .fixed_range = {0.0, x_max}},
-        {.range_mode = EGraphRangeMode::AutoIncludeZero});
-}
-
-auto UPauseMenuWidget::format_elapsed_time(double const elapsed_seconds) -> FText {
-    auto const total_seconds{FMath::Max(FMath::FloorToInt64(elapsed_seconds), int64{0})};
-    auto const seconds{total_seconds % 60};
-    auto const total_minutes{total_seconds / 60};
-    auto const minutes{total_minutes % 60};
-    auto const hours{total_minutes / 60};
-    if (hours > 0) {
-        return FText::FromString(
-            FString::Printf(TEXT("%lld:%02lld:%02lld"), hours, minutes, seconds));
-    }
-    return FText::FromString(FString::Printf(TEXT("%02lld:%02lld"), minutes, seconds));
+    level_telemetry_presentation::update_activity_graph(
+        *stats_graph_, stats_snapshot_, active_entity_series_color_, kills_series_color_);
 }
 }

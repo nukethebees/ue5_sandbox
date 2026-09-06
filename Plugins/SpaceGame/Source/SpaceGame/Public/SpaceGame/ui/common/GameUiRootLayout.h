@@ -23,7 +23,8 @@ class SPACEGAME_API UGameUiRootLayout : public UCommonActivatableWidget {
     auto show_main_menu(bool show_level_select, FName preferred_level_id = NAME_None) -> bool;
     auto show_pause_menu(UInputAction& toggle_action, FLevelTelemetrySnapshot snapshot)
         -> UPauseMenuWidget*;
-    auto show_level_completion(FString level_display_name) -> ULevelCompletionWidget*;
+    auto show_level_completion(FString level_display_name, FLevelTelemetrySnapshot snapshot)
+        -> ULevelCompletionWidget*;
     void clear_menus();
 
     [[nodiscard]] auto get_active_screen() const -> UCommonActivatableWidget*;

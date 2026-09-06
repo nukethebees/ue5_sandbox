@@ -1,11 +1,9 @@
 #include <SandboxTests/support/test_setup.h>
 
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 
 #include <CommonInputSettings.h>
-#include <Components/TextBlock.h>
 #include <CQTest.h>
 
 TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
@@ -32,7 +30,20 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
             if (IsValid(widget)) {
                 auto const slate_widget{widget->TakeWidget()};
                 (void)slate_widget;
-                widget->prepare_for_open(TEXT("Border Skirmish"));
+                FLevelTelemetrySnapshot snapshot;
+                snapshot.elapsed_seconds = 3723.0;
+                snapshot.tick_period = 0.5;
+                snapshot.spawned_entities = 25;
+                snapshot.active_entities = 17;
+                snapshot.destroyed_entities = 8;
+                snapshot.kills = 6;
+                snapshot.lasers_fired = 120;
+                snapshot.active_lasers = 4;
+                snapshot.active_entity_count_data.add(0, 20);
+                snapshot.active_entity_count_data.add(4, 17);
+                snapshot.cumulative_kill_count_data.add(0, 0);
+                snapshot.cumulative_kill_count_data.add(4, 6);
+                widget->prepare_for_open(TEXT("Border Skirmish"), MoveTemp(snapshot));
                 widget->ActivateWidget();
             }
             return widget;
@@ -40,52 +51,37 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
 
         FCommonInputBase::GetInputSettings()->LoadData();
         auto* const widget{make_widget()};
-        auto* const heading{IsValid(widget) ? Cast<UTextBlock>(widget->GetWidgetFromName(
-                                                  TEXT("mission_complete_text")))
-                                            : nullptr};
-        auto* const level_name{
-            IsValid(widget) ? Cast<UTextBlock>(widget->GetWidgetFromName(TEXT("level_name_text")))
-                            : nullptr};
-        auto* const return_button{IsValid(widget)
-                                      ? Cast<ml::ioj::UMenuButtonWidget>(widget->GetWidgetFromName(
-                                            TEXT("return_to_level_select_button")))
-                                      : nullptr};
-        auto* const keep_playing_button{
-            IsValid(widget) ? Cast<ml::ioj::UMenuButtonWidget>(
-                                  widget->GetWidgetFromName(TEXT("keep_playing_button")))
-                            : nullptr};
-        if (!TestRunner->TestTrue(TEXT("Completion widget bindings are valid"),
-                                  IsValid(heading) && IsValid(level_name) &&
-                                      IsValid(return_button) && IsValid(keep_playing_button))) {
+        if (!TestRunner->TestTrue(TEXT("Completion report is created"), IsValid(widget))) {
             return;
         }
 
-        TestRunner->TestEqual(TEXT("Completion heading is displayed"),
-                              heading->GetText().ToString(),
-                              FString{TEXT("Mission Complete")});
-        TestRunner->TestEqual(TEXT("Authored level title is displayed"),
-                              level_name->GetText().ToString(),
+        TestRunner->TestEqual(TEXT("Authored level title is retained by the report"),
+                              widget->get_level_display_name(),
                               FString{TEXT("Border Skirmish")});
-        TestRunner->TestTrue(TEXT("Return is the deterministic initial focus target"),
-                             widget->GetDesiredFocusTarget() == return_button);
+        auto const& snapshot{widget->get_stats_snapshot()};
+        TestRunner->TestEqual(
+            TEXT("Completion report retains elapsed time"), snapshot.elapsed_seconds, 3723.0);
+        TestRunner->TestEqual(TEXT("Completion report retains kills"), snapshot.kills, 6);
+        TestRunner->TestEqual(
+            TEXT("Completion report retains destroyed entities"), snapshot.destroyed_entities, 8);
+        TestRunner->TestEqual(
+            TEXT("Completion report retains laser count"), snapshot.lasers_fired, 120);
+        TestRunner->TestTrue(TEXT("The report is the deterministic initial focus target"),
+                             widget->GetDesiredFocusTarget() == widget);
 
         int32 return_requests{0};
         widget->return_to_level_select_requested.AddLambda(
             [&return_requests] { ++return_requests; });
-        return_button->OnClicked().Broadcast();
-        return_button->OnClicked().Broadcast();
+        widget->request_return_to_mission_control();
+        widget->request_return_to_mission_control();
         TestRunner->TestEqual(TEXT("Return is emitted only once"), return_requests, 1);
 
-        auto* const keep_playing_widget{make_widget()};
-        auto* const keep_button{
-            IsValid(keep_playing_widget)
-                ? Cast<ml::ioj::UMenuButtonWidget>(
-                      keep_playing_widget->GetWidgetFromName(TEXT("keep_playing_button")))
-                : nullptr};
-        if (TestRunner->TestTrue(TEXT("Keep Playing button is valid"), IsValid(keep_button))) {
-            keep_button->OnClicked().Broadcast();
-            TestRunner->TestFalse(TEXT("Keep Playing deactivates completion"),
-                                  keep_playing_widget->IsActivated());
+        auto* const keep_operating_widget{make_widget()};
+        if (TestRunner->TestTrue(TEXT("Keep Operating report is created"),
+                                 IsValid(keep_operating_widget))) {
+            keep_operating_widget->request_keep_operating();
+            TestRunner->TestFalse(TEXT("Keep Operating deactivates completion"),
+                                  keep_operating_widget->IsActivated());
         }
     }
 };

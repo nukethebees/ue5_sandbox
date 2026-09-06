@@ -741,7 +741,19 @@ void ASpaceGamePlayerController::on_mission_completed(FTestMissionCompletion con
         return;
     }
 
-    completion_menu = ui_root->show_level_completion(completion.level_display_name);
+    auto* const orchestrator{hud_orchestrator.Get()};
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::on_mission_completed: Orchestrator is invalid."));
+        resume_game();
+        return;
+    }
+
+    auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot(
+        orchestrator->get_completed_ticks(), orchestrator->get_tick_period())};
+    completion_menu =
+        ui_root->show_level_completion(completion.level_display_name, MoveTemp(stats_snapshot));
     if (!IsValid(completion_menu)) {
         resume_game();
         return;

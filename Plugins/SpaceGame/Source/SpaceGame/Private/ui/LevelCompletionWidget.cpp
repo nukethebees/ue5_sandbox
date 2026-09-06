@@ -1,53 +1,82 @@
 #include "SpaceGame/ui/LevelCompletionWidget.h"
 
+#include "SLevelCompletionView.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
-#include "SpaceGame/ui/common/MenuButtonWidget.h"
+#include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 
-#include <Components/TextBlock.h>
-#include <Components/VerticalBox.h>
+#include <Components/NativeWidgetHost.h>
+#include <Engine/GameInstance.h>
 
 namespace ml::ioj {
-void ULevelCompletionWidget::prepare_for_open(FString level_display_name) {
+ULevelCompletionWidget::ULevelCompletionWidget() {
+    SetIsFocusable(true);
+}
+
+void ULevelCompletionWidget::prepare_for_open(FString level_display_name,
+                                              FLevelTelemetrySnapshot snapshot) {
+    level_display_name_ = MoveTemp(level_display_name);
+    stats_snapshot_ = MoveTemp(snapshot);
     action_requested_ = false;
-    if (!IsValid(level_name_text)) {
-        UE_LOG(LogSandboxUI,
-               Error,
-               TEXT("ULevelCompletionWidget::prepare_for_open: Level name text is invalid."));
-        return;
-    }
-    level_name_text->SetText(FText::FromString(MoveTemp(level_display_name)));
+    publish_report();
 }
 
 void ULevelCompletionWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();
 
-    if (!IsValid(level_name_text) || !IsValid(statistics_container) ||
-        !IsValid(return_to_level_select_button) || !IsValid(keep_playing_button)) {
+    auto* const game_instance{GetGameInstance()};
+    game_ = IsValid(game_instance) ? game_instance->GetSubsystem<UGameSubsystem>() : nullptr;
+    if (!IsValid(game_)) {
+        UE_LOG(LogSandboxUI,
+               Warning,
+               TEXT("ULevelCompletionWidget: Game subsystem is unavailable; using the default "
+                    "UI theme."));
+        auto const* const default_theme{GetDefault<USpaceGameUiTheme>()};
+        check(IsValid(default_theme));
+        fallback_style_ = default_theme->compile();
+    }
+
+    if (!IsValid(view_host)) {
         UE_LOG(LogSandboxUI,
                Error,
-               TEXT("ULevelCompletionWidget::NativeOnInitialized: One or more bound widgets are "
-                    "invalid."));
+               TEXT("ULevelCompletionWidget: The native view host is unavailable."));
         return;
     }
 
-    return_to_level_select_button->OnClicked().AddUObject(
-        this, &ThisClass::handle_return_to_level_select);
-    keep_playing_button->OnClicked().AddUObject(this, &ThisClass::handle_keep_playing);
-    return_to_level_select_button->SetNavigationRuleExplicit(EUINavigation::Down,
-                                                             keep_playing_button);
-    keep_playing_button->SetNavigationRuleExplicit(EUINavigation::Up,
-                                                   return_to_level_select_button);
+    auto const* const style{IsValid(game_) ? &game_->get_ui_style() : &fallback_style_};
+    view_host->SetContent(SAssignNew(view_, SLevelCompletionView)
+                              .Style(style)
+                              .OnReturnToMissionControl(FSimpleDelegate::CreateUObject(
+                                  this, &ThisClass::request_return_to_mission_control))
+                              .OnKeepOperating(FSimpleDelegate::CreateUObject(
+                                  this, &ThisClass::request_keep_operating)));
+    publish_report();
 }
 
 auto ULevelCompletionWidget::NativeGetDesiredFocusTarget() const -> UWidget* {
-    return return_to_level_select_button;
+    return const_cast<ULevelCompletionWidget*>(this);
 }
 
 auto ULevelCompletionWidget::NativeOnHandleBackAction() -> bool {
     return true;
 }
 
-void ULevelCompletionWidget::handle_return_to_level_select() {
+auto ULevelCompletionWidget::NativeOnFocusReceived(FGeometry const& geometry,
+                                                   FFocusEvent const& focus_event) -> FReply {
+    static_cast<void>(geometry);
+    static_cast<void>(focus_event);
+    if (view_.IsValid()) {
+        view_->focus_primary_action();
+    }
+    return FReply::Handled();
+}
+
+void ULevelCompletionWidget::ReleaseSlateResources(bool const release_children) {
+    Super::ReleaseSlateResources(release_children);
+    view_.Reset();
+}
+
+void ULevelCompletionWidget::request_return_to_mission_control() {
     if (action_requested_) {
         return;
     }
@@ -55,11 +84,17 @@ void ULevelCompletionWidget::handle_return_to_level_select() {
     return_to_level_select_requested.Broadcast();
 }
 
-void ULevelCompletionWidget::handle_keep_playing() {
+void ULevelCompletionWidget::request_keep_operating() {
     if (action_requested_) {
         return;
     }
     action_requested_ = true;
     DeactivateWidget();
+}
+
+void ULevelCompletionWidget::publish_report() {
+    if (view_.IsValid()) {
+        view_->update_report(level_display_name_, stats_snapshot_);
+    }
 }
 }

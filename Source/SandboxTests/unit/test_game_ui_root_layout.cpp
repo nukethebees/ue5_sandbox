@@ -121,17 +121,17 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
             TEXT("Reopening pause does not accumulate widgets"), root->get_modal_count(), 1);
         pause_menu->DeactivateWidget();
 
-        auto* const completion{root->show_level_completion(TEXT("Border Skirmish"))};
+        FLevelTelemetrySnapshot completion_snapshot;
+        completion_snapshot.kills = 6;
+        auto* const completion{
+            root->show_level_completion(TEXT("Border Skirmish"), completion_snapshot)};
         if (!TestRunner->TestTrue(TEXT("Completion is pushed"), IsValid(completion))) {
             return;
         }
-        auto* const return_button{Cast<ml::ioj::UMenuButtonWidget>(
-            completion->GetWidgetFromName(TEXT("return_to_level_select_button")))};
-        TestRunner->TestTrue(TEXT("Return is the completion focus target"),
-                             IsValid(return_button) &&
-                                 completion->GetDesiredFocusTarget() == return_button);
+        TestRunner->TestTrue(TEXT("Completion owns its native focus target"),
+                             completion->GetDesiredFocusTarget() == completion);
         TestRunner->TestTrue(TEXT("Repeated completion returns the active instance"),
-                             root->show_level_completion(TEXT("Ignored")) == completion);
+                             root->show_level_completion(TEXT("Ignored"), {}) == completion);
         TestRunner->TestEqual(
             TEXT("Completion does not accumulate widgets"), root->get_modal_count(), 1);
     }
