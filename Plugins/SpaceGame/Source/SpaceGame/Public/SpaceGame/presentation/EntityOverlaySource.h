@@ -17,6 +17,7 @@ struct SPACEGAME_API FEntityOverlayCollectionResult {
 
 [[nodiscard]] SPACEGAME_API auto
     collect_entity_overlay_instances(ml::entity_registry::EntityData::ConstView entities,
+                                     TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                                      FEntityOverlayHealthMaximums const& maximum_health,
                                      FVector3f origin,
                                      float maximum_range,

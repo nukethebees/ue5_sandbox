@@ -67,8 +67,17 @@ auto write_debug_frames(FString const& output_directory) -> bool {
 
     FEntityOverlayCollector collector;
     auto frame_store{MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>()};
+    TArray<EEntityOverlayObjectiveRole> objective_roles;
+    objective_roles.Init(EEntityOverlayObjectiveRole::None, count);
+    objective_roles[1] = EEntityOverlayObjectiveRole::Defend;
+    objective_roles[2] = EEntityOverlayObjectiveRole::Destroy;
+    objective_roles[5] = EEntityOverlayObjectiveRole::Defend;
+    objective_roles[6] = EEntityOverlayObjectiveRole::Destroy;
+    objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
+    objective_roles[8] = EEntityOverlayObjectiveRole::Destroy;
     auto& frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(registry.get_entity_data()),
+                                                       objective_roles,
                                                        {100, 100, 100},
                                                        FVector3f::ZeroVector,
                                                        10000.0f,
@@ -85,6 +94,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     static_cast<void>(moved_registry.add_entities(make_view(entities)));
     auto& moved_frame{frame_store->next()};
     static_cast<void>(collect_entity_overlay_instances(make_view(moved_registry.get_entity_data()),
+                                                       objective_roles,
                                                        {100, 100, 100},
                                                        FVector3f::ZeroVector,
                                                        10000.0f,

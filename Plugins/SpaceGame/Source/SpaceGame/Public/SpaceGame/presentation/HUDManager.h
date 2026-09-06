@@ -205,6 +205,7 @@ struct SPACEGAME_API FHUDManager {
     bool collect_player_status_data();
     bool collect_player_flight_data();
     void update_entity_overlays();
+    void update_entity_overlay_objective_roles();
     void update_entity_overlay(FRegisteredEntityOverlayHud& registration);
 #if WITH_EDITOR
     bool collect_sampled_speed_data();
@@ -243,6 +244,7 @@ struct SPACEGAME_API FHUDManager {
     FEntityOverlaySettings entity_overlay_settings_;
     FEntityOverlayStyle entity_overlay_style_;
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;
+    TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
 
 #if WITH_EDITOR
     ml::MultiBuffer<ml::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;

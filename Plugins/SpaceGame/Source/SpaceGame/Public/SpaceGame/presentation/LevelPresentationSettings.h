@@ -32,6 +32,12 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere, Category = "Entity Overlay", meta = (ClampMin = "0.0"))
     float maximum_inset_height_ratio{0.4f};
 
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Objectives", meta = (ClampMin = "0.0"))
+    float objective_frame_pixels{2.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Objectives", meta = (ClampMin = "0.0"))
+    float screen_edge_padding_pixels{12.0f};
+
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};
 

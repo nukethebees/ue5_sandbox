@@ -48,8 +48,15 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
-        auto const result{collect_entity_overlay_instances(
-            make_view(entities), {5000, 50, 20}, FVector3f::ZeroVector, 100.0f, output, collector)};
+        TArray<EEntityOverlayObjectiveRole> objective_roles;
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        auto const result{collect_entity_overlay_instances(make_view(entities),
+                                                           objective_roles,
+                                                           {5000, 50, 20},
+                                                           FVector3f::ZeroVector,
+                                                           100.0f,
+                                                           output,
+                                                           collector)};
 
         TestRunner->TestEqual(TEXT("Only alive supported in-range entities are collected"),
                               result.candidate_count,
@@ -70,8 +77,15 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
-        static_cast<void>(collect_entity_overlay_instances(
-            make_view(entities), {5000, 50, 20}, FVector3f::ZeroVector, 100.0f, output, collector));
+        TArray<EEntityOverlayObjectiveRole> objective_roles;
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        static_cast<void>(collect_entity_overlay_instances(make_view(entities),
+                                                           objective_roles,
+                                                           {5000, 50, 20},
+                                                           FVector3f::ZeroVector,
+                                                           100.0f,
+                                                           output,
+                                                           collector));
 
         TestRunner->TestEqual(TEXT("Negative health clamps to zero"), output[0].health, 0.0f);
         TestRunner->TestEqual(TEXT("Excess health clamps to one"), output[1].health, 1.0f);

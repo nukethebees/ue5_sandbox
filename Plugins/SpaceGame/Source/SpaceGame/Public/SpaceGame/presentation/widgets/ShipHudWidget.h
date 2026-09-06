@@ -186,6 +186,8 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     TSharedPtr<SEntityOverlayWidget> entity_overlay_widget_;
     FLinearColor entity_overlay_background_colour_{};
     FLinearColor entity_overlay_fill_colour_{};
+    FLinearColor entity_overlay_defend_colour_{};
+    FLinearColor entity_overlay_destroy_colour_{};
     FLinearColor reticle_normal_colour_{FLinearColor::Green};
     FLinearColor reticle_warning_colour_{FLinearColor::Yellow};
     FLinearColor reticle_danger_colour_{FLinearColor::Red};

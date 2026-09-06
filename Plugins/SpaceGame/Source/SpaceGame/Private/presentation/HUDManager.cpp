@@ -78,6 +78,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
                        FMath::Max(entity_overlay_settings.minimum_bar_scale, 0.01f)),
         .inset_pixels = entity_overlay_settings.inset_pixels,
         .maximum_inset_height_ratio = entity_overlay_settings.maximum_inset_height_ratio,
+        .objective_frame_pixels = entity_overlay_settings.objective_frame_pixels,
+        .screen_edge_padding_pixels = entity_overlay_settings.screen_edge_padding_pixels,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,
     };
@@ -87,6 +89,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         .turret = level_config.turrets.max_health,
     };
     top_killer_ids_buffer.Reset();
+    entity_overlay_objective_roles_.Reset();
     top_killer_ids_buffer.Reserve(entity_registry->get_num_unique_ids_issued());
     check(mission_manager);
     check(entity_registry);
@@ -137,6 +140,7 @@ void FHUDManager::deactivate() {
     player_status_data_buffers = {};
     player_flight_data_buffers = {};
     top_killer_ids_buffer.Reset();
+    entity_overlay_objective_roles_.Reset();
     has_mission_data = false;
     state = EHUDManagerState::Disabled;
 #if WITH_EDITOR
@@ -258,9 +262,37 @@ void FHUDManager::update_entity_overlays() {
         return;
     }
 
+    update_entity_overlay_objective_roles();
     for (auto& registration : registered_huds) {
         update_entity_overlay(registration);
     }
+}
+
+void FHUDManager::update_entity_overlay_objective_roles() {
+    check(mission_manager);
+    check(entity_registry);
+
+    auto const entity_count{entity_registry->get_num_elements()};
+    entity_overlay_objective_roles_.Init(EEntityOverlayObjectiveRole::None, entity_count);
+    if (!mission_manager->mission_running()) {
+        return;
+    }
+
+    auto const assign_role = [this](TConstArrayView<FRegistryEntityHandle> const handles,
+                                    EEntityOverlayObjectiveRole const role) {
+        for (auto const handle : handles) {
+            if (!entity_registry->is_valid_alive(handle)) {
+                continue;
+            }
+
+            check(entity_overlay_objective_roles_.IsValidIndex(handle.index));
+            entity_overlay_objective_roles_[handle.index] = role;
+        }
+    };
+    assign_role(mission_manager->get_entity_handles_that_must_survive(),
+                EEntityOverlayObjectiveRole::Defend);
+    assign_role(mission_manager->get_entity_handles_required_to_kill(),
+                EEntityOverlayObjectiveRole::Destroy);
 }
 
 void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registration) {
@@ -288,6 +320,7 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     check(entity_registry);
     auto const result{
         collect_entity_overlay_instances(entity_registry->get_entity_data().get_const_view(),
+                                         entity_overlay_objective_roles_,
                                          entity_overlay_maximum_health_,
                                          FVector3f{camera_location},
                                          entity_overlay_settings_.maximum_range,
