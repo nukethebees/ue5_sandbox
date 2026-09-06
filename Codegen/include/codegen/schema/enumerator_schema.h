@@ -10,6 +10,7 @@ struct EnumeratorSchema {
     std::optional<std::string> initializer;
     std::optional<std::string> display_name;
     bool hidden{false};
+    std::optional<std::string> serialized_name;
 };
 
 } // namespace codegen

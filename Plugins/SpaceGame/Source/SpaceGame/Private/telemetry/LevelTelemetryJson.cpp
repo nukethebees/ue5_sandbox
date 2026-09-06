@@ -7,104 +7,7 @@
 #include <Serialization/JsonSerializer.h>
 #include <Serialization/JsonWriter.h>
 
-auto LexToString(ELevelTelemetryRunEndReason const value) -> TCHAR const* {
-    switch (value) {
-        case ELevelTelemetryRunEndReason::MissionSucceeded:
-            return TEXT("mission_succeeded");
-        case ELevelTelemetryRunEndReason::MissionFailed:
-            return TEXT("mission_failed");
-        case ELevelTelemetryRunEndReason::OrchestratorReset:
-            return TEXT("orchestrator_reset");
-        case ELevelTelemetryRunEndReason::WorldEnd:
-            return TEXT("world_end");
-    }
-
-    checkNoEntry();
-    return TEXT("unknown");
-}
-
 namespace {
-auto team_name(int32 const index) -> TCHAR const* {
-    switch (static_cast<ETestTeam>(index)) {
-        case ETestTeam::White:
-            return TEXT("white");
-        case ETestTeam::Red:
-            return TEXT("red");
-        case ETestTeam::Green:
-            return TEXT("green");
-        case ETestTeam::Blue:
-            return TEXT("blue");
-        case ETestTeam::Orange:
-            return TEXT("orange");
-        case ETestTeam::Yellow:
-            return TEXT("yellow");
-        case ETestTeam::COUNT:
-            break;
-    }
-    return TEXT("unknown");
-}
-
-auto entity_type_name(int32 const index) -> TCHAR const* {
-    switch (static_cast<ETestEntityType>(index)) {
-        case ETestEntityType::PlayerShip:
-            return TEXT("player_ship");
-        case ETestEntityType::Turret:
-            return TEXT("turret");
-        case ETestEntityType::CapitalShip:
-            return TEXT("capital_ship");
-        case ETestEntityType::CapitalShipFighter:
-            return TEXT("capital_ship_fighter");
-        case ETestEntityType::TubeSpinner:
-            return TEXT("tube_spinner");
-        case ETestEntityType::COUNT:
-            break;
-    }
-    return TEXT("unknown");
-}
-
-auto mission_state_name(ETestMissionState const value) -> TCHAR const* {
-    switch (value) {
-        case ETestMissionState::NotStarted:
-            return TEXT("not_started");
-        case ETestMissionState::Running:
-            return TEXT("running");
-        case ETestMissionState::Succeeded:
-            return TEXT("succeeded");
-        case ETestMissionState::Failed:
-            return TEXT("failed");
-        case ETestMissionState::Disabled:
-            return TEXT("disabled");
-    }
-    return TEXT("unknown");
-}
-
-auto mission_mode_name(ETestMissionMode const value) -> TCHAR const* {
-    switch (value) {
-        case ETestMissionMode::None:
-            return TEXT("none");
-        case ETestMissionMode::SurviveTime:
-            return TEXT("survive_time");
-        case ETestMissionMode::KillEnemies:
-            return TEXT("kill_enemies");
-        case ETestMissionMode::KillEnemiesWithinTime:
-            return TEXT("kill_enemies_within_time");
-    }
-    return TEXT("unknown");
-}
-
-auto mission_fail_reason_name(ETestMissionFailReason const value) -> TCHAR const* {
-    switch (value) {
-        case ETestMissionFailReason::None:
-            return TEXT("none");
-        case ETestMissionFailReason::PlayerKilled:
-            return TEXT("player_killed");
-        case ETestMissionFailReason::TimeElapsed:
-            return TEXT("time_elapsed");
-        case ETestMissionFailReason::DefenceObjectiveFailed:
-            return TEXT("defence_objective_failed");
-    }
-    return TEXT("unknown");
-}
 
 void set_optional_number(FJsonObject& object, FString const& name, TOptional<double> const value) {
     if (value.IsSet()) {
@@ -158,7 +61,7 @@ auto make_tick_series(FLevelTelemetryTickSeries const& source) -> TSharedRef<FJs
     constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
     for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
         active_by_type->SetObjectField(
-            entity_type_name(entity_type_index),
+            LexToSerializedString(static_cast<ETestEntityType>(entity_type_index)),
             make_series(source.active_entities_by_type[entity_type_index]));
     }
     result->SetObjectField(TEXT("active_entities_by_type"), active_by_type);
@@ -170,11 +73,12 @@ auto make_tick_series(FLevelTelemetryTickSeries const& source) -> TSharedRef<FJs
         for (int32 entity_type_index{}; entity_type_index < entity_type_count;
              ++entity_type_index) {
             team->SetObjectField(
-                entity_type_name(entity_type_index),
+                LexToSerializedString(static_cast<ETestEntityType>(entity_type_index)),
                 make_series(
                     source.active_entities_by_team_and_type[team_index][entity_type_index]));
         }
-        active_by_team_and_type->SetObjectField(team_name(team_index), team);
+        active_by_team_and_type->SetObjectField(
+            LexToSerializedString(static_cast<ETestTeam>(team_index)), team);
     }
     result->SetObjectField(TEXT("active_entities_by_team_and_type"), active_by_team_and_type);
 
@@ -369,13 +273,11 @@ auto parse_realtime_series(FJsonObject const& parent, ml::TimeSeriesData<uint64>
 }
 
 template <typename Enum>
-auto parse_named_enum(FString const& value,
-                      std::initializer_list<std::pair<TCHAR const*, Enum>> const choices,
-                      FString const& path) -> std::expected<Enum, FString> {
-    for (auto const& [name, result] : choices) {
-        if (value == name) {
-            return result;
-        }
+auto parse_serialized_enum(FString const& value, FString const& path)
+    -> std::expected<Enum, FString> {
+    Enum result{};
+    if (ml::try_parse_serialized(FStringView{value}, result)) {
+        return result;
     }
     return std::unexpected{
         error_at(path, FString::Printf(TEXT("unknown enum value '%s'"), *value))};
@@ -516,14 +418,9 @@ auto deserialize_level_telemetry_run(FString const& json)
     FString reason_name;
     READ_REQUIRED(reason_name,
                   required_string(**completion, TEXT("reason"), TEXT("completion.reason")));
-    READ_REQUIRED(result.completion.reason,
-                  parse_named_enum<ELevelTelemetryRunEndReason>(
-                      reason_name,
-                      {{TEXT("mission_succeeded"), ELevelTelemetryRunEndReason::MissionSucceeded},
-                       {TEXT("mission_failed"), ELevelTelemetryRunEndReason::MissionFailed},
-                       {TEXT("orchestrator_reset"), ELevelTelemetryRunEndReason::OrchestratorReset},
-                       {TEXT("world_end"), ELevelTelemetryRunEndReason::WorldEnd}},
-                      TEXT("completion.reason")));
+    READ_REQUIRED(
+        result.completion.reason,
+        parse_serialized_enum<ELevelTelemetryRunEndReason>(reason_name, TEXT("completion.reason")));
     READ_REQUIRED(result.completion.interrupted,
                   required_bool(**completion, TEXT("interrupted"), TEXT("completion.interrupted")));
     READ_REQUIRED(result.completion.world_end_reason,
@@ -575,31 +472,13 @@ auto deserialize_level_telemetry_run(FString const& json)
         ETestMissionFailReason fail{};
         READ_REQUIRED(
             mode,
-            parse_named_enum<ETestMissionMode>(
-                mode_name,
-                {{TEXT("none"), ETestMissionMode::None},
-                 {TEXT("survive_time"), ETestMissionMode::SurviveTime},
-                 {TEXT("kill_enemies"), ETestMissionMode::KillEnemies},
-                 {TEXT("kill_enemies_within_time"), ETestMissionMode::KillEnemiesWithinTime}},
-                TEXT("completion.mission_mode")));
-        READ_REQUIRED(state,
-                      parse_named_enum<ETestMissionState>(
-                          state_name,
-                          {{TEXT("not_started"), ETestMissionState::NotStarted},
-                           {TEXT("running"), ETestMissionState::Running},
-                           {TEXT("succeeded"), ETestMissionState::Succeeded},
-                           {TEXT("failed"), ETestMissionState::Failed},
-                           {TEXT("disabled"), ETestMissionState::Disabled}},
-                          TEXT("completion.mission_state")));
+            parse_serialized_enum<ETestMissionMode>(mode_name, TEXT("completion.mission_mode")));
+        READ_REQUIRED(
+            state,
+            parse_serialized_enum<ETestMissionState>(state_name, TEXT("completion.mission_state")));
         READ_REQUIRED(fail,
-                      parse_named_enum<ETestMissionFailReason>(
-                          fail_name,
-                          {{TEXT("none"), ETestMissionFailReason::None},
-                           {TEXT("player_killed"), ETestMissionFailReason::PlayerKilled},
-                           {TEXT("time_elapsed"), ETestMissionFailReason::TimeElapsed},
-                           {TEXT("defence_objective_failed"),
-                            ETestMissionFailReason::DefenceObjectiveFailed}},
-                          TEXT("completion.mission_fail_reason")));
+                      parse_serialized_enum<ETestMissionFailReason>(
+                          fail_name, TEXT("completion.mission_fail_reason")));
         result.completion.mission_mode = mode;
         result.completion.mission_state = state;
         result.completion.mission_fail_reason = fail;
@@ -672,38 +551,39 @@ auto deserialize_level_telemetry_run(FString const& json)
         return std::unexpected{!by_type ? by_type.error() : by_team.error()};
     }
     for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+        auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
         auto parsed{parse_tick_series(
             **by_type,
-            entity_type_name(type),
-            FString::Printf(TEXT("tick_series.active_entities_by_type.%s"), entity_type_name(type)),
+            type_name,
+            FString::Printf(TEXT("tick_series.active_entities_by_type.%s"), type_name),
             result.tick_series.active_entities_by_type[type])};
         if (!parsed) {
             return std::unexpected{parsed.error()};
         }
         auto valid{validate_nonnegative_series(
             result.tick_series.active_entities_by_type[type],
-            FString::Printf(TEXT("tick_series.active_entities_by_type.%s"),
-                            entity_type_name(type)))};
+            FString::Printf(TEXT("tick_series.active_entities_by_type.%s"), type_name))};
         if (!valid) {
             return std::unexpected{valid.error()};
         }
     }
     for (int32 team{}; team < FLevelTelemetryTickSeries::team_count; ++team) {
-        auto const team_object{
-            required_object(**by_team,
-                            team_name(team),
-                            FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s"),
-                                            team_name(team)))};
+        auto const* team_name{LexToSerializedString(static_cast<ETestTeam>(team))};
+        auto const team_object{required_object(
+            **by_team,
+            team_name,
+            FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s"), team_name))};
         if (!team_object) {
             return std::unexpected{team_object.error()};
         }
         for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+            auto const* type_name{LexToSerializedString(static_cast<ETestEntityType>(type))};
             auto parsed{parse_tick_series(
                 **team_object,
-                entity_type_name(type),
+                type_name,
                 FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s.%s"),
-                                team_name(team),
-                                entity_type_name(type)),
+                                team_name,
+                                type_name),
                 result.tick_series.active_entities_by_team_and_type[team][type])};
             if (!parsed) {
                 return std::unexpected{parsed.error()};
@@ -711,8 +591,8 @@ auto deserialize_level_telemetry_run(FString const& json)
             auto valid{validate_nonnegative_series(
                 result.tick_series.active_entities_by_team_and_type[team][type],
                 FString::Printf(TEXT("tick_series.active_entities_by_team_and_type.%s.%s"),
-                                team_name(team),
-                                entity_type_name(type)))};
+                                team_name,
+                                type_name))};
             if (!valid) {
                 return std::unexpected{valid.error()};
             }
@@ -774,17 +654,18 @@ auto serialize_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FS
     root->SetObjectField(TEXT("simulation"), simulation);
 
     auto completion{MakeShared<FJsonObject>()};
-    completion->SetStringField(TEXT("reason"), LexToString(record.completion.reason));
+    completion->SetStringField(TEXT("reason"), LexToSerializedString(record.completion.reason));
     completion->SetBoolField(TEXT("interrupted"), record.completion.interrupted);
     completion->SetStringField(TEXT("world_end_reason"), record.completion.world_end_reason);
     if (record.completion.mission_mode.IsSet()) {
-        completion->SetStringField(TEXT("mission_mode"),
-                                   mission_mode_name(record.completion.mission_mode.GetValue()));
-        completion->SetStringField(TEXT("mission_state"),
-                                   mission_state_name(record.completion.mission_state.GetValue()));
+        completion->SetStringField(
+            TEXT("mission_mode"), LexToSerializedString(record.completion.mission_mode.GetValue()));
+        completion->SetStringField(
+            TEXT("mission_state"),
+            LexToSerializedString(record.completion.mission_state.GetValue()));
         completion->SetStringField(
             TEXT("mission_fail_reason"),
-            mission_fail_reason_name(record.completion.mission_fail_reason.GetValue()));
+            LexToSerializedString(record.completion.mission_fail_reason.GetValue()));
     } else {
         completion->SetField(TEXT("mission_mode"), MakeShared<FJsonValueNull>());
         completion->SetField(TEXT("mission_state"), MakeShared<FJsonValueNull>());

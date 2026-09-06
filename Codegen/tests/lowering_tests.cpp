@@ -115,15 +115,17 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
             .reflection = EnumReflection::blueprint,
             .values =
                 {
-                    EnumeratorSchema{"First"},
-                    EnumeratorSchema{"Readable", "7", "Readable Value"},
-                    EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true},
+                    EnumeratorSchema{"First", std::nullopt, std::nullopt, false, "first"},
+                    EnumeratorSchema{"Readable", "7", "Readable Value", false, "readable"},
+                    EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true, "count"},
                 },
             .conversions =
                 {
                     EnumConversion::lex_to_string,
                     EnumConversion::string_view,
                     EnumConversion::display_string_view,
+                    EnumConversion::lex_to_serialized_string,
+                    EnumConversion::try_parse_serialized,
                 },
             .export_specifier = "PROJECT_API",
         }},
@@ -139,12 +141,21 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
               std::string::npos);
     EXPECT_NE(output.header.find("namespace project {\nPROJECT_API auto to_string_view"),
               std::string::npos);
+    EXPECT_NE(output.header.find(
+                  "PROJECT_API auto LexToSerializedString(EMode const value) -> TCHAR const*;"),
+              std::string::npos);
+    EXPECT_NE(output.header.find(
+                  "PROJECT_API auto try_parse_serialized(FStringView const value, EMode& result) -> "
+                  "bool;"),
+              std::string::npos);
     EXPECT_EQ(output.header.find("auto to_string(EMode"), std::string::npos);
 
     EXPECT_NE(output.source.find("#include \"Project/Modes.h\""), std::string::npos);
     EXPECT_NE(output.source.find("switch (value)"), std::string::npos);
     EXPECT_NE(output.source.find("TEXT(\"<invalid EMode>\")"), std::string::npos);
     EXPECT_NE(output.source.find("return TEXT(\"Readable Value\");"), std::string::npos);
+    EXPECT_NE(output.source.find("return TEXT(\"readable\");"), std::string::npos);
+    EXPECT_NE(output.source.find("result = EMode::Readable;"), std::string::npos);
     EXPECT_NE(output.source.find("auto LexToString(EMode const value) -> TCHAR const*"),
               std::string::npos);
 }

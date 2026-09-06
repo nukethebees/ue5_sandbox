@@ -374,6 +374,12 @@ auto parse_enum_conversion(std::string const& value, std::string const& path) ->
     if (value == "display_string") {
         return EnumConversion::display_string;
     }
+    if (value == "lex_to_serialized_string") {
+        return EnumConversion::lex_to_serialized_string;
+    }
+    if (value == "try_parse_serialized") {
+        return EnumConversion::try_parse_serialized;
+    }
     throw ManifestError{path + ": unknown enum conversion '" + value + "'"};
 }
 
@@ -393,12 +399,15 @@ auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
     for (std::size_t index{0}; index < value_entries.size(); ++index) {
         auto const& entry{value_entries[index]};
         auto const entry_path{path + "/values/" + std::to_string(index)};
-        reject_unknown(entry, entry_path, {"name", "value", "display_name", "hidden"});
+        reject_unknown(entry,
+                       entry_path,
+                       {"name", "value", "display_name", "hidden", "serialized_name"});
         values.push_back(EnumeratorSchema{
             .name = required<std::string>(entry, "name", entry_path),
             .initializer = optional<std::string>(entry, "value", entry_path),
             .display_name = optional<std::string>(entry, "display_name", entry_path),
             .hidden = value_or<bool>(entry, "hidden", false, entry_path),
+            .serialized_name = optional<std::string>(entry, "serialized_name", entry_path),
         });
     }
 

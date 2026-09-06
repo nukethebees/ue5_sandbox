@@ -358,6 +358,14 @@ void validate_enum(EnumModuleSchema const& module,
             throw std::invalid_argument{"Enum '" + schema.name + "' must have values"};
         }
         std::vector<std::string> value_names;
+        std::vector<std::string> serialized_names;
+        auto const has_serialized_conversion{
+            std::find(schema.conversions.begin(),
+                      schema.conversions.end(),
+                      EnumConversion::lex_to_serialized_string) != schema.conversions.end() ||
+            std::find(schema.conversions.begin(),
+                      schema.conversions.end(),
+                      EnumConversion::try_parse_serialized) != schema.conversions.end()};
         for (auto const& value : schema.values) {
             require_identifier(value.name, "Enum '" + schema.name + "' value name");
             value_names.push_back(value.name);
@@ -371,12 +379,23 @@ void validate_enum(EnumModuleSchema const& module,
                               "Enum '" + schema.name + "' value '" + value.name +
                                   "' display name");
             }
+            if (value.serialized_name.has_value()) {
+                require_value(*value.serialized_name,
+                              "Enum '" + schema.name + "' value '" + value.name +
+                                  "' serialized name");
+                serialized_names.push_back(*value.serialized_name);
+            } else if (has_serialized_conversion &&
+                       (!schema.count.has_value() || value.name != *schema.count)) {
+                throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
+                                            "' requires a serialized name"};
+            }
             if (value.hidden && schema.reflection == EnumReflection::none) {
                 throw std::invalid_argument{"Plain enum '" + schema.name + "' value '" +
                                             value.name + "' cannot be hidden"};
             }
         }
         require_unique_names(value_names, "Enum '" + schema.name + "' values");
+        require_unique_names(serialized_names, "Enum '" + schema.name + "' serialized names");
 
         if (schema.count.has_value() && !schema.enum_array) {
             throw std::invalid_argument{"Enum '" + schema.name +

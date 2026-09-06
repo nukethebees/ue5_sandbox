@@ -25,10 +25,14 @@ struct TEnumTraits<ETestMissionMode> {
 
 SPACEGAME_API auto LexToString(ETestMissionMode const value) -> TCHAR const*;
 
+SPACEGAME_API auto LexToSerializedString(ETestMissionMode const value) -> TCHAR const*;
+
 namespace ml {
 SPACEGAME_API auto to_string_view(ETestMissionMode const value) -> FStringView;
 
 SPACEGAME_API auto to_display_string_view(ETestMissionMode const value) -> FStringView;
+
+SPACEGAME_API auto try_parse_serialized(FStringView const value, ETestMissionMode& result) -> bool;
 
 
 } // namespace ml

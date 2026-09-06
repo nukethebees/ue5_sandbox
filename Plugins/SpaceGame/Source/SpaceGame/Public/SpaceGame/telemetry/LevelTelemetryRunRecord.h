@@ -7,16 +7,10 @@
 #include <SpaceGame/missions/TestMissionFailReason.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGame/telemetry/LevelTelemetryRunEndReason.h>
 
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
-
-enum class ELevelTelemetryRunEndReason : uint8 {
-    MissionSucceeded,
-    MissionFailed,
-    OrchestratorReset,
-    WorldEnd,
-};
 
 struct FLevelTelemetryEnvironment {
     FString project_name{};
@@ -100,5 +94,3 @@ struct FLevelTelemetryRunRecord {
     FLevelTelemetryTickSeries tick_series{};
     ml::TimeSeriesData<uint64> completed_ticks_by_real_time{};
 };
-
-SPACEGAME_API auto LexToString(ELevelTelemetryRunEndReason value) -> TCHAR const*;

@@ -135,20 +135,81 @@ auto display_lookup(EnumModuleSchema const& module, EnumSchema const& schema) ->
     };
 }
 
+auto serialized_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
+    auto const enum_name{qualified_enum_name(module, schema)};
+    NodeListBuilder body;
+    std::vector<std::string> cases;
+    for (auto const& value : schema.values) {
+        if (!value.serialized_name.has_value()) {
+            continue;
+        }
+        cases.push_back("case " + enum_name + "::" + value.name + ": {\n"
+                        "    return " + text_literal(*value.serialized_name) + ";\n"
+                        "}");
+    }
+    body.add(raw("switch (value) {\n" + join(cases, "\n") + "\n}"), 2)
+        .add(raw("ensureMsgf(false,\n"
+                 "           TEXT(\"Unhandled serialized " + schema.name + " value: %lld\"),\n"
+                 "           static_cast<int64>(value));"),
+             1)
+        .add(ReturnStatement{text_literal("<invalid " + schema.name + ">")});
+    return FunctionSpec{
+        .name = internal_name(schema, "serialized_name"),
+        .return_type = "auto",
+        .parameters = {FunctionParameter{CppType{enum_name + " const"}, "value"}},
+        .body = body.build(),
+        .qualifiers = {.trailing_return_type = CppType{"TCHAR const*", "CoreMinimal.h"}},
+    };
+}
+
+auto serialized_parser(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
+    auto const enum_name{qualified_enum_name(module, schema)};
+    NodeListBuilder body;
+    for (auto const& value : schema.values) {
+        if (!value.serialized_name.has_value()) {
+            continue;
+        }
+        body.add(raw("if (value == " + text_literal(*value.serialized_name) + ") {\n"
+                     "    result = " + enum_name + "::" + value.name + ";\n"
+                     "    return true;\n"
+                     "}"),
+                 1);
+    }
+    body.add(ReturnStatement{"false"});
+    return FunctionSpec{
+        .name = "try_parse_serialized",
+        .return_type = "auto",
+        .parameters =
+            {
+                FunctionParameter{CppType{"FStringView const", "CoreMinimal.h"}, "value"},
+                FunctionParameter{CppType{enum_name + "&"}, "result"},
+            },
+        .body = body.build(),
+        .qualifiers = {.trailing_return_type = CppType{"bool"}},
+        .export_specifier = schema.export_specifier,
+    };
+}
+
 auto conversion_spec(EnumModuleSchema const& module,
                      EnumSchema const& schema,
                      EnumConversion const conversion) -> FunctionSpec {
+    if (conversion == EnumConversion::try_parse_serialized) {
+        return serialized_parser(module, schema);
+    }
     auto const enum_name{qualified_enum_name(module, schema)};
     auto const display{conversion == EnumConversion::lex_to_display_string ||
                        conversion == EnumConversion::display_string_view ||
                        conversion == EnumConversion::display_string};
+    auto const serialized{conversion == EnumConversion::lex_to_serialized_string};
     auto const lexical{conversion == EnumConversion::lex_to_string ||
-                       conversion == EnumConversion::lex_to_display_string};
+                       conversion == EnumConversion::lex_to_display_string || serialized};
     auto const helper_in_type_namespace{
         module.helper_namespace.value_or(module.settings.namespace_name.value_or("")) ==
         module.settings.namespace_name.value_or("")};
     auto const parameter_type{lexical || helper_in_type_namespace ? schema.name : enum_name};
-    auto const lookup{internal_name(schema, display ? "display_name" : "name") + "(value)"};
+    auto const lookup{internal_name(
+                          schema, serialized ? "serialized_name" : (display ? "display_name" : "name")) +
+                      "(value)"};
     FunctionSpec result{
         .return_type = "auto",
         .parameters = {FunctionParameter{CppType{parameter_type + " const"}, "value"}},
@@ -183,6 +244,12 @@ auto conversion_spec(EnumModuleSchema const& module,
             result.name = "to_display_string";
             result.qualifiers.trailing_return_type = CppType{"FString", "CoreMinimal.h"};
             result.body = {ReturnStatement{"FString{" + lookup + "}"}};
+            break;
+        case EnumConversion::lex_to_serialized_string:
+            result.name = "LexToSerializedString";
+            result.qualifiers.trailing_return_type = CppType{"TCHAR const*", "CoreMinimal.h"};
+            break;
+        case EnumConversion::try_parse_serialized:
             break;
     }
     return result;
@@ -254,7 +321,8 @@ auto lower_enum_module(EnumModuleSchema const& module,
         for (auto const conversion : schema.conversions) {
             auto spec{conversion_spec(module, schema, conversion)};
             auto const lexical{conversion == EnumConversion::lex_to_string ||
-                               conversion == EnumConversion::lex_to_display_string};
+                               conversion == EnumConversion::lex_to_display_string ||
+                               conversion == EnumConversion::lex_to_serialized_string};
             (lexical ? lex_declarations : helper_declarations).add(declaration(std::move(spec)), 2);
         }
     }
@@ -297,13 +365,37 @@ auto lower_enum_module(EnumModuleSchema const& module,
         if (schema.conversions.empty()) {
             continue;
         }
-        internal_definitions.add(Function{exact_lookup(module, schema), std::nullopt, false, false},
-                                 2)
-            .add(Function{display_lookup(module, schema), std::nullopt, false, false}, 2);
+        auto const has_display_conversion{
+            std::ranges::any_of(schema.conversions, [](EnumConversion const conversion) {
+                return conversion == EnumConversion::lex_to_display_string ||
+                       conversion == EnumConversion::display_string_view ||
+                       conversion == EnumConversion::display_string;
+            })};
+        auto const has_name_conversion{
+            has_display_conversion ||
+            std::ranges::any_of(schema.conversions, [](EnumConversion const conversion) {
+                return conversion == EnumConversion::lex_to_string ||
+                       conversion == EnumConversion::string_view ||
+                       conversion == EnumConversion::string;
+            })};
+        if (has_name_conversion) {
+            internal_definitions.add(
+                Function{exact_lookup(module, schema), std::nullopt, false, false}, 2);
+        }
+        if (has_display_conversion) {
+            internal_definitions.add(
+                Function{display_lookup(module, schema), std::nullopt, false, false}, 2);
+        }
+        if (std::ranges::find(schema.conversions, EnumConversion::lex_to_serialized_string) !=
+            schema.conversions.end()) {
+            internal_definitions.add(
+                Function{serialized_lookup(module, schema), std::nullopt, false, false}, 2);
+        }
         for (auto const conversion : schema.conversions) {
             auto spec{conversion_spec(module, schema, conversion)};
             auto const lexical{conversion == EnumConversion::lex_to_string ||
-                               conversion == EnumConversion::lex_to_display_string};
+                               conversion == EnumConversion::lex_to_display_string ||
+                               conversion == EnumConversion::lex_to_serialized_string};
             (lexical ? lex_definitions : helper_definitions)
                 .add(Function{std::move(spec), std::nullopt, false, false}, 2);
         }

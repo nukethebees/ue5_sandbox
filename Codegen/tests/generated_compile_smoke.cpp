@@ -234,6 +234,13 @@ void test_enums() {
     check(std::string_view{LexToDisplayString(EPlainFixture::ReadableName)} == "Readable Name");
     check(to_display_string_view(EPlainFixture::ReadableName) == "Readable Name");
     check(to_display_string(EPlainFixture::First) == "First");
+    check(std::string_view{LexToSerializedString(EPlainFixture::ReadableName)} ==
+          "readable_name");
+    auto parsed{EPlainFixture::First};
+    check(try_parse_serialized(TEXT("readable_name"), parsed));
+    check(parsed == EPlainFixture::ReadableName);
+    check(!try_parse_serialized(TEXT("missing"), parsed));
+    check(parsed == EPlainFixture::ReadableName);
 
     check(std::string_view{LexToString(EReflectedFixture::Visible)} == "Visible");
     check(to_display_string_view(EReflectedFixture::Visible) == "Visible Value");

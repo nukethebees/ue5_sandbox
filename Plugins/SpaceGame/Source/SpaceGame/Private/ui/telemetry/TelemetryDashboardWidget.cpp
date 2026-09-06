@@ -114,7 +114,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
                                                "%.3gx    BUILD // %s    PLATFORM // %s\nRUN // %s"),
                                           *level,
                                           *record->metadata.launched_utc,
-                                          LexToString(record->completion.reason),
+                                          LexToSerializedString(record->completion.reason),
                                           record->metadata.initial_requested_time_scale,
                                           *record->metadata.environment.build_configuration,
                                           *record->metadata.environment.platform,

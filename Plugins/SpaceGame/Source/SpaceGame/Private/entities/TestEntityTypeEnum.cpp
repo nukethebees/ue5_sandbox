@@ -55,11 +55,40 @@ auto get_test_entity_type_display_name(ETestEntityType const value) -> TCHAR con
     return get_test_entity_type_name(value);
 }
 
+auto get_test_entity_type_serialized_name(ETestEntityType const value) -> TCHAR const* {
+    switch (value) {
+    case ETestEntityType::PlayerShip: {
+        return TEXT("player_ship");
+    }
+    case ETestEntityType::Turret: {
+        return TEXT("turret");
+    }
+    case ETestEntityType::CapitalShip: {
+        return TEXT("capital_ship");
+    }
+    case ETestEntityType::CapitalShipFighter: {
+        return TEXT("capital_ship_fighter");
+    }
+    case ETestEntityType::TubeSpinner: {
+        return TEXT("tube_spinner");
+    }
+    }
+
+    ensureMsgf(false,
+               TEXT("Unhandled serialized ETestEntityType value: %lld"),
+               static_cast<int64>(value));
+    return TEXT("<invalid ETestEntityType>");
+}
+
 
 } // namespace
 
 auto LexToString(ETestEntityType const value) -> TCHAR const* {
     return get_test_entity_type_name(value);
+}
+
+auto LexToSerializedString(ETestEntityType const value) -> TCHAR const* {
+    return get_test_entity_type_serialized_name(value);
 }
 
 namespace ml {
@@ -69,6 +98,30 @@ auto to_string_view(ETestEntityType const value) -> FStringView {
 
 auto to_display_string_view(ETestEntityType const value) -> FStringView {
     return FStringView{get_test_entity_type_display_name(value)};
+}
+
+auto try_parse_serialized(FStringView const value, ETestEntityType& result) -> bool {
+    if (value == TEXT("player_ship")) {
+        result = ETestEntityType::PlayerShip;
+        return true;
+    }
+    if (value == TEXT("turret")) {
+        result = ETestEntityType::Turret;
+        return true;
+    }
+    if (value == TEXT("capital_ship")) {
+        result = ETestEntityType::CapitalShip;
+        return true;
+    }
+    if (value == TEXT("capital_ship_fighter")) {
+        result = ETestEntityType::CapitalShipFighter;
+        return true;
+    }
+    if (value == TEXT("tube_spinner")) {
+        result = ETestEntityType::TubeSpinner;
+        return true;
+    }
+    return false;
 }
 
 
