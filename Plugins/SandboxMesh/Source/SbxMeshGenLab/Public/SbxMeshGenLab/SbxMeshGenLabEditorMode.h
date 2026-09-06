@@ -8,6 +8,9 @@
 #include "SbxMeshGenLabEditorMode.generated.h"
 
 class FEditorViewportClient;
+class FCanvas;
+class FPrimitiveDrawInterface;
+class FSceneView;
 class FViewport;
 class HHitProxy;
 class UInstancedStaticMeshComponent;
@@ -59,6 +62,13 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void Enter() override;
     void Exit() override;
     void CreateToolkit() override;
+    void Render(FSceneView const* view,
+                FViewport* viewport,
+                FPrimitiveDrawInterface* primitive_draw_interface) override;
+    void DrawHUD(FEditorViewportClient* viewport_client,
+                 FViewport* viewport,
+                 FSceneView const* view,
+                 FCanvas* canvas) override;
 
     auto UsesTransformWidget() const -> bool override;
     auto ShouldDrawWidget() const -> bool override;
@@ -94,7 +104,10 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     [[nodiscard]] auto can_remove_selected_parts() const -> bool;
     [[nodiscard]] auto can_create_group() const -> bool;
     [[nodiscard]] auto can_ungroup() const -> bool;
+    [[nodiscard]] auto can_set_snap_target() const -> bool;
+    [[nodiscard]] auto can_snap_selected_group() const -> bool;
     [[nodiscard]] auto get_status() const -> FText const&;
+    [[nodiscard]] auto get_snap_target_text() const -> FText;
     [[nodiscard]] auto get_recipe_document_text() const -> FText;
     [[nodiscard]] auto has_current_recipe() const -> bool;
     auto on_session_changed() -> FOnSbxMeshSessionChanged&;
@@ -113,6 +126,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void ungroup();
     auto rename_group(FGuid id, FName name) -> bool;
     auto reparent_node(FGuid id, FGuid parent_id) -> bool;
+    void set_snap_target();
+    void align_connectors();
+    void snap_and_parent();
     void new_assembly();
     void save_recipe();
     void save_recipe_as();
@@ -131,8 +147,11 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void rebuild_part_index_map();
     void rebuild_resolved_parts(bool rebuild_geometry = false);
     void duplicate_selected_group();
+    void apply_connector_snap(bool parent_to_target);
     void restore_session_after_undo();
     [[nodiscard]] auto get_group_world_transform(int32 group_index) const -> FTransform;
+    [[nodiscard]] auto get_connector_world_transform(int32 group_index, int32 connector_index) const
+        -> FTransform;
     [[nodiscard]] auto get_parent_world_transform(FGuid parent_id) const -> FTransform;
     void set_part_world_transform(int32 part_index, FTransform const& transform);
     void set_group_world_transform(int32 group_index, FTransform const& transform);
@@ -171,6 +190,8 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     TUniquePtr<FScopedTransaction> transform_transaction_;
     int32 selected_part_index_{INDEX_NONE};
     int32 selected_group_index_{INDEX_NONE};
+    FGuid snap_target_group_id_;
+    int32 snap_target_connector_index_{INDEX_NONE};
     bool changing_selection_{};
     bool recipe_dirty_{};
 };

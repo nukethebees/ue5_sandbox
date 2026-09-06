@@ -6,10 +6,13 @@
 #include "SbxMeshGenLab/MeshAssemblyRecipe.h"
 #include "SbxMeshGenLab/SbxMeshGenLabSettings.h"
 
+#include "CanvasItem.h"
+#include "CanvasTypes.h"
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Editor.h"
 #include "EditorViewportClient.h"
+#include "Engine/Engine.h"
 #include "Engine/Selection.h"
 #include "Engine/StaticMesh.h"
 #include "Engine/World.h"
@@ -17,6 +20,8 @@
 #include "GameFramework/Actor.h"
 #include "HitProxies.h"
 #include "LevelEditorViewport.h"
+#include "SceneManagement.h"
+#include "SceneView.h"
 #include "ScopedTransaction.h"
 #include "Settings/LevelEditorViewportSettings.h"
 #include "Styling/AppStyle.h"
@@ -97,6 +102,144 @@ void USbxMeshGenLabEditorMode::Exit() {
 
 void USbxMeshGenLabEditorMode::CreateToolkit() {
     Toolkit = MakeShared<FSbxMeshGenLabEditorModeToolkit>();
+}
+
+void USbxMeshGenLabEditorMode::Render(FSceneView const* const view,
+                                      FViewport* const viewport,
+                                      FPrimitiveDrawInterface* const primitive_draw_interface) {
+    Super::Render(view, viewport, primitive_draw_interface);
+    if (primitive_draw_interface == nullptr || session_state_ == nullptr) {
+        return;
+    }
+
+    auto const draw_connector = [this, primitive_draw_interface](int32 const group_index,
+                                                                 int32 const connector_index,
+                                                                 FLinearColor const color) {
+        if (!session_state_->groups.IsValidIndex(group_index) ||
+            !session_state_->groups[group_index].connectors.IsValidIndex(connector_index)) {
+            return;
+        }
+        auto transform{get_connector_world_transform(group_index, connector_index)};
+        transform.AddToTranslation(preview_origin_);
+        auto const origin{transform.GetLocation()};
+        constexpr double axis_length{24.0};
+        primitive_draw_interface->DrawPoint(origin, color, 10.0f, SDPG_Foreground);
+        primitive_draw_interface->DrawLine(
+            origin,
+            origin + transform.TransformVectorNoScale(FVector::XAxisVector) * axis_length,
+            color,
+            SDPG_Foreground,
+            2.0f);
+        primitive_draw_interface->DrawLine(
+            origin,
+            origin + transform.TransformVectorNoScale(FVector::YAxisVector) * axis_length,
+            FLinearColor::Green,
+            SDPG_Foreground,
+            1.5f);
+        primitive_draw_interface->DrawLine(
+            origin,
+            origin + transform.TransformVectorNoScale(FVector::ZAxisVector) * axis_length,
+            FLinearColor::Blue,
+            SDPG_Foreground,
+            1.5f);
+    };
+
+    if (session_state_->groups.IsValidIndex(selected_group_index_)) {
+        auto const connector_count{session_state_->groups[selected_group_index_].connectors.Num()};
+        for (int32 connector_index{}; connector_index < connector_count; ++connector_index) {
+            draw_connector(selected_group_index_, connector_index, FLinearColor::Yellow);
+        }
+    }
+
+    auto const target_group_index{
+        session_state_->groups.IndexOfByPredicate([this](FSbxMeshAssemblyRecipeGroup const& group) {
+            return group.id == snap_target_group_id_;
+        })};
+    draw_connector(
+        target_group_index, snap_target_connector_index_, FLinearColor{0.0f, 1.0f, 1.0f});
+
+    auto const source_connector_index{get_settings()->active_connector_index};
+    if (session_state_->groups.IsValidIndex(selected_group_index_) &&
+        session_state_->groups[selected_group_index_].connectors.IsValidIndex(
+            source_connector_index) &&
+        session_state_->groups.IsValidIndex(target_group_index) &&
+        session_state_->groups[target_group_index].connectors.IsValidIndex(
+            snap_target_connector_index_)) {
+        auto source_transform{
+            get_connector_world_transform(selected_group_index_, source_connector_index)};
+        auto target_transform{
+            get_connector_world_transform(target_group_index, snap_target_connector_index_)};
+        source_transform.AddToTranslation(preview_origin_);
+        target_transform.AddToTranslation(preview_origin_);
+        primitive_draw_interface->DrawLine(source_transform.GetLocation(),
+                                           target_transform.GetLocation(),
+                                           FLinearColor{1.0f, 0.25f, 1.0f},
+                                           SDPG_Foreground,
+                                           2.0f);
+    }
+}
+
+void USbxMeshGenLabEditorMode::DrawHUD(FEditorViewportClient* const viewport_client,
+                                       FViewport* const viewport,
+                                       FSceneView const* const view,
+                                       FCanvas* const canvas) {
+    Super::DrawHUD(viewport_client, viewport, view, canvas);
+    if (session_state_ == nullptr || viewport == nullptr || view == nullptr || canvas == nullptr ||
+        GEngine == nullptr) {
+        return;
+    }
+
+    auto const viewport_size{viewport->GetSizeXY()};
+    auto const draw_label = [this, view, canvas, viewport_size](int32 const group_index,
+                                                                int32 const connector_index,
+                                                                FText const& prefix,
+                                                                FLinearColor const color) {
+        if (!session_state_->groups.IsValidIndex(group_index) ||
+            !session_state_->groups[group_index].connectors.IsValidIndex(connector_index)) {
+            return;
+        }
+        auto transform{get_connector_world_transform(group_index, connector_index)};
+        transform.AddToTranslation(preview_origin_);
+        auto const projected{view->Project(transform.GetLocation())};
+        if (projected.W <= 0.0) {
+            return;
+        }
+        auto const& group{session_state_->groups[group_index]};
+        auto const& connector{group.connectors[connector_index]};
+        FCanvasTextItem text_item{
+            FVector2D{viewport_size.X * 0.5 + viewport_size.X * 0.5 * projected.X,
+                      viewport_size.Y * 0.5 - viewport_size.Y * 0.5 * projected.Y},
+            FText::Format(LOCTEXT("ConnectorLabel", "{0}{1} / {2}"),
+                          prefix,
+                          FText::FromName(group.name),
+                          FText::FromName(connector.name)),
+            GEngine->GetSmallFont(),
+            color};
+        text_item.EnableShadow(FLinearColor::Black);
+        canvas->DrawItem(text_item);
+    };
+
+    if (session_state_->groups.IsValidIndex(selected_group_index_)) {
+        auto const connector_count{session_state_->groups[selected_group_index_].connectors.Num()};
+        auto const active_connector_index{get_settings()->active_connector_index};
+        for (int32 connector_index{}; connector_index < connector_count; ++connector_index) {
+            draw_label(selected_group_index_,
+                       connector_index,
+                       connector_index == active_connector_index
+                           ? LOCTEXT("SourceLabel", "Source: ")
+                           : FText::GetEmpty(),
+                       FLinearColor::Yellow);
+        }
+    }
+
+    auto const target_group_index{
+        session_state_->groups.IndexOfByPredicate([this](FSbxMeshAssemblyRecipeGroup const& group) {
+            return group.id == snap_target_group_id_;
+        })};
+    draw_label(target_group_index,
+               snap_target_connector_index_,
+               LOCTEXT("TargetLabel", "Target: "),
+               FLinearColor{0.0f, 1.0f, 1.0f});
 }
 
 auto USbxMeshGenLabEditorMode::UsesTransformWidget() const -> bool {
@@ -358,8 +501,53 @@ auto USbxMeshGenLabEditorMode::can_ungroup() const -> bool {
     return session_state_ != nullptr && session_state_->groups.IsValidIndex(selected_group_index_);
 }
 
+auto USbxMeshGenLabEditorMode::can_set_snap_target() const -> bool {
+    if (session_state_ == nullptr || !session_state_->groups.IsValidIndex(selected_group_index_)) {
+        return false;
+    }
+    return session_state_->groups[selected_group_index_].connectors.IsValidIndex(
+        get_settings()->active_connector_index);
+}
+
+auto USbxMeshGenLabEditorMode::can_snap_selected_group() const -> bool {
+    if (!can_set_snap_target()) {
+        return false;
+    }
+    auto const target_group_index{
+        session_state_->groups.IndexOfByPredicate([this](FSbxMeshAssemblyRecipeGroup const& group) {
+            return group.id == snap_target_group_id_;
+        })};
+    if (!session_state_->groups.IsValidIndex(target_group_index) ||
+        target_group_index == selected_group_index_ ||
+        !session_state_->groups[target_group_index].connectors.IsValidIndex(
+            snap_target_connector_index_)) {
+        return false;
+    }
+    auto const selected_group_id{session_state_->groups[selected_group_index_].id};
+    return !get_descendant_group_indices(selected_group_id).Contains(target_group_index);
+}
+
 auto USbxMeshGenLabEditorMode::get_status() const -> FText const& {
     return status_;
+}
+
+auto USbxMeshGenLabEditorMode::get_snap_target_text() const -> FText {
+    if (session_state_ == nullptr) {
+        return LOCTEXT("NoSnapTarget", "Snap target: not set");
+    }
+    auto const target_group_index{
+        session_state_->groups.IndexOfByPredicate([this](FSbxMeshAssemblyRecipeGroup const& group) {
+            return group.id == snap_target_group_id_;
+        })};
+    if (!session_state_->groups.IsValidIndex(target_group_index) ||
+        !session_state_->groups[target_group_index].connectors.IsValidIndex(
+            snap_target_connector_index_)) {
+        return LOCTEXT("NoSnapTarget", "Snap target: not set");
+    }
+    auto const& group{session_state_->groups[target_group_index]};
+    return FText::Format(LOCTEXT("CurrentSnapTarget", "Snap target: {0} / {1}"),
+                         FText::FromName(group.name),
+                         FText::FromName(group.connectors[snap_target_connector_index_].name));
 }
 
 auto USbxMeshGenLabEditorMode::get_recipe_document_text() const -> FText {
@@ -412,6 +600,8 @@ void USbxMeshGenLabEditorMode::select_parts(TArray<int32> const& part_indices,
     auto const asset_name{settings->asset_name};
     settings->load_request(parts_[part_index].mesh);
     settings->load_transform(session_state_->parts[part_index].to_part(NAME_None).transform);
+    settings->group_connectors.Reset();
+    settings->active_connector_index = 0;
     settings->asset_name = asset_name;
     select_preview_instances();
 
@@ -441,6 +631,11 @@ void USbxMeshGenLabEditorMode::select_group(int32 const group_index) {
     get_settings()->load_transform({FVector3f{session_state_->groups[group_index].translation},
                                     FRotator3f{session_state_->groups[group_index].rotation},
                                     FVector3f{session_state_->groups[group_index].scale}});
+    get_settings()->group_connectors = session_state_->groups[group_index].connectors;
+    get_settings()->active_connector_index =
+        FMath::Clamp(get_settings()->active_connector_index,
+                     0,
+                     FMath::Max(0, get_settings()->group_connectors.Num() - 1));
     select_preview_instances();
     status_ = FText::Format(LOCTEXT("GroupSelected", "Selected group '{0}' ({1} parts)."),
                             FText::FromName(session_state_->groups[group_index].name),
@@ -687,6 +882,9 @@ void USbxMeshGenLabEditorMode::create_group() {
     FSbxMeshAssemblyRecipeGroup group;
     group.id = FGuid::NewGuid();
     group.name = FName{FString::Printf(TEXT("Group %d"), session_state_->groups.Num() + 1)};
+    FSbxMeshAssemblyConnector connector;
+    connector.name = TEXT("Origin");
+    group.connectors.Add(connector);
 
     if (selected_group_index_ != INDEX_NONE) {
         auto& child_group{session_state_->groups[selected_group_index_]};
@@ -782,6 +980,91 @@ void USbxMeshGenLabEditorMode::ungroup() {
     select_parts(selected_parts, selected_parts[0]);
 }
 
+void USbxMeshGenLabEditorMode::set_snap_target() {
+    if (!can_set_snap_target()) {
+        return;
+    }
+    snap_target_group_id_ = session_state_->groups[selected_group_index_].id;
+    snap_target_connector_index_ = get_settings()->active_connector_index;
+    auto const& connector{
+        session_state_->groups[selected_group_index_].connectors[snap_target_connector_index_]};
+    status_ = FText::Format(LOCTEXT("SnapTargetSet", "Snap target: {0} / {1}."),
+                            FText::FromName(session_state_->groups[selected_group_index_].name),
+                            FText::FromName(connector.name));
+    notify_session_changed(false);
+}
+
+void USbxMeshGenLabEditorMode::align_connectors() {
+    apply_connector_snap(false);
+}
+
+void USbxMeshGenLabEditorMode::snap_and_parent() {
+    apply_connector_snap(true);
+}
+
+void USbxMeshGenLabEditorMode::apply_connector_snap(bool const parent_to_target) {
+    if (!can_snap_selected_group()) {
+        return;
+    }
+
+    auto const target_group_index{
+        session_state_->groups.IndexOfByPredicate([this](FSbxMeshAssemblyRecipeGroup const& group) {
+            return group.id == snap_target_group_id_;
+        })};
+    auto const source_connector_index{get_settings()->active_connector_index};
+    auto const source_connector{session_state_->groups[selected_group_index_]
+                                    .connectors[source_connector_index]
+                                    .to_transform()};
+    auto target_connector{
+        get_connector_world_transform(target_group_index, snap_target_connector_index_)};
+    if (get_settings()->connectors_face_to_face) {
+        FTransform const facing_rotation{FRotator{0.0, 180.0, 0.0}};
+        target_connector = facing_rotation * target_connector;
+    }
+    auto const current_group_world{get_group_world_transform(selected_group_index_)};
+    auto desired_group_world{source_connector.Inverse() * target_connector};
+    desired_group_world.SetScale3D(current_group_world.GetScale3D());
+    desired_group_world.SetLocation(
+        target_connector.GetLocation() -
+        desired_group_world.TransformVector(source_connector.GetLocation()));
+    desired_group_world.NormalizeRotation();
+
+    auto preview_transform{desired_group_world};
+    preview_transform.AddToTranslation(preview_origin_);
+    if (!is_safe_preview_transform(preview_transform)) {
+        status_ =
+            LOCTEXT("UnsafeSnapTransform", "Snapping would create an invalid group transform.");
+        notify_session_changed(false);
+        return;
+    }
+
+    FScopedTransaction const transaction{
+        parent_to_target
+            ? LOCTEXT("SnapAndParentAssemblyGroupTransaction", "Snap and Parent Mesh Group")
+            : LOCTEXT("AlignAssemblyGroupTransaction", "Align Mesh Group Connectors")};
+    session_state_->Modify();
+    if (parent_to_target) {
+        auto& selected_group{session_state_->groups[selected_group_index_]};
+        selected_group.parent_id = session_state_->groups[target_group_index].id;
+        selected_group.set_transform(desired_group_world.GetRelativeTransform(
+            get_group_world_transform(target_group_index)));
+    } else {
+        set_group_world_transform(selected_group_index_, preview_transform);
+    }
+    rebuild_resolved_parts();
+    auto const& group{session_state_->groups[selected_group_index_]};
+    get_settings()->load_transform(
+        {FVector3f{group.translation}, FRotator3f{group.rotation}, FVector3f{group.scale}});
+    mark_recipe_dirty();
+    status_ =
+        FText::Format(parent_to_target ? LOCTEXT("GroupSnappedAndParented",
+                                                 "Snapped group '{0}' and parented it to '{1}'.")
+                                       : LOCTEXT("GroupAligned", "Aligned group '{0}' to '{1}'."),
+                      FText::FromName(group.name),
+                      FText::FromName(session_state_->groups[target_group_index].name));
+    notify_session_changed();
+}
+
 auto USbxMeshGenLabEditorMode::rename_group(FGuid const id, FName const name) -> bool {
     auto const group_index{session_state_->groups.IndexOfByPredicate(
         [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
@@ -875,10 +1158,14 @@ void USbxMeshGenLabEditorMode::new_assembly() {
         changing_selection_ = false;
     }
     destroy_preview();
+    snap_target_group_id_.Invalidate();
+    snap_target_connector_index_ = INDEX_NONE;
 
     auto* const settings{get_settings()};
     settings->load_request(SandboxMesh::make_default_mesh_request(ESbxMeshShape::Box));
     settings->load_transform({});
+    settings->group_connectors.Reset();
+    settings->active_connector_index = 0;
     settings->asset_name = TEXT("SM_GeneratedAssembly");
     settings->recipe_name = TEXT("SMR_NewAssembly");
     settings->recipe.Reset();
@@ -971,13 +1258,16 @@ void USbxMeshGenLabEditorMode::load_recipe() {
         notify_session_changed();
         return;
     }
-    if (selected_recipe->format_version != 1 && selected_recipe->format_version != 2) {
+    if (selected_recipe->format_version != 1 && selected_recipe->format_version != 2 &&
+        selected_recipe->format_version != 3) {
         status_ = FText::Format(
             LOCTEXT("RecipeVersionUnsupported", "Recipe format version {0} is not supported."),
             FText::AsNumber(selected_recipe->format_version));
         notify_session_changed();
         return;
     }
+    snap_target_group_id_.Invalidate();
+    snap_target_connector_index_ = INDEX_NONE;
 
     auto recipe_parts{selected_recipe->parts};
     auto recipe_groups{selected_recipe->groups};
@@ -1070,6 +1360,7 @@ void USbxMeshGenLabEditorMode::apply_settings(bool const mark_dirty) {
         group.translation = settings->part_translation;
         group.rotation = settings->part_rotation;
         group.scale = settings->part_scale;
+        group.connectors = settings->group_connectors;
         rebuild_resolved_parts();
     } else {
         auto& recipe_part{session_state_->parts[selected_part_index_]};
@@ -1507,6 +1798,15 @@ auto USbxMeshGenLabEditorMode::get_group_world_transform(int32 const group_index
         parent_id = session_state_->groups[parent_index].parent_id;
     }
     return transform;
+}
+
+auto USbxMeshGenLabEditorMode::get_connector_world_transform(int32 const group_index,
+                                                             int32 const connector_index) const
+    -> FTransform {
+    check(session_state_->groups.IsValidIndex(group_index));
+    check(session_state_->groups[group_index].connectors.IsValidIndex(connector_index));
+    return session_state_->groups[group_index].connectors[connector_index].to_transform() *
+           get_group_world_transform(group_index);
 }
 
 auto USbxMeshGenLabEditorMode::get_parent_world_transform(FGuid const parent_id) const

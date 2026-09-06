@@ -32,6 +32,17 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     UPROPERTY(EditAnywhere, Category = "Selection")
     ESbxMeshSelectionPivot selection_pivot{ESbxMeshSelectionPivot::SelectionCenter};
 
+    UPROPERTY(EditAnywhere, Category = "Selected Group Connectors")
+    TArray<FSbxMeshAssemblyConnector> group_connectors;
+
+    UPROPERTY(EditAnywhere,
+              Category = "Selected Group Connectors",
+              meta = (ClampMin = "0", ArrayClamp = "group_connectors"))
+    int32 active_connector_index{};
+
+    UPROPERTY(EditAnywhere, Category = "Selected Group Connectors")
+    bool connectors_face_to_face{true};
+
     UPROPERTY(EditAnywhere, Category = "Duplicate Selected")
     FVector duplicate_translation_step{25.0, 0.0, 0.0};
 

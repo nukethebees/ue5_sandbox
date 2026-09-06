@@ -63,6 +63,10 @@ auto FSbxMeshAssemblyRecipeGroup::to_transform() const -> FTransform {
     return FTransform{rotation, translation, scale};
 }
 
+auto FSbxMeshAssemblyConnector::to_transform() const -> FTransform {
+    return FTransform{rotation, translation, FVector::OneVector};
+}
+
 void FSbxMeshAssemblyRecipeGroup::set_transform(FTransform const& transform) {
     translation = transform.GetLocation();
     rotation = transform.Rotator();
@@ -130,6 +134,22 @@ auto validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& 
         if (group.scale.GetMin() <= 0.0) {
             return FString::Printf(TEXT("Group %d scale values must be greater than zero."),
                                    group_index + 1);
+        }
+        TSet<FName> connector_names;
+        for (auto const& connector : group.connectors) {
+            if (connector.name.IsNone()) {
+                return FString::Printf(TEXT("Group '%s' has an unnamed connector."),
+                                       *group.name.ToString());
+            }
+            if (connector_names.Contains(connector.name)) {
+                return FString::Printf(TEXT("Group '%s' has duplicate connector names."),
+                                       *group.name.ToString());
+            }
+            if (connector.translation.ContainsNaN() || connector.rotation.ContainsNaN()) {
+                return FString::Printf(TEXT("Group '%s' has an invalid connector transform."),
+                                       *group.name.ToString());
+            }
+            connector_names.Add(connector.name);
         }
         node_ids.Add(group.id);
         group_indices.Add(group.id, group_index);
@@ -213,7 +233,7 @@ void USbxMeshAssemblyRecipe::set_hierarchy(
     FName const asset_name,
     TArray<FSbxMeshAssemblyRecipePart> const& assembly_parts,
     TArray<FSbxMeshAssemblyRecipeGroup> const& assembly_groups) {
-    format_version = 2;
+    format_version = 3;
     output_asset_name = asset_name;
     parts = assembly_parts;
     groups = assembly_groups;

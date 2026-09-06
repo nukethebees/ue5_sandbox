@@ -57,8 +57,18 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                               "Ctrl+Alt+left-drag box-selects parts. Select a group to "
                               "transform all its descendants. Drag nodes onto a group (or "
                               "Assembly) to reparent them. Double-click a group name to rename "
-                              "it. Use W/E/R for transforms and F to frame the selection."))
+                              "it. Group connectors are edited below: set a stationary target, "
+                              "then select another group and snap its active connector. Use "
+                              "W/E/R for transforms and F to frame the selection."))
                           .AutoWrapText(true)] +
+                 SVerticalBox::Slot().AutoHeight().Padding(
+                     0.0f, 0.0f, 0.0f, 4.0f)[SNew(STextBlock)
+                                                 .Text_Lambda([this]() {
+                                                     return mode_.IsValid()
+                                                              ? mode_->get_snap_target_text()
+                                                              : FText::GetEmpty();
+                                                 })
+                                                 .AutoWrapText(true)] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +
                       SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
@@ -129,6 +139,44 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                                .IsEnabled_Lambda(
                                    [this]() { return mode_.IsValid() && mode_->can_ungroup(); })
                                .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::ungroup)]] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
+                     [SNew(SHorizontalBox) +
+                      SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("SetSnapTarget", "Set Snap Target"))
+                               .ToolTipText(LOCTEXT(
+                                   "SetSnapTargetTooltip",
+                                   "Remember the active connector on the selected group as the "
+                                   "stationary snap target."))
+                               .IsEnabled_Lambda([this]() {
+                                   return mode_.IsValid() && mode_->can_set_snap_target();
+                               })
+                               .OnClicked(this,
+                                          &FSbxMeshGenLabEditorModeToolkit::set_snap_target)] +
+                      SHorizontalBox::Slot().AutoWidth()
+                          [SNew(SButton)
+                               .Text(LOCTEXT("AlignConnectors", "Align Connectors"))
+                               .ToolTipText(LOCTEXT(
+                                   "AlignConnectorsTooltip",
+                                   "Align the selected group's active connector to the remembered "
+                                   "target without changing the hierarchy."))
+                               .IsEnabled_Lambda([this]() {
+                                   return mode_.IsValid() && mode_->can_snap_selected_group();
+                               })
+                               .OnClicked(this,
+                                          &FSbxMeshGenLabEditorModeToolkit::align_connectors)] +
+                      SHorizontalBox::Slot().AutoWidth().Padding(4.0f, 0.0f, 0.0f, 0.0f)
+                          [SNew(SButton)
+                               .Text(LOCTEXT("SnapAndParent", "Snap and Parent"))
+                               .ToolTipText(LOCTEXT("SnapAndParentTooltip",
+                                                    "Align the connectors and parent the selected "
+                                                    "group to the target "
+                                                    "group."))
+                               .IsEnabled_Lambda([this]() {
+                                   return mode_.IsValid() && mode_->can_snap_selected_group();
+                               })
+                               .OnClicked(this,
+                                          &FSbxMeshGenLabEditorModeToolkit::snap_and_parent)]] +
                  SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)
                      [SNew(SHorizontalBox) +
                       SHorizontalBox::Slot().AutoWidth().Padding(0.0f, 0.0f, 4.0f, 0.0f)
@@ -206,6 +254,12 @@ void FSbxMeshGenLabEditorModeToolkit::on_property_changed(FPropertyChangedEvent 
         auto const is_selection_pivot{
             member_property_name ==
             GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, selection_pivot)};
+        auto const is_connector_selection{
+            member_property_name ==
+            GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, active_connector_index)};
+        auto const is_snap_setting{
+            member_property_name ==
+            GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, connectors_face_to_face)};
         auto const is_duplicate_setting{
             member_property_name ==
                 GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, duplicate_translation_step) ||
@@ -213,6 +267,9 @@ void FSbxMeshGenLabEditorModeToolkit::on_property_changed(FPropertyChangedEvent 
                 GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, duplicate_rotation_step) ||
             member_property_name ==
                 GET_MEMBER_NAME_CHECKED(USbxMeshGenLabSettings, duplicate_repeat_count)};
+        if (is_connector_selection || is_snap_setting) {
+            return;
+        }
         if (is_selection_pivot) {
             mode_->selection_settings_changed();
         } else if (!is_duplicate_setting) {
@@ -292,13 +349,33 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_tree_items() {
     }
 
     hierarchy_tree_->ClearSelection();
+    auto const expand_ancestors = [this, &groups](FGuid parent_id) {
+        while (parent_id.IsValid()) {
+            auto const* const parent_item{tree_item_by_id_.Find(parent_id)};
+            if (parent_item == nullptr) {
+                break;
+            }
+            expanded_ids_.Add(parent_id);
+            hierarchy_tree_->SetItemExpansion(*parent_item, true);
+            auto const parent_index{
+                groups.IndexOfByPredicate([parent_id](FSbxMeshAssemblyRecipeGroup const& group) {
+                    return group.id == parent_id;
+                })};
+            if (!groups.IsValidIndex(parent_index)) {
+                break;
+            }
+            parent_id = groups[parent_index].parent_id;
+        }
+    };
     auto const selected_group_index{mode_->get_selected_group_index()};
     if (groups.IsValidIndex(selected_group_index)) {
+        expand_ancestors(groups[selected_group_index].parent_id);
         hierarchy_tree_->SetItemSelection(
             tree_item_by_id_.FindChecked(groups[selected_group_index].id), true);
     } else {
         for (int32 const selected_index : mode_->get_selected_part_indices()) {
             if (recipe_parts.IsValidIndex(selected_index)) {
+                expand_ancestors(recipe_parts[selected_index].parent_id);
                 hierarchy_tree_->SetItemSelection(
                     tree_item_by_id_.FindChecked(recipe_parts[selected_index].id), true);
             }
@@ -460,6 +537,21 @@ auto FSbxMeshGenLabEditorModeToolkit::create_group() -> FReply {
 
 auto FSbxMeshGenLabEditorModeToolkit::ungroup() -> FReply {
     mode_->ungroup();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::set_snap_target() -> FReply {
+    mode_->set_snap_target();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::align_connectors() -> FReply {
+    mode_->align_connectors();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::snap_and_parent() -> FReply {
+    mode_->snap_and_parent();
     return FReply::Handled();
 }
 

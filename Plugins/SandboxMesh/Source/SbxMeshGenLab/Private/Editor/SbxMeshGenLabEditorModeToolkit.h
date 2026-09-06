@@ -54,6 +54,9 @@ class FSbxMeshGenLabEditorModeToolkit final : public FModeToolkit {
     auto remove_part() -> FReply;
     auto create_group() -> FReply;
     auto ungroup() -> FReply;
+    auto set_snap_target() -> FReply;
+    auto align_connectors() -> FReply;
+    auto snap_and_parent() -> FReply;
     auto new_assembly() -> FReply;
     auto save_recipe() -> FReply;
     auto save_recipe_as() -> FReply;

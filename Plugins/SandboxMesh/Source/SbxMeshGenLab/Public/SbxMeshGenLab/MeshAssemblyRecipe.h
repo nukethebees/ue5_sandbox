@@ -106,6 +106,22 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
 };
 
 USTRUCT()
+struct SBXMESHGENLAB_API FSbxMeshAssemblyConnector {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Connector")
+    FName name{TEXT("Connector")};
+
+    UPROPERTY(EditAnywhere, Category = "Connector")
+    FVector translation{FVector::ZeroVector};
+
+    UPROPERTY(EditAnywhere, Category = "Connector")
+    FRotator rotation{FRotator::ZeroRotator};
+
+    [[nodiscard]] auto to_transform() const -> FTransform;
+};
+
+USTRUCT()
 struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipeGroup {
     GENERATED_BODY()
 
@@ -126,6 +142,9 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipeGroup {
 
     UPROPERTY(EditAnywhere, Category = "Transform", meta = (ClampMin = "0.001"))
     FVector scale{FVector::OneVector};
+
+    UPROPERTY(EditAnywhere, Category = "Connectors")
+    TArray<FSbxMeshAssemblyConnector> connectors;
 
     [[nodiscard]] auto to_transform() const -> FTransform;
     void set_transform(FTransform const& transform);
@@ -152,7 +171,7 @@ class SBXMESHGENLAB_API USbxMeshAssemblyRecipe final : public UObject {
     GENERATED_BODY()
   public:
     UPROPERTY(VisibleAnywhere, Category = "Recipe")
-    int32 format_version{2};
+    int32 format_version{3};
 
     UPROPERTY(EditAnywhere, Category = "Recipe")
     FName output_asset_name{TEXT("SM_GeneratedAssembly")};
