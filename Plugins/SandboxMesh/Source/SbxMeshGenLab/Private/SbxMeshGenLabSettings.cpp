@@ -3,6 +3,7 @@
 auto USbxMeshGenLabSettings::to_request() const -> FSbxMeshGenerationRequest {
     auto request{SandboxMesh::make_default_mesh_request(shape)};
     request.asset_name = asset_name;
+    request.material_role = material_role;
     request.box.dimensions = FVector3f{static_cast<float>(box_dimensions.X),
                                        static_cast<float>(box_dimensions.Y),
                                        static_cast<float>(box_dimensions.Z)};
@@ -31,6 +32,7 @@ auto USbxMeshGenLabSettings::to_transform() const -> FSbxMeshTransform {
 void USbxMeshGenLabSettings::load_request(FSbxMeshGenerationRequest const& request) {
     shape = request.shape;
     asset_name = request.asset_name;
+    material_role = request.material_role;
     box_dimensions = FVector{request.box.dimensions};
     beveled_box_dimensions = FVector{request.beveled_box.dimensions};
     beveled_box_bevel_width = request.beveled_box.bevel_width;

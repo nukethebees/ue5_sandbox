@@ -12,6 +12,9 @@ void append_transformed_mesh(FSbxMeshData& destination,
     destination.normals.Reserve(destination.normals.Num() + source.normals.Num());
     destination.uvs.Reserve(destination.uvs.Num() + source.uvs.Num());
     destination.indices.Reserve(destination.indices.Num() + source.indices.Num());
+    auto const source_triangle_count{source.indices.Num() / 3};
+    destination.triangle_material_roles.Reserve(destination.triangle_material_roles.Num() +
+                                                source_triangle_count);
 
     for (auto const position : source.positions) {
         destination.positions.Add(rotation.RotateVector(position * transform.scale) +
@@ -28,6 +31,13 @@ void append_transformed_mesh(FSbxMeshData& destination,
     destination.uvs.Append(source.uvs);
     for (auto const index : source.indices) {
         destination.indices.Add(vertex_offset + index);
+    }
+
+    if (source.triangle_material_roles.IsEmpty()) {
+        destination.triangle_material_roles.AddDefaulted(source_triangle_count);
+    } else {
+        check(source.triangle_material_roles.Num() == source_triangle_count);
+        destination.triangle_material_roles.Append(source.triangle_material_roles);
     }
 }
 

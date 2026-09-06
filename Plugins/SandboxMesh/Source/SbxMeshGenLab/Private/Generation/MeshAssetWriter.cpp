@@ -4,6 +4,9 @@
 #include "Engine/StaticMesh.h"
 #include "HAL/FileManager.h"
 #include "Interfaces/IPluginManager.h"
+#include "Materials/Material.h"
+#include "Materials/MaterialInstanceConstant.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "MeshDescription.h"
 #include "Misc/PackageName.h"
 #include "Misc/Paths.h"
@@ -45,6 +48,83 @@ auto ensure_generated_content_directory() -> bool {
     return true;
 }
 
+auto get_role_material_asset_name(ESbxMeshMaterialRole const role) -> FName {
+    return FName{FString::Printf(TEXT("MI_Sbx%s"), *get_mesh_material_slot_name(role).ToString())};
+}
+
+auto get_basic_shape_material() -> UMaterialInterface* {
+    auto* const material{LoadObject<UMaterialInterface>(
+        nullptr, TEXT("/Engine/BasicShapes/BasicShapeMaterial.BasicShapeMaterial"))};
+    if (material == nullptr) {
+        UE_LOG(LogSbxMeshGenLab, Error, TEXT("Failed to load Unreal's Basic Shape material."));
+    }
+    return material;
+}
+
+auto create_transient_role_material(UObject& outer, ESbxMeshMaterialRole const role)
+    -> UMaterialInterface* {
+    auto* const parent{get_basic_shape_material()};
+    if (parent == nullptr) {
+        return nullptr;
+    }
+
+    auto* const material{UMaterialInstanceDynamic::Create(parent, &outer)};
+    material->SetVectorParameterValue(TEXT("Color"), get_mesh_material_color(role));
+    return material;
+}
+
+auto load_or_create_role_material(ESbxMeshMaterialRole const role) -> UMaterialInterface* {
+    auto* const parent{get_basic_shape_material()};
+    if (parent == nullptr) {
+        return nullptr;
+    }
+
+    auto const asset_name{get_role_material_asset_name(role)};
+    auto const package_name{get_generated_asset_package_name(asset_name)};
+    auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, *asset_name.ToString())};
+    auto* material{
+        LoadObject<UMaterialInstanceConstant>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
+    auto const is_new_asset{material == nullptr};
+    auto* const package{is_new_asset ? CreatePackage(*package_name) : material->GetOutermost()};
+    if (package == nullptr) {
+        UE_LOG(LogSbxMeshGenLab,
+               Error,
+               TEXT("Failed to create generated material package: %s"),
+               *package_name);
+        return nullptr;
+    }
+
+    if (is_new_asset) {
+        material = NewObject<UMaterialInstanceConstant>(
+            package, asset_name, RF_Public | RF_Standalone | RF_Transactional);
+    }
+    if (material == nullptr) {
+        return nullptr;
+    }
+
+    material->SetParentEditorOnly(parent);
+    material->SetVectorParameterValueEditorOnly(FMaterialParameterInfo{TEXT("Color")},
+                                                get_mesh_material_color(role));
+    material->PostEditChange();
+    material->MarkPackageDirty();
+    if (is_new_asset) {
+        FAssetRegistryModule::AssetCreated(material);
+    }
+
+    FSavePackageArgs save_arguments{};
+    save_arguments.TopLevelFlags = RF_Public | RF_Standalone;
+    auto const package_filename{FPackageName::LongPackageNameToFilename(
+        package_name, FPackageName::GetAssetPackageExtension())};
+    if (!UPackage::SavePackage(package, material, *package_filename, save_arguments)) {
+        UE_LOG(LogSbxMeshGenLab,
+               Error,
+               TEXT("Failed to save generated role material: %s"),
+               *package_filename);
+        return nullptr;
+    }
+    return material;
+}
+
 auto make_mesh_description(FSbxMeshData const& mesh_data) -> FMeshDescription {
     FMeshDescription mesh_description{};
     FStaticMeshAttributes attributes{mesh_description};
@@ -63,7 +143,16 @@ auto make_mesh_description(FSbxMeshData const& mesh_data) -> FMeshDescription {
         vertices.Add(vertex_id);
     }
 
-    auto const polygon_group{mesh_description.CreatePolygonGroup()};
+    auto material_slot_names{attributes.GetPolygonGroupMaterialSlotNames()};
+    TArray<FPolygonGroupID> polygon_groups;
+    polygon_groups.Reserve(mesh_material_role_count);
+    for (int32 role_index{}; role_index < mesh_material_role_count; ++role_index) {
+        auto const role{static_cast<ESbxMeshMaterialRole>(role_index)};
+        auto const polygon_group{mesh_description.CreatePolygonGroup()};
+        material_slot_names[polygon_group] = get_mesh_material_slot_name(role);
+        polygon_groups.Add(polygon_group);
+    }
+
     auto const triangle_count{mesh_data.indices.Num() / 3};
     for (int32 triangle_index{0}; triangle_index < triangle_count; ++triangle_index) {
         TArray<FVertexInstanceID> vertex_instances;
@@ -77,7 +166,12 @@ auto make_mesh_description(FSbxMeshData const& mesh_data) -> FMeshDescription {
             vertex_instances.Add(vertex_instance);
         }
 
-        mesh_description.CreatePolygon(polygon_group, vertex_instances);
+        auto const role{mesh_data.triangle_material_roles.IsEmpty()
+                            ? ESbxMeshMaterialRole::Structure
+                            : mesh_data.triangle_material_roles[triangle_index]};
+        auto const role_index{static_cast<int32>(role)};
+        check(polygon_groups.IsValidIndex(role_index));
+        mesh_description.CreatePolygon(polygon_groups[role_index], vertex_instances);
     }
 
     return mesh_description;
@@ -92,7 +186,9 @@ auto has_valid_bounds(FMeshDescription const& mesh_description) -> bool {
 auto has_valid_mesh_data(FSbxMeshData const& mesh_data) -> bool {
     if (mesh_data.positions.IsEmpty() || mesh_data.indices.IsEmpty() ||
         mesh_data.indices.Num() % 3 != 0 || mesh_data.normals.Num() != mesh_data.positions.Num() ||
-        mesh_data.uvs.Num() != mesh_data.positions.Num()) {
+        mesh_data.uvs.Num() != mesh_data.positions.Num() ||
+        (!mesh_data.triangle_material_roles.IsEmpty() &&
+         mesh_data.triangle_material_roles.Num() != mesh_data.indices.Num() / 3)) {
         return false;
     }
 
@@ -107,7 +203,8 @@ auto has_valid_mesh_data(FSbxMeshData const& mesh_data) -> bool {
 
 auto build_static_mesh(UStaticMesh& static_mesh,
                        FSbxMeshData const& mesh_data,
-                       bool const fast_build) -> bool {
+                       bool const fast_build,
+                       bool const persistent_materials) -> bool {
     if (!has_valid_mesh_data(mesh_data)) {
         UE_LOG(LogSbxMeshGenLab, Error, TEXT("Generated mesh buffers are invalid."));
         return false;
@@ -125,7 +222,14 @@ auto build_static_mesh(UStaticMesh& static_mesh,
     static_mesh.Modify();
     static_mesh.PreEditChange(nullptr);
     static_mesh.GetStaticMaterials().Reset();
-    static_mesh.GetStaticMaterials().Add(FStaticMaterial{});
+    for (int32 role_index{}; role_index < mesh_material_role_count; ++role_index) {
+        auto const role{static_cast<ESbxMeshMaterialRole>(role_index)};
+        auto* const material{persistent_materials
+                                 ? load_or_create_role_material(role)
+                                 : create_transient_role_material(static_mesh, role)};
+        auto const slot_name{get_mesh_material_slot_name(role)};
+        static_mesh.GetStaticMaterials().Add(FStaticMaterial{material, slot_name, slot_name});
+    }
     static_mesh.SetNumSourceModels(1);
 
     auto& build_settings{static_mesh.GetSourceModel(0).BuildSettings};
@@ -153,7 +257,7 @@ auto get_generated_asset_object_path(FName const asset_name) -> FString {
 
 auto create_transient_static_mesh(FSbxMeshData const& mesh_data) -> UStaticMesh* {
     auto* const static_mesh{NewObject<UStaticMesh>(GetTransientPackage(), NAME_None, RF_Transient)};
-    if (static_mesh == nullptr || !build_static_mesh(*static_mesh, mesh_data, true)) {
+    if (static_mesh == nullptr || !build_static_mesh(*static_mesh, mesh_data, true, false)) {
         return nullptr;
     }
     return static_mesh;
@@ -188,7 +292,7 @@ auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data,
         return nullptr;
     }
 
-    if (!build_static_mesh(*static_mesh, mesh_data, false)) {
+    if (!build_static_mesh(*static_mesh, mesh_data, false, true)) {
         UE_LOG(
             LogSbxMeshGenLab, Error, TEXT("Generated mesh could not be built: %s"), *object_path);
         return nullptr;

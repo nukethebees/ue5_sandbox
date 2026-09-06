@@ -134,90 +134,116 @@ auto validate_mesh_request(FSbxMeshGenerationRequest const& request) -> FString 
 
 auto generate_mesh(FSbxMeshGenerationRequest const& request) -> FSbxMeshData {
     check(validate_mesh_request(request).IsEmpty());
+    FSbxMeshData mesh_data;
     switch (request.shape) {
         case ESbxMeshShape::Box:
-            return generate_box(request.box);
+            mesh_data = generate_box(request.box);
+            break;
         case ESbxMeshShape::Cylinder:
-            return generate_cylinder(request.cylinder);
+            mesh_data = generate_cylinder(request.cylinder);
+            break;
         case ESbxMeshShape::Sphere:
-            return generate_sphere(request.sphere);
+            mesh_data = generate_sphere(request.sphere);
+            break;
         case ESbxMeshShape::Cone:
-            return generate_cone(request.cone);
+            mesh_data = generate_cone(request.cone);
+            break;
         case ESbxMeshShape::HexTile:
-            return generate_hex_tile(request.hex_tile);
+            mesh_data = generate_hex_tile(request.hex_tile);
+            break;
         case ESbxMeshShape::HexFrame:
-            return generate_hex_frame(request.hex_frame);
+            mesh_data = generate_hex_frame(request.hex_frame);
+            break;
         case ESbxMeshShape::HoneycombPanel:
-            return generate_honeycomb_panel(request.honeycomb_panel);
+            mesh_data = generate_honeycomb_panel(request.honeycomb_panel);
+            break;
         case ESbxMeshShape::BeveledBox:
-            return generate_beveled_box(request.beveled_box);
+            mesh_data = generate_beveled_box(request.beveled_box);
+            break;
         case ESbxMeshShape::Wedge:
-            return generate_wedge(request.wedge);
+            mesh_data = generate_wedge(request.wedge);
+            break;
     }
 
-    checkNoEntry();
-    return {};
+    mesh_data.triangle_material_roles.Init(request.material_role, mesh_data.indices.Num() / 3);
+    return mesh_data;
 }
 
 auto describe_mesh_request(FSbxMeshGenerationRequest const& request) -> FString {
+    FString description;
     switch (request.shape) {
         case ESbxMeshShape::Box:
-            return FString::Printf(TEXT("version=1;shape=box;dimensions=%s"),
-                                   *request.box.dimensions.ToString());
+            description = FString::Printf(TEXT("version=1;shape=box;dimensions=%s"),
+                                          *request.box.dimensions.ToString());
+            break;
         case ESbxMeshShape::Cylinder:
-            return FString::Printf(TEXT("version=1;shape=cylinder;radius=%g;height=%g;segments=%d"),
-                                   request.cylinder.radius,
-                                   request.cylinder.height,
-                                   request.cylinder.radial_segments);
+            description =
+                FString::Printf(TEXT("version=1;shape=cylinder;radius=%g;height=%g;segments=%d"),
+                                request.cylinder.radius,
+                                request.cylinder.height,
+                                request.cylinder.radial_segments);
+            break;
         case ESbxMeshShape::Sphere:
-            return FString::Printf(
+            description = FString::Printf(
                 TEXT("version=1;shape=sphere;radius=%g;longitude_segments=%d;latitude_segments=%d"),
                 request.sphere.radius,
                 request.sphere.longitude_segments,
                 request.sphere.latitude_segments);
+            break;
         case ESbxMeshShape::Cone:
-            return FString::Printf(TEXT("version=1;shape=cone;radius=%g;height=%g;segments=%d"),
-                                   request.cone.radius,
-                                   request.cone.height,
-                                   request.cone.radial_segments);
+            description =
+                FString::Printf(TEXT("version=1;shape=cone;radius=%g;height=%g;segments=%d"),
+                                request.cone.radius,
+                                request.cone.height,
+                                request.cone.radial_segments);
+            break;
         case ESbxMeshShape::HexTile:
-            return FString::Printf(TEXT("version=1;shape=hex_tile;outer_radius=%g;depth=%g;bevel_"
-                                        "width=%g;pointy_top=%s"),
-                                   request.hex_tile.outer_radius,
-                                   request.hex_tile.depth,
-                                   request.hex_tile.bevel_width,
-                                   request.hex_tile.pointy_top ? TEXT("true") : TEXT("false"));
+            description =
+                FString::Printf(TEXT("version=1;shape=hex_tile;outer_radius=%g;depth=%g;"
+                                     "bevel_width=%g;pointy_top=%s"),
+                                request.hex_tile.outer_radius,
+                                request.hex_tile.depth,
+                                request.hex_tile.bevel_width,
+                                request.hex_tile.pointy_top ? TEXT("true") : TEXT("false"));
+            break;
         case ESbxMeshShape::HexFrame:
-            return FString::Printf(TEXT("version=1;shape=hex_frame;outer_radius=%g;wall_thickness=%"
-                                        "g;depth=%g;pointy_top=%s"),
-                                   request.hex_frame.outer_radius,
-                                   request.hex_frame.wall_thickness,
-                                   request.hex_frame.depth,
-                                   request.hex_frame.pointy_top ? TEXT("true") : TEXT("false"));
+            description = FString::Printf(
+                TEXT("version=1;shape=hex_frame;outer_radius=%g;wall_thickness=%g;depth=%g;pointy_"
+                     "top=%s"),
+                request.hex_frame.outer_radius,
+                request.hex_frame.wall_thickness,
+                request.hex_frame.depth,
+                request.hex_frame.pointy_top ? TEXT("true") : TEXT("false"));
+            break;
         case ESbxMeshShape::HoneycombPanel:
-            return FString::Printf(TEXT("version=1;shape=honeycomb_panel;rows=%d;columns=%d;cell_"
-                                        "radius=%g;wall_thickness=%g;depth=%g;pointy_top=%s"),
-                                   request.honeycomb_panel.rows,
-                                   request.honeycomb_panel.columns,
-                                   request.honeycomb_panel.cell_radius,
-                                   request.honeycomb_panel.wall_thickness,
-                                   request.honeycomb_panel.depth,
-                                   request.honeycomb_panel.pointy_top ? TEXT("true")
-                                                                      : TEXT("false"));
+            description = FString::Printf(
+                TEXT("version=1;shape=honeycomb_panel;rows=%d;columns=%d;cell_radius=%g;wall_"
+                     "thickness=%g;depth=%g;pointy_top=%s"),
+                request.honeycomb_panel.rows,
+                request.honeycomb_panel.columns,
+                request.honeycomb_panel.cell_radius,
+                request.honeycomb_panel.wall_thickness,
+                request.honeycomb_panel.depth,
+                request.honeycomb_panel.pointy_top ? TEXT("true") : TEXT("false"));
+            break;
         case ESbxMeshShape::BeveledBox:
-            return FString::Printf(TEXT("version=1;shape=beveled_box;dimensions=%s;bevel_width=%g"),
-                                   *request.beveled_box.dimensions.ToString(),
-                                   request.beveled_box.bevel_width);
+            description =
+                FString::Printf(TEXT("version=1;shape=beveled_box;dimensions=%s;bevel_width=%g"),
+                                *request.beveled_box.dimensions.ToString(),
+                                request.beveled_box.bevel_width);
+            break;
         case ESbxMeshShape::Wedge:
-            return FString::Printf(
+            description = FString::Printf(
                 TEXT("version=1;shape=wedge;dimensions=%s;top_length=%g;top_offset=%g"),
                 *request.wedge.dimensions.ToString(),
                 request.wedge.top_length,
                 request.wedge.top_offset);
+            break;
     }
 
-    checkNoEntry();
-    return {};
+    return FString::Printf(TEXT("%s;material_role=%s"),
+                           *description,
+                           *get_mesh_material_slot_name(request.material_role).ToString());
 }
 
 }

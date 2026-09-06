@@ -28,6 +28,7 @@ enum class ESbxMeshShape : uint8 {
 struct FSbxMeshGenerationRequest {
     ESbxMeshShape shape{ESbxMeshShape::Box};
     FName asset_name{TEXT("SM_GeneratedBox")};
+    ESbxMeshMaterialRole material_role{ESbxMeshMaterialRole::Structure};
     FSbxBoxParameters box;
     FSbxCylinderParameters cylinder;
     FSbxSphereParameters sphere;

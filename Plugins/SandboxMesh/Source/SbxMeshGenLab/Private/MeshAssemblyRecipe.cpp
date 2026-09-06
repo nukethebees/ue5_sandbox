@@ -7,6 +7,7 @@ auto FSbxMeshAssemblyRecipePart::from_part(FSbxMeshAssemblyPart const& part,
     recipe_part.id = id;
     recipe_part.parent_id = parent_id;
     recipe_part.shape = part.mesh.shape;
+    recipe_part.material_role = part.mesh.material_role;
     recipe_part.translation = FVector{part.transform.translation};
     recipe_part.rotation = FRotator{part.transform.rotation};
     recipe_part.scale = FVector{part.transform.scale};
@@ -46,6 +47,7 @@ auto FSbxMeshAssemblyRecipePart::to_part(FName const output_asset_name) const
     -> FSbxMeshAssemblyPart {
     auto request{SandboxMesh::make_default_mesh_request(shape)};
     request.asset_name = output_asset_name;
+    request.material_role = material_role;
     request.box.dimensions = FVector3f{box_dimensions};
     request.beveled_box = {FVector3f{beveled_box_dimensions}, beveled_box_bevel_width};
     request.wedge = {FVector3f{wedge_dimensions}, wedge_top_length, wedge_top_offset};

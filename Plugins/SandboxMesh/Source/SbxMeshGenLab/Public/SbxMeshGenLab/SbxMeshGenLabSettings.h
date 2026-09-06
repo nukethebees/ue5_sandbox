@@ -29,6 +29,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabSettings final : public UObject {
     UPROPERTY(EditAnywhere, Category = "Output")
     FName asset_name{TEXT("SM_GeneratedBox")};
 
+    UPROPERTY(EditAnywhere, Category = "Part")
+    ESbxMeshMaterialRole material_role{ESbxMeshMaterialRole::Structure};
+
     UPROPERTY(EditAnywhere, Category = "Selection")
     ESbxMeshSelectionPivot selection_pivot{ESbxMeshSelectionPivot::SelectionCenter};
 

@@ -19,6 +19,9 @@ struct SBXMESHGENLAB_API FSbxMeshAssemblyRecipePart {
     ESbxMeshShape shape{ESbxMeshShape::Box};
 
     UPROPERTY(EditAnywhere, Category = "Part")
+    ESbxMeshMaterialRole material_role{ESbxMeshMaterialRole::Structure};
+
+    UPROPERTY(EditAnywhere, Category = "Part")
     FVector translation{FVector::ZeroVector};
 
     UPROPERTY(EditAnywhere, Category = "Part")
