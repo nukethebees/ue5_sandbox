@@ -5,6 +5,8 @@ project(SandboxUnrealBuild LANGUAGES CXX)
 enable_testing()
 
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
+option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
+option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 
 add_subdirectory(Codegen)
 
@@ -383,6 +385,8 @@ add_custom_target(dev-core
   DEPENDS
     editor
     codegen-tests
+    kernel-codegen-tests
+    slate-codegen-tests
 )
 
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")

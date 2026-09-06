@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstdlib>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -13,6 +14,7 @@ using FString = std::string;
 using FStringView = std::string_view;
 
 #define TEXT(value) value
+#define RESTRICT
 #define UENUM(...)
 #define UMETA(...)
 #define COMPILE_FIXTURE_API
@@ -22,9 +24,20 @@ auto ensureMsgf(bool const expression, TCHAR const*, Args&&...) -> bool {
     return expression;
 }
 
+#if defined(CODEGEN_CHECK_EXIT)
+#define check(expression)                                                                        \
+    do {                                                                                         \
+        if (!(expression)) {                                                                     \
+            std::exit(1);                                                                        \
+        }                                                                                        \
+    } while (false)
+#else
 #define check(expression)                                                                        \
     do {                                                                                         \
         if (!(expression)) {                                                                     \
             throw std::runtime_error{"check failed"};                                           \
         }                                                                                        \
     } while (false)
+#endif
+
+#define checkf(expression, message, ...) check(expression)

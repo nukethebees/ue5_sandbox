@@ -46,6 +46,9 @@
 # Local CMake configuration
 CMakeUserPresets.json
 out/
+
+# Generated native benchmark results and plots
+/out/benchmarks/kernel/
 /vcpkg_installed/
 temp_notes/
 

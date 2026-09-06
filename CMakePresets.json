@@ -23,6 +23,25 @@
       }
     },
     {
+      "name": "kernel-benchmark",
+      "displayName": "Native kernel benchmark",
+      "inherits": "base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "SANDBOX_CODEGEN_ONLY": true,
+        "SANDBOX_KERNEL_BENCHMARKS": true,
+        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks"
+      }
+    },
+    {
+      "name": "kernel-benchmark-plots",
+      "displayName": "Native kernel benchmark plots",
+      "inherits": "kernel-benchmark",
+      "cacheVariables": {
+        "SANDBOX_KERNEL_BENCHMARK_PLOTS": true
+      }
+    },
+    {
       "name": "debug",
       "displayName": "Debug",
       "inherits": "base",
@@ -83,7 +102,22 @@
     {
       "name": "codegen",
       "configurePreset": "codegen",
-      "targets": ["sandbox-codegen", "sandbox-slatec", "codegen-tests", "slate-codegen-tests"]
+      "targets": ["sandbox-codegen", "sandbox-slatec", "sandbox-kernelc", "codegen-tests", "slate-codegen-tests", "kernel-codegen-tests"]
+    },
+    {
+      "name": "kernel-benchmark",
+      "configurePreset": "kernel-benchmark",
+      "targets": ["kernel-native-simd-tests", "kernel-native-benchmarks"]
+    },
+    {
+      "name": "kernel-benchmark-plots",
+      "configurePreset": "kernel-benchmark-plots",
+      "targets": ["kernel-native-simd-tests", "kernel-benchmark-report"]
+    },
+    {
+      "name": "kernel-benchmark-plots-full",
+      "configurePreset": "kernel-benchmark-plots",
+      "targets": ["kernel-native-simd-tests", "kernel-benchmark-report-full"]
     },
     {
       "name": "generate-code",
@@ -152,6 +186,36 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "kernel-benchmark-tests",
+      "configurePreset": "kernel-benchmark",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "native-kernel-benchmark"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "kernel-benchmark-plot-tests",
+      "configurePreset": "kernel-benchmark-plots",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "native-kernel-benchmark|kernel-benchmark-plot"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
     {
       "name": "codegen-tests",
       "configurePreset": "codegen",
@@ -274,6 +338,30 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "kernel-benchmark",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark" },
+        { "type": "build", "name": "kernel-benchmark" },
+        { "type": "test", "name": "kernel-benchmark-tests" }
+      ]
+    },
+    {
+      "name": "kernel-benchmark-plots",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark-plots" },
+        { "type": "build", "name": "kernel-benchmark-plots" },
+        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+      ]
+    },
+    {
+      "name": "kernel-benchmark-plots-full",
+      "steps": [
+        { "type": "configure", "name": "kernel-benchmark-plots" },
+        { "type": "build", "name": "kernel-benchmark-plots-full" },
+        { "type": "test", "name": "kernel-benchmark-plot-tests" }
+      ]
+    },
     {
       "name": "codegen",
       "steps": [

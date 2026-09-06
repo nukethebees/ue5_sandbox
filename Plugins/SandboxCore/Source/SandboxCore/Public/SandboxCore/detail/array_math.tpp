@@ -7,62 +7,6 @@
 
 namespace ml::kernel {
 /* ---------------------------------------------------------------------------------------------- */
-// Addition
-/* ---------------------------------------------------------------------------------------------- */
-template <ml::Numeric T>
-void add_in_place(T* const data, T const value, int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        data[i] += value;
-    }
-}
-
-/* ---------------------------------------------------------------------------------------------- */
-// Subtraction
-/* ---------------------------------------------------------------------------------------------- */
-template <ml::Numeric T>
-void subtract_in_place(T* const data, T const value, int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        data[i] -= value;
-    }
-}
-
-/* ---------------------------------------------------------------------------------------------- */
-// Multiplication
-/* ---------------------------------------------------------------------------------------------- */
-template <ml::Numeric T>
-void multiply(T* const out, T const* const a, T const b, int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        out[i] = a[i] * b;
-    }
-}
-
-template <ml::Numeric T>
-void multiply_in_place(T* const data, T const value, int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        data[i] *= value;
-    }
-}
-
-template <ml::Numeric T>
-void multiply_in_place(T* const RESTRICT data,
-                       T const* const RESTRICT values,
-                       int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        data[i] *= values[i];
-    }
-}
-
-/* ---------------------------------------------------------------------------------------------- */
-// Division
-/* ---------------------------------------------------------------------------------------------- */
-template <ml::Numeric T>
-void divide_in_place(T* data, T const value, int32 const count) noexcept {
-    for (int32 i{0}; i < count; ++i) {
-        data[i] /= value;
-    }
-}
-
-/* ---------------------------------------------------------------------------------------------- */
 // Querying
 /* ---------------------------------------------------------------------------------------------- */
 template <ml::Numeric T>
@@ -115,47 +59,6 @@ auto sum(T const* RESTRICT values, int32 const count) noexcept -> T {
 }
 
 namespace ml {
-template <ml::Numeric T>
-void add_in_place(TArrayView<T> const data, T const value) noexcept {
-    ml::kernel::add_in_place(data.GetData(), value, data.Num());
-}
-template <ml::Numeric T>
-void add_in_place(TArray<T>& data, T const value) noexcept {
-    ml::kernel::add_in_place(data.GetData(), value, data.Num());
-}
-
-template <ml::Numeric T>
-void subtract_in_place(TArrayView<T> const data, T const value) noexcept {
-    ml::kernel::subtract_in_place(data.GetData(), value, data.Num());
-}
-template <ml::Numeric T>
-void subtract_in_place(TArray<T>& data, T const value) noexcept {
-    ml::kernel::subtract_in_place(data.GetData(), value, data.Num());
-}
-
-template <ml::Numeric T>
-void multiply_in_place(TArrayView<T> const data, T const value) noexcept {
-    ml::kernel::multiply_in_place(data.GetData(), value, data.Num());
-}
-template <ml::Numeric T>
-void multiply_in_place(TArray<T>& data, T const value) noexcept {
-    ml::kernel::multiply_in_place(data.GetData(), value, data.Num());
-}
-template <ml::Numeric T>
-void multiply_in_place(TArrayView<T> const data, TConstArrayView<T> const values) noexcept {
-    check(ml::all_num_equal_and_pointers_not_equal(data, values));
-    ml::kernel::multiply_in_place(data.GetData(), values.GetData(), data.Num());
-}
-
-template <ml::Numeric T>
-void divide_in_place(TArrayView<T> const data, T const value) noexcept {
-    ml::kernel::divide_in_place(data.GetData(), value, data.Num());
-}
-template <ml::Numeric T>
-void divide_in_place(TArray<T>& data, T const value) noexcept {
-    ml::kernel::divide_in_place(data.GetData(), value, data.Num());
-}
-
 template <ml::Numeric T>
 auto collect_indices_less_equal(TConstArrayView<T> const values,
                                 T const threshold,

@@ -1,5 +1,30 @@
 find_package(GTest CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+if(SANDBOX_KERNEL_BENCHMARKS)
+  find_package(benchmark CONFIG REQUIRED)
+  find_package(CpuFeatures CONFIG REQUIRED)
+endif()
+if(SANDBOX_KERNEL_BENCHMARK_PLOTS)
+  if(NOT SANDBOX_KERNEL_BENCHMARKS)
+    message(FATAL_ERROR
+      "SANDBOX_KERNEL_BENCHMARK_PLOTS requires SANDBOX_KERNEL_BENCHMARKS")
+  endif()
+  find_package(Python3 REQUIRED COMPONENTS Interpreter)
+  find_program(UV_EXECUTABLE NAMES uv REQUIRED)
+endif()
+
+if(NOT MSVC)
+  set(SANDBOX_CODEGEN_WARNINGS
+    -Wall
+    -Wextra
+    -Wpedantic
+    -Werror
+    -Wno-missing-designated-field-initializers
+    -Wno-missing-field-initializers
+  )
+endif()
+
+add_subdirectory(sexpr)
 
 add_library(codegen-lib
   src/ast.cpp
@@ -110,14 +135,6 @@ if(MSVC)
   target_compile_options(codegen-tests PRIVATE /W4 /WX)
   target_compile_options(codegen-generated-compile-tests PRIVATE /W4 /WX)
 else()
-  set(SANDBOX_CODEGEN_WARNINGS
-    -Wall
-    -Wextra
-    -Wpedantic
-    -Werror
-    -Wno-missing-designated-field-initializers
-    -Wno-missing-field-initializers
-  )
   target_compile_options(codegen-lib PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
   target_compile_options(sandbox-codegen PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
   target_compile_options(codegen-tests PRIVATE ${SANDBOX_CODEGEN_WARNINGS})
@@ -194,3 +211,4 @@ add_custom_target(check-generated-code
 )
 
 add_subdirectory(slate)
+add_subdirectory(kernel)

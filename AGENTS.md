@@ -20,6 +20,8 @@ Unreal Engine 5.8 project.
   * all suites: `cmake --workflow --preset debug-game-tests`
   * unit suites: `cmake --workflow --preset debug-game-unit-tests`
   * level tests after building: `ctest --preset debug-game-level-tests`
+* Before starting a timed benchmark, complete all build and setup work, tell the user that the benchmark is ready, and wait for confirmation so they can stop competing work. Dry runs and correctness tests do not require this pause.
+* Run only the benchmark subset needed to answer the current question. Do not run a comprehensive benchmark matrix by default; reserve it for explicitly requested broad validation or when every dimension is materially affected.
 
 # Agent Behaviour
 
@@ -30,6 +32,7 @@ Unreal Engine 5.8 project.
 * Prefer the smallest coherent change that fully implements the requested design.
 * Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
 * When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
+* Store local development roadmaps under `.local/plans/`; never commit them.
 * Store disposable session hand-offs under `.local/handoffs/`; never commit them.
 
 # Coding Style

@@ -1,0 +1,52 @@
+(kernel-module array_math
+  (emit unreal
+    (header "Public/SandboxCore/array_math_kernels.h")
+    (source "Private/array_math_kernels.cpp")
+    (header-include "SandboxCore/array_math_kernels.h")
+    (namespace ml)
+    (export SANDBOXCORE_API))
+  (emit standard
+    (header "standard/array_math_kernels.h")
+    (source "standard/array_math_kernels.cpp")
+    (tests "standard/array_math_kernels_tests.cpp")
+    (header-include "standard/array_math_kernels.h")
+    (namespace ml))
+
+  (type-set numeric int32 float double)
+
+  (map add
+    (types numeric)
+    (operand data array)
+    (operand value scalar)
+    (output out)
+    (expression (+ data value))
+    (variants
+      (in-place data add_in_place)))
+
+  (map subtract
+    (types numeric)
+    (operand data array)
+    (operand value scalar)
+    (output out)
+    (expression (- data value))
+    (variants
+      (in-place data subtract_in_place)))
+
+  (map multiply
+    (types numeric)
+    (operand lhs array)
+    (operand rhs (array scalar))
+    (output out)
+    (expression (* lhs rhs))
+    (variants
+      (out-of-place multiply)
+      (in-place lhs multiply_in_place)))
+
+  (map divide
+    (types numeric)
+    (operand data array)
+    (operand value scalar)
+    (output out)
+    (expression (/ data value))
+    (variants
+      (in-place data divide_in_place))))

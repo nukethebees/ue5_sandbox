@@ -10,6 +10,7 @@ target_compile_features(slate-codegen-lib PUBLIC cxx_std_23)
 target_include_directories(slate-codegen-lib PUBLIC include)
 target_link_libraries(slate-codegen-lib PRIVATE
   codegen-lib
+  codegen-sexpr
   nlohmann_json::nlohmann_json
 )
 
@@ -24,6 +25,7 @@ add_executable(slate-codegen-tests
 target_include_directories(slate-codegen-tests PRIVATE src)
 target_link_libraries(slate-codegen-tests PRIVATE
   slate-codegen-lib
+  codegen-sexpr
   GTest::gtest_main
 )
 
