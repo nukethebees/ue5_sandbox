@@ -5,78 +5,72 @@ Unreal Engine 5.8 project.
 * Simulation-heavy space combat game written primarily in C++.
 * Prefer simple, explicit systems over speculative abstraction.
 * The orchestrator coordinates the main simulation tick and major gameplay systems.
-* Entity data is largely stored in cache-friendly arrays / SOA-style structures rather than represented entirely by Actors.
-* UI is a presentation layer over simulation state and should not own gameplay logic.
+* Entity data is largely stored in cache-friendly arrays / SOA structures rather than represented entirely by Actors.
+* UI is a presentation layer over simulation state and must not own gameplay logic.
 * Determinism, debuggability, simple control flow, and performance are important.
 
-# Command-Line Builds
+# Builds
 
-* A Windows-only CMake 4.3+/Ninja build layer exists at the repository root. It invokes UnrealBuildTool (UBT); `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
-* Run builds yourself through this CMake layer; do not invoke UBT or `Build.bat` directly. Use the `debug-game` preset as the preferred default: `cmake --workflow --preset debug-game`.
-* The available CMake targets are `editor`, `game`, `core-tests` (`SandboxCoreTests`), `native-tests` (`SandboxNativeTests`), `dev-core` (Editor plus low-level tests), `resave-assets` (resaves project assets and fixes redirectors), and `generate-project-files` (regenerates Visual Studio project files).
-* Run `cmake --workflow --preset generate-project-files` after adding or removing Unreal modules/plugins, or changing `.Build.cs`, `.Target.cs`, or project/module definitions.
-* After completing the full set of changes for a request, run `cmake --workflow --preset generate-project-files` once as a final step. Do not regenerate project files after each intermediate edit.
-* Run CTest suites through `cmake --workflow --preset debug-game-tests`; it runs all unit and level suites. Use `cmake --workflow --preset debug-game-unit-tests` for unit suites only, or `ctest --preset debug-game-level-tests` to run only level tests after building.
+* A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
+* Use the CMake layer for builds; do not invoke UBT or `Build.bat` directly.
+* Preferred build: `cmake --workflow --preset debug-game`.
+* Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, and `generate-project-files`.
+* Regenerate project files after changes to modules/plugins, `.Build.cs`, `.Target.cs`, or project/module definitions. For larger tasks, do this once after the full change rather than after intermediate edits.
+* Tests:
+  * all suites: `cmake --workflow --preset debug-game-tests`
+  * unit suites: `cmake --workflow --preset debug-game-unit-tests`
+  * level tests after building: `ctest --preset debug-game-level-tests`
 
 # Agent Behaviour
 
-* Default to clarification over interpretation.
-* If requirements, architecture, ownership, scope, naming, or intended behaviour are ambiguous, ask the user rather than guessing.
-* Prefer concise questions over broad repository exploration when the user can provide the missing context directly.
-* Ask as many questions as materially improve the plan; group related questions together.
-* Use repository inspection to establish implementation facts, not to infer user preferences.
-* Keep exploration targeted to directly relevant files and dependencies. Do not launch broad or parallel repository searches by default.
-* Do not inspect Unreal Engine source unless necessary to resolve an API or engine-behaviour question.
-* Once enough context exists to proceed safely, stop exploring and implement.
-* Prefer the smallest coherent change that fully implements the requested design. Measure scope by conceptual and behavioural completeness, not by minimizing edited lines.
-* Do not preserve an architecture the user asked to replace by adding wrappers, adapters, compatibility layers, or other indirection solely to reduce the diff. Do not perform unrelated refactors.
-* If the user says "engage in freedom", "use your judgement", or otherwise grants autonomy, resolve reasonable ambiguities yourself while keeping scope controlled.
-* Store disposable local session hand-offs under `.local/handoffs/`; this directory is git-ignored and its contents must not be committed.
+* Resolve ambiguity explicitly rather than guessing. Ask concise, grouped questions when requirements, ownership, architecture, naming, scope, or behaviour are materially unclear.
+* Use targeted repository inspection to establish implementation facts. Do not infer user preferences from the repository or perform broad exploration by default.
+* Do not inspect Unreal Engine source unless needed to resolve an engine/API behaviour question.
+* Once enough context exists, implement rather than continuing exploration.
+* Prefer the smallest coherent change that fully implements the requested design.
+* Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
+* When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
+* Store disposable session hand-offs under `.local/handoffs/`; never commit them.
 
 # Coding Style
 
-* Unreal Engine C++
-* snake_case for functions and variables
-* Do not prefix boolean variables with `b_`.
-* TitleCase for types
-* east const
-* always use braces
-* prefer auto where the type is obvious
-* prefer simple C++ over template metaprogramming
-* When returning `std::expected`, use `std::in_place` and `std::unexpect` when direct construction avoids copying or moving non-trivial value or error types.
-* Prefer SOA layouts for related, performance-sensitive collections.
-* save loop bounds as const local variables
-* log warnings/errors when null checks fail instead of returning silently
-* Group functions by category
-* Use blank lines to separate logical sections of C++ code for visual readability.
-* When UObject types live in a dedicated plugin and C++ namespace, prefer concise names; the plugin and namespace provide the necessary context and collision isolation.
-* Avoid constants in anonymous namespaces in `.cpp` files because Unreal unity builds can merge translation units and create name collisions. Prefer `inline static constexpr` members on the owning type or `inline constexpr` constants in a suitably specific named namespace.
+* Unreal Engine C++.
+* `snake_case` functions and variables; `TitleCase` types.
+* Do not prefix booleans with `b_`.
+* East const; always use braces.
+* Prefer `auto` where the type is obvious.
+* Prefer simple C++ over template metaprogramming.
+* Prefer SOA layouts for related performance-sensitive collections.
+* Save loop bounds as const locals.
+* Log warnings/errors when null checks fail rather than returning silently.
+* Group functions by category and use blank lines between logical sections.
+* When returning `std::expected`, prefer `std::in_place` / `std::unexpect` when they avoid unnecessary copies or moves.
+* For UObject types in a dedicated plugin and namespace, prefer concise names.
+* Avoid anonymous-namespace constants in `.cpp` files because Unreal unity builds can merge translation units. Prefer `inline static constexpr` members or `inline constexpr` constants in a specific named namespace.
 
 # Formatting
 
-* Format changed C++ files through `cmake --workflow --preset format-code`; it invokes the repository formatter with the changed-file selection. Do not invoke `clang-format` directly for normal repository work.
-* Use `cmake --workflow --preset format-all-code` only when an explicitly requested repository-wide formatting pass is intended.
+* Format changed C++ files with `cmake --workflow --preset format-code`.
+* Do not invoke `clang-format` directly for normal repository work.
+* Use `format-all-code` only for explicitly requested repository-wide formatting.
 
-# UI Design
+# UI
 
-* Tone north star: Build UI as if Lockheed Martin made command-and-control software for bees. Play the bee-military premise completely straight: austere, functional, bureaucratic, tactical, and internally serious. Avoid cute bee puns, self-aware jokes, or whimsical presentation unless explicitly requested.
-* The player is interacting with the bee military, not a bee police state. Military interfaces should feel disciplined, professional, bureaucratic, and operational, but must not imply an authoritarian or fascistic society unless the story specifically calls for it. Avoid gratuitous propaganda, loyalty slogans, ideological imagery, cult-of-leader language, and dystopian "obey the hive" tropes.
-* The bees are a civilization in space. They have armed forces because there are things worth defending and wars worth fighting. The UI represents their military infrastructure, not necessarily their wider culture.
-* Never acknowledge the premise as a joke. The world treats bee civilization, bee institutions, bee warfare, and the bee space navy as completely ordinary. Characters do not make bee puns, comment on the absurdity, or wink at the audience. Humor should emerge from situations, bureaucracy, personalities, incompetence, timing, and understatement—not from the setting explaining itself.
-* Always use `BindWidget` for UPROPERTY widgets. Do not use `BindWidgetOptional` unless the widget is explicitly generated in C++ every time.
-* When generating a UMG widget whose root node is a panel widget (for example, `UGridPanel`), use `meta=(GeneratorRoot)`.
+* Use `BindWidget` for UPROPERTY widgets. Use `BindWidgetOptional` only when the widget is explicitly generated in C++ every time.
+* For generated UMG widgets whose root is a panel widget, use `meta=(GeneratorRoot)`.
 * Keep gameplay logic out of UI widgets.
 
 # Testing
 
 * Only create tests when explicitly asked.
-* Prefer Catch2 for low-level code that compiles without engine or editor dependencies. Catch2 test targets must not depend on `CoreUObject`, `Engine`, `Slate`, `SlateCore`, `UMG`, `UnrealEd`, or other engine/editor modules; use CQTest/Unreal automation tests for code with those dependencies.
-* Run C++/Unreal builds and the available CTest suites yourself through the CMake workflows and presets. Do not launch Unreal or run Unreal automation tests outside the CMake flow unless explicitly asked.
-* Python scripts may be run when needed.
-* When editing Python, run Pyright on the changed files.
-* Use `FSoftTestAssertions` as the default assertion mechanism for level-based tests.
-* `SANDBOX_TESTS_ASSERT_ALL_PASSED` returns when a soft assertion has failed; use it to end assertion stages instead of adding duplicate failure branches.
-* All test levels that use the orchestrator and run a simulation must use `TestSimulationDriver` and call `start_simulation` when the test starts.
-* Capture level-test simulation results in `TimeSeriesData` from the end-tick hook; make assertions against the relevant recorded samples rather than live state.
-* To avoid time-zero ordering issues, schedule simulation-test damage and kills through `TestSimulationDriver::timeline` at a positive simulation time.
-* Group each test's data and functions together, using `/* ------------------------------------------------------------------------------------------ */` banners to separate test-specific sections.
+* Prefer Catch2 for code without Unreal Engine/editor dependencies. Catch2 targets must not depend on engine/editor modules such as `CoreUObject`, `Engine`, `Slate`, `UMG`, or `UnrealEd`.
+* Use CQTest/Unreal automation tests for code with engine/editor dependencies.
+* Run builds and tests through the repository CMake workflows. Do not launch Unreal or run automation tests outside that flow unless explicitly asked.
+* Python scripts may be run when needed; run Pyright on changed Python files.
+* For level tests:
+  * Prefer `FSoftTestAssertions`.
+  * Use `SANDBOX_TESTS_ASSERT_ALL_PASSED` to end assertion stages after soft failures.
+  * Simulations must use `TestSimulationDriver` and call `start_simulation`.
+  * Record results in `TimeSeriesData` from the end-tick hook and assert against recorded samples rather than live state.
+  * Schedule damage/kills through `TestSimulationDriver::timeline` at positive simulation time.
+  * Keep each test's data and functions together, separated with the existing banner style.
