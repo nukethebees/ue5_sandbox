@@ -43,6 +43,7 @@ Unreal Engine 5.8 project.
 * always use braces
 * prefer auto where the type is obvious
 * prefer simple C++ over template metaprogramming
+* When returning `std::expected`, use `std::in_place` and `std::unexpect` when direct construction avoids copying or moving non-trivial value or error types.
 * Prefer SOA layouts for related, performance-sensitive collections.
 * save loop bounds as const local variables
 * log warnings/errors when null checks fail instead of returning silently
