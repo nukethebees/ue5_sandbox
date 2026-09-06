@@ -847,10 +847,8 @@ class Parser {
         if (is_simd_lab && (!result.export_specifier.empty() || result.tests)) {
             fail(form.token.span, "SIMD lab emissions do not support export or tests");
         }
-        if (profile == Profile::native_x86_simd_lab &&
-            (!result.avx512_source || !result.dispatch_source)) {
-            fail(form.token.span,
-                 "native-x86-simd-lab emission requires avx512-source and dispatch-source");
+        if (profile == Profile::native_x86_simd_lab && !result.avx512_source) {
+            fail(form.token.span, "native-x86-simd-lab emission requires avx512-source");
         }
         if (profile != Profile::native_x86_simd_lab &&
             (result.avx512_source || result.dispatch_source || result.relaxed_avx2_source ||

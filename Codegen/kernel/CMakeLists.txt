@@ -244,9 +244,6 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_SIMD_AVX512_SOURCE
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_avx512.cpp"
   )
-  set(KERNEL_NATIVE_SIMD_DISPATCH_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_dispatch.cpp"
-  )
   set(KERNEL_NATIVE_DOT_HEADER
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab.h"
   )
@@ -255,9 +252,6 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   )
   set(KERNEL_NATIVE_DOT_AVX512_SOURCE
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx512.cpp"
-  )
-  set(KERNEL_NATIVE_DOT_DISPATCH_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_dispatch.cpp"
   )
   set(KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx2.cpp"
@@ -269,11 +263,9 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     "${KERNEL_NATIVE_SIMD_HEADER}"
     "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
     "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
-    "${KERNEL_NATIVE_SIMD_DISPATCH_SOURCE}"
     "${KERNEL_NATIVE_DOT_HEADER}"
     "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
     "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
-    "${KERNEL_NATIVE_DOT_DISPATCH_SOURCE}"
     "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
     "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
   )
@@ -299,10 +291,6 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
     "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
   )
-  add_library(kernel-native-simd-dispatch OBJECT
-    "${KERNEL_NATIVE_SIMD_DISPATCH_SOURCE}"
-    "${KERNEL_NATIVE_DOT_DISPATCH_SOURCE}"
-  )
   add_library(kernel-native-dot-relaxed-avx2 OBJECT
     "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
   )
@@ -312,17 +300,14 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   foreach(TARGET IN ITEMS
       kernel-native-simd-avx2
       kernel-native-simd-avx512
-      kernel-native-simd-dispatch
       kernel-native-dot-relaxed-avx2
       kernel-native-dot-relaxed-avx512)
     target_compile_features(${TARGET} PRIVATE cxx_std_23)
     target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
   endforeach()
-  target_link_libraries(kernel-native-simd-dispatch PRIVATE CpuFeatures::cpu_features)
   if(MSVC)
     target_compile_options(kernel-native-simd-avx2 PRIVATE /W4 /WX /arch:AVX2 /fp:strict)
     target_compile_options(kernel-native-simd-avx512 PRIVATE /W4 /WX /arch:AVX512 /fp:strict)
-    target_compile_options(kernel-native-simd-dispatch PRIVATE /W4 /WX /arch:AVX2 /fp:strict)
     target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
       /W4 /WX /arch:AVX2 /fp:fast
     )
@@ -343,11 +328,6 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       -mavx512bw
       -mavx512dq
       -mavx512vl
-      -ffp-contract=off
-    )
-    target_compile_options(kernel-native-simd-dispatch PRIVATE
-      ${SANDBOX_CODEGEN_WARNINGS}
-      -mavx2
       -ffp-contract=off
     )
     target_compile_options(kernel-native-dot-relaxed-avx2 PRIVATE
@@ -376,7 +356,6 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_SIMD_OBJECTS
     $<TARGET_OBJECTS:kernel-native-simd-avx2>
     $<TARGET_OBJECTS:kernel-native-simd-avx512>
-    $<TARGET_OBJECTS:kernel-native-simd-dispatch>
     $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx2>
     $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx512>
   )
@@ -509,8 +488,8 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     endfunction()
 
     add_kernel_benchmark_report(kernel-benchmark-report
-      FILTER "^(add_scaled|dot_product)/(flat|soaos16)/[^/]+/ordinary/aligned/(32|256|4096|65536|262144|1048576)/real_time$"
-      COMMENT "Benchmarking happy-path generated kernels and plotting the results"
+      FILTER "^(add_scaled/elementwise|dot_product/relaxed)/(flat|chunked16)/[^/]+/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
+      COMMENT "Benchmarking representative generated kernel workloads and plotting the results"
     )
     add_kernel_benchmark_report(kernel-benchmark-report-full
       COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"

@@ -53,18 +53,19 @@ auto render(KernelModule const& module, Profile const profile)
             codegen::GeneratedFile{emission->source,
                                    render_native_avx2_lab_source(*emission, selected)},
             codegen::GeneratedFile{*emission->avx512_source,
-                                   render_native_avx512_lab_source(*emission, selected)},
-            codegen::GeneratedFile{*emission->dispatch_source,
-                                   render_native_simd_dispatch_source(*emission, selected)}};
+                                   render_native_avx512_lab_source(*emission, selected)}};
+        if (emission->dispatch_source) {
+            result.push_back(codegen::GeneratedFile{
+                *emission->dispatch_source,
+                render_native_simd_dispatch_source(*emission, selected)});
+        }
         if (emission->relaxed_avx2_source) {
             result.push_back(codegen::GeneratedFile{
                 *emission->relaxed_avx2_source,
-                render_native_relaxed_autovec_source(
-                    *emission, selected, "_autovec_relaxed_avx2")});
+                render_native_relaxed_autovec_source(*emission, selected, "avx2")});
             result.push_back(codegen::GeneratedFile{
                 *emission->relaxed_avx512_source,
-                render_native_relaxed_autovec_source(
-                    *emission, selected, "_autovec_relaxed_avx512")});
+                render_native_relaxed_autovec_source(*emission, selected, "avx512")});
         }
         return result;
     }

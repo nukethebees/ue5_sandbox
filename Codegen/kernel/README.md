@@ -79,19 +79,22 @@ The SIMD lab profiles are deliberately test-only. They select one concrete, pair
 `float` variant. `unreal-avx2-lab` accepts only out-of-place maps and emits an AVX2 autovectorized
 baseline plus single-loop and four-way-unrolled intrinsic implementations for the private Unreal
 benchmark module.
-`native-x86-simd-lab` additionally emits isolated AVX-512 and runtime-dispatch translation units for
-the opt-in native CMake benchmark, accepts the narrow `sum` reduction described above, and emits a
-forced-scalar reference loop. The vector renderer accepts only operand references, addition, and
-multiplication, uses unaligned loads and stores for flat arrays, and disables FMA contraction. These
-profiles exist to measure whether explicit backends add value before any SIMD surface is added to
-SandboxCore.
+`native-x86-simd-lab` additionally emits an isolated AVX-512 translation unit for the opt-in native
+CMake benchmark, accepts the narrow `sum` reduction described above, and emits a forced-scalar
+reference loop. A `(dispatch-source ...)` is optional; the current experiment deliberately omits it
+so backend selection remains a caller policy. The vector renderer accepts only operand references,
+addition, and multiplication, uses unaligned loads and stores for flat arrays, and disables FMA
+contraction. These profiles exist to measure whether explicit backends add value before any SIMD
+surface is added to SandboxCore.
 
-The native lab also accepts the deliberately narrow emission field `(soaos 16)`. It derives an
-operation-specific, 64-byte-aligned block containing one `std::array<float, 16>` for each array
-operand or result and an `int32` logical `size`. It then emits a second family of scalar, autovec,
-intrinsic, and dispatch functions which accepts blocks rather than flat arrays. No other width or
-profile accepts this field. This keeps storage selection separate from the operation expression
-without turning the kernel language into a general layout DSL.
+The native lab also accepts the deliberately narrow emission field `(soaos 16)`. It derives one
+concrete `alignas(64) FloatChunk16` containing only `std::array<float, 16> values`. Every array
+operand and result is a separate restricted pointer to an array of these chunks; logical size is a
+property of the owning collection, not repeated in every chunk. Chunk kernels accept only
+`chunk_count` and always process all 16 lanes, so a partial final chunk contains deliberately valid
+padding. No other width or profile accepts this field. This is effectively an array of short SOAs,
+and keeps storage selection separate from the operation expression without inventing an
+operation-specific struct or a general layout DSL.
 
 Sum reductions default to `(floating-point-modes strict)`. A reduction may explicitly request
 `(floating-point-modes strict relaxed)` to generate both an ordered source loop and a second source
@@ -115,15 +118,13 @@ reductions change the order of floating-point additions, so the dot-product corr
 high-precision scalar reference and a relative tolerance rather than requiring bitwise equality.
 
 Both operations are measured over two generated layouts. `flat` is the existing pointer-and-count
-API, including scalar tails. `soaos16` stores each operation's arrays together in fixed-capacity
-blocks. A SoAoS kernel accepts a restricted block pointer plus `block_count`, uses aligned AVX2 or
-AVX-512 loads and stores, and always processes all 16 lanes of every block. It does not read the
-block's `size` member and has no scalar element tail. The harness sets `size` to the number of
-logical elements in each block. Dot-product padding is zero-filled so padded products are neutral;
-`add_scaled` padding is ordinary storage and is deliberately processed. This is an experimental
-contract, not a public SandboxCore API. The generated autovec source disables vectorization of the
-outer block loop while leaving the fixed 16-lane inner loop available; this prevents compilers from
-turning the block structure into cross-block gathers and scatters.
+API, including scalar tails. `chunked16` uses separate arrays of `FloatChunk16` for each operand and
+result. Its kernels use aligned AVX2 or AVX-512 loads and stores and always process all 16 lanes of
+every chunk, with no scalar element tail. Dot-product padding is zero-filled so padded products are
+neutral; `add_scaled` padding is ordinary storage and is deliberately processed. This is an
+experimental contract, not a public SandboxCore API. The generated autovec source disables
+vectorization of the outer chunk loop while leaving the fixed 16-lane inner loop available; relaxed
+dot product accumulates 16 lanes across chunks and reduces those lanes once after the loop.
 
 Google Benchmark is the timing harness. The executable registers each case with
 `benchmark::RegisterBenchmark`, links `benchmark::benchmark_main`, and lets Google Benchmark
@@ -142,25 +143,22 @@ out/build/<preset>/Codegen/kernel/native-simd-generated/native/generated/
   add_scaled_x86_simd_lab.h
   add_scaled_x86_simd_lab_avx2.cpp
   add_scaled_x86_simd_lab_avx512.cpp
-  add_scaled_x86_simd_lab_dispatch.cpp
   dot_product_x86_simd_lab.h
   dot_product_x86_simd_lab_avx2.cpp
   dot_product_x86_simd_lab_avx512.cpp
-  dot_product_x86_simd_lab_dispatch.cpp
   dot_product_x86_simd_lab_relaxed_avx2.cpp
   dot_product_x86_simd_lab_relaxed_avx512.cpp
 ```
 
 For the plotting preset, `<preset>` is `kernel-benchmark-plots`. The AVX2 translation unit contains
-the `scalar`, strict-autovec, `avx2`, and `avx2-unrolled` functions. The AVX-512 translation unit
-contains the strict-autovec, `avx512`, and `avx512-unrolled` functions, including the `_mm512_*`
+the strict scalar/autovec functions and relaxed explicit AVX2 functions. The AVX-512 translation
+unit contains strict autovec and relaxed explicit AVX-512 functions, including the `_mm512_*`
 intrinsic loops. The two relaxed translation units contain only their respective relaxed-autovec
-loops. The dispatch translation unit contains the `cpu-features` selection and cached forwarding
-function.
+loops.
 
 CMake compiles those exact generated files into separate strict AVX2, strict AVX-512, relaxed AVX2,
-relaxed AVX-512, and dispatch object libraries and links the objects into
-`kernel-native-benchmarks`. The relaxed targets enable reassociation while disabling contraction;
+and relaxed AVX-512 object libraries and links the objects into `kernel-native-benchmarks`. The
+relaxed targets enable reassociation while disabling contraction;
 the remaining targets retain source-order floating-point compilation. The harnesses in
 `Codegen/kernel/benchmarks/add_scaled_benchmarks.cpp` and
 `Codegen/kernel/benchmarks/dot_product_benchmarks.cpp` call the resulting functions. The semantic
@@ -176,13 +174,13 @@ consumes that checked generated source directly.
 Benchmark names have the form:
 
 ```text
-<operation>/<layout>/<backend>/<value-set>/<alignment>/<element-count>
+<operation>/<policy>/<layout>/<backend>/<value-set>/<alignment>/<element-count>
 ```
 
-For example, `add_scaled/flat/avx2/ordinary/unaligned/4096` runs the explicit AVX2 kernel on
+For example, `add_scaled/elementwise/flat/avx2/ordinary/unaligned/4096` runs the explicit AVX2 kernel on
 4,096 elements using the ordinary finite-value data set, with every array starting four bytes past
-a 64-byte boundary. `add_scaled/soaos16/avx2/ordinary/aligned/4096` runs the corresponding
-fixed-block kernel over 256 complete blocks.
+a 64-byte boundary. `add_scaled/elementwise/chunked16/avx2/ordinary/aligned/4096` runs the
+corresponding chunk kernel over 256 complete chunks.
 
 The backends are:
 
@@ -192,11 +190,10 @@ The backends are:
   structure rather than forcing an obsolete x86 instruction encoding;
 * `autovec-avx2`: the generated `add_scaled` scalar loop, compiled in an AVX2 translation unit and
   left to the compiler's vectorizer;
-* `autovec-strict-avx2` and `autovec-strict-avx512`: the generated dot-product source loop compiled
-  without floating-point reassociation. These preserve source accumulation order and may therefore
-  remain scalar;
-* `autovec-relaxed-avx2` and `autovec-relaxed-avx512`: the same generated dot-product source loop in
-  dedicated translation units that permit reassociation but prohibit FMA contraction;
+* `autovec-avx2` and `autovec-avx512`: compiler-vectorized source loops. Under the dot-product
+  `strict` policy these preserve source accumulation order and may remain scalar; under `relaxed`
+  they are compiled in dedicated translation units that permit reassociation but prohibit FMA
+  contraction;
 * `avx2`: the generated single-loop AVX2 intrinsic implementation;
 * `avx2-unrolled`: the generated AVX2 implementation with four vector operations emitted per loop
   iteration;
@@ -204,8 +201,12 @@ The backends are:
 * `avx512`: the generated single-loop AVX-512 intrinsic implementation;
 * `avx512-unrolled`: the generated dot-product AVX-512 implementation with four independent vector
   accumulators;
-* `dispatch-avx2` or `dispatch-avx512`: the generated runtime-dispatch entry point, named for the
-  backend selected once through `cpu-features`. This includes the cached indirect-call overhead.
+
+The generated functions use ordinary overload names inside selectable namespaces, such as
+`backend::avx2::add_scaled` and `relaxed::backend::avx512::dot_product`. A caller can select a fixed
+default with a `using` declaration or store one overload in a function pointer. Runtime CPUID
+dispatch is outside this timing matrix; `cpu-features` is used only by the harness to skip AVX-512
+cases on unsupported machines.
 
 The `autovec` names describe the source and compilation target, not a guarantee that the compiler
 selected a particular vector width. The separate `scalar` backend makes that distinction measurable
@@ -215,16 +216,17 @@ double-precision reference. Inspect the optimized assembly when the exact emitte
 matter.
 
 All kernel pointer arguments are `RESTRICT` and the benchmark supplies separate allocations for
-every flat array argument. A SoAoS function has one restricted block pointer; its component arrays
-are distinct fields within that block. The two flat alignment cases are:
+every flat array argument. Chunk functions likewise receive a separate restricted pointer for each
+operand and output chunk array. The two flat alignment cases are:
 
 * `aligned`: each array begins on a 64-byte boundary;
 * `unaligned`: each array begins one `float`, or four bytes, past a 64-byte boundary.
 
 The explicit intrinsic implementations use unaligned loads and stores in both cases because the
 kernel API does not promise alignment. The cases measure the effect of the actual starting address;
-they do not select different load or store instructions. SoAoS blocks are always 64-byte aligned and
-their intrinsic functions use aligned loads and stores, so no `unaligned` SoAoS cases are generated.
+they do not select different load or store instructions. `FloatChunk16` arrays are always 64-byte
+aligned and their intrinsic functions use aligned loads and stores, so no `unaligned` chunk cases
+are generated.
 
 The value sets are deterministic:
 
@@ -241,25 +243,31 @@ has no data-dependent branches. Both timed reports enable Google Benchmark's ran
 which changes the order in which benchmark cases are sampled across repetitions and helps reduce
 systematic frequency, temperature, and ordering bias.
 
-Ordinary cases cover element counts around the AVX2 and AVX-512 widths, larger cache regimes, and
-arrays up to 1,048,576 elements. Extreme-value `add_scaled` cases use 32, 256, 4,096, 65,536, and
-1,048,576 elements to sample small, L1, L2, and shared-cache regimes without duplicating the entire
-matrix. Every case is run for seven randomly interleaved repetitions with a minimum of 0.05 seconds
-per repetition.
+Ordinary cases cover element counts around the AVX2 and AVX-512 widths, representative gameplay
+workloads, larger cache regimes, and arrays up to 1,048,576 elements. Extreme-value `add_scaled`
+cases use 32, 256, 4,096, 65,536, and 1,048,576 elements to sample small, L1, L2, and shared-cache
+regimes without duplicating the entire matrix. Every case is run for seven randomly interleaved
+repetitions with a minimum of 0.05 seconds per repetition.
 
-The routine `kernel-benchmark-plots` report selects ordinary, aligned cases at 32, 256, 4,096,
-65,536, 262,144, and 1,048,576 elements for both layouts. It currently contains 204 cases, has a
-configured timing floor of about 71 seconds, and should normally finish in roughly a minute and a
-half plus build and plotting time. Use it while iterating.
+The routine `kernel-benchmark-plots` report selects ordinary, aligned cases at 4,096, 16,384,
+65,536, and 100,000 elements for both layouts. These are the default representative workload sizes.
+The report includes the `elementwise` add and `relaxed` dot-product policies: 96 cases with a
+configured timing floor of about 34 seconds. This is the default iteration report; benchmark filters
+should be narrowed further when only one operation, layout, or backend changed.
 
-The `kernel-benchmark-plots-full` report runs all 904 cases: 434 for `add_scaled` and 470 for dot
-product. Its configured timing floor is about 316 seconds, so allow roughly five and three-quarter
-minutes plus build and plotting time. It covers SIMD-width boundaries and scalar tails for flat
-arrays, both flat alignments, and the `add_scaled` extreme set. SoAoS timings deliberately sample
-only 16/16, 11/16, and 8/16 block occupancy—no waste, approximately one-third waste, and half
-waste—rather than duplicating the broad correctness matrix. Flat 8-, 11-, and 16-element cases
-provide direct layout references for those occupancies. Run it before accepting a backend, layout,
-or dispatch change.
+The larger 262,144- and 1,048,576-element cases are optional stress/scaling measurements for
+examining streaming-memory behaviour. They remain registered and can be selected through the
+explicit `kernel-benchmark-plots-full` workflow or a direct Google Benchmark filter; they are not
+part of the routine report.
+
+The `kernel-benchmark-plots-full` report runs all 738 cases: 396 for `add_scaled`, 306 for relaxed
+dot product, and 36 for strict dot product. Its configured timing floor is about 258 seconds, so
+allow roughly four and three-quarter minutes plus build and plotting time. It covers SIMD-width
+boundaries and scalar tails for flat arrays, both flat alignments, and the `add_scaled` extreme set.
+Chunk timings deliberately sample only 16/16, 11/16, and 8/16 final-chunk occupancy—no waste,
+approximately one-third waste, and half waste—rather than duplicating the broad correctness matrix.
+Flat 8-, 11-, and 16-element cases provide direct layout references for those occupancies. Run it
+before accepting a backend, layout, or numerical-policy change.
 Unsupported AVX-512 cases are reported as skipped.
 
 Allocation and input initialization occur outside the timed loop. The timed body calls the kernel,
@@ -267,16 +275,17 @@ prevents its result from being optimized away, and uses real elapsed time. Repor
 byte throughput counts two `float` reads and one `float` write per element; the scalar `scale` is
 not included. Dot-product throughput counts its two `float` reads per element. Standard
 `items_per_second` and `bytes_per_second` use the requested logical element count so layouts compare
-useful work. SoAoS cases additionally record `physical_items_per_second` and `padding_fraction`,
+useful work. Chunk cases additionally record `physical_items_per_second` and `padding_fraction`,
 making the extra processed lanes visible for partial blocks.
 
 The plotting script uses repetition medians for the curves and repetition standard deviation for
 the time error bars. It writes separate backend plots for each layout and applicable alignment, a
-flat unaligned-to-aligned time-ratio plot, and a direct SoAoS-over-flat layout-speedup plot for each
+flat unaligned-to-aligned time-ratio plot, and a direct chunked-over-flat layout-speedup plot for each
 value set. A ratio above `1.0` on an alignment plot means the unaligned case was slower. A ratio
-above `1.0` on a layout plot means SoAoS was faster than the same flat backend. Backend speedup plots
-use that layout's `scalar` implementation as the baseline, so a value above `1.0` means the backend
-was faster than its generated forced-scalar reference loop.
+above `1.0` on a layout plot means the chunked layout was faster than the same flat backend. Backend
+speedup plots use `scalar` as the baseline where present. Relaxed dot product has no misleading
+scalar member; its plots use `autovec-avx2` as their baseline. Strict and relaxed reductions are
+separate plot categories rather than mixed into one backend legend.
 
 ## Commands
 

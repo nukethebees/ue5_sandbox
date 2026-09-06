@@ -34,6 +34,7 @@ JsonValue: TypeAlias = (
 @dataclass(frozen=True, order=True)
 class BenchmarkKey:
     operation: str
+    policy: str
     layout: str
     backend: str
     value_set: str
@@ -80,15 +81,15 @@ def parse_arguments() -> argparse.Namespace:
 
 def parse_benchmark_key(run_name: str) -> BenchmarkKey:
     parts = run_name.split("/")
-    if len(parts) != 7 or parts[-1] != "real_time":
+    if len(parts) != 8 or parts[-1] != "real_time":
         raise ValueError(
             "benchmark run_name must be "
-            "OPERATION/LAYOUT/BACKEND/VALUE_SET/ALIGNMENT/COUNT/real_time: "
+            "OPERATION/POLICY/LAYOUT/BACKEND/VALUE_SET/ALIGNMENT/COUNT/real_time: "
             f"{run_name!r}"
         )
 
     try:
-        count = int(parts[5])
+        count = int(parts[6])
     except ValueError as error:
         raise ValueError(f"benchmark count is not an integer: {run_name!r}") from error
     if count <= 0:
@@ -96,10 +97,11 @@ def parse_benchmark_key(run_name: str) -> BenchmarkKey:
 
     return BenchmarkKey(
         operation=parts[0],
-        layout=parts[1],
-        backend=parts[2],
-        value_set=parts[3],
-        alignment=parts[4],
+        policy=parts[1],
+        layout=parts[2],
+        backend=parts[3],
+        value_set=parts[4],
+        alignment=parts[5],
         count=count,
     )
 
@@ -333,29 +335,29 @@ def write_layout_speedup(
             and point.key.layout == "flat"
             and point.key.alignment == "aligned"
         }
-        soaos = {
+        chunked = {
             point.key.count: point.median_time_ns
             for point in points
             if point.key.backend == backend
-            and point.key.layout == "soaos16"
+            and point.key.layout == "chunked16"
             and point.key.alignment == "aligned"
         }
-        counts = sorted(set(flat) & set(soaos))
+        counts = sorted(set(flat) & set(chunked))
         if not counts:
             continue
         plotted = True
         axis.plot(
             counts,
-            [flat[count] / soaos[count] for count in counts],
+            [flat[count] / chunked[count] for count in counts],
             marker="o",
             label=backend,
         )
 
     if not plotted:
         plt.close(figure)
-        raise ValueError(f"no flat/soaos16 pairs are available for {title}")
+        raise ValueError(f"no flat/chunked16 pairs are available for {title}")
 
-    configure_axis(axis, "SoAoS16 speedup over flat")
+    configure_axis(axis, "Chunked16 speedup over flat")
     axis.axhline(1.0, color="black", linewidth=1.0, alpha=0.5)
     axis.legend(ncols=2)
     figure.suptitle(title)
@@ -378,63 +380,66 @@ def write_plots(
         operation_points = [
             point for point in loaded.points if point.key.operation == operation
         ]
-        layouts = sorted({point.key.layout for point in operation_points})
-        for layout in layouts:
-            layout_points = [
-                point for point in operation_points if point.key.layout == layout
-            ]
-            value_sets = sorted({point.key.value_set for point in layout_points})
-            for value_set in value_sets:
-                value_points = [
-                    point for point in layout_points if point.key.value_set == value_set
-                ]
-                alignments = sorted({point.key.alignment for point in value_points})
-                for alignment in alignments:
-                    comparison_points = [
-                        point for point in value_points if point.key.alignment == alignment
+        policies = sorted({point.key.policy for point in operation_points})
+        for policy in policies:
+            policy_points = [point for point in operation_points if point.key.policy == policy]
+            layouts = sorted({point.key.layout for point in policy_points})
+            for layout in layouts:
+                layout_points = [point for point in policy_points if point.key.layout == layout]
+                value_sets = sorted({point.key.value_set for point in layout_points})
+                for value_set in value_sets:
+                    value_points = [
+                        point for point in layout_points if point.key.value_set == value_set
                     ]
-                    output_path = output_directory / (
-                        f"{slugify(operation)}-{slugify(layout)}-{slugify(value_set)}-"
-                        f"{slugify(alignment)}.{file_format}"
-                    )
-                    write_backend_comparison(
-                        comparison_points,
-                        output_path,
-                        baseline,
-                        f"{operation}: {layout}, {value_set}, {alignment}",
-                    )
-                    written.append(output_path)
+                    alignments = sorted({point.key.alignment for point in value_points})
+                    for alignment in alignments:
+                        comparison_points = [
+                            point for point in value_points if point.key.alignment == alignment
+                        ]
+                        available_backends = {point.key.backend for point in comparison_points}
+                        effective_baseline = (
+                            baseline if baseline in available_backends else "autovec-avx2"
+                        )
+                        output_path = output_directory / (
+                            f"{slugify(operation)}-{slugify(policy)}-{slugify(layout)}-"
+                            f"{slugify(value_set)}-{slugify(alignment)}.{file_format}"
+                        )
+                        write_backend_comparison(
+                            comparison_points,
+                            output_path,
+                            effective_baseline,
+                            f"{operation} ({policy}): {layout}, {value_set}, {alignment}",
+                        )
+                        written.append(output_path)
 
-                if "aligned" in alignments and "unaligned" in alignments:
-                    alignment_path = output_directory / (
-                        f"{slugify(operation)}-{slugify(layout)}-{slugify(value_set)}-"
-                        f"alignment-penalty.{file_format}"
+                    if "aligned" in alignments and "unaligned" in alignments:
+                        alignment_path = output_directory / (
+                            f"{slugify(operation)}-{slugify(policy)}-{slugify(layout)}-"
+                            f"{slugify(value_set)}-alignment-penalty.{file_format}"
+                        )
+                        write_alignment_penalty(
+                            value_points,
+                            alignment_path,
+                            f"{operation} ({policy}): {layout}, {value_set} alignment penalty",
+                        )
+                        written.append(alignment_path)
+
+            if "flat" in layouts and "chunked16" in layouts:
+                value_sets = sorted({point.key.value_set for point in policy_points})
+                for value_set in value_sets:
+                    value_points = [
+                        point for point in policy_points if point.key.value_set == value_set
+                    ]
+                    layout_path = output_directory / (
+                        f"{slugify(operation)}-{slugify(policy)}-{slugify(value_set)}-"
+                        f"layout-speedup.{file_format}"
                     )
-                    write_alignment_penalty(
+                    write_layout_speedup(
                         value_points,
-                        alignment_path,
-                        f"{operation}: {layout}, {value_set} alignment penalty",
+                        layout_path,
+                        f"{operation} ({policy}): {value_set} Chunked16 speedup over flat",
                     )
-                    written.append(alignment_path)
-
-        if "flat" in layouts and "soaos16" in layouts:
-            value_sets = sorted({point.key.value_set for point in operation_points})
-            for value_set in value_sets:
-                value_points = [
-                    point
-                    for point in operation_points
-                    if point.key.value_set == value_set
-                ]
-                layout_path = output_directory / (
-                    f"{slugify(operation)}-{slugify(value_set)}-layout-speedup."
-                    f"{file_format}"
-                )
-                write_layout_speedup(
-                    value_points,
-                    layout_path,
-                    f"{operation}: {value_set} SoAoS16 speedup over flat",
-                )
-                written.append(layout_path)
+                    written.append(layout_path)
 
     return tuple(written)
 

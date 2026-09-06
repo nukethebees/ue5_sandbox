@@ -83,98 +83,80 @@ auto implementation_name(ExpandedVariant const& expanded, std::string_view const
     return expanded.operation->name + std::string{suffix};
 }
 
-auto title_name(std::string_view const name) -> std::string {
-    std::string result;
-    bool capitalize{true};
-    for (auto const character : name) {
-        if (character == '_') {
-            capitalize = true;
-            continue;
-        }
-        result += capitalize && character >= 'a' && character <= 'z'
-                      ? static_cast<char>(character - 'a' + 'A')
-                      : character;
-        capitalize = false;
-    }
-    return result;
-}
-
-auto soaos_block_name(ExpandedVariant const& expanded) -> std::string {
-    return title_name(expanded.operation->name) + "SoAoSBlock";
-}
-
 auto soaos_implementation_name(ExpandedVariant const& expanded,
                                std::string_view const suffix) -> std::string {
-    return expanded.operation->name + "_soaos" + std::string{suffix};
+    return expanded.operation->name + std::string{suffix};
 }
 
 auto soaos_parameters(ExpandedVariant const& expanded,
                       std::string_view const restriction) -> std::string {
-    auto result{soaos_block_name(expanded)};
-    if (expanded.operation->kind == OperationKind::sum) {
-        result += " const";
-    }
-    result += "* ";
-    result += restriction;
-    result += "blocks";
+    std::string result;
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (expanded.storage[index] == StorageKind::scalar) {
-            result += ", float const " + expanded.operation->operands[index].name;
+        if (!result.empty()) {
+            result += ", ";
+        }
+        auto const& name{expanded.operation->operands[index].name};
+        if (expanded.storage[index] == StorageKind::array) {
+            result += "FloatChunk16 const* ";
+            result += restriction;
+            result += name;
+        } else {
+            result += "float const " + name;
         }
     }
-    return result + ", std::int32_t const block_count";
+    if (expanded.operation->kind == OperationKind::map) {
+        result += ", FloatChunk16* ";
+        result += restriction;
+        result += expanded.operation->output;
+    }
+    return result + ", std::int32_t const chunk_count";
 }
 
 auto soaos_arguments(ExpandedVariant const& expanded) -> std::string {
-    std::string result{"blocks"};
-    for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (expanded.storage[index] == StorageKind::scalar) {
-            result += ", " + expanded.operation->operands[index].name;
+    std::string result;
+    for (auto const& operand : expanded.operation->operands) {
+        if (!result.empty()) {
+            result += ", ";
         }
+        result += operand.name;
     }
-    return result + ", block_count";
+    if (expanded.operation->kind == OperationKind::map) {
+        result += ", " + expanded.operation->output;
+    }
+    return result + ", chunk_count";
 }
 
 auto soaos_function_pointer_parameters(ExpandedVariant const& expanded) -> std::string {
-    auto result{soaos_block_name(expanded)};
-    if (expanded.operation->kind == OperationKind::sum) {
-        result += " const";
-    }
-    result += "*";
+    std::string result;
     for (auto const storage : expanded.storage) {
-        if (storage == StorageKind::scalar) {
-            result += ", float";
+        if (!result.empty()) {
+            result += ", ";
         }
+        if (storage == StorageKind::scalar) {
+            result += "float";
+        } else {
+            result += "FloatChunk16 const*";
+        }
+    }
+    if (expanded.operation->kind == OperationKind::map) {
+        result += ", FloatChunk16*";
     }
     return result + ", std::int32_t";
 }
 
-auto render_soaos_block(ExpandedVariant const& expanded) -> std::string {
-    auto result{"struct alignas(64) " + soaos_block_name(expanded) + " {\n"
-                "    static constexpr std::int32_t capacity{16};\n\n"};
-    for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
-        if (expanded.storage[index] == StorageKind::array) {
-            result += "    std::array<float, capacity> " +
-                      expanded.operation->operands[index].name + "{};\n";
-        }
-    }
-    if (expanded.operation->kind == OperationKind::map) {
-        result += "    std::array<float, capacity> " + expanded.operation->output + "{};\n";
-    }
-    return result + "    std::int32_t size{};\n};\n\n";
+auto render_soaos_block() -> std::string {
+    return "struct alignas(64) FloatChunk16 {\n"
+           "    static constexpr std::int32_t capacity{16};\n\n"
+           "    std::array<float, capacity> values{};\n"
+           "};\n\n"
+           "static_assert(sizeof(FloatChunk16) == 64);\n"
+           "static_assert(alignof(FloatChunk16) == 64);\n\n";
 }
 
 auto has_floating_point_mode(ExpandedVariant const& expanded,
                              FloatingPointMode const mode) -> bool {
     return std::ranges::find(expanded.operation->floating_point_modes, mode) !=
            expanded.operation->floating_point_modes.end();
-}
-
-auto strict_autovec_suffix(ExpandedVariant const& expanded,
-                           std::string_view const instruction_set) -> std::string {
-    auto const policy{expanded.operation->kind == OperationKind::sum ? "_autovec_strict_"
-                                                                     : "_autovec_"};
-    return std::string{policy} + std::string{instruction_set};
 }
 
 auto function_pointer_parameters(ExpandedVariant const& expanded) -> std::string {
@@ -320,8 +302,8 @@ class SoaosVectorExpressionRenderer {
         auto const offset{lane_offset_ == 0 ? std::string{}
                                             : " + " + std::to_string(lane_offset_)};
         statements_ += indentation_ + "auto const " + result + "{" +
-                       std::string{intrinsics_.aligned_load} + "(blocks[" + block_index_ + "]." +
-                       operand->name + ".data()" + offset + ")};\n";
+                       std::string{intrinsics_.aligned_load} + "(" + operand->name + "[" +
+                       block_index_ + "].values.data()" + offset + ")};\n";
         return result;
     }
 
@@ -351,7 +333,7 @@ auto render_soaos_scalar_expression(Expression const& expression,
         if (expanded.storage[index] == StorageKind::scalar) {
             return operand->name;
         }
-        return "blocks[" + std::string{block_index} + "]." + operand->name + "[" +
+        return operand->name + "[" + std::string{block_index} + "].values[" +
                std::string{lane_index} + "]";
     }
     if (expression.kind != ExpressionKind::binary ||
@@ -468,9 +450,10 @@ auto scalar_loop_controls() -> std::string_view {
 }
 
 auto render_map_scalar_function(ExpandedVariant const& expanded,
+                                std::string_view const suffix,
                                 std::string_view const count_type,
                                 std::string_view const restriction) -> std::string {
-    return "void " + implementation_name(expanded, "_scalar") + "(" +
+    return "void " + implementation_name(expanded, suffix) + "(" +
            raw_parameters(expanded, count_type, restriction) + ") noexcept {\n" +
            std::string{scalar_loop_controls()} + "    for (" + std::string{count_type} +
            " i{0}; i < count; ++i) {\n"
@@ -543,9 +526,10 @@ auto render_sum_autovec_function(ExpandedVariant const& expanded,
 }
 
 auto render_sum_scalar_function(ExpandedVariant const& expanded,
+                                std::string_view const suffix,
                                 std::string_view const count_type,
                                 std::string_view const restriction) -> std::string {
-    return "float " + implementation_name(expanded, "_scalar") + "(" +
+    return "float " + implementation_name(expanded, suffix) + "(" +
            raw_parameters(expanded, count_type, restriction) + ") noexcept {\n"
            "    float result{};\n" +
            std::string{scalar_loop_controls()} + "    for (" + std::string{count_type} +
@@ -648,16 +632,15 @@ auto render_soaos_map_loop_function(ExpandedVariant const& expanded,
                 "#elif defined(_MSC_VER)\n"
                 "    #pragma loop(no_vector)\n"
                 "#endif\n"
-                "    for (std::int32_t block_index{}; block_index < block_count; ++block_index) {\n"};
+                "    for (std::int32_t chunk_index{}; chunk_index < chunk_count; ++chunk_index) {\n"};
     if (force_scalar) {
         result += std::string{scalar_loop_controls()};
     }
-    result += "        for (std::int32_t lane{}; lane < " + soaos_block_name(expanded) +
-              "::capacity; ++lane) {\n"
-              "            blocks[block_index]." +
-              expanded.operation->output + "[lane] = " +
+    result += "        for (std::int32_t lane{}; lane < FloatChunk16::capacity; ++lane) {\n"
+              "            " +
+              expanded.operation->output + "[chunk_index].values[lane] = " +
               render_soaos_scalar_expression(
-                  expanded.operation->expression, expanded, "block_index", "lane") +
+                  expanded.operation->expression, expanded, "chunk_index", "lane") +
               ";\n"
               "        }\n"
               "    }\n"
@@ -667,46 +650,54 @@ auto render_soaos_map_loop_function(ExpandedVariant const& expanded,
 
 auto render_soaos_sum_loop_function(ExpandedVariant const& expanded,
                                     std::string_view const suffix,
-                                    bool const force_scalar) -> std::string {
+                                    bool const force_scalar,
+                                    bool const lane_accumulators = false) -> std::string {
     auto result{"float " + soaos_implementation_name(expanded, suffix) + "(" +
-                soaos_parameters(expanded, "ML_KERNEL_LAB_RESTRICT ") + ") noexcept {\n"
-                "    float result{};\n"
+                soaos_parameters(expanded, "ML_KERNEL_LAB_RESTRICT ") + ") noexcept {\n"};
+    result += lane_accumulators ? "    std::array<float, FloatChunk16::capacity> results{};\n"
+                                : "    float result{};\n";
+    result +=
                 "#if defined(__clang__)\n"
                 "    #pragma clang loop vectorize(disable) interleave(disable)\n"
                 "#elif defined(_MSC_VER)\n"
                 "    #pragma loop(no_vector)\n"
                 "#endif\n"
-                "    for (std::int32_t block_index{}; block_index < block_count; ++block_index) {\n"};
+                "    for (std::int32_t chunk_index{}; chunk_index < chunk_count; ++chunk_index) {\n";
     if (force_scalar) {
         result += std::string{scalar_loop_controls()};
     }
-    result += "        for (std::int32_t lane{}; lane < " + soaos_block_name(expanded) +
-              "::capacity; ++lane) {\n"
-              "            result += " +
+    result += "        for (std::int32_t lane{}; lane < FloatChunk16::capacity; ++lane) {\n"
+              "            " +
+              std::string{lane_accumulators ? "results[lane]" : "result"} + " += " +
               render_soaos_scalar_expression(
-                  expanded.operation->expression, expanded, "block_index", "lane") +
+                  expanded.operation->expression, expanded, "chunk_index", "lane") +
               ";\n"
               "        }\n"
-              "    }\n"
-              "    return result;\n"
-              "}\n\n";
-    return result;
+              "    }\n";
+    if (lane_accumulators) {
+        result += "    float result{};\n"
+                  "    for (auto const value : results) {\n"
+                  "        result += value;\n"
+                  "    }\n";
+    }
+    return result + "    return result;\n"
+                    "}\n\n";
 }
 
 auto render_soaos_map_block(ExpandedVariant const& expanded,
                             VectorIntrinsics const& intrinsics,
                             std::string const& indentation,
-                            std::string const& block_index) -> std::string {
+                            std::string const& chunk_index) -> std::string {
     std::string result;
     for (int lane_offset{}; lane_offset < 16; lane_offset += intrinsics.width) {
         auto const nested_indentation{indentation + "    "};
         auto const [statements, value]{render_soaos_vector_expression(
-            expanded, intrinsics, nested_indentation, block_index, lane_offset)};
+            expanded, intrinsics, nested_indentation, chunk_index, lane_offset)};
         auto const offset{lane_offset == 0 ? std::string{}
                                            : " + " + std::to_string(lane_offset)};
         result += indentation + "{\n" + statements + nested_indentation +
                   std::string{intrinsics.aligned_store} +
-                  "(blocks[" + block_index + "]." + expanded.operation->output + ".data()" +
+                  "(" + expanded.operation->output + "[" + chunk_index + "].values.data()" +
                   offset + ", " + value + ");\n" + indentation + "}\n";
     }
     return result;
@@ -715,7 +706,7 @@ auto render_soaos_map_block(ExpandedVariant const& expanded,
 auto render_soaos_map_vector_function(ExpandedVariant const& expanded,
                                       VectorIntrinsics const& intrinsics,
                                       std::string_view const suffix,
-                                      int const blocks_per_iteration) -> std::string {
+                                      int const chunks_per_iteration) -> std::string {
     auto result{"void " + soaos_implementation_name(expanded, suffix) + "(" +
                 soaos_parameters(expanded, "ML_KERNEL_LAB_RESTRICT ") + ") noexcept {\n"};
     for (std::size_t index{}; index < expanded.operation->operands.size(); ++index) {
@@ -725,23 +716,23 @@ auto render_soaos_map_vector_function(ExpandedVariant const& expanded,
                       "(" + name + ")};\n";
         }
     }
-    result += "    std::int32_t block_index{};\n";
-    if (blocks_per_iteration > 1) {
-        result += "    std::int32_t const unrolled_count{block_count - (block_count % " +
-                  std::to_string(blocks_per_iteration) + ")};\n"
-                  "    for (; block_index < unrolled_count; block_index += " +
-                  std::to_string(blocks_per_iteration) + ") {\n";
-        for (int block_offset{}; block_offset < blocks_per_iteration; ++block_offset) {
-            auto const block_expression{block_offset == 0
-                                            ? std::string{"block_index"}
-                                            : "block_index + " + std::to_string(block_offset)};
+    result += "    std::int32_t chunk_index{};\n";
+    if (chunks_per_iteration > 1) {
+        result += "    std::int32_t const unrolled_count{chunk_count - (chunk_count % " +
+                  std::to_string(chunks_per_iteration) + ")};\n"
+                  "    for (; chunk_index < unrolled_count; chunk_index += " +
+                  std::to_string(chunks_per_iteration) + ") {\n";
+        for (int chunk_offset{}; chunk_offset < chunks_per_iteration; ++chunk_offset) {
+            auto const chunk_expression{chunk_offset == 0
+                                            ? std::string{"chunk_index"}
+                                            : "chunk_index + " + std::to_string(chunk_offset)};
             result += render_soaos_map_block(
-                expanded, intrinsics, "        ", block_expression);
+                expanded, intrinsics, "        ", chunk_expression);
         }
         result += "    }\n\n";
     }
-    result += "    for (; block_index < block_count; ++block_index) {\n" +
-              render_soaos_map_block(expanded, intrinsics, "        ", "block_index") +
+    result += "    for (; chunk_index < chunk_count; ++chunk_index) {\n" +
+              render_soaos_map_block(expanded, intrinsics, "        ", "chunk_index") +
               "    }\n"
               "}\n\n";
     return result;
@@ -757,18 +748,18 @@ auto render_soaos_sum_vector_function(ExpandedVariant const& expanded,
         result += "    auto accumulator_" + std::to_string(accumulator) + "{" +
                   std::string{intrinsics.set_zero} + "()};\n";
     }
-    result += "    std::int32_t block_index{};\n";
+    result += "    std::int32_t chunk_index{};\n";
     auto const vectors_per_block{16 / intrinsics.width};
     auto const blocks_per_iteration{unroll / vectors_per_block};
     if (blocks_per_iteration > 1) {
-        result += "    std::int32_t const unrolled_count{block_count - (block_count % " +
+        result += "    std::int32_t const unrolled_count{chunk_count - (chunk_count % " +
                   std::to_string(blocks_per_iteration) + ")};\n"
-                  "    for (; block_index < unrolled_count; block_index += " +
+                  "    for (; chunk_index < unrolled_count; chunk_index += " +
                   std::to_string(blocks_per_iteration) + ") {\n";
         for (int block_offset{}; block_offset < blocks_per_iteration; ++block_offset) {
             auto const block_expression{block_offset == 0
-                                            ? std::string{"block_index"}
-                                            : "block_index + " + std::to_string(block_offset)};
+                                            ? std::string{"chunk_index"}
+                                            : "chunk_index + " + std::to_string(block_offset)};
             for (int vector_offset{}; vector_offset < vectors_per_block; ++vector_offset) {
                 auto const accumulator{block_offset * vectors_per_block + vector_offset};
                 auto const indentation{std::string{"            "}};
@@ -787,13 +778,13 @@ auto render_soaos_sum_vector_function(ExpandedVariant const& expanded,
         }
         result += "    }\n\n";
     }
-    result += "    for (; block_index < block_count; ++block_index) {\n";
+    result += "    for (; chunk_index < chunk_count; ++chunk_index) {\n";
     for (int vector_offset{}; vector_offset < vectors_per_block; ++vector_offset) {
         auto const indentation{std::string{"            "}};
         auto const [statements, value]{render_soaos_vector_expression(expanded,
                                                                        intrinsics,
                                                                        indentation,
-                                                                       "block_index",
+                                                                       "chunk_index",
                                                                        vector_offset *
                                                                            intrinsics.width)};
         result += "        {\n" + statements + indentation + "accumulator_0 = " +
@@ -839,63 +830,35 @@ auto render_declaration(ExpandedVariant const& expanded,
            raw_parameters(expanded, count_type, restriction) + ") noexcept;\n\n";
 }
 
-auto render_soaos_declaration(ExpandedVariant const& expanded,
-                              std::string_view const suffix) -> std::string {
+auto render_chunk_declaration(ExpandedVariant const& expanded) -> std::string {
     auto const return_type{expanded.operation->kind == OperationKind::sum ? "float " : "void "};
-    return std::string{return_type} + soaos_implementation_name(expanded, suffix) + "(" +
+    return std::string{return_type} + soaos_implementation_name(expanded, "") + "(" +
            soaos_parameters(expanded, "ML_KERNEL_LAB_RESTRICT ") + ") noexcept;\n\n";
 }
 
-auto render_soaos_declarations(ExpandedVariant const& expanded) -> std::string {
-    auto result{render_soaos_declaration(expanded, "_scalar")};
-    if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
-        result += render_soaos_declaration(expanded, strict_autovec_suffix(expanded, "avx2"));
-    }
-    if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
-        result += render_soaos_declaration(expanded, "_autovec_relaxed_avx2");
-    }
-    result += render_soaos_declaration(expanded, "_avx2");
-    result += render_soaos_declaration(expanded, "_avx2_unrolled");
-    if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
-        result += render_soaos_declaration(expanded, strict_autovec_suffix(expanded, "avx512"));
-    }
-    if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
-        result += render_soaos_declaration(expanded, "_autovec_relaxed_avx512");
-    }
-    result += render_soaos_declaration(expanded, "_avx512");
-    if (expanded.operation->kind == OperationKind::sum) {
-        result += render_soaos_declaration(expanded, "_avx512_unrolled");
-    }
-    return result + render_soaos_declaration(expanded, "_dispatch");
+auto wrap_namespace(std::string_view const cpp_namespace, std::string const& content)
+    -> std::string {
+    return "namespace " + std::string{cpp_namespace} + " {\n\n" + content + "}\n\n";
 }
 
-auto render_soaos_avx2_functions(ExpandedVariant const& expanded) -> std::string {
-    if (expanded.operation->kind == OperationKind::sum) {
-        return render_soaos_sum_loop_function(expanded, "_scalar", true) +
-               (has_floating_point_mode(expanded, FloatingPointMode::strict)
-                    ? render_soaos_sum_loop_function(
-                          expanded, strict_autovec_suffix(expanded, "avx2"), false)
-                    : std::string{}) +
-               render_soaos_sum_vector_function(expanded, Avx2, "_avx2", 1) +
-               render_soaos_sum_vector_function(expanded, Avx2, "_avx2_unrolled", 4);
+auto render_backend_declarations(ExpandedVariant const& expanded,
+                                 std::string_view const cpp_namespace,
+                                 bool const include_chunks) -> std::string {
+    auto content{render_declaration(
+        expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ")};
+    if (include_chunks) {
+        content += render_chunk_declaration(expanded);
     }
-    return render_soaos_map_loop_function(expanded, "_scalar", true) +
-           render_soaos_map_loop_function(expanded, "_autovec_avx2", false) +
-           render_soaos_map_vector_function(expanded, Avx2, "_avx2", 1) +
-           render_soaos_map_vector_function(expanded, Avx2, "_avx2_unrolled", 2);
+    return wrap_namespace(cpp_namespace, content);
 }
 
-auto render_soaos_avx512_functions(ExpandedVariant const& expanded) -> std::string {
-    if (expanded.operation->kind == OperationKind::sum) {
-        return (has_floating_point_mode(expanded, FloatingPointMode::strict)
-                    ? render_soaos_sum_loop_function(
-                          expanded, strict_autovec_suffix(expanded, "avx512"), false)
-                    : std::string{}) +
-               render_soaos_sum_vector_function(expanded, Avx512, "_avx512", 1) +
-               render_soaos_sum_vector_function(expanded, Avx512, "_avx512_unrolled", 4);
+auto append_chunk_function(std::string result,
+                           std::optional<int> const soaos_lanes,
+                           std::string const& function) -> std::string {
+    if (soaos_lanes) {
+        result += function;
     }
-    return render_soaos_map_loop_function(expanded, "_autovec_avx512", false) +
-           render_soaos_map_vector_function(expanded, Avx512, "_avx512", 1);
+    return result;
 }
 
 }
@@ -936,157 +899,186 @@ auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant con
                 (emission.soaos_lanes ? "#include <array>\n" : "") +
                 "#include <cstdint>\n\n" +
                 std::string{native_restrict_definition()} + "namespace " +
-                emission.cpp_namespace + " {\n\nenum class X86SimdBackend : std::uint8_t {\n"
-                                         "    avx2,\n"
-                                         "    avx512,\n"
-                                         "};\n\n"};
+                emission.cpp_namespace + " {\n\n"};
     if (emission.soaos_lanes) {
-        result += render_soaos_block(expanded);
+        result += render_soaos_block();
     }
-    result += render_declaration(
-        expanded, "_scalar", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ");
-    if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
-        result += render_declaration(expanded,
-                                     strict_autovec_suffix(expanded, "avx2"),
-                                     "std::int32_t",
-                                     "ML_KERNEL_LAB_RESTRICT ");
+    auto const chunks{emission.soaos_lanes.has_value()};
+    if (expanded.operation->kind == OperationKind::map) {
+        result += render_backend_declarations(expanded, "backend::scalar", chunks);
+        result += render_backend_declarations(expanded, "backend::autovec_avx2", chunks);
+        result += render_backend_declarations(expanded, "backend::avx2", chunks);
+        result += render_backend_declarations(expanded, "backend::avx2_unrolled", chunks);
+        result += render_backend_declarations(expanded, "backend::autovec_avx512", chunks);
+        result += render_backend_declarations(expanded, "backend::avx512", chunks);
+    } else {
+        if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
+            result += render_backend_declarations(expanded, "strict::backend::scalar", chunks);
+            result +=
+                render_backend_declarations(expanded, "strict::backend::autovec_avx2", chunks);
+            result +=
+                render_backend_declarations(expanded, "strict::backend::autovec_avx512", chunks);
+        }
+        if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
+            result +=
+                render_backend_declarations(expanded, "relaxed::backend::autovec_avx2", chunks);
+            result += render_backend_declarations(expanded, "relaxed::backend::avx2", chunks);
+            result +=
+                render_backend_declarations(expanded, "relaxed::backend::avx2_unrolled", chunks);
+            result += render_backend_declarations(
+                expanded, "relaxed::backend::autovec_avx512", chunks);
+            result += render_backend_declarations(expanded, "relaxed::backend::avx512", chunks);
+            result += render_backend_declarations(
+                expanded, "relaxed::backend::avx512_unrolled", chunks);
+        }
     }
-    if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
-        result += render_declaration(expanded,
-                                     "_autovec_relaxed_avx2",
-                                     "std::int32_t",
-                                     "ML_KERNEL_LAB_RESTRICT ");
+    if (emission.dispatch_source) {
+        auto declarations{std::string{"enum class X86SimdBackend : std::uint8_t {\n"
+                                      "    avx2,\n"
+                                      "    avx512,\n"
+                                      "};\n\n"} +
+                          render_declaration(
+                              expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ")};
+        if (chunks) {
+            declarations += render_chunk_declaration(expanded);
+        }
+        declarations += "auto get_backend() noexcept -> X86SimdBackend;\n\n";
+        result += wrap_namespace(expanded.operation->kind == OperationKind::sum
+                                     ? "relaxed::dispatch"
+                                     : "dispatch",
+                                 declarations);
     }
-    result += render_declaration(
-        expanded, "_avx2", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ");
-    result += render_declaration(
-        expanded, "_avx2_unrolled", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ");
-    if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
-        result += render_declaration(expanded,
-                                     strict_autovec_suffix(expanded, "avx512"),
-                                     "std::int32_t",
-                                     "ML_KERNEL_LAB_RESTRICT ");
-    }
-    if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
-        result += render_declaration(expanded,
-                                     "_autovec_relaxed_avx512",
-                                     "std::int32_t",
-                                     "ML_KERNEL_LAB_RESTRICT ");
-    }
-    result +=
-        render_declaration(expanded, "_avx512", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           (expanded.operation->kind == OperationKind::sum
-                ? render_declaration(expanded,
-                                     "_avx512_unrolled",
-                                     "std::int32_t",
-                                     "ML_KERNEL_LAB_RESTRICT ")
-                : std::string{}) +
-           render_declaration(
-               expanded, "_dispatch", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ");
-    if (emission.soaos_lanes) {
-        result += render_soaos_declarations(expanded);
-    }
-    return result + "auto get_" + expanded.operation->name +
-           "_backend() noexcept -> X86SimdBackend;\n\n}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
+    return result + "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
 auto render_native_avx2_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
-    auto const functions{expanded.operation->kind == OperationKind::sum
-                             ? render_sum_scalar_function(expanded,
-                                                          "std::int32_t",
-                                                          "ML_KERNEL_LAB_RESTRICT ") +
-                                   (has_floating_point_mode(expanded, FloatingPointMode::strict)
-                                        ? render_sum_autovec_function(
-                                              expanded,
-                                              strict_autovec_suffix(expanded, "avx2"),
-                                              "std::int32_t",
-                                              "ML_KERNEL_LAB_RESTRICT ")
-                                        : std::string{}) +
-                                   render_sum_vector_function(expanded,
-                                                              Avx2,
-                                                              "_avx2",
-                                                              1,
-                                                              "std::int32_t",
-                                                              "ML_KERNEL_LAB_RESTRICT ") +
-                                   render_sum_vector_function(expanded,
-                                                              Avx2,
-                                                              "_avx2_unrolled",
-                                                              4,
-                                                              "std::int32_t",
-                                                              "ML_KERNEL_LAB_RESTRICT ")
-                             : render_map_scalar_function(expanded,
-                                                          "std::int32_t",
-                                                          "ML_KERNEL_LAB_RESTRICT ") +
-                                   render_map_autovec_function(expanded,
-                                                           "_autovec_avx2",
-                                                           "std::int32_t",
-                                                           "ML_KERNEL_LAB_RESTRICT ") +
-                                   render_map_vector_function(expanded,
-                                                              Avx2,
-                                                              "_avx2",
-                                                              1,
-                                                              "std::int32_t",
-                                                              "ML_KERNEL_LAB_RESTRICT ") +
-                                   render_map_vector_function(expanded,
-                                                              Avx2,
-                                                              "_avx2_unrolled",
-                                                              4,
-                                                              "std::int32_t",
-                                                              "ML_KERNEL_LAB_RESTRICT ")};
-    auto const soaos_functions{emission.soaos_lanes ? render_soaos_avx2_functions(expanded)
-                                                    : std::string{}};
+    auto functions{std::string{}};
+    if (expanded.operation->kind == OperationKind::map) {
+        functions += wrap_namespace(
+            "backend::scalar",
+            append_chunk_function(
+                render_map_scalar_function(
+                    expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                emission.soaos_lanes,
+                render_soaos_map_loop_function(expanded, "", true)));
+        functions += wrap_namespace(
+            "backend::autovec_avx2",
+            append_chunk_function(
+                render_map_autovec_function(
+                    expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                emission.soaos_lanes,
+                render_soaos_map_loop_function(expanded, "", false)));
+        functions += wrap_namespace(
+            "backend::avx2",
+            append_chunk_function(
+                render_map_vector_function(
+                    expanded, Avx2, "", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                emission.soaos_lanes,
+                render_soaos_map_vector_function(expanded, Avx2, "", 1)));
+        functions += wrap_namespace(
+            "backend::avx2_unrolled",
+            append_chunk_function(
+                render_map_vector_function(
+                    expanded, Avx2, "", 4, "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                emission.soaos_lanes,
+                render_soaos_map_vector_function(expanded, Avx2, "", 2)));
+    } else {
+        if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
+            functions += wrap_namespace(
+                "strict::backend::scalar",
+                append_chunk_function(
+                    render_sum_scalar_function(
+                        expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_loop_function(expanded, "", true)));
+            functions += wrap_namespace(
+                "strict::backend::autovec_avx2",
+                append_chunk_function(
+                    render_sum_autovec_function(
+                        expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_loop_function(expanded, "", false)));
+        }
+        if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
+            functions += wrap_namespace(
+                "relaxed::backend::avx2",
+                append_chunk_function(
+                    render_sum_vector_function(
+                        expanded, Avx2, "", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_vector_function(expanded, Avx2, "", 1)));
+            functions += wrap_namespace(
+                "relaxed::backend::avx2_unrolled",
+                append_chunk_function(
+                    render_sum_vector_function(
+                        expanded, Avx2, "", 4, "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_vector_function(expanded, Avx2, "", 4)));
+        }
+    }
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <immintrin.h>\n\n" + std::string{native_restrict_definition()} +
-           "namespace " + emission.cpp_namespace + " {\n\n" + functions + soaos_functions +
+           "namespace " + emission.cpp_namespace + " {\n\n" + functions +
            "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
 auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
-    auto const functions{expanded.operation->kind == OperationKind::sum
-                             ? (has_floating_point_mode(expanded, FloatingPointMode::strict)
-                                    ? render_sum_autovec_function(
-                                          expanded,
-                                          strict_autovec_suffix(expanded, "avx512"),
-                                          "std::int32_t",
-                                          "ML_KERNEL_LAB_RESTRICT ")
-                                    : std::string{}) +
-                                   render_sum_vector_function(expanded,
-                                                              Avx512,
-                                                              "_avx512",
-                                                              1,
-                                                              "std::int32_t",
-                                                              "ML_KERNEL_LAB_RESTRICT ") +
-                                   render_sum_vector_function(expanded,
-                                                              Avx512,
-                                                              "_avx512_unrolled",
-                                                              4,
-                                                              "std::int32_t",
-                                                              "ML_KERNEL_LAB_RESTRICT ")
-                             : render_map_autovec_function(expanded,
-                                                           "_autovec_avx512",
-                                                           "std::int32_t",
-                                                           "ML_KERNEL_LAB_RESTRICT ") +
-                                   render_map_vector_function(expanded,
-                                                              Avx512,
-                                                              "_avx512",
-                                                              1,
-                                                              "std::int32_t",
-                                                              "ML_KERNEL_LAB_RESTRICT ")};
-    auto const soaos_functions{emission.soaos_lanes ? render_soaos_avx512_functions(expanded)
-                                                    : std::string{}};
+    auto functions{std::string{}};
+    if (expanded.operation->kind == OperationKind::map) {
+        functions += wrap_namespace(
+            "backend::autovec_avx512",
+            append_chunk_function(
+                render_map_autovec_function(
+                    expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                emission.soaos_lanes,
+                render_soaos_map_loop_function(expanded, "", false)));
+        functions += wrap_namespace(
+            "backend::avx512",
+            append_chunk_function(
+                render_map_vector_function(
+                    expanded, Avx512, "", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                emission.soaos_lanes,
+                render_soaos_map_vector_function(expanded, Avx512, "", 1)));
+    } else {
+        if (has_floating_point_mode(expanded, FloatingPointMode::strict)) {
+            functions += wrap_namespace(
+                "strict::backend::autovec_avx512",
+                append_chunk_function(
+                    render_sum_autovec_function(
+                        expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_loop_function(expanded, "", false)));
+        }
+        if (has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
+            functions += wrap_namespace(
+                "relaxed::backend::avx512",
+                append_chunk_function(
+                    render_sum_vector_function(
+                        expanded, Avx512, "", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_vector_function(expanded, Avx512, "", 1)));
+            functions += wrap_namespace(
+                "relaxed::backend::avx512_unrolled",
+                append_chunk_function(
+                    render_sum_vector_function(
+                        expanded, Avx512, "", 4, "std::int32_t", "ML_KERNEL_LAB_RESTRICT "),
+                    emission.soaos_lanes,
+                    render_soaos_sum_vector_function(expanded, Avx512, "", 4)));
+        }
+    }
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <immintrin.h>\n\n" + std::string{native_restrict_definition()} +
-           "namespace " + emission.cpp_namespace + " {\n\n" + functions + soaos_functions +
+           "namespace " + emission.cpp_namespace + " {\n\n" + functions +
            "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
 auto render_native_relaxed_autovec_source(Emission const& emission,
                                           ExpandedVariant const& expanded,
-                                          std::string_view const suffix) -> std::string {
+                                          std::string_view const instruction_set) -> std::string {
     validate_lab_variant(expanded);
     if (expanded.operation->kind != OperationKind::sum ||
         !has_floating_point_mode(expanded, FloatingPointMode::relaxed)) {
@@ -1095,80 +1087,85 @@ auto render_native_relaxed_autovec_source(Emission const& emission,
     }
     auto const soaos_function{
         emission.soaos_lanes
-            ? render_soaos_sum_loop_function(expanded, suffix, false)
+            ? render_soaos_sum_loop_function(expanded, "", false, true)
             : std::string{}};
+    auto const functions{render_sum_autovec_function(
+                             expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+                         soaos_function};
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#if defined(_MSC_VER) && !defined(__clang__)\n#pragma fp_contract(off)\n#endif\n\n" +
            std::string{native_restrict_definition()} + "namespace " + emission.cpp_namespace +
-           " {\n\n" +
-           render_sum_autovec_function(
-               expanded, suffix, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           soaos_function +
+           " {\n\n" + wrap_namespace("relaxed::backend::autovec_" +
+                                           std::string{instruction_set},
+                                       functions) +
            "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
 auto render_native_simd_dispatch_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
-    auto const dispatch_name{implementation_name(expanded, "_dispatch")};
-    auto const avx2_name{implementation_name(expanded, "_avx2")};
-    auto const avx512_name{implementation_name(expanded, "_avx512")};
     auto const return_type{expanded.operation->kind == OperationKind::sum ? "float" : "void"};
     auto const return_prefix{expanded.operation->kind == OperationKind::sum ? "return " : ""};
-    auto const soaos_type{emission.soaos_lanes
-                              ? "using SoaosKernel = " + std::string{return_type} + " (*)(" +
+    auto const chunk_type{emission.soaos_lanes
+                              ? "using ChunkKernel = " + std::string{return_type} + " (*)(" +
                                     soaos_function_pointer_parameters(expanded) + ") noexcept;\n\n"
                               : std::string{}};
-    auto const soaos_field{emission.soaos_lanes ? "    SoaosKernel soaos_kernel;\n" : ""};
-    auto const soaos_avx512{emission.soaos_lanes
-                                ? ", " + soaos_implementation_name(expanded, "_avx512")
-                                : std::string{}};
-    auto const soaos_avx2{emission.soaos_lanes
-                              ? ", " + soaos_implementation_name(expanded, "_avx2")
-                              : std::string{}};
-    auto const soaos_dispatch{
+    auto const chunk_field{emission.soaos_lanes ? "    ChunkKernel chunk_kernel;\n" : ""};
+    auto const backend_prefix{expanded.operation->kind == OperationKind::sum
+                                  ? "::" + emission.cpp_namespace + "::relaxed::backend::"
+                                  : "::" + emission.cpp_namespace + "::backend::"};
+    auto const avx512_name{backend_prefix + "avx512::" + expanded.operation->name};
+    auto const avx2_name{backend_prefix + "avx2::" + expanded.operation->name};
+    auto const chunk_avx512{emission.soaos_lanes ? ", " + avx512_name : std::string{}};
+    auto const chunk_avx2{emission.soaos_lanes ? ", " + avx2_name : std::string{}};
+    auto const chunk_dispatch{
         emission.soaos_lanes
             ? std::string{return_type} + " " +
-                  soaos_implementation_name(expanded, "_dispatch") + "(" +
+                  soaos_implementation_name(expanded, "") + "(" +
                   soaos_parameters(expanded, "ML_KERNEL_LAB_RESTRICT ") + ") noexcept {\n"
                   "    " +
-                  std::string{return_prefix} + "selection().soaos_kernel(" +
+                  std::string{return_prefix} + "selection().chunk_kernel(" +
                   soaos_arguments(expanded) + ");\n"
                   "}\n\n"
             : std::string{}};
+    auto const dispatch_namespace{expanded.operation->kind == OperationKind::sum
+                                      ? "relaxed::dispatch"
+                                      : "dispatch"};
+    auto const body{
+        "namespace {\n\nusing Kernel = " + std::string{return_type} + " (*)(" +
+        function_pointer_parameters(expanded) + ") noexcept;\n\n" + chunk_type +
+        "struct Selection {\n"
+        "    X86SimdBackend backend;\n"
+        "    Kernel kernel;\n" +
+        chunk_field +
+        "};\n\n"
+        "auto select_backend() noexcept -> Selection {\n"
+        "    auto const features{cpu_features::GetX86Info().features};\n"
+        "    if (features.avx512f && features.avx512cd && features.avx512bw &&\n"
+        "        features.avx512dq && features.avx512vl) {\n"
+        "        return {X86SimdBackend::avx512, " + avx512_name + chunk_avx512 + "};\n"
+        "    }\n"
+        "    return {X86SimdBackend::avx2, " + avx2_name + chunk_avx2 + "};\n"
+        "}\n\n"
+        "auto selection() noexcept -> Selection const& {\n"
+        "    static auto const value{select_backend()};\n"
+        "    return value;\n"
+        "}\n\n}\n\n" +
+        std::string{return_type} + " " + implementation_name(expanded, "") + "(" +
+        raw_parameters(expanded, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+        ") noexcept {\n"
+        "    " + std::string{return_prefix} + "selection().kernel(" + raw_arguments(expanded) +
+        ");\n"
+        "}\n\n" +
+        chunk_dispatch +
+        "auto get_backend() noexcept -> X86SimdBackend {\n"
+        "    return selection().backend;\n"
+        "}\n\n"};
     return std::string{generated_warning} + "#include \"" + emission.header_include +
            "\"\n\n#include <cpuinfo_x86.h>\n\n" + std::string{native_restrict_definition()} +
-           "namespace " + emission.cpp_namespace + " {\nnamespace {\n\nusing Kernel = " +
-           std::string{return_type} + " (*)(" +
-           function_pointer_parameters(expanded) + ") noexcept;\n\n" + soaos_type +
-           "struct Selection {\n"
-           "    X86SimdBackend backend;\n"
-           "    Kernel kernel;\n"
-           + soaos_field +
-           "};\n\n"
-           "auto select_backend() noexcept -> Selection {\n"
-           "    auto const features{cpu_features::GetX86Info().features};\n"
-           "    if (features.avx512f && features.avx512cd && features.avx512bw &&\n"
-           "        features.avx512dq && features.avx512vl) {\n"
-           "        return {X86SimdBackend::avx512, " + avx512_name + soaos_avx512 + "};\n"
-           "    }\n"
-           "    return {X86SimdBackend::avx2, " + avx2_name + soaos_avx2 + "};\n"
-           "}\n\n"
-           "auto selection() noexcept -> Selection const& {\n"
-           "    static auto const value{select_backend()};\n"
-           "    return value;\n"
-           "}\n\n}\n\n"
-           + std::string{return_type} + " " + dispatch_name + "(" +
-           raw_parameters(expanded, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
-           ") noexcept {\n"
-           "    " + std::string{return_prefix} + "selection().kernel(" + raw_arguments(expanded) +
-           ");\n"
-           "}\n\n"
-           + soaos_dispatch +
-           "auto get_" + expanded.operation->name +
-           "_backend() noexcept -> X86SimdBackend {\n"
-           "    return selection().backend;\n"
-           "}\n\n}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
+           "namespace " + emission.cpp_namespace + " {\n\n" +
+           wrap_namespace(dispatch_namespace, body) +
+           "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
 }
 
 }

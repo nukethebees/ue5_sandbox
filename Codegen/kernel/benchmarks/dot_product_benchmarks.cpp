@@ -7,16 +7,17 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
-#include <limits>
 #include <string>
 #include <string_view>
 #include <vector>
 
 namespace {
 
+namespace dot = ml::kernel_benchmark::dot_product_lab;
+
 using Kernel = float (*)(float const*, float const*, std::int32_t) noexcept;
-using SoaosBlock = ml::kernel_benchmark::dot_product_lab::DotProductSoAoSBlock;
-using SoaosKernel = float (*)(SoaosBlock const*, std::int32_t) noexcept;
+using Chunk = dot::FloatChunk16;
+using ChunkKernel = float (*)(Chunk const*, Chunk const*, std::int32_t) noexcept;
 
 struct AlignedBuffer {
     explicit AlignedBuffer(std::int32_t const count, std::int32_t const offset)
@@ -28,6 +29,11 @@ struct AlignedBuffer {
 
     std::vector<float> storage;
     float* data{};
+};
+
+struct ChunkBuffers {
+    std::vector<Chunk> lhs;
+    std::vector<Chunk> rhs;
 };
 
 auto has_avx512() -> bool {
@@ -47,26 +53,17 @@ void fill_values(float* const lhs,
     }
 }
 
-auto make_soaos_blocks(std::int32_t const count) -> std::vector<SoaosBlock> {
-    auto const block_count{(count + SoaosBlock::capacity - 1) / SoaosBlock::capacity};
-    std::vector<SoaosBlock> blocks(static_cast<std::size_t>(block_count));
-    for (std::int32_t block_index{}; block_index < block_count; ++block_index) {
-        auto& block{blocks[static_cast<std::size_t>(block_index)]};
-        auto const first_index{block_index * SoaosBlock::capacity};
-        auto const remaining{count - first_index};
-        block.size = std::min(remaining, SoaosBlock::capacity);
-        fill_values(block.lhs.data(), block.rhs.data(), block.size, first_index);
-    }
-    return blocks;
-}
-
-auto reference_soaos_dot_product(std::vector<SoaosBlock> const& blocks) -> double {
-    double result{};
-    for (auto const& block : blocks) {
-        for (std::int32_t lane{}; lane < block.size; ++lane) {
-            result += static_cast<double>(block.lhs[static_cast<std::size_t>(lane)]) *
-                      static_cast<double>(block.rhs[static_cast<std::size_t>(lane)]);
-        }
+auto make_chunk_buffers(std::int32_t const count) -> ChunkBuffers {
+    auto const chunk_count{(count + Chunk::capacity - 1) / Chunk::capacity};
+    ChunkBuffers result{.lhs = std::vector<Chunk>(static_cast<std::size_t>(chunk_count)),
+                        .rhs = std::vector<Chunk>(static_cast<std::size_t>(chunk_count))};
+    for (std::int32_t chunk_index{}; chunk_index < chunk_count; ++chunk_index) {
+        auto const first_index{chunk_index * Chunk::capacity};
+        auto const remaining{std::min(count - first_index, Chunk::capacity)};
+        fill_values(result.lhs[chunk_index].values.data(),
+                    result.rhs[chunk_index].values.data(),
+                    remaining,
+                    first_index);
     }
     return result;
 }
@@ -79,6 +76,39 @@ auto reference_dot_product(float const* const lhs,
         result += static_cast<double>(lhs[index]) * static_cast<double>(rhs[index]);
     }
     return result;
+}
+
+auto reference_chunk_dot_product(ChunkBuffers const& buffers, std::int32_t const count) -> double {
+    auto result{0.0};
+    for (std::int32_t index{}; index < count; ++index) {
+        auto const chunk_index{index / Chunk::capacity};
+        auto const lane{index % Chunk::capacity};
+        result += static_cast<double>(buffers.lhs[chunk_index].values[lane]) *
+                  static_cast<double>(buffers.rhs[chunk_index].values[lane]);
+    }
+    return result;
+}
+
+void record_result(benchmark::State& state,
+                   std::int32_t const count,
+                   float const result,
+                   double const reference,
+                   std::int32_t const physical_count) {
+    auto const operations{state.iterations() * static_cast<std::int64_t>(count)};
+    state.SetItemsProcessed(operations);
+    state.SetBytesProcessed(operations * static_cast<std::int64_t>(sizeof(float) * 2));
+    auto const absolute_error{std::abs(static_cast<double>(result) - reference)};
+    auto const relative_error{absolute_error / std::max(std::abs(reference), 1.0)};
+    state.counters["absolute_error"] = absolute_error;
+    state.counters["relative_error"] = relative_error;
+    if (physical_count != count) {
+        auto const physical_operations{state.iterations() *
+                                       static_cast<std::int64_t>(physical_count)};
+        state.counters["physical_items_per_second"] = benchmark::Counter(
+            static_cast<double>(physical_operations), benchmark::Counter::kIsRate);
+        state.counters["padding_fraction"] =
+            static_cast<double>(physical_count - count) / static_cast<double>(physical_count);
+    }
 }
 
 void run_benchmark(benchmark::State& state,
@@ -103,19 +133,11 @@ void run_benchmark(benchmark::State& state,
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
-
-    auto const operations{state.iterations() * static_cast<std::int64_t>(count)};
-    state.SetItemsProcessed(operations);
-    state.SetBytesProcessed(operations * static_cast<std::int64_t>(sizeof(float) * 2));
-    auto const absolute_error{std::abs(static_cast<double>(result) - reference)};
-    auto const relative_error{
-        absolute_error / std::max(std::abs(reference), std::numeric_limits<double>::min())};
-    state.counters["absolute_error"] = absolute_error;
-    state.counters["relative_error"] = relative_error;
+    record_result(state, count, result, reference, count);
 }
 
-void run_soaos_benchmark(benchmark::State& state,
-                         SoaosKernel const kernel,
+void run_chunk_benchmark(benchmark::State& state,
+                         ChunkKernel const kernel,
                          std::int32_t const count,
                          bool const requires_avx512) {
     if (requires_avx512 && !has_avx512()) {
@@ -123,33 +145,19 @@ void run_soaos_benchmark(benchmark::State& state,
         return;
     }
 
-    auto const blocks{make_soaos_blocks(count)};
-    auto const block_count{static_cast<std::int32_t>(blocks.size())};
-    auto const physical_count{block_count * SoaosBlock::capacity};
-    auto const reference{reference_soaos_dot_product(blocks)};
+    auto buffers{make_chunk_buffers(count)};
+    auto const chunk_count{static_cast<std::int32_t>(buffers.lhs.size())};
+    auto const physical_count{chunk_count * Chunk::capacity};
+    auto const reference{reference_chunk_dot_product(buffers, count)};
 
     float result{};
     for (auto _ : state) {
         static_cast<void>(_);
-        result = kernel(blocks.data(), block_count);
+        result = kernel(buffers.lhs.data(), buffers.rhs.data(), chunk_count);
         benchmark::DoNotOptimize(result);
         benchmark::ClobberMemory();
     }
-
-    auto const iterations{state.iterations()};
-    auto const logical_operations{iterations * static_cast<std::int64_t>(count)};
-    auto const physical_operations{iterations * static_cast<std::int64_t>(physical_count)};
-    state.SetItemsProcessed(logical_operations);
-    state.SetBytesProcessed(logical_operations * static_cast<std::int64_t>(sizeof(float) * 2));
-    state.counters["physical_items_per_second"] =
-        benchmark::Counter(static_cast<double>(physical_operations), benchmark::Counter::kIsRate);
-    state.counters["padding_fraction"] =
-        static_cast<double>(physical_count - count) / static_cast<double>(physical_count);
-    auto const absolute_error{std::abs(static_cast<double>(result) - reference)};
-    auto const relative_error{
-        absolute_error / std::max(std::abs(reference), std::numeric_limits<double>::min())};
-    state.counters["absolute_error"] = absolute_error;
-    state.counters["relative_error"] = relative_error;
+    record_result(state, count, result, reference, physical_count);
 }
 
 struct Backend {
@@ -158,82 +166,102 @@ struct Backend {
     bool requires_avx512;
 };
 
-struct SoaosBackend {
+struct ChunkBackend {
     std::string_view name;
-    SoaosKernel kernel;
+    ChunkKernel kernel;
     bool requires_avx512;
 };
 
-void register_case(Backend const& backend,
+void register_case(std::string_view const policy,
+                   Backend const& backend,
                    std::int32_t const count,
                    std::int32_t const offset) {
-    auto const name{std::string{"dot_product/flat/"} + std::string{backend.name} +
-                    "/ordinary/" + (offset == 0 ? "aligned/" : "unaligned/") +
-                    std::to_string(count)};
+    auto const name{std::string{"dot_product/"} + std::string{policy} + "/flat/" +
+                    std::string{backend.name} + "/ordinary/" +
+                    (offset == 0 ? "aligned/" : "unaligned/") + std::to_string(count)};
     benchmark::RegisterBenchmark(
         name.c_str(), run_benchmark, backend.kernel, count, offset, backend.requires_avx512)
         ->UseRealTime();
 }
 
-void register_soaos_case(SoaosBackend const& backend, std::int32_t const count) {
-    auto const name{std::string{"dot_product/soaos16/"} + std::string{backend.name} +
-                    "/ordinary/aligned/" + std::to_string(count)};
+void register_chunk_case(std::string_view const policy,
+                         ChunkBackend const& backend,
+                         std::int32_t const count) {
+    auto const name{std::string{"dot_product/"} + std::string{policy} + "/chunked16/" +
+                    std::string{backend.name} + "/ordinary/aligned/" + std::to_string(count)};
     benchmark::RegisterBenchmark(
-        name.c_str(), run_soaos_benchmark, backend.kernel, count, backend.requires_avx512)
+        name.c_str(), run_chunk_benchmark, backend.kernel, count, backend.requires_avx512)
         ->UseRealTime();
 }
 
-auto register_benchmarks() -> bool {
-    namespace dot = ml::kernel_benchmark::dot_product_lab;
-
-    auto const dispatch_backend{dot::get_dot_product_backend() == dot::X86SimdBackend::avx512
-                                    ? "dispatch-avx512"
-                                    : "dispatch-avx2"};
-    std::array const backends{
-        Backend{"scalar", dot::dot_product_scalar, false},
-        Backend{"autovec-strict-avx2", dot::dot_product_autovec_strict_avx2, false},
-        Backend{"autovec-relaxed-avx2", dot::dot_product_autovec_relaxed_avx2, false},
-        Backend{"avx2", dot::dot_product_avx2, false},
-        Backend{"avx2-unrolled", dot::dot_product_avx2_unrolled, false},
-        Backend{"autovec-strict-avx512", dot::dot_product_autovec_strict_avx512, true},
-        Backend{"autovec-relaxed-avx512", dot::dot_product_autovec_relaxed_avx512, true},
-        Backend{"avx512", dot::dot_product_avx512, true},
-        Backend{"avx512-unrolled", dot::dot_product_avx512_unrolled, true},
-        Backend{dispatch_backend, dot::dot_product_dispatch, false},
-    };
-    std::array const soaos_backends{
-        SoaosBackend{"scalar", dot::dot_product_soaos_scalar, false},
-        SoaosBackend{"autovec-strict-avx2", dot::dot_product_soaos_autovec_strict_avx2, false},
-        SoaosBackend{
-            "autovec-relaxed-avx2", dot::dot_product_soaos_autovec_relaxed_avx2, false},
-        SoaosBackend{"avx2", dot::dot_product_soaos_avx2, false},
-        SoaosBackend{"avx2-unrolled", dot::dot_product_soaos_avx2_unrolled, false},
-        SoaosBackend{
-            "autovec-strict-avx512", dot::dot_product_soaos_autovec_strict_avx512, true},
-        SoaosBackend{
-            "autovec-relaxed-avx512", dot::dot_product_soaos_autovec_relaxed_avx512, true},
-        SoaosBackend{"avx512", dot::dot_product_soaos_avx512, true},
-        SoaosBackend{"avx512-unrolled", dot::dot_product_soaos_avx512_unrolled, true},
-        SoaosBackend{dispatch_backend, dot::dot_product_soaos_dispatch, false},
-    };
-    constexpr std::array counts{1,   7,    8,     9,     11,     15,     16,
-                                17,  31,   32,    33,    64,     256,    1024,
-                                4096, 16384, 65536, 262144, 1048576};
-    constexpr std::array soaos_counts{8,  11,   16,    32,     256,
-                                      4096, 65536, 262144, 1048576};
-
+template <std::size_t BackendCount,
+          std::size_t ChunkBackendCount,
+          std::size_t Count,
+          std::size_t ChunkCount>
+void register_policy(std::string_view const policy,
+                     std::array<Backend, BackendCount> const& backends,
+                     std::array<ChunkBackend, ChunkBackendCount> const& chunk_backends,
+                     std::array<std::int32_t, Count> const& counts,
+                     std::array<std::int32_t, ChunkCount> const& chunk_counts,
+                     bool const include_unaligned) {
     for (auto const& backend : backends) {
         for (auto const count : counts) {
-            for (std::int32_t const offset : {0, 1}) {
-                register_case(backend, count, offset);
+            register_case(policy, backend, count, 0);
+            if (include_unaligned) {
+                register_case(policy, backend, count, 1);
             }
         }
     }
-    for (auto const& backend : soaos_backends) {
-        for (auto const count : soaos_counts) {
-            register_soaos_case(backend, count);
+    for (auto const& backend : chunk_backends) {
+        for (auto const count : chunk_counts) {
+            register_chunk_case(policy, backend, count);
         }
     }
+}
+
+auto register_benchmarks() -> bool {
+    std::array const strict_backends{
+        Backend{"scalar", dot::strict::backend::scalar::dot_product, false},
+        Backend{"autovec-avx2", dot::strict::backend::autovec_avx2::dot_product, false},
+        Backend{"autovec-avx512", dot::strict::backend::autovec_avx512::dot_product, true},
+    };
+    std::array const strict_chunk_backends{
+        ChunkBackend{"scalar", dot::strict::backend::scalar::dot_product, false},
+        ChunkBackend{"autovec-avx2", dot::strict::backend::autovec_avx2::dot_product, false},
+        ChunkBackend{"autovec-avx512", dot::strict::backend::autovec_avx512::dot_product, true},
+    };
+    std::array const relaxed_backends{
+        Backend{"autovec-avx2", dot::relaxed::backend::autovec_avx2::dot_product, false},
+        Backend{"avx2", dot::relaxed::backend::avx2::dot_product, false},
+        Backend{"avx2-unrolled", dot::relaxed::backend::avx2_unrolled::dot_product, false},
+        Backend{"autovec-avx512", dot::relaxed::backend::autovec_avx512::dot_product, true},
+        Backend{"avx512", dot::relaxed::backend::avx512::dot_product, true},
+        Backend{"avx512-unrolled", dot::relaxed::backend::avx512_unrolled::dot_product, true},
+    };
+    std::array const relaxed_chunk_backends{
+        ChunkBackend{"autovec-avx2", dot::relaxed::backend::autovec_avx2::dot_product, false},
+        ChunkBackend{"avx2", dot::relaxed::backend::avx2::dot_product, false},
+        ChunkBackend{"avx2-unrolled", dot::relaxed::backend::avx2_unrolled::dot_product, false},
+        ChunkBackend{"autovec-avx512", dot::relaxed::backend::autovec_avx512::dot_product, true},
+        ChunkBackend{"avx512", dot::relaxed::backend::avx512::dot_product, true},
+        ChunkBackend{"avx512-unrolled", dot::relaxed::backend::avx512_unrolled::dot_product, true},
+    };
+    constexpr std::array<std::int32_t, 6> strict_counts{
+        32, 256, 4096, 65536, 262144, 1048576};
+    constexpr std::array<std::int32_t, 20> relaxed_counts{
+        1,  7,  8,   9,   11,   15,    16,    17,     31,     32,
+        33, 64, 256, 1024, 4096, 16384, 65536, 100000, 262144, 1048576};
+    constexpr std::array<std::int32_t, 11> relaxed_chunk_counts{
+        8, 11, 16, 32, 256, 4096, 16384, 65536, 100000, 262144, 1048576};
+
+    register_policy(
+        "strict", strict_backends, strict_chunk_backends, strict_counts, strict_counts, false);
+    register_policy("relaxed",
+                    relaxed_backends,
+                    relaxed_chunk_backends,
+                    relaxed_counts,
+                    relaxed_chunk_counts,
+                    true);
     return true;
 }
 

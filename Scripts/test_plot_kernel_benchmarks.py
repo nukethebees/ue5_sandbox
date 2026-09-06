@@ -39,7 +39,7 @@ def make_temporary_directory() -> Path:
 def benchmark_entry(
     real_time: float,
     *,
-    run_name: str = "add_scaled/flat/autovec-avx2/ordinary/aligned/32/real_time",
+    run_name: str = "add_scaled/elementwise/flat/autovec-avx2/ordinary/aligned/32/real_time",
     time_unit: str = "ns",
     run_type: str = "iteration",
     aggregate_name: str | None = None,
@@ -72,6 +72,7 @@ class BenchmarkLoadingTests(unittest.TestCase):
 
         self.assertEqual(len(loaded.points), 1)
         self.assertEqual(loaded.points[0].key.layout, "flat")
+        self.assertEqual(loaded.points[0].key.policy, "elementwise")
         self.assertEqual(loaded.points[0].median_time_ns, 2.0)
         self.assertEqual(loaded.points[0].time_stddev_ns, 1.0)
         self.assertEqual(loaded.points[0].ns_per_element, 0.0625)
@@ -102,7 +103,9 @@ class BenchmarkLoadingTests(unittest.TestCase):
 
     def test_failed_backend_is_reported_without_discarding_successes(self) -> None:
         failed = benchmark_entry(1.0)
-        failed["run_name"] = "add_scaled/flat/avx512/ordinary/aligned/32/real_time"
+        failed["run_name"] = (
+            "add_scaled/elementwise/flat/avx512/ordinary/aligned/32/real_time"
+        )
         failed["error_occurred"] = True
         failed["error_message"] = "AVX-512 unavailable"
         path = self.write_document([benchmark_entry(2.0), failed])

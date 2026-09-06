@@ -17,6 +17,8 @@ Unreal Engine 5.8 project.
 * Run `cmake --workflow --preset generate-project-files` after adding or removing Unreal modules/plugins, or changing `.Build.cs`, `.Target.cs`, or project/module definitions.
 * After completing the full set of changes for a request, run `cmake --workflow --preset generate-project-files` once as a final step. Do not regenerate project files after each intermediate edit.
 * Run CTest suites through `cmake --workflow --preset debug-game-tests`; it runs all unit and level suites. Use `cmake --workflow --preset debug-game-unit-tests` for unit suites only, or `ctest --preset debug-game-level-tests` to run only level tests after building.
+* Before starting a timed benchmark, complete all build and setup work, tell the user that the benchmark is ready, and wait for confirmation so they can stop competing work. Dry runs and correctness tests do not require this pause.
+* Run only the benchmark subset needed to answer the current question. Do not run a comprehensive benchmark matrix by default; reserve it for explicitly requested broad validation or when every dimension is materially affected.
 
 # Agent Behaviour
 

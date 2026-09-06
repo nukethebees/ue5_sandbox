@@ -290,28 +290,29 @@ TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
 
     ASSERT_EQ(files.size(), 4);
     EXPECT_TRUE(files[0].content.contains("enum class X86SimdBackend"));
-    EXPECT_TRUE(files[0].content.contains("struct alignas(64) AddScaledSoAoSBlock"));
-    EXPECT_TRUE(files[0].content.contains("std::array<float, capacity> out"));
-    EXPECT_TRUE(files[0].content.contains("add_scaled_scalar"));
-    EXPECT_TRUE(files[0].content.contains("add_scaled_dispatch"));
-    EXPECT_TRUE(files[0].content.contains("add_scaled_soaos_dispatch"));
+    EXPECT_TRUE(files[0].content.contains("struct alignas(64) FloatChunk16"));
+    EXPECT_TRUE(files[0].content.contains("std::array<float, capacity> values"));
+    EXPECT_TRUE(files[0].content.contains("namespace backend::scalar"));
+    EXPECT_TRUE(files[0].content.contains("namespace backend::avx512"));
+    EXPECT_TRUE(files[0].content.contains("namespace dispatch"));
+    EXPECT_TRUE(files[0].content.contains("void add_scaled(FloatChunk16 const*"));
     EXPECT_TRUE(files[1].content.contains("#pragma clang loop vectorize(disable)"));
-    EXPECT_TRUE(files[1].content.contains("add_scaled_autovec_avx2"));
-    EXPECT_TRUE(files[1].content.contains("add_scaled_avx2_unrolled"));
-    EXPECT_TRUE(files[1].content.contains("add_scaled_soaos_avx2_unrolled"));
-    EXPECT_TRUE(files[1].content.contains("_mm256_load_ps(blocks[block_index].base.data())"));
+    EXPECT_TRUE(files[1].content.contains("namespace backend::autovec_avx2"));
+    EXPECT_TRUE(files[1].content.contains("namespace backend::avx2_unrolled"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_load_ps(base[chunk_index].values.data())"));
     EXPECT_TRUE(files[1].content.contains(
         "#pragma clang loop vectorize(disable) interleave(disable)\n"
         "#elif defined(_MSC_VER)\n"
         "    #pragma loop(no_vector)\n"
         "#endif\n"
-        "    for (std::int32_t block_index{}; block_index < block_count; ++block_index)"));
-    EXPECT_FALSE(files[1].content.contains("blocks[block_index].size"));
+        "    for (std::int32_t chunk_index{}; chunk_index < chunk_count; ++chunk_index)"));
+    EXPECT_FALSE(files[1].content.contains(".size"));
     EXPECT_TRUE(files[2].content.contains("_mm512_loadu_ps"));
-    EXPECT_TRUE(files[2].content.contains("_mm512_load_ps(blocks[block_index].base.data())"));
-    EXPECT_TRUE(files[2].content.contains("add_scaled_autovec_avx512"));
+    EXPECT_TRUE(files[2].content.contains("_mm512_load_ps(base[chunk_index].values.data())"));
+    EXPECT_TRUE(files[2].content.contains("namespace backend::autovec_avx512"));
     EXPECT_TRUE(files[3].content.contains("cpu_features::GetX86Info()"));
-    EXPECT_TRUE(files[3].content.contains("selection().soaos_kernel(blocks, scale, block_count)"));
+    EXPECT_TRUE(files[3].content.contains(
+        "selection().chunk_kernel(base, value, scale, out, chunk_count)"));
     EXPECT_FALSE(files[1].content.contains("_mm512"));
     EXPECT_FALSE(files[3].content.contains("_mm512"));
 }
@@ -322,18 +323,17 @@ TEST(KernelRenderer, GeneratesNativeSumReduction) {
     auto const files{render(document.modules[0], Profile::native_x86_simd_lab)};
 
     ASSERT_EQ(files.size(), 6);
-    EXPECT_TRUE(files[0].content.contains("float dot_product_scalar("));
-    EXPECT_TRUE(files[0].content.contains("float dot_product_dispatch("));
-    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_strict_avx2("));
-    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_relaxed_avx2("));
-    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_strict_avx512("));
-    EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_relaxed_avx512("));
-    EXPECT_TRUE(files[0].content.contains("struct alignas(64) DotProductSoAoSBlock"));
-    EXPECT_TRUE(files[0].content.contains("float dot_product_soaos_avx512_unrolled("));
+    EXPECT_TRUE(files[0].content.contains("namespace strict::backend::scalar"));
+    EXPECT_TRUE(files[0].content.contains("namespace strict::backend::autovec_avx2"));
+    EXPECT_TRUE(files[0].content.contains("namespace relaxed::backend::autovec_avx2"));
+    EXPECT_TRUE(files[0].content.contains("namespace relaxed::backend::avx512_unrolled"));
+    EXPECT_TRUE(files[0].content.contains("namespace relaxed::dispatch"));
+    EXPECT_TRUE(files[0].content.contains("struct alignas(64) FloatChunk16"));
+    EXPECT_TRUE(files[0].content.contains("float dot_product(FloatChunk16 const*"));
     EXPECT_TRUE(files[0].content.contains(
         "float const* ML_KERNEL_LAB_RESTRICT lhs, float const* ML_KERNEL_LAB_RESTRICT rhs"));
-    EXPECT_TRUE(files[1].content.contains("float dot_product_autovec_strict_avx2("));
-    EXPECT_TRUE(files[1].content.contains("float dot_product_scalar("));
+    EXPECT_TRUE(files[1].content.contains("namespace strict::backend::autovec_avx2"));
+    EXPECT_TRUE(files[1].content.contains("namespace strict::backend::scalar"));
     EXPECT_TRUE(files[1].content.contains(
         "#pragma clang loop vectorize(disable) interleave(disable) unroll(disable)"));
     EXPECT_TRUE(files[1].content.contains("result += (lhs[i] * rhs[i])"));
@@ -342,27 +342,27 @@ TEST(KernelRenderer, GeneratesNativeSumReduction) {
     EXPECT_TRUE(files[1].content.contains("accumulator_3"));
     EXPECT_TRUE(files[1].content.contains("for (; i < unrolled_count; i += 32)"));
     EXPECT_TRUE(files[1].content.contains("for (; i < vectorized_count; i += 8)"));
-    EXPECT_TRUE(files[1].content.contains("float dot_product_soaos_avx2("));
-    EXPECT_TRUE(files[1].content.contains("_mm256_load_ps(blocks[block_index].lhs.data())"));
+    EXPECT_TRUE(files[1].content.contains("namespace relaxed::backend::avx2"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_load_ps(lhs[chunk_index].values.data())"));
     EXPECT_TRUE(files[2].content.contains("_mm512_setzero_ps"));
     EXPECT_TRUE(files[2].content.contains("_mm512_mul_ps"));
-    EXPECT_TRUE(files[2].content.contains("float dot_product_avx512_unrolled("));
+    EXPECT_TRUE(files[2].content.contains("namespace relaxed::backend::avx512_unrolled"));
     EXPECT_TRUE(files[2].content.contains("accumulator_3"));
     EXPECT_TRUE(files[2].content.contains("for (; i < unrolled_count; i += 64)"));
     EXPECT_TRUE(files[2].content.contains("for (; i < vectorized_count; i += 16)"));
-    EXPECT_TRUE(files[2].content.contains("float dot_product_soaos_avx512_unrolled("));
-    EXPECT_TRUE(files[2].content.contains("block_count - (block_count % 4)"));
-    EXPECT_FALSE(files[2].content.contains("blocks[block_index].size"));
+    EXPECT_TRUE(files[2].content.contains("chunk_count - (chunk_count % 4)"));
+    EXPECT_FALSE(files[2].content.contains(".size"));
     EXPECT_TRUE(files[3].content.contains("return selection().kernel(lhs, rhs, count)"));
-    EXPECT_TRUE(files[3].content.contains("return selection().soaos_kernel(blocks, block_count)"));
+    EXPECT_TRUE(files[3].content.contains(
+        "return selection().chunk_kernel(lhs, rhs, chunk_count)"));
     EXPECT_TRUE(files[4].content.contains("#pragma fp_contract(off)"));
-    EXPECT_TRUE(files[4].content.contains("float dot_product_autovec_relaxed_avx2("));
-    EXPECT_TRUE(files[4].content.contains("float dot_product_soaos_autovec_relaxed_avx2("));
+    EXPECT_TRUE(files[4].content.contains("namespace relaxed::backend::autovec_avx2"));
+    EXPECT_TRUE(files[4].content.contains(
+        "std::array<float, FloatChunk16::capacity> results"));
     EXPECT_TRUE(files[4].content.contains(
         "#pragma clang loop vectorize(disable) interleave(disable)"));
     EXPECT_TRUE(files[5].content.contains("#pragma fp_contract(off)"));
-    EXPECT_TRUE(files[5].content.contains("float dot_product_autovec_relaxed_avx512("));
-    EXPECT_TRUE(files[5].content.contains("float dot_product_soaos_autovec_relaxed_avx512("));
+    EXPECT_TRUE(files[5].content.contains("namespace relaxed::backend::autovec_avx512"));
 }
 
 TEST(KernelParser, KeepsSoaosInsideTheNarrowNativeLabBoundary) {
