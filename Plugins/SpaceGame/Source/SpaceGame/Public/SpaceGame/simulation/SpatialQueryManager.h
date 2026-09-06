@@ -13,6 +13,7 @@
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
+#include <atomic>
 #include <mutex>
 #include <utility>
 
@@ -45,6 +46,14 @@ class FThreadBufferLease {
 }
 
 namespace ml {
+struct FSpatialQueryTelemetrySnapshot {
+    uint64 grid_rebuild_count{};
+    uint64 range_query_count{};
+    uint64 line_trace_count{};
+    uint64 sweep_trace_count{};
+    int32 occupied_dynamic_cell_count{};
+};
+
 struct FLineTraceResult {
     FVector3f location{FVector3f::ZeroVector};
     FRegistryEntityHandle entity;
@@ -108,6 +117,8 @@ struct SPACEGAME_API FSpatialQueryManager {
     auto get_collision_system() const noexcept -> ioj::FCollisionSystem const& { return collision; }
 
     void update();
+    void reset_runtime_telemetry() noexcept;
+    auto get_runtime_telemetry() const noexcept -> FSpatialQueryTelemetrySnapshot;
   private:
     friend class query_manager::FThreadBufferLease;
 
@@ -124,5 +135,6 @@ struct SPACEGAME_API FSpatialQueryManager {
     mutable int32 active_thread_buffer_count{};
 
     ioj::FCollisionSystem collision;
+    mutable std::atomic<uint64> range_query_count_{};
 };
 }

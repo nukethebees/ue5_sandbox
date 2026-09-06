@@ -2,6 +2,8 @@
 
 #include "SpaceGame/entities/TestEntityRegistryData.h"
 
+#include <SandboxGameShared/utilities/enums.h>
+#include <SandboxNative/RegistryEntityHandle.h>
 #include <SpaceGame/entities/DirectDamageEvents.h>
 #include <SpaceGame/entities/EntityDeathInfo.h>
 #include <SpaceGame/entities/RegistryEntityHandles.h>
@@ -9,8 +11,6 @@
 #include <SpaceGame/entities/TestEntityUniqueEntityData.h>
 #include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SpaceGame/entities/TestTeam.h>
-#include <SandboxGameShared/utilities/enums.h>
-#include <SandboxNative/RegistryEntityHandle.h>
 
 #include <SandboxCore/array_utils.h>
 
@@ -131,6 +131,9 @@ struct SPACEGAME_API FTestEntityRegistry {
     // Lifecycle
     void refresh_free_indices();
 
+    // Aggregates
+    void adjust_alive_count(ETestTeam team, ETestEntityType type, int32 delta);
+
     // Queued updates
     void commit_entity_updates();
     void commit_death_updates();
@@ -158,6 +161,10 @@ struct SPACEGAME_API FTestEntityRegistry {
     // Dead entities
     TArray<FRegistryEntityHandle> dead_entities_this_frame;
     TArray<int32> free_indices;
+
+    EntityCounts alive_counts_{};
+    int32 alive_count_{};
+    int32 cumulative_kill_count_{};
 };
 
 inline auto FTestEntityRegistry::is_valid_handle(FRegistryEntityHandle const index) const -> bool {

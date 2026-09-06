@@ -8,6 +8,8 @@
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
+#include <atomic>
+
 class UStaticMesh;
 struct FTestEntityRegistry;
 
@@ -27,6 +29,12 @@ struct FCellCoordBounds {
     FIntVector3 max;
 };
 
+struct FCollisionGridTelemetrySnapshot {
+    uint64 rebuild_count{};
+    uint64 line_trace_count{};
+    uint64 sweep_trace_count{};
+};
+
 struct SPACEGAME_API CollisionUniformGrid {
     static inline FVector3f const origin{FVector3f::ZeroVector};
 
@@ -41,6 +49,9 @@ struct SPACEGAME_API CollisionUniformGrid {
     void set_entity_registry(FTestEntityRegistry const& reg) noexcept;
 
     auto num_cells() const -> int32;
+    auto get_non_empty_cell_count() const noexcept -> int32 {
+        return non_empty_cell_indices_.Num();
+    }
     auto get_cell_entities(FIntVector3 const cell_coord) const
         -> TConstArrayView<FRegistryEntityHandle>;
 
@@ -72,6 +83,8 @@ struct SPACEGAME_API CollisionUniformGrid {
     void set_static_aabbs(WorldAABBs static_aabbs);
     auto add_static_aabb(FVector3f min_point, FVector3f max_point) -> int32;
     void rebuild_grid(FEntityAABBs const& entity_aabbs);
+    void reset_runtime_telemetry() noexcept;
+    auto get_runtime_telemetry() const noexcept -> FCollisionGridTelemetrySnapshot;
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_aabbs_; }
 
@@ -126,5 +139,9 @@ struct SPACEGAME_API CollisionUniformGrid {
     TArray<uint32> static_cell_range_offsets_;
     TArray<uint16> static_cell_range_counts_;
     TArray<int32> static_aabb_indices_;
+
+    std::atomic<uint64> rebuild_count_{};
+    mutable std::atomic<uint64> line_trace_count_{};
+    mutable std::atomic<uint64> sweep_trace_count_{};
 };
 }

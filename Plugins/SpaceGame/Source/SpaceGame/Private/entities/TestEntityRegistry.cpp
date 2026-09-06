@@ -39,6 +39,27 @@ void FTestEntityRegistry::reset() {
               queued_direct_damage_events,
               dead_entities_this_frame,
               free_indices);
+
+    alive_counts_ = {};
+    alive_count_ = 0;
+    cumulative_kill_count_ = 0;
+}
+
+void FTestEntityRegistry::adjust_alive_count(ETestTeam const team,
+                                             ETestEntityType const type,
+                                             int32 const delta) {
+    auto const team_index{std::to_underlying(team)};
+    auto const type_index{std::to_underlying(type)};
+    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+    constexpr auto type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
+    check(team_index >= 0 && team_index < team_count);
+    check(type_index >= 0 && type_index < type_count);
+
+    auto& count{alive_counts_[team_index][type_index]};
+    count += delta;
+    alive_count_ += delta;
+    check(count >= 0);
+    check(alive_count_ >= 0);
 }
 
 // Lifecycle
@@ -115,6 +136,10 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         unique_entities.entity_types[i] = view.entity_types[view_index];
         unique_entities.teams[i] = view.teams[view_index];
 
+        if (view.alive[view_index] != 0) {
+            adjust_alive_count(view.teams[view_index], view.entity_types[view_index], 1);
+        }
+
         new_entity_index++;
     }};
 
@@ -178,6 +203,18 @@ void FTestEntityRegistry::commit_entity_updates() {
 
         auto const entity_index{entity_handle.index};
 
+        auto const old_alive{entity_data.alive[entity_index] != 0};
+        auto const new_alive{queued_entity_data.alive[i] != 0};
+        auto const old_team{entity_data.teams[entity_index]};
+        auto const new_team{queued_entity_data.teams[i]};
+        auto const entity_type{entity_data.entity_types[entity_index]};
+        if (old_alive && (!new_alive || old_team != new_team)) {
+            adjust_alive_count(old_team, entity_type, -1);
+        }
+        if (new_alive && (!old_alive || old_team != new_team)) {
+            adjust_alive_count(new_team, entity_type, 1);
+        }
+
         ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
         ml::assign_from(entity_data.velocities, entity_index, queued_entity_data.velocities, i);
         entity_data.healths[entity_index] = queued_entity_data.healths[i];
@@ -210,6 +247,7 @@ void FTestEntityRegistry::commit_death_updates() {
             auto const killer_id{find_unique_id(killer_handle)};
             unique_entities.killed_by[victim_id.id] = killer_id;
             unique_entities.kills[killer_id.id] += 1;
+            ++cumulative_kill_count_;
         }
     }
 }
@@ -408,48 +446,20 @@ auto FTestEntityRegistry::get_num_elements() const noexcept -> int32 {
     return entity_data.num();
 }
 auto FTestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
-    int32 total{0};
-
-    for (auto const& alive : entity_data.alive) {
-        if (alive) {
-            ++total;
-        }
-    }
-
-    return total;
+    return alive_count_;
 }
 
 auto FTestEntityRegistry::count_kills() const noexcept -> int32 {
-    int32 n{get_num_unique_ids_issued()};
-
-    int32 total{0};
-    for (auto const& kills : unique_entities.kills) {
-        total += kills;
-    }
-
-    return total;
+    return cumulative_kill_count_;
 }
 auto FTestEntityRegistry::count_alive() const noexcept -> int32 {
-    int32 total{0};
-    for (auto const& alive : unique_entities.alive) {
-        if (alive) {
-            ++total;
-        }
-    }
-
-    return total;
+    return alive_count_;
 }
 auto FTestEntityRegistry::count_alive(ETestEntityType const type) const noexcept -> int32 {
-    int32 n{get_num_unique_ids_issued()};
-
     int32 total{0};
-    for (int32 i{0}; i < n; ++i) {
-        auto const alive{unique_entities.alive[i]};
-        auto const entity_type{unique_entities.entity_types[i]};
-
-        if (alive && (entity_type == type)) {
-            ++total;
-        }
+    auto const type_index{std::to_underlying(type)};
+    for (auto const& team_counts : alive_counts_) {
+        total += team_counts[type_index];
     }
 
     return total;
@@ -457,46 +467,28 @@ auto FTestEntityRegistry::count_alive(ETestEntityType const type) const noexcept
 auto FTestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
     TeamCounts out{};
 
-    int32 n{get_num_unique_ids_issued()};
-
-    int32 total{0};
-    for (int32 i{0}; i < n; ++i) {
-        if (entity_data.alive[i]) {
-            out[std::to_underlying(entity_data.teams[i])] += 1;
+    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+    for (int32 team_index{}; team_index < team_count; ++team_index) {
+        for (auto const count : alive_counts_[team_index]) {
+            out[team_index] += count;
         }
     }
 
     return out;
 }
 auto FTestEntityRegistry::count_alive_per_team_and_type() const noexcept -> EntityCounts {
-    EntityCounts out{};
-
-    auto const n{get_num_elements()};
-    for (int32 i{0}; i < n; ++i) {
-        if (!entity_data.alive[i]) {
-            continue;
-        }
-
-        auto const team{std::to_underlying(entity_data.teams[i])};
-        auto const type{std::to_underlying(entity_data.entity_types[i])};
-        constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-        constexpr auto type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
-        if ((team < 0) || (team >= team_count) || (type < 0) || (type >= type_count)) {
-            continue;
-        }
-
-        ++out[team][type];
-    }
-
-    return out;
+    return alive_counts_;
 }
 auto FTestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
-    auto const n{get_num_elements()};
     int32 count{0};
 
-    for (int32 i{0}; i < n; ++i) {
-        if (entity_data.alive[i] && (entity_data.teams[i] != team)) {
-            ++count;
+    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+    for (int32 team_index{}; team_index < team_count; ++team_index) {
+        if (team_index == std::to_underlying(team)) {
+            continue;
+        }
+        for (auto const type_count : alive_counts_[team_index]) {
+            count += type_count;
         }
     }
 

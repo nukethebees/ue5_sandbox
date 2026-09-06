@@ -310,6 +310,8 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range);
 
+    range_query_count_.fetch_add(1, std::memory_order_relaxed);
+
     auto const n_out_limit{out_entities.Num()};
     if (n_out_limit == 0) {
         return 0;
@@ -447,5 +449,23 @@ void FSpatialQueryManager::update() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::update);
 
     collision.update();
+}
+
+void FSpatialQueryManager::reset_runtime_telemetry() noexcept {
+    range_query_count_.store(0, std::memory_order_relaxed);
+    collision.get_uniform_grid().reset_runtime_telemetry();
+}
+
+auto FSpatialQueryManager::get_runtime_telemetry() const noexcept
+    -> FSpatialQueryTelemetrySnapshot {
+    auto const& grid{collision.get_uniform_grid()};
+    auto const grid_telemetry{grid.get_runtime_telemetry()};
+    return {
+        .grid_rebuild_count = grid_telemetry.rebuild_count,
+        .range_query_count = range_query_count_.load(std::memory_order_relaxed),
+        .line_trace_count = grid_telemetry.line_trace_count,
+        .sweep_trace_count = grid_telemetry.sweep_trace_count,
+        .occupied_dynamic_cell_count = grid.get_non_empty_cell_count(),
+    };
 }
 }
