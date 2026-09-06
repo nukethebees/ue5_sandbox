@@ -92,6 +92,11 @@ auto FSaveProfileManager::unlock_all_missions() const -> bool {
     return has_active_profile() && profile->debug_settings.unlock_all_missions;
 }
 
+auto FSaveProfileManager::start_levels_paused() const -> bool {
+    auto const* const profile{find_profile(index_.active_profile_id)};
+    return has_active_profile() && profile->debug_settings.start_levels_paused;
+}
+
 auto FSaveProfileManager::create_profile(FString display_name) -> FCreateSaveProfileResponse {
     display_name.TrimStartAndEndInline();
     auto const validation{validate_profile_name(display_name, index_.profiles)};
@@ -199,6 +204,28 @@ bool FSaveProfileManager::set_unlock_all_missions(bool const enabled) {
     return true;
 }
 
+bool FSaveProfileManager::set_start_levels_paused(bool const enabled) {
+    if (!initialised_) {
+        return false;
+    }
+
+    auto* const metadata{find_profile(index_.active_profile_id)};
+    if (metadata == nullptr) {
+        return false;
+    }
+    if (metadata->debug_settings.start_levels_paused == enabled) {
+        return true;
+    }
+
+    auto const previous{metadata->debug_settings.start_levels_paused};
+    metadata->debug_settings.start_levels_paused = enabled;
+    if (!storage_.save_index(index_)) {
+        metadata->debug_settings.start_levels_paused = previous;
+        return false;
+    }
+    return true;
+}
+
 bool FSaveProfileManager::reset_test_profile(TConstArrayView<FScoreRecord> const records) {
     auto const created_at{records.IsEmpty() ? FDateTime::Now() : records[0].date};
     auto metadata{make_metadata(save_profile_manager::test_profile_id,
@@ -269,6 +296,13 @@ auto FSaveProfileManager::migrate_index(FSaveProfileIndexData& index) -> bool {
                     profile.debug_settings = {};
                 }
                 index.save_version = 2;
+                break;
+            }
+            case 2: {
+                for (auto& profile : index.profiles) {
+                    profile.debug_settings.start_levels_paused = false;
+                }
+                index.save_version = 3;
                 break;
             }
             default:

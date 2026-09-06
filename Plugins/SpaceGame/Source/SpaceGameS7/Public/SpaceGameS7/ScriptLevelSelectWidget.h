@@ -36,6 +36,8 @@ struct FLevelSelectViewState {
     FText filename{};
     FText details{};
     FText script{};
+    FText launch_mode_status{};
+    ELevelCatalogCategory category{ELevelCatalogCategory::Mission};
     int32 selected_button_index{INDEX_NONE};
     bool can_launch{};
 };
@@ -52,6 +54,9 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
         return view_state_.can_launch;
     }
+    [[nodiscard]] auto get_active_category() const noexcept -> ELevelCatalogCategory {
+        return active_category_;
+    }
     void refresh() override;
     void focus_primary_action() override;
   protected:
@@ -63,17 +68,20 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
   private:
     void launch_selected_level(ml::ioj::ELevelLaunchMode launch_mode);
     void refresh_levels();
+    void rebuild_catalog(FName focus_level_id);
+    void select_category(ELevelCatalogCategory category);
     void select_level(int32 button_index);
     void apply_level_selection(int32 button_index);
 
-    void handle_refresh();
     void handle_launch();
-    void handle_start_paused();
     void publish_view();
     void publish_catalog();
 
     TArray<FLevelScriptEntry> entries_{};
+    TArray<FCampaignScriptEntry> campaigns_{};
     TArray<int32> level_entry_indices_{};
+    FString catalog_directory_{};
+    FString catalog_error_{};
     FLevelSelectViewState view_state_{};
     TSharedPtr<SScriptLevelSelectView> view_{};
     ml::ioj::FGameUiStyle fallback_style_{};
@@ -81,5 +89,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     ml::ioj::UGameSubsystem* game_{nullptr};
     int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
+    ELevelCatalogCategory active_category_{ELevelCatalogCategory::Mission};
 };
 }

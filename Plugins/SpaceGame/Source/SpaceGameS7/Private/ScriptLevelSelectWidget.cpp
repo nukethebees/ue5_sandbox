@@ -122,6 +122,14 @@ auto row_state(FLevelUnlockStatus const& unlock_status,
     return progress.state == ml::ioj::ELevelProgressState::Completed ? ELevelRowState::Completed
                                                                      : ELevelRowState::Unlocked;
 }
+
+auto entry_matches_category(FLevelScriptEntry const& entry, ELevelCatalogCategory const category)
+    -> bool {
+    if (!entry) {
+        return category == ELevelCatalogCategory::Mission;
+    }
+    return entry.definition->metadata.catalog_category == category;
+}
 } // namespace
 
 UScriptLevelSelectWidget::UScriptLevelSelectWidget() = default;
@@ -149,9 +157,9 @@ auto UScriptLevelSelectWidget::RebuildWidget() -> TSharedRef<SWidget> {
         SAssignNew(view_, SScriptLevelSelectView)
             .Style(style)
             .OnLevelSelected(FOnLevelRowSelected::CreateUObject(this, &ThisClass::select_level))
-            .OnRefresh(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_refresh))
-            .OnLaunch(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_launch))
-            .OnStartPaused(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_start_paused))};
+            .OnCategorySelected(
+                FOnLevelCategorySelected::CreateUObject(this, &ThisClass::select_category))
+            .OnLaunch(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_launch))};
     refresh_levels();
     return result;
 }
@@ -182,30 +190,45 @@ auto UScriptLevelSelectWidget::NativeOnFocusReceived(FGeometry const& geometry,
 }
 
 void UScriptLevelSelectWidget::refresh_levels() {
-    auto const focus_level_id{selected_level_id_.IsNone() ? get_preferred_level_id()
-                                                          : selected_level_id_};
-
+    active_category_ = ELevelCatalogCategory::Mission;
     entries_.Reset();
+    campaigns_.Reset();
+    catalog_directory_.Reset();
+    catalog_error_.Reset();
+
+    auto catalog{discover_level_scripts()};
+    entries_ = MoveTemp(catalog.entries);
+    campaigns_ = MoveTemp(catalog.campaigns);
+    catalog_directory_ = MoveTemp(catalog.directory);
+    catalog_error_ = MoveTemp(catalog.error);
+
+    if (IsValid(game_) && game_->has_level_launch_error()) {
+        auto launch_error{game_->take_level_launch_error()};
+        catalog_error_ = catalog_error_.IsEmpty()
+                           ? MoveTemp(launch_error)
+                           : catalog_error_ + TEXT("\n") + MoveTemp(launch_error);
+    }
+
+    rebuild_catalog(get_preferred_level_id());
+}
+
+void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     level_entry_indices_.Reset();
     selected_entry_index_ = INDEX_NONE;
     selected_level_id_ = NAME_None;
     view_state_ = FLevelSelectViewState{};
-    view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
-    view_state_.description = NSLOCTEXT(
-        "LevelSelect", "SelectLevelDetail", "Select a mission record to review its directive.");
-
-    auto catalog{discover_level_scripts()};
-    entries_ = MoveTemp(catalog.entries);
-    auto campaigns{MoveTemp(catalog.campaigns)};
-    auto status{MoveTemp(catalog.error)};
-
-    auto* const game_instance{GetGameInstance()};
-    if (IsValid(game_) && game_->has_level_launch_error()) {
-        auto launch_error{game_->take_level_launch_error()};
-        status = status.IsEmpty() ? MoveTemp(launch_error)
-                                  : status + TEXT("\n") + MoveTemp(launch_error);
+    view_state_.category = active_category_;
+    if (active_category_ == ELevelCatalogCategory::Mission) {
+        view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
+        view_state_.description = NSLOCTEXT(
+            "LevelSelect", "SelectLevelDetail", "Select a mission record to review its directive.");
+    } else {
+        view_state_.title = NSLOCTEXT("LevelSelect", "SelectBattle", "SELECT A BATTLE");
+        view_state_.description = NSLOCTEXT(
+            "LevelSelect", "SelectBattleDetail", "Select a scenario to review its definition.");
     }
 
+    auto* const game_instance{GetGameInstance()};
     auto* const save_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
     auto const evaluator{make_unlock_evaluator(entries_, save_subsystem)};
@@ -221,11 +244,17 @@ void UScriptLevelSelectWidget::refresh_levels() {
     }()};
 
     int32 preferred_button_index{INDEX_NONE};
+    int32 visible_entry_count{};
+    int32 visible_campaign_count{};
     auto add_header = [this](FString const& label) {
         view_state_.rows.Add(FLevelSelectViewRow{FText::FromString(label.ToUpper()), true});
     };
-    auto add_level = [this, &evaluator, save_subsystem, focus_level_id, &preferred_button_index](
-                         int32 const entry_index) {
+    auto add_level = [this,
+                      &evaluator,
+                      save_subsystem,
+                      focus_level_id,
+                      &preferred_button_index,
+                      &visible_entry_count](int32 const entry_index) {
         auto const& entry{entries_[entry_index]};
         auto state{ELevelRowState::Invalid};
         if (entry) {
@@ -242,18 +271,31 @@ void UScriptLevelSelectWidget::refresh_levels() {
         auto const row_title{format_level_row_title(entry.display_title, state)};
         view_state_.rows.Add(FLevelSelectViewRow{FText::FromString(row_title), false});
         level_entry_indices_.Add(entry_index);
+        ++visible_entry_count;
     };
 
     TSet<FLevelId> grouped_levels;
-    for (auto const& campaign : campaigns) {
+    for (auto const& campaign : campaigns_) {
         if (!campaign) {
             continue;
         }
-        add_header(campaign.definition->title);
+        TArray<int32> visible_indices;
         for (auto const level_id : campaign.definition->level_ids) {
             auto const* const entry_index{entry_indices.Find(level_id)};
             check(entry_index);
-            add_level(*entry_index);
+            if (!entry_matches_category(entries_[*entry_index], active_category_)) {
+                continue;
+            }
+            visible_indices.Add(*entry_index);
+        }
+        if (visible_indices.IsEmpty()) {
+            continue;
+        }
+        add_header(campaign.definition->title);
+        ++visible_campaign_count;
+        for (auto const entry_index : visible_indices) {
+            add_level(entry_index);
+            auto const level_id{entries_[entry_index].definition->metadata.id};
             grouped_levels.Add(level_id);
         }
     }
@@ -261,41 +303,63 @@ void UScriptLevelSelectWidget::refresh_levels() {
     bool has_other_levels{};
     auto const entry_count{entries_.Num()};
     for (int32 index{}; index < entry_count; ++index) {
-        if (!entries_[index] || grouped_levels.Contains(entries_[index].definition->metadata.id)) {
+        if (!entries_[index] || !entry_matches_category(entries_[index], active_category_) ||
+            grouped_levels.Contains(entries_[index].definition->metadata.id)) {
             continue;
         }
         if (!has_other_levels) {
-            add_header(TEXT("Other Operations"));
+            add_header(active_category_ == ELevelCatalogCategory::Mission
+                           ? TEXT("Other Operations")
+                           : TEXT("Other Scenarios"));
             has_other_levels = true;
         }
         add_level(index);
     }
 
-    bool has_invalid_levels{};
-    for (int32 index{}; index < entry_count; ++index) {
-        if (entries_[index]) {
-            continue;
+    if (active_category_ == ELevelCatalogCategory::Mission) {
+        bool has_invalid_levels{};
+        for (int32 index{}; index < entry_count; ++index) {
+            if (entries_[index]) {
+                continue;
+            }
+            if (!has_invalid_levels) {
+                add_header(TEXT("Invalid Mission Records"));
+                has_invalid_levels = true;
+            }
+            add_level(index);
         }
-        if (!has_invalid_levels) {
-            add_header(TEXT("Invalid Mission Records"));
-            has_invalid_levels = true;
-        }
-        add_level(index);
     }
 
-    if (status.IsEmpty()) {
-        status = entry_count == 0
-                   ? FString::Printf(TEXT("No mission scripts found in %s"), *catalog.directory)
-                   : FString::Printf(TEXT("%d mission records available across %d campaigns."),
-                                     entry_count,
-                                     campaigns.Num());
+    auto status{catalog_error_};
+    if (status.IsEmpty() && visible_entry_count == 0) {
+        status = active_category_ == ELevelCatalogCategory::Mission
+                   ? FString::Printf(TEXT("No mission scripts found in %s"), *catalog_directory_)
+                   : FString::Printf(TEXT("No Battle Viewer scenarios found in %s"),
+                                     *catalog_directory_);
+    } else if (status.IsEmpty()) {
+        status = active_category_ == ELevelCatalogCategory::Mission
+                   ? FString::Printf(TEXT("%d mission records available across %d campaigns."),
+                                     visible_entry_count,
+                                     visible_campaign_count)
+                   : FString::Printf(TEXT("%d Battle Viewer scenarios available across %d "
+                                          "campaigns."),
+                                     visible_entry_count,
+                                     visible_campaign_count);
     }
     view_state_.status = FText::FromString(status);
 
-    if (preferred_button_index != INDEX_NONE) {
-        apply_level_selection(preferred_button_index);
+    if (!level_entry_indices_.IsEmpty()) {
+        apply_level_selection(preferred_button_index != INDEX_NONE ? preferred_button_index : 0);
     }
     publish_catalog();
+}
+
+void UScriptLevelSelectWidget::select_category(ELevelCatalogCategory const category) {
+    if (active_category_ == category) {
+        return;
+    }
+    active_category_ = category;
+    rebuild_catalog(NAME_None);
 }
 
 void UScriptLevelSelectWidget::select_level(int32 const button_index) {
@@ -321,6 +385,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
     view_state_.filename = FText::FromString(entry.filename.ToUpper());
     view_state_.title = FText::FromString(entry.display_title);
     view_state_.script = FText::FromString(entry.source_text);
+    view_state_.launch_mode_status = FText::GetEmpty();
     view_state_.can_launch = false;
 
     if (entry) {
@@ -338,6 +403,10 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
         if (unlock_status.unlocked) {
             view_state_.can_launch = true;
+            if (IsValid(save_subsystem) && save_subsystem->start_levels_paused()) {
+                view_state_.launch_mode_status =
+                    NSLOCTEXT("LevelSelect", "DebugStartPaused", "DEBUG // START PAUSED");
+            }
             view_state_.status =
                 FText::FromString(progress_label(entry.definition.GetValue(), progress).ToUpper() +
                                   TEXT("  //  CLEARED FOR DEPLOYMENT"));
@@ -352,19 +421,14 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
     }
 }
 
-void UScriptLevelSelectWidget::handle_refresh() {
-    refresh_levels();
-    if (view_.IsValid()) {
-        view_->focus_selected_level();
-    }
-}
-
 void UScriptLevelSelectWidget::handle_launch() {
-    launch_selected_level(ml::ioj::ELevelLaunchMode::Running);
-}
-
-void UScriptLevelSelectWidget::handle_start_paused() {
-    launch_selected_level(ml::ioj::ELevelLaunchMode::Paused);
+    auto* const game_instance{GetGameInstance()};
+    auto const* const save_subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
+    auto const launch_mode{IsValid(save_subsystem) && save_subsystem->start_levels_paused()
+                               ? ml::ioj::ELevelLaunchMode::Paused
+                               : ml::ioj::ELevelLaunchMode::Running};
+    launch_selected_level(launch_mode);
 }
 
 void UScriptLevelSelectWidget::publish_view() {
@@ -409,9 +473,15 @@ void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode c
     entry.definition.Reset();
     game_->set_pending_level(MoveTemp(definition), entry.path, launch_mode);
     view_state_.can_launch = false;
-    view_state_.status = FText::FromString(launch_mode == ml::ioj::ELevelLaunchMode::Paused
-                                               ? TEXT("STAGING MISSION IN PAUSED STATE...")
-                                               : TEXT("DEPLOYING MISSION..."));
+    if (launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
+        view_state_.status =
+            NSLOCTEXT("LevelSelect", "StagingPaused", "STAGING LEVEL IN PAUSED STATE...");
+    } else if (active_category_ == ELevelCatalogCategory::BattleViewer) {
+        view_state_.status =
+            NSLOCTEXT("LevelSelect", "OpeningBattleViewer", "OPENING BATTLE VIEWER...");
+    } else {
+        view_state_.status = NSLOCTEXT("LevelSelect", "Deploying", "DEPLOYING MISSION...");
+    }
     publish_view();
     UGameplayStatics::OpenLevel(this, FName{TEXT("/SpaceGame/Levels/GameRuntime")});
 }

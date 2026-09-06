@@ -61,6 +61,9 @@ struct SPACEGAME_API FSaveProfileDebugSettings {
 
     UPROPERTY()
     bool unlock_all_missions{};
+
+    UPROPERTY()
+    bool start_levels_paused{};
 };
 
 USTRUCT()
@@ -96,7 +99,7 @@ USTRUCT()
 struct SPACEGAME_API FSaveProfileIndexData {
     GENERATED_BODY()
 
-    static constexpr int32 current_save_version{2};
+    static constexpr int32 current_save_version{3};
 
     UPROPERTY()
     int32 save_version{current_save_version};

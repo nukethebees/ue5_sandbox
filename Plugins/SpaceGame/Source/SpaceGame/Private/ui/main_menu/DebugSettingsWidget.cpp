@@ -18,13 +18,16 @@ class SDebugSettingsView final : public SCompoundWidget {
     SLATE_BEGIN_ARGS(SDebugSettingsView)
         : _Style(nullptr)
         , _UnlockAllMissions(false)
+        , _StartLevelsPaused(false)
         , _SettingAvailable(false)
         , _Status() {}
     SLATE_ARGUMENT(FGameUiStyle const*, Style)
     SLATE_ATTRIBUTE(bool, UnlockAllMissions)
+    SLATE_ATTRIBUTE(bool, StartLevelsPaused)
     SLATE_ATTRIBUTE(bool, SettingAvailable)
     SLATE_ATTRIBUTE(FText, Status)
     SLATE_EVENT(FOnCheckStateChanged, OnUnlockAllMissionsChanged)
+    SLATE_EVENT(FOnCheckStateChanged, OnStartLevelsPausedChanged)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args) {
@@ -43,6 +46,19 @@ class SDebugSettingsView final : public SCompoundWidget {
                  .Checked(args._UnlockAllMissions)
                  .ControlEnabled(args._SettingAvailable)
                  .OnCheckStateChanged(args._OnUnlockAllMissionsChanged)];
+
+        auto simulation_rows{SNew(SVerticalBox)};
+        simulation_rows->AddSlot().AutoHeight().Padding(style->settings().row_padding)
+            [SAssignNew(start_levels_paused_, SSettingsToggle)
+                 .Style(&style->settings())
+                 .Label(NSLOCTEXT("DebugSettings", "StartLevelsPaused", "Start Levels Paused"))
+                 .ToolTipText(NSLOCTEXT(
+                     "DebugSettings",
+                     "StartLevelsPausedTooltip",
+                     "Stages missions and Battle Viewer scenarios with the simulation paused."))
+                 .Checked(args._StartLevelsPaused)
+                 .ControlEnabled(args._SettingAvailable)
+                 .OnCheckStateChanged(args._OnStartLevelsPausedChanged)];
 
         auto content{
             SNew(SVerticalBox) +
@@ -63,6 +79,15 @@ class SDebugSettingsView final : public SCompoundWidget {
                                    .Icon(&style->icon(EGameUiIcon::Gameplay))
                                    .Text(NSLOCTEXT("DebugSettings", "Progression", "PROGRESSION"))]
                      .Title(NSLOCTEXT("DebugSettings", "Progression", "PROGRESSION"))[rows]] +
+            SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 16.0f, 0.0f, 0.0f})
+                [SNew(SSettingsSection)
+                     .Style(&style->settings())
+                     .Header()[SNew(SHiveSectionHeader)
+                                   .Style(style)
+                                   .Icon(&style->icon(EGameUiIcon::Gameplay))
+                                   .Text(NSLOCTEXT("DebugSettings", "Simulation", "SIMULATION"))]
+                     .Title(
+                         NSLOCTEXT("DebugSettings", "Simulation", "SIMULATION"))[simulation_rows]] +
             SVerticalBox::Slot().FillHeight(1.0f) +
             SVerticalBox::Slot().AutoHeight()[SNew(STextBlock)
                                                   .Text(args._Status)
@@ -83,6 +108,7 @@ class SDebugSettingsView final : public SCompoundWidget {
     void refresh() { Invalidate(EInvalidateWidgetReason::Layout | EInvalidateWidgetReason::Paint); }
   private:
     TSharedPtr<SSettingsToggle> unlock_all_missions_{};
+    TSharedPtr<SSettingsToggle> start_levels_paused_{};
 };
 
 UDebugSettingsWidget::UDebugSettingsWidget(FObjectInitializer const& object_initializer)
@@ -112,6 +138,10 @@ auto UDebugSettingsWidget::RebuildWidget() -> TSharedRef<SWidget> {
             auto const* const widget{weak_this.Get()};
             return widget != nullptr && widget->unlock_all_missions();
         })
+        .StartLevelsPaused_Lambda([weak_this] {
+            auto const* const widget{weak_this.Get()};
+            return widget != nullptr && widget->start_levels_paused();
+        })
         .SettingAvailable_Lambda([weak_this] {
             auto const* const widget{weak_this.Get()};
             return widget != nullptr && widget->setting_available();
@@ -121,7 +151,9 @@ auto UDebugSettingsWidget::RebuildWidget() -> TSharedRef<SWidget> {
             return widget != nullptr ? widget->status_text() : FText::GetEmpty();
         })
         .OnUnlockAllMissionsChanged(FOnCheckStateChanged::CreateUObject(
-            this, &ThisClass::handle_unlock_all_missions_changed));
+            this, &ThisClass::handle_unlock_all_missions_changed))
+        .OnStartLevelsPausedChanged(FOnCheckStateChanged::CreateUObject(
+            this, &ThisClass::handle_start_levels_paused_changed));
 }
 
 void UDebugSettingsWidget::ReleaseSlateResources(bool const release_children) {
@@ -158,6 +190,10 @@ auto UDebugSettingsWidget::unlock_all_missions() const -> bool {
     return IsValid(save_) && save_->unlock_all_missions();
 }
 
+auto UDebugSettingsWidget::start_levels_paused() const -> bool {
+    return IsValid(save_) && save_->start_levels_paused();
+}
+
 auto UDebugSettingsWidget::status_text() const -> FText {
     if (!setting_available()) {
         return NSLOCTEXT("DebugSettings", "Unavailable", "PROFILE SAVES ARE UNAVAILABLE");
@@ -177,6 +213,22 @@ void UDebugSettingsWidget::handle_unlock_all_missions_changed(ECheckBoxState con
         UE_LOG(LogSandboxUI,
                Warning,
                TEXT("UDebugSettingsWidget: Failed to save Unlock All Missions."));
+    } else {
+        save_failed_ = false;
+        settings_changed.Broadcast();
+    }
+    if (view_.IsValid()) {
+        view_->refresh();
+    }
+}
+
+void UDebugSettingsWidget::handle_start_levels_paused_changed(ECheckBoxState const state) {
+    auto const enabled{state == ECheckBoxState::Checked};
+    if (!IsValid(save_) || !save_->set_start_levels_paused(enabled)) {
+        save_failed_ = true;
+        UE_LOG(LogSandboxUI,
+               Warning,
+               TEXT("UDebugSettingsWidget: Failed to save Start Levels Paused."));
     } else {
         save_failed_ = false;
         settings_changed.Broadcast();

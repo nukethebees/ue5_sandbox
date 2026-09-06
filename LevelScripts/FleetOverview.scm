@@ -2,6 +2,7 @@
   (id 'fleet-overview)
   (title "Fleet Overview")
   (description "A playerless battle viewed from an authored camera between two flagships.")
+  (category 'battle-viewer)
 
   (teams
     (team 'blue)

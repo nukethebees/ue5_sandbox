@@ -33,8 +33,10 @@ class SPACEGAME_API UDebugSettingsWidget : public UUserWidget {
   private:
     [[nodiscard]] auto setting_available() const -> bool;
     [[nodiscard]] auto unlock_all_missions() const -> bool;
+    [[nodiscard]] auto start_levels_paused() const -> bool;
     [[nodiscard]] auto status_text() const -> FText;
     void handle_unlock_all_missions_changed(ECheckBoxState state);
+    void handle_start_levels_paused_changed(ECheckBoxState state);
 
     UPROPERTY(Transient)
     UGameSubsystem* game_{nullptr};

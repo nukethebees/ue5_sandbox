@@ -7,10 +7,16 @@
 #include <Misc/TVariant.h>
 
 namespace ml {
+enum class ELevelCatalogCategory : uint8 {
+    Mission,
+    BattleViewer,
+};
+
 struct SPACEGAME_API FLevelMetadata {
     FLevelId id{};
     FString title{};
     FString description{};
+    ELevelCatalogCategory catalog_category{ELevelCatalogCategory::Mission};
 };
 
 struct SPACEGAME_API FEntitySpawnDefinition {

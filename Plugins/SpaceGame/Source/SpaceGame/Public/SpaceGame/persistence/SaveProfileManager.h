@@ -48,12 +48,14 @@ class SPACEGAME_API FSaveProfileManager {
     [[nodiscard]] auto get_active_records() const -> TConstArrayView<FScoreRecord>;
     [[nodiscard]] auto has_active_profile() const -> bool;
     [[nodiscard]] auto unlock_all_missions() const -> bool;
+    [[nodiscard]] auto start_levels_paused() const -> bool;
 
     auto create_profile(FString display_name) -> FCreateSaveProfileResponse;
     bool activate_profile(FString const& profile_id);
     bool load_profile_records(FString const& profile_id, TArray<FScoreRecord>& records) const;
     bool append_score_record(FScoreRecord const& record);
     bool set_unlock_all_missions(bool enabled);
+    bool set_start_levels_paused(bool enabled);
     bool reset_test_profile(TConstArrayView<FScoreRecord> records);
 
     [[nodiscard]] static auto validate_profile_name(FString display_name,

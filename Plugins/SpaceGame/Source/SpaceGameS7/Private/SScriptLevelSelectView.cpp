@@ -4,7 +4,6 @@
 #include <SpaceGame/ui/common/SGameButton.h>
 
 #include <InputCoreTypes.h>
-#include <Widgets/Images/SImage.h>
 #include <Widgets/Layout/SBorder.h>
 #include <Widgets/Layout/SBox.h>
 #include <Widgets/Layout/SScrollBox.h>
@@ -12,26 +11,12 @@
 #include <Widgets/Text/STextBlock.h>
 
 namespace ml::s7 {
-namespace {
-auto action_button(TSharedPtr<ml::ioj::SGameButton>& button,
-                   ml::ioj::FGameUiStyle const& style,
-                   EGameButtonStyle const button_style,
-                   FText text,
-                   FOnClicked on_clicked) -> TSharedRef<SWidget> {
-    return SNew(SBox).WidthOverride(180.0f)[SAssignNew(button, ml::ioj::SGameButton)
-                                                .Style(&style.button(button_style))
-                                                .Text(MoveTemp(text))
-                                                .OnClicked(MoveTemp(on_clicked))];
-}
-}
-
 void SScriptLevelSelectView::Construct(FArguments const& args) {
     style_ = args._Style;
     check(style_ != nullptr);
     on_level_selected_ = args._OnLevelSelected;
-    on_refresh_ = args._OnRefresh;
+    on_category_selected_ = args._OnCategorySelected;
     on_launch_ = args._OnLaunch;
-    on_start_paused_ = args._OnStartPaused;
 
     auto const body{SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_catalog()] +
                     SHorizontalBox::Slot().FillWidth(1.0f).Padding(
@@ -39,10 +24,10 @@ void SScriptLevelSelectView::Construct(FArguments const& args) {
 
     ChildSlot[SNew(SBorder)
                   .BorderImage(&style_->chrome().body_background)
-                  .Padding(FMargin{24.0f})
-                      [SNew(SVerticalBox) + SVerticalBox::Slot().AutoHeight()[build_header()] +
-                       SVerticalBox::Slot().FillHeight(1.0f).Padding(FMargin{0.0f, 18.0f})[body] +
-                       SVerticalBox::Slot().AutoHeight()[build_footer()]]];
+                  .Padding(FMargin{24.0f})[SNew(SVerticalBox) +
+                                           SVerticalBox::Slot().AutoHeight()[build_header()] +
+                                           SVerticalBox::Slot().FillHeight(1.0f).Padding(
+                                               FMargin{0.0f, 18.0f, 0.0f, 0.0f})[body]]];
 }
 
 void SScriptLevelSelectView::replace_catalog(FLevelSelectViewState const& state) {
@@ -51,7 +36,9 @@ void SScriptLevelSelectView::replace_catalog(FLevelSelectViewState const& state)
 }
 
 void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
+    category_ = state.category;
     selected_button_index_ = state.selected_button_index;
+    update_category_selection();
     update_selection(selected_button_index_);
 
     title_->SetText(state.title);
@@ -60,12 +47,17 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
     filename_->SetText(state.filename);
     details_->SetText(state.details);
     script_->SetText(state.script);
+    launch_mode_status_->SetText(state.launch_mode_status);
+    launch_mode_status_->SetVisibility(state.launch_mode_status.IsEmpty()
+                                           ? EVisibility::Collapsed
+                                           : EVisibility::HitTestInvisible);
     launch_button_->SetEnabled(state.can_launch);
-    start_paused_button_->SetEnabled(state.can_launch);
+    Invalidate(EInvalidateWidgetReason::Layout | EInvalidateWidgetReason::Paint);
 }
 
 void SScriptLevelSelectView::focus_selected_level() {
     if (level_buttons_.IsEmpty()) {
+        focus_active_category();
         return;
     }
     auto const button_index{
@@ -83,8 +75,46 @@ auto SScriptLevelSelectView::OnFocusReceived(FGeometry const& geometry,
 
 auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event)
     -> FReply {
-    auto direction{0};
     auto const key{key_event.GetKey()};
+    auto const category_has_focus{mission_category_button_->has_focus() ||
+                                  battle_viewer_category_button_->has_focus()};
+    if (category_has_focus) {
+        if (key == EKeys::Left || key == EKeys::Gamepad_DPad_Left) {
+            if (category_ == ELevelCatalogCategory::BattleViewer) {
+                handle_category_selected(ELevelCatalogCategory::Mission);
+                focus_active_category();
+                return FReply::Handled();
+            }
+        } else if (key == EKeys::Right || key == EKeys::Gamepad_DPad_Right) {
+            if (category_ == ELevelCatalogCategory::Mission) {
+                handle_category_selected(ELevelCatalogCategory::BattleViewer);
+                focus_active_category();
+                return FReply::Handled();
+            }
+        } else if (key == EKeys::Down || key == EKeys::Gamepad_DPad_Down) {
+            focus_selected_level();
+            return FReply::Handled();
+        }
+        return SCompoundWidget::OnKeyDown(geometry, key_event);
+    }
+
+    int32 current_index{INDEX_NONE};
+    auto const button_count{level_buttons_.Num()};
+    for (int32 index{}; index < button_count; ++index) {
+        if (level_buttons_[index].IsValid() && level_buttons_[index]->has_focus()) {
+            current_index = index;
+            break;
+        }
+    }
+    if (current_index == INDEX_NONE) {
+        return SCompoundWidget::OnKeyDown(geometry, key_event);
+    }
+    if ((key == EKeys::Up || key == EKeys::Gamepad_DPad_Up) && current_index == 0) {
+        focus_active_category();
+        return FReply::Handled();
+    }
+
+    auto direction{0};
     if (key == EKeys::Up || key == EKeys::Gamepad_DPad_Up) {
         direction = -1;
     } else if (key == EKeys::Down || key == EKeys::Gamepad_DPad_Down) {
@@ -94,54 +124,61 @@ auto SScriptLevelSelectView::OnKeyDown(FGeometry const& geometry, FKeyEvent cons
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
 
-    auto current_index{selected_button_index_};
-    auto const button_count{level_buttons_.Num()};
-    for (int32 index{}; index < button_count; ++index) {
-        if (level_buttons_[index].IsValid() && level_buttons_[index]->has_focus()) {
-            current_index = index;
-            break;
-        }
-    }
-    if (!level_buttons_.IsValidIndex(current_index)) {
-        current_index = direction > 0 ? 0 : button_count - 1;
-    } else {
-        current_index = (current_index + direction + button_count) % button_count;
-    }
+    current_index = (current_index + direction + button_count) % button_count;
     focus_level(current_index);
     return FReply::Handled();
 }
 
-auto SScriptLevelSelectView::build_header() const -> TSharedRef<SWidget> {
-    return SNew(SVerticalBox) +
-           SVerticalBox::Slot()
-               .AutoHeight()[SNew(STextBlock)
-                                 .Text(NSLOCTEXT("LevelSelect",
-                                                 "SystemContext",
-                                                 "TACTICAL OPERATIONS // LEVEL CATALOG"))
-                                 .TextStyle(&style_->text(EGameTextStyle::Caption))] +
-           SVerticalBox::Slot().AutoHeight().Padding(
-               FMargin{0.0f, 4.0f})[SNew(STextBlock)
-                                        .Text(NSLOCTEXT("LevelSelect", "Title", "MISSION CONTROL"))
-                                        .TextStyle(&style_->text(EGameTextStyle::Heading1))];
+auto SScriptLevelSelectView::build_header() -> TSharedRef<SWidget> {
+    auto const categories{
+        SNew(SBorder)
+            .BorderImage(&style_->chrome().frame_border)
+            .Padding(FMargin{1.0f})
+                [SNew(SHorizontalBox) +
+                 SHorizontalBox::Slot().AutoWidth()[SNew(SBox).WidthOverride(
+                     150.0f)[SAssignNew(mission_category_button_, ml::ioj::SGameButton)
+                                 .Style(&style_->button(EGameButtonStyle::Secondary))
+                                 .Text(NSLOCTEXT("LevelSelect", "Missions", "MISSIONS"))
+                                 .Selected(true)
+                                 .OnClicked(this,
+                                            &SScriptLevelSelectView::handle_category_selected,
+                                            ELevelCatalogCategory::Mission)]] +
+                 SHorizontalBox::Slot().AutoWidth()[SNew(SBox).WidthOverride(
+                     190.0f)[SAssignNew(battle_viewer_category_button_, ml::ioj::SGameButton)
+                                 .Style(&style_->button(EGameButtonStyle::Secondary))
+                                 .Text(NSLOCTEXT("LevelSelect", "BattleViewer", "BATTLE VIEWER"))
+                                 .OnClicked(this,
+                                            &SScriptLevelSelectView::handle_category_selected,
+                                            ELevelCatalogCategory::BattleViewer)]]]};
+
+    return SNew(SHorizontalBox) +
+           SHorizontalBox::Slot().FillWidth(1.0f).VAlign(
+               VAlign_Center)[SNew(STextBlock)
+                                  .Text(NSLOCTEXT("LevelSelect",
+                                                  "SystemContext",
+                                                  "TACTICAL OPERATIONS // LEVEL CATALOG"))
+                                  .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+           SHorizontalBox::Slot()
+               .AutoWidth()
+               .Padding(FMargin{0.0f, 0.0f, 12.0f, 0.0f})
+               .VAlign(
+                   VAlign_Center)[SNew(STextBlock)
+                                      .Text(NSLOCTEXT("LevelSelect", "Title", "MISSION CONTROL //"))
+                                      .TextStyle(&style_->text(EGameTextStyle::Heading3))] +
+           SHorizontalBox::Slot().AutoWidth()[categories];
 }
 
 auto SScriptLevelSelectView::build_catalog() -> TSharedRef<SWidget> {
     auto const catalog{
         SNew(SVerticalBox) +
-        SVerticalBox::Slot().AutoHeight().Padding(
-            FMargin{0.0f,
-                    0.0f,
-                    0.0f,
-                    4.0f})[SNew(STextBlock)
-                               .Text(NSLOCTEXT("LevelSelect", "CatalogCaption", "MISSION ARCHIVE"))
-                               .TextStyle(&style_->text(EGameTextStyle::Caption))] +
-        SVerticalBox::Slot().AutoHeight().Padding(
-            FMargin{0.0f,
-                    0.0f,
-                    0.0f,
-                    16.0f})[SNew(STextBlock)
-                                .Text(NSLOCTEXT("LevelSelect", "CatalogTitle", "OPERATIONS"))
-                                .TextStyle(&style_->text(EGameTextStyle::Heading3))] +
+        SVerticalBox::Slot().AutoHeight().Padding(FMargin{
+            0.0f, 0.0f, 0.0f, 4.0f})[SNew(STextBlock)
+                                         .Text(this, &SScriptLevelSelectView::catalog_caption)
+                                         .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+        SVerticalBox::Slot().AutoHeight().Padding(FMargin{
+            0.0f, 0.0f, 0.0f, 16.0f})[SNew(STextBlock)
+                                          .Text(this, &SScriptLevelSelectView::catalog_title)
+                                          .TextStyle(&style_->text(EGameTextStyle::Heading3))] +
         SVerticalBox::Slot().FillHeight(
             1.0f)[SNew(SScrollBox).ScrollBarStyle(&style_->chrome().scroll_bar) +
                   SScrollBox::Slot()[SAssignNew(catalog_rows_, SVerticalBox)]]};
@@ -165,6 +202,12 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                                                  .TextStyle(&style_->text(EGameTextStyle::Caption))
                                                  .AutoWrapText(false)]]]};
 
+    auto const launch{SNew(SBox).WidthOverride(
+        180.0f)[SAssignNew(launch_button_, ml::ioj::SGameButton)
+                    .Style(&style_->button(EGameButtonStyle::Primary))
+                    .Text(this, &SScriptLevelSelectView::launch_text)
+                    .OnClicked(this, &SScriptLevelSelectView::handle_action, on_launch_)]};
+
     return SNew(SBorder)
         .BorderImage(&style_->chrome().body_background)
         .Padding(FMargin{30.0f})
@@ -187,42 +230,52 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                  FMargin{0.0f, 18.0f})[SAssignNew(details_, STextBlock)
                                            .TextStyle(&style_->text(EGameTextStyle::BodySecondary))
                                            .AutoWrapText(true)] +
-             SVerticalBox::Slot().AutoHeight().Padding(FMargin{
-                 0.0f,
-                 8.0f})[SNew(ml::ioj::SHiveSectionHeader)
-                            .Style(style_)
-                            .Text(NSLOCTEXT("LevelSelect", "Directive", "MISSION DIRECTIVE"))] +
-             SVerticalBox::Slot().FillHeight(1.0f)[script_panel]];
+             SVerticalBox::Slot().AutoHeight().Padding(
+                 FMargin{0.0f, 8.0f})[SNew(ml::ioj::SHiveSectionHeader)
+                                          .Style(style_)
+                                          .Text(this, &SScriptLevelSelectView::directive_title)] +
+             SVerticalBox::Slot().FillHeight(1.0f)[script_panel] +
+             SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 18.0f, 0.0f, 0.0f})
+                 [SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.0f) +
+                  SHorizontalBox::Slot()
+                      .AutoWidth()
+                      .Padding(FMargin{0.0f, 0.0f, 12.0f, 0.0f})
+                      .VAlign(VAlign_Center)[SAssignNew(launch_mode_status_, STextBlock)
+                                                 .TextStyle(&style_->text(EGameTextStyle::Caption))
+                                                 .Visibility(EVisibility::Collapsed)] +
+                  SHorizontalBox::Slot().AutoWidth()[launch]]];
 }
 
-auto SScriptLevelSelectView::build_footer() -> TSharedRef<SWidget> {
-    TSharedPtr<ml::ioj::SGameButton> refresh_button;
-    auto const refresh{action_button(
-        refresh_button,
-        *style_,
-        EGameButtonStyle::Secondary,
-        NSLOCTEXT("LevelSelect", "Refresh", "Refresh Catalog"),
-        FOnClicked::CreateSP(this, &SScriptLevelSelectView::handle_action, on_refresh_))};
-    auto const paused{action_button(
-        start_paused_button_,
-        *style_,
-        EGameButtonStyle::Secondary,
-        NSLOCTEXT("LevelSelect", "StartPaused", "Stage Paused"),
-        FOnClicked::CreateSP(this, &SScriptLevelSelectView::handle_action, on_start_paused_))};
-    auto const launch{action_button(
-        launch_button_,
-        *style_,
-        EGameButtonStyle::Primary,
-        NSLOCTEXT("LevelSelect", "Launch", "Launch Mission"),
-        FOnClicked::CreateSP(this, &SScriptLevelSelectView::handle_action, on_launch_))};
+auto SScriptLevelSelectView::catalog_caption() const -> FText {
+    return category_ == ELevelCatalogCategory::Mission
+             ? NSLOCTEXT("LevelSelect", "MissionCatalogCaption", "MISSION ARCHIVE")
+             : NSLOCTEXT("LevelSelect", "BattleCatalogCaption", "BATTLE ARCHIVE");
+}
 
-    return SNew(SBorder)
-        .BorderImage(&style_->chrome().footer_background)
-        .Padding(style_->chrome().footer_padding)
-            [SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.0f) +
-             SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})[refresh] +
-             SHorizontalBox::Slot().AutoWidth().Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})[paused] +
-             SHorizontalBox::Slot().AutoWidth()[launch]];
+auto SScriptLevelSelectView::catalog_title() const -> FText {
+    return category_ == ELevelCatalogCategory::Mission
+             ? NSLOCTEXT("LevelSelect", "MissionCatalogTitle", "OPERATIONS")
+             : NSLOCTEXT("LevelSelect", "BattleCatalogTitle", "SCENARIOS");
+}
+
+auto SScriptLevelSelectView::directive_title() const -> FText {
+    return category_ == ELevelCatalogCategory::Mission
+             ? NSLOCTEXT("LevelSelect", "MissionDirective", "MISSION DIRECTIVE")
+             : NSLOCTEXT("LevelSelect", "ScenarioDefinition", "SCENARIO DEFINITION");
+}
+
+auto SScriptLevelSelectView::launch_text() const -> FText {
+    return category_ == ELevelCatalogCategory::Mission
+             ? NSLOCTEXT("LevelSelect", "Launch", "Launch Mission")
+             : NSLOCTEXT("LevelSelect", "ViewBattle", "View Battle");
+}
+
+auto SScriptLevelSelectView::handle_category_selected(ELevelCatalogCategory const category)
+    -> FReply {
+    category_ = category;
+    update_category_selection();
+    on_category_selected_.ExecuteIfBound(category);
+    return FReply::Handled();
 }
 
 auto SScriptLevelSelectView::handle_level_selected(int32 const button_index) -> FReply {
@@ -266,6 +319,25 @@ void SScriptLevelSelectView::update_selection(int32 const button_index) {
     auto const button_count{level_buttons_.Num()};
     for (int32 index{}; index < button_count; ++index) {
         level_buttons_[index]->set_selected(index == button_index);
+    }
+}
+
+void SScriptLevelSelectView::update_category_selection() {
+    if (mission_category_button_.IsValid()) {
+        mission_category_button_->set_selected(category_ == ELevelCatalogCategory::Mission);
+    }
+    if (battle_viewer_category_button_.IsValid()) {
+        battle_viewer_category_button_->set_selected(category_ ==
+                                                     ELevelCatalogCategory::BattleViewer);
+    }
+}
+
+void SScriptLevelSelectView::focus_active_category() {
+    auto const& button{category_ == ELevelCatalogCategory::Mission
+                           ? mission_category_button_
+                           : battle_viewer_category_button_};
+    if (button.IsValid()) {
+        button->focus();
     }
 }
 

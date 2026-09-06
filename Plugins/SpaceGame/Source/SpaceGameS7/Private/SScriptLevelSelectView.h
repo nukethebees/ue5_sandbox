@@ -11,6 +11,7 @@ class SGameButton;
 
 namespace ml::s7 {
 DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
+DECLARE_DELEGATE_OneParam(FOnLevelCategorySelected, ELevelCatalogCategory);
 
 class SScriptLevelSelectView final : public SCompoundWidget {
   public:
@@ -18,9 +19,8 @@ class SScriptLevelSelectView final : public SCompoundWidget {
         : _Style(nullptr) {}
     SLATE_ARGUMENT(ml::ioj::FGameUiStyle const*, Style)
     SLATE_EVENT(FOnLevelRowSelected, OnLevelSelected)
-    SLATE_EVENT(FSimpleDelegate, OnRefresh)
+    SLATE_EVENT(FOnLevelCategorySelected, OnCategorySelected)
     SLATE_EVENT(FSimpleDelegate, OnLaunch)
-    SLATE_EVENT(FSimpleDelegate, OnStartPaused)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
@@ -33,21 +33,26 @@ class SScriptLevelSelectView final : public SCompoundWidget {
         -> FReply override;
     auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
   private:
-    auto build_header() const -> TSharedRef<SWidget>;
+    auto build_header() -> TSharedRef<SWidget>;
     auto build_catalog() -> TSharedRef<SWidget>;
     auto build_details() -> TSharedRef<SWidget>;
-    auto build_footer() -> TSharedRef<SWidget>;
+    auto catalog_caption() const -> FText;
+    auto catalog_title() const -> FText;
+    auto directive_title() const -> FText;
+    auto launch_text() const -> FText;
+    auto handle_category_selected(ELevelCatalogCategory category) -> FReply;
     auto handle_level_selected(int32 button_index) -> FReply;
     auto handle_action(FSimpleDelegate delegate) -> FReply;
     void rebuild_catalog(FLevelSelectViewState const& state);
     void update_selection(int32 button_index);
+    void update_category_selection();
+    void focus_active_category();
     void focus_level(int32 button_index);
 
     ml::ioj::FGameUiStyle const* style_{};
     FOnLevelRowSelected on_level_selected_{};
-    FSimpleDelegate on_refresh_{};
+    FOnLevelCategorySelected on_category_selected_{};
     FSimpleDelegate on_launch_{};
-    FSimpleDelegate on_start_paused_{};
 
     TSharedPtr<SVerticalBox> catalog_rows_{};
     TSharedPtr<STextBlock> title_{};
@@ -56,9 +61,12 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<STextBlock> filename_{};
     TSharedPtr<STextBlock> details_{};
     TSharedPtr<STextBlock> script_{};
+    TSharedPtr<STextBlock> launch_mode_status_{};
     TSharedPtr<ml::ioj::SGameButton> launch_button_{};
-    TSharedPtr<ml::ioj::SGameButton> start_paused_button_{};
+    TSharedPtr<ml::ioj::SGameButton> mission_category_button_{};
+    TSharedPtr<ml::ioj::SGameButton> battle_viewer_category_button_{};
     TArray<TSharedPtr<ml::ioj::SGameButton>> level_buttons_{};
+    ELevelCatalogCategory category_{ELevelCatalogCategory::Mission};
     int32 selected_button_index_{INDEX_NONE};
 };
 } // namespace ml::s7

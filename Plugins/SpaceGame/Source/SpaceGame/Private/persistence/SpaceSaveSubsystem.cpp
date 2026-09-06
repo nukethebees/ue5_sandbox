@@ -120,6 +120,10 @@ auto USpaceSaveSubsystem::unlock_all_missions() const -> bool {
     return profile_manager_.unlock_all_missions();
 }
 
+auto USpaceSaveSubsystem::start_levels_paused() const -> bool {
+    return profile_manager_.start_levels_paused();
+}
+
 bool USpaceSaveSubsystem::load_profile_records(FString const& profile_id,
                                                TArray<FScoreRecord>& records) const {
     return profile_manager_.load_profile_records(profile_id, records);
@@ -147,6 +151,17 @@ bool USpaceSaveSubsystem::set_unlock_all_missions(bool const enabled) {
         UE_LOG(LogSandboxSubsystem,
                Error,
                TEXT("USpaceSaveSubsystem::set_unlock_all_missions: Failed to save profile debug "
+                    "settings."));
+        return false;
+    }
+    return true;
+}
+
+bool USpaceSaveSubsystem::set_start_levels_paused(bool const enabled) {
+    if (!profile_manager_.set_start_levels_paused(enabled)) {
+        UE_LOG(LogSandboxSubsystem,
+               Error,
+               TEXT("USpaceSaveSubsystem::set_start_levels_paused: Failed to save profile debug "
                     "settings."));
         return false;
     }

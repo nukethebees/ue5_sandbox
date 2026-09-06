@@ -18,6 +18,7 @@ constexpr TCHAR level_prelude[]{LR"(
 (define (id value) (list 'id value))
 (define (title value) (list 'title value))
 (define (description value) (list 'description value))
+(define (category value) (list 'category value))
 (define (unlock . criteria) (cons 'unlock criteria))
 (define (level-completed level-id) (list 'level-completed level-id))
 (define (teams . values) (cons 'teams values))
@@ -71,6 +72,7 @@ class FDefinitionDecoder final {
         bool has_id{false};
         bool has_title{false};
         bool has_description{false};
+        bool has_category{false};
         bool has_unlock{false};
         bool has_teams{false};
         bool has_player{false};
@@ -118,6 +120,26 @@ class FDefinitionDecoder final {
                 }
                 has_description = true;
                 read_text_clause(clause, path, metadata.description);
+            } else if (tag_name == TEXT("category")) {
+                if (has_category) {
+                    add_error(path, TEXT("Duplicate category clause"));
+                    continue;
+                }
+                has_category = true;
+                FName category;
+                if (!expect_length(clause, 2, path) ||
+                    !read_symbol(list_value(clause, 1), path + TEXT(".value"), category)) {
+                    continue;
+                }
+                if (category == FName{TEXT("mission")}) {
+                    metadata.catalog_category = ELevelCatalogCategory::Mission;
+                } else if (category == FName{TEXT("battle-viewer")}) {
+                    metadata.catalog_category = ELevelCatalogCategory::BattleViewer;
+                } else {
+                    add_error(path + TEXT(".value"),
+                              FString::Printf(TEXT("Unsupported level category '%s'"),
+                                              *category.ToString()));
+                }
             } else if (tag_name == TEXT("unlock")) {
                 if (has_unlock) {
                     add_error(path, TEXT("Duplicate unlock clause"));

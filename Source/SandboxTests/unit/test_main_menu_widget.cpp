@@ -185,6 +185,9 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
 
         TestRunner->TestTrue(TEXT("Select Mission is active initially"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
+        TestRunner->TestTrue(TEXT("Mission browser defaults to Missions"),
+                             level_select_widget->get_active_category() ==
+                                 ml::ELevelCatalogCategory::Mission);
         TestRunner->TestTrue(TEXT("The command deck is the CommonUI focus bridge"),
                              widget->GetDesiredFocusTarget() == widget);
         TestRunner->TestEqual(TEXT("Preferred stable level id restores selection"),
