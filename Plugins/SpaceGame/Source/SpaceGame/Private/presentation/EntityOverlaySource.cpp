@@ -13,11 +13,24 @@ struct FProjectedPosition {
 
 struct FSoftTargetCandidate {
     FRegistryEntityHandle handle{};
-    float score_squared{std::numeric_limits<float>::max()};
+    float centre_distance_pixels{std::numeric_limits<float>::max()};
+    float centre_score_pixels{std::numeric_limits<float>::max()};
+    float surface_distance{std::numeric_limits<float>::max()};
     float range_progress{0.0f};
     float indicator_radius_pixels{0.0f};
     bool in_range{false};
 };
+
+auto is_better_candidate(FSoftTargetCandidate const& candidate,
+                         FSoftTargetCandidate const& incumbent) -> bool {
+    if (candidate.centre_score_pixels != incumbent.centre_score_pixels) {
+        return candidate.centre_score_pixels < incumbent.centre_score_pixels;
+    }
+    if (candidate.surface_distance != incumbent.surface_distance) {
+        return candidate.surface_distance < incumbent.surface_distance;
+    }
+    return candidate.handle.index < incumbent.handle.index;
+}
 
 auto project_to_overlay(FEntityOverlayView const& view,
                         FVector3f const world_position,
@@ -114,6 +127,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
 
     auto const acquisition_radius{FMath::Max(settings.acquisition_radius_pixels, 1.0f)};
     auto const retention_radius{FMath::Max(settings.retention_radius_pixels, acquisition_radius)};
+    auto const centre_tie_radius{FMath::Max(settings.centre_tie_radius_pixels, 0.0f)};
     auto const switch_ratio{FMath::Clamp(settings.switch_improvement_ratio, 0.0f, 1.0f)};
     auto const minimum_indicator_radius{FMath::Max(settings.minimum_indicator_radius_pixels, 1.0f)};
     auto const maximum_indicator_radius{
@@ -180,8 +194,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
 
         auto const centre_distance{
             FVector2f::Distance(projected_entity.pixels, projected_aim.pixels)};
-        auto const bounds_radius{FMath::Min(projected_radius, maximum_indicator_radius)};
-        auto const score{FMath::Max(centre_distance - bounds_radius, 0.0f)};
+        auto const centre_score{FMath::Max(centre_distance - centre_tie_radius, 0.0f)};
         auto const surface_distance{
             FMath::Max(FVector3f::Distance(context.aim_origin, position) - world_radius, 0.0f)};
         auto const in_range{effective_range > 0.0f && surface_distance <= effective_range};
@@ -195,11 +208,13 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
                                                         (approach_distance - effective_range),
                                                     0.0f,
                                                     1.0f)};
-            range_progress = linear_progress * linear_progress;
+            range_progress = linear_progress;
         }
 
         FSoftTargetCandidate const candidate{.handle = {index, generations[index]},
-                                             .score_squared = score * score,
+                                             .centre_distance_pixels = centre_distance,
+                                             .centre_score_pixels = centre_score,
+                                             .surface_distance = surface_distance,
                                              .range_progress = range_progress,
                                              .indicator_radius_pixels =
                                                  FMath::Clamp(projected_radius + bounds_padding,
@@ -207,14 +222,12 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
                                                               maximum_indicator_radius),
                                              .in_range = in_range};
 
-        if (candidate.handle == current_target && score <= retention_radius) {
+        if (candidate.handle == current_target && centre_distance <= retention_radius) {
             current_candidate = candidate;
             has_current_candidate = true;
         }
-        if (score <= acquisition_radius &&
-            (!has_best_candidate || candidate.score_squared < best_candidate.score_squared ||
-             (candidate.score_squared == best_candidate.score_squared &&
-              candidate.handle.index < best_candidate.handle.index))) {
+        if (centre_distance <= acquisition_radius &&
+            (!has_best_candidate || is_better_candidate(candidate, best_candidate))) {
             best_candidate = candidate;
             has_best_candidate = true;
         }
@@ -225,10 +238,16 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
     if (has_current_candidate) {
         selected_candidate = current_candidate;
         has_selected_candidate = true;
-        auto const required_score{current_candidate.score_squared * switch_ratio * switch_ratio};
-        if (has_best_candidate && best_candidate.handle != current_candidate.handle &&
-            best_candidate.score_squared < required_score) {
-            selected_candidate = best_candidate;
+        if (has_best_candidate && best_candidate.handle != current_candidate.handle) {
+            auto const screen_improvement{best_candidate.centre_score_pixels <
+                                          current_candidate.centre_score_pixels * switch_ratio};
+            auto const tied_centres{best_candidate.centre_score_pixels ==
+                                    current_candidate.centre_score_pixels};
+            auto const depth_improvement{best_candidate.surface_distance <
+                                         current_candidate.surface_distance * switch_ratio};
+            if (screen_improvement || (tied_centres && depth_improvement)) {
+                selected_candidate = best_candidate;
+            }
         }
     } else if (has_best_candidate) {
         selected_candidate = best_candidate;

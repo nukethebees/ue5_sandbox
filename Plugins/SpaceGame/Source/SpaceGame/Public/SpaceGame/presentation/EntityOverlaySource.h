@@ -9,6 +9,7 @@
 struct SPACEGAME_API FSoftTargetSelectionSettings {
     float acquisition_radius_pixels{72.0f};
     float retention_radius_pixels{96.0f};
+    float centre_tie_radius_pixels{4.0f};
     float switch_improvement_ratio{0.75f};
     float approach_range_multiplier{4.0f};
     float minimum_indicator_radius_pixels{28.0f};

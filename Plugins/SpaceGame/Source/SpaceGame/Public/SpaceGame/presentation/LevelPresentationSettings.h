@@ -49,6 +49,9 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
     float soft_target_retention_radius_pixels{96.0f};
 
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "0.0"))
+    float soft_target_centre_tie_radius_pixels{4.0f};
+
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
@@ -66,26 +69,23 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "0.0"))
     float soft_target_bounds_padding_pixels{10.0f};
 
-    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "0.0"))
-    float soft_target_outer_bracket_gap_pixels{42.0f};
-
-    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "0.0"))
-    float soft_target_inner_bracket_gap_pixels{4.0f};
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target", meta = (ClampMin = "1.0"))
+    float soft_target_bracket_start_radius_multiplier{2.5f};
 
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float soft_target_neutral_opacity{0.34f};
+    float soft_target_neutral_opacity{0.12f};
 
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float soft_target_approaching_opacity{0.52f};
+    float soft_target_approaching_opacity{0.38f};
 
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float soft_target_in_range_opacity{0.94f};
+    float soft_target_in_range_opacity{0.96f};
 
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",

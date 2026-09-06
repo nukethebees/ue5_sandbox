@@ -38,7 +38,7 @@ class FEntityOverlayVS final : public FGlobalShader {
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, ScreenEdgePaddingPixels)
     SHADER_PARAMETER(float, SoftTargetRadiusPixels)
-    SHADER_PARAMETER(float, SoftTargetOuterBracketGapPixels)
+    SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
     SHADER_PARAMETER(float, SoftTargetRangeProgress)
     SHADER_PARAMETER(float, SoftTargetPulse)
     SHADER_PARAMETER_RDG_BUFFER_SRV(StructuredBuffer<FEntityOverlayInstance>, Instances)
@@ -60,8 +60,7 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_PARAMETER(float, MaximumInsetHeightRatio)
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, TimeSeconds)
-    SHADER_PARAMETER(float, SoftTargetOuterBracketGapPixels)
-    SHADER_PARAMETER(float, SoftTargetInnerBracketGapPixels)
+    SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
     SHADER_PARAMETER(float, SoftTargetNeutralOpacity)
     SHADER_PARAMETER(float, SoftTargetApproachingOpacity)
     SHADER_PARAMETER(float, SoftTargetInRangeOpacity)
@@ -139,8 +138,8 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     parameters->VS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
     parameters->VS.ScreenEdgePaddingPixels = FMath::Max(style.screen_edge_padding_pixels, 0.0f);
     parameters->VS.SoftTargetRadiusPixels = FMath::Max(frame.soft_target_radius_pixels, 1.0f);
-    parameters->VS.SoftTargetOuterBracketGapPixels =
-        FMath::Max(style.soft_target_outer_bracket_gap_pixels, 0.0f);
+    parameters->VS.SoftTargetBracketStartRadiusMultiplier =
+        FMath::Max(style.soft_target_bracket_start_radius_multiplier, 1.0f);
     parameters->VS.SoftTargetRangeProgress =
         FMath::Clamp(frame.soft_target_range_progress, 0.0f, 1.0f);
     parameters->VS.SoftTargetPulse = FMath::Clamp(frame.soft_target_pulse, 0.0f, 1.0f);
@@ -149,10 +148,8 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     parameters->PS.MaximumInsetHeightRatio = FMath::Max(style.maximum_inset_height_ratio, 0.0f);
     parameters->PS.ObjectiveFramePixels = FMath::Max(style.objective_frame_pixels, 0.0f);
     parameters->PS.TimeSeconds = FMath::Fmod(static_cast<float>(FPlatformTime::Seconds()), 1024.0f);
-    parameters->PS.SoftTargetOuterBracketGapPixels =
-        FMath::Max(style.soft_target_outer_bracket_gap_pixels, 0.0f);
-    parameters->PS.SoftTargetInnerBracketGapPixels =
-        FMath::Max(style.soft_target_inner_bracket_gap_pixels, 0.0f);
+    parameters->PS.SoftTargetBracketStartRadiusMultiplier =
+        FMath::Max(style.soft_target_bracket_start_radius_multiplier, 1.0f);
     parameters->PS.SoftTargetNeutralOpacity =
         FMath::Clamp(style.soft_target_neutral_opacity, 0.0f, 1.0f);
     parameters->PS.SoftTargetApproachingOpacity =

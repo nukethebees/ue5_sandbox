@@ -141,7 +141,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         };
 
     return write_soft_target_frame(0.0f, 0.0f, TEXT("soft_target_out_of_range.png")) &&
-           write_soft_target_frame(0.64f, 0.0f, TEXT("soft_target_approaching.png")) &&
+           write_soft_target_frame(0.5f, 0.0f, TEXT("soft_target_approaching.png")) &&
            write_soft_target_frame(1.0f, 1.0f, TEXT("soft_target_in_range.png"));
 }
 } // namespace

@@ -198,6 +198,54 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
                               cleared.handle.is_valid());
     }
 
+    TEST_METHOD(ProjectedSizeDoesNotLetARearTargetDominate)
+    {
+        ml::entity_registry::EntityData entities;
+        add_entity(entities,
+                   {2000.0f, 80.0f, 0.0f},
+                   20,
+                   ETestEntityType::CapitalShip,
+                   800.0f,
+                   true,
+                   ETestTeam::Red);
+        add_entity(entities,
+                   {1000.0f, 20.0f, 0.0f},
+                   20,
+                   ETestEntityType::Turret,
+                   5.0f,
+                   true,
+                   ETestTeam::Blue);
+
+        auto const selected{select_target(entities)};
+        TestRunner->TestEqual(TEXT("Better-centred front target wins"), selected.handle.index, 1);
+    }
+
+    TEST_METHOD(NearestSurfaceResolvesCentredTargetsAndHysteresis)
+    {
+        ml::entity_registry::EntityData entities;
+        add_entity(entities,
+                   {2000.0f, 0.0f, 0.0f},
+                   20,
+                   ETestEntityType::CapitalShip,
+                   100.0f,
+                   true,
+                   ETestTeam::Red);
+        add_entity(entities,
+                   {1000.0f, 0.0f, 0.0f},
+                   20,
+                   ETestEntityType::Turret,
+                   5.0f,
+                   true,
+                   ETestTeam::Blue);
+
+        auto const selected{select_target(entities)};
+        TestRunner->TestEqual(TEXT("Nearest tied centre wins"), selected.handle.index, 1);
+
+        auto const switched{select_target(entities, {0, 0})};
+        TestRunner->TestEqual(
+            TEXT("Materially nearer tied target replaces rear target"), switched.handle.index, 1);
+    }
+
     TEST_METHOD(ShapesProgressAndUsesTargetSurfaceForRange)
     {
         ml::entity_registry::EntityData entities;
@@ -211,7 +259,7 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
 
         auto approaching{select_target(entities)};
         TestRunner->TestEqual(
-            TEXT("Mid-approach progress is squared"), approaching.range_progress, 0.25f);
+            TEXT("Mid-approach progress is linear"), approaching.range_progress, 0.5f);
         TestRunner->TestFalse(TEXT("Mid-approach target is out of range"), approaching.in_range);
 
         entities.locations.xs[0] = 1100.0f;

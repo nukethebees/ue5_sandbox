@@ -61,11 +61,10 @@ struct SANDBOXUI_API FEntityOverlayStyle {
     float objective_bar_height_scale{1.4f};
     float objective_frame_pixels{3.0f};
     float screen_edge_padding_pixels{12.0f};
-    float soft_target_outer_bracket_gap_pixels{42.0f};
-    float soft_target_inner_bracket_gap_pixels{4.0f};
-    float soft_target_neutral_opacity{0.34f};
-    float soft_target_approaching_opacity{0.52f};
-    float soft_target_in_range_opacity{0.94f};
+    float soft_target_bracket_start_radius_multiplier{2.5f};
+    float soft_target_neutral_opacity{0.12f};
+    float soft_target_approaching_opacity{0.38f};
+    float soft_target_in_range_opacity{0.96f};
     float soft_target_glow_opacity{0.045f};
     float soft_target_pulse_opacity_boost{0.08f};
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};

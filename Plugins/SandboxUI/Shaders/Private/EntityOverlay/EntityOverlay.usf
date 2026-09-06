@@ -24,8 +24,7 @@ float MaximumInsetHeightRatio;
 float ObjectiveFramePixels;
 float ScreenEdgePaddingPixels;
 float SoftTargetRadiusPixels;
-float SoftTargetOuterBracketGapPixels;
-float SoftTargetInnerBracketGapPixels;
+float SoftTargetBracketStartRadiusMultiplier;
 float SoftTargetRangeProgress;
 float SoftTargetPulse;
 float SoftTargetNeutralOpacity;
@@ -201,7 +200,7 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     float2 const soft_target_center = -ScreenOffsetPixels + float2(0.0, 0.5 * normal_bar_size.y);
     if (is_soft_target) {
         float const soft_target_extent =
-            SoftTargetRadiusPixels + SoftTargetOuterBracketGapPixels + 18.0;
+            SoftTargetRadiusPixels * SoftTargetBracketStartRadiusMultiplier + 18.0;
         draw_min = min(draw_min, soft_target_center - soft_target_extent);
         draw_max = max(draw_max, soft_target_center + soft_target_extent);
     }
@@ -604,9 +603,9 @@ bool soft_target_pixel(EntityOverlayVertexOutput input,
     float const range_progress = saturate(input.soft_target_range_progress);
     bool const in_range = range_progress >= 0.9999;
     float const radius = max(input.soft_target_radius_pixels, 1.0);
-    float const gap =
-        lerp(SoftTargetOuterBracketGapPixels, SoftTargetInnerBracketGapPixels, range_progress);
-    float const bracket_corner = radius + gap;
+    float const start_anchor_radius = radius * max(SoftTargetBracketStartRadiusMultiplier, 1.0);
+    float const anchor_radius = lerp(start_anchor_radius, radius, range_progress);
+    float const bracket_anchor = anchor_radius * 0.70710678;
     float const bracket_length = clamp(radius * 0.24, 8.0, 14.0);
     float const thickness = in_range ? 1.5 : lerp(0.9, 1.2, range_progress);
 
@@ -614,13 +613,13 @@ bool soft_target_pixel(EntityOverlayVertexOutput input,
     float2 const quadrant_position = abs(target_position);
     float const horizontal_bracket_distance =
         distance_to_segment(quadrant_position,
-                            float2(bracket_corner - bracket_length, bracket_corner),
-                            float2(bracket_corner, bracket_corner)) -
+                            float2(bracket_anchor, bracket_anchor),
+                            float2(bracket_anchor + bracket_length, bracket_anchor)) -
         thickness * 0.5;
     float const vertical_bracket_distance =
         distance_to_segment(quadrant_position,
-                            float2(bracket_corner, bracket_corner - bracket_length),
-                            float2(bracket_corner, bracket_corner)) -
+                            float2(bracket_anchor, bracket_anchor),
+                            float2(bracket_anchor, bracket_anchor + bracket_length)) -
         thickness * 0.5;
     float const shape_distance =
         min(ring_distance, min(horizontal_bracket_distance, vertical_bracket_distance));

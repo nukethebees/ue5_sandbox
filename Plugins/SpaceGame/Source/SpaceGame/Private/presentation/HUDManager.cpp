@@ -84,10 +84,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
             FMath::Clamp(entity_overlay_settings.objective_bar_height_scale, 1.0f, 2.0f),
         .objective_frame_pixels = entity_overlay_settings.objective_frame_pixels,
         .screen_edge_padding_pixels = entity_overlay_settings.screen_edge_padding_pixels,
-        .soft_target_outer_bracket_gap_pixels =
-            entity_overlay_settings.soft_target_outer_bracket_gap_pixels,
-        .soft_target_inner_bracket_gap_pixels =
-            entity_overlay_settings.soft_target_inner_bracket_gap_pixels,
+        .soft_target_bracket_start_radius_multiplier =
+            entity_overlay_settings.soft_target_bracket_start_radius_multiplier,
         .soft_target_neutral_opacity = entity_overlay_settings.soft_target_neutral_opacity,
         .soft_target_approaching_opacity = entity_overlay_settings.soft_target_approaching_opacity,
         .soft_target_in_range_opacity = entity_overlay_settings.soft_target_in_range_opacity,
@@ -112,6 +110,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     soft_target_selection_settings_ = {
         .acquisition_radius_pixels = entity_overlay_settings.soft_target_acquisition_radius_pixels,
         .retention_radius_pixels = entity_overlay_settings.soft_target_retention_radius_pixels,
+        .centre_tie_radius_pixels = entity_overlay_settings.soft_target_centre_tie_radius_pixels,
         .switch_improvement_ratio = entity_overlay_settings.soft_target_switch_improvement_ratio,
         .approach_range_multiplier = entity_overlay_settings.soft_target_approach_range_multiplier,
         .minimum_indicator_radius_pixels =
