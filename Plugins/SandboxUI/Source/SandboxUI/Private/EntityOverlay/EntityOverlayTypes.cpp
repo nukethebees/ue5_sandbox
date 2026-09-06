@@ -16,10 +16,12 @@ void FEntityOverlayCollector::begin(FVector3f const origin,
 
 auto FEntityOverlayCollector::try_add(FVector3f const position,
                                       float normalized_health,
-                                      float world_radius) -> bool {
+                                      float world_radius,
+                                      EEntityOverlayObjectiveRole const objective_role,
+                                      bool const bypass_range) -> bool {
     check(output_instances_);
 
-    if (FVector3f::DistSquared(origin_, position) > maximum_range_squared_) {
+    if (!bypass_range && FVector3f::DistSquared(origin_, position) > maximum_range_squared_) {
         return false;
     }
 
@@ -33,7 +35,8 @@ auto FEntityOverlayCollector::try_add(FVector3f const position,
 
     output_instances_->Add({.world_position = position,
                             .health = FMath::Clamp(normalized_health, 0.0f, 1.0f),
-                            .world_radius = FMath::Max(world_radius, 0.0f)});
+                            .world_radius = FMath::Max(world_radius, 0.0f),
+                            .objective_role = objective_role});
     return true;
 }
 

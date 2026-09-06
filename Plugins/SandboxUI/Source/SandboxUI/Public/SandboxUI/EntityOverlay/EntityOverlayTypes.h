@@ -12,18 +12,26 @@
 #include <cstddef>
 #include <type_traits>
 
+enum class EEntityOverlayObjectiveRole : uint32 {
+    None,
+    Defend,
+    Destroy,
+};
+
 struct SANDBOXUI_API FEntityOverlayInstance {
     FVector3f world_position{FVector3f::ZeroVector};
     float health{0.0f};
     float world_radius{0.0f};
+    EEntityOverlayObjectiveRole objective_role{EEntityOverlayObjectiveRole::None};
 };
 
-static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 5);
+static_assert(sizeof(FEntityOverlayInstance) == sizeof(float) * 6);
 static_assert(std::is_standard_layout_v<FEntityOverlayInstance>);
 static_assert(std::is_trivially_copyable_v<FEntityOverlayInstance>);
 static_assert(offsetof(FEntityOverlayInstance, world_position) == 0);
 static_assert(offsetof(FEntityOverlayInstance, health) == sizeof(float) * 3);
 static_assert(offsetof(FEntityOverlayInstance, world_radius) == sizeof(float) * 4);
+static_assert(offsetof(FEntityOverlayInstance, objective_role) == sizeof(float) * 5);
 
 struct SANDBOXUI_API FEntityOverlaySourceView {
     TConstArrayView<FVector3f> positions;
@@ -44,8 +52,12 @@ struct SANDBOXUI_API FEntityOverlayStyle {
     float maximum_bar_scale{2.0f};
     float inset_pixels{1.0f};
     float maximum_inset_height_ratio{0.4f};
+    float objective_frame_pixels{2.0f};
+    float screen_edge_padding_pixels{12.0f};
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
+    FLinearColor defend_objective_color{0.85f, 0.60f, 0.08f, 1.0f};
+    FLinearColor destroy_objective_color{0.75f, 0.15f, 0.08f, 1.0f};
 };
 
 struct SANDBOXUI_API FEntityOverlayView {
@@ -72,7 +84,11 @@ class FEntityOverlayCollector {
                              float maximum_range,
                              TArray<FEntityOverlayInstance>& output_instances);
     [[nodiscard]] SANDBOXUI_API auto
-        try_add(FVector3f position, float normalized_health, float world_radius) -> bool;
+        try_add(FVector3f position,
+                float normalized_health,
+                float world_radius,
+                EEntityOverlayObjectiveRole objective_role = EEntityOverlayObjectiveRole::None,
+                bool bypass_range = false) -> bool;
     [[nodiscard]] SANDBOXUI_API auto append(FEntityOverlaySourceView source) -> int32;
 
     [[nodiscard]] auto invalid_health_count() const noexcept -> int32 {

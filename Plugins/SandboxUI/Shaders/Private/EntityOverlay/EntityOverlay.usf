@@ -4,6 +4,7 @@ struct EntityOverlayInstance {
     float3 world_position;
     float health;
     float world_radius;
+    uint objective_role;
 };
 
 StructuredBuffer<EntityOverlayInstance> Instances;
@@ -19,8 +20,20 @@ float MinimumBarScale;
 float MaximumBarScale;
 float InsetPixels;
 float MaximumInsetHeightRatio;
+float ObjectiveFramePixels;
+float ScreenEdgePaddingPixels;
 float4 BackgroundColor;
 float4 FillColor;
+float4 DefendObjectiveColor;
+float4 DestroyObjectiveColor;
+
+static uint const ObjectiveRoleNone = 0;
+static uint const ObjectiveRoleDefend = 1;
+static uint const EdgeNone = 0;
+static uint const EdgeLeft = 1;
+static uint const EdgeRight = 2;
+static uint const EdgeTop = 3;
+static uint const EdgeBottom = 4;
 
 float2 quad_corner(uint const vertex_id) {
     float2 corner = 0.0;
@@ -36,11 +49,14 @@ float4 pixel_to_clip(float2 const pixel_position, float const depth) {
 }
 
 struct EntityOverlayVertexOutput {
-    float4 position                        : SV_Position;
-    float2 local_uv                        : ENTITY_OVERLAY_UV;
-    nointerpolation float health           : ENTITY_OVERLAY_HEALTH;
-    nointerpolation float visible          : ENTITY_OVERLAY_VISIBLE;
-    nointerpolation float2 bar_size_pixels : ENTITY_OVERLAY_BAR_SIZE;
+    float4 position                         : SV_Position;
+    float2 local_uv                         : ENTITY_OVERLAY_UV;
+    nointerpolation float health            : ENTITY_OVERLAY_HEALTH;
+    nointerpolation float visible           : ENTITY_OVERLAY_VISIBLE;
+    nointerpolation float2 bar_size_pixels  : ENTITY_OVERLAY_BAR_SIZE;
+    nointerpolation float2 draw_size_pixels : ENTITY_OVERLAY_DRAW_SIZE;
+    nointerpolation uint objective_role     : ENTITY_OVERLAY_OBJECTIVE_ROLE;
+    nointerpolation uint edge               : ENTITY_OVERLAY_EDGE;
 };
 
 EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
@@ -49,7 +65,9 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     float4 const projected =
         mul(float4(instance.world_position - CameraOrigin, 1.0), ViewProjection);
     float2 const ndc = projected.xy / max(abs(projected.w), 0.000001);
-    bool const visible = projected.w > 0.000001 && all(ndc >= -1.0) && all(ndc <= 1.0);
+    bool const on_screen = projected.w > 0.000001 && all(ndc >= -1.0) && all(ndc <= 1.0);
+    bool const is_objective = instance.objective_role != ObjectiveRoleNone;
+    bool const visible = on_screen || is_objective;
 
     float2 const view_min = float2(ViewRect.xy);
     float2 const view_size = float2(ViewRect.zw - ViewRect.xy);
@@ -61,10 +79,40 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
         saturate((instance.world_radius - MinimumWorldRadius) / radius_range);
     float const bar_scale = lerp(MinimumBarScale, MaximumBarScale, radius_alpha);
     float2 const instance_bar_size = BarSizePixels * bar_scale;
-    float2 pixel_position =
-        projected_pixel + ScreenOffsetPixels + (corner - float2(0.5, 1.0)) * instance_bar_size;
+    bool const edge_marker = is_objective && !on_screen;
+    float const frame_pixels = is_objective ? max(ObjectiveFramePixels, 0.0) : 0.0;
+    float const cue_pixels = edge_marker ? instance_bar_size.y : 0.0;
+    float2 const draw_margin = float2(frame_pixels + cue_pixels, frame_pixels + cue_pixels);
+    float2 const draw_size = instance_bar_size + draw_margin * 2.0;
+    float2 marker_center =
+        projected_pixel + ScreenOffsetPixels + float2(0.0, -0.5 * instance_bar_size.y);
+    uint edge = EdgeNone;
+
+    if (edge_marker) {
+        float2 screen_direction = float2(ndc.x * view_size.x, -ndc.y * view_size.y);
+        if (dot(screen_direction, screen_direction) < 0.000001) {
+            screen_direction = float2(0.0, 1.0);
+        }
+
+        float2 const view_center = view_min + view_size * 0.5;
+        float2 const available =
+            max(view_size * 0.5 - draw_size * 0.5 - ScreenEdgePaddingPixels, float2(1.0, 1.0));
+        float2 const abs_direction = max(abs(screen_direction), float2(0.000001, 0.000001));
+        float const horizontal_scale = available.x / abs_direction.x;
+        float const vertical_scale = available.y / abs_direction.y;
+        float const edge_scale = min(horizontal_scale, vertical_scale);
+        marker_center = view_center + screen_direction * edge_scale;
+
+        if (horizontal_scale < vertical_scale) {
+            edge = screen_direction.x < 0.0 ? EdgeLeft : EdgeRight;
+        } else {
+            edge = screen_direction.y < 0.0 ? EdgeTop : EdgeBottom;
+        }
+    }
+
+    float2 pixel_position = marker_center + (corner - 0.5) * draw_size;
     if (!visible) {
-        pixel_position = float2(-instance_bar_size.x * 2.0, -instance_bar_size.y * 2.0);
+        pixel_position = float2(-draw_size.x * 2.0, -draw_size.y * 2.0);
     }
 
     EntityOverlayVertexOutput output;
@@ -74,18 +122,74 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     output.health = saturate(instance.health);
     output.visible = visible ? 1.0 : 0.0;
     output.bar_size_pixels = instance_bar_size;
+    output.draw_size_pixels = draw_size;
+    output.objective_role = instance.objective_role;
+    output.edge = edge;
     return output;
+}
+
+float4 objective_color(uint const role) {
+    return role == ObjectiveRoleDefend ? DefendObjectiveColor : DestroyObjectiveColor;
+}
+
+bool inside_edge_cue(float2 const local_position,
+                     float2 const bar_half_size,
+                     float const frame_pixels,
+                     uint const edge) {
+    if (edge == EdgeNone) {
+        return false;
+    }
+
+    float2 outward = float2(0.0, 0.0);
+    float extent = 0.0;
+    if (edge == EdgeLeft) {
+        outward = float2(-1.0, 0.0);
+        extent = bar_half_size.x;
+    } else if (edge == EdgeRight) {
+        outward = float2(1.0, 0.0);
+        extent = bar_half_size.x;
+    } else if (edge == EdgeTop) {
+        outward = float2(0.0, -1.0);
+        extent = bar_half_size.y;
+    } else {
+        outward = float2(0.0, 1.0);
+        extent = bar_half_size.y;
+    }
+
+    float2 const tangent = float2(-outward.y, outward.x);
+    float const along = dot(local_position, outward) - extent - frame_pixels;
+    float const cue_length = max(bar_half_size.y * 2.0, 1.0);
+    float const half_width = max(bar_half_size.y * 0.75, 1.0);
+    float const across = abs(dot(local_position, tangent));
+    return along >= 0.0 && along <= cue_length && across <= half_width * (1.0 - along / cue_length);
 }
 
 float4 entity_overlay_ps(EntityOverlayVertexOutput input)
     : SV_Target0 {
     clip(input.visible - 0.5);
 
+    float2 const local_position =
+        input.local_uv * input.draw_size_pixels - input.draw_size_pixels * 0.5;
+    float2 const bar_half_size = input.bar_size_pixels * 0.5;
+    bool const inside_bar = all(abs(local_position) <= bar_half_size);
+    bool const is_objective = input.objective_role != ObjectiveRoleNone;
+    float const frame_pixels = is_objective ? max(ObjectiveFramePixels, 0.0) : 0.0;
+    bool const inside_frame =
+        is_objective && all(abs(local_position) <= bar_half_size + frame_pixels) && !inside_bar;
+    float4 const role_color = objective_color(input.objective_role);
+    if (inside_frame || inside_edge_cue(local_position, bar_half_size, frame_pixels, input.edge)) {
+        return role_color;
+    }
+    if (!inside_bar) {
+        return float4(0.0, 0.0, 0.0, 0.0);
+    }
+
     float const inset_height_ratio = InsetPixels * 2.0 / max(input.bar_size_pixels.y, 1.0);
     float const effective_inset = inset_height_ratio >= MaximumInsetHeightRatio ? 0.0 : InsetPixels;
     float2 const inset_uv = effective_inset / max(input.bar_size_pixels, float2(1.0, 1.0));
-    bool const inside = all(input.local_uv >= inset_uv) && all(input.local_uv <= 1.0 - inset_uv);
-    bool const filled =
-        inside && input.local_uv.x <= lerp(inset_uv.x, 1.0 - inset_uv.x, input.health);
-    return filled ? FillColor : BackgroundColor;
+    float2 const bar_uv = local_position / input.bar_size_pixels + 0.5;
+    bool const inside = all(bar_uv >= inset_uv) && all(bar_uv <= 1.0 - inset_uv);
+    bool const filled = inside && bar_uv.x <= lerp(inset_uv.x, 1.0 - inset_uv.x, input.health);
+    float4 const fill_color = is_objective ? role_color : FillColor;
+    return filled ? fill_color : BackgroundColor;
 }
