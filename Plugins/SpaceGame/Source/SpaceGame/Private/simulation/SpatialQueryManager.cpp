@@ -66,27 +66,28 @@ auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& re
     auto& buffers{buffer_lease.get()};
     auto& traces{buffers.line_traces};
     auto& hits{buffers.trace_hits};
-    traces.set_num(count, EAllowShrinking::No);
     hits.set_num(count, EAllowShrinking::No);
 
-    for (int32 i{}; i < count; ++i) {
-        if constexpr (Mode == EQueryMode::TargetLineOfSight) {
-            traces.starts.set(i, request.scalar_start);
-        } else if constexpr (Mode == EQueryMode::ClosestHit) {
-            traces.starts.set(i, request.scalar_start);
+    auto const trace_view{[&] {
+        if constexpr (Mode == EQueryMode::TargetLineOfSight || Mode == EQueryMode::ClosestHit) {
+            traces.set_num(count, EAllowShrinking::No);
+            for (int32 i{}; i < count; ++i) {
+                if constexpr (Mode == EQueryMode::TargetLineOfSight) {
+                    traces.starts.set(i, request.scalar_start);
+                    traces.ends.set(i, ml::get_vector3f(request.end_locations, i));
+                } else {
+                    traces.starts.set(i, request.scalar_start);
+                    traces.ends.set(i, request.scalar_end);
+                }
+            }
+            return traces.get_const_view();
         } else {
-            traces.starts.set(i, ml::get_vector3f(request.start_locations, i));
+            return ml::FLineTracesConstView{request.start_locations, request.end_locations};
         }
-
-        if constexpr (Mode == EQueryMode::ClosestHit) {
-            traces.ends.set(i, request.scalar_end);
-        } else {
-            traces.ends.set(i, ml::get_vector3f(request.end_locations, i));
-        }
-    }
+    }()};
 
     manager.get_collision_system().get_uniform_grid().trace_aabbs(
-        traces.get_const_view(), hits.get_view(), request.ignored_entities);
+        trace_view, hits.get_view(), request.ignored_entities);
 
     if constexpr (Mode == EQueryMode::ClosestHit) {
         return {
@@ -230,6 +231,43 @@ void FSpatialQueryManager::have_clear_lines(
                                        .end_locations = end_locations,
                                        .ignored_entities = ignored_entities,
                                        .out_flags = clear_lines});
+}
+
+void FSpatialQueryManager::trace_closest_lines(
+    FVectors3f::ConstView const start_locations,
+    FVectors3f::ConstView const end_locations,
+    FTraceHitsView const out_hits,
+    TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::trace_closest_lines);
+
+    auto const count{start_locations.num()};
+    check(end_locations.num() == count);
+    check(out_hits.num() == count);
+    check(ignored_entities.IsEmpty() || ignored_entities.Num() == count);
+
+    collision.get_uniform_grid().trace_aabbs(
+        FLineTracesConstView{start_locations, end_locations}, out_hits, ignored_entities);
+}
+
+void FSpatialQueryManager::sweep_closest_aabbs(
+    FVectors3f::ConstView const start_locations,
+    FVectors3f::ConstView const end_locations,
+    FVector3f const moving_half_extent,
+    FTraceHitsView const out_hits,
+    TConstArrayView<FRegistryEntityHandle> const ignored_entities,
+    ioj::ETraceEntityFilter const entity_filter) const {
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FSpatialQueryManager::sweep_closest_aabbs);
+
+    auto const count{start_locations.num()};
+    check(end_locations.num() == count);
+    check(out_hits.num() == count);
+    check(ignored_entities.IsEmpty() || ignored_entities.Num() == count);
+
+    collision.get_uniform_grid().sweep_aabbs(FLineTracesConstView{start_locations, end_locations},
+                                             moving_half_extent,
+                                             out_hits,
+                                             ignored_entities,
+                                             entity_filter);
 }
 
 auto FSpatialQueryManager::has_clear_line(FVector3f const start_location,
@@ -383,6 +421,12 @@ auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team,
     }
 
     return {};
+}
+
+void FSpatialQueryManager::are_spheres_in_bounds(FVectors3f::ConstView const centres,
+                                                 float const radius,
+                                                 TArrayView<uint8> const out_results) const {
+    collision.get_uniform_grid().are_spheres_in_bounds(centres, radius, out_results);
 }
 
 void FSpatialQueryManager::update() {

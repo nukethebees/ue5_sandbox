@@ -43,12 +43,14 @@ Unreal Engine 5.8 project.
 * always use braces
 * prefer auto where the type is obvious
 * prefer simple C++ over template metaprogramming
+* When returning `std::expected`, use `std::in_place` and `std::unexpect` when direct construction avoids copying or moving non-trivial value or error types.
 * Prefer SOA layouts for related, performance-sensitive collections.
 * save loop bounds as const local variables
 * log warnings/errors when null checks fail instead of returning silently
 * Group functions by category
 * Use blank lines to separate logical sections of C++ code for visual readability.
 * When UObject types live in a dedicated plugin and C++ namespace, prefer concise names; the plugin and namespace provide the necessary context and collision isolation.
+* Avoid constants in anonymous namespaces in `.cpp` files because Unreal unity builds can merge translation units and create name collisions. Prefer `inline static constexpr` members on the owning type or `inline constexpr` constants in a suitably specific named namespace.
 
 # Formatting
 

@@ -28,6 +28,16 @@ void FLevelSpawnManager::set_entity_handle(int32 const entity_index,
     entity_handles_[entity_index] = handle;
 }
 
+void FLevelSpawnManager::spawn_initial(FLevelCapitalSpawnEventsConstView const capital_events,
+                                       FLevelTurretSpawnEventsConstView const turret_events) {
+    if (capital_events.num() > 0) {
+        spawn_capitals(capital_events);
+    }
+    if (turret_events.num() > 0) {
+        spawn_turrets(turret_events);
+    }
+}
+
 void FLevelSpawnManager::spawn(FLevelSpawnGroupsConstView const groups) {
     auto const group_count{groups.num()};
     for (int32 index{}; index < group_count; ++index) {

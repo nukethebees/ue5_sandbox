@@ -4,10 +4,8 @@
 #include "LevelEntityTableOperations.h"
 #include "LevelTeamResolution.h"
 
-#include <SpaceGame/levels/CompiledLevelEvents.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
-
 #include <SandboxCore/soa_rotator_utils.h>
+#include <SpaceGame/levels/CompiledLevelEvents.h>
 
 namespace ml {
 namespace {
@@ -22,26 +20,68 @@ struct FLevelMissionTickValues {
     TArray<int32> kill_target_increases{};
 };
 
-void append_tick_mission_groups(FLevelEventSchedule& schedule, FLevelMissionTickValues& values) {
-    schedule.add_mission_group(ELevelMissionEventType::MustSurvive, values.must_survive);
-    schedule.add_mission_group(ELevelMissionEventType::RequiredKill, values.required_kills);
-    schedule.add_mission_group(ELevelMissionEventType::IncreaseKillTarget,
-                               values.kill_target_increases);
+auto append_tick_mission_groups(FLevelEventSchedule& schedule,
+                                FLevelMissionTickValues& values,
+                                FString& error) -> bool {
+    auto const append{[&](ELevelMissionEventType const type,
+                          TConstArrayView<int32> const event_values,
+                          TCHAR const* const name) {
+        if (schedule.add_mission_group(type, event_values)) {
+            return true;
+        }
+
+        error = FString::Printf(
+            TEXT("Level event compilation at tick %llu: %s event count %d exceeds the "
+                 "per-tick group limit of %d"),
+            schedule.execution_ticks.Last(),
+            name,
+            event_values.Num(),
+            static_cast<int32>(TNumericLimits<FLevelEventCount>::Max()));
+        return false;
+    }};
+    if (!append(ELevelMissionEventType::MustSurvive, values.must_survive, TEXT("must-survive")) ||
+        !append(
+            ELevelMissionEventType::RequiredKill, values.required_kills, TEXT("required-kill")) ||
+        !append(ELevelMissionEventType::IncreaseKillTarget,
+                values.kill_target_increases,
+                TEXT("kill-target increase"))) {
+        return false;
+    }
+
     values.must_survive.Reset();
     values.required_kills.Reset();
     values.kill_target_increases.Reset();
+    return true;
 }
 
-void append_tick_spawn_groups(FLevelEventSchedule& schedule,
+auto append_tick_spawn_groups(FLevelEventSchedule& schedule,
                               int32& capital_offset,
-                              int32& turret_offset) {
+                              int32& turret_offset,
+                              FString& error) -> bool {
     auto const capital_end{schedule.capital_spawns.num()};
     auto const turret_end{schedule.turret_spawns.num()};
-    schedule.add_spawn_group(
-        ETestEntityType::CapitalShip, capital_offset, capital_end - capital_offset);
-    schedule.add_spawn_group(ETestEntityType::Turret, turret_offset, turret_end - turret_offset);
+    auto const append{[&](ETestEntityType const type, int32 const offset, int32 const count) {
+        if (schedule.add_spawn_group(type, offset, count)) {
+            return true;
+        }
+
+        error = FString::Printf(
+            TEXT("Level event compilation at tick %llu: %s spawn count %d exceeds the "
+                 "per-tick group limit of %d"),
+            schedule.execution_ticks.Last(),
+            LexToString(type),
+            count,
+            static_cast<int32>(TNumericLimits<FLevelEventCount>::Max()));
+        return false;
+    }};
+    if (!append(ETestEntityType::CapitalShip, capital_offset, capital_end - capital_offset) ||
+        !append(ETestEntityType::Turret, turret_offset, turret_end - turret_offset)) {
+        return false;
+    }
+
     capital_offset = capital_end;
     turret_offset = turret_end;
+    return true;
 }
 
 auto find_entity_index(FLevelDefinition const& definition, FLevelEntityId const id) -> int32 {
@@ -60,49 +100,58 @@ void append_indices(TArray<int32>& output,
 }
 }
 
-auto to_level_event_count(int32 const count) -> FLevelEventCount {
+auto try_to_level_event_count(int32 const count, FLevelEventCount& result) -> bool {
     if (count < 0 || count > TNumericLimits<FLevelEventCount>::Max()) {
-        UE_LOG(LogSandbox,
-               Fatal,
-               TEXT("Level event compilation: count %d exceeds the supported range "
-                    "0..%d. Increase FLevelEventCount to support this schedule."),
-               count,
-               static_cast<int32>(TNumericLimits<FLevelEventCount>::Max()));
+        return false;
     }
-    return static_cast<FLevelEventCount>(count);
+    result = static_cast<FLevelEventCount>(count);
+    return true;
 }
 
-void FLevelEventSchedule::add_spawn_group(ETestEntityType const type,
+auto FLevelEventSchedule::add_spawn_group(ETestEntityType const type,
                                           int32 const offset,
-                                          int32 const count) {
+                                          int32 const count) -> bool {
     if (count == 0) {
-        return;
+        return true;
     }
     check(!event_group_counts.IsEmpty());
     check(execution_ticks.Num() == event_group_counts.Num());
 
-    auto const payload_count{to_level_event_count(count)};
+    FLevelEventCount payload_count;
     auto& tick_counts{event_group_counts.Last()};
-    tick_counts.spawn_groups = to_level_event_count(tick_counts.spawn_groups + 1);
+    FLevelEventCount group_count;
+    if (!try_to_level_event_count(count, payload_count) ||
+        !try_to_level_event_count(tick_counts.spawn_groups + 1, group_count)) {
+        return false;
+    }
+
+    tick_counts.spawn_groups = group_count;
     auto const index{spawn_groups.num()};
     spawn_groups.add_uninitialised(1);
     spawn_groups.types[index] = type;
     spawn_groups.offsets[index] = offset;
     spawn_groups.counts[index] = payload_count;
+    return true;
 }
 
-void FLevelEventSchedule::add_mission_group(ELevelMissionEventType const type,
-                                            TConstArrayView<int32> const values) {
+auto FLevelEventSchedule::add_mission_group(ELevelMissionEventType const type,
+                                            TConstArrayView<int32> const values) -> bool {
     auto const count{values.Num()};
     if (count == 0) {
-        return;
+        return true;
     }
     check(!event_group_counts.IsEmpty());
     check(execution_ticks.Num() == event_group_counts.Num());
 
-    auto const payload_count{to_level_event_count(count)};
+    FLevelEventCount payload_count;
     auto& tick_counts{event_group_counts.Last()};
-    tick_counts.mission_groups = to_level_event_count(tick_counts.mission_groups + 1);
+    FLevelEventCount group_count;
+    if (!try_to_level_event_count(count, payload_count) ||
+        !try_to_level_event_count(tick_counts.mission_groups + 1, group_count)) {
+        return false;
+    }
+
+    tick_counts.mission_groups = group_count;
     auto& groups{mission_events.groups};
     auto const index{groups.num()};
     groups.add_uninitialised(1);
@@ -110,16 +159,27 @@ void FLevelEventSchedule::add_mission_group(ELevelMissionEventType const type,
     groups.offsets[index] = mission_events.values.Num();
     groups.counts[index] = payload_count;
     mission_events.values.Append(values.GetData(), count);
+    return true;
 }
 
 auto compile_level_events(FLevelDefinition const& definition,
                           FSimulationClock const& clock,
                           FCapitalSimulationConfig const& capital_config,
-                          FTurretSimulationConfig const& turret_config) -> FCompiledLevelEvents {
-    check(validate_level(definition));
+                          FTurretSimulationConfig const& turret_config)
+    -> FLevelEventCompilationResult {
+    auto const validation{validate_level(definition)};
+    if (!validation) {
+        FLevelStartErrors errors;
+        for (auto const& error : validation.errors) {
+            errors.add(error.message);
+        }
+        return FLevelEventCompilationResult{std::unexpect, MoveTemp(errors)};
+    }
 
-    FCompiledLevelEvents compiled;
+    FLevelEventCompilationResult result{std::in_place};
+    auto& compiled{result.value()};
     auto& initialisation{compiled.initialisation};
+    auto& initial_spawns{compiled.initial_spawns};
     auto& schedule{compiled.schedule};
     auto& mission_initialisation{initialisation.mission.Emplace()};
     mission_initialisation.level_id = definition.metadata.id.value;
@@ -192,55 +252,69 @@ auto compile_level_events(FLevelDefinition const& definition,
     int32 capital_offset{};
     int32 turret_offset{};
     FLevelMissionTickValues mission_values;
+    auto const append_entity_spawn{[&](int32 const entity_index,
+                                       FLevelCapitalSpawnEvents& capital_events,
+                                       FLevelTurretSpawnEvents& turret_events) {
+        auto const entity{level_entity_table_detail::get(entities, entity_index)};
+        auto const archetype{level_archetype_detail::resolve(entity.archetype)};
+        auto const team{level_team_detail::resolve(entity.team)};
+        check(archetype.IsSet() && team.IsSet());
+
+        switch (archetype.GetValue()) {
+            case level_archetype_detail::EResolvedArchetype::PlayerFighter: {
+                break;
+            }
+            case level_archetype_detail::EResolvedArchetype::CapitalShip: {
+                auto const event_index{capital_events.num()};
+                capital_events.add_uninitialised(1);
+                capital_events.entity_indices[event_index] = entity_index;
+                capital_events.target_entity_indices[event_index] = INDEX_NONE;
+                capital_events.locations.set(event_index, FVector3f{entity.position});
+                ml::assign(capital_events.rotations, event_index, entity.rotation);
+                capital_events.teams[event_index] = team.GetValue();
+                capital_events.healths[event_index] = capital_config.max_health;
+                capital_events.initial_fighter_spawn_delays[event_index] = 0.f;
+                capital_events.fighter_spawn_cooldowns[event_index] = capital_config.spawn_delay;
+                break;
+            }
+            case level_archetype_detail::EResolvedArchetype::StaticTurret: {
+                auto const event_index{turret_events.num()};
+                turret_events.add_uninitialised(1);
+                turret_events.entity_indices[event_index] = entity_index;
+                turret_events.locations.set(event_index, FVector3f{entity.position});
+                ml::assign(turret_events.rotations, event_index, entity.rotation);
+                turret_events.teams[event_index] = team.GetValue();
+                turret_events.healths[event_index] = turret_config.max_health;
+                turret_events.laser_damages[event_index] = turret_config.laser.damage;
+                break;
+            }
+        }
+    }};
     for (auto const source : sources) {
+        auto const is_entity_source{source.source_index < entity_count};
+        if (is_entity_source && source.execution_tick == 0) {
+            append_entity_spawn(
+                source.source_index, initial_spawns.capital_spawns, initial_spawns.turret_spawns);
+            continue;
+        }
+
         if (schedule.execution_ticks.IsEmpty() ||
             schedule.execution_ticks.Last() != source.execution_tick) {
             if (!schedule.execution_ticks.IsEmpty()) {
-                append_tick_spawn_groups(schedule, capital_offset, turret_offset);
-                append_tick_mission_groups(schedule, mission_values);
+                FString error;
+                if (!append_tick_spawn_groups(schedule, capital_offset, turret_offset, error) ||
+                    !append_tick_mission_groups(schedule, mission_values, error)) {
+                    FLevelStartErrors errors;
+                    errors.add(MoveTemp(error));
+                    return FLevelEventCompilationResult{std::unexpect, MoveTemp(errors)};
+                }
             }
             schedule.execution_ticks.Add(source.execution_tick);
             schedule.event_group_counts.AddDefaulted();
         }
-        if (source.source_index < entity_count) {
-            auto const entity_index{source.source_index};
-            auto const entity{level_entity_table_detail::get(entities, entity_index)};
-            auto const archetype{level_archetype_detail::resolve(entity.archetype)};
-            auto const team{level_team_detail::resolve(entity.team)};
-            check(archetype.IsSet() && team.IsSet());
-
-            switch (archetype.GetValue()) {
-                case level_archetype_detail::EResolvedArchetype::PlayerFighter: {
-                    break;
-                }
-                case level_archetype_detail::EResolvedArchetype::CapitalShip: {
-                    auto& events{schedule.capital_spawns};
-                    auto const event_index{events.num()};
-                    events.add_uninitialised(1);
-                    events.entity_indices[event_index] = entity_index;
-                    events.target_entity_indices[event_index] = INDEX_NONE;
-                    events.locations.set(event_index, FVector3f{entity.position});
-                    ml::assign(events.rotations, event_index, entity.rotation);
-                    events.teams[event_index] = team.GetValue();
-                    events.healths[event_index] = capital_config.max_health;
-                    events.initial_fighter_spawn_delays[event_index] = 0.f;
-                    events.fighter_spawn_cooldowns[event_index] = capital_config.spawn_delay;
-                    break;
-                }
-                case level_archetype_detail::EResolvedArchetype::StaticTurret: {
-                    auto& events{schedule.turret_spawns};
-                    auto const event_index{events.num()};
-                    events.add_uninitialised(1);
-                    events.entity_indices[event_index] = entity_index;
-                    events.locations.set(event_index, FVector3f{entity.position});
-                    ml::assign(events.rotations, event_index, entity.rotation);
-                    events.teams[event_index] = team.GetValue();
-                    events.healths[event_index] = turret_config.max_health;
-                    events.laser_damages[event_index] = turret_config.laser.damage;
-                    break;
-                }
-            }
-
+        if (is_entity_source) {
+            append_entity_spawn(
+                source.source_index, schedule.capital_spawns, schedule.turret_spawns);
         } else {
             auto const& event{definition.mission_events[source.source_index - entity_count]};
 
@@ -254,9 +328,14 @@ auto compile_level_events(FLevelDefinition const& definition,
         }
     }
     if (!schedule.execution_ticks.IsEmpty()) {
-        append_tick_spawn_groups(schedule, capital_offset, turret_offset);
-        append_tick_mission_groups(schedule, mission_values);
+        FString error;
+        if (!append_tick_spawn_groups(schedule, capital_offset, turret_offset, error) ||
+            !append_tick_mission_groups(schedule, mission_values, error)) {
+            FLevelStartErrors errors;
+            errors.add(MoveTemp(error));
+            return FLevelEventCompilationResult{std::unexpect, MoveTemp(errors)};
+        }
     }
-    return compiled;
+    return result;
 }
 }

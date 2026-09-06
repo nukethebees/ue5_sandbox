@@ -186,11 +186,12 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void prepare_level_button();
 #endif
   private:
-    void begin_play();
+    auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     void validate_proxy_handles();
-    void initialise_simulation();
+    auto initialise_simulation(ml::FLevelStartErrors& errors) -> bool;
+    void handle_level_start_failure(FString message);
     void process_mission_result();
     auto make_presentation_resources() const -> FLevelPresentationResources;
     void bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities);

@@ -1,7 +1,6 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 
 #include <SpaceGame/entities/TestEntityType.h>
-#include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/support/mesh.h>
@@ -15,9 +14,29 @@
 namespace ml {
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      FFixedTickLoop const& clock_settings,
-                                     TOptional<test_space_ship::FPlayerSpawnData> player)
-    -> FLevelSimulationInitData {
-    FLevelSimulationInitData data;
+                                     TOptional<test_space_ship::FPlayerSpawnData> player,
+                                     UStaticMesh const* const player_collision_mesh)
+    -> FLevelSimulationBuildResult {
+    FLevelStartErrors errors;
+    auto const require_mesh{[&errors](UStaticMesh const* const mesh, TCHAR const* const name) {
+        if (!IsValid(mesh)) {
+            errors.add(FString::Printf(TEXT("%s is unavailable"), name));
+        }
+    }};
+    require_mesh(config.capital_ships.mesh, TEXT("capital_ships.mesh"));
+    require_mesh(config.fighters.mesh, TEXT("fighters.mesh"));
+    require_mesh(config.turrets.mesh, TEXT("turrets.mesh"));
+    require_mesh(config.tube_spinners.mesh, TEXT("tube_spinners.mesh"));
+
+    if (player.IsSet()) {
+        require_mesh(player_collision_mesh, TEXT("player ship mesh"));
+    }
+    if (errors.has_errors()) {
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+    }
+
+    FLevelSimulationBuildResult result{std::in_place};
+    auto& data{result.value()};
     data.clock_settings = clock_settings;
     data.lasers = make_simulation_config(config.laser_projectiles);
     data.capital_ships = make_simulation_config(config.capital_ships);
@@ -38,50 +57,58 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.cell_size = config.collision_grid.cell_size;
 
     ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    if (IsValid(config.classes.player_ship_class)) {
-        auto const* player_cdo{
-            config.classes.player_ship_class->GetDefaultObject<ATestSpaceShip>()};
-        meshes[ETestEntityType::PlayerShip] =
-            player_cdo ? player_cdo->get_collision_mesh() : nullptr;
-    }
+    meshes[ETestEntityType::PlayerShip] = player_collision_mesh;
     meshes[ETestEntityType::CapitalShip] = config.capital_ships.mesh;
     meshes[ETestEntityType::CapitalShipFighter] = config.fighters.mesh;
     meshes[ETestEntityType::Turret] = config.turrets.mesh;
     meshes[ETestEntityType::TubeSpinner] = config.tube_spinners.mesh;
-    data.entity_bounds = ioj::FLevelCollisionHost::extract_entity_bounds(meshes);
-    return data;
+    auto bounds{ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
+    if (!bounds) {
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(bounds.error())};
+    }
+    data.entity_bounds = MoveTemp(bounds.value());
+    return result;
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                      FFixedTickLoop const& clock_settings,
                                      FLevelDefinition const& definition,
                                      TOptional<test_space_ship::FPlayerSpawnData> player,
-                                     WorldAABBs static_bounds) -> FLevelSimulationInitData {
-    check(validate_level(definition));
+                                     WorldAABBs static_bounds,
+                                     UStaticMesh const* const player_collision_mesh)
+    -> FLevelSimulationBuildResult {
+    auto const validation{validate_level(definition)};
+    if (!validation) {
+        FLevelStartErrors errors;
+        for (auto const& error : validation.errors) {
+            errors.add(error.message);
+        }
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(errors)};
+    }
 
-    auto data{make_level_simulation_init_data(config, clock_settings, MoveTemp(player))};
+    auto result{make_level_simulation_init_data(
+        config, clock_settings, MoveTemp(player), player_collision_mesh)};
+    if (!result) {
+        return result;
+    }
+    auto& data{result.value()};
     data.static_bounds = MoveTemp(static_bounds);
 
     FSimulationClock clock;
     clock.initialise(clock_settings);
-    data.level_events = compile_level_events(definition, clock, data.capital_ships, data.turrets);
-
-    auto const& schedule{data.level_events.schedule};
-    auto const group_count{!schedule.execution_ticks.IsEmpty() && schedule.execution_ticks[0] == 0
-                               ? schedule.event_group_counts[0].spawn_groups
-                               : 0};
-    auto const spawn_groups{schedule.spawn_groups.get_const_view(0, group_count)};
-    for (int32 group_index{}; group_index < group_count; ++group_index) {
-        if (spawn_groups.types[group_index] == ETestEntityType::Turret) {
-            auto const turret_count{spawn_groups.counts[group_index]};
-            auto const turret_events{schedule.turret_spawns.get_const_view(
-                spawn_groups.offsets[group_index], turret_count)};
-            for (int32 i{}; i < turret_count; ++i) {
-                data.turret_transforms.Emplace(FRotator{get_rotator3d(turret_events.rotations, i)},
-                                               FVector{get_vector3f(turret_events.locations, i)});
-            }
-        }
+    auto compiled{compile_level_events(definition, clock, data.capital_ships, data.turrets)};
+    if (!compiled) {
+        return FLevelSimulationBuildResult{std::unexpect, MoveTemp(compiled.error())};
     }
-    return data;
+    data.level_events = MoveTemp(compiled.value());
+
+    auto const turret_events{data.level_events.initial_spawns.turret_spawns.get_const_view()};
+    auto const turret_count{turret_events.num()};
+    data.turret_transforms.Reserve(turret_count);
+    for (int32 i{}; i < turret_count; ++i) {
+        data.turret_transforms.Emplace(FRotator{get_rotator3d(turret_events.rotations, i)},
+                                       FVector{get_vector3f(turret_events.locations, i)});
+    }
+    return result;
 }
 }

@@ -21,6 +21,8 @@ class SPACEGAME_API FLevelSpawnManager {
                     FLevelCapitalSpawnEventsConstView capital_payloads,
                     FLevelTurretSpawnEventsConstView turret_payloads);
     void set_entity_handle(int32 entity_index, FRegistryEntityHandle handle);
+    void spawn_initial(FLevelCapitalSpawnEventsConstView capital_events,
+                       FLevelTurretSpawnEventsConstView turret_events);
     void spawn(FLevelSpawnGroupsConstView groups);
     auto get_handle(int32 entity_index) const -> FRegistryEntityHandle;
     auto get_entity_handles() const noexcept -> TConstArrayView<FRegistryEntityHandle> {

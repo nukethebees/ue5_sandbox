@@ -1,15 +1,20 @@
 #pragma once
+#include <SpaceGame/levels/LevelStartErrors.h>
 #include <SpaceGame/simulation/CollisionSystem.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
+
+#include <expected>
 
 class UStaticMesh;
 class UWorld;
 struct FCollisionGridConfig;
 
 namespace ml::ioj {
+using FEntityBoundsExtractionResult = std::expected<FEntityAABBs, FLevelStartErrors>;
+
 struct SPACEGAME_API FLevelCollisionHost {
     using EntityMeshes = TEnumArray<ETestEntityType, UStaticMesh const*>;
-    static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityAABBs;
+    static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
     void initialise_static_geometry(UWorld& world,
                                     FCollisionGridConfig const& config,
                                     FCollisionSystem& collision);

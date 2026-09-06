@@ -70,7 +70,8 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             test_name.EndsWith(TEXT(".Fighters_LineOfSightFailureHandling")) ||
             test_name.EndsWith(TEXT(".Fighters_InterceptCapital")) ||
             test_name.EndsWith(TEXT(".Fighters_StandbyTransition")) ||
-            test_name.EndsWith(TEXT(".Fighters_AttackCapital"))};
+            test_name.EndsWith(TEXT(".Fighters_AttackCapital")) ||
+            test_name.EndsWith(TEXT(".Fighters_ObstacleAvoidance"))};
         level_used = !headless_capable;
         if (level_used) {
             level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
@@ -264,6 +265,15 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     {
         run_worldless_capable_scenario<ml::FFighterAttackScenario>(
             ml::run_worldless_fighter_attack);
+    }
+    TEST_METHOD(Fighters_ObstacleAvoidance)
+    {
+        TestCommandBuilder.Do([this] {
+            auto const* config{ml::get_default_level_config(checks)};
+            if (config) {
+                ml::run_worldless_fighter_obstacle_avoidance(*TestRunner, checks, *config);
+            }
+        });
     }
 
     TEST_METHOD(HUD_InitialCachesPopulateWithoutHUD)

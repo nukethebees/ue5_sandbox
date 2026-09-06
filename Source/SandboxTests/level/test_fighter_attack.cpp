@@ -14,7 +14,72 @@
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
+#include <limits>
+
 namespace ml {
+void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
+                                              FSoftTestAssertions& checks,
+                                              USpaceGameLevelConfig const& config) {
+    constexpr float source_x{-15000.f};
+    constexpr float target_x{15000.f};
+    FVector3f const obstacle_min{-1000.f, -1500.f, -1500.f};
+    FVector3f const obstacle_max{1000.f, 1500.f, 1500.f};
+
+    auto data{make_worldless_simulation_test_data(config)};
+    data.fighters.speed = 4000.f;
+    data.fighters.avoidance_update_frequency = 5.f;
+    data.fighters.avoidance_lookahead_time = 1.f;
+    data.fighters.avoidance_clearance_buffer = 100.f;
+    data.capital_ships.fighter_spawn_slots = 1;
+    data.capital_ships.fighter_spawn_slots_relative_transforms = {
+        FTransform{FVector{3000.f, 0.f, 0.f}}};
+    data.static_bounds.add_defaulted(1);
+    data.static_bounds.mins.set(0, obstacle_min);
+    data.static_bounds.maxes.set(0, obstacle_max);
+    add_worldless_capital_spawn(
+        data, FVector3f{source_x, 0.f, 0.f}, ETestTeam::Green, 1, 0.f, 60.f, 100000);
+    add_worldless_capital_spawn(
+        data, FVector3f{target_x, 0.f, 0.f}, ETestTeam::Red, 0, 60.f, 60.f, 100000);
+
+    FWorldlessSimulationTest harness{MoveTemp(data)};
+    harness.finish_initialisation();
+    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const clearance{fighters->collision_radius + 100.f};
+    auto const expanded_min{obstacle_min - FVector3f{clearance, clearance, clearance}};
+    auto const expanded_max{obstacle_max + FVector3f{clearance, clearance, clearance}};
+    bool fighter_spawned{};
+    bool entered_expanded_obstacle{};
+    float maximum_lateral_distance{};
+    float maximum_x{-std::numeric_limits<float>::infinity()};
+
+    harness.on_end_tick = [&](FLevelSimulation&) {
+        auto const locations{fighters->get_locations()};
+        if (locations.num() == 0) {
+            return;
+        }
+
+        fighter_spawned = true;
+        auto const location{ml::get_vector3f(locations, 0)};
+        maximum_lateral_distance =
+            FMath::Max(maximum_lateral_distance, FVector2f{location.Y, location.Z}.Length());
+        maximum_x = FMath::Max(maximum_x, location.X);
+        entered_expanded_obstacle = entered_expanded_obstacle ||
+                                    (location.X >= expanded_min.X && location.X <= expanded_max.X &&
+                                     location.Y >= expanded_min.Y && location.Y <= expanded_max.Y &&
+                                     location.Z >= expanded_min.Z && location.Z <= expanded_max.Z);
+    };
+    harness.timeline.finish_at(14.0);
+    test.TestTrue(TEXT("Fighter obstacle-avoidance timeline completes"),
+                  harness.run_until_timeline_finished(15.0));
+
+    checks.is_true(fighter_spawned, TEXT("Avoidance fighter spawned"));
+    checks.is_true(!entered_expanded_obstacle,
+                   TEXT("Fighter remains outside obstacle clearance bounds"));
+    checks.is_true(maximum_lateral_distance > expanded_max.Y,
+                   TEXT("Fighter steers visibly around the obstacle"));
+    checks.is_true(maximum_x > expanded_max.X, TEXT("Fighter progresses past the obstacle"));
+}
+
 void run_worldless_fighter_attack(FAutomationTestBase& test,
                                   FSoftTestAssertions& checks,
                                   USpaceGameLevelConfig const& config) {

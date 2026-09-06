@@ -13,7 +13,7 @@ struct SPACEGAME_API FLevelEventSchedule {
     TArray<uint64> execution_ticks{};
     TArray<FLevelEventGroupCounts> event_group_counts{};
 
-    void add_spawn_group(ETestEntityType type, int32 offset, int32 count);
-    void add_mission_group(ELevelMissionEventType type, TConstArrayView<int32> values);
+    auto add_spawn_group(ETestEntityType type, int32 offset, int32 count) -> bool;
+    auto add_mission_group(ELevelMissionEventType type, TConstArrayView<int32> values) -> bool;
 };
 }

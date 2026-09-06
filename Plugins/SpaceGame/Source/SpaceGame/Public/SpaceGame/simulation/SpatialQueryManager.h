@@ -74,6 +74,17 @@ struct SPACEGAME_API FSpatialQueryManager {
                           FVectors3f::ConstView end_locations,
                           TArrayView<uint8> clear_lines,
                           TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
+    void trace_closest_lines(FVectors3f::ConstView start_locations,
+                             FVectors3f::ConstView end_locations,
+                             FTraceHitsView out_hits,
+                             TConstArrayView<FRegistryEntityHandle> ignored_entities = {}) const;
+    void sweep_closest_aabbs(
+        FVectors3f::ConstView start_locations,
+        FVectors3f::ConstView end_locations,
+        FVector3f moving_half_extent,
+        FTraceHitsView out_hits,
+        TConstArrayView<FRegistryEntityHandle> ignored_entities = {},
+        ioj::ETraceEntityFilter entity_filter = ioj::ETraceEntityFilter::None) const;
     auto has_clear_line(FVector3f start_location,
                         FVector3f end_location,
                         FRegistryEntityHandle ignored_entity = {}) const -> bool;
@@ -89,6 +100,9 @@ struct SPACEGAME_API FSpatialQueryManager {
     auto get_any_non_team_entity(ETestTeam const team) const -> FRegistryEntityHandle;
     auto get_any_non_team_entity(ETestTeam const team, ETestEntityType const entity_type) const
         -> FRegistryEntityHandle;
+    void are_spheres_in_bounds(FVectors3f::ConstView centres,
+                               float radius,
+                               TArrayView<uint8> out_results) const;
 
     auto get_collision_system() noexcept -> ioj::FCollisionSystem& { return collision; }
     auto get_collision_system() const noexcept -> ioj::FCollisionSystem const& { return collision; }
