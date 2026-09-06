@@ -6,7 +6,7 @@
 #include <SpaceGame/presentation/LevelPresentationSettings.h>
 #include <SpaceGame/presentation/SpinnerPresentation.h>
 #include <SpaceGame/presentation/TurretPresentation.h>
-#include <SpaceGameRendering/SparkRendererComponent.h>
+#include <SpaceGameRendering/SparkEffects.h>
 
 class ATestSpaceShip;
 struct FLevelSimulation;

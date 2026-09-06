@@ -7,7 +7,7 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxISMCComponent.h>
-#include <SpaceGameRendering/SparkRendererComponent.h>
+#include <SpaceGameRendering/SparkEffects.h>
 
 #include <Components/SceneComponent.h>
 #include <HAL/IConsoleManager.h>

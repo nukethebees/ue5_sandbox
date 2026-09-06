@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SpaceGame/support/DrawDebugConfig.h>
-#include <SpaceGameRendering/SparkRendererComponent.h>
+#include <SpaceGameRendering/SparkRendererSettings.h>
 
 #include "LevelPresentationSettings.generated.h"
 

@@ -2,6 +2,7 @@
 #include <SpaceGame/presentation/LevelPresentation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 
 auto FLevelPresentationResources::is_valid() const -> bool {
     return IsValid(lasers) && IsValid(capital_ships) && IsValid(fighters) && IsValid(turrets) &&

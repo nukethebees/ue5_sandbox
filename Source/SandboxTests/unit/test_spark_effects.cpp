@@ -1,3 +1,4 @@
+#include <SpaceGameRendering/SparkEffects.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <CQTest.h>

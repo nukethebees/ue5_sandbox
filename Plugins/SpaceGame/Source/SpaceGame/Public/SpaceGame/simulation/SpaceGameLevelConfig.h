@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGameRendering/SparkRendererComponent.h>
+#include <SpaceGameRendering/SparkBurstStyle.h>
 
 #include <SpaceGame/combat/lasers/AttackDistanceBand.h>
 #include <SpaceGame/ships/common/BarrelRoll.h>
