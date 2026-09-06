@@ -17,7 +17,7 @@ struct URadar3DShowcaseBuilder {
     auto BuildRadarWidget() {
         return
 #line 6 "Radar3DShowcase.sbxslate"
-            SNew(SRadar3DWidget);
+            SNew(SRadarWidget);
     }
 
     auto RebuildWidget(auto&& on_value_changed, auto&& radar_widget) {
@@ -38,9 +38,9 @@ struct URadar3DShowcaseBuilder {
                                     [
                                         SNew(SSpinBox<int32>)
                                             .MinValue(1)
-                                            .MaxValue(256)
+                                            .MaxValue(512)
                                             .MinSliderValue(1)
-                                            .MaxSliderValue(256)
+                                            .MaxSliderValue(512)
                                             .Delta(1)
                                             .MinDesiredWidth(120.0f)
                                             .Value(5)
@@ -54,7 +54,7 @@ struct URadar3DShowcaseBuilder {
                                     .ButtonText(
                                         NSLOCTEXT("Radar3D", "RunBenchmark", "Benchmark RDG contact scaling"))
                                     .ToolTipText(
-                                        NSLOCTEXT("Radar3D", "RunBenchmarkTooltip", "Runs a short 512x512 benchmark from 1 to 256 contacts."))
+                                        NSLOCTEXT("Radar3D", "RunBenchmarkTooltip", "Runs a short 512x512 benchmark at 32, 128, 256, and 512 contacts."))
                                     .OnClicked_UObject(&self_, &ThisClass::run_benchmark)
                                     .Output()
                                     [

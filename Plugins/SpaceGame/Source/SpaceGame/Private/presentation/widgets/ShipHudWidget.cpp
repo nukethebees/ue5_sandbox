@@ -4,6 +4,7 @@
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SandboxUI/EntityOverlay/SEntityOverlayWidget.h"
+#include "SandboxUI/Radar/SRadarWidget.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
 #include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/ForceStatusWidget.h"
@@ -19,6 +20,7 @@
 #include <Blueprint/WidgetTree.h>
 #include <Components/CanvasPanelSlot.h>
 #include <Components/Image.h>
+#include <Components/NativeWidgetHost.h>
 #include <Components/PanelWidget.h>
 #include <Components/TextBlock.h>
 #include <Components/Widget.h>
@@ -51,6 +53,16 @@ void set_font_size_on_widgets(int32 const font_size, WidgetTypes* const... widge
 
 auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
+    auto const radar{SAssignNew(radar_widget_, SRadarWidget)};
+    radar_widget_->set_frame_store(radar_frame_store_);
+    radar_widget_->set_style(radar_style_);
+    radar_widget_->SetVisibility(radar_frame_store_.IsValid() ? EVisibility::HitTestInvisible
+                                                              : EVisibility::Collapsed);
+    if (IsValid(radar_host)) {
+        radar_host->SetContent(radar);
+    } else {
+        UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar NativeWidgetHost."));
+    }
     auto const overlay{SAssignNew(entity_overlay_widget_, SEntityOverlayWidget)};
     entity_overlay_widget_->SetVisibility(entity_overlay_frame_store_.IsValid()
                                               ? EVisibility::HitTestInvisible
@@ -63,11 +75,15 @@ auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
 void UShipHudWidget::ReleaseSlateResources(bool const release_children) {
     Super::ReleaseSlateResources(release_children);
     entity_overlay_widget_.Reset();
+    radar_widget_.Reset();
 }
 
 void UShipHudWidget::NativeTick(FGeometry const& geometry, float const delta_time) {
     Super::NativeTick(geometry, delta_time);
 
+    if (radar_widget_.IsValid() && radar_frame_store_.IsValid()) {
+        radar_widget_->render();
+    }
     if (!entity_overlay_widget_.IsValid() || !entity_overlay_frame_store_.IsValid()) {
         return;
     }
@@ -118,6 +134,23 @@ void UShipHudWidget::set_entity_overlay_style(FEntityOverlayStyle const& style) 
     apply_entity_overlay_colours();
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_style(entity_overlay_style_);
+    }
+}
+
+void UShipHudWidget::set_radar_frame_store(FRadarFrameStoreConstPtr frame_store) {
+    radar_frame_store_ = MoveTemp(frame_store);
+    if (radar_widget_.IsValid()) {
+        radar_widget_->set_frame_store(radar_frame_store_);
+        radar_widget_->SetVisibility(radar_frame_store_.IsValid() ? EVisibility::HitTestInvisible
+                                                                  : EVisibility::Collapsed);
+    }
+}
+
+void UShipHudWidget::set_radar_style(FRadarStyle const& style) {
+    radar_style_ = style;
+    apply_radar_colours();
+    if (radar_widget_.IsValid()) {
+        radar_widget_->set_style(radar_style_);
     }
 }
 
@@ -243,6 +276,7 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     }
 
     apply_entity_overlay_colours();
+    apply_radar_colours();
     update_crosshair_colours();
 }
 
@@ -447,6 +481,19 @@ void UShipHudWidget::apply_entity_overlay_colours() {
     entity_overlay_style_.soft_target_in_range_color = entity_overlay_soft_target_in_range_colour_;
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_style(entity_overlay_style_);
+    }
+}
+
+void UShipHudWidget::apply_radar_colours() {
+    if (!has_ui_style_) {
+        return;
+    }
+
+    radar_style_.emphasis_color = entity_overlay_defend_colour_;
+    radar_style_.structure_color = entity_overlay_defend_colour_;
+    radar_style_.plane_color = entity_overlay_background_colour_.CopyWithNewOpacity(0.12f);
+    if (radar_widget_.IsValid()) {
+        radar_widget_->set_style(radar_style_);
     }
 }
 void UShipHudWidget::set_crosshair_widget_visibility(ESlateVisibility const new_visibility) {

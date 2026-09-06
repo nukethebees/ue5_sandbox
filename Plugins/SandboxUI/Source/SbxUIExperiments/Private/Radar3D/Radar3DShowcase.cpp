@@ -3,9 +3,10 @@
 #include <utility>
 
 #include "Benchmarks/Radar3D/Radar3DBenchmark.h"
+#include "SandboxUI/Radar/RadarTypes.h"
+#include "SandboxUI/Radar/SRadarWidget.h"
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SLabeledRow.h"
-#include "SRadar3DWidget.h"
 #include "Widgets/SExperimentPanel.h"
 
 #include "Widgets/Input/SMultiLineEditableTextBox.h"
@@ -22,12 +23,63 @@ URadar3DShowcase::URadar3DShowcase() {
 
 TSharedRef<SWidget> URadar3DShowcase::RebuildWidget() {
     auto builder{SlateGenerated::URadar3DShowcaseBuilder{*this}};
-    auto const radar_widget{builder.BuildRadarWidget()};
-    auto on_value_changed{[radar_widget](int32 const contact_count) {
-        radar_widget->set_contact_count(contact_count);
-    }};
+    radar_widget_ = builder.BuildRadarWidget();
+    radar_frame_store_ = MakeShared<FRadarFrameStore, ESPMode::ThreadSafe>();
+    radar_widget_->set_frame_store(radar_frame_store_);
+    populate_frame(5);
+    radar_widget_->render();
+    auto on_value_changed{[this](int32 const contact_count) { set_contact_count(contact_count); }};
 
-    return builder.RebuildWidget(std::move(on_value_changed), radar_widget);
+    return builder.RebuildWidget(std::move(on_value_changed), radar_widget_.ToSharedRef());
+}
+
+void URadar3DShowcase::set_contact_count(int32 const contact_count) {
+    populate_frame(FMath::Max(contact_count, 1));
+    radar_widget_->render();
+}
+
+void URadar3DShowcase::populate_frame(int32 const contact_count) {
+    auto& instances{radar_frame_store_->next().instances};
+    instances.Reset();
+    instances.Reserve(contact_count);
+    FLinearColor const colors[]{
+        {1.0f, 0.28f, 0.12f, 1.0f},
+        {0.2f, 0.85f, 1.0f, 1.0f},
+        {0.42f, 1.0f, 0.38f, 1.0f},
+        {0.75f, 0.38f, 1.0f, 1.0f},
+    };
+
+    auto const non_player_count{FMath::Max(contact_count - 1, 0)};
+    for (int32 priority{0}; priority < 2; ++priority) {
+        for (int32 index{0}; index < non_player_count; ++index) {
+            auto const flag_variant{index % 8};
+            auto const flags{flag_variant == 0   ? ERadarContactFlags::Selected
+                             : flag_variant == 1 ? ERadarContactFlags::DefendObjective
+                             : flag_variant == 2 ? ERadarContactFlags::DestroyObjective
+                                                 : ERadarContactFlags::None};
+            if ((flags != ERadarContactFlags::None) != (priority == 1)) {
+                continue;
+            }
+            auto const radius{0.18f + 0.72f * FMath::Fmod(index * 0.618034f, 1.0f)};
+            auto const angle{static_cast<float>(index) * 2.399963f};
+            instances.Add({
+                .radar_position = {radius * FMath::Cos(angle),
+                                   radius * FMath::Sin(angle),
+                                   -0.85f + 1.7f * FMath::Fmod(index * 0.414214f, 1.0f)},
+                .size_scale = 0.85f + static_cast<float>(index % 4) * 0.15f,
+                .packed_color = pack_radar_color(colors[index % UE_ARRAY_COUNT(colors)]),
+                .packed_glyph_and_flags =
+                    pack_radar_display(static_cast<ERadarGlyph>(1 + index % 5), flags),
+            });
+        }
+    }
+    instances.Add({
+        .radar_position = FVector3f::ZeroVector,
+        .size_scale = 1.0f,
+        .packed_color = pack_radar_color({1.0f, 0.72f, 0.18f, 1.0f}),
+        .packed_glyph_and_flags = pack_radar_display(ERadarGlyph::Player, ERadarContactFlags::None),
+    });
+    radar_frame_store_->publish();
 }
 
 auto URadar3DShowcase::run_benchmark() -> FReply {

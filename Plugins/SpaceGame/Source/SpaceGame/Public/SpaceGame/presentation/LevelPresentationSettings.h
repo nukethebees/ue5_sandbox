@@ -105,6 +105,17 @@ struct FEntityOverlaySettings {
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
 };
 
+USTRUCT(BlueprintType)
+struct FRadarSettings {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Radar")
+    bool enabled{true};
+
+    UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", Units = "cm"))
+    float maximum_range{1000000.0f};
+};
+
 USTRUCT()
 struct FLevelPresentationSettings {
     GENERATED_BODY()
@@ -129,4 +140,7 @@ struct FLevelPresentationSettings {
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
     FSparkRendererSettings sparks;
+
+    UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
+    FRadarSettings radar;
 };

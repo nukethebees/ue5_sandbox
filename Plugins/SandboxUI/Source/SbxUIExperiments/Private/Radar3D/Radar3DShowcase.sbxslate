@@ -3,7 +3,7 @@
 (widget-class URadar3DShowcase
   (function BuildRadarWidget
     (params)
-    (SRadar3DWidget))
+    (SRadarWidget))
   (function RebuildWidget
     (params
       (callback on_value_changed)
@@ -19,9 +19,9 @@
               :ContentHAlign HAlign_Left
               (SSpinBox<int32>
                 :MinValue 1
-                :MaxValue 256
+                :MaxValue 512
                 :MinSliderValue 1
-                :MaxSliderValue 256
+                :MaxSliderValue 512
                 :Delta 1
                 :MinDesiredWidth 120.0f
                 :Value 5
@@ -29,10 +29,7 @@
           (auto
             (SExperimentBenchmark
               :ButtonText (loc "Radar3D" "RunBenchmark" "Benchmark RDG contact scaling")
-              :ToolTipText (loc "Radar3D" "RunBenchmarkTooltip" "Runs a short 512x512 benchmark from 1 to 256 contacts.")
+              :ToolTipText (loc "Radar3D" "RunBenchmarkTooltip" "Runs a short 512x512 benchmark at 32, 128, 256, and 512 contacts.")
               :OnClicked (uobject run_benchmark)
               (benchmark-output benchmark_output_ "Radar3D")))))
       (square-preview radar_widget 512.0f))))
-
-(widget-class SRadar3DWidget
-  (image-builder image_))

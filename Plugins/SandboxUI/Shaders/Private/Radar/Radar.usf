@@ -1,0 +1,299 @@
+#include "/Engine/Public/Platform.ush"
+
+struct FRadarInstance {
+    float3 radar_position;
+    float size_scale;
+    uint packed_color;
+    uint packed_glyph_and_flags;
+};
+
+StructuredBuffer<FRadarInstance> Instances;
+int2 OutputSize;
+float4 PlaneColor;
+float4 StructureColor;
+float4 EmphasisColor;
+float4 NeutralColor;
+float GridOpacity;
+float StructureOpacity;
+float StemOpacity;
+float GlyphIntensity;
+
+static const float epsilon = 0.0001;
+static const uint glyph_player = 0;
+static const uint glyph_fighter = 1;
+static const uint glyph_capital_ship = 2;
+static const uint glyph_turret = 3;
+static const uint glyph_missile = 4;
+static const uint glyph_unknown = 5;
+
+float4 unpack_color(const uint packed) {
+    return float4(float(packed & 0xffu),
+                  float((packed >> 8u) & 0xffu),
+                  float((packed >> 16u) & 0xffu),
+                  float((packed >> 24u) & 0xffu)) /
+           255.0;
+}
+
+float2 project_point(const float3 radar_point) {
+    const float3 camera_position = float3(-4.2, 0.0, 3.2);
+    const float3 camera_forward = normalize(-camera_position);
+    const float3 camera_right = normalize(cross(float3(0.0, 0.0, 1.0), camera_forward));
+    const float3 camera_up = cross(camera_forward, camera_right);
+    const float3 delta = radar_point - camera_position;
+    const float depth = max(dot(delta, camera_forward), 0.001);
+    const float2 ndc = float2(dot(delta, camera_right), dot(delta, camera_up)) / (depth * 0.62);
+    return float2(0.5 + ndc.x * 0.5, 0.5 - ndc.y * 0.5) * float2(OutputSize);
+}
+
+float2 quad_corner(const uint vertex_id) {
+    return float2(vertex_id == 1 || vertex_id == 2 || vertex_id == 4,
+                  vertex_id == 2 || vertex_id == 4 || vertex_id == 5);
+}
+
+float4 pixel_to_clip(const float2 pixel) {
+    return float4(pixel / float2(OutputSize) * float2(2.0, -2.0) + float2(-1.0, 1.0), 0.5, 1.0);
+}
+
+float2 hex_vertex(const uint index) {
+    const float angle = float(index) * 1.04719755;
+    return float2(cos(angle), sin(angle));
+}
+
+float hex_sdf(float2 radar_point, const float radius) {
+    radar_point = abs(radar_point);
+    return max(radar_point.x * 0.8660254 + radar_point.y * 0.5, radar_point.y) -
+           radius * 0.8660254;
+}
+
+struct PlaneOutput {
+    float4 position       : SV_Position;
+    float2 radar_position : RADAR_POSITION;
+};
+
+PlaneOutput radar_plane_vs(const uint vertex_id : SV_VertexID) {
+    const uint triangle_index = vertex_id / 3u;
+    const uint corner = vertex_id % 3u;
+    const float2 radar_position =
+        corner == 0u ? 0.0 : hex_vertex(triangle_index + corner - 1u);
+    PlaneOutput output;
+    output.radar_position = radar_position;
+    output.position = pixel_to_clip(project_point(float3(radar_position, 0.0)));
+    return output;
+}
+
+float4 radar_plane_ps(PlaneOutput input)
+    : SV_Target0 {
+    const float outer_distance = hex_sdf(input.radar_position, 1.0);
+    clip(-outer_distance);
+
+    const float2 axial =
+        float2(2.0 / 3.0 * input.radar_position.x,
+               -1.0 / 3.0 * input.radar_position.x + 0.57735027 * input.radar_position.y) /
+        0.285;
+    float3 cube = float3(axial.x, axial.y, -axial.x - axial.y);
+    float3 rounded = round(cube);
+    float3 error = abs(rounded - cube);
+    if (error.x > error.y && error.x > error.z) {
+        rounded.x = -rounded.y - rounded.z;
+    } else if (error.y > error.z) {
+        rounded.y = -rounded.x - rounded.z;
+    } else {
+        rounded.z = -rounded.x - rounded.y;
+    }
+    const float2 centre = float2(0.4275 * rounded.x, 0.4936345 * (rounded.y - rounded.z));
+    const float cell_distance = abs(hex_sdf(input.radar_position - centre, 0.285));
+    const float antialias = max(fwidth(cell_distance), 0.001);
+    const float boundary = 1.0 - smoothstep(antialias, antialias * 2.5, cell_distance);
+    const float edge_fade = saturate((-outer_distance) / 0.28);
+    const float alpha = PlaneColor.a + boundary * GridOpacity * edge_fade;
+    const float3 color = lerp(PlaneColor.rgb, StructureColor.rgb, boundary * 0.6);
+    return float4(color, alpha);
+}
+
+struct LineOutput {
+    float4 position                     : SV_Position;
+    nointerpolation float2 start        : RADAR_LINE_START;
+    nointerpolation float2 end          : RADAR_LINE_END;
+    nointerpolation float4 color        : RADAR_LINE_COLOR;
+    nointerpolation float thickness     : RADAR_LINE_THICKNESS;
+    nointerpolation float halo          : RADAR_LINE_HALO;
+    nointerpolation float start_opacity : RADAR_LINE_START_OPACITY;
+    nointerpolation float end_opacity   : RADAR_LINE_END_OPACITY;
+};
+
+LineOutput make_line(const uint vertex_id,
+                     const float3 world_start,
+                     const float3 world_end,
+                     const float4 color,
+                     const float thickness,
+                     const float halo,
+                     const float start_opacity,
+                     const float end_opacity) {
+    LineOutput output;
+    output.start = project_point(world_start);
+    output.end = project_point(world_end);
+    output.color = color;
+    output.thickness = thickness;
+    output.halo = halo;
+    output.start_opacity = start_opacity;
+    output.end_opacity = end_opacity;
+    const float2 segment = output.end - output.start;
+    const float2 direction = segment / max(length(segment), epsilon);
+    const float2 normal = float2(-direction.y, direction.x);
+    const float2 corner = quad_corner(vertex_id);
+    const float extent = thickness + halo + 1.0;
+    const float2 pixel = lerp(output.start, output.end, corner.x) +
+                         direction * ((corner.x * 2.0 - 1.0) * extent) +
+                         normal * ((corner.y * 2.0 - 1.0) * extent);
+    output.position = pixel_to_clip(pixel);
+    return output;
+}
+
+LineOutput radar_structure_vs(const uint vertex_id : SV_VertexID,
+                              const uint instance_id : SV_InstanceID) {
+    float2 start = 0.0;
+    float2 end = 0.0;
+    float thickness = 0.75;
+    float opacity = StructureOpacity;
+    if (instance_id < 6u) {
+        start = hex_vertex(instance_id);
+        end = hex_vertex((instance_id + 1u) % 6u);
+        thickness = 1.0;
+    } else if (instance_id < 9u) {
+        start = hex_vertex(instance_id - 6u);
+        end = -start;
+        opacity *= 0.7;
+    } else if (instance_id < 11u) {
+        start = float2(1.0, 0.0);
+        end = instance_id == 9u ? float2(0.83, 0.10) : float2(0.83, -0.10);
+        thickness = 1.15;
+    } else {
+        const float angle = float(instance_id - 10u) * 1.5707963;
+        const float2 direction = float2(cos(angle), sin(angle));
+        const float2 tangent = float2(-direction.y, direction.x);
+        start = direction * 0.94 - tangent * 0.035;
+        end = direction * 0.94 + tangent * 0.035;
+        opacity *= 0.75;
+    }
+    return make_line(vertex_id,
+                     float3(start, 0.0),
+                     float3(end, 0.0),
+                     StructureColor,
+                     thickness,
+                     2.5,
+                     opacity,
+                     opacity);
+}
+
+LineOutput radar_stem_vs(const uint vertex_id : SV_VertexID,
+                         const uint instance_id : SV_InstanceID) {
+    const FRadarInstance instance = Instances[instance_id];
+    const uint flags = instance.packed_glyph_and_flags >> 8u;
+    const float emphasized = flags == 0u ? 0.0 : 1.0;
+    return make_line(vertex_id,
+                     float3(instance.radar_position.xy, 0.0),
+                     instance.radar_position,
+                     unpack_color(instance.packed_color),
+                     0.6 + emphasized * 0.2,
+                     emphasized * 2.0,
+                     StemOpacity * 0.35,
+                     StemOpacity * (1.0 + emphasized * 0.25));
+}
+
+float distance_to_segment(const float2 pixel_position,
+                          const float2 start,
+                          const float2 end,
+                          out float t) {
+    const float2 segment = end - start;
+    t = saturate(dot(pixel_position - start, segment) / max(dot(segment, segment), epsilon));
+    return length(pixel_position - (start + segment * t));
+}
+
+float4 radar_line_ps(LineOutput input)
+    : SV_Target0 {
+    float t = 0.0;
+    const float distance = distance_to_segment(input.position.xy, input.start, input.end, t);
+    const float core = 1.0 - smoothstep(input.thickness, input.thickness + 1.0, distance);
+    const float halo =
+        input.halo > 0.0
+            ? (1.0 - smoothstep(input.thickness, input.thickness + input.halo + 1.0, distance)) *
+                  0.16
+            : 0.0;
+    const float alpha =
+        (core + halo * (1.0 - core)) * lerp(input.start_opacity, input.end_opacity, t);
+    clip(alpha - epsilon);
+    return float4(input.color.rgb, alpha);
+}
+
+struct GlyphOutput {
+    float4 position              : SV_Position;
+    float2 local_position        : RADAR_GLYPH_LOCAL;
+    nointerpolation float size   : RADAR_GLYPH_SIZE;
+    nointerpolation float4 color : RADAR_GLYPH_COLOR;
+    nointerpolation uint glyph   : RADAR_GLYPH_TYPE;
+    nointerpolation uint flags   : RADAR_GLYPH_FLAGS;
+};
+
+GlyphOutput radar_glyph_vs(const uint vertex_id : SV_VertexID,
+                           const uint instance_id : SV_InstanceID) {
+    const FRadarInstance instance = Instances[instance_id];
+    GlyphOutput output;
+    output.glyph = instance.packed_glyph_and_flags & 0xffu;
+    output.flags = instance.packed_glyph_and_flags >> 8u;
+    output.size = (output.glyph == glyph_player ? 7.0 : 5.5) * instance.size_scale;
+    const float emphasized = output.flags == 0u ? 0.0 : 1.0;
+    const float extent = output.size + 5.0 + emphasized * 3.0;
+    const float2 corner = quad_corner(vertex_id);
+    output.local_position = (corner * 2.0 - 1.0) * extent;
+    output.position = pixel_to_clip(project_point(instance.radar_position) + output.local_position);
+    output.color = unpack_color(instance.packed_color);
+    return output;
+}
+
+float glyph_sdf(float2 glyph_point, const uint glyph, const float size) {
+    glyph_point /= max(size, epsilon);
+    if (glyph == glyph_player) {
+        const float2 p = float2(abs(glyph_point.x), glyph_point.y);
+        return max(abs(p.x * 0.75 + p.y * 0.45) - 0.16, -p.y - 0.55);
+    }
+    if (glyph == glyph_fighter) {
+        return max(abs(glyph_point.x) * 0.72 + glyph_point.y * 0.55 - 0.56,
+                   -glyph_point.y - 0.55);
+    }
+    if (glyph == glyph_capital_ship) {
+        return abs(glyph_point.x) + abs(glyph_point.y) * 0.55 - 0.62;
+    }
+    if (glyph == glyph_turret) {
+        return max(abs(glyph_point.x), abs(glyph_point.y)) - 0.52;
+    }
+    if (glyph == glyph_missile) {
+        return max(abs(glyph_point.x) - 0.22, abs(glyph_point.y) - 0.68);
+    }
+    return length(glyph_point) - 0.38;
+}
+
+float hex_outline_sdf(float2 glyph_point, const float radius) {
+    return hex_sdf(glyph_point.yx, radius);
+}
+
+float4 radar_glyph_ps(GlyphOutput input)
+    : SV_Target0 {
+    const float sdf = glyph_sdf(input.local_position, input.glyph, input.size) * input.size;
+    const float aa = max(fwidth(sdf), 0.75);
+    const float core = 1.0 - smoothstep(-aa, aa, sdf);
+    const float emphasized = input.flags == 0u ? 0.0 : 1.0;
+    const float player = input.glyph == glyph_player ? 1.0 : 0.0;
+    const float glow_radius = lerp(4.0, 8.0, max(emphasized, player));
+    const float glow = (1.0 - smoothstep(0.0, glow_radius, max(sdf, 0.0))) *
+                       lerp(0.22, 0.42, max(emphasized, player));
+
+    const float outline_distance = abs(hex_outline_sdf(input.local_position, input.size + 2.1));
+    const float outline = emphasized * (1.0 - smoothstep(0.8, 1.8, outline_distance));
+    const float alpha = saturate(max(core * input.color.a, max(glow, outline)));
+    float3 color = input.glyph == glyph_unknown ? NeutralColor.rgb : input.color.rgb;
+    color *= GlyphIntensity;
+    color = lerp(color, EmphasisColor.rgb, outline);
+    color = lerp(color, EmphasisColor.rgb, player * 0.7);
+    clip(alpha - epsilon);
+    return float4(color, alpha);
+}
