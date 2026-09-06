@@ -6,56 +6,53 @@
 #include <SandboxCore/soa_vector_utils.h>
 
 namespace {
-auto make_legacy_level_events(FLevelSimulationInitData const& data) -> ml::FCompiledLevelEvents {
+auto make_legacy_level_initialisation(FLevelSimulationInitData const& data)
+    -> ml::FCompiledLevelEvents {
     ml::FCompiledLevelEvents compiled;
     auto& initialisation{compiled.initialisation};
-    auto& schedule{compiled.schedule};
+    auto& initial_spawns{compiled.initial_spawns};
     auto const player_offset{data.player.IsSet() ? 1 : 0};
     auto const capital_count{data.capital_spawns.num()};
     auto const turret_count{data.turret_spawns.num()};
     initialisation.entity_count = player_offset + capital_count + turret_count;
     initialisation.player_entity_index = data.player.IsSet() ? 0 : INDEX_NONE;
 
-    schedule.capital_spawns.add_uninitialised(capital_count);
+    initial_spawns.capital_spawns.add_uninitialised(capital_count);
     for (int32 i{}; i < capital_count; ++i) {
         auto const entity_index{player_offset + i};
-        schedule.capital_spawns.entity_indices[i] = entity_index;
+        initial_spawns.capital_spawns.entity_indices[i] = entity_index;
         auto const target_index{data.capital_target_spawn_indices.IsValidIndex(i)
                                     ? data.capital_target_spawn_indices[i]
                                     : INDEX_NONE};
-        schedule.capital_spawns.target_entity_indices[i] =
+        initial_spawns.capital_spawns.target_entity_indices[i] =
             target_index == FLevelSimulationInitData::player_target_spawn_index
                 ? initialisation.player_entity_index
                 : (target_index == INDEX_NONE ? INDEX_NONE : player_offset + target_index);
-        ml::assign_from(schedule.capital_spawns.locations, i, data.capital_spawns.locations, i);
-        ml::assign(schedule.capital_spawns.rotations,
+        ml::assign_from(
+            initial_spawns.capital_spawns.locations, i, data.capital_spawns.locations, i);
+        ml::assign(initial_spawns.capital_spawns.rotations,
                    i,
                    ml::get_rotator3d(data.capital_spawns.rotations, i));
-        schedule.capital_spawns.teams[i] = data.capital_spawns.teams[i];
-        schedule.capital_spawns.healths[i] = data.capital_spawns.healths[i];
-        schedule.capital_spawns.initial_fighter_spawn_delays[i] =
+        initial_spawns.capital_spawns.teams[i] = data.capital_spawns.teams[i];
+        initial_spawns.capital_spawns.healths[i] = data.capital_spawns.healths[i];
+        initial_spawns.capital_spawns.initial_fighter_spawn_delays[i] =
             data.capital_spawns.initial_spawn_delays[i];
-        schedule.capital_spawns.fighter_spawn_cooldowns[i] = data.capital_spawns.spawn_cooldowns[i];
+        initial_spawns.capital_spawns.fighter_spawn_cooldowns[i] =
+            data.capital_spawns.spawn_cooldowns[i];
     }
 
-    schedule.turret_spawns.add_uninitialised(turret_count);
+    initial_spawns.turret_spawns.add_uninitialised(turret_count);
     for (int32 i{}; i < turret_count; ++i) {
         auto const entity_index{player_offset + capital_count + i};
-        schedule.turret_spawns.entity_indices[i] = entity_index;
-        ml::assign_from(schedule.turret_spawns.locations, i, data.turret_spawns.locations, i);
+        initial_spawns.turret_spawns.entity_indices[i] = entity_index;
+        ml::assign_from(initial_spawns.turret_spawns.locations, i, data.turret_spawns.locations, i);
         auto const rotation{data.turret_transforms.IsValidIndex(i)
                                 ? data.turret_transforms[i].Rotator()
                                 : FRotator::ZeroRotator};
-        ml::assign(schedule.turret_spawns.rotations, i, rotation);
-        schedule.turret_spawns.teams[i] = data.turret_spawns.teams[i];
-        schedule.turret_spawns.healths[i] = data.turret_spawns.healths[i];
-        schedule.turret_spawns.laser_damages[i] = data.turret_spawns.laser_damages[i];
-    }
-    if (capital_count > 0 || turret_count > 0) {
-        schedule.execution_ticks.Add(0);
-        schedule.event_group_counts.AddDefaulted();
-        schedule.add_spawn_group(ETestEntityType::CapitalShip, 0, capital_count);
-        schedule.add_spawn_group(ETestEntityType::Turret, 0, turret_count);
+        ml::assign(initial_spawns.turret_spawns.rotations, i, rotation);
+        initial_spawns.turret_spawns.teams[i] = data.turret_spawns.teams[i];
+        initial_spawns.turret_spawns.healths[i] = data.turret_spawns.healths[i];
+        initial_spawns.turret_spawns.laser_damages[i] = data.turret_spawns.laser_damages[i];
     }
     return compiled;
 }
@@ -116,7 +113,7 @@ FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data,
     if (!data.level_events.initialisation.mission.IsSet() &&
         data.level_events.initialisation.entity_count == 0 &&
         (!data.capital_spawns.is_empty() || !data.turret_spawns.is_empty())) {
-        data.level_events = make_legacy_level_events(data);
+        data.level_events = make_legacy_level_initialisation(data);
     }
     auto const player_handle{player_ship_simulation_.IsSet()
                                  ? player_ship_simulation_->registry_handle

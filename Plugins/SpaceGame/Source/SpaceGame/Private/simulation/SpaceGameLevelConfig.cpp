@@ -93,6 +93,11 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
 
     if (require_presentation) {
         REQUIRE_CONFIG(classes.player_controller_class, "classes.player_controller_class is null");
+        REQUIRE_CONFIG(laser_projectiles.mesh, "laser_projectiles.mesh is null");
+        REQUIRE_CONFIG(laser_projectiles.material, "laser_projectiles.material is null");
+        REQUIRE_CONFIG(capital_ships.team_visual_data, "capital_ships.team_visual_data is null");
+        REQUIRE_CONFIG(fighters.team_visual_data, "fighters.team_visual_data is null");
+        REQUIRE_CONFIG(turrets.team_visual_data, "turrets.team_visual_data is null");
         REQUIRE_CONFIG(player_ship.thrust_energy_max > 0.f,
                        "player_ship.thrust_energy_max must be positive");
         REQUIRE_CONFIG(player_ship.laser.projectile_speed > 0.f,
@@ -106,6 +111,10 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
                    "laser_projectiles.n_preallocated_instances must not be negative");
     REQUIRE_CONFIG(laser_projectiles.collision_jobs > 0,
                    "laser_projectiles.collision_jobs must be positive");
+    REQUIRE_CONFIG(capital_ships.mesh, "capital_ships.mesh is null");
+    REQUIRE_CONFIG(fighters.mesh, "fighters.mesh is null");
+    REQUIRE_CONFIG(turrets.mesh, "turrets.mesh is null");
+    REQUIRE_CONFIG(tube_spinners.mesh, "tube_spinners.mesh is null");
     REQUIRE_CONFIG(turrets.search_slice_size > 0, "turrets.search_slice_size must be positive");
     REQUIRE_CONFIG(FMath::IsFinite(fighters.fire_dot_product_threshold) &&
                        fighters.fire_dot_product_threshold >= -1.f &&
@@ -158,15 +167,6 @@ void USpaceGameLevelConfig::get_validation_warnings(TArray<FString>& warnings) c
     }
 
     WARN_CONFIG(player_ship.team_visual_data, "player_ship.team_visual_data is null");
-    WARN_CONFIG(laser_projectiles.mesh, "laser_projectiles.mesh is null");
-    WARN_CONFIG(laser_projectiles.material, "laser_projectiles.material is null");
-    WARN_CONFIG(capital_ships.mesh, "capital_ships.mesh is null");
-    WARN_CONFIG(capital_ships.team_visual_data, "capital_ships.team_visual_data is null");
-    WARN_CONFIG(fighters.mesh, "fighters.mesh is null");
-    WARN_CONFIG(fighters.team_visual_data, "fighters.team_visual_data is null");
-    WARN_CONFIG(turrets.mesh, "turrets.mesh is null");
-    WARN_CONFIG(turrets.team_visual_data, "turrets.team_visual_data is null");
-    WARN_CONFIG(tube_spinners.mesh, "tube_spinners.mesh is null");
 
 #undef WARN_CONFIG
 }

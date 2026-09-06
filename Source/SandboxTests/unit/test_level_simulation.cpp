@@ -74,8 +74,9 @@ auto make_scheduled_battle() -> FLevelSimulationInitData {
     auto const definition{builder.finish()};
     FSimulationClock clock;
     clock.initialise(data.clock_settings);
-    data.level_events =
-        ml::compile_level_events(definition, clock, data.capital_ships, data.turrets);
+    auto compiled{ml::compile_level_events(definition, clock, data.capital_ships, data.turrets)};
+    check(compiled);
+    data.level_events = MoveTemp(compiled.value());
     return data;
 }
 

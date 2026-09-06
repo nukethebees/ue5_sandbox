@@ -38,25 +38,22 @@ void clear_aabb(FEntityAABBs& aabbs, int32 const index) {
 void set_mesh_aabb(FEntityAABBs& aabbs,
                    int32 const index,
                    TCHAR const* const entity_name,
-                   UStaticMesh const* const mesh) {
+                   UStaticMesh const* const mesh,
+                   FLevelStartErrors& errors) {
     clear_aabb(aabbs, index);
 
     if (!IsValid(mesh)) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("Cannot initialise collision bounds for %s: mesh is unavailable"),
-               entity_name);
         return;
     }
 
     auto const aabb{ml::get_aabb(*mesh)};
     if (!aabb.IsValid) {
-        UE_LOG(LogSandbox,
-               Fatal,
-               TEXT("Cannot initialise collision bounds for %s: mesh %s has no query-enabled "
-                    "simple collision geometry"),
-               entity_name,
-               *mesh->GetName());
+        errors.add(FString::Printf(
+            TEXT("Cannot initialise collision bounds for %s: mesh %s has no query-enabled "
+                 "simple collision geometry"),
+            entity_name,
+            *mesh->GetName()));
+        return;
     }
 
     FVector3f const centre{aabb.GetCenter()};
@@ -149,14 +146,20 @@ auto extract_static_collision_component(UPrimitiveComponent& component,
 }
 }
 
-auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes) -> FEntityAABBs {
-    FEntityAABBs entity_aabbs_;
+auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
+    -> FEntityBoundsExtractionResult {
+    FEntityBoundsExtractionResult result{std::in_place};
+    auto& bounds{result.value()};
+    FLevelStartErrors errors;
     auto const count{FEntityAABBs::num()};
     for (int32 i{0}; i < count; ++i) {
         auto const entity_type{static_cast<ETestEntityType>(i)};
-        set_mesh_aabb(entity_aabbs_, i, LexToString(entity_type), meshes[entity_type]);
+        set_mesh_aabb(bounds, i, LexToString(entity_type), meshes[entity_type], errors);
     }
-    return entity_aabbs_;
+    if (errors.has_errors()) {
+        return FEntityBoundsExtractionResult{std::unexpect, MoveTemp(errors)};
+    }
+    return result;
 }
 void FLevelCollisionHost::initialise_static_geometry(UWorld& world,
                                                      FCollisionGridConfig const& config,

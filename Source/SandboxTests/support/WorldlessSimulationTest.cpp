@@ -15,7 +15,9 @@
 namespace ml {
 auto make_worldless_simulation_test_data(USpaceGameLevelConfig const& config)
     -> FLevelSimulationInitData {
-    return make_level_simulation_init_data(config);
+    auto result{make_level_simulation_init_data(config)};
+    check(result);
+    return MoveTemp(result.value());
 }
 
 auto make_worldless_player_spawn(USpaceGameLevelConfig const& config, FTransform const& transform)

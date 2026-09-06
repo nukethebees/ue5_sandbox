@@ -24,6 +24,8 @@ void FLevelEventManager::initialise(FCompiledLevelEvents data,
     if (initialisation_.player_entity_index != INDEX_NONE) {
         spawn_manager_.set_entity_handle(initialisation_.player_entity_index, player_handle);
     }
+    spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view(),
+                                 data.initial_spawns.turret_spawns.get_const_view());
 
     mission_manager_ = &mission_manager;
     mission_manager_->bind_level_event_data(schedule_.mission_events.values,
