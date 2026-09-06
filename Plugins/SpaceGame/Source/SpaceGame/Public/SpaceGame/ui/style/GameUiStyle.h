@@ -45,6 +45,8 @@ struct SPACEGAME_API FGameHudStyle {
     FLinearColor reticle_normal{};
     FLinearColor reticle_warning{};
     FLinearColor reticle_danger{};
+    FLinearColor objective_defend{};
+    FLinearColor objective_destroy{};
     FLinearColor graph_series{};
 
     FMargin panel_padding{10.0f};

@@ -29,15 +29,17 @@ auto inverse_maximum_health(ETestEntityType const type,
 }
 }
 
-auto collect_entity_overlay_instances(ml::entity_registry::EntityData::ConstView const entities,
-                                      FEntityOverlayHealthMaximums const& maximum_health,
-                                      FVector3f const origin,
-                                      float const maximum_range,
-                                      TArray<FEntityOverlayInstance>& output_instances,
-                                      FEntityOverlayCollector& collector)
-    -> FEntityOverlayCollectionResult {
+auto collect_entity_overlay_instances(
+    ml::entity_registry::EntityData::ConstView const entities,
+    TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
+    FEntityOverlayHealthMaximums const& maximum_health,
+    FVector3f const origin,
+    float const maximum_range,
+    TArray<FEntityOverlayInstance>& output_instances,
+    FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectRegistrySource);
     entities.validate_array_sizes();
+    check(objective_roles.Num() == entities.num());
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 
     auto const count{entities.num()};
@@ -53,10 +55,13 @@ auto collect_entity_overlay_instances(ml::entity_registry::EntityData::ConstView
             continue;
         }
 
+        auto const objective_role{objective_roles[index]};
         static_cast<void>(
             collector.try_add(entities.locations[index],
                               static_cast<float>(entities.healths[index]) * inverse_health,
-                              entities.radii[index]));
+                              entities.radii[index],
+                              objective_role,
+                              objective_role != EEntityOverlayObjectiveRole::None));
     }
 
     return {.candidate_count = output_instances.Num(),
