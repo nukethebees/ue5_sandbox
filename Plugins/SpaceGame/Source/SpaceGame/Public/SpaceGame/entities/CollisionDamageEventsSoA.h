@@ -59,6 +59,14 @@ struct SPACEGAME_API UnresolvedCollisionDamageEventsView {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
 
+    void set(int32 const index, AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) const {
+        damaged_actors[index] = new_damaged_actors;
+        damage_amounts[index] = new_damage_amounts;
+        actor_components[index] = new_actor_components;
+        hit_items[index] = new_hit_items;
+        instigators[index] = new_instigators;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -96,6 +104,14 @@ struct SPACEGAME_API UnresolvedCollisionDamageEventsView {
 struct SPACEGAME_API UnresolvedCollisionDamageEvents {
     using View = UnresolvedCollisionDamageEventsView;
     using ConstView = UnresolvedCollisionDamageEventsConstView;
+
+    void set(int32 const index, AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) {
+        damaged_actors[index] = new_damaged_actors;
+        damage_amounts[index] = new_damage_amounts;
+        actor_components[index] = new_actor_components;
+        hit_items[index] = new_hit_items;
+        instigators[index] = new_instigators;
+    }
 
     void reset();
 
@@ -262,6 +278,13 @@ struct SPACEGAME_API CollisionDamageEventsView {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
 
+    void set(int32 const index, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) const {
+        damage_amounts[index] = new_damage_amounts;
+        actor_components[index] = new_actor_components;
+        hit_items[index] = new_hit_items;
+        instigators[index] = new_instigators;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -297,6 +320,13 @@ struct SPACEGAME_API CollisionDamageEventsView {
 struct SPACEGAME_API CollisionDamageEvents {
     using View = CollisionDamageEventsView;
     using ConstView = CollisionDamageEventsConstView;
+
+    void set(int32 const index, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) {
+        damage_amounts[index] = new_damage_amounts;
+        actor_components[index] = new_actor_components;
+        hit_items[index] = new_hit_items;
+        instigators[index] = new_instigators;
+    }
 
     void reset();
 

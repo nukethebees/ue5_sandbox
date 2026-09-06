@@ -132,6 +132,17 @@ auto parse_type_ref(Json const& value, std::string const& path) -> TypeRef {
     };
 }
 
+auto parse_parameter_passing(std::string const& value, std::string const& path)
+    -> ParameterPassing {
+    if (value == "const_ref") {
+        return ParameterPassing::const_reference;
+    }
+    if (value == "value") {
+        return ParameterPassing::value;
+    }
+    throw ManifestError{path + ": expected 'const_ref' or 'value'; got '" + value + "'"};
+}
+
 auto parse_parameter(Json const& value, std::string const& path) -> ParameterSchema {
     reject_unknown(value, path, {"type", "name", "default"});
     return ParameterSchema{
@@ -816,19 +827,38 @@ auto load_types(std::filesystem::path const& path) -> std::map<std::string, CppT
     std::map<std::string, CppType> result;
     for (auto const& [key, value] : required_object(document, "types", path.string()).items()) {
         auto const item_path{path.string() + "/types/" + key};
-        reject_unknown(value, item_path, {"spelling", "header", "operations"});
+        reject_unknown(value, item_path, {"spelling", "header", "operations", "pass_by"});
         auto type{CppType{required<std::string>(value, "spelling", item_path)}};
+        if (auto pass_by{optional<std::string>(value, "pass_by", item_path)};
+            pass_by.has_value()) {
+            type.parameter_passing =
+                parse_parameter_passing(*pass_by, item_path + "/pass_by");
+        }
         if (auto header{optional<std::string>(value, "header", item_path)}; header.has_value()) {
             type.dependencies.push_back(TypeDependency{type.spelling, std::move(header), {}});
         }
         if (value.contains("operations")) {
             auto const& operations{value.at("operations")};
-            reject_unknown(operations, item_path + "/operations", {"remove_at_swap"});
+            reject_unknown(
+                operations, item_path + "/operations", {"remove_at_swap", "set_element"});
             if (auto operation{
                     optional<std::string>(operations, "remove_at_swap", item_path + "/operations")};
                 operation.has_value()) {
                 type.member_operations.emplace(TypeOperation::remove_at_swap,
                                                std::move(*operation));
+            }
+            if (operations.contains("set_element")) {
+                auto const operation_path{item_path + "/operations/set_element"};
+                auto const& operation{operations.at("set_element")};
+                reject_unknown(operation, operation_path, {"function", "pass_by"});
+                type.member_operations.emplace(
+                    TypeOperation::set_element,
+                    required<std::string>(operation, "function", operation_path));
+                type.member_operation_parameter_passing.emplace(
+                    TypeOperation::set_element,
+                    parse_parameter_passing(
+                        value_or<std::string>(operation, "pass_by", "const_ref", operation_path),
+                        operation_path + "/pass_by"));
             }
         }
         result.emplace(key, std::move(type));

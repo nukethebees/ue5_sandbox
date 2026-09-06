@@ -33,6 +33,26 @@ auto trim_newlines(std::string value) -> std::string {
     return value;
 }
 
+auto default_parameter_passing(std::string_view const spelling) -> ParameterPassing {
+    static std::set<std::string_view> const value_types{
+        "bool",               "char",               "char8_t",
+        "char16_t",           "char32_t",            "double",
+        "float",              "int",                "int8",
+        "int16",              "int32",              "int64",
+        "long",               "long double",        "long int",
+        "long long",          "short",              "short int",
+        "signed char",        "size_t",             "std::ptrdiff_t",
+        "std::size_t",        "uint8",              "uint16",
+        "uint32",             "uint64",             "unsigned",
+        "unsigned char",      "unsigned int",       "unsigned long",
+        "unsigned long int",  "unsigned long long", "unsigned short",
+        "unsigned short int", "wchar_t",
+    };
+    return value_types.contains(spelling) || spelling.ends_with('*')
+               ? ParameterPassing::value
+               : ParameterPassing::const_reference;
+}
+
 auto render_parameter(FunctionParameter const& parameter, bool include_default) -> std::string {
     auto result{parameter.type.spelling};
     if (!parameter.name.empty()) {
@@ -85,6 +105,9 @@ void validate_function(Function const& function) {
 
 void validate_member(Member const& member) {
     auto const context{"Member '" + member.name + "'"};
+    if (member.qualifiers.is_inline && !member.qualifiers.is_static) {
+        throw std::invalid_argument{context + " inline data member must be static"};
+    }
     if (member.qualifiers.is_constexpr && !member.qualifiers.is_static) {
         throw std::invalid_argument{context + " constexpr data member must be static"};
     }
@@ -233,20 +256,31 @@ auto include_groups(CppFile const& file) -> std::vector<std::vector<Include>> {
 } // namespace
 
 CppType::CppType(char const* value)
-    : spelling{value} {}
+    : spelling{value}
+    , parameter_passing{default_parameter_passing(spelling)} {}
 CppType::CppType(std::string value)
-    : spelling{std::move(value)} {}
+    : spelling{std::move(value)}
+    , parameter_passing{default_parameter_passing(spelling)} {}
 CppType::CppType(std::string value, std::string header)
     : spelling{std::move(value)}
-    , dependencies{{TypeDependency{spelling, std::move(header), {}}}} {}
+    , dependencies{{TypeDependency{spelling, std::move(header), {}}}}
+    , parameter_passing{default_parameter_passing(spelling)} {}
 CppType::CppType(std::string value, std::vector<TypeDependency> type_dependencies)
     : spelling{std::move(value)}
-    , dependencies{std::move(type_dependencies)} {}
+    , dependencies{std::move(type_dependencies)}
+    , parameter_passing{default_parameter_passing(spelling)} {}
 
 auto CppType::operation(TypeOperation operation_name) const -> std::optional<std::string> {
     auto const found{member_operations.find(operation_name)};
     return found == member_operations.end() ? std::nullopt
                                             : std::optional<std::string>{found->second};
+}
+
+auto CppType::operation_parameter_passing(TypeOperation const operation_name) const
+    -> ParameterPassing {
+    auto const found{member_operation_parameter_passing.find(operation_name)};
+    return found == member_operation_parameter_passing.end() ? ParameterPassing::const_reference
+                                                              : found->second;
 }
 
 Member::Member(CppType value_type, std::string value_name)
@@ -259,11 +293,13 @@ Member::Member(CppType value_type, std::string value_name, std::string value_ini
 Member::Member(CppType value_type,
                std::string value_name,
                std::optional<std::string> value_initializer,
-               MemberQualifiers value_qualifiers)
+               MemberQualifiers value_qualifiers,
+               std::optional<std::string> value_template_parameters)
     : type{std::move(value_type)}
     , name{std::move(value_name)}
     , initializer{std::move(value_initializer)}
-    , qualifiers{value_qualifiers} {}
+    , qualifiers{value_qualifiers}
+    , template_parameters{std::move(value_template_parameters)} {}
 
 FunctionParameter::FunctionParameter(CppType value_type, std::string value_name)
     : type{std::move(value_type)}
@@ -440,10 +476,14 @@ auto render(Node const& node, RenderContext const& context) -> std::string {
                 validate_member(value);
                 auto initializer{value.initializer.has_value() ? "{" + *value.initializer + "}"
                                                                : ""};
-                return context.apply_indent(
-                    declaration_specifier_prefix(value.qualifiers.is_static,
-                                                 value.qualifiers.is_constexpr) +
-                    value.type.spelling + " " + value.name + initializer + ";");
+                auto declaration{std::string{value.qualifiers.is_inline ? "inline " : ""} +
+                                 declaration_specifier_prefix(value.qualifiers.is_static,
+                                                              value.qualifiers.is_constexpr) +
+                                 value.type.spelling + " " + value.name + initializer + ";"};
+                if (value.template_parameters.has_value()) {
+                    declaration = "template <" + *value.template_parameters + ">\n" + declaration;
+                }
+                return context.apply_indent(declaration);
             } else if constexpr (std::is_same_v<T, Function>) {
                 auto const signature{context.apply_indent(render_signature(value))};
                 if (value.declaration ||

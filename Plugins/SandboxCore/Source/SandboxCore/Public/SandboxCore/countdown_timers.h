@@ -47,6 +47,10 @@ struct SANDBOXCORE_API FCountdownTimersView {
     using View = FCountdownTimersView;
     using ConstView = FCountdownTimersConstView;
 
+    void set(int32 const index, float const new_remaining_times) const {
+        remaining_times[index] = new_remaining_times;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -78,6 +82,10 @@ struct SANDBOXCORE_API FCountdownTimers {
     using ConstView = FCountdownTimersConstView;
 
     void tick(float const dt) noexcept;
+
+    void set(int32 const index, float const new_remaining_times) {
+        remaining_times[index] = new_remaining_times;
+    }
 
     void reset();
 

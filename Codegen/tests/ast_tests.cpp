@@ -228,6 +228,11 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
             {
                 Member{"int", "value", "42"},
                 Member{"int", "answer", "42", {.is_static = true, .is_constexpr = true}},
+                Member{"bool",
+                       "supports_value",
+                       "std::is_constructible_v<int, TArg>",
+                       {.is_inline = true, .is_static = true, .is_constexpr = true},
+                       "typename TArg"},
             },
         .bases = {CppType{"FBase"}},
         .export_specifier = "PROJECT_API",
@@ -239,6 +244,10 @@ TEST(Ast, RendersClassInheritanceAndMemberInitializers) {
               "    int value{42};\n"
               "\n"
               "    static constexpr int answer{42};\n"
+              "\n"
+              "    template <typename TArg>\n"
+              "    inline static constexpr bool "
+              "supports_value{std::is_constructible_v<int, TArg>};\n"
               "};");
 }
 
@@ -247,6 +256,8 @@ TEST(Ast, RejectsInvalidMemberQualifierCombinations) {
                  std::invalid_argument);
     EXPECT_THROW(render(Node{Member{
                      "int", "value", std::nullopt, {.is_static = true, .is_constexpr = true}}}),
+                 std::invalid_argument);
+    EXPECT_THROW(render(Node{Member{"int", "value", "42", {.is_inline = true}}}),
                  std::invalid_argument);
 }
 

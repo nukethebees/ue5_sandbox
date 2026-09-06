@@ -52,6 +52,12 @@ struct SPACEGAME_API DirectDamageEventsView {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
 
+    void set(int32 const index, FRegistryEntityHandle const new_damaged_entities, int32 const new_damage_amounts, FRegistryEntityHandle const new_instigators) const {
+        damaged_entities[index] = new_damaged_entities;
+        damage_amounts[index] = new_damage_amounts;
+        instigators[index] = new_instigators;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -85,6 +91,12 @@ struct SPACEGAME_API DirectDamageEventsView {
 struct SPACEGAME_API DirectDamageEvents {
     using View = DirectDamageEventsView;
     using ConstView = DirectDamageEventsConstView;
+
+    void set(int32 const index, FRegistryEntityHandle const new_damaged_entities, int32 const new_damage_amounts, FRegistryEntityHandle const new_instigators) {
+        damaged_entities[index] = new_damaged_entities;
+        damage_amounts[index] = new_damage_amounts;
+        instigators[index] = new_instigators;
+    }
 
     void reset();
 

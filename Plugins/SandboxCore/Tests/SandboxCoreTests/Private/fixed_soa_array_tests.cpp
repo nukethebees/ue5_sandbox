@@ -17,6 +17,12 @@ TEST_CASE("SandboxCore.FixedSoA.Trivial vector storage exposes active and capaci
 
     static_assert(TFixedVectors3f<4>::capacity() == 4);
     static_assert(TFixedVectors3f<0>::capacity() == 0);
+    static_assert(TFixedVectors3f<4>::supports_copy_construction);
+    static_assert(TFixedVectors3f<4>::supports_move_construction);
+    static_assert(TFixedVectors3f<4>::supports_nothrow_move_construction);
+    static_assert(TFixedVectors3f<4>::supports_default_construction);
+    static_assert(TFixedVectors3f<4>::supports_uninitialised_storage);
+    static_assert(TFixedVectors3f<4>::supports_element_construction_from<float, float, float>);
     static_assert(HasCapacityView<TFixedVectors3f<4>>);
 
     auto capacity_view{values.capacity_view()};
@@ -41,6 +47,10 @@ TEST_CASE("SandboxCore.FixedSoA.Trivial vector storage exposes active and capaci
 
 TEST_CASE("SandboxCore.FixedSoA.Recursive non-trivial rows share one logical size") {
     using Rows = ml::fixed_soa_tests::TTestFixedRowsArray<4>;
+    static_assert(Rows::supports_copy_construction);
+    static_assert(Rows::supports_move_construction);
+    static_assert(Rows::supports_default_construction);
+    static_assert(!Rows::supports_uninitialised_storage);
     static_assert(!HasCapacityView<Rows>);
 
     Rows rows{};

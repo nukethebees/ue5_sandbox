@@ -57,6 +57,13 @@ struct SPACEGAME_API TestCapitalShipFighterOrderQueueView {
     using View = TestCapitalShipFighterOrderQueueView;
     using ConstView = TestCapitalShipFighterOrderQueueConstView;
 
+    void set(int32 const index, FRegistryEntityHandle const new_handles, TestCapitalShipFighterOrder const& new_orders, ETestCapitalShipFightersTask const new_tasks, FRegistryEntityHandle const new_targets) const {
+        handles[index] = new_handles;
+        orders[index] = new_orders;
+        tasks[index] = new_tasks;
+        targets[index] = new_targets;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -102,6 +109,13 @@ struct SPACEGAME_API TestCapitalShipFighterOrderQueue {
         orders.Add(order);
         tasks.Add(task);
         targets.Add(target);
+    }
+
+    void set(int32 const index, FRegistryEntityHandle const new_handles, TestCapitalShipFighterOrder const& new_orders, ETestCapitalShipFightersTask const new_tasks, FRegistryEntityHandle const new_targets) {
+        handles[index] = new_handles;
+        orders[index] = new_orders;
+        tasks[index] = new_tasks;
+        targets[index] = new_targets;
     }
 
     void reset();

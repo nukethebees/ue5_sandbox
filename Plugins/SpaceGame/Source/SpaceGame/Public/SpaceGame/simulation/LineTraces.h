@@ -50,6 +50,11 @@ struct SPACEGAME_API FLineTracesView {
     using View = FLineTracesView;
     using ConstView = FLineTracesConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_starts, FVectors3f::equivalent_type const new_ends) const {
+        starts.set(index, new_starts);
+        ends.set(index, new_ends);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -81,6 +86,11 @@ struct SPACEGAME_API FLineTracesView {
 struct SPACEGAME_API FLineTraces {
     using View = FLineTracesView;
     using ConstView = FLineTracesConstView;
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_starts, FVectors3f::equivalent_type const new_ends) {
+        starts.set(index, new_starts);
+        ends.set(index, new_ends);
+    }
 
     void reset();
 

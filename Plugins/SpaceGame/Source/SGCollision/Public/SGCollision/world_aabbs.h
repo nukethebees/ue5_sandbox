@@ -50,6 +50,11 @@ struct SGCOLLISION_API WorldAABBsView {
     using View = WorldAABBsView;
     using ConstView = WorldAABBsConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_mins, FVectors3f::equivalent_type const new_maxes) const {
+        mins.set(index, new_mins);
+        maxes.set(index, new_maxes);
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -81,6 +86,11 @@ struct SGCOLLISION_API WorldAABBsView {
 struct SGCOLLISION_API WorldAABBs {
     using View = WorldAABBsView;
     using ConstView = WorldAABBsConstView;
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_mins, FVectors3f::equivalent_type const new_maxes) {
+        mins.set(index, new_mins);
+        maxes.set(index, new_maxes);
+    }
 
     void reset();
 

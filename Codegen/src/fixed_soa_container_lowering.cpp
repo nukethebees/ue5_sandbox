@@ -1,6 +1,7 @@
 #include "fixed_soa_internal.h"
 #include "lowering_utils.h"
 
+#include <set>
 #include <utility>
 
 namespace codegen::detail {
@@ -18,10 +19,41 @@ TypeDependency const std_type_traits{"std::is_constructible_v", "type_traits", {
 
 auto fixed_trait(FixedLayout const& layout, std::string const& trait) -> std::string {
     std::vector<std::string> values;
+    std::set<std::string> types;
     for (auto const& leaf : layout.leaves) {
+        if (!types.insert(leaf.type.spelling).second) {
+            continue;
+        }
         values.push_back("std::" + trait + "<" + leaf.type.spelling + ">");
     }
-    return join(values, " && ");
+    return join(values, " &&\n    ");
+}
+
+auto fixed_uninitialised_storage_trait(FixedLayout const& layout) -> std::string {
+    std::vector<std::string> values;
+    std::set<std::string> types;
+    for (auto const& leaf : layout.leaves) {
+        if (!types.insert(leaf.type.spelling).second) {
+            continue;
+        }
+        values.push_back("std::is_trivially_copyable_v<" + leaf.type.spelling + ">");
+        values.push_back("std::is_trivially_destructible_v<" + leaf.type.spelling + ">");
+    }
+    return join(values, " &&\n    ");
+}
+
+auto capability_initializer(std::string expression) -> std::string {
+    return "\n    " + std::move(expression) + "\n";
+}
+
+auto capability_member(std::string name,
+                       std::string expression,
+                       std::optional<std::string> template_parameters = std::nullopt) -> Member {
+    return Member{CppType{"bool"},
+                  std::move(name),
+                  capability_initializer(std::move(expression)),
+                  {.is_inline = true, .is_static = true, .is_constexpr = true},
+                  std::move(template_parameters)};
 }
 
 auto compact_function_formatting() -> FunctionFormatting {
@@ -130,10 +162,45 @@ auto fixed_container_prelude_nodes(SoaSchema const& schema,
     return result.build();
 }
 
-auto fixed_container_lifecycle_nodes(FixedLayout const& layout, std::string const& name) -> Nodes {
-    auto const copy_constructible{fixed_trait(layout, "is_copy_constructible_v")};
-    auto const move_constructible{fixed_trait(layout, "is_move_constructible_v")};
-    auto const nothrow_move{fixed_trait(layout, "is_nothrow_move_constructible_v")};
+auto fixed_container_capability_nodes(FixedLayout const& layout) -> Nodes {
+    std::vector<std::string> template_parameters;
+    std::vector<std::string> constructible_values;
+    for (std::size_t index{0}; index < layout.leaves.size(); ++index) {
+        auto const argument_type{"TArg" + std::to_string(index)};
+        template_parameters.push_back("typename " + argument_type);
+        constructible_values.push_back("std::is_constructible_v<" +
+                                       layout.leaves[index].type.spelling + ", " + argument_type +
+                                       "&&>");
+    }
+
+    NodeListBuilder result;
+    result
+        .add(capability_member("supports_copy_construction",
+                               fixed_trait(layout, "is_copy_constructible_v")),
+             1)
+        .add(capability_member("supports_move_construction",
+                               fixed_trait(layout, "is_move_constructible_v")),
+             1)
+        .add(capability_member("supports_nothrow_move_construction",
+                               fixed_trait(layout, "is_nothrow_move_constructible_v")),
+             1)
+        .add(capability_member("supports_default_construction",
+                               fixed_trait(layout, "is_default_constructible_v")),
+             1)
+        .add(capability_member("supports_uninitialised_storage",
+                               fixed_uninitialised_storage_trait(layout)),
+             1)
+        .add(capability_member("supports_element_construction_from",
+                               join(constructible_values, " &&\n    "),
+                               join(template_parameters, ", ")),
+             2);
+    return result.build();
+}
+
+auto fixed_container_lifecycle_nodes(FixedLayout const&, std::string const& name) -> Nodes {
+    auto const copy_constructible{std::string{"supports_copy_construction"}};
+    auto const move_constructible{std::string{"supports_move_construction"}};
+    auto const nothrow_move{std::string{"supports_nothrow_move_construction"}};
     return {
         declaration(FunctionSpec{
             .name = name,
@@ -149,11 +216,11 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout, std::string cons
                        "}",
                        {},
                        std::nullopt,
-                       "(" + copy_constructible + ")",
+                       copy_constructible,
                        expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function(
-            name, {FunctionParameter{name + " const&", {}}}, "(!(" + copy_constructible + "))"),
+            name, {FunctionParameter{name + " const&", {}}}, "(!" + copy_constructible + ")"),
         lines(1),
         fixed_function(name,
                        {},
@@ -165,11 +232,11 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout, std::string cons
                        "other.reset();",
                        {.noexcept_condition = nothrow_move},
                        std::nullopt,
-                       "(" + move_constructible + ")",
+                       move_constructible,
                        expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function(
-            name, {FunctionParameter{name + "&&", {}}}, "(!(" + move_constructible + "))"),
+            name, {FunctionParameter{name + "&&", {}}}, "(!" + move_constructible + ")"),
         lines(1),
         fixed_function("~" + name,
                        {},
@@ -190,12 +257,12 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout, std::string cons
                        "return *this;",
                        {.trailing_return_type = CppType{name + "&"}},
                        std::nullopt,
-                       "(" + copy_constructible + ")",
+                       copy_constructible,
                        expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function("operator=",
                                {FunctionParameter{name + " const&", {}}},
-                               "(!(" + copy_constructible + "))",
+                               "(!" + copy_constructible + ")",
                                "auto",
                                {.trailing_return_type = CppType{name + "&"}}),
         lines(1),
@@ -214,12 +281,12 @@ auto fixed_container_lifecycle_nodes(FixedLayout const& layout, std::string cons
             "return *this;",
             {.trailing_return_type = CppType{name + "&"}, .noexcept_condition = nothrow_move},
             std::nullopt,
-            "(" + move_constructible + ")",
+            move_constructible,
             expanded_constrained_function_formatting()),
         lines(1),
         deleted_fixed_function("operator=",
                                {FunctionParameter{name + "&&", {}}},
-                               "(!(" + move_constructible + "))",
+                               "(!" + move_constructible + ")",
                                "auto",
                                {.trailing_return_type = CppType{name + "&"}}),
         lines(2),
@@ -383,30 +450,55 @@ auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
     return result.build();
 }
 
+auto fixed_container_set_nodes(SoaSchema const& schema,
+                               std::map<std::string, CppType> const& types) -> Nodes {
+    auto const members{resolve_members(schema, types)};
+    std::vector<FunctionSpec> setters;
+    if (auto set{soa_set_spec(schema, members, false)}; set.has_value()) {
+        setters.push_back(std::move(*set));
+    } else {
+        for (auto const& function : schema.mutable_view_functions) {
+            if (function.name == "set") {
+                setters.push_back(soa_function_spec(function, types));
+            }
+        }
+    }
+
+    NodeListBuilder result;
+    for (auto& setter : setters) {
+        std::vector<std::string> arguments;
+        arguments.reserve(setter.parameters.size());
+        for (auto const& parameter : setter.parameters) {
+            arguments.push_back(parameter.name);
+        }
+        setter.body = {ExpressionStatement{"get_view().set(" + join(arguments, ", ") + ")"}};
+        setter.qualifiers.is_const = false;
+        setter.formatting = compact_function_formatting();
+        result.add(header_function(setter), 1);
+    }
+    if (!setters.empty()) {
+        result.new_lines();
+    }
+    return result.build();
+}
+
 auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
     std::vector<std::string> template_parameters;
     std::vector<FunctionParameter> parameters;
     std::vector<std::string> forwarded;
-    std::vector<std::string> constructible_values;
-    std::vector<std::string> trivial_values;
+    std::vector<std::string> argument_types;
     for (std::size_t index{0}; index < layout.leaves.size(); ++index) {
         auto const argument{fixed_leaf_argument(layout.leaves[index])};
         auto const index_text{std::to_string(index)};
         template_parameters.push_back("typename TArg" + index_text);
+        argument_types.push_back("TArg" + index_text);
         parameters.emplace_back("TArg" + index_text + "&&", "new_" + argument);
         forwarded.push_back("std::forward<TArg" + index_text + ">(new_" + argument + ")");
-        constructible_values.push_back("std::is_constructible_v<" +
-                                       layout.leaves[index].type.spelling + ", TArg" + index_text +
-                                       "&&>");
-        trivial_values.push_back(
-            "(std::is_trivially_copyable_v<" + layout.leaves[index].type.spelling +
-            "> && std::is_trivially_destructible_v<" + layout.leaves[index].type.spelling + ">)");
     }
     auto const function_template{join(template_parameters, ", ")};
     auto const forwarded_values{join(forwarded, ", ")};
-    auto const constructible{"(" + join(constructible_values, " && ") + ")"};
-    auto const default_constructible{"(" + fixed_trait(layout, "is_default_constructible_v") + ")"};
-    auto const trivial{"(" + join(trivial_values, " && ") + ")"};
+    auto const constructible{"supports_element_construction_from<" + join(argument_types, ", ") +
+                             ">"};
     NodeListBuilder result;
     result
         .add(fixed_function("emplace_back",
@@ -441,7 +533,7 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
                          "++i) { storage_.default_construct_at(size_); ++size_; }",
                          {},
                          std::nullopt,
-                         default_constructible);
+                         "supports_default_construction");
     add_compact_function(
         result,
         "set_num",
@@ -451,7 +543,7 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
         "destroy_from(new_size); return; } add_defaulted(new_size - size_);",
         {},
         std::nullopt,
-        default_constructible);
+        "supports_default_construction");
     add_compact_function(result,
                          "set_num",
                          "void",
@@ -460,7 +552,7 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
                          "set_num(new_size);",
                          {},
                          std::nullopt,
-                         default_constructible);
+                         "supports_default_construction");
     add_compact_function(result,
                          "capacity_view",
                          "auto",
@@ -468,7 +560,7 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
                          "return storage_.get_view(0, capacity());",
                          {.trailing_return_type = CppType{"View"}},
                          std::nullopt,
-                         trivial);
+                         "supports_uninitialised_storage");
     add_compact_function(result,
                          "set_num_uninitialised",
                          "void",
@@ -476,7 +568,7 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
                          "check(new_size >= 0); check(new_size <= capacity()); size_ = new_size;",
                          {},
                          std::nullopt,
-                         trivial);
+                         "supports_uninitialised_storage");
     add_compact_function(result,
                          "add_uninitialised",
                          "void",
@@ -484,7 +576,7 @@ auto fixed_container_construction_nodes(FixedLayout const& layout) -> Nodes {
                          "check_has_sufficient_capacity(count); size_ += count;",
                          {},
                          std::nullopt,
-                         trivial,
+                         "supports_uninitialised_storage",
                          2);
     return result.build();
 }
@@ -614,8 +706,10 @@ auto fixed_container_node(FixedLayout const& layout,
     auto const& schema{*layout.schema};
     NodeListBuilder children;
     children.append(fixed_container_prelude_nodes(schema, types))
+        .append(fixed_container_capability_nodes(layout))
         .append(fixed_container_lifecycle_nodes(layout, name))
         .append(fixed_container_access_nodes(schema))
+        .append(fixed_container_set_nodes(schema, types))
         .append(fixed_container_construction_nodes(layout))
         .append(fixed_container_mutation_nodes())
         .append(fixed_container_private_nodes(schema));

@@ -60,6 +60,14 @@ struct SPACEGAME_API FEntityCellDataView {
     using View = FEntityCellDataView;
     using ConstView = FEntityCellDataConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_min_points, FVectors3f::equivalent_type const new_max_points, FVectors3i32::equivalent_type const new_mins, FVectors3i32::equivalent_type const new_maxes, FRegistryEntityHandle const new_handles) const {
+        min_points.set(index, new_min_points);
+        max_points.set(index, new_max_points);
+        mins.set(index, new_mins);
+        maxes.set(index, new_maxes);
+        handles[index] = new_handles;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -97,6 +105,14 @@ struct SPACEGAME_API FEntityCellDataView {
 struct SPACEGAME_API FEntityCellData {
     using View = FEntityCellDataView;
     using ConstView = FEntityCellDataConstView;
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_min_points, FVectors3f::equivalent_type const new_max_points, FVectors3i32::equivalent_type const new_mins, FVectors3i32::equivalent_type const new_maxes, FRegistryEntityHandle const new_handles) {
+        min_points.set(index, new_min_points);
+        max_points.set(index, new_max_points);
+        mins.set(index, new_mins);
+        maxes.set(index, new_maxes);
+        handles[index] = new_handles;
+    }
 
     void reset();
 

@@ -527,6 +527,11 @@ struct SPACEGAME_API HitDetailsView {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FLinearColor const new_colours) const {
+        locations.set(index, new_locations);
+        colours[index] = new_colours;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -558,6 +563,11 @@ struct SPACEGAME_API HitDetailsView {
 struct SPACEGAME_API HitDetails {
     using View = HitDetailsView;
     using ConstView = HitDetailsConstView;
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FLinearColor const new_colours) {
+        locations.set(index, new_locations);
+        colours[index] = new_colours;
+    }
 
     void reset();
 

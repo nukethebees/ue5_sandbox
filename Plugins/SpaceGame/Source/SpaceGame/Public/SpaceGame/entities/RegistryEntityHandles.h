@@ -74,6 +74,11 @@ struct SPACEGAME_API FRegistryEntityHandlesView {
         return (*this)[index];
     }
 
+    void set(int32 const index, int32 const new_registry_indices, int32 const new_generations) const {
+        registry_indices[index] = new_registry_indices;
+        generations[index] = new_generations;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -123,6 +128,11 @@ struct SPACEGAME_API FRegistryEntityHandles {
     void append_to(TArray<FRegistryEntityHandle>& out) const;
 
     TArray<FRegistryEntityHandle> to_array() const;
+
+    void set(int32 const index, int32 const new_registry_indices, int32 const new_generations) {
+        registry_indices[index] = new_registry_indices;
+        generations[index] = new_generations;
+    }
 
     void reset();
 

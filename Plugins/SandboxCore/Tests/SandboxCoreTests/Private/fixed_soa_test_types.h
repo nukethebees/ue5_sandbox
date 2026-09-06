@@ -53,6 +53,11 @@ struct FTestFixedChildView {
     using View = FTestFixedChildView;
     using ConstView = FTestFixedChildConstView;
 
+    void set(int32 const index, FString const& new_names, TSharedPtr<int32> const& new_references) const {
+        names[index] = new_names;
+        references[index] = new_references;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -84,6 +89,11 @@ struct FTestFixedChildView {
 struct FTestFixedChild {
     using View = FTestFixedChildView;
     using ConstView = FTestFixedChildConstView;
+
+    void set(int32 const index, FString const& new_names, TSharedPtr<int32> const& new_references) {
+        names[index] = new_names;
+        references[index] = new_references;
+    }
 
     void apply_permutation(TArrayView<int32> indices);
 
@@ -410,9 +420,44 @@ struct TTestFixedRowsArray {
 
     static constexpr size_type capacity_value{Capacity};
 
+    inline static constexpr bool supports_copy_construction{
+        std::is_copy_constructible_v<FString> &&
+        std::is_copy_constructible_v<TSharedPtr<int32>> &&
+        std::is_copy_constructible_v<int32>
+    };
+    inline static constexpr bool supports_move_construction{
+        std::is_move_constructible_v<FString> &&
+        std::is_move_constructible_v<TSharedPtr<int32>> &&
+        std::is_move_constructible_v<int32>
+    };
+    inline static constexpr bool supports_nothrow_move_construction{
+        std::is_nothrow_move_constructible_v<FString> &&
+        std::is_nothrow_move_constructible_v<TSharedPtr<int32>> &&
+        std::is_nothrow_move_constructible_v<int32>
+    };
+    inline static constexpr bool supports_default_construction{
+        std::is_default_constructible_v<FString> &&
+        std::is_default_constructible_v<TSharedPtr<int32>> &&
+        std::is_default_constructible_v<int32>
+    };
+    inline static constexpr bool supports_uninitialised_storage{
+        std::is_trivially_copyable_v<FString> &&
+        std::is_trivially_destructible_v<FString> &&
+        std::is_trivially_copyable_v<TSharedPtr<int32>> &&
+        std::is_trivially_destructible_v<TSharedPtr<int32>> &&
+        std::is_trivially_copyable_v<int32> &&
+        std::is_trivially_destructible_v<int32>
+    };
+    template <typename TArg0, typename TArg1, typename TArg2>
+    inline static constexpr bool supports_element_construction_from{
+        std::is_constructible_v<FString, TArg0&&> &&
+        std::is_constructible_v<TSharedPtr<int32>, TArg1&&> &&
+        std::is_constructible_v<int32, TArg2&&>
+    };
+
     TTestFixedRowsArray() noexcept = default;
     TTestFixedRowsArray(TTestFixedRowsArray const& other)
-        requires (std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>)
+        requires supports_copy_construction
     {
         for (size_type i{}; i < other.size_; ++i) {
             storage_.copy_construct_at(size_, other.storage_, i);
@@ -420,10 +465,10 @@ struct TTestFixedRowsArray {
         }
     }
     TTestFixedRowsArray(TTestFixedRowsArray const&)
-        requires (!(std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>))
+        requires (!supports_copy_construction)
     = delete;
-    TTestFixedRowsArray(TTestFixedRowsArray&& other) noexcept(std::is_nothrow_move_constructible_v<FString> && std::is_nothrow_move_constructible_v<TSharedPtr<int32>> && std::is_nothrow_move_constructible_v<int32>)
-        requires (std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>)
+    TTestFixedRowsArray(TTestFixedRowsArray&& other) noexcept(supports_nothrow_move_construction)
+        requires supports_move_construction
     {
         for (size_type i{}; i < other.size_; ++i) {
             storage_.move_construct_at(size_, other.storage_, i);
@@ -432,12 +477,12 @@ struct TTestFixedRowsArray {
         other.reset();
     }
     TTestFixedRowsArray(TTestFixedRowsArray&&)
-        requires (!(std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>))
+        requires (!supports_move_construction)
     = delete;
     ~TTestFixedRowsArray() { reset(); }
 
     auto operator=(TTestFixedRowsArray const& other) -> TTestFixedRowsArray&
-        requires (std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>)
+        requires supports_copy_construction
     {
         if (this != std::addressof(other)) {
             reset();
@@ -446,10 +491,10 @@ struct TTestFixedRowsArray {
         return *this;
     }
     auto operator=(TTestFixedRowsArray const&) -> TTestFixedRowsArray&
-        requires (!(std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>))
+        requires (!supports_copy_construction)
     = delete;
-    auto operator=(TTestFixedRowsArray&& other) noexcept(std::is_nothrow_move_constructible_v<FString> && std::is_nothrow_move_constructible_v<TSharedPtr<int32>> && std::is_nothrow_move_constructible_v<int32>) -> TTestFixedRowsArray&
-        requires (std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>)
+    auto operator=(TTestFixedRowsArray&& other) noexcept(supports_nothrow_move_construction) -> TTestFixedRowsArray&
+        requires supports_move_construction
     {
         if (this != std::addressof(other)) {
             reset();
@@ -462,7 +507,7 @@ struct TTestFixedRowsArray {
         return *this;
     }
     auto operator=(TTestFixedRowsArray&&) -> TTestFixedRowsArray&
-        requires (!(std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>))
+        requires (!supports_move_construction)
     = delete;
 
     static constexpr auto capacity() noexcept -> size_type { return capacity_value; }
@@ -487,7 +532,7 @@ struct TTestFixedRowsArray {
     template <typename TFunc> auto apply_arrays(TFunc&& func) const -> decltype(auto) { auto view{get_const_view()}; return view.apply_arrays(std::forward<TFunc>(func)); }
 
     template <typename TArg0, typename TArg1, typename TArg2>
-        requires (std::is_constructible_v<FString, TArg0&&> && std::is_constructible_v<TSharedPtr<int32>, TArg1&&> && std::is_constructible_v<int32, TArg2&&>)
+        requires supports_element_construction_from<TArg0, TArg1, TArg2>
     auto emplace_back(TArg0&& new_children_names, TArg1&& new_children_references, TArg2&& new_ids) -> size_type {
         check_has_sufficient_capacity(1);
         auto const index{size_};
@@ -496,15 +541,15 @@ struct TTestFixedRowsArray {
         return index;
     }
     template <typename TArg0, typename TArg1, typename TArg2>
-        requires (std::is_constructible_v<FString, TArg0&&> && std::is_constructible_v<TSharedPtr<int32>, TArg1&&> && std::is_constructible_v<int32, TArg2&&>)
+        requires supports_element_construction_from<TArg0, TArg1, TArg2>
     auto add(TArg0&& new_children_names, TArg1&& new_children_references, TArg2&& new_ids) -> size_type { return emplace_back(std::forward<TArg0>(new_children_names), std::forward<TArg1>(new_children_references), std::forward<TArg2>(new_ids)); }
 
-    void add_defaulted(size_type const count = 1) requires (std::is_default_constructible_v<FString> && std::is_default_constructible_v<TSharedPtr<int32>> && std::is_default_constructible_v<int32>) { check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; } }
-    void set_num(size_type const new_size) requires (std::is_default_constructible_v<FString> && std::is_default_constructible_v<TSharedPtr<int32>> && std::is_default_constructible_v<int32>) { check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { destroy_from(new_size); return; } add_defaulted(new_size - size_); }
-    void set_num(size_type const new_size, EAllowShrinking const) requires (std::is_default_constructible_v<FString> && std::is_default_constructible_v<TSharedPtr<int32>> && std::is_default_constructible_v<int32>) { set_num(new_size); }
-    auto capacity_view() -> View requires ((std::is_trivially_copyable_v<FString> && std::is_trivially_destructible_v<FString>) && (std::is_trivially_copyable_v<TSharedPtr<int32>> && std::is_trivially_destructible_v<TSharedPtr<int32>>) && (std::is_trivially_copyable_v<int32> && std::is_trivially_destructible_v<int32>)) { return storage_.get_view(0, capacity()); }
-    void set_num_uninitialised(size_type const new_size) requires ((std::is_trivially_copyable_v<FString> && std::is_trivially_destructible_v<FString>) && (std::is_trivially_copyable_v<TSharedPtr<int32>> && std::is_trivially_destructible_v<TSharedPtr<int32>>) && (std::is_trivially_copyable_v<int32> && std::is_trivially_destructible_v<int32>)) { check(new_size >= 0); check(new_size <= capacity()); size_ = new_size; }
-    void add_uninitialised(size_type const count) requires ((std::is_trivially_copyable_v<FString> && std::is_trivially_destructible_v<FString>) && (std::is_trivially_copyable_v<TSharedPtr<int32>> && std::is_trivially_destructible_v<TSharedPtr<int32>>) && (std::is_trivially_copyable_v<int32> && std::is_trivially_destructible_v<int32>)) { check_has_sufficient_capacity(count); size_ += count; }
+    void add_defaulted(size_type const count = 1) requires supports_default_construction { check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; } }
+    void set_num(size_type const new_size) requires supports_default_construction { check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { destroy_from(new_size); return; } add_defaulted(new_size - size_); }
+    void set_num(size_type const new_size, EAllowShrinking const) requires supports_default_construction { set_num(new_size); }
+    auto capacity_view() -> View requires supports_uninitialised_storage { return storage_.get_view(0, capacity()); }
+    void set_num_uninitialised(size_type const new_size) requires supports_uninitialised_storage { check(new_size >= 0); check(new_size <= capacity()); size_ = new_size; }
+    void add_uninitialised(size_type const count) requires supports_uninitialised_storage { check_has_sufficient_capacity(count); size_ += count; }
 
     void pop() { check(!is_empty()); --size_; storage_.destroy_at(size_); }
     void reset() noexcept { destroy_from(0); }
@@ -542,9 +587,44 @@ struct TTestFixedRowsArrayAlternate {
 
     static constexpr size_type capacity_value{Capacity};
 
+    inline static constexpr bool supports_copy_construction{
+        std::is_copy_constructible_v<FString> &&
+        std::is_copy_constructible_v<TSharedPtr<int32>> &&
+        std::is_copy_constructible_v<int32>
+    };
+    inline static constexpr bool supports_move_construction{
+        std::is_move_constructible_v<FString> &&
+        std::is_move_constructible_v<TSharedPtr<int32>> &&
+        std::is_move_constructible_v<int32>
+    };
+    inline static constexpr bool supports_nothrow_move_construction{
+        std::is_nothrow_move_constructible_v<FString> &&
+        std::is_nothrow_move_constructible_v<TSharedPtr<int32>> &&
+        std::is_nothrow_move_constructible_v<int32>
+    };
+    inline static constexpr bool supports_default_construction{
+        std::is_default_constructible_v<FString> &&
+        std::is_default_constructible_v<TSharedPtr<int32>> &&
+        std::is_default_constructible_v<int32>
+    };
+    inline static constexpr bool supports_uninitialised_storage{
+        std::is_trivially_copyable_v<FString> &&
+        std::is_trivially_destructible_v<FString> &&
+        std::is_trivially_copyable_v<TSharedPtr<int32>> &&
+        std::is_trivially_destructible_v<TSharedPtr<int32>> &&
+        std::is_trivially_copyable_v<int32> &&
+        std::is_trivially_destructible_v<int32>
+    };
+    template <typename TArg0, typename TArg1, typename TArg2>
+    inline static constexpr bool supports_element_construction_from{
+        std::is_constructible_v<FString, TArg0&&> &&
+        std::is_constructible_v<TSharedPtr<int32>, TArg1&&> &&
+        std::is_constructible_v<int32, TArg2&&>
+    };
+
     TTestFixedRowsArrayAlternate() noexcept = default;
     TTestFixedRowsArrayAlternate(TTestFixedRowsArrayAlternate const& other)
-        requires (std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>)
+        requires supports_copy_construction
     {
         for (size_type i{}; i < other.size_; ++i) {
             storage_.copy_construct_at(size_, other.storage_, i);
@@ -552,10 +632,10 @@ struct TTestFixedRowsArrayAlternate {
         }
     }
     TTestFixedRowsArrayAlternate(TTestFixedRowsArrayAlternate const&)
-        requires (!(std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>))
+        requires (!supports_copy_construction)
     = delete;
-    TTestFixedRowsArrayAlternate(TTestFixedRowsArrayAlternate&& other) noexcept(std::is_nothrow_move_constructible_v<FString> && std::is_nothrow_move_constructible_v<TSharedPtr<int32>> && std::is_nothrow_move_constructible_v<int32>)
-        requires (std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>)
+    TTestFixedRowsArrayAlternate(TTestFixedRowsArrayAlternate&& other) noexcept(supports_nothrow_move_construction)
+        requires supports_move_construction
     {
         for (size_type i{}; i < other.size_; ++i) {
             storage_.move_construct_at(size_, other.storage_, i);
@@ -564,12 +644,12 @@ struct TTestFixedRowsArrayAlternate {
         other.reset();
     }
     TTestFixedRowsArrayAlternate(TTestFixedRowsArrayAlternate&&)
-        requires (!(std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>))
+        requires (!supports_move_construction)
     = delete;
     ~TTestFixedRowsArrayAlternate() { reset(); }
 
     auto operator=(TTestFixedRowsArrayAlternate const& other) -> TTestFixedRowsArrayAlternate&
-        requires (std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>)
+        requires supports_copy_construction
     {
         if (this != std::addressof(other)) {
             reset();
@@ -578,10 +658,10 @@ struct TTestFixedRowsArrayAlternate {
         return *this;
     }
     auto operator=(TTestFixedRowsArrayAlternate const&) -> TTestFixedRowsArrayAlternate&
-        requires (!(std::is_copy_constructible_v<FString> && std::is_copy_constructible_v<TSharedPtr<int32>> && std::is_copy_constructible_v<int32>))
+        requires (!supports_copy_construction)
     = delete;
-    auto operator=(TTestFixedRowsArrayAlternate&& other) noexcept(std::is_nothrow_move_constructible_v<FString> && std::is_nothrow_move_constructible_v<TSharedPtr<int32>> && std::is_nothrow_move_constructible_v<int32>) -> TTestFixedRowsArrayAlternate&
-        requires (std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>)
+    auto operator=(TTestFixedRowsArrayAlternate&& other) noexcept(supports_nothrow_move_construction) -> TTestFixedRowsArrayAlternate&
+        requires supports_move_construction
     {
         if (this != std::addressof(other)) {
             reset();
@@ -594,7 +674,7 @@ struct TTestFixedRowsArrayAlternate {
         return *this;
     }
     auto operator=(TTestFixedRowsArrayAlternate&&) -> TTestFixedRowsArrayAlternate&
-        requires (!(std::is_move_constructible_v<FString> && std::is_move_constructible_v<TSharedPtr<int32>> && std::is_move_constructible_v<int32>))
+        requires (!supports_move_construction)
     = delete;
 
     static constexpr auto capacity() noexcept -> size_type { return capacity_value; }
@@ -619,7 +699,7 @@ struct TTestFixedRowsArrayAlternate {
     template <typename TFunc> auto apply_arrays(TFunc&& func) const -> decltype(auto) { auto view{get_const_view()}; return view.apply_arrays(std::forward<TFunc>(func)); }
 
     template <typename TArg0, typename TArg1, typename TArg2>
-        requires (std::is_constructible_v<FString, TArg0&&> && std::is_constructible_v<TSharedPtr<int32>, TArg1&&> && std::is_constructible_v<int32, TArg2&&>)
+        requires supports_element_construction_from<TArg0, TArg1, TArg2>
     auto emplace_back(TArg0&& new_children_names, TArg1&& new_children_references, TArg2&& new_ids) -> size_type {
         check_has_sufficient_capacity(1);
         auto const index{size_};
@@ -628,15 +708,15 @@ struct TTestFixedRowsArrayAlternate {
         return index;
     }
     template <typename TArg0, typename TArg1, typename TArg2>
-        requires (std::is_constructible_v<FString, TArg0&&> && std::is_constructible_v<TSharedPtr<int32>, TArg1&&> && std::is_constructible_v<int32, TArg2&&>)
+        requires supports_element_construction_from<TArg0, TArg1, TArg2>
     auto add(TArg0&& new_children_names, TArg1&& new_children_references, TArg2&& new_ids) -> size_type { return emplace_back(std::forward<TArg0>(new_children_names), std::forward<TArg1>(new_children_references), std::forward<TArg2>(new_ids)); }
 
-    void add_defaulted(size_type const count = 1) requires (std::is_default_constructible_v<FString> && std::is_default_constructible_v<TSharedPtr<int32>> && std::is_default_constructible_v<int32>) { check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; } }
-    void set_num(size_type const new_size) requires (std::is_default_constructible_v<FString> && std::is_default_constructible_v<TSharedPtr<int32>> && std::is_default_constructible_v<int32>) { check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { destroy_from(new_size); return; } add_defaulted(new_size - size_); }
-    void set_num(size_type const new_size, EAllowShrinking const) requires (std::is_default_constructible_v<FString> && std::is_default_constructible_v<TSharedPtr<int32>> && std::is_default_constructible_v<int32>) { set_num(new_size); }
-    auto capacity_view() -> View requires ((std::is_trivially_copyable_v<FString> && std::is_trivially_destructible_v<FString>) && (std::is_trivially_copyable_v<TSharedPtr<int32>> && std::is_trivially_destructible_v<TSharedPtr<int32>>) && (std::is_trivially_copyable_v<int32> && std::is_trivially_destructible_v<int32>)) { return storage_.get_view(0, capacity()); }
-    void set_num_uninitialised(size_type const new_size) requires ((std::is_trivially_copyable_v<FString> && std::is_trivially_destructible_v<FString>) && (std::is_trivially_copyable_v<TSharedPtr<int32>> && std::is_trivially_destructible_v<TSharedPtr<int32>>) && (std::is_trivially_copyable_v<int32> && std::is_trivially_destructible_v<int32>)) { check(new_size >= 0); check(new_size <= capacity()); size_ = new_size; }
-    void add_uninitialised(size_type const count) requires ((std::is_trivially_copyable_v<FString> && std::is_trivially_destructible_v<FString>) && (std::is_trivially_copyable_v<TSharedPtr<int32>> && std::is_trivially_destructible_v<TSharedPtr<int32>>) && (std::is_trivially_copyable_v<int32> && std::is_trivially_destructible_v<int32>)) { check_has_sufficient_capacity(count); size_ += count; }
+    void add_defaulted(size_type const count = 1) requires supports_default_construction { check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; } }
+    void set_num(size_type const new_size) requires supports_default_construction { check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { destroy_from(new_size); return; } add_defaulted(new_size - size_); }
+    void set_num(size_type const new_size, EAllowShrinking const) requires supports_default_construction { set_num(new_size); }
+    auto capacity_view() -> View requires supports_uninitialised_storage { return storage_.get_view(0, capacity()); }
+    void set_num_uninitialised(size_type const new_size) requires supports_uninitialised_storage { check(new_size >= 0); check(new_size <= capacity()); size_ = new_size; }
+    void add_uninitialised(size_type const count) requires supports_uninitialised_storage { check_has_sufficient_capacity(count); size_ += count; }
 
     void pop() { check(!is_empty()); --size_; storage_.destroy_at(size_); }
     void reset() noexcept { destroy_from(0); }

@@ -277,6 +277,12 @@ struct SPACEGAME_API FLevelSpawnGroupsView {
     using View = FLevelSpawnGroupsView;
     using ConstView = FLevelSpawnGroupsConstView;
 
+    void set(int32 const index, ETestEntityType const new_types, int32 const new_offsets, ml::FLevelEventCount const new_counts) const {
+        types[index] = new_types;
+        offsets[index] = new_offsets;
+        counts[index] = new_counts;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -310,6 +316,12 @@ struct SPACEGAME_API FLevelSpawnGroupsView {
 struct SPACEGAME_API FLevelSpawnGroups {
     using View = FLevelSpawnGroupsView;
     using ConstView = FLevelSpawnGroupsConstView;
+
+    void set(int32 const index, ETestEntityType const new_types, int32 const new_offsets, ml::FLevelEventCount const new_counts) {
+        types[index] = new_types;
+        offsets[index] = new_offsets;
+        counts[index] = new_counts;
+    }
 
     void reset();
 
@@ -914,6 +926,12 @@ struct SPACEGAME_API FLevelMissionEventGroupsView {
     using View = FLevelMissionEventGroupsView;
     using ConstView = FLevelMissionEventGroupsConstView;
 
+    void set(int32 const index, ml::ELevelMissionEventType const new_types, int32 const new_offsets, ml::FLevelEventCount const new_counts) const {
+        types[index] = new_types;
+        offsets[index] = new_offsets;
+        counts[index] = new_counts;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -947,6 +965,12 @@ struct SPACEGAME_API FLevelMissionEventGroupsView {
 struct SPACEGAME_API FLevelMissionEventGroups {
     using View = FLevelMissionEventGroupsView;
     using ConstView = FLevelMissionEventGroupsConstView;
+
+    void set(int32 const index, ml::ELevelMissionEventType const new_types, int32 const new_offsets, ml::FLevelEventCount const new_counts) {
+        types[index] = new_types;
+        offsets[index] = new_offsets;
+        counts[index] = new_counts;
+    }
 
     void reset();
 

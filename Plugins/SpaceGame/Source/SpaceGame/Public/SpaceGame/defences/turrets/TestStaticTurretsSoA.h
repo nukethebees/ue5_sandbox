@@ -60,6 +60,13 @@ struct SPACEGAME_API SpawnDataView {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, ETestTeam const new_teams, int32 const new_healths, int32 const new_laser_damages) const {
+        locations.set(index, new_locations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        laser_damages[index] = new_laser_damages;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -95,6 +102,13 @@ struct SPACEGAME_API SpawnDataView {
 struct SPACEGAME_API SpawnData {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, ETestTeam const new_teams, int32 const new_healths, int32 const new_laser_damages) {
+        locations.set(index, new_locations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        laser_damages[index] = new_laser_damages;
+    }
 
     void reset();
 

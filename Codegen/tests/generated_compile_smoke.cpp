@@ -92,10 +92,8 @@ void test_dynamic_soa() {
     appended.reset();
     check(appended.is_empty());
     appended.add_uninitialised(2);
-    appended.ids[0] = 1;
-    appended.ids[1] = 2;
-    appended.weights[0] = 10.0f;
-    appended.weights[1] = 20.0f;
+    appended.set(0, 1, 10.0f);
+    appended.get_view().set(1, 2, 20.0f);
     appended.set_num(1, EAllowShrinking::No);
     check(appended.num() == 1 && appended.at(0).weight == 10.0f);
 
@@ -179,6 +177,8 @@ void test_vectors() {
     TFixedVectors3<3> fixed;
     fixed.add(1.0f, 2.0f, 3.0f);
     fixed.add(4.0f, 5.0f, 6.0f);
+    fixed.set(0, FVector3f{7.0f, 8.0f, 9.0f});
+    check(fixed.at(0).X == 7.0f && fixed.at(0).Z == 9.0f);
     auto copied{fixed};
     check(copied.at(1).X == 4.0f && copied.at(1).Z == 6.0f);
     copied.remove_at_swap(0, 1, EAllowShrinking::No);

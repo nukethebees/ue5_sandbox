@@ -394,9 +394,32 @@ struct TFixedVectors3f {
 
     static constexpr size_type capacity_value{Capacity};
 
+    inline static constexpr bool supports_copy_construction{
+        std::is_copy_constructible_v<float>
+    };
+    inline static constexpr bool supports_move_construction{
+        std::is_move_constructible_v<float>
+    };
+    inline static constexpr bool supports_nothrow_move_construction{
+        std::is_nothrow_move_constructible_v<float>
+    };
+    inline static constexpr bool supports_default_construction{
+        std::is_default_constructible_v<float>
+    };
+    inline static constexpr bool supports_uninitialised_storage{
+        std::is_trivially_copyable_v<float> &&
+        std::is_trivially_destructible_v<float>
+    };
+    template <typename TArg0, typename TArg1, typename TArg2>
+    inline static constexpr bool supports_element_construction_from{
+        std::is_constructible_v<float, TArg0&&> &&
+        std::is_constructible_v<float, TArg1&&> &&
+        std::is_constructible_v<float, TArg2&&>
+    };
+
     TFixedVectors3f() noexcept = default;
     TFixedVectors3f(TFixedVectors3f const& other)
-        requires (std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>)
+        requires supports_copy_construction
     {
         for (size_type i{}; i < other.size_; ++i) {
             storage_.copy_construct_at(size_, other.storage_, i);
@@ -404,10 +427,10 @@ struct TFixedVectors3f {
         }
     }
     TFixedVectors3f(TFixedVectors3f const&)
-        requires (!(std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>))
+        requires (!supports_copy_construction)
     = delete;
-    TFixedVectors3f(TFixedVectors3f&& other) noexcept(std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float>)
-        requires (std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>)
+    TFixedVectors3f(TFixedVectors3f&& other) noexcept(supports_nothrow_move_construction)
+        requires supports_move_construction
     {
         for (size_type i{}; i < other.size_; ++i) {
             storage_.move_construct_at(size_, other.storage_, i);
@@ -416,12 +439,12 @@ struct TFixedVectors3f {
         other.reset();
     }
     TFixedVectors3f(TFixedVectors3f&&)
-        requires (!(std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>))
+        requires (!supports_move_construction)
     = delete;
     ~TFixedVectors3f() { reset(); }
 
     auto operator=(TFixedVectors3f const& other) -> TFixedVectors3f&
-        requires (std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>)
+        requires supports_copy_construction
     {
         if (this != std::addressof(other)) {
             reset();
@@ -430,10 +453,10 @@ struct TFixedVectors3f {
         return *this;
     }
     auto operator=(TFixedVectors3f const&) -> TFixedVectors3f&
-        requires (!(std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float> && std::is_copy_constructible_v<float>))
+        requires (!supports_copy_construction)
     = delete;
-    auto operator=(TFixedVectors3f&& other) noexcept(std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float> && std::is_nothrow_move_constructible_v<float>) -> TFixedVectors3f&
-        requires (std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>)
+    auto operator=(TFixedVectors3f&& other) noexcept(supports_nothrow_move_construction) -> TFixedVectors3f&
+        requires supports_move_construction
     {
         if (this != std::addressof(other)) {
             reset();
@@ -446,7 +469,7 @@ struct TFixedVectors3f {
         return *this;
     }
     auto operator=(TFixedVectors3f&&) -> TFixedVectors3f&
-        requires (!(std::is_move_constructible_v<float> && std::is_move_constructible_v<float> && std::is_move_constructible_v<float>))
+        requires (!supports_move_construction)
     = delete;
 
     static constexpr auto capacity() noexcept -> size_type { return capacity_value; }
@@ -478,8 +501,10 @@ struct TFixedVectors3f {
         return (*this)[index];
     }
 
+    void set(int32 const i, float const x, float const y, float const z) { get_view().set(i, x, y, z); }
+    void set(int32 const i, FVector3f const value) { get_view().set(i, value); }
     template <typename TArg0, typename TArg1, typename TArg2>
-        requires (std::is_constructible_v<float, TArg0&&> && std::is_constructible_v<float, TArg1&&> && std::is_constructible_v<float, TArg2&&>)
+        requires supports_element_construction_from<TArg0, TArg1, TArg2>
     auto emplace_back(TArg0&& new_xs, TArg1&& new_ys, TArg2&& new_zs) -> size_type {
         check_has_sufficient_capacity(1);
         auto const index{size_};
@@ -488,15 +513,15 @@ struct TFixedVectors3f {
         return index;
     }
     template <typename TArg0, typename TArg1, typename TArg2>
-        requires (std::is_constructible_v<float, TArg0&&> && std::is_constructible_v<float, TArg1&&> && std::is_constructible_v<float, TArg2&&>)
+        requires supports_element_construction_from<TArg0, TArg1, TArg2>
     auto add(TArg0&& new_xs, TArg1&& new_ys, TArg2&& new_zs) -> size_type { return emplace_back(std::forward<TArg0>(new_xs), std::forward<TArg1>(new_ys), std::forward<TArg2>(new_zs)); }
 
-    void add_defaulted(size_type const count = 1) requires (std::is_default_constructible_v<float> && std::is_default_constructible_v<float> && std::is_default_constructible_v<float>) { check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; } }
-    void set_num(size_type const new_size) requires (std::is_default_constructible_v<float> && std::is_default_constructible_v<float> && std::is_default_constructible_v<float>) { check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { destroy_from(new_size); return; } add_defaulted(new_size - size_); }
-    void set_num(size_type const new_size, EAllowShrinking const) requires (std::is_default_constructible_v<float> && std::is_default_constructible_v<float> && std::is_default_constructible_v<float>) { set_num(new_size); }
-    auto capacity_view() -> View requires ((std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>)) { return storage_.get_view(0, capacity()); }
-    void set_num_uninitialised(size_type const new_size) requires ((std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>)) { check(new_size >= 0); check(new_size <= capacity()); size_ = new_size; }
-    void add_uninitialised(size_type const count) requires ((std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>) && (std::is_trivially_copyable_v<float> && std::is_trivially_destructible_v<float>)) { check_has_sufficient_capacity(count); size_ += count; }
+    void add_defaulted(size_type const count = 1) requires supports_default_construction { check_has_sufficient_capacity(count); for (size_type i{}; i < count; ++i) { storage_.default_construct_at(size_); ++size_; } }
+    void set_num(size_type const new_size) requires supports_default_construction { check(new_size >= 0); check(new_size <= capacity()); if (new_size < size_) { destroy_from(new_size); return; } add_defaulted(new_size - size_); }
+    void set_num(size_type const new_size, EAllowShrinking const) requires supports_default_construction { set_num(new_size); }
+    auto capacity_view() -> View requires supports_uninitialised_storage { return storage_.get_view(0, capacity()); }
+    void set_num_uninitialised(size_type const new_size) requires supports_uninitialised_storage { check(new_size >= 0); check(new_size <= capacity()); size_ = new_size; }
+    void add_uninitialised(size_type const count) requires supports_uninitialised_storage { check_has_sufficient_capacity(count); size_ += count; }
 
     void pop() { check(!is_empty()); --size_; storage_.destroy_at(size_); }
     void reset() noexcept { destroy_from(0); }
