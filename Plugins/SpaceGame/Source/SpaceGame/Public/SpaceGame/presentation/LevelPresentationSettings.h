@@ -102,6 +102,11 @@ struct FEntityOverlaySettings {
               meta = (ClampMin = "0.0", Units = "s"))
     float soft_target_pulse_duration{0.3f};
 
+    UPROPERTY(EditAnywhere,
+              Category = "Entity Overlay|Soft Target",
+              meta = (ClampMin = "0.0", Units = "s"))
+    float soft_target_fade_out_duration{0.15f};
+
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};
 

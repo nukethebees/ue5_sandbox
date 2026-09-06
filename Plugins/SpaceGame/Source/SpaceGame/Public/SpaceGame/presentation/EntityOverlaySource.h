@@ -33,6 +33,7 @@ struct SPACEGAME_API FSoftTargetSelectionResult {
     float range_progress{0.0f};
     float indicator_radius_pixels{0.0f};
     bool in_range{false};
+    bool previous_target_can_fade{false};
 };
 
 struct SPACEGAME_API FEntityOverlayHealthMaximums {

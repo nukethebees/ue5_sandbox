@@ -222,7 +222,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
                                                               maximum_indicator_radius),
                                              .in_range = in_range};
 
-        if (candidate.handle == current_target && centre_distance <= retention_radius) {
+        if (candidate.handle == current_target) {
             current_candidate = candidate;
             has_current_candidate = true;
         }
@@ -235,7 +235,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
 
     FSoftTargetCandidate selected_candidate;
     bool has_selected_candidate{false};
-    if (has_current_candidate) {
+    if (has_current_candidate && current_candidate.centre_distance_pixels <= retention_radius) {
         selected_candidate = current_candidate;
         has_selected_candidate = true;
         if (has_best_candidate && best_candidate.handle != current_candidate.handle) {
@@ -255,6 +255,12 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
     }
 
     if (!has_selected_candidate) {
+        if (has_current_candidate) {
+            return {.range_progress = current_candidate.range_progress,
+                    .indicator_radius_pixels = current_candidate.indicator_radius_pixels,
+                    .in_range = current_candidate.in_range,
+                    .previous_target_can_fade = true};
+        }
         return {};
     }
     return {.handle = selected_candidate.handle,

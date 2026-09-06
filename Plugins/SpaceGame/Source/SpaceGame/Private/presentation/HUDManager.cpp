@@ -121,6 +121,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     };
     soft_target_pulse_duration_ =
         FMath::Max(entity_overlay_settings.soft_target_pulse_duration, 0.0f);
+    soft_target_fade_out_duration_ =
+        FMath::Max(entity_overlay_settings.soft_target_fade_out_duration, 0.0f);
     top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
     top_killer_ids_buffer.Reserve(entity_registry->get_num_unique_ids_issued());
@@ -151,6 +153,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     for (auto& registration : registered_huds) {
         registration.soft_target = {};
         registration.soft_target_pulse_remaining = 0.0f;
+        registration.soft_target_fade_remaining = 0.0f;
         registration.soft_target_in_range = false;
     }
     update_entity_overlays(0.0f);
@@ -348,14 +351,19 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     frame.soft_target_range_progress = 0.0f;
     frame.soft_target_radius_pixels = 0.0f;
     frame.soft_target_pulse = 0.0f;
+    frame.soft_target_visibility = 1.0f;
+    auto const clear_soft_target_state = [&registration] {
+        registration.soft_target = {};
+        registration.soft_target_pulse_remaining = 0.0f;
+        registration.soft_target_fade_remaining = 0.0f;
+        registration.soft_target_in_range = false;
+    };
 
     FEntityOverlayView overlay_view;
     if (!hud->try_get_entity_overlay_view(overlay_view)) {
         UE_LOG(LogSandboxUI, Warning, TEXT("FHUDManager: Entity overlay view is invalid."));
         frame.instances.Reset();
-        registration.soft_target = {};
-        registration.soft_target_pulse_remaining = 0.0f;
-        registration.soft_target_in_range = false;
+        clear_soft_target_state();
         registration.frame_store->publish();
         return;
     }
@@ -366,6 +374,7 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     if (!IsValid(controller)) {
         UE_LOG(LogSandboxUI, Error, TEXT("FHUDManager: Entity overlay has no player controller."));
         frame.instances.Reset();
+        clear_soft_target_state();
         registration.frame_store->publish();
         return;
     }
@@ -392,19 +401,42 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
                                registration.soft_target);
     }
 
-    registration.soft_target_pulse_remaining = FMath::Max(
-        registration.soft_target_pulse_remaining - FMath::Max(delta_seconds, 0.0f), 0.0f);
-    if (soft_target.handle != registration.soft_target) {
+    auto const elapsed_seconds{FMath::Max(delta_seconds, 0.0f)};
+    registration.soft_target_pulse_remaining =
+        FMath::Max(registration.soft_target_pulse_remaining - elapsed_seconds, 0.0f);
+    auto displayed_soft_target{soft_target};
+    if (soft_target.handle.is_valid()) {
+        if (soft_target.handle != registration.soft_target) {
+            registration.soft_target_pulse_remaining = 0.0f;
+        } else if (!registration.soft_target_in_range && soft_target.in_range) {
+            registration.soft_target_pulse_remaining = soft_target_pulse_duration_;
+        }
+        registration.soft_target = soft_target.handle;
+        registration.soft_target_fade_remaining = 0.0f;
+        registration.soft_target_in_range = soft_target.in_range;
+    } else if (soft_target.previous_target_can_fade &&
+               entity_registry->is_valid_alive(registration.soft_target) &&
+               soft_target_fade_out_duration_ > 0.0f) {
         registration.soft_target_pulse_remaining = 0.0f;
-    } else if (soft_target.handle.is_valid() && !registration.soft_target_in_range &&
-               soft_target.in_range) {
-        registration.soft_target_pulse_remaining = soft_target_pulse_duration_;
+        if (registration.soft_target_fade_remaining <= 0.0f) {
+            registration.soft_target_fade_remaining = soft_target_fade_out_duration_;
+        }
+        registration.soft_target_fade_remaining =
+            FMath::Max(registration.soft_target_fade_remaining - elapsed_seconds, 0.0f);
+        if (registration.soft_target_fade_remaining > 0.0f) {
+            displayed_soft_target.handle = registration.soft_target;
+            registration.soft_target_in_range = soft_target.in_range;
+            frame.soft_target_visibility =
+                registration.soft_target_fade_remaining / soft_target_fade_out_duration_;
+        } else {
+            clear_soft_target_state();
+        }
+    } else {
+        clear_soft_target_state();
     }
-    registration.soft_target = soft_target.handle;
-    registration.soft_target_in_range = soft_target.in_range;
 
-    frame.soft_target_range_progress = soft_target.range_progress;
-    frame.soft_target_radius_pixels = soft_target.indicator_radius_pixels;
+    frame.soft_target_range_progress = displayed_soft_target.range_progress;
+    frame.soft_target_radius_pixels = displayed_soft_target.indicator_radius_pixels;
     frame.soft_target_pulse =
         soft_target_pulse_duration_ > 0.0f
             ? registration.soft_target_pulse_remaining / soft_target_pulse_duration_
@@ -419,7 +451,7 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
         entity_overlay_settings_.maximum_range,
         frame.instances,
         registration.collector,
-        soft_target.handle.is_valid() ? soft_target.handle.index : INDEX_NONE)};
+        displayed_soft_target.handle.is_valid() ? displayed_soft_target.handle.index : INDEX_NONE)};
     registration.frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, result.candidate_count);

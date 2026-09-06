@@ -32,6 +32,7 @@ float SoftTargetApproachingOpacity;
 float SoftTargetInRangeOpacity;
 float SoftTargetGlowOpacity;
 float SoftTargetPulseOpacityBoost;
+float SoftTargetVisibility;
 float TimeSeconds;
 float4 BackgroundColor;
 float4 FillColor;
@@ -640,7 +641,8 @@ bool soft_target_pixel(EntityOverlayVertexOutput input,
     float const pulse_boost =
         in_range ? saturate(input.soft_target_pulse) * SoftTargetPulseOpacityBoost : 0.0;
     float const alpha = saturate(core_coverage * (base_alpha + pulse_boost) +
-                                 halo_coverage * (SoftTargetGlowOpacity + pulse_boost * 0.3));
+                                 halo_coverage * (SoftTargetGlowOpacity + pulse_boost * 0.3)) *
+                        saturate(SoftTargetVisibility);
     output_color = float4(base_color.rgb, base_color.a * alpha);
     return alpha > 0.001;
 }

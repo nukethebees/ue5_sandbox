@@ -195,6 +195,7 @@ struct SPACEGAME_API FHUDManager {
         FEntityOverlayCollector collector;
         FRegistryEntityHandle soft_target{};
         float soft_target_pulse_remaining{0.0f};
+        float soft_target_fade_remaining{0.0f};
         bool soft_target_in_range{false};
     };
 
@@ -249,6 +250,7 @@ struct SPACEGAME_API FHUDManager {
     TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
     FSoftTargetSelectionSettings soft_target_selection_settings_;
     float soft_target_pulse_duration_{0.3f};
+    float soft_target_fade_out_duration_{0.15f};
     float seconds_per_tick_{0.0f};
 
 #if WITH_EDITOR

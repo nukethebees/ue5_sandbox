@@ -66,6 +66,7 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_PARAMETER(float, SoftTargetInRangeOpacity)
     SHADER_PARAMETER(float, SoftTargetGlowOpacity)
     SHADER_PARAMETER(float, SoftTargetPulseOpacityBoost)
+    SHADER_PARAMETER(float, SoftTargetVisibility)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
     SHADER_PARAMETER(FVector4f, DefendObjectiveColor)
@@ -159,6 +160,7 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     parameters->PS.SoftTargetGlowOpacity = FMath::Clamp(style.soft_target_glow_opacity, 0.0f, 1.0f);
     parameters->PS.SoftTargetPulseOpacityBoost =
         FMath::Clamp(style.soft_target_pulse_opacity_boost, 0.0f, 1.0f);
+    parameters->PS.SoftTargetVisibility = FMath::Clamp(frame.soft_target_visibility, 0.0f, 1.0f);
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
     parameters->PS.DefendObjectiveColor = FVector4f{style.defend_objective_color};

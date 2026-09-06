@@ -92,6 +92,7 @@ struct SANDBOXUI_API FEntityOverlayFrame {
     float soft_target_range_progress{0.0f};
     float soft_target_radius_pixels{0.0f};
     float soft_target_pulse{0.0f};
+    float soft_target_visibility{1.0f};
 };
 
 class FEntityOverlayCollector {

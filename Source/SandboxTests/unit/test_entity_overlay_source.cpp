@@ -196,6 +196,12 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         auto const cleared{select_target(entities, {1, 0})};
         TestRunner->TestFalse(TEXT("Target outside retention is cleared"),
                               cleared.handle.is_valid());
+        TestRunner->TestTrue(TEXT("Valid on-screen lost target may fade"),
+                             cleared.previous_target_can_fade);
+
+        entities.alive[1] = 0;
+        auto const dead{select_target(entities, {1, 0})};
+        TestRunner->TestFalse(TEXT("Dead target may not fade"), dead.previous_target_can_fade);
     }
 
     TEST_METHOD(ProjectedSizeDoesNotLetARearTargetDominate)
