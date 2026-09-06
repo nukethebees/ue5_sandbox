@@ -61,12 +61,11 @@ class FEntityOverlayPS final : public FGlobalShader {
     SHADER_PARAMETER(float, ObjectiveFramePixels)
     SHADER_PARAMETER(float, TimeSeconds)
     SHADER_PARAMETER(float, SoftTargetBracketStartRadiusMultiplier)
-    SHADER_PARAMETER(float, SoftTargetNeutralOpacity)
-    SHADER_PARAMETER(float, SoftTargetApproachingOpacity)
-    SHADER_PARAMETER(float, SoftTargetInRangeOpacity)
+    SHADER_PARAMETER(float, SoftTargetOpacity)
     SHADER_PARAMETER(float, SoftTargetGlowOpacity)
     SHADER_PARAMETER(float, SoftTargetPulseOpacityBoost)
     SHADER_PARAMETER(float, SoftTargetVisibility)
+    SHADER_PARAMETER(float, SoftTargetInRange)
     SHADER_PARAMETER(FVector4f, BackgroundColor)
     SHADER_PARAMETER(FVector4f, FillColor)
     SHADER_PARAMETER(FVector4f, DefendObjectiveColor)
@@ -151,16 +150,12 @@ void execute_graph(FRHICommandListImmediate& rhi_command_list,
     parameters->PS.TimeSeconds = FMath::Fmod(static_cast<float>(FPlatformTime::Seconds()), 1024.0f);
     parameters->PS.SoftTargetBracketStartRadiusMultiplier =
         FMath::Max(style.soft_target_bracket_start_radius_multiplier, 1.0f);
-    parameters->PS.SoftTargetNeutralOpacity =
-        FMath::Clamp(style.soft_target_neutral_opacity, 0.0f, 1.0f);
-    parameters->PS.SoftTargetApproachingOpacity =
-        FMath::Clamp(style.soft_target_approaching_opacity, 0.0f, 1.0f);
-    parameters->PS.SoftTargetInRangeOpacity =
-        FMath::Clamp(style.soft_target_in_range_opacity, 0.0f, 1.0f);
+    parameters->PS.SoftTargetOpacity = FMath::Clamp(style.soft_target_opacity, 0.0f, 1.0f);
     parameters->PS.SoftTargetGlowOpacity = FMath::Clamp(style.soft_target_glow_opacity, 0.0f, 1.0f);
     parameters->PS.SoftTargetPulseOpacityBoost =
         FMath::Clamp(style.soft_target_pulse_opacity_boost, 0.0f, 1.0f);
     parameters->PS.SoftTargetVisibility = FMath::Clamp(frame.soft_target_visibility, 0.0f, 1.0f);
+    parameters->PS.SoftTargetInRange = frame.soft_target_in_range ? 1.0f : 0.0f;
     parameters->PS.BackgroundColor = FVector4f{style.background_color};
     parameters->PS.FillColor = FVector4f{style.fill_color};
     parameters->PS.DefendObjectiveColor = FVector4f{style.defend_objective_color};

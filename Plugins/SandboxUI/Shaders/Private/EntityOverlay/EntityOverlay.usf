@@ -27,12 +27,11 @@ float SoftTargetRadiusPixels;
 float SoftTargetBracketStartRadiusMultiplier;
 float SoftTargetRangeProgress;
 float SoftTargetPulse;
-float SoftTargetNeutralOpacity;
-float SoftTargetApproachingOpacity;
-float SoftTargetInRangeOpacity;
+float SoftTargetOpacity;
 float SoftTargetGlowOpacity;
 float SoftTargetPulseOpacityBoost;
 float SoftTargetVisibility;
+float SoftTargetInRange;
 float TimeSeconds;
 float4 BackgroundColor;
 float4 FillColor;
@@ -602,13 +601,13 @@ bool soft_target_pixel(EntityOverlayVertexOutput input,
 
     float2 const target_position = local_position - input.soft_target_center_pixels;
     float const range_progress = saturate(input.soft_target_range_progress);
-    bool const in_range = range_progress >= 0.9999;
+    bool const in_range = SoftTargetInRange > 0.5;
     float const radius = max(input.soft_target_radius_pixels, 1.0);
     float const start_anchor_radius = radius * max(SoftTargetBracketStartRadiusMultiplier, 1.0);
     float const anchor_radius = lerp(start_anchor_radius, radius, range_progress);
     float const bracket_anchor = anchor_radius * 0.70710678;
     float const bracket_length = clamp(radius * 0.24, 8.0, 14.0);
-    float const thickness = in_range ? 1.5 : lerp(0.9, 1.2, range_progress);
+    float const thickness = 1.2;
 
     float const ring_distance = abs(length(target_position) - radius) - thickness * 0.5;
     float2 const quadrant_position = abs(target_position);
@@ -628,19 +627,16 @@ bool soft_target_pixel(EntityOverlayVertexOutput input,
     float const core_coverage = 1.0 - smoothstep(-antialias_width, antialias_width, shape_distance);
 
     float halo_coverage = 0.0;
+    float const pulse = in_range ? saturate(input.soft_target_pulse) : 0.0;
     if (in_range) {
-        float const halo_width = 2.0 + saturate(input.soft_target_pulse) * 1.5;
-        halo_coverage =
-            (1.0 - smoothstep(0.0, halo_width, max(shape_distance, 0.0))) * (1.0 - core_coverage);
+        float const halo_width = 2.0 + pulse * 1.5;
+        halo_coverage = pulse * (1.0 - smoothstep(0.0, halo_width, max(shape_distance, 0.0))) *
+                        (1.0 - core_coverage);
     }
 
     float4 const base_color = in_range ? SoftTargetInRangeColor : SoftTargetNeutralColor;
-    float const base_alpha =
-        in_range ? SoftTargetInRangeOpacity
-                 : lerp(SoftTargetNeutralOpacity, SoftTargetApproachingOpacity, range_progress);
-    float const pulse_boost =
-        in_range ? saturate(input.soft_target_pulse) * SoftTargetPulseOpacityBoost : 0.0;
-    float const alpha = saturate(core_coverage * (base_alpha + pulse_boost) +
+    float const pulse_boost = pulse * SoftTargetPulseOpacityBoost;
+    float const alpha = saturate(core_coverage * (SoftTargetOpacity + pulse_boost) +
                                  halo_coverage * (SoftTargetGlowOpacity + pulse_boost * 0.3)) *
                         saturate(SoftTargetVisibility);
     output_color = float4(base_color.rgb, base_color.a * alpha);

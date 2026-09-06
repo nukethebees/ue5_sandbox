@@ -75,17 +75,7 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float soft_target_neutral_opacity{0.12f};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Entity Overlay|Soft Target",
-              meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float soft_target_approaching_opacity{0.38f};
-
-    UPROPERTY(EditAnywhere,
-              Category = "Entity Overlay|Soft Target",
-              meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float soft_target_in_range_opacity{0.96f};
+    float soft_target_opacity{0.70f};
 
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
@@ -100,7 +90,7 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", Units = "s"))
-    float soft_target_pulse_duration{0.3f};
+    float soft_target_pulse_duration{0.15f};
 
     UPROPERTY(EditAnywhere,
               Category = "Entity Overlay|Soft Target",

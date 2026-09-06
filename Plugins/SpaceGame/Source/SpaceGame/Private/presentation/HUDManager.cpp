@@ -86,9 +86,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         .screen_edge_padding_pixels = entity_overlay_settings.screen_edge_padding_pixels,
         .soft_target_bracket_start_radius_multiplier =
             entity_overlay_settings.soft_target_bracket_start_radius_multiplier,
-        .soft_target_neutral_opacity = entity_overlay_settings.soft_target_neutral_opacity,
-        .soft_target_approaching_opacity = entity_overlay_settings.soft_target_approaching_opacity,
-        .soft_target_in_range_opacity = entity_overlay_settings.soft_target_in_range_opacity,
+        .soft_target_opacity = entity_overlay_settings.soft_target_opacity,
         .soft_target_glow_opacity = entity_overlay_settings.soft_target_glow_opacity,
         .soft_target_pulse_opacity_boost = entity_overlay_settings.soft_target_pulse_opacity_boost,
         .background_color = entity_overlay_settings.background_color,
@@ -352,6 +350,7 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     frame.soft_target_radius_pixels = 0.0f;
     frame.soft_target_pulse = 0.0f;
     frame.soft_target_visibility = 1.0f;
+    frame.soft_target_in_range = false;
     auto const clear_soft_target_state = [&registration] {
         registration.soft_target = {};
         registration.soft_target_pulse_remaining = 0.0f;
@@ -441,6 +440,7 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
         soft_target_pulse_duration_ > 0.0f
             ? registration.soft_target_pulse_remaining / soft_target_pulse_duration_
             : 0.0f;
+    frame.soft_target_in_range = displayed_soft_target.in_range;
 
     auto const result{collect_entity_overlay_instances(
         entity_registry->get_entity_data().get_const_view(),

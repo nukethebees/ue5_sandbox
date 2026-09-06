@@ -135,6 +135,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
             soft_target_frame.soft_target_range_progress = range_progress;
             soft_target_frame.soft_target_radius_pixels = 72.0f;
             soft_target_frame.soft_target_pulse = pulse;
+            soft_target_frame.soft_target_in_range = range_progress >= 1.0f;
             frame_store->publish();
             return write_entity_overlay_debug_image(
                 frame_store, view, FPaths::Combine(output_directory, filename));

@@ -249,7 +249,7 @@ struct SPACEGAME_API FHUDManager {
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;
     TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
     FSoftTargetSelectionSettings soft_target_selection_settings_;
-    float soft_target_pulse_duration_{0.3f};
+    float soft_target_pulse_duration_{0.15f};
     float soft_target_fade_out_duration_{0.15f};
     float seconds_per_tick_{0.0f};
 
