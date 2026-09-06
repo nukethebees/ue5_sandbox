@@ -176,7 +176,7 @@ struct DotBackend {
     bool requires_avx512;
 };
 
-auto dot_backends() -> std::array<DotBackend, 9> {
+auto dot_backends() -> std::array<DotBackend, 10> {
     namespace dot = ml::kernel_benchmark::dot_product_lab;
 
     return {
@@ -188,6 +188,7 @@ auto dot_backends() -> std::array<DotBackend, 9> {
         DotBackend{"autovec-strict-avx512", dot::dot_product_autovec_strict_avx512, true},
         DotBackend{"autovec-relaxed-avx512", dot::dot_product_autovec_relaxed_avx512, true},
         DotBackend{"avx512", dot::dot_product_avx512, true},
+        DotBackend{"avx512-unrolled", dot::dot_product_avx512_unrolled, true},
         DotBackend{"dispatch", dot::dot_product_dispatch, false},
     };
 }

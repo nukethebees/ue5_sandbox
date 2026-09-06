@@ -134,9 +134,10 @@ out/build/<preset>/Codegen/kernel/native-simd-generated/native/generated/
 
 For the plotting preset, `<preset>` is `kernel-benchmark-plots`. The AVX2 translation unit contains
 the `scalar`, strict-autovec, `avx2`, and `avx2-unrolled` functions. The AVX-512 translation unit
-contains the strict-autovec and `avx512` functions, including the `_mm512_*` intrinsic loop. The two
-relaxed translation units contain only their respective relaxed-autovec loops. The dispatch
-translation unit contains the `cpu-features` selection and cached forwarding function.
+contains the strict-autovec, `avx512`, and `avx512-unrolled` functions, including the `_mm512_*`
+intrinsic loops. The two relaxed translation units contain only their respective relaxed-autovec
+loops. The dispatch translation unit contains the `cpu-features` selection and cached forwarding
+function.
 
 CMake compiles those exact generated files into separate strict AVX2, strict AVX-512, relaxed AVX2,
 relaxed AVX-512, and dispatch object libraries and links the objects into
@@ -181,6 +182,8 @@ The backends are:
   iteration;
 * `autovec-avx512`: the generated `add_scaled` scalar loop compiled in an AVX-512 translation unit;
 * `avx512`: the generated single-loop AVX-512 intrinsic implementation;
+* `avx512-unrolled`: the generated dot-product AVX-512 implementation with four independent vector
+  accumulators;
 * `dispatch-avx2` or `dispatch-avx512`: the generated runtime-dispatch entry point, named for the
   backend selected once through `cpu-features`. This includes the cached indirect-call overhead.
 
@@ -223,12 +226,12 @@ matrix. Every case is run for seven randomly interleaved repetitions with a mini
 per repetition.
 
 The routine `kernel-benchmark-plots` report selects ordinary, aligned cases at 32, 256, 4,096,
-65,536, 262,144, and 1,048,576 elements. It currently contains 96 cases, has a configured timing
-floor of about 34 seconds, and should normally finish in under a minute plus build and plotting
+65,536, 262,144, and 1,048,576 elements. It currently contains 102 cases, has a configured timing
+floor of about 36 seconds, and should normally finish in under a minute plus build and plotting
 time. Use it while iterating.
 
-The `kernel-benchmark-plots-full` report runs all 646 cases: 322 for `add_scaled` and 324 for dot
-product. Its configured timing floor is about 226 seconds, so allow roughly four and a half minutes
+The `kernel-benchmark-plots-full` report runs all 682 cases: 322 for `add_scaled` and 360 for dot
+product. Its configured timing floor is about 239 seconds, so allow roughly four and a half minutes
 plus build and plotting time. It covers SIMD-width boundaries, scalar tails, both alignments, and the
 `add_scaled` extreme set. Run it before accepting a backend or dispatch change. Unsupported AVX-512
 cases are reported as skipped.

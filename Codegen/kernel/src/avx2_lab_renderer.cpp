@@ -375,33 +375,49 @@ auto render_sum_vector_function(ExpandedVariant const& expanded,
                   std::string{intrinsics.set_zero} + "()};\n";
     }
     result += "    " + std::string{count_type} + " i{};\n";
-    auto const chunk_width{intrinsics.width * unroll};
-    result += "    " + std::string{count_type} + " const vectorized_count{count - (count % " +
-              std::to_string(chunk_width) + ")};\n"
-              "    for (; i < vectorized_count; i += " +
-              std::to_string(chunk_width) + ") {\n";
-    for (int accumulator{}; accumulator < unroll; ++accumulator) {
-        auto const offset{accumulator * intrinsics.width};
-        auto const offset_expression{offset == 0 ? std::string{}
-                                                 : " + " + std::to_string(offset)};
-        result += "        {\n";
-        VectorExpressionRenderer expression_renderer{
-            expanded, intrinsics, "            ", offset_expression};
-        auto const value{expression_renderer.render(expanded.operation->expression)};
-        result += expression_renderer.statements() + "            accumulator_" +
-                  std::to_string(accumulator) + " = " + std::string{intrinsics.add} +
-                  "(accumulator_" + std::to_string(accumulator) + ", " + value + ");\n"
-                  "        }\n";
-    }
-    result += "    }\n\n";
-    for (int stride{1}; stride < unroll; stride *= 2) {
-        for (int accumulator{}; accumulator + stride < unroll; accumulator += stride * 2) {
-            result += "    accumulator_" + std::to_string(accumulator) + " = " +
-                      std::string{intrinsics.add} + "(accumulator_" +
-                      std::to_string(accumulator) + ", accumulator_" +
-                      std::to_string(accumulator + stride) + ");\n";
+    if (unroll > 1) {
+        auto const chunk_width{intrinsics.width * unroll};
+        result += "    " + std::string{count_type} +
+                  " const unrolled_count{count - (count % " +
+                  std::to_string(chunk_width) + ")};\n"
+                  "    for (; i < unrolled_count; i += " +
+                  std::to_string(chunk_width) + ") {\n";
+        for (int accumulator{}; accumulator < unroll; ++accumulator) {
+            auto const offset{accumulator * intrinsics.width};
+            auto const offset_expression{offset == 0 ? std::string{}
+                                                     : " + " + std::to_string(offset)};
+            result += "        {\n";
+            VectorExpressionRenderer expression_renderer{
+                expanded, intrinsics, "            ", offset_expression};
+            auto const value{expression_renderer.render(expanded.operation->expression)};
+            result += expression_renderer.statements() + "            accumulator_" +
+                      std::to_string(accumulator) + " = " + std::string{intrinsics.add} +
+                      "(accumulator_" + std::to_string(accumulator) + ", " + value + ");\n"
+                      "        }\n";
+        }
+        result += "    }\n\n";
+        for (int stride{1}; stride < unroll; stride *= 2) {
+            for (int accumulator{}; accumulator + stride < unroll; accumulator += stride * 2) {
+                result += "    accumulator_" + std::to_string(accumulator) + " = " +
+                          std::string{intrinsics.add} + "(accumulator_" +
+                          std::to_string(accumulator) + ", accumulator_" +
+                          std::to_string(accumulator + stride) + ");\n";
+            }
         }
     }
+    result += "    " + std::string{count_type} +
+              " const vectorized_count{count - (count % " +
+              std::to_string(intrinsics.width) + ")};\n"
+              "    for (; i < vectorized_count; i += " +
+              std::to_string(intrinsics.width) + ") {\n"
+              "        {\n";
+    VectorExpressionRenderer expression_renderer{expanded, intrinsics, "            ", {}};
+    auto const value{expression_renderer.render(expanded.operation->expression)};
+    result += expression_renderer.statements() +
+              "            accumulator_0 = " + std::string{intrinsics.add} +
+              "(accumulator_0, " + value + ");\n"
+              "        }\n"
+              "    }\n\n";
     result += "    float lanes[" + std::to_string(intrinsics.width) + "]{};\n"
               "    " +
               std::string{intrinsics.store} + "(lanes, accumulator_0);\n"
@@ -512,6 +528,12 @@ auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant con
     }
     return result +
            render_declaration(expanded, "_avx512", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+           (expanded.operation->kind == OperationKind::sum
+                ? render_declaration(expanded,
+                                     "_avx512_unrolled",
+                                     "std::int32_t",
+                                     "ML_KERNEL_LAB_RESTRICT ")
+                : std::string{}) +
            render_declaration(
                expanded, "_dispatch", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
            "auto get_" + expanded.operation->name +
@@ -584,6 +606,12 @@ auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant c
                                                               Avx512,
                                                               "_avx512",
                                                               1,
+                                                              "std::int32_t",
+                                                              "ML_KERNEL_LAB_RESTRICT ") +
+                                   render_sum_vector_function(expanded,
+                                                              Avx512,
+                                                              "_avx512_unrolled",
+                                                              4,
                                                               "std::int32_t",
                                                               "ML_KERNEL_LAB_RESTRICT ")
                              : render_map_autovec_function(expanded,

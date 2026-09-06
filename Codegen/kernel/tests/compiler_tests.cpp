@@ -322,8 +322,14 @@ TEST(KernelRenderer, GeneratesNativeSumReduction) {
     EXPECT_TRUE(files[1].content.contains("_mm256_setzero_ps"));
     EXPECT_TRUE(files[1].content.contains("_mm256_mul_ps"));
     EXPECT_TRUE(files[1].content.contains("accumulator_3"));
+    EXPECT_TRUE(files[1].content.contains("for (; i < unrolled_count; i += 32)"));
+    EXPECT_TRUE(files[1].content.contains("for (; i < vectorized_count; i += 8)"));
     EXPECT_TRUE(files[2].content.contains("_mm512_setzero_ps"));
     EXPECT_TRUE(files[2].content.contains("_mm512_mul_ps"));
+    EXPECT_TRUE(files[2].content.contains("float dot_product_avx512_unrolled("));
+    EXPECT_TRUE(files[2].content.contains("accumulator_3"));
+    EXPECT_TRUE(files[2].content.contains("for (; i < unrolled_count; i += 64)"));
+    EXPECT_TRUE(files[2].content.contains("for (; i < vectorized_count; i += 16)"));
     EXPECT_TRUE(files[3].content.contains("return selection().kernel(lhs, rhs, count)"));
     EXPECT_TRUE(files[4].content.contains("#pragma fp_contract(off)"));
     EXPECT_TRUE(files[4].content.contains("float dot_product_autovec_relaxed_avx2("));

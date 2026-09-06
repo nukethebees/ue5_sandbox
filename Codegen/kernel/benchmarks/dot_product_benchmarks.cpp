@@ -116,6 +116,7 @@ auto register_benchmarks() -> bool {
         Backend{"autovec-strict-avx512", dot::dot_product_autovec_strict_avx512, true},
         Backend{"autovec-relaxed-avx512", dot::dot_product_autovec_relaxed_avx512, true},
         Backend{"avx512", dot::dot_product_avx512, true},
+        Backend{"avx512-unrolled", dot::dot_product_avx512_unrolled, true},
         Backend{dispatch_backend, dot::dot_product_dispatch, false},
     };
     constexpr std::array counts{1,    7,     8,     9,      15,     16,
