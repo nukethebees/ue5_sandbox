@@ -80,6 +80,7 @@ struct Emission {
     std::string header_include;
     std::string cpp_namespace;
     std::string export_specifier;
+    std::optional<int> soaos_lanes;
     std::optional<VariantSelection> selection;
     SourceSpan span;
 };

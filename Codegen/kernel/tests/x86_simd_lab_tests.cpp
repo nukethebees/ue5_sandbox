@@ -17,6 +17,10 @@ namespace {
 
 using Kernel = void (*)(float const*, float const*, float, float*, std::int32_t) noexcept;
 using DotKernel = float (*)(float const*, float const*, std::int32_t) noexcept;
+using SoaosBlock = ml::kernel_benchmark::AddScaledSoAoSBlock;
+using SoaosKernel = void (*)(SoaosBlock*, float, std::int32_t) noexcept;
+using DotSoaosBlock = ml::kernel_benchmark::dot_product_lab::DotProductSoAoSBlock;
+using DotSoaosKernel = float (*)(DotSoaosBlock const*, std::int32_t) noexcept;
 
 struct AlignedBuffer {
     explicit AlignedBuffer(std::int32_t const count, std::int32_t const offset = 0)
@@ -135,6 +139,78 @@ TEST(KernelNativeSimdLab, EveryBackendMatchesAcrossTailsAlignmentAndSpecialValue
     }
 }
 
+void run_soaos_case(SoaosKernel const kernel,
+                    std::string_view const name,
+                    std::int32_t const count,
+                    float const scale) {
+    constexpr std::uint32_t SentinelBits{0x7f123456u};
+    auto const sentinel{std::bit_cast<float>(SentinelBits)};
+    auto const block_count{(count + SoaosBlock::capacity - 1) / SoaosBlock::capacity};
+    std::vector<SoaosBlock> blocks(static_cast<std::size_t>(block_count));
+    for (std::int32_t block_index{}; block_index < block_count; ++block_index) {
+        auto& block{blocks[static_cast<std::size_t>(block_index)]};
+        auto const remaining{count - block_index * SoaosBlock::capacity};
+        block.size = std::min(remaining, SoaosBlock::capacity);
+        for (std::int32_t lane{}; lane < SoaosBlock::capacity; ++lane) {
+            auto const index{block_index * SoaosBlock::capacity + lane};
+            block.base[static_cast<std::size_t>(lane)] = adversarial_value(index);
+            block.value[static_cast<std::size_t>(lane)] = adversarial_value(index + 5);
+            block.out[static_cast<std::size_t>(lane)] = sentinel;
+        }
+    }
+
+    kernel(blocks.data(), scale, block_count);
+
+    SCOPED_TRACE(name);
+    for (std::int32_t block_index{}; block_index < block_count; ++block_index) {
+        auto const& block{blocks[static_cast<std::size_t>(block_index)]};
+        auto const expected_size{
+            std::min(count - block_index * SoaosBlock::capacity, SoaosBlock::capacity)};
+        EXPECT_EQ(block.size, expected_size);
+        for (std::int32_t lane{}; lane < SoaosBlock::capacity; ++lane) {
+            auto const index{block_index * SoaosBlock::capacity + lane};
+            auto const expected{adversarial_value(index) + adversarial_value(index + 5) * scale};
+            expect_same(expected, block.out[static_cast<std::size_t>(lane)], index);
+        }
+    }
+}
+
+TEST(KernelNativeSimdLab, SoaosBackendsProcessEveryPhysicalLaneAndPreserveSizes) {
+    struct Backend {
+        std::string_view name;
+        SoaosKernel kernel;
+        bool requires_avx512;
+    };
+    auto const avx512_available{has_avx512()};
+    std::array const backends{
+        Backend{"scalar", ml::kernel_benchmark::add_scaled_soaos_scalar, false},
+        Backend{"autovec-avx2", ml::kernel_benchmark::add_scaled_soaos_autovec_avx2, false},
+        Backend{"avx2", ml::kernel_benchmark::add_scaled_soaos_avx2, false},
+        Backend{"avx2-unrolled", ml::kernel_benchmark::add_scaled_soaos_avx2_unrolled, false},
+        Backend{"autovec-avx512", ml::kernel_benchmark::add_scaled_soaos_autovec_avx512, true},
+        Backend{"avx512", ml::kernel_benchmark::add_scaled_soaos_avx512, true},
+        Backend{"dispatch", ml::kernel_benchmark::add_scaled_soaos_dispatch, false},
+    };
+    constexpr std::array counts{0, 1, 7, 8, 15, 16, 17, 31, 32, 33, 65, 257};
+    constexpr std::array scales{0.0f,
+                                -0.0f,
+                                1.0f,
+                                -2.5f,
+                                std::numeric_limits<float>::denorm_min(),
+                                std::numeric_limits<float>::infinity()};
+
+    for (auto const& backend : backends) {
+        if (backend.requires_avx512 && !avx512_available) {
+            continue;
+        }
+        for (auto const count : counts) {
+            for (auto const scale : scales) {
+                run_soaos_case(backend.kernel, backend.name, count, scale);
+            }
+        }
+    }
+}
+
 TEST(KernelNativeSimdLab, DispatchReportsTheDetectedBackend) {
     auto const expected{has_avx512() ? ml::kernel_benchmark::X86SimdBackend::avx512
                                     : ml::kernel_benchmark::X86SimdBackend::avx2};
@@ -190,6 +266,32 @@ auto dot_backends() -> std::array<DotBackend, 10> {
         DotBackend{"avx512", dot::dot_product_avx512, true},
         DotBackend{"avx512-unrolled", dot::dot_product_avx512_unrolled, true},
         DotBackend{"dispatch", dot::dot_product_dispatch, false},
+    };
+}
+
+struct DotSoaosBackend {
+    std::string_view name;
+    DotSoaosKernel kernel;
+    bool requires_avx512;
+};
+
+auto dot_soaos_backends() -> std::array<DotSoaosBackend, 10> {
+    namespace dot = ml::kernel_benchmark::dot_product_lab;
+
+    return {
+        DotSoaosBackend{"scalar", dot::dot_product_soaos_scalar, false},
+        DotSoaosBackend{"autovec-strict-avx2", dot::dot_product_soaos_autovec_strict_avx2, false},
+        DotSoaosBackend{
+            "autovec-relaxed-avx2", dot::dot_product_soaos_autovec_relaxed_avx2, false},
+        DotSoaosBackend{"avx2", dot::dot_product_soaos_avx2, false},
+        DotSoaosBackend{"avx2-unrolled", dot::dot_product_soaos_avx2_unrolled, false},
+        DotSoaosBackend{
+            "autovec-strict-avx512", dot::dot_product_soaos_autovec_strict_avx512, true},
+        DotSoaosBackend{
+            "autovec-relaxed-avx512", dot::dot_product_soaos_autovec_relaxed_avx512, true},
+        DotSoaosBackend{"avx512", dot::dot_product_soaos_avx512, true},
+        DotSoaosBackend{"avx512-unrolled", dot::dot_product_soaos_avx512_unrolled, true},
+        DotSoaosBackend{"dispatch", dot::dot_product_soaos_dispatch, false},
     };
 }
 
@@ -279,6 +381,117 @@ void fill_random_mixed_sign_values(float* const lhs,
     for (std::int32_t index{}; index < count; ++index) {
         lhs[index] = next_value();
         rhs[index] = next_value();
+    }
+}
+
+using DotValueFiller = void (*)(float*, float*, std::int32_t);
+
+auto make_dot_soaos_blocks(std::int32_t const count, DotValueFiller const fill)
+    -> std::vector<DotSoaosBlock> {
+    AlignedBuffer lhs{count};
+    AlignedBuffer rhs{count};
+    fill(lhs.data, rhs.data, count);
+
+    auto const block_count{(count + DotSoaosBlock::capacity - 1) / DotSoaosBlock::capacity};
+    std::vector<DotSoaosBlock> blocks(static_cast<std::size_t>(block_count));
+    for (std::int32_t block_index{}; block_index < block_count; ++block_index) {
+        auto& block{blocks[static_cast<std::size_t>(block_index)]};
+        auto const first_index{block_index * DotSoaosBlock::capacity};
+        block.size = std::min(count - first_index, DotSoaosBlock::capacity);
+        for (std::int32_t lane{}; lane < block.size; ++lane) {
+            auto const index{first_index + lane};
+            block.lhs[static_cast<std::size_t>(lane)] = lhs.data[index];
+            block.rhs[static_cast<std::size_t>(lane)] = rhs.data[index];
+        }
+    }
+    return blocks;
+}
+
+auto dot_soaos_reference(std::vector<DotSoaosBlock> const& blocks) -> DotReference {
+    double result{};
+    double absolute_sum{};
+    for (auto const& block : blocks) {
+        for (std::int32_t lane{}; lane < block.size; ++lane) {
+            auto const product{
+                static_cast<double>(block.lhs[static_cast<std::size_t>(lane)]) *
+                static_cast<double>(block.rhs[static_cast<std::size_t>(lane)])};
+            result += product;
+            absolute_sum += std::abs(product);
+        }
+    }
+    return {result, absolute_sum};
+}
+
+auto expect_dot_soaos_result(DotSoaosKernel const kernel,
+                             std::string_view const name,
+                             std::vector<DotSoaosBlock> const& blocks,
+                             std::int32_t const logical_count) -> DotError {
+    auto const reference{dot_soaos_reference(blocks)};
+    auto const actual{kernel(blocks.data(), static_cast<std::int32_t>(blocks.size()))};
+    auto const tolerance{
+        std::max(1.0e-6,
+                 reference.absolute_sum *
+                     static_cast<double>(std::numeric_limits<float>::epsilon()) *
+                     static_cast<double>(logical_count + 1))};
+
+    SCOPED_TRACE(name);
+    EXPECT_NEAR(static_cast<double>(actual), reference.value, tolerance);
+    for (std::size_t block_index{}; block_index < blocks.size(); ++block_index) {
+        auto const expected_size{std::min(logical_count -
+                                              static_cast<std::int32_t>(block_index) *
+                                                  DotSoaosBlock::capacity,
+                                          DotSoaosBlock::capacity)};
+        EXPECT_EQ(blocks[block_index].size, expected_size);
+        for (std::int32_t lane{blocks[block_index].size}; lane < DotSoaosBlock::capacity; ++lane) {
+            EXPECT_EQ(blocks[block_index].lhs[static_cast<std::size_t>(lane)], 0.0f);
+            EXPECT_EQ(blocks[block_index].rhs[static_cast<std::size_t>(lane)], 0.0f);
+        }
+    }
+    return dot_error(actual, reference);
+}
+
+TEST(KernelNativeDotProductLab, SoaosBackendsUseNeutralPaddingAcrossBlockBoundaries) {
+    auto const avx512_available{has_avx512()};
+    auto const backends{dot_soaos_backends()};
+    constexpr std::array counts{0, 1, 7, 8, 15, 16, 17, 31, 32, 33, 65, 257, 4097};
+
+    for (auto const& backend : backends) {
+        if (backend.requires_avx512 && !avx512_available) {
+            continue;
+        }
+        for (auto const count : counts) {
+            auto const blocks{make_dot_soaos_blocks(count, fill_dot_values)};
+            static_cast<void>(
+                expect_dot_soaos_result(backend.kernel, backend.name, blocks, count));
+        }
+    }
+}
+
+TEST(KernelNativeDotProductLab, SoaosBackendsBoundCancellationAndRandomizedError) {
+    auto const avx512_available{has_avx512()};
+    auto const backends{dot_soaos_backends()};
+    constexpr std::array counts{17, 257, 4097};
+
+    for (auto const& backend : backends) {
+        if (backend.requires_avx512 && !avx512_available) {
+            continue;
+        }
+
+        DotError maximum_error{};
+        for (auto const count : counts) {
+            for (auto const fill : {fill_cancellation_values, fill_random_mixed_sign_values}) {
+                auto const blocks{make_dot_soaos_blocks(count, fill)};
+                auto const error{
+                    expect_dot_soaos_result(backend.kernel, backend.name, blocks, count)};
+                maximum_error.absolute = std::max(maximum_error.absolute, error.absolute);
+                maximum_error.relative = std::max(maximum_error.relative, error.relative);
+            }
+        }
+
+        auto property_name{"soaos_" + std::string{backend.name}};
+        std::ranges::replace(property_name, '-', '_');
+        RecordProperty(property_name + "_max_absolute_error", maximum_error.absolute);
+        RecordProperty(property_name + "_max_relative_error", maximum_error.relative);
     }
 }
 

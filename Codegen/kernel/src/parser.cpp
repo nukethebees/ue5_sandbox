@@ -213,6 +213,17 @@ class Parser {
         return form.token.text;
     }
 
+    auto integer_value(Form const& form, std::string_view const message) const -> int {
+        auto const& value{atom(form, message)};
+        int result{};
+        auto const [end, error]{
+            std::from_chars(value.data(), value.data() + value.size(), result)};
+        if (error != std::errc{} || end != value.data() + value.size()) {
+            fail(form.token.span, std::string{message});
+        }
+        return result;
+    }
+
     void require_size(Form const& form, std::size_t const size, std::string_view const usage) const {
         if (form.children.size() != size) {
             fail(form.token.span, "expected " + std::string{usage});
@@ -804,6 +815,9 @@ class Parser {
                 if (!is_identifier(result.export_specifier)) {
                     fail(field.children[1].token.span, "export specifier must be an identifier");
                 }
+            } else if (field_name == "soaos") {
+                result.soaos_lanes =
+                    integer_value(field.children[1], "expected SoAoS lane count");
             } else {
                 fail(field.token.span, "unknown emission field '" + field_name + "'");
             }
@@ -840,9 +854,12 @@ class Parser {
         }
         if (profile != Profile::native_x86_simd_lab &&
             (result.avx512_source || result.dispatch_source || result.relaxed_avx2_source ||
-             result.relaxed_avx512_source)) {
+             result.relaxed_avx512_source || result.soaos_lanes)) {
             fail(form.token.span,
-                 "native SIMD source fields are supported only by native-x86-simd-lab");
+                 "native SIMD fields are supported only by native-x86-simd-lab");
+        }
+        if (result.soaos_lanes && *result.soaos_lanes != 16) {
+            fail(form.token.span, "native-x86-simd-lab currently supports only '(soaos 16)'");
         }
         if (result.relaxed_avx2_source.has_value() != result.relaxed_avx512_source.has_value()) {
             fail(form.token.span,

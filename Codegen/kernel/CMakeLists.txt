@@ -509,7 +509,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     endfunction()
 
     add_kernel_benchmark_report(kernel-benchmark-report
-      FILTER "^(add_scaled|dot_product)/[^/]+/ordinary/aligned/(32|256|4096|65536|262144|1048576)/real_time$"
+      FILTER "^(add_scaled|dot_product)/(flat|soaos16)/[^/]+/ordinary/aligned/(32|256|4096|65536|262144|1048576)/real_time$"
       COMMENT "Benchmarking happy-path generated kernels and plotting the results"
     )
     add_kernel_benchmark_report(kernel-benchmark-report-full

@@ -22,6 +22,7 @@
     (dispatch-source "native/generated/add_scaled_x86_simd_lab_dispatch.cpp")
     (header-include "native/generated/add_scaled_x86_simd_lab.h")
     (namespace ml::kernel_benchmark)
+    (soaos 16)
     (select
       (operation add_scaled)
       (type float)
@@ -122,6 +123,7 @@
     (relaxed-avx512-source "native/generated/dot_product_x86_simd_lab_relaxed_avx512.cpp")
     (header-include "native/generated/dot_product_x86_simd_lab.h")
     (namespace ml::kernel_benchmark::dot_product_lab)
+    (soaos 16)
     (select
       (operation dot_product)
       (type float)

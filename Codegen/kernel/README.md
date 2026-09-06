@@ -82,8 +82,16 @@ benchmark module.
 `native-x86-simd-lab` additionally emits isolated AVX-512 and runtime-dispatch translation units for
 the opt-in native CMake benchmark, accepts the narrow `sum` reduction described above, and emits a
 forced-scalar reference loop. The vector renderer accepts only operand references, addition, and
-multiplication, uses unaligned loads and stores, and disables FMA contraction. These profiles exist
-to measure whether explicit backends add value before any SIMD surface is added to SandboxCore.
+multiplication, uses unaligned loads and stores for flat arrays, and disables FMA contraction. These
+profiles exist to measure whether explicit backends add value before any SIMD surface is added to
+SandboxCore.
+
+The native lab also accepts the deliberately narrow emission field `(soaos 16)`. It derives an
+operation-specific, 64-byte-aligned block containing one `std::array<float, 16>` for each array
+operand or result and an `int32` logical `size`. It then emits a second family of scalar, autovec,
+intrinsic, and dispatch functions which accepts blocks rather than flat arrays. No other width or
+profile accepts this field. This keeps storage selection separate from the operation expression
+without turning the kernel language into a general layout DSL.
 
 Sum reductions default to `(floating-point-modes strict)`. A reduction may explicitly request
 `(floating-point-modes strict relaxed)` to generate both an ordered source loop and a second source
@@ -105,6 +113,17 @@ single accumulator forms a dependency chain; the four-way-unrolled AVX2 version 
 independent vector accumulators to test whether breaking that chain repays the extra code. SIMD
 reductions change the order of floating-point additions, so the dot-product correctness tests use a
 high-precision scalar reference and a relative tolerance rather than requiring bitwise equality.
+
+Both operations are measured over two generated layouts. `flat` is the existing pointer-and-count
+API, including scalar tails. `soaos16` stores each operation's arrays together in fixed-capacity
+blocks. A SoAoS kernel accepts a restricted block pointer plus `block_count`, uses aligned AVX2 or
+AVX-512 loads and stores, and always processes all 16 lanes of every block. It does not read the
+block's `size` member and has no scalar element tail. The harness sets `size` to the number of
+logical elements in each block. Dot-product padding is zero-filled so padded products are neutral;
+`add_scaled` padding is ordinary storage and is deliberately processed. This is an experimental
+contract, not a public SandboxCore API. The generated autovec source disables vectorization of the
+outer block loop while leaving the fixed 16-lane inner loop available; this prevents compilers from
+turning the block structure into cross-block gathers and scatters.
 
 Google Benchmark is the timing harness. The executable registers each case with
 `benchmark::RegisterBenchmark`, links `benchmark::benchmark_main`, and lets Google Benchmark
@@ -157,12 +176,13 @@ consumes that checked generated source directly.
 Benchmark names have the form:
 
 ```text
-<operation>/<backend>/<value-set>/<alignment>/<element-count>
+<operation>/<layout>/<backend>/<value-set>/<alignment>/<element-count>
 ```
 
-For example, `add_scaled/avx2/ordinary/unaligned/4096` runs the explicit AVX2 kernel on
+For example, `add_scaled/flat/avx2/ordinary/unaligned/4096` runs the explicit AVX2 kernel on
 4,096 elements using the ordinary finite-value data set, with every array starting four bytes past
-a 64-byte boundary.
+a 64-byte boundary. `add_scaled/soaos16/avx2/ordinary/aligned/4096` runs the corresponding
+fixed-block kernel over 256 complete blocks.
 
 The backends are:
 
@@ -195,14 +215,16 @@ double-precision reference. Inspect the optimized assembly when the exact emitte
 matter.
 
 All kernel pointer arguments are `RESTRICT` and the benchmark supplies separate allocations for
-every array argument. The two alignment cases are:
+every flat array argument. A SoAoS function has one restricted block pointer; its component arrays
+are distinct fields within that block. The two flat alignment cases are:
 
 * `aligned`: each array begins on a 64-byte boundary;
 * `unaligned`: each array begins one `float`, or four bytes, past a 64-byte boundary.
 
 The explicit intrinsic implementations use unaligned loads and stores in both cases because the
 kernel API does not promise alignment. The cases measure the effect of the actual starting address;
-they do not select different load or store instructions.
+they do not select different load or store instructions. SoAoS blocks are always 64-byte aligned and
+their intrinsic functions use aligned loads and stores, so no `unaligned` SoAoS cases are generated.
 
 The value sets are deterministic:
 
@@ -226,26 +248,35 @@ matrix. Every case is run for seven randomly interleaved repetitions with a mini
 per repetition.
 
 The routine `kernel-benchmark-plots` report selects ordinary, aligned cases at 32, 256, 4,096,
-65,536, 262,144, and 1,048,576 elements. It currently contains 102 cases, has a configured timing
-floor of about 36 seconds, and should normally finish in under a minute plus build and plotting
-time. Use it while iterating.
+65,536, 262,144, and 1,048,576 elements for both layouts. It currently contains 204 cases, has a
+configured timing floor of about 71 seconds, and should normally finish in roughly a minute and a
+half plus build and plotting time. Use it while iterating.
 
-The `kernel-benchmark-plots-full` report runs all 682 cases: 322 for `add_scaled` and 360 for dot
-product. Its configured timing floor is about 239 seconds, so allow roughly four and a half minutes
-plus build and plotting time. It covers SIMD-width boundaries, scalar tails, both alignments, and the
-`add_scaled` extreme set. Run it before accepting a backend or dispatch change. Unsupported AVX-512
-cases are reported as skipped.
+The `kernel-benchmark-plots-full` report runs all 904 cases: 434 for `add_scaled` and 470 for dot
+product. Its configured timing floor is about 316 seconds, so allow roughly five and three-quarter
+minutes plus build and plotting time. It covers SIMD-width boundaries and scalar tails for flat
+arrays, both flat alignments, and the `add_scaled` extreme set. SoAoS timings deliberately sample
+only 16/16, 11/16, and 8/16 block occupancy—no waste, approximately one-third waste, and half
+waste—rather than duplicating the broad correctness matrix. Flat 8-, 11-, and 16-element cases
+provide direct layout references for those occupancies. Run it before accepting a backend, layout,
+or dispatch change.
+Unsupported AVX-512 cases are reported as skipped.
 
 Allocation and input initialization occur outside the timed loop. The timed body calls the kernel,
 prevents its result from being optimized away, and uses real elapsed time. Reported `add_scaled`
 byte throughput counts two `float` reads and one `float` write per element; the scalar `scale` is
-not included. Dot-product throughput counts its two `float` reads per element.
+not included. Dot-product throughput counts its two `float` reads per element. Standard
+`items_per_second` and `bytes_per_second` use the requested logical element count so layouts compare
+useful work. SoAoS cases additionally record `physical_items_per_second` and `padding_fraction`,
+making the extra processed lanes visible for partial blocks.
 
 The plotting script uses repetition medians for the curves and repetition standard deviation for
-the time error bars. It writes an aligned comparison, an unaligned comparison, and an
-unaligned-to-aligned time-ratio plot for each value set. A ratio above `1.0` on an alignment plot
-means the unaligned case was slower. Speedup plots use `scalar` as the baseline, so a value above
-`1.0` means that backend was faster than the forced-scalar reference loop.
+the time error bars. It writes separate backend plots for each layout and applicable alignment, a
+flat unaligned-to-aligned time-ratio plot, and a direct SoAoS-over-flat layout-speedup plot for each
+value set. A ratio above `1.0` on an alignment plot means the unaligned case was slower. A ratio
+above `1.0` on a layout plot means SoAoS was faster than the same flat backend. Backend speedup plots
+use that layout's `scalar` implementation as the baseline, so a value above `1.0` means the backend
+was faster than its generated forced-scalar reference loop.
 
 ## Commands
 

@@ -90,6 +90,7 @@ constexpr std::string_view sum_lab_source = R"(
     (relaxed-avx512-source "native/DotProductRelaxedAvx512.cpp")
     (header-include "native/DotProduct.h")
     (namespace ml::lab)
+    (soaos 16)
     (select
       (operation dot_product)
       (type float)
@@ -278,6 +279,7 @@ TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
                   "    (dispatch-source \"native/KernelsDispatch.cpp\")\n"
                   "    (header-include \"native/Kernels.h\")\n"
                   "    (namespace ml::lab)\n"
+                  "    (soaos 16)\n"
                   "    (select\n"
                   "      (operation add_scaled)\n"
                   "      (type float)\n"
@@ -288,14 +290,28 @@ TEST(KernelRenderer, GeneratesIsolatedNativeSimdLabSources) {
 
     ASSERT_EQ(files.size(), 4);
     EXPECT_TRUE(files[0].content.contains("enum class X86SimdBackend"));
+    EXPECT_TRUE(files[0].content.contains("struct alignas(64) AddScaledSoAoSBlock"));
+    EXPECT_TRUE(files[0].content.contains("std::array<float, capacity> out"));
     EXPECT_TRUE(files[0].content.contains("add_scaled_scalar"));
     EXPECT_TRUE(files[0].content.contains("add_scaled_dispatch"));
+    EXPECT_TRUE(files[0].content.contains("add_scaled_soaos_dispatch"));
     EXPECT_TRUE(files[1].content.contains("#pragma clang loop vectorize(disable)"));
     EXPECT_TRUE(files[1].content.contains("add_scaled_autovec_avx2"));
     EXPECT_TRUE(files[1].content.contains("add_scaled_avx2_unrolled"));
+    EXPECT_TRUE(files[1].content.contains("add_scaled_soaos_avx2_unrolled"));
+    EXPECT_TRUE(files[1].content.contains("_mm256_load_ps(blocks[block_index].base.data())"));
+    EXPECT_TRUE(files[1].content.contains(
+        "#pragma clang loop vectorize(disable) interleave(disable)\n"
+        "#elif defined(_MSC_VER)\n"
+        "    #pragma loop(no_vector)\n"
+        "#endif\n"
+        "    for (std::int32_t block_index{}; block_index < block_count; ++block_index)"));
+    EXPECT_FALSE(files[1].content.contains("blocks[block_index].size"));
     EXPECT_TRUE(files[2].content.contains("_mm512_loadu_ps"));
+    EXPECT_TRUE(files[2].content.contains("_mm512_load_ps(blocks[block_index].base.data())"));
     EXPECT_TRUE(files[2].content.contains("add_scaled_autovec_avx512"));
     EXPECT_TRUE(files[3].content.contains("cpu_features::GetX86Info()"));
+    EXPECT_TRUE(files[3].content.contains("selection().soaos_kernel(blocks, scale, block_count)"));
     EXPECT_FALSE(files[1].content.contains("_mm512"));
     EXPECT_FALSE(files[3].content.contains("_mm512"));
 }
@@ -312,6 +328,8 @@ TEST(KernelRenderer, GeneratesNativeSumReduction) {
     EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_relaxed_avx2("));
     EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_strict_avx512("));
     EXPECT_TRUE(files[0].content.contains("float dot_product_autovec_relaxed_avx512("));
+    EXPECT_TRUE(files[0].content.contains("struct alignas(64) DotProductSoAoSBlock"));
+    EXPECT_TRUE(files[0].content.contains("float dot_product_soaos_avx512_unrolled("));
     EXPECT_TRUE(files[0].content.contains(
         "float const* ML_KERNEL_LAB_RESTRICT lhs, float const* ML_KERNEL_LAB_RESTRICT rhs"));
     EXPECT_TRUE(files[1].content.contains("float dot_product_autovec_strict_avx2("));
@@ -324,17 +342,50 @@ TEST(KernelRenderer, GeneratesNativeSumReduction) {
     EXPECT_TRUE(files[1].content.contains("accumulator_3"));
     EXPECT_TRUE(files[1].content.contains("for (; i < unrolled_count; i += 32)"));
     EXPECT_TRUE(files[1].content.contains("for (; i < vectorized_count; i += 8)"));
+    EXPECT_TRUE(files[1].content.contains("float dot_product_soaos_avx2("));
+    EXPECT_TRUE(files[1].content.contains("_mm256_load_ps(blocks[block_index].lhs.data())"));
     EXPECT_TRUE(files[2].content.contains("_mm512_setzero_ps"));
     EXPECT_TRUE(files[2].content.contains("_mm512_mul_ps"));
     EXPECT_TRUE(files[2].content.contains("float dot_product_avx512_unrolled("));
     EXPECT_TRUE(files[2].content.contains("accumulator_3"));
     EXPECT_TRUE(files[2].content.contains("for (; i < unrolled_count; i += 64)"));
     EXPECT_TRUE(files[2].content.contains("for (; i < vectorized_count; i += 16)"));
+    EXPECT_TRUE(files[2].content.contains("float dot_product_soaos_avx512_unrolled("));
+    EXPECT_TRUE(files[2].content.contains("block_count - (block_count % 4)"));
+    EXPECT_FALSE(files[2].content.contains("blocks[block_index].size"));
     EXPECT_TRUE(files[3].content.contains("return selection().kernel(lhs, rhs, count)"));
+    EXPECT_TRUE(files[3].content.contains("return selection().soaos_kernel(blocks, block_count)"));
     EXPECT_TRUE(files[4].content.contains("#pragma fp_contract(off)"));
     EXPECT_TRUE(files[4].content.contains("float dot_product_autovec_relaxed_avx2("));
+    EXPECT_TRUE(files[4].content.contains("float dot_product_soaos_autovec_relaxed_avx2("));
+    EXPECT_TRUE(files[4].content.contains(
+        "#pragma clang loop vectorize(disable) interleave(disable)"));
     EXPECT_TRUE(files[5].content.contains("#pragma fp_contract(off)"));
     EXPECT_TRUE(files[5].content.contains("float dot_product_autovec_relaxed_avx512("));
+    EXPECT_TRUE(files[5].content.contains("float dot_product_soaos_autovec_relaxed_avx512("));
+}
+
+TEST(KernelParser, KeepsSoaosInsideTheNarrowNativeLabBoundary) {
+    auto unsupported_width{std::string{sum_lab_source}};
+    unsupported_width.replace(unsupported_width.find("(soaos 16)"),
+                              std::string{"(soaos 16)"}.size(),
+                              "(soaos 8)");
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", unsupported_width))),
+                 std::runtime_error);
+
+    auto duplicate{std::string{sum_lab_source}};
+    duplicate.insert(duplicate.find("    (soaos 16)"), "    (soaos 16)\n");
+    EXPECT_THROW(static_cast<void>(
+                     parse("bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", duplicate))),
+                 std::runtime_error);
+
+    auto unsupported_profile{std::string{standard_source}};
+    unsupported_profile.insert(unsupported_profile.find("    (namespace ml::standard)"),
+                               "    (soaos 16)\n");
+    EXPECT_THROW(static_cast<void>(parse(
+                     "bad.sbxkernel", codegen::sexpr::lex("bad.sbxkernel", unsupported_profile))),
+                 std::runtime_error);
 }
 
 TEST(KernelParser, RequiresRelaxedSourcesForRelaxedFloatingPointMode) {
