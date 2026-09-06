@@ -483,23 +483,18 @@ auto CollisionUniformGrid::trace_aabb(WorldAABBs::ConstView const& aabbs,
     return tmin;
 }
 
-void
-    CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
-                                      FTraceHitsView const& hits,
-                                      TConstArrayView<FRegistryEntityHandle> const ignored_entities,
-                                      ETraceEntityFilter const entity_filter) const {
-    switch (entity_filter) {
-        case ETraceEntityFilter::None:
-            trace_aabbs_impl<false, ETraceEntityFilter::None>(
-                traces, hits, ignored_entities, FVector3f::ZeroVector);
-            return;
-        case ETraceEntityFilter::ExcludeCapitalShipFighters:
-            trace_aabbs_impl<false, ETraceEntityFilter::ExcludeCapitalShipFighters>(
-                traces, hits, ignored_entities, FVector3f::ZeroVector);
-            return;
-    }
+void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
+                                       FTraceHitsView const& hits) const {
+    trace_aabbs_impl<false, false, ETraceEntityFilter::None>(
+        traces, hits, {}, FVector3f::ZeroVector);
+}
 
-    checkNoEntry();
+void CollisionUniformGrid::trace_aabbs(
+    FLineTracesConstView const& traces,
+    FTraceHitsView const& hits,
+    TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
+    trace_aabbs_impl<false, true, ETraceEntityFilter::None>(
+        traces, hits, ignored_entities, FVector3f::ZeroVector);
 }
 
 void
@@ -515,19 +510,29 @@ void
 
     switch (entity_filter) {
         case ETraceEntityFilter::None:
-            trace_aabbs_impl<true, ETraceEntityFilter::None>(
-                centre_paths, hits, ignored_entities, moving_half_extent);
+            if (ignored_entities.IsEmpty()) {
+                trace_aabbs_impl<true, false, ETraceEntityFilter::None>(
+                    centre_paths, hits, ignored_entities, moving_half_extent);
+            } else {
+                trace_aabbs_impl<true, true, ETraceEntityFilter::None>(
+                    centre_paths, hits, ignored_entities, moving_half_extent);
+            }
             return;
         case ETraceEntityFilter::ExcludeCapitalShipFighters:
-            trace_aabbs_impl<true, ETraceEntityFilter::ExcludeCapitalShipFighters>(
-                centre_paths, hits, ignored_entities, moving_half_extent);
+            if (ignored_entities.IsEmpty()) {
+                trace_aabbs_impl<true, false, ETraceEntityFilter::ExcludeCapitalShipFighters>(
+                    centre_paths, hits, ignored_entities, moving_half_extent);
+            } else {
+                trace_aabbs_impl<true, true, ETraceEntityFilter::ExcludeCapitalShipFighters>(
+                    centre_paths, hits, ignored_entities, moving_half_extent);
+            }
             return;
     }
 
     checkNoEntry();
 }
 
-template <bool UsePaddedTraversal, ETraceEntityFilter EntityFilter>
+template <bool UsePaddedTraversal, bool HasIgnoredEntities, ETraceEntityFilter EntityFilter>
 void CollisionUniformGrid::trace_aabbs_impl(
     FLineTracesConstView const& traces,
     FTraceHitsView const& hits,
@@ -537,9 +542,10 @@ void CollisionUniformGrid::trace_aabbs_impl(
 
     auto const n{traces.num()};
     check(n == hits.num());
-    check(ignored_entities.IsEmpty() || ignored_entities.Num() == n);
+    if constexpr (HasIgnoredEntities) {
+        check(ignored_entities.Num() == n);
+    }
 
-    auto const has_ignored_entities{!ignored_entities.IsEmpty()};
     auto const grid_width{grid_dims_.X};
     auto const grid_plane_stride{grid_dims_.X * grid_dims_.Y};
     FIntVector3 const max_cell_coord{grid_dims_.X - 1, grid_dims_.Y - 1, grid_dims_.Z - 1};
@@ -654,8 +660,10 @@ void CollisionUniformGrid::trace_aabbs_impl(
         auto nearest_t{std::numeric_limits<float>::infinity()};
         FRegistryEntityHandle nearest_entity;
         int32 nearest_static_index{INDEX_NONE};
-        auto const ignored_entity{has_ignored_entities ? ignored_entities[i_test]
-                                                       : FRegistryEntityHandle{}};
+        FRegistryEntityHandle ignored_entity{};
+        if constexpr (HasIgnoredEntities) {
+            ignored_entity = ignored_entities[i_test];
+        }
         auto const trace_cell{[&](int32 const cell_index) {
             auto const entity_offset{cell_entity_offsets_[cell_index]};
             auto const entity_count{cell_entity_counts_[cell_index]};
@@ -666,8 +674,10 @@ void CollisionUniformGrid::trace_aabbs_impl(
                 auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
 
                 for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
-                    if (entities[i_entity] == ignored_entity) {
-                        continue;
+                    if constexpr (HasIgnoredEntities) {
+                        if (entities[i_entity] == ignored_entity) {
+                            continue;
+                        }
                     }
                     if constexpr (EntityFilter == ETraceEntityFilter::ExcludeCapitalShipFighters) {
                         if (entity_registry_->get_entity_type(entities[i_entity]) ==

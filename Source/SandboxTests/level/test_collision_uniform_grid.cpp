@@ -243,7 +243,11 @@ auto run_traces(FTraceFixture const& fixture,
 
     FTraceHits hits;
     hits.add_defaulted(traces.num());
-    fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view(), ignored_entities);
+    if (ignored_entities.IsEmpty()) {
+        fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view());
+    } else {
+        fixture.grid.trace_aabbs(traces.get_const_view(), hits.get_view(), ignored_entities);
+    }
     return hits;
 }
 

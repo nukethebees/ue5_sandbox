@@ -86,8 +86,18 @@ auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& re
         }
     }()};
 
-    manager.get_collision_system().get_uniform_grid().trace_aabbs(
-        trace_view, hits.get_view(), request.ignored_entities);
+    auto const& uniform_grid{manager.get_collision_system().get_uniform_grid()};
+    if constexpr (Mode == EQueryMode::ClosestHit) {
+        uniform_grid.trace_aabbs(trace_view, hits.get_view(), request.ignored_entities);
+    } else if constexpr (Mode == EQueryMode::ClearLine) {
+        if (request.ignored_entities.IsEmpty()) {
+            uniform_grid.trace_aabbs(trace_view, hits.get_view());
+        } else {
+            uniform_grid.trace_aabbs(trace_view, hits.get_view(), request.ignored_entities);
+        }
+    } else {
+        uniform_grid.trace_aabbs(trace_view, hits.get_view());
+    }
 
     if constexpr (Mode == EQueryMode::ClosestHit) {
         return {
@@ -245,8 +255,12 @@ void FSpatialQueryManager::trace_closest_lines(
     check(out_hits.num() == count);
     check(ignored_entities.IsEmpty() || ignored_entities.Num() == count);
 
-    collision.get_uniform_grid().trace_aabbs(
-        FLineTracesConstView{start_locations, end_locations}, out_hits, ignored_entities);
+    auto const traces{FLineTracesConstView{start_locations, end_locations}};
+    if (ignored_entities.IsEmpty()) {
+        collision.get_uniform_grid().trace_aabbs(traces, out_hits);
+    } else {
+        collision.get_uniform_grid().trace_aabbs(traces, out_hits, ignored_entities);
+    }
 }
 
 void FSpatialQueryManager::sweep_closest_aabbs(
