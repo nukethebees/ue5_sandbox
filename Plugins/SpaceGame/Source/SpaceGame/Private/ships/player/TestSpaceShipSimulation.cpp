@@ -532,6 +532,10 @@ auto Simulation::get_middle_socket() const -> FTransform {
     return middle_socket * visual_transform * transform;
 }
 
+auto Simulation::get_laser_effective_range() const noexcept -> float {
+    return FMath::Max(config.laser.max_distance, 0.0f);
+}
+
 #if WITH_EDITOR
 void Simulation::sample_speed() {
     speed_samples[speed_sample_index] = {

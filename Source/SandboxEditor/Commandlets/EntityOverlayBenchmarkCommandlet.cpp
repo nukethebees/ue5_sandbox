@@ -115,7 +115,34 @@ auto write_debug_frames(FString const& output_directory) -> bool {
                                                        collector));
     frame_store->publish();
     auto const after_path{FPaths::Combine(output_directory, TEXT("camera_plane_after.png"))};
-    return write_entity_overlay_debug_image(frame_store, view, after_path);
+    if (!write_entity_overlay_debug_image(frame_store, view, after_path)) {
+        return false;
+    }
+
+    auto const write_soft_target_frame =
+        [&](float const range_progress, float const pulse, TCHAR const* const filename) {
+            auto& soft_target_frame{frame_store->next()};
+            static_cast<void>(
+                collect_entity_overlay_instances(make_view(moved_registry.get_entity_data()),
+                                                 objective_roles,
+                                                 make_team_colours(),
+                                                 {100, 100, 100},
+                                                 FVector3f::ZeroVector,
+                                                 10000.0f,
+                                                 soft_target_frame.instances,
+                                                 collector,
+                                                 3));
+            soft_target_frame.soft_target_range_progress = range_progress;
+            soft_target_frame.soft_target_radius_pixels = 72.0f;
+            soft_target_frame.soft_target_pulse = pulse;
+            frame_store->publish();
+            return write_entity_overlay_debug_image(
+                frame_store, view, FPaths::Combine(output_directory, filename));
+        };
+
+    return write_soft_target_frame(0.0f, 0.0f, TEXT("soft_target_out_of_range.png")) &&
+           write_soft_target_frame(0.64f, 0.0f, TEXT("soft_target_approaching.png")) &&
+           write_soft_target_frame(1.0f, 1.0f, TEXT("soft_target_in_range.png"));
 }
 } // namespace
 

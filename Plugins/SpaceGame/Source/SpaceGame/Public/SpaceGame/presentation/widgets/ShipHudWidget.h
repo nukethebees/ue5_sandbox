@@ -96,6 +96,7 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
 
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_entity_overlay_style(FEntityOverlayStyle const& style);
+    [[nodiscard]] auto try_get_entity_overlay_view(FEntityOverlayView& view) const -> bool;
 
 #if WITH_EDITOR
     void update_sampled_speed(TConstArrayView<FVector2d> samples, int32 oldest_index);
@@ -173,6 +174,8 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     FLinearColor entity_overlay_fill_colour_{};
     FLinearColor entity_overlay_defend_colour_{};
     FLinearColor entity_overlay_destroy_colour_{};
+    FLinearColor entity_overlay_soft_target_neutral_colour_{};
+    FLinearColor entity_overlay_soft_target_in_range_colour_{};
     FLinearColor reticle_normal_colour_{FLinearColor::Green};
     FLinearColor reticle_warning_colour_{FLinearColor::Yellow};
     FLinearColor reticle_danger_colour_{FLinearColor::Red};

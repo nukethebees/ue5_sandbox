@@ -46,6 +46,7 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
 #endif
 
     check(update_tick_rate > 0.0);
+    seconds_per_tick_ = static_cast<float>(1.0 / update_tick_rate);
 
     auto const periods{update_frequencies.to_array()};
     auto const n_periods{periods.Num()};
@@ -83,6 +84,15 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
             FMath::Clamp(entity_overlay_settings.objective_bar_height_scale, 1.0f, 2.0f),
         .objective_frame_pixels = entity_overlay_settings.objective_frame_pixels,
         .screen_edge_padding_pixels = entity_overlay_settings.screen_edge_padding_pixels,
+        .soft_target_outer_bracket_gap_pixels =
+            entity_overlay_settings.soft_target_outer_bracket_gap_pixels,
+        .soft_target_inner_bracket_gap_pixels =
+            entity_overlay_settings.soft_target_inner_bracket_gap_pixels,
+        .soft_target_neutral_opacity = entity_overlay_settings.soft_target_neutral_opacity,
+        .soft_target_approaching_opacity = entity_overlay_settings.soft_target_approaching_opacity,
+        .soft_target_in_range_opacity = entity_overlay_settings.soft_target_in_range_opacity,
+        .soft_target_glow_opacity = entity_overlay_settings.soft_target_glow_opacity,
+        .soft_target_pulse_opacity_boost = entity_overlay_settings.soft_target_pulse_opacity_boost,
         .background_color = entity_overlay_settings.background_color,
         .fill_color = entity_overlay_settings.fill_color,
     };
@@ -99,6 +109,19 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         .fighter = level_config.fighters.health,
         .turret = level_config.turrets.max_health,
     };
+    soft_target_selection_settings_ = {
+        .acquisition_radius_pixels = entity_overlay_settings.soft_target_acquisition_radius_pixels,
+        .retention_radius_pixels = entity_overlay_settings.soft_target_retention_radius_pixels,
+        .switch_improvement_ratio = entity_overlay_settings.soft_target_switch_improvement_ratio,
+        .approach_range_multiplier = entity_overlay_settings.soft_target_approach_range_multiplier,
+        .minimum_indicator_radius_pixels =
+            entity_overlay_settings.soft_target_minimum_radius_pixels,
+        .maximum_indicator_radius_pixels =
+            entity_overlay_settings.soft_target_maximum_radius_pixels,
+        .bounds_padding_pixels = entity_overlay_settings.soft_target_bounds_padding_pixels,
+    };
+    soft_target_pulse_duration_ =
+        FMath::Max(entity_overlay_settings.soft_target_pulse_duration, 0.0f);
     top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
     top_killer_ids_buffer.Reserve(entity_registry->get_num_unique_ids_issued());
@@ -126,7 +149,12 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         }
         synchronise_hud(*hud);
     }
-    update_entity_overlays();
+    for (auto& registration : registered_huds) {
+        registration.soft_target = {};
+        registration.soft_target_pulse_remaining = 0.0f;
+        registration.soft_target_in_range = false;
+    }
+    update_entity_overlays(0.0f);
 }
 void FHUDManager::deactivate() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::deactivate);
@@ -153,6 +181,7 @@ void FHUDManager::deactivate() {
     top_killer_ids_buffer.Reset();
     entity_overlay_objective_roles_.Reset();
     has_mission_data = false;
+    seconds_per_tick_ = 0.0f;
     state = EHUDManagerState::Disabled;
 #if WITH_EDITOR
     sampled_speed_data_buffers = {};
@@ -172,7 +201,7 @@ void FHUDManager::tick(FPeriodicTickCountdown8::counter_type const num_ticks) {
 
     auto const changes{collect_data(num_ticks)};
     update_huds(changes);
-    update_entity_overlays();
+    update_entity_overlays(static_cast<float>(num_ticks) * seconds_per_tick_);
 }
 
 void FHUDManager::force_sample() {
@@ -194,7 +223,7 @@ void FHUDManager::force_sample() {
     changes.sampled_speed = collect_sampled_speed_data();
 #endif
     update_huds(changes);
-    update_entity_overlays();
+    update_entity_overlays(0.0f);
 }
 
 void FHUDManager::register_hud(UShipHudWidget& hud) {
@@ -216,7 +245,7 @@ void FHUDManager::register_hud(UShipHudWidget& hud) {
     if (state == EHUDManagerState::Active) {
         synchronise_hud(hud);
         if (entity_overlay_settings_.enabled) {
-            update_entity_overlay(registration);
+            update_entity_overlay(registration, 0.0f);
         }
     }
 }
@@ -264,7 +293,7 @@ auto FHUDManager::collect_data(FPeriodicTickCountdown8::counter_type const num_t
     return changes;
 }
 
-void FHUDManager::update_entity_overlays() {
+void FHUDManager::update_entity_overlays(float const delta_seconds) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_overlays);
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, 0);
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, 0);
@@ -275,7 +304,7 @@ void FHUDManager::update_entity_overlays() {
 
     update_entity_overlay_objective_roles();
     for (auto& registration : registered_huds) {
-        update_entity_overlay(registration);
+        update_entity_overlay(registration, delta_seconds);
     }
 }
 
@@ -306,7 +335,8 @@ void FHUDManager::update_entity_overlay_objective_roles() {
                 EEntityOverlayObjectiveRole::Destroy);
 }
 
-void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registration) {
+void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registration,
+                                        float const delta_seconds) {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::Collect);
     auto* const hud{registration.hud.Get()};
     if (!IsValid(hud)) {
@@ -316,6 +346,20 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
 
     check(registration.frame_store.IsValid());
     auto& frame{registration.frame_store->next()};
+    frame.soft_target_range_progress = 0.0f;
+    frame.soft_target_radius_pixels = 0.0f;
+    frame.soft_target_pulse = 0.0f;
+
+    FEntityOverlayView overlay_view;
+    if (!hud->try_get_entity_overlay_view(overlay_view)) {
+        UE_LOG(LogSandboxUI, Warning, TEXT("FHUDManager: Entity overlay view is invalid."));
+        frame.instances.Reset();
+        registration.soft_target = {};
+        registration.soft_target_pulse_remaining = 0.0f;
+        registration.soft_target_in_range = false;
+        registration.frame_store->publish();
+        return;
+    }
 
     FVector camera_location{};
     FRotator camera_rotation{};
@@ -329,15 +373,54 @@ void FHUDManager::update_entity_overlay(FRegisteredEntityOverlayHud& registratio
     controller->GetPlayerViewPoint(camera_location, camera_rotation);
 
     check(entity_registry);
-    auto const result{
-        collect_entity_overlay_instances(entity_registry->get_entity_data().get_const_view(),
-                                         entity_overlay_objective_roles_,
-                                         entity_overlay_team_colours_,
-                                         entity_overlay_maximum_health_,
-                                         FVector3f{camera_location},
-                                         entity_overlay_settings_.maximum_range,
-                                         frame.instances,
-                                         registration.collector)};
+    FSoftTargetSelectionResult soft_target;
+    if (validate_player_ship_for_collection()) {
+        auto const firing_transform{player_ship->get_middle_socket()};
+        auto const camera_transform{FRotationMatrix{camera_rotation}};
+        soft_target =
+            select_soft_target(entity_registry->get_entity_data().get_const_view(),
+                               entity_registry->get_generations(),
+                               entity_overlay_objective_roles_,
+                               {.view = overlay_view,
+                                .aim_origin = FVector3f{firing_transform.GetLocation()},
+                                .aim_direction = FVector3f{firing_transform.GetUnitAxis(EAxis::X)},
+                                .camera_right = FVector3f{camera_transform.GetUnitAxis(EAxis::Y)},
+                                .camera_up = FVector3f{camera_transform.GetUnitAxis(EAxis::Z)},
+                                .player_team = player_ship->team,
+                                .effective_weapon_range = player_ship->get_laser_effective_range(),
+                                .maximum_overlay_range = entity_overlay_settings_.maximum_range},
+                               soft_target_selection_settings_,
+                               registration.soft_target);
+    }
+
+    registration.soft_target_pulse_remaining = FMath::Max(
+        registration.soft_target_pulse_remaining - FMath::Max(delta_seconds, 0.0f), 0.0f);
+    if (soft_target.handle != registration.soft_target) {
+        registration.soft_target_pulse_remaining = 0.0f;
+    } else if (soft_target.handle.is_valid() && !registration.soft_target_in_range &&
+               soft_target.in_range) {
+        registration.soft_target_pulse_remaining = soft_target_pulse_duration_;
+    }
+    registration.soft_target = soft_target.handle;
+    registration.soft_target_in_range = soft_target.in_range;
+
+    frame.soft_target_range_progress = soft_target.range_progress;
+    frame.soft_target_radius_pixels = soft_target.indicator_radius_pixels;
+    frame.soft_target_pulse =
+        soft_target_pulse_duration_ > 0.0f
+            ? registration.soft_target_pulse_remaining / soft_target_pulse_duration_
+            : 0.0f;
+
+    auto const result{collect_entity_overlay_instances(
+        entity_registry->get_entity_data().get_const_view(),
+        entity_overlay_objective_roles_,
+        entity_overlay_team_colours_,
+        entity_overlay_maximum_health_,
+        overlay_view.camera_origin,
+        entity_overlay_settings_.maximum_range,
+        frame.instances,
+        registration.collector,
+        soft_target.handle.is_valid() ? soft_target.handle.index : INDEX_NONE)};
     registration.frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, result.candidate_count);

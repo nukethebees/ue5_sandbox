@@ -23,14 +23,27 @@ float InsetPixels;
 float MaximumInsetHeightRatio;
 float ObjectiveFramePixels;
 float ScreenEdgePaddingPixels;
+float SoftTargetRadiusPixels;
+float SoftTargetOuterBracketGapPixels;
+float SoftTargetInnerBracketGapPixels;
+float SoftTargetRangeProgress;
+float SoftTargetPulse;
+float SoftTargetNeutralOpacity;
+float SoftTargetApproachingOpacity;
+float SoftTargetInRangeOpacity;
+float SoftTargetGlowOpacity;
+float SoftTargetPulseOpacityBoost;
 float TimeSeconds;
 float4 BackgroundColor;
 float4 FillColor;
 float4 DefendObjectiveColor;
 float4 DestroyObjectiveColor;
+float4 SoftTargetNeutralColor;
+float4 SoftTargetInRangeColor;
 
 static uint const ObjectiveRoleMask = 0x3;
 static uint const HasFillColorMask = 1 << 2;
+static uint const SoftTargetMask = 1 << 3;
 static uint const FillColorRedShift = 8;
 static uint const FillColorGreenShift = 16;
 static uint const FillColorBlueShift = 24;
@@ -120,16 +133,20 @@ void objective_layout(float2 const bar_size,
 }
 
 struct EntityOverlayVertexOutput {
-    float4 position                          : SV_Position;
-    float2 local_uv                          : ENTITY_OVERLAY_UV;
-    nointerpolation float health             : ENTITY_OVERLAY_HEALTH;
-    nointerpolation float visible            : ENTITY_OVERLAY_VISIBLE;
-    nointerpolation float2 bar_size_pixels   : ENTITY_OVERLAY_BAR_SIZE;
-    nointerpolation float2 draw_size_pixels  : ENTITY_OVERLAY_DRAW_SIZE;
-    nointerpolation float2 draw_min_pixels   : ENTITY_OVERLAY_DRAW_MIN;
-    nointerpolation float2 label_size_pixels : ENTITY_OVERLAY_LABEL_SIZE;
-    nointerpolation uint display_data        : ENTITY_OVERLAY_DISPLAY_DATA;
-    nointerpolation uint edge                : ENTITY_OVERLAY_EDGE;
+    float4 position                                  : SV_Position;
+    float2 local_uv                                  : ENTITY_OVERLAY_UV;
+    nointerpolation float health                     : ENTITY_OVERLAY_HEALTH;
+    nointerpolation float visible                    : ENTITY_OVERLAY_VISIBLE;
+    nointerpolation float2 bar_size_pixels           : ENTITY_OVERLAY_BAR_SIZE;
+    nointerpolation float2 draw_size_pixels          : ENTITY_OVERLAY_DRAW_SIZE;
+    nointerpolation float2 draw_min_pixels           : ENTITY_OVERLAY_DRAW_MIN;
+    nointerpolation float2 label_size_pixels         : ENTITY_OVERLAY_LABEL_SIZE;
+    nointerpolation uint display_data                : ENTITY_OVERLAY_DISPLAY_DATA;
+    nointerpolation uint edge                        : ENTITY_OVERLAY_EDGE;
+    nointerpolation float2 soft_target_center_pixels : ENTITY_OVERLAY_TARGET_CENTER;
+    nointerpolation float soft_target_range_progress : ENTITY_OVERLAY_TARGET_RANGE;
+    nointerpolation float soft_target_radius_pixels  : ENTITY_OVERLAY_TARGET_RADIUS;
+    nointerpolation float soft_target_pulse          : ENTITY_OVERLAY_TARGET_PULSE;
 };
 
 EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
@@ -141,6 +158,7 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     bool const on_screen = projected.w > 0.000001 && all(ndc >= -1.0) && all(ndc <= 1.0);
     uint const objective_role = instance.display_data & ObjectiveRoleMask;
     bool const is_objective = objective_role != ObjectiveRoleNone;
+    bool const is_soft_target = (instance.display_data & SoftTargetMask) != 0;
     bool const visible = on_screen || is_objective;
 
     float2 const view_min = float2(ViewRect.xy);
@@ -178,8 +196,15 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
 
     bool const edge_marker = is_objective && !on_screen;
     float const cue_pixels = edge_marker ? max(instance_bar_size.y, 1.0) : 0.0;
-    float2 const draw_min = content_min - cue_pixels;
-    float2 const draw_max = content_max + cue_pixels;
+    float2 draw_min = content_min - cue_pixels;
+    float2 draw_max = content_max + cue_pixels;
+    float2 const soft_target_center = -ScreenOffsetPixels + float2(0.0, 0.5 * normal_bar_size.y);
+    if (is_soft_target) {
+        float const soft_target_extent =
+            SoftTargetRadiusPixels + SoftTargetOuterBracketGapPixels + 18.0;
+        draw_min = min(draw_min, soft_target_center - soft_target_extent);
+        draw_max = max(draw_max, soft_target_center + soft_target_extent);
+    }
     float2 const draw_size = draw_max - draw_min;
     float2 marker_center =
         projected_pixel + ScreenOffsetPixels + float2(0.0, -0.5 * normal_bar_size.y);
@@ -228,6 +253,10 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     output.label_size_pixels = label_size;
     output.display_data = instance.display_data;
     output.edge = edge;
+    output.soft_target_center_pixels = soft_target_center;
+    output.soft_target_range_progress = SoftTargetRangeProgress;
+    output.soft_target_radius_pixels = SoftTargetRadiusPixels;
+    output.soft_target_pulse = SoftTargetPulse;
     return output;
 }
 
@@ -563,6 +592,60 @@ float label_text_coverage(float2 const position,
                             distance_pixels);
 }
 
+bool soft_target_pixel(EntityOverlayVertexOutput input,
+                       float2 const local_position,
+                       out float4 output_color) {
+    if ((input.display_data & SoftTargetMask) == 0) {
+        output_color = 0.0;
+        return false;
+    }
+
+    float2 const target_position = local_position - input.soft_target_center_pixels;
+    float const range_progress = saturate(input.soft_target_range_progress);
+    bool const in_range = range_progress >= 0.9999;
+    float const radius = max(input.soft_target_radius_pixels, 1.0);
+    float const gap =
+        lerp(SoftTargetOuterBracketGapPixels, SoftTargetInnerBracketGapPixels, range_progress);
+    float const bracket_corner = radius + gap;
+    float const bracket_length = clamp(radius * 0.24, 8.0, 14.0);
+    float const thickness = in_range ? 1.5 : lerp(0.9, 1.2, range_progress);
+
+    float const ring_distance = abs(length(target_position) - radius) - thickness * 0.5;
+    float2 const quadrant_position = abs(target_position);
+    float const horizontal_bracket_distance =
+        distance_to_segment(quadrant_position,
+                            float2(bracket_corner - bracket_length, bracket_corner),
+                            float2(bracket_corner, bracket_corner)) -
+        thickness * 0.5;
+    float const vertical_bracket_distance =
+        distance_to_segment(quadrant_position,
+                            float2(bracket_corner, bracket_corner - bracket_length),
+                            float2(bracket_corner, bracket_corner)) -
+        thickness * 0.5;
+    float const shape_distance =
+        min(ring_distance, min(horizontal_bracket_distance, vertical_bracket_distance));
+    float const antialias_width = max(fwidth(shape_distance), 0.7);
+    float const core_coverage = 1.0 - smoothstep(-antialias_width, antialias_width, shape_distance);
+
+    float halo_coverage = 0.0;
+    if (in_range) {
+        float const halo_width = 2.0 + saturate(input.soft_target_pulse) * 1.5;
+        halo_coverage =
+            (1.0 - smoothstep(0.0, halo_width, max(shape_distance, 0.0))) * (1.0 - core_coverage);
+    }
+
+    float4 const base_color = in_range ? SoftTargetInRangeColor : SoftTargetNeutralColor;
+    float const base_alpha =
+        in_range ? SoftTargetInRangeOpacity
+                 : lerp(SoftTargetNeutralOpacity, SoftTargetApproachingOpacity, range_progress);
+    float const pulse_boost =
+        in_range ? saturate(input.soft_target_pulse) * SoftTargetPulseOpacityBoost : 0.0;
+    float const alpha = saturate(core_coverage * (base_alpha + pulse_boost) +
+                                 halo_coverage * (SoftTargetGlowOpacity + pulse_boost * 0.3));
+    output_color = float4(base_color.rgb, base_color.a * alpha);
+    return alpha > 0.001;
+}
+
 float4 entity_overlay_ps(EntityOverlayVertexOutput input)
     : SV_Target0 {
     clip(input.visible - 0.5);
@@ -576,6 +659,10 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
 
     if (!is_objective) {
         if (!all(abs(local_position) <= bar_half_size)) {
+            float4 soft_target_color;
+            if (soft_target_pixel(input, local_position, soft_target_color)) {
+                return soft_target_color;
+            }
             discard;
             return 0.0;
         }
@@ -723,6 +810,10 @@ float4 entity_overlay_ps(EntityOverlayVertexOutput input)
         return filled ? fill_color : BackgroundColor;
     }
 
+    float4 soft_target_color;
+    if (soft_target_pixel(input, local_position, soft_target_color)) {
+        return soft_target_color;
+    }
     discard;
     return 0.0;
 }

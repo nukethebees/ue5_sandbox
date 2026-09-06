@@ -193,6 +193,9 @@ struct SPACEGAME_API FHUDManager {
         TWeakObjectPtr<UShipHudWidget> hud;
         FEntityOverlayFrameStorePtr frame_store;
         FEntityOverlayCollector collector;
+        FRegistryEntityHandle soft_target{};
+        float soft_target_pulse_remaining{0.0f};
+        bool soft_target_in_range{false};
     };
 
     auto collect_data(FPeriodicTickCountdown8::counter_type num_ticks)
@@ -203,9 +206,9 @@ struct SPACEGAME_API FHUDManager {
     void collect_kill_data();
     bool collect_player_status_data();
     bool collect_player_flight_data();
-    void update_entity_overlays();
+    void update_entity_overlays(float delta_seconds);
     void update_entity_overlay_objective_roles();
-    void update_entity_overlay(FRegisteredEntityOverlayHud& registration);
+    void update_entity_overlay(FRegisteredEntityOverlayHud& registration, float delta_seconds);
 #if WITH_EDITOR
     bool collect_sampled_speed_data();
 #endif
@@ -244,6 +247,9 @@ struct SPACEGAME_API FHUDManager {
     FEntityOverlayTeamColours entity_overlay_team_colours_;
     FEntityOverlayHealthMaximums entity_overlay_maximum_health_;
     TArray<EEntityOverlayObjectiveRole> entity_overlay_objective_roles_;
+    FSoftTargetSelectionSettings soft_target_selection_settings_;
+    float soft_target_pulse_duration_{0.3f};
+    float seconds_per_tick_{0.0f};
 
 #if WITH_EDITOR
     ml::MultiBuffer<ml::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;
