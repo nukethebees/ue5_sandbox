@@ -515,7 +515,8 @@ void UShipHudWidget::apply_radar_colours() {
         return;
     }
 
-    radar_style_.emphasis_color = entity_overlay_defend_colour_;
+    radar_style_.objective_color = entity_overlay_defend_colour_;
+    radar_style_.player_color = entity_overlay_defend_colour_;
     radar_style_.structure_color = entity_overlay_defend_colour_;
     radar_style_.plane_color = FLinearColor::Transparent;
     if (radar_widget_.IsValid()) {

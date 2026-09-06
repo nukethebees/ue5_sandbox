@@ -4,6 +4,7 @@
 #include "HAL/PlatformTime.h"
 #include "RenderingThread.h"
 #include "SandboxUI/Radar/RadarBenchmarkSupport.h"
+#include "SandboxUI/Radar/SRadarWidget.h"
 #include "UObject/StrongObjectPtr.h"
 
 void benchmark_radar_3d_rdg(FRadarFrame const& frame,
@@ -14,7 +15,10 @@ void benchmark_radar_3d_rdg(FRadarFrame const& frame,
     auto output_texture{
         TStrongObjectPtr<UTextureRenderTarget2D>{NewObject<UTextureRenderTarget2D>()}};
     check(output_texture.IsValid());
-    output_texture->InitCustomFormat(512, 512, PF_R8G8B8A8, true);
+    output_texture->InitCustomFormat(SRadarWidget::output_texture_dimension,
+                                     SRadarWidget::output_texture_dimension,
+                                     PF_R8G8B8A8,
+                                     true);
     auto* const output_resource{output_texture->GameThread_GetRenderTargetResource()};
     check(output_resource);
 

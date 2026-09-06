@@ -26,7 +26,7 @@ TSharedRef<SWidget> URadar3DShowcase::RebuildWidget() {
     radar_widget_ = builder.BuildRadarWidget();
     radar_frame_store_ = MakeShared<FRadarFrameStore, ESPMode::ThreadSafe>();
     radar_widget_->set_frame_store(radar_frame_store_);
-    populate_frame(5);
+    populate_frame(19);
     radar_widget_->render();
     auto on_value_changed{[this](int32 const contact_count) { set_contact_count(contact_count); }};
 
@@ -43,33 +43,43 @@ void URadar3DShowcase::populate_frame(int32 const contact_count) {
     instances.Reset();
     instances.Reserve(contact_count);
     FLinearColor const colors[]{
-        {1.0f, 0.28f, 0.12f, 1.0f},
-        {0.2f, 0.85f, 1.0f, 1.0f},
-        {0.42f, 1.0f, 0.38f, 1.0f},
-        {0.75f, 0.38f, 1.0f, 1.0f},
+        {0.12f, 0.72f, 1.0f, 1.0f},
+        {1.0f, 0.08f, 0.035f, 1.0f},
+        {0.78f, 0.84f, 0.86f, 1.0f},
     };
 
     auto const non_player_count{FMath::Max(contact_count - 1, 0)};
-    for (int32 priority{0}; priority < 2; ++priority) {
+    for (int32 priority{0}; priority < 3; ++priority) {
         for (int32 index{0}; index < non_player_count; ++index) {
-            auto const flag_variant{index % 8};
+            auto const flag_variant{index % 9};
             auto const flags{flag_variant == 0   ? ERadarContactFlags::Selected
                              : flag_variant == 1 ? ERadarContactFlags::DefendObjective
                              : flag_variant == 2 ? ERadarContactFlags::DestroyObjective
+                             : flag_variant == 3 ? ERadarContactFlags::Selected |
+                                                       ERadarContactFlags::DestroyObjective
                                                  : ERadarContactFlags::None};
-            if ((flags != ERadarContactFlags::None) != (priority == 1)) {
+            auto const draw_priority{EnumHasAnyFlags(flags, ERadarContactFlags::Selected) ? 2
+                                     : flags != ERadarContactFlags::None                  ? 1
+                                                                                          : 0};
+            if (draw_priority != priority) {
                 continue;
             }
             auto const radius{0.18f + 0.72f * FMath::Fmod(index * 0.618034f, 1.0f)};
             auto const angle{static_cast<float>(index) * 2.399963f};
+            auto radar_position{FVector3f{radius * FMath::Cos(angle),
+                                          radius * FMath::Sin(angle),
+                                          -0.72f + 0.72f * static_cast<float>(index % 3)}};
+            if (index >= 12 && index < 15) {
+                radar_position = {0.22f + 0.015f * static_cast<float>(index - 12),
+                                  -0.12f,
+                                  -0.35f + 0.35f * static_cast<float>(index - 12)};
+            }
             instances.Add({
-                .radar_position = {radius * FMath::Cos(angle),
-                                   radius * FMath::Sin(angle),
-                                   -0.85f + 1.7f * FMath::Fmod(index * 0.414214f, 1.0f)},
-                .size_scale = 0.85f + static_cast<float>(index % 4) * 0.15f,
+                .radar_position = radar_position,
+                .size_scale = 1.0f,
                 .packed_color = pack_radar_color(colors[index % UE_ARRAY_COUNT(colors)]),
                 .packed_glyph_and_flags =
-                    pack_radar_display(static_cast<ERadarGlyph>(1 + index % 5), flags),
+                    pack_radar_display(static_cast<ERadarGlyph>(1 + index % 6), flags),
             });
         }
     }

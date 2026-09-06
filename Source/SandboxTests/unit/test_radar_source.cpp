@@ -70,13 +70,12 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         generations.Init(7, entities.alive.Num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        objective_roles[2] = EEntityOverlayObjectiveRole::Defend;
         objective_roles[3] = EEntityOverlayObjectiveRole::Destroy;
         objective_roles[7] = EEntityOverlayObjectiveRole::Defend;
 
-        FRadarTeamColours colours;
-        colours.fighter[ETestTeam::Red] = FLinearColor{1.0f, 0.0f, 0.0f, 1.0f};
-        colours.capital_ship[ETestTeam::Green] = FLinearColor{0.0f, 1.0f, 0.0f, 1.0f};
-        colours.turret[ETestTeam::Yellow] = FLinearColor{1.0f, 1.0f, 0.0f, 1.0f};
+        FRadarContactColours colours;
+        colours.hostile = FLinearColor::Red;
 
         TArray<FRadarInstance> instances;
         auto const result{collect_radar_instances(ml::test_radar_source::make_view(entities),
@@ -86,6 +85,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   FTransform::Identity,
                                                   {0, 7},
                                                   {2, 7},
+                                                  ETestTeam::Blue,
                                                   false,
                                                   0.0f,
                                                   100.0f,
@@ -101,25 +101,26 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Unsupported type maps to unknown"),
                               ml::test_radar_source::glyph(instances[1]),
                               ERadarGlyph::Unknown);
-        TestRunner->TestEqual(TEXT("Selected contact follows normal contacts"),
-                              ml::test_radar_source::glyph(instances[2]),
-                              ERadarGlyph::CapitalShip);
-        TestRunner->TestEqual(TEXT("Selection preserves its flag"),
-                              ml::test_radar_source::flags(instances[2]),
-                              ERadarContactFlags::Selected);
         TestRunner->TestEqual(TEXT("Objective follows normal contacts"),
-                              ml::test_radar_source::glyph(instances[3]),
+                              ml::test_radar_source::glyph(instances[2]),
                               ERadarGlyph::Turret);
         TestRunner->TestEqual(TEXT("Objective preserves its role"),
-                              ml::test_radar_source::flags(instances[3]),
+                              ml::test_radar_source::flags(instances[2]),
                               ERadarContactFlags::DestroyObjective);
+        TestRunner->TestEqual(TEXT("Selected contact follows objectives"),
+                              ml::test_radar_source::glyph(instances[3]),
+                              ERadarGlyph::CapitalShip);
+        TestRunner->TestEqual(TEXT("Selection preserves its flag"),
+                              ml::test_radar_source::flags(instances[3]),
+                              ERadarContactFlags::Selected | ERadarContactFlags::DefendObjective);
         TestRunner->TestEqual(TEXT("Player is always last"),
                               ml::test_radar_source::glyph(instances.Last()),
                               ERadarGlyph::Player);
         TestRunner->TestTrue(TEXT("Player is central"),
                              instances.Last().radar_position.IsNearlyZero());
-        TestRunner->TestEqual(
-            TEXT("Fighter preserves its team colour"), instances[0].packed_color, 0xff0000ffu);
+        TestRunner->TestEqual(TEXT("Hostile fighter uses the hostile colour"),
+                              instances[0].packed_color,
+                              0xff0000ffu);
         TestRunner->TestEqual(TEXT("Blue occupies the shader's blue channel"),
                               pack_radar_color(FLinearColor{0.0f, 0.0f, 1.0f, 1.0f}),
                               0xffff0000u);
@@ -132,12 +133,57 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     FTransform::Identity,
                                     {0, 7},
                                     {},
+                                    ETestTeam::Blue,
                                     false,
                                     0.0f,
                                     0.0f,
                                     instances)};
         TestRunner->TestEqual(
             TEXT("Zero range retains only the player"), zero_range_result.visible_count, 1);
+    }
+
+    TEST_METHOD(UsesPlayerRelativeContactColours)
+    {
+        ml::entity_registry::EntityData entities;
+        ml::test_radar_source::add_entity(
+            entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
+        ml::test_radar_source::add_entity(
+            entities, {10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ETestEntityType::CapitalShipFighter);
+        ml::test_radar_source::add_entity(
+            entities, {20.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
+        ml::test_radar_source::add_entity(
+            entities, {30.0f, 0.0f, 0.0f}, ETestTeam::White, ETestEntityType::Turret);
+
+        TArray<int32> generations;
+        generations.Init(2, entities.alive.Num());
+        TArray<EEntityOverlayObjectiveRole> objective_roles;
+        objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
+        FRadarContactColours colours{
+            .friendly = FLinearColor::Blue,
+            .hostile = FLinearColor::Red,
+            .neutral = FLinearColor::White,
+        };
+        TArray<FRadarInstance> instances;
+
+        static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities),
+                                                  generations,
+                                                  objective_roles,
+                                                  colours,
+                                                  FTransform::Identity,
+                                                  {0, 2},
+                                                  {},
+                                                  ETestTeam::Blue,
+                                                  false,
+                                                  0.0f,
+                                                  100.0f,
+                                                  instances));
+
+        TestRunner->TestEqual(
+            TEXT("Same-team contact is friendly"), instances[0].packed_color, 0xffff0000u);
+        TestRunner->TestEqual(
+            TEXT("Other-team contact is hostile"), instances[1].packed_color, 0xff0000ffu);
+        TestRunner->TestEqual(
+            TEXT("White-team contact is neutral"), instances[2].packed_color, 0xffffffffu);
     }
 
     TEST_METHOD(UsesYawAndPitchButRemovesRoll)
@@ -157,7 +203,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         generations.Init(3, entities.alive.Num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
-        FRadarTeamColours colours;
+        FRadarContactColours colours;
         TArray<FRadarInstance> no_roll_instances;
         TArray<FRadarInstance> rolled_instances;
 
@@ -168,6 +214,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   FTransform{no_roll_rotation, player_location},
                                                   {0, 3},
                                                   {},
+                                                  ETestTeam::Blue,
                                                   false,
                                                   0.0f,
                                                   100.0f,
@@ -180,6 +227,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     FTransform{FRotator{28.0, 37.0, 120.0}, player_location},
                                     {0, 3},
                                     {},
+                                    ETestTeam::Blue,
                                     false,
                                     0.0f,
                                     100.0f,
@@ -220,7 +268,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         generations.Init(1, entities.alive.Num());
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.alive.Num());
-        FRadarTeamColours colours;
+        FRadarContactColours colours;
         TArray<FRadarInstance> instances;
 
         auto const automatic_result{
@@ -231,6 +279,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     FTransform::Identity,
                                     {0, 1},
                                     {},
+                                    ETestTeam::Blue,
                                     true,
                                     100000.0f,
                                     1000000.0f,
@@ -248,6 +297,7 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                     FTransform::Identity,
                                     {0, 1},
                                     {10, 1},
+                                    ETestTeam::Blue,
                                     true,
                                     100000.0f,
                                     1000000.0f,

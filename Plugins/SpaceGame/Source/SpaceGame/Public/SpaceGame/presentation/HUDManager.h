@@ -267,7 +267,7 @@ struct SPACEGAME_API FHUDManager {
     float seconds_per_tick_{0.0f};
     FRadarSettings radar_settings_;
     FRadarStyle radar_style_;
-    FRadarTeamColours radar_team_colours_;
+    FRadarContactColours radar_contact_colours_;
 
 #if WITH_EDITOR
     ml::MultiBuffer<ml::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;

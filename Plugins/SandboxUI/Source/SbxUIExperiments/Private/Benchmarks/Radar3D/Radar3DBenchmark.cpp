@@ -10,10 +10,9 @@
 namespace {
 auto make_frame(int32 const contact_count) -> FRadarFrame {
     FLinearColor const colors[]{
-        {1.0f, 0.28f, 0.12f, 1.0f},
-        {0.2f, 0.85f, 1.0f, 1.0f},
-        {0.42f, 1.0f, 0.38f, 1.0f},
-        {0.75f, 0.38f, 1.0f, 1.0f},
+        {0.12f, 0.72f, 1.0f, 1.0f},
+        {1.0f, 0.08f, 0.035f, 1.0f},
+        {0.78f, 0.84f, 0.86f, 1.0f},
     };
 
     FRadarFrame frame;
@@ -33,7 +32,7 @@ auto make_frame(int32 const contact_count) -> FRadarFrame {
             .size_scale = 0.85f + static_cast<float>(index % 4) * 0.15f,
             .packed_color = pack_radar_color(colors[index % UE_ARRAY_COUNT(colors)]),
             .packed_glyph_and_flags =
-                pack_radar_display(static_cast<ERadarGlyph>(1 + index % 5), flags),
+                pack_radar_display(static_cast<ERadarGlyph>(1 + index % 6), flags),
         };
     }
     return frame;

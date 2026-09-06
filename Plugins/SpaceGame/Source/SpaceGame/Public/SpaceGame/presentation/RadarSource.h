@@ -2,15 +2,14 @@
 
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SandboxUI/Radar/RadarTypes.h"
-#include "SpaceGame/entities/TeamColours.h"
 #include "SpaceGame/entities/TestEntityRegistryData.h"
 
 #include "SandboxNative/RegistryEntityHandle.h"
 
-struct SPACEGAME_API FRadarTeamColours {
-    FTeamColours capital_ship;
-    FTeamColours fighter;
-    FTeamColours turret;
+struct SPACEGAME_API FRadarContactColours {
+    FLinearColor friendly{0.12f, 0.72f, 1.0f, 1.0f};
+    FLinearColor hostile{1.0f, 0.08f, 0.035f, 1.0f};
+    FLinearColor neutral{0.78f, 0.84f, 0.86f, 1.0f};
 };
 
 struct SPACEGAME_API FRadarCollectionResult {
@@ -22,10 +21,11 @@ struct SPACEGAME_API FRadarCollectionResult {
     collect_radar_instances(ml::entity_registry::EntityData::ConstView entities,
                             TConstArrayView<int32> generations,
                             TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
-                            FRadarTeamColours const& team_colours,
+                            FRadarContactColours const& contact_colours,
                             FTransform const& player_transform,
                             FRegistryEntityHandle player_handle,
                             FRegistryEntityHandle selected_handle,
+                            ETestTeam player_team,
                             bool automatic_range,
                             float minimum_range,
                             float maximum_range,

@@ -27,37 +27,27 @@ auto glyph(ETestEntityType const type) -> ERadarGlyph {
     }
 }
 
-auto colour(ETestEntityType const type, ETestTeam const team, FRadarTeamColours const& colours)
+auto colour(ETestTeam const team, ETestTeam const player_team, FRadarContactColours const& colours)
     -> FLinearColor {
-    switch (type) {
-        case ETestEntityType::CapitalShip: {
-            return colours.capital_ship[team];
-        }
-        case ETestEntityType::CapitalShipFighter: {
-            return colours.fighter[team];
-        }
-        case ETestEntityType::Turret: {
-            return colours.turret[team];
-        }
-        default: {
-            return FLinearColor::White;
-        }
+    if (team == ETestTeam::White) {
+        return colours.neutral;
     }
+    return team == player_team ? colours.friendly : colours.hostile;
 }
 
 auto size_scale(ETestEntityType const type) -> float {
     switch (type) {
         case ETestEntityType::CapitalShip: {
-            return 1.35f;
+            return 1.1f;
         }
         case ETestEntityType::Turret: {
-            return 1.05f;
+            return 1.0f;
         }
         case ETestEntityType::CapitalShipFighter: {
-            return 0.9f;
+            return 1.0f;
         }
         default: {
-            return 0.8f;
+            return 0.9f;
         }
     }
 }
@@ -71,6 +61,18 @@ auto flags(EEntityOverlayObjectiveRole const objective_role, bool const selected
         result |= ERadarContactFlags::DestroyObjective;
     }
     return result;
+}
+
+auto draw_priority(ERadarContactFlags const contact_flags) -> int32 {
+    if (EnumHasAnyFlags(contact_flags, ERadarContactFlags::Selected)) {
+        return 2;
+    }
+    if (EnumHasAnyFlags(contact_flags,
+                        ERadarContactFlags::DefendObjective |
+                            ERadarContactFlags::DestroyObjective)) {
+        return 1;
+    }
+    return 0;
 }
 
 auto to_radar_position(FVector3f const local_delta, float const maximum_range) -> FVector3f {
@@ -143,10 +145,11 @@ auto calculate_display_range(ml::entity_registry::EntityData::ConstView const en
 auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const entities,
                              TConstArrayView<int32> const generations,
                              TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
-                             FRadarTeamColours const& team_colours,
+                             FRadarContactColours const& contact_colours,
                              FTransform const& player_transform,
                              FRegistryEntityHandle const player_handle,
                              FRegistryEntityHandle const selected_handle,
+                             ETestTeam const player_team,
                              bool const automatic_range,
                              float const minimum_range,
                              float const maximum_range,
@@ -177,7 +180,7 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
     output_instances.Reserve(count + 1);
 
     int32 candidate_count{0};
-    for (int32 priority{0}; priority < 2; ++priority) {
+    for (int32 priority{0}; priority < 3; ++priority) {
         for (int32 index{0}; index < count; ++index) {
             if (entities.alive[index] == 0) {
                 continue;
@@ -194,8 +197,7 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
 
             auto const contact_flags{
                 ml::radar_source::flags(objective_roles[index], handle == selected_handle)};
-            auto const emphasized{contact_flags != ERadarContactFlags::None};
-            if (emphasized != (priority == 1)) {
+            if (ml::radar_source::draw_priority(contact_flags) != priority) {
                 continue;
             }
 
@@ -210,7 +212,7 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
                 .radar_position = ml::radar_source::to_radar_position(local_delta, range),
                 .size_scale = ml::radar_source::size_scale(entity_type),
                 .packed_color = pack_radar_color(
-                    ml::radar_source::colour(entity_type, entities.teams[index], team_colours)),
+                    ml::radar_source::colour(entities.teams[index], player_team, contact_colours)),
                 .packed_glyph_and_flags =
                     pack_radar_display(ml::radar_source::glyph(entity_type), contact_flags),
             });

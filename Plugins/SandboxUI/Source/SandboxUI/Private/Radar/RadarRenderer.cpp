@@ -108,9 +108,12 @@ class FGlyphPS final : public FGlobalShader {
     DECLARE_GLOBAL_SHADER(FGlyphPS);
     SHADER_USE_PARAMETER_STRUCT(FGlyphPS, FGlobalShader);
     BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
-    SHADER_PARAMETER(FVector4f, EmphasisColor)
-    SHADER_PARAMETER(FVector4f, NeutralColor)
+    SHADER_PARAMETER(FVector4f, ObjectiveColor)
+    SHADER_PARAMETER(FVector4f, SelectionColor)
+    SHADER_PARAMETER(FVector4f, PlayerColor)
     SHADER_PARAMETER(float, GlyphIntensity)
+    SHADER_PARAMETER(float, ContactGlowOpacity)
+    SHADER_PARAMETER(float, EmphasizedGlowOpacity)
     END_SHADER_PARAMETER_STRUCT()
     static auto ShouldCompilePermutation(FGlobalShaderPermutationParameters const& parameters)
         -> bool {
@@ -276,9 +279,12 @@ void execute_graph(FRHICommandListImmediate& command_list,
         auto* const glyphs{graph.AllocParameters<FGlyphPassParameters>()};
         glyphs->VS.OutputSize = size;
         glyphs->VS.Instances = instances;
-        glyphs->PS.EmphasisColor = FVector4f{style.emphasis_color};
-        glyphs->PS.NeutralColor = FVector4f{style.neutral_color};
+        glyphs->PS.ObjectiveColor = FVector4f{style.objective_color};
+        glyphs->PS.SelectionColor = FVector4f{style.selection_color};
+        glyphs->PS.PlayerColor = FVector4f{style.player_color};
         glyphs->PS.GlyphIntensity = style.glyph_intensity;
+        glyphs->PS.ContactGlowOpacity = style.contact_glow_opacity;
+        glyphs->PS.EmphasizedGlowOpacity = style.emphasized_glow_opacity;
         glyphs->RenderTargets[0] = FRenderTargetBinding{output, ERenderTargetLoadAction::ELoad};
         auto const glyph_vs{TShaderMapRef<FGlyphVS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};
         auto const glyph_ps{TShaderMapRef<FGlyphPS>{GetGlobalShaderMap(GMaxRHIFeatureLevel)}};

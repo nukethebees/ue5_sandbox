@@ -105,11 +105,6 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         .turret =
             UTestTeamVisualData::build_team_colour_cache(level_config.turrets.team_visual_data),
     };
-    radar_team_colours_ = {
-        .capital_ship = entity_overlay_team_colours_.capital_ship,
-        .fighter = entity_overlay_team_colours_.fighter,
-        .turret = entity_overlay_team_colours_.turret,
-    };
     entity_overlay_maximum_health_ = {
         .capital_ship = level_config.capital_ships.max_health,
         .fighter = level_config.fighters.health,
@@ -567,10 +562,11 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
     auto const result{collect_radar_instances(entity_registry->get_entity_data().get_const_view(),
                                               entity_registry->get_generations(),
                                               entity_overlay_objective_roles_,
-                                              radar_team_colours_,
+                                              radar_contact_colours_,
                                               player_ship->transform,
                                               player_ship->registry_handle,
                                               player_ship->lock_on_target,
+                                              player_ship->team,
                                               radar_settings_.automatic_range,
                                               radar_settings_.minimum_range,
                                               radar_settings_.maximum_range,
