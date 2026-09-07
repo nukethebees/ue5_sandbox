@@ -53,6 +53,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
         -> TArray<FControlBindingView>;
     auto binding_conflicts(FControlBindingAddress const& address, FKey key) const
         -> TArray<FControlBindingView>;
+    auto chord_binding_conflicts(FControlBindingAddress const& address,
+                                 FKey activator_key,
+                                 FKey action_key) const -> TArray<FControlBindingView>;
     auto set_control_profile(FString const& profile_id) -> bool;
     auto create_custom_control_profile() -> bool;
     auto rename_active_custom_control_profile(FString const& display_name) -> bool;
@@ -60,6 +63,10 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto set_control_binding(FControlBindingAddress const& address,
                              FKey key,
                              bool replace_conflicts) -> bool;
+    auto set_control_chord(FControlBindingAddress const& address,
+                           FKey activator_key,
+                           FKey action_key,
+                           bool replace_conflicts) -> bool;
     auto clear_control_binding(FControlBindingAddress const& address) -> bool;
     auto reset_control_binding(FControlBindingAddress const& address) -> bool;
     auto reset_active_control_profile() -> bool;
@@ -73,6 +80,10 @@ class SPACEGAME_API UGameSettingsSubsystem final
                          FGameSettingValue const& value) const -> TOptional<FGameSettingValue>;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;
     auto all_control_bindings() const -> TArray<FControlBindingView>;
+    auto map_control_binding(USpaceGameInputUserSettings& settings,
+                             FControlBindingAddress const& address,
+                             FKey key,
+                             bool defer_change_broadcast) const -> bool;
     void capture_input_edit_state();
     void restore_input_edit_state();
     auto input_is_dirty() const -> bool;

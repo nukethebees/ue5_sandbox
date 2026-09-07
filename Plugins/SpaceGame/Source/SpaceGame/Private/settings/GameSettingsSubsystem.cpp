@@ -476,12 +476,77 @@ auto UGameSettingsSubsystem::binding_conflicts(FControlBindingAddress const& add
     if (!key.IsValid()) {
         return {};
     }
-    return control_bindings(EHardwareDevicePrimaryType::Unspecified)
-        .FilterByPredicate([&address, key](auto const& binding) {
-            return binding.address.profile_id == address.profile_id &&
-                   binding.address.hardware_device_id == address.hardware_device_id &&
-                   binding.address != address && binding.current_key == key;
-        });
+    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+    auto const* const target{bindings.FindByPredicate(
+        [&address](auto const& binding) { return binding.address == address; })};
+    if (target == nullptr) {
+        return {};
+    }
+    return bindings.FilterByPredicate([&address, key, target](auto const& binding) {
+        auto const same_chord_scope{(!target->chord.IsSet() && !binding.chord.IsSet()) ||
+                                    (target->chord.IsSet() && binding.chord.IsSet() &&
+                                     target->chord->address == binding.chord->address)};
+        return same_chord_scope && binding.address.profile_id == address.profile_id &&
+               binding.address.hardware_device_id == address.hardware_device_id &&
+               binding.address != address && binding.current_key == key;
+    });
+}
+
+auto UGameSettingsSubsystem::chord_binding_conflicts(FControlBindingAddress const& address,
+                                                     FKey const activator_key,
+                                                     FKey const action_key) const
+    -> TArray<FControlBindingView> {
+    if (!activator_key.IsValid() || !action_key.IsValid()) {
+        return {};
+    }
+    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+    auto const* const target{bindings.FindByPredicate(
+        [&address](auto const& binding) { return binding.address == address; })};
+    if (target == nullptr || !target->chord.IsSet()) {
+        return {};
+    }
+
+    TArray<FControlBindingView> result;
+    for (auto const& binding : bindings) {
+        if (binding.address.profile_id != address.profile_id ||
+            binding.address.hardware_device_id != address.hardware_device_id ||
+            binding.address == address || binding.address == target->chord->address) {
+            continue;
+        }
+        auto const conflicts_with_activator{!binding.chord.IsSet() &&
+                                            binding.current_key == activator_key};
+        auto const conflicts_with_action{binding.chord.IsSet() &&
+                                         binding.chord->address == target->chord->address &&
+                                         binding.current_key == action_key};
+        if (conflicts_with_activator || conflicts_with_action) {
+            result.Add(binding);
+        }
+    }
+    return result;
+}
+
+auto UGameSettingsSubsystem::map_control_binding(USpaceGameInputUserSettings& settings,
+                                                 FControlBindingAddress const& address,
+                                                 FKey const key,
+                                                 bool const defer_change_broadcast) const -> bool {
+    FMapPlayerKeyArgs arguments{};
+    arguments.MappingName = address.mapping_name;
+    arguments.Slot = address.slot;
+    arguments.NewKey = key;
+    arguments.HardwareDeviceId = address.hardware_device_id;
+    arguments.ProfileIdString = address.profile_id;
+    arguments.bDeferOnSettingsChangedBroadcast = defer_change_broadcast;
+    FGameplayTagContainer failure_reason;
+    settings.MapPlayerKey(arguments, failure_reason);
+    if (!failure_reason.IsEmpty()) {
+        UE_LOG(LogTemp,
+               Warning,
+               TEXT("Could not map control '%s': %s"),
+               *address.mapping_name.ToString(),
+               *failure_reason.ToStringSimple());
+        return false;
+    }
+    return true;
 }
 
 auto UGameSettingsSubsystem::set_control_profile(FString const& profile_id) -> bool {
@@ -621,52 +686,94 @@ auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& a
         (target->device_type == EHardwareDevicePrimaryType::Gamepad) != key.IsGamepadKey()) {
         return false;
     }
-    auto const conflicts{bindings.FilterByPredicate([&address, key](auto const& binding) {
-        return binding.address.profile_id == address.profile_id &&
-               binding.address.hardware_device_id == address.hardware_device_id &&
-               binding.address != address && binding.current_key == key;
-    })};
+    auto const conflicts{binding_conflicts(address, key)};
     if (!conflicts.IsEmpty() && !replace_conflicts) {
         return false;
     }
 
-    auto map_key = [settings](FControlBindingAddress const& target, FKey const mapped_key) {
-        FMapPlayerKeyArgs arguments{};
-        arguments.MappingName = target.mapping_name;
-        arguments.Slot = target.slot;
-        arguments.NewKey = mapped_key;
-        arguments.HardwareDeviceId = target.hardware_device_id;
-        arguments.ProfileIdString = target.profile_id;
-        FGameplayTagContainer failure_reason;
-        settings->MapPlayerKey(arguments, failure_reason);
-        if (!failure_reason.IsEmpty()) {
-            UE_LOG(LogTemp,
-                   Warning,
-                   TEXT("Could not map control '%s': %s"),
-                   *target.mapping_name.ToString(),
-                   *failure_reason.ToStringSimple());
-            return false;
-        }
-        return true;
-    };
-
     TArray<FControlBindingView> unmapped_conflicts;
     unmapped_conflicts.Reserve(conflicts.Num());
     for (auto const& conflict : conflicts) {
-        if (!map_key(conflict.address, EKeys::Invalid)) {
+        if (!map_control_binding(*settings, conflict.address, EKeys::Invalid, false)) {
             for (auto const& unmapped : unmapped_conflicts) {
-                static_cast<void>(map_key(unmapped.address, unmapped.current_key));
+                static_cast<void>(
+                    map_control_binding(*settings, unmapped.address, unmapped.current_key, false));
             }
             return false;
         }
         unmapped_conflicts.Add(conflict);
     }
-    if (!map_key(address, key)) {
+    if (!map_control_binding(*settings, address, key, false)) {
         for (auto const& unmapped : unmapped_conflicts) {
-            static_cast<void>(map_key(unmapped.address, unmapped.current_key));
+            static_cast<void>(
+                map_control_binding(*settings, unmapped.address, unmapped.current_key, false));
         }
         return false;
     }
+    settings_changed.Broadcast();
+    return true;
+}
+
+auto UGameSettingsSubsystem::set_control_chord(FControlBindingAddress const& address,
+                                               FKey const activator_key,
+                                               FKey const action_key,
+                                               bool const replace_conflicts) -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr || !activator_key.IsValid() || !action_key.IsValid() ||
+        activator_key == action_key || address.profile_id != settings->GetActiveKeyProfileId()) {
+        return false;
+    }
+
+    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+    auto const* const target{bindings.FindByPredicate(
+        [&address](auto const& binding) { return binding.address == address; })};
+    if (target == nullptr || !target->chord.IsSet()) {
+        return false;
+    }
+    auto const gamepad{target->device_type == EHardwareDevicePrimaryType::Gamepad};
+    if (activator_key.IsGamepadKey() != gamepad || action_key.IsGamepadKey() != gamepad) {
+        return false;
+    }
+
+    auto const conflicts{chord_binding_conflicts(address, activator_key, action_key)};
+    if (!conflicts.IsEmpty() && !replace_conflicts) {
+        return false;
+    }
+
+    TArray<FControlBindingView> changed;
+    changed.Reserve(conflicts.Num() + 2);
+    for (auto const& conflict : conflicts) {
+        if (!map_control_binding(*settings, conflict.address, EKeys::Invalid, true)) {
+            for (auto const& original : changed) {
+                static_cast<void>(
+                    map_control_binding(*settings, original.address, original.current_key, true));
+            }
+            return false;
+        }
+        changed.Add(conflict);
+    }
+
+    auto apply_target = [this, settings, &changed](FControlBindingAddress const& target_address,
+                                                   FKey const old_key,
+                                                   FKey const new_key) {
+        if (old_key == new_key) {
+            return true;
+        }
+        if (!map_control_binding(*settings, target_address, new_key, true)) {
+            for (auto const& original : changed) {
+                static_cast<void>(
+                    map_control_binding(*settings, original.address, original.current_key, true));
+            }
+            return false;
+        }
+        changed.Add(FControlBindingView{.address = target_address, .current_key = old_key});
+        return true;
+    };
+    if (!apply_target(target->chord->address, target->chord->current_key, activator_key) ||
+        !apply_target(address, target->current_key, action_key)) {
+        return false;
+    }
+
     settings_changed.Broadcast();
     return true;
 }
