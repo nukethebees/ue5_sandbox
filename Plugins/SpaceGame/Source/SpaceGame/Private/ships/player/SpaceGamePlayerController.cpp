@@ -761,8 +761,8 @@ void ASpaceGamePlayerController::on_mission_completed(FTestMissionCompletion con
     }
 
     auto stats_snapshot{orchestrator->get_level_telemetry_manager().make_snapshot()};
-    completion_menu =
-        ui_root->show_level_completion(completion.level_display_name, MoveTemp(stats_snapshot));
+    completion_menu = ui_root->show_level_completion(
+        completion.level_display_name, completion.state, MoveTemp(stats_snapshot));
     if (!IsValid(completion_menu)) {
         resume_game();
         return;

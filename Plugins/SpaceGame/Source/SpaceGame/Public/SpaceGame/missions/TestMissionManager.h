@@ -21,6 +21,7 @@ struct FLevelMissionEventGroupsConstView;
 struct SPACEGAME_API FTestMissionCompletion {
     FName level_id{NAME_None};
     FString level_display_name{};
+    ETestMissionState state{ETestMissionState::NotStarted};
     bool persisted{false};
 };
 

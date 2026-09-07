@@ -952,9 +952,8 @@ void ATestBatchOrchestrator::process_mission_result() {
                    TEXT("Cannot persist mission result: save subsystem is unavailable"));
         }
     }
-    if (result->state == ETestMissionState::Succeeded) {
-        on_mission_completed.Broadcast({.level_id = result->level_id,
-                                        .level_display_name = result->level_display_name,
-                                        .persisted = persisted});
-    }
+    on_mission_completed.Broadcast({.level_id = result->level_id,
+                                    .level_display_name = result->level_display_name,
+                                    .state = result->state,
+                                    .persisted = persisted});
 }
