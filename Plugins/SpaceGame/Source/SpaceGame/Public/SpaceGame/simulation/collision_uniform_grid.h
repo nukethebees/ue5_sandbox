@@ -98,7 +98,17 @@ struct SPACEGAME_API CollisionUniformGrid {
                      TConstArrayView<FRegistryEntityHandle> ignored_entities = {},
                      ETraceEntityFilter entity_filter = ETraceEntityFilter::None) const;
   private:
-    template <bool ExpandBounds>
+    enum class ETraceKind : uint8 {
+        Line,
+        Sweep,
+    };
+
+    enum class EIgnoredEntityMode : uint8 {
+        None,
+        PerTrace,
+    };
+
+    template <ETraceKind TraceKind>
     static auto trace_aabb(WorldAABBs::ConstView const& aabbs,
                            int32 aabb_index,
                            FVector3f trace_start,
@@ -106,7 +116,9 @@ struct SPACEGAME_API CollisionUniformGrid {
                            FVector3f trace_delta,
                            FVector3f expansion) -> float;
 
-    template <bool UsePaddedTraversal, bool HasIgnoredEntities, ETraceEntityFilter EntityFilter>
+    template <ETraceKind TraceKind,
+              EIgnoredEntityMode IgnoredEntityMode,
+              ETraceEntityFilter EntityFilter>
     void trace_aabbs_impl(FLineTracesConstView const& traces,
                           FTraceHitsView const& hits,
                           TConstArrayView<FRegistryEntityHandle> ignored_entities,
