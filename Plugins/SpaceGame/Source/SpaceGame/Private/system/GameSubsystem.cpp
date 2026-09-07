@@ -20,6 +20,12 @@
 #endif
 
 namespace ml::ioj {
+namespace level_launch {
+auto is_valid_time_scale(double const value) noexcept -> bool {
+    return FMath::IsFinite(value) && value > 0.0 && value <= maximum_time_scale;
+}
+}
+
 namespace {
 auto query_platform_capabilities() -> FGameCapabilities {
     FGameCapabilities capabilities;
@@ -106,10 +112,12 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 
 void UGameSubsystem::set_pending_level(FLevelDefinition definition,
                                        FString source_path,
-                                       ELevelLaunchMode const launch_mode) {
+                                       ELevelLaunchMode const launch_mode,
+                                       double const requested_time_scale) {
     pending_level_.Emplace(FPendingLevelDefinition{.definition = MoveTemp(definition),
                                                    .source_path = MoveTemp(source_path),
-                                                   .launch_mode = launch_mode});
+                                                   .launch_mode = launch_mode,
+                                                   .requested_time_scale = requested_time_scale});
     level_launch_error_.Reset();
 }
 

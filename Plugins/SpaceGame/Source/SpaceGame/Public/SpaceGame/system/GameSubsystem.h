@@ -47,10 +47,18 @@ enum class ELevelLaunchMode : uint8 {
     Paused,
 };
 
+namespace level_launch {
+inline constexpr double default_time_scale{1.0};
+inline constexpr double maximum_time_scale{100.0};
+
+SPACEGAME_API auto is_valid_time_scale(double value) noexcept -> bool;
+}
+
 struct SPACEGAME_API FPendingLevelDefinition {
     FLevelDefinition definition{};
     FString source_path{};
     ELevelLaunchMode launch_mode{ELevelLaunchMode::Running};
+    double requested_time_scale{level_launch::default_time_scale};
 };
 
 struct SPACEGAME_API FLevelSelectRequest {
@@ -71,7 +79,8 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
 
     void set_pending_level(FLevelDefinition definition,
                            FString source_path,
-                           ELevelLaunchMode launch_mode = ELevelLaunchMode::Running);
+                           ELevelLaunchMode launch_mode = ELevelLaunchMode::Running,
+                           double requested_time_scale = level_launch::default_time_scale);
     auto take_pending_level() -> TOptional<FPendingLevelDefinition>;
 
     [[nodiscard]] auto return_to_level_select(FName preferred_level_id = NAME_None) -> bool;

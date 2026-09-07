@@ -1,9 +1,11 @@
 #include "SScriptLevelSelectView.h"
 
+#include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/common/HiveWidgets.h>
 #include <SpaceGame/ui/common/SGameButton.h>
 
 #include <InputCoreTypes.h>
+#include <Widgets/Input/SEditableText.h>
 #include <Widgets/Layout/SBorder.h>
 #include <Widgets/Layout/SBox.h>
 #include <Widgets/Layout/SScrollBox.h>
@@ -16,6 +18,7 @@ void SScriptLevelSelectView::Construct(FArguments const& args) {
     check(style_ != nullptr);
     on_level_selected_ = args._OnLevelSelected;
     on_category_selected_ = args._OnCategorySelected;
+    on_battle_speed_changed_ = args._OnBattleSpeedChanged;
     on_launch_ = args._OnLaunch;
 
     auto const body{SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_catalog()] +
@@ -51,7 +54,14 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
     launch_mode_status_->SetVisibility(state.launch_mode_status.IsEmpty()
                                            ? EVisibility::Collapsed
                                            : EVisibility::HitTestInvisible);
-    launch_button_->SetEnabled(state.can_launch);
+    selected_level_can_launch_ = state.can_launch;
+    auto const battle_viewer{category_ == ELevelCatalogCategory::BattleViewer};
+    battle_speed_control_->SetVisibility(battle_viewer ? EVisibility::Visible
+                                                       : EVisibility::Collapsed);
+    battle_speed_error_->SetVisibility(battle_viewer && !battle_speed_valid_
+                                           ? EVisibility::HitTestInvisible
+                                           : EVisibility::Collapsed);
+    update_launch_availability();
     Invalidate(EInvalidateWidgetReason::Layout | EInvalidateWidgetReason::Paint);
 }
 
@@ -207,6 +217,50 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                     .Style(&style_->button(EGameButtonStyle::Primary))
                     .Text(this, &SScriptLevelSelectView::launch_text)
                     .OnClicked(this, &SScriptLevelSelectView::handle_action, on_launch_)]};
+    auto const battle_speed{
+        SAssignNew(battle_speed_control_, SVerticalBox) +
+        SVerticalBox::Slot().AutoHeight()
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot()
+                 .AutoWidth()
+                 .VAlign(VAlign_Center)
+                 .Padding(FMargin{0.0f, 0.0f, 10.0f, 0.0f})
+                     [SNew(STextBlock)
+                          .Text(NSLOCTEXT("LevelSelect", "BattleSpeed", "BATTLE SPEED //"))
+                          .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+             SHorizontalBox::Slot().AutoWidth()
+                 [SNew(SBorder)
+                      .BorderImage(&style_->chrome().frame_border)
+                      .Padding(FMargin{1.0f})
+                          [SNew(SBorder)
+                               .BorderImage(&style_->chrome().navigation_background)
+                               .Padding(FMargin{10.0f, 6.0f})[SNew(SBox).WidthOverride(
+                                   80.0f)[SAssignNew(battle_speed_input_, SEditableText)
+                                              .Text(FText::FromString(TEXT("1")))
+                                              .Font(style_->text(EGameTextStyle::Body).Font)
+                                              .ColorAndOpacity(style_->palette().text_primary)
+                                              .SelectAllTextWhenFocused(true)
+                                              .RevertTextOnEscape(true)
+                                              .OnTextChanged(this,
+                                                             &SScriptLevelSelectView::
+                                                                 handle_battle_speed_changed)]]]] +
+             SHorizontalBox::Slot()
+                 .AutoWidth()
+                 .VAlign(VAlign_Center)
+                 .Padding(FMargin{8.0f, 0.0f, 0.0f, 0.0f})
+                     [SNew(STextBlock)
+                          .Text(NSLOCTEXT("LevelSelect", "BattleSpeedSuffix", "x"))
+                          .TextStyle(&style_->text(EGameTextStyle::Body))]] +
+        SVerticalBox::Slot().AutoHeight().Padding(FMargin{
+            0.0f,
+            6.0f,
+            0.0f,
+            0.0f})[SAssignNew(battle_speed_error_, STextBlock)
+                       .Text(NSLOCTEXT("LevelSelect",
+                                       "InvalidBattleSpeed",
+                                       "Enter a battle speed greater than 0 and at most 100."))
+                       .TextStyle(&style_->text(EGameTextStyle::Warning))
+                       .Visibility(EVisibility::Collapsed)]};
 
     return SNew(SBorder)
         .BorderImage(&style_->chrome().body_background)
@@ -236,7 +290,8 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                                           .Text(this, &SScriptLevelSelectView::directive_title)] +
              SVerticalBox::Slot().FillHeight(1.0f)[script_panel] +
              SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 18.0f, 0.0f, 0.0f})
-                 [SNew(SHorizontalBox) + SHorizontalBox::Slot().FillWidth(1.0f) +
+                 [SNew(SHorizontalBox) +
+                  SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)[battle_speed] +
                   SHorizontalBox::Slot()
                       .AutoWidth()
                       .Padding(FMargin{0.0f, 0.0f, 12.0f, 0.0f})
@@ -288,6 +343,25 @@ auto SScriptLevelSelectView::handle_level_selected(int32 const button_index) -> 
 auto SScriptLevelSelectView::handle_action(FSimpleDelegate delegate) -> FReply {
     delegate.ExecuteIfBound();
     return FReply::Handled();
+}
+
+void SScriptLevelSelectView::handle_battle_speed_changed(FText const& text) {
+    auto value_text{text.ToString()};
+    value_text.TrimStartAndEndInline();
+    auto const numeric{value_text.IsNumeric()};
+    auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
+    battle_speed_valid_ = numeric && ml::ioj::level_launch::is_valid_time_scale(value);
+    battle_speed_error_->SetVisibility(battle_speed_valid_ ? EVisibility::Collapsed
+                                                           : EVisibility::HitTestInvisible);
+    update_launch_availability();
+    on_battle_speed_changed_.ExecuteIfBound(battle_speed_valid_ ? TOptional<double>{value}
+                                                                : TOptional<double>{});
+}
+
+void SScriptLevelSelectView::update_launch_availability() {
+    auto const speed_is_valid{category_ != ELevelCatalogCategory::BattleViewer ||
+                              battle_speed_valid_};
+    launch_button_->SetEnabled(selected_level_can_launch_ && speed_is_valid);
 }
 
 void SScriptLevelSelectView::rebuild_catalog(FLevelSelectViewState const& state) {
