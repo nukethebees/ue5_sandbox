@@ -8,9 +8,9 @@ Do not use UnrealBuildTool's `AddVcPackage` API for project-managed dependencies
 only consumes Epic's prebuilt `Engine/Source/ThirdParty/vcpkg` layout; it does not run vcpkg, read
 the project's manifest, or support a configurable install root.
 
-Expose `cpu-features` through a dedicated external Unreal module backed by this repository's
-vcpkg install tree. Keep the include path, library path, compile definition, platform checks, and
-CRT checks in that module, then add it as a private dependency of `SpaceGame`.
+The project exposes `cpu-features` through a dedicated external Unreal module backed by this
+repository's vcpkg install tree. The module owns the include path, library path, compile
+definitions, platform checks, and CRT checks; `SpaceGame` consumes it as a private dependency.
 
 ## UnrealBuildTool API
 
@@ -130,20 +130,30 @@ Windows always uses the `v142` triplet suffix regardless of the compiler selecte
 target. Android, iOS, consoles, and native Mac Arm64 are not supported by this API. It also has no
 separate path for targets that opt into the debug CRT.
 
-## Project install-tree mismatch
+## Adopted project layout
 
-The repository declares `cpu-features` only in the `kernel-benchmarks` manifest feature, and only
-the `kernel-benchmark` CMake preset enables that feature. CMake currently creates a separate vcpkg
-install tree for each build directory, for example:
+`cpu-features` is a top-level manifest dependency because both Unreal and the native kernel
+benchmark consume it. A hidden `unreal` CMake configure preset sets the install root for every
+Unreal configuration to:
 
 ```text
-out/build/debug-game/vcpkg_installed/x64-windows
+vcpkg_installed/x64-windows
+```
+
+This repository-root tree is stable across Unreal configurations and is ignored by Git. UBT links
+from it without depending on a particular CMake build directory.
+
+The `codegen` and `kernel-benchmark` presets intentionally continue to inherit the base preset
+directly. Their vcpkg packages remain in their per-build install trees, such as:
+
+```text
+out/build/codegen/vcpkg_installed/x64-windows
 out/build/kernel-benchmark/vcpkg_installed/x64-windows
 ```
 
-At the time of investigation, the DebugGame install tree did not contain `cpu-features`, and the
-kernel-benchmark build directory had not been configured. A package-staging copy under the vcpkg
-tool checkout is not a stable project install root and should not be linked by UBT.
+Manifest-mode vcpkg reconciles an install tree to the active dependency graph. Keeping the
+code-generator, benchmark-feature, and Unreal trees independent prevents one configuration's
+manifest features from removing or replacing packages required by another.
 
 The current `cpu-features` port forces static library linkage. For `x64-windows` it installs:
 
@@ -166,19 +176,27 @@ including the default Unreal Debug configuration, which ordinarily continues to 
 CRT. A target using `bUseStaticCRT` or `bDebugBuildsActuallyUseDebugCRT` needs a matching vcpkg
 triplet or library configuration.
 
-## Recommended integration
+## Unreal module behavior
 
-When implementing the integration:
+`Plugins/SpaceGame/Source/CpuFeatures/CpuFeatures.Build.cs` is a dependency-only external module;
+it is discovered through the plugin's `Source` directory and does not need a `.uplugin` module
+entry. On Win64 x64 it defines `WITH_CPU_FEATURES=1` and exports:
 
-1. Move `cpu-features` to the manifest's top-level dependencies because it is no longer
-   benchmark-only.
-2. Configure a stable shared `VCPKG_INSTALLED_DIR`, such as the already ignored repository-root
-   `vcpkg_installed`, so UBT does not depend on a particular CMake preset's build directory.
-3. Add a `CpuFeatures` external module under the SpaceGame plugin. Initially support Win64 x64 and
-   fail clearly for an absent artifact or incompatible CRT.
-4. Export `include/cpu_features`, release `lib/cpu_features.lib`, and
-   `STACK_LINE_READER_BUFFER_SIZE=1024` from that module.
-5. Add `CpuFeatures` to `SpaceGame`'s private module dependencies.
+```text
+vcpkg_installed/x64-windows/include/cpu_features
+STACK_LINE_READER_BUFFER_SIZE=1024
+vcpkg_installed/x64-windows/lib/cpu_features.lib
+```
 
-No runtime DLL staging is necessary because this vcpkg port only builds a static library. This
-keeps manifest ownership in vcpkg while isolating its filesystem layout from the gameplay module.
+A true Debug target that opts into the debug CRT uses
+`vcpkg_installed/x64-windows/debug/lib/cpu_features.lib`. Other Unreal configurations use the
+release library and dynamic CRT. The module stops the build with a targeted error when the
+expected library is absent or the target requests a static CRT.
+
+Other platforms and architectures define `WITH_CPU_FEATURES=0` without adding include or library
+paths. They remain buildable and report SIMD detection as unavailable. No runtime DLL staging is
+necessary because the vcpkg port builds a static library.
+
+The game-instance subsystem queries `cpu_features::GetX86Info()` once during its existing platform
+capability initialization. It copies the selected SSE, AVX, AVX-512, and AMX flags into
+`FGameCapabilities::cpu_simd`; the main menu System page presents those flags in grouped rows.

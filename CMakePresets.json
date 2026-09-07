@@ -14,6 +14,14 @@
       "toolchainFile": "$env{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
     },
     {
+      "name": "unreal",
+      "hidden": true,
+      "inherits": "base",
+      "cacheVariables": {
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+      }
+    },
+    {
       "name": "codegen",
       "displayName": "Code generator",
       "inherits": "base",
@@ -44,7 +52,7 @@
     {
       "name": "debug",
       "displayName": "Debug",
-      "inherits": "base",
+      "inherits": "unreal",
       "cacheVariables": {
         "UE_CONFIGURATION": "Debug"
       }
@@ -52,7 +60,7 @@
     {
       "name": "debug-game",
       "displayName": "DebugGame",
-      "inherits": "base",
+      "inherits": "unreal",
       "cacheVariables": {
         "UE_CONFIGURATION": "DebugGame"
       }
@@ -60,7 +68,7 @@
     {
       "name": "development",
       "displayName": "Development",
-      "inherits": "base",
+      "inherits": "unreal",
       "cacheVariables": {
         "UE_CONFIGURATION": "Development"
       }
@@ -97,7 +105,7 @@
     {
       "name": "shipping",
       "displayName": "Shipping",
-      "inherits": "base",
+      "inherits": "unreal",
       "cacheVariables": {
         "UE_CONFIGURATION": "Shipping"
       }
@@ -105,7 +113,7 @@
     {
       "name": "test",
       "displayName": "Test",
-      "inherits": "base",
+      "inherits": "unreal",
       "cacheVariables": {
         "UE_CONFIGURATION": "Test"
       }
