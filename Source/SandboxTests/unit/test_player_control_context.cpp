@@ -3,6 +3,8 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
+#include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGame/ships/common/LaserFiringState.h>
 #include <SpaceGame/ships/player/ObserverControlContext.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
@@ -210,6 +212,11 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Benchmark mapping belongs to SpaceGame"),
             benchmark->mapping_context->GetOutermost()->GetName().StartsWith(TEXT("/SpaceGame/")));
+
+        auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+        TestRunner->TestTrue(TEXT("Benchmark HUD class is configured"),
+                             IsValid(ui_data) &&
+                                 IsValid(ui_data->get_widget_class<UBenchmarkHudWidget>()));
     }
 
     TEST_METHOD(ObserverBindUnbindOwnsMappingsAndHandlers)

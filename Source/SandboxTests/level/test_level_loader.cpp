@@ -9,6 +9,7 @@
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
+#include <SpaceGame/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -115,12 +116,15 @@ void FLevelLoaderCameraScenario::load_fixture() {
         checks.is_true(!player_controller->is_observer_movement_enabled(),
                        TEXT("Benchmark context disables observer movement"));
         checks.is_true(player_controller->get_active_hud() == nullptr,
-                       TEXT("Benchmark context removes presentation HUDs"));
+                       TEXT("Benchmark context removes simulation HUDs"));
+        checks.is_true(player_controller->get_benchmark_hud() != nullptr,
+                       TEXT("Benchmark context creates the minimal benchmark HUD"));
         checks.is_true(camera->GetActorTransform().Equals(observer_transform),
                        TEXT("Entering benchmark retains the observer camera transform"));
 
-        checks.is_true(player_controller->set_benchmark_enabled(false),
-                       TEXT("Benchmark context can be exited"));
+        checks.is_true(
+            player_controller->activate_playerless_camera(*camera, EPlayerControlContext::Observer),
+            TEXT("Observer context can be restored for continued development"));
         checks.is_true(player_controller->get_active_control_context() ==
                            EPlayerControlContext::Observer,
                        TEXT("Exiting benchmark returns to observer context"));

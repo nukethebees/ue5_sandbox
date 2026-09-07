@@ -77,6 +77,16 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
         return 1.0 / simulation_tick_loop.tick_rate;
     }
     auto was_launched_paused() const noexcept -> bool { return launched_paused_; }
+    auto get_benchmark_ticks_remaining() const noexcept -> TOptional<tick_type> {
+        if (launch_options_.control_context != EPlayerControlContext::Benchmark ||
+            !launch_options_.simulated_duration_seconds.IsSet()) {
+            return NullOpt;
+        }
+        auto const end_tick{
+            duration_to_tick_period(launch_options_.simulated_duration_seconds.GetValue())};
+        auto const completed_ticks{get_completed_ticks()};
+        return completed_ticks >= end_tick ? 0 : end_tick - completed_ticks;
+    }
 
     auto get_player_ship() const -> ATestSpaceShip const*;
     auto get_player_ship_simulation() noexcept -> ml::test_space_ship::Simulation*;

@@ -3,6 +3,7 @@
 #include <SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
+#include <SpaceGame/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGame/presentation/widgets/ForceStatusWidget.h>
 #include <SpaceGame/presentation/widgets/MissionStatusWidget.h>
 #include <SpaceGame/presentation/widgets/TeamEntityTableWidget.h>
@@ -95,6 +96,9 @@ constexpr TCHAR battle_viewer_widget_object_path[]{
     TEXT("/SpaceGame/UI/InGame/WBP_BattleViewerHud.WBP_BattleViewerHud")};
 constexpr TCHAR battle_viewer_widget_package_name[]{
     TEXT("/SpaceGame/UI/InGame/WBP_BattleViewerHud")};
+constexpr TCHAR benchmark_widget_object_path[]{
+    TEXT("/SpaceGame/UI/InGame/WBP_BenchmarkHud.WBP_BenchmarkHud")};
+constexpr TCHAR benchmark_widget_package_name[]{TEXT("/SpaceGame/UI/InGame/WBP_BenchmarkHud")};
 constexpr TCHAR observer_input_package_path[]{TEXT("/SpaceGame/Input/Observer/")};
 constexpr TCHAR benchmark_input_package_path[]{TEXT("/SpaceGame/Input/Benchmark/")};
 FName const generation_context{TEXT("GenerateScriptedLevelAssets")};
@@ -699,13 +703,56 @@ auto generate_battle_viewer_widget() -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
+auto generate_benchmark_widget(UClass& button_class) -> UClass* {
+    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+    if (!IsValid(ui_data)) {
+        return nullptr;
+    }
+    auto const value_class{ui_data->get_widget_class<UValueWidget>()};
+    if (!IsValid(value_class)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load Benchmark HUD value widget class"));
+        return nullptr;
+    }
+
+    auto* const blueprint{load_or_create_widget_blueprint(benchmark_widget_object_path,
+                                                          benchmark_widget_package_name,
+                                                          TEXT("WBP_BenchmarkHud"),
+                                                          *UBenchmarkHudWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+
+    auto& tree{*blueprint->WidgetTree};
+    auto* const root{make_widget<UOverlay>(tree, TEXT("benchmark_root"))};
+    auto* const panel{make_widget<UBorder>(tree, TEXT("benchmark_panel"))};
+    panel->SetPadding(FMargin{18.0f});
+    auto* const panel_slot{root->AddChildToOverlay(panel)};
+    panel_slot->SetHorizontalAlignment(HAlign_Right);
+    panel_slot->SetVerticalAlignment(VAlign_Top);
+    panel_slot->SetPadding(FMargin{24.0f});
+
+    auto* const content{make_widget<UVerticalBox>(tree, TEXT("benchmark_content"))};
+    panel->AddChild(content);
+    auto* const title{make_widget<UTextBlock>(tree, TEXT("benchmark_title"))};
+    content->AddChildToVerticalBox(title);
+    auto* const ticks{
+        make_widget<UValueWidget>(tree, *value_class.Get(), TEXT("ticks_remaining_widget"))};
+    content->AddChildToVerticalBox(ticks)->SetPadding(FMargin{0.0f, 8.0f, 0.0f, 12.0f});
+    make_menu_button(
+        tree, *content, button_class, TEXT("end_benchmark_button"), TEXT("End Benchmark"));
+
+    tree.RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
 auto configure_ui_data(UClass& root_class,
                        UClass& button_class,
                        UClass& main_class,
                        UClass& level_class,
                        UClass& pause_class,
                        UClass& completion_class,
-                       UClass& battle_viewer_class) -> bool {
+                       UClass& battle_viewer_class,
+                       UClass& benchmark_class) -> bool {
     auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
         return false;
@@ -720,6 +767,7 @@ auto configure_ui_data(UClass& root_class,
                                         &completion_class);
     ui_data->widget_classes.classes.Add(UBattleViewerHudWidget::StaticClass(),
                                         &battle_viewer_class);
+    ui_data->widget_classes.classes.Add(UBenchmarkHudWidget::StaticClass(), &benchmark_class);
     return save_asset(*ui_data);
 }
 
@@ -966,16 +1014,20 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     auto* const main_class{generate_main_menu_widget()};
     auto* const level_class{generate_level_select_widget()};
     auto* const battle_viewer_class{generate_battle_viewer_widget()};
+    auto* const benchmark_class{IsValid(button_class) ? generate_benchmark_widget(*button_class)
+                                                      : nullptr};
     auto const ui_generated{save_viewer_generated && IsValid(root_class) && IsValid(button_class) &&
                             IsValid(main_class) && IsValid(level_class) && IsValid(pause_class) &&
                             IsValid(completion_class) && IsValid(battle_viewer_class) &&
+                            IsValid(benchmark_class) &&
                             configure_ui_data(*root_class,
                                               *button_class,
                                               *main_class,
                                               *level_class,
                                               *pause_class,
                                               *completion_class,
-                                              *battle_viewer_class)};
+                                              *battle_viewer_class,
+                                              *benchmark_class)};
     auto const map_generated{input_generated &&
                              generate_runtime_map(observer_input, benchmark_input) &&
                              generate_main_menu_map()};

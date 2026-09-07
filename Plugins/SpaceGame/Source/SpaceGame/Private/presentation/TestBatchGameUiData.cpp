@@ -2,6 +2,7 @@
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SpaceGame/presentation/widgets/BattleViewerHudWidget.h"
+#include "SpaceGame/presentation/widgets/BenchmarkHudWidget.h"
 #include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/MissionEntityHealthRowWidget.h"
 #include "SpaceGame/presentation/widgets/MissionStatusWidget.h"
@@ -50,6 +51,7 @@ auto UTestBatchGameUiData::get_native_widget_classes() -> TConstArrayView<UClass
         UShipThrusterEnergyWidget::StaticClass(),
         UTopKillersWidget::StaticClass(),
         UDebugGraphWidget::StaticClass(),
+        UBenchmarkHudWidget::StaticClass(),
         UBattleViewerHudWidget::StaticClass(),
         UValueWidget::StaticClass(),
         ml::ioj::UGameUiRootLayout::StaticClass(),

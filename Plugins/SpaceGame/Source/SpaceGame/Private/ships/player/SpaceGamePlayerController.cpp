@@ -4,6 +4,7 @@
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
+#include <SpaceGame/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/presentation/widgets/SimulationHudWidget.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -242,7 +243,7 @@ void ASpaceGamePlayerController::unbind_benchmark_context() {
 }
 
 void ASpaceGamePlayerController::exit_benchmark() {
-    set_benchmark_enabled(false);
+    return_to_level_select();
 }
 
 auto ASpaceGamePlayerController::set_control_context(EPlayerControlContext const context) -> bool {
@@ -388,6 +389,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     pause_menu = nullptr;
     completion_menu = nullptr;
     shutdown_ui_root();
+    shutdown_benchmark_hud();
     set_control_context(EPlayerControlContext::None);
     observer_control_context_.shutdown();
     ship_control_context_.shutdown();
@@ -462,6 +464,7 @@ void ASpaceGamePlayerController::show_main_menu() {
 void ASpaceGamePlayerController::initialise_main_menu() {
     set_control_context(EPlayerControlContext::None);
     shutdown_hud();
+    shutdown_benchmark_hud();
     ship_control_context_.shutdown();
     shutdown_global_input();
 
@@ -590,6 +593,7 @@ void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& o
     return_to_level_select_pending_ = false;
     set_control_context(EPlayerControlContext::None);
     shutdown_hud();
+    shutdown_benchmark_hud();
 
     auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator.get_player_ship())};
     if (!IsValid(player_ship)) {
@@ -636,6 +640,7 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
     }
 
     if (context == EPlayerControlContext::Observer) {
+        shutdown_benchmark_hud();
         if (!initialise_ui_root() || !initialise_hud(EPlayerControlContext::Observer)) {
             set_control_context(EPlayerControlContext::None);
             return false;
@@ -648,40 +653,17 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
     } else {
         shutdown_hud();
         shutdown_ui_root();
-        FInputModeGameOnly input_mode{};
-        SetInputMode(input_mode);
-        SetShowMouseCursor(false);
-    }
-    SetActorTickEnabled(true);
-    return true;
-}
-
-auto ASpaceGamePlayerController::set_benchmark_enabled(bool const enabled) -> bool {
-    if (enabled) {
-        if (active_control_context_ != EPlayerControlContext::Observer ||
-            !set_control_context(EPlayerControlContext::Benchmark)) {
+        if (!initialise_benchmark_hud()) {
+            set_control_context(EPlayerControlContext::None);
             return false;
         }
-        shutdown_hud();
-        shutdown_ui_root();
-        FInputModeGameOnly input_mode{};
+        FInputModeGameAndUI input_mode{};
+        input_mode.SetHideCursorDuringCapture(false);
+        input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
         SetInputMode(input_mode);
-        SetShowMouseCursor(false);
-        return true;
+        SetShowMouseCursor(true);
     }
-
-    if (active_control_context_ != EPlayerControlContext::Benchmark ||
-        !set_control_context(EPlayerControlContext::Observer)) {
-        return false;
-    }
-    if (!initialise_ui_root() || !initialise_hud(EPlayerControlContext::Observer)) {
-        return false;
-    }
-    FInputModeGameAndUI input_mode{};
-    input_mode.SetHideCursorDuringCapture(false);
-    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-    SetInputMode(input_mode);
-    SetShowMouseCursor(true);
+    SetActorTickEnabled(true);
     return true;
 }
 
@@ -815,6 +797,68 @@ void ASpaceGamePlayerController::shutdown_hud() {
     hud_widget->RemoveFromParent();
     hud_widget = nullptr;
     hud_restore_pending_ = false;
+}
+
+auto ASpaceGamePlayerController::initialise_benchmark_hud() -> bool {
+    if (IsValid(benchmark_hud_widget)) {
+        return true;
+    }
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("ASpaceGamePlayerController::initialise_benchmark_hud: World is not "
+                    "available yet."));
+        return false;
+    }
+    auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
+    if (!IsValid(orchestrator)) {
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("ASpaceGamePlayerController::initialise_benchmark_hud: Orchestrator is not "
+                    "available yet."));
+        return false;
+    }
+    if (!IsValid(ui_data)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::initialise_benchmark_hud: UI data is invalid."));
+        return false;
+    }
+    hud_orchestrator = orchestrator;
+
+    auto const widget_class{ui_data->get_widget_class<UBenchmarkHudWidget>()};
+    if (!widget_class) {
+        return false;
+    }
+    auto* const created_widget{
+        CreateWidget<UBenchmarkHudWidget>(this, widget_class, TEXT("benchmark_hud"))};
+    if (!IsValid(created_widget)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::initialise_benchmark_hud: Failed to create "
+                    "widget."));
+        return false;
+    }
+
+    benchmark_hud_widget = created_widget;
+    if (auto* const game_subsystem{GetGameInstance()->GetSubsystem<ml::ioj::UGameSubsystem>()};
+        IsValid(game_subsystem)) {
+        created_widget->apply_ui_style(game_subsystem->get_ui_style());
+    }
+    created_widget->set_orchestrator(*orchestrator);
+    created_widget->end_requested.AddUObject(this, &ThisClass::return_to_level_select);
+    created_widget->AddToViewport(100);
+    return true;
+}
+
+void ASpaceGamePlayerController::shutdown_benchmark_hud() {
+    if (!IsValid(benchmark_hud_widget)) {
+        return;
+    }
+    benchmark_hud_widget->end_requested.RemoveAll(this);
+    benchmark_hud_widget->RemoveFromParent();
+    benchmark_hud_widget = nullptr;
 }
 
 void ASpaceGamePlayerController::hide_hud_for_modal() {
@@ -1049,6 +1093,7 @@ void ASpaceGamePlayerController::return_to_level_select() {
     pause_menu = nullptr;
     completion_menu = nullptr;
     hud_restore_pending_ = false;
+    shutdown_benchmark_hud();
     set_control_context(EPlayerControlContext::None);
 }
 

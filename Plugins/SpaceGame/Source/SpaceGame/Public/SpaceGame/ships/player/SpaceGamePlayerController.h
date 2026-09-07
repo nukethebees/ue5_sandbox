@@ -21,6 +21,7 @@ class UInputMappingContext;
 class UShipHudWidget;
 class USimulationHudWidget;
 class UBattleViewerHudWidget;
+class UBenchmarkHudWidget;
 class UTestBatchGameUiData;
 
 namespace ml::ioj {
@@ -45,12 +46,14 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
 
     void show_main_menu();
     auto activate_playerless_camera(ACameraActor& camera, EPlayerControlContext context) -> bool;
-    auto set_benchmark_enabled(bool enabled) -> bool;
 
     [[nodiscard]] auto get_active_control_context() const noexcept -> EPlayerControlContext {
         return active_control_context_;
     }
     [[nodiscard]] auto get_active_hud() const -> USimulationHudWidget const* { return hud_widget; }
+    [[nodiscard]] auto get_benchmark_hud() const -> UBenchmarkHudWidget const* {
+        return benchmark_hud_widget;
+    }
     [[nodiscard]] auto is_observer_movement_enabled() const noexcept -> bool {
         return active_control_context_ == EPlayerControlContext::Observer &&
                observer_control_context_.is_bound();
@@ -86,6 +89,8 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void shutdown_ui_root();
     auto initialise_hud(EPlayerControlContext context) -> bool;
     void shutdown_hud();
+    auto initialise_benchmark_hud() -> bool;
+    void shutdown_benchmark_hud();
     void hide_hud_for_modal();
     void restore_hud_after_modal();
     void show_initial_pause_menu();
@@ -111,6 +116,9 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
     TObjectPtr<USimulationHudWidget> hud_widget{nullptr};
+
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
+    TObjectPtr<UBenchmarkHudWidget> benchmark_hud_widget{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
