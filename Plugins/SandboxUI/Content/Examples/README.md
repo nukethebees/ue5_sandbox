@@ -17,9 +17,10 @@ widgets must not depend on the showcase.
 Its UI is implemented by `UHeatmapRDGShowcase` in the editor-only `SbxUIExperiments` module. Right-click
 the asset and choose **Run Editor Utility Widget** to compare deterministic patterns and grid sizes.
 
-`EUW_Radar3DShowcase` demonstrates the experimental CPU-contact-to-RDG-to-Slate pipeline without a
-level, actors, components, or scene capture. Right-click it and choose **Run Editor Utility Widget**
-to see the fixed-camera radar box and its animated synthetic contact.
+`EUW_Radar3DShowcase` exercises the production `SRadarWidget` with deterministic synthetic contacts,
+without a level, actors, components, or scene capture. Its harness is in the editor-only
+`SbxUIExperiments` module; the radar itself remains in the runtime `SandboxUI` module. Right-click
+the asset and choose **Run Editor Utility Widget**.
 
 `EUW_Scatter3DShowcase` demonstrates a dirty-driven RDG 3D scatter plot with deterministic point
 clusters, a fixed camera, depth-tested instanced markers, and scaling controls through 65,536
