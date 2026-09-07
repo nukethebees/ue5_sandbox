@@ -8,17 +8,17 @@
 namespace SparkEffectsTests {
 auto make_burst() -> FSparkBurst {
     return {
-        .location = {10.0f, 20.0f, 30.0f},
-        .direction = FVector3f::ForwardVector,
-        .colour = FLinearColor{1.0f, 0.5f, 0.25f},
-        .speed = {100.0f, 200.0f},
-        .lifetime = {1.0f, 2.0f},
-        .size = {3.0f, 5.0f},
-        .intensity = 10.0f,
-        .spread_angle_degrees = 45.0f,
-        .streak_time = 0.1f,
-        .count = 32,
-        .seed = 12345,
+        .emission = {.location = {10.0f, 20.0f, 30.0f},
+                     .direction = FVector3f::ForwardVector,
+                     .colour = FVector3f{1.0f, 0.5f, 0.25f},
+                     .seed = 12345},
+        .style = {.count = 32,
+                  .speed = {100.0f, 200.0f},
+                  .lifetime = {1.0f, 2.0f},
+                  .size = {3.0f, 5.0f},
+                  .intensity = 10.0f,
+                  .spread_angle_degrees = 45.0f,
+                  .streak_time = 0.1f},
     };
 }
 
@@ -42,10 +42,10 @@ TEST_CLASS(SparkEffects, "Sandbox.UnitTests")
         auto burst{SparkEffectsTests::make_burst()};
         TArray<FSparkParticleRecord> first;
         TArray<FSparkParticleRecord> second;
-        expand_spark_bursts(MakeArrayView(&burst, 1), burst.count, 7.0f, first);
-        expand_spark_bursts(MakeArrayView(&burst, 1), burst.count, 7.0f, second);
+        expand_spark_bursts(MakeArrayView(&burst, 1), burst.style.count, 7.0f, first);
+        expand_spark_bursts(MakeArrayView(&burst, 1), burst.style.count, 7.0f, second);
 
-        TestRunner->TestEqual(TEXT("Expansion count is exact"), first.Num(), burst.count);
+        TestRunner->TestEqual(TEXT("Expansion count is exact"), first.Num(), burst.style.count);
         TestRunner->TestTrue(TEXT("Fixed seed produces identical records"),
                              FMemory::Memcmp(first.GetData(),
                                              second.GetData(),
@@ -72,18 +72,18 @@ TEST_CLASS(SparkEffects, "Sandbox.UnitTests")
     TEST_METHOD(ZeroAndIsotropicSpreadAreHandled)
     {
         auto burst{SparkEffectsTests::make_burst()};
-        burst.speed = {1.0f, 1.0f};
-        burst.spread_angle_degrees = 0.0f;
+        burst.style.speed = {1.0f, 1.0f};
+        burst.style.spread_angle_degrees = 0.0f;
         TArray<FSparkParticleRecord> particles;
-        expand_spark_bursts(MakeArrayView(&burst, 1), burst.count, 0.0f, particles);
+        expand_spark_bursts(MakeArrayView(&burst, 1), burst.style.count, 0.0f, particles);
         for (auto const& particle : particles) {
             TestRunner->TestTrue(TEXT("Zero spread follows the burst direction"),
                                  SparkEffectsTests::velocity(particle).Equals(
                                      FVector3f::ForwardVector, UE_KINDA_SMALL_NUMBER));
         }
 
-        burst.spread_angle_degrees = 180.0f;
-        expand_spark_bursts(MakeArrayView(&burst, 1), burst.count, 0.0f, particles);
+        burst.style.spread_angle_degrees = 180.0f;
+        expand_spark_bursts(MakeArrayView(&burst, 1), burst.style.count, 0.0f, particles);
         auto has_forward{false};
         auto has_backward{false};
         for (auto const& particle : particles) {
@@ -99,12 +99,12 @@ TEST_CLASS(SparkEffects, "Sandbox.UnitTests")
     TEST_METHOD(InvalidAndZeroCountBurstsAreIgnored)
     {
         auto zero_count{SparkEffectsTests::make_burst()};
-        zero_count.count = 0;
+        zero_count.style.count = 0;
         auto invalid{SparkEffectsTests::make_burst()};
-        invalid.location.X = std::numeric_limits<float>::quiet_NaN();
+        invalid.emission.location.X = std::numeric_limits<float>::quiet_NaN();
         auto reversed_lifetime{SparkEffectsTests::make_burst()};
-        reversed_lifetime.count = 2;
-        reversed_lifetime.lifetime = {2.0f, 1.0f};
+        reversed_lifetime.style.count = 2;
+        reversed_lifetime.style.lifetime = {2.0f, 1.0f};
         FSparkBurst const bursts[]{zero_count, invalid, reversed_lifetime};
         TArray<FSparkParticleRecord> particles;
 
@@ -118,10 +118,10 @@ TEST_CLASS(SparkEffects, "Sandbox.UnitTests")
     {
         auto first{SparkEffectsTests::make_burst()};
         auto second{first};
-        first.count = 100;
-        first.colour = FLinearColor::Red;
-        second.count = 100;
-        second.colour = FLinearColor::Blue;
+        first.style.count = 100;
+        first.emission.colour = FVector3f{1.0f, 0.0f, 0.0f};
+        second.style.count = 100;
+        second.emission.colour = FVector3f{0.0f, 0.0f, 1.0f};
         FSparkBurst const bursts[]{first, second};
         TArray<FSparkParticleRecord> particles;
         auto const requested{expand_spark_bursts(bursts, 10, 0.0f, particles)};
@@ -160,6 +160,36 @@ TEST_CLASS(SparkEffects, "Sandbox.UnitTests")
                               0);
     }
 
+    TEST_METHOD(GpuSubmissionUsesCompactBurstUploadsAndBoundedAllocation)
+    {
+        auto* const renderer{NewObject<USparkRendererComponent>()};
+        FSparkRendererSettings settings;
+        settings.capacity = 10;
+        renderer->initialise(settings);
+        auto first{SparkEffectsTests::make_burst()};
+        auto second{first};
+        first.style.count = 100;
+        second.style.count = 100;
+        second.emission.seed += 1;
+        FSparkBurst const bursts[]{first, second};
+
+        auto const first_submission{renderer->submit_bursts(bursts, 0.0f)};
+        TestRunner->TestEqual(
+            TEXT("All requested particles are reported"), first_submission.requested, int64{200});
+        TestRunner->TestEqual(
+            TEXT("Admission is bounded by capacity"), first_submission.admitted, 10);
+        TestRunner->TestEqual(
+            TEXT("The initial allocation replaces no slots"), first_submission.replaced_slots, 0);
+        TestRunner->TestEqual(TEXT("Overflow uploads two 96-byte bursts and ten indices"),
+                              renderer->get_last_submission_upload_bytes(),
+                              232);
+
+        auto const second_submission{renderer->submit_bursts(bursts, 0.0f)};
+        TestRunner->TestEqual(TEXT("A full ring reports every assigned slot as replaced"),
+                              second_submission.replaced_slots,
+                              10);
+    }
+
     TEST_METHOD(QueuedBurstsAccumulateUntilCommitAndClearResetsTheRing)
     {
         auto* const renderer{NewObject<USparkRendererComponent>()};
@@ -168,21 +198,21 @@ TEST_CLASS(SparkEffects, "Sandbox.UnitTests")
         renderer->initialise(settings);
         FSparkEffects effects{*renderer};
         auto burst{SparkEffectsTests::make_burst()};
-        burst.count = 1;
-        burst.lifetime = {10.0f, 10.0f};
+        burst.style.count = 1;
+        burst.style.lifetime = {10.0f, 10.0f};
 
         effects.queue_burst(burst);
-        burst.seed += 1;
+        burst.emission.seed += 1;
         effects.queue_burst(burst);
         effects.commit(0.0f);
 
-        FSparkParticleRecord const replacement[]{SparkEffectsTests::make_record(0.0f, 10.0f)};
+        FSparkBurst const replacement[]{burst};
         TestRunner->TestEqual(TEXT("Both pre-commit bursts occupy the ring"),
-                              renderer->submit_particles(replacement, 0.0f),
+                              renderer->submit_bursts(replacement, 0.0f).replaced_slots,
                               1);
         effects.clear();
         TestRunner->TestEqual(TEXT("Clear removes live ring entries"),
-                              renderer->submit_particles(replacement, 0.0f),
+                              renderer->submit_bursts(replacement, 0.0f).replaced_slots,
                               0);
         TestRunner->TestEqual(
             TEXT("Clear resets presentation time"), renderer->get_effect_time(), 0.0f);

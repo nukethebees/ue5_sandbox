@@ -174,17 +174,16 @@ void FLaserPresentation::queue_hit_sparks() {
     for (int32 index{0}; index < count; ++index) {
         auto const location{ml::get_vector3f(hit_details.locations, index)};
         spark_effects_->queue_burst({
-            .location = location,
-            .direction = ml::get_vector3f(hit_details.emission_directions, index),
-            .colour = hit_details.colours[index],
-            .speed = style.speed,
-            .lifetime = style.lifetime,
-            .size = style.size,
-            .intensity = style.intensity,
-            .spread_angle_degrees = style.spread_angle_degrees,
-            .streak_time = style.streak_time,
-            .count = style.count,
-            .seed = SpaceGame::LaserPresentation::Private::make_seed(tick, location, index),
+            .emission =
+                {
+                    .location = location,
+                    .direction = ml::get_vector3f(hit_details.emission_directions, index),
+                    .colour = FVector3f{hit_details.colours[index].R,
+                                        hit_details.colours[index].G,
+                                        hit_details.colours[index].B},
+                    .seed = SpaceGame::LaserPresentation::Private::make_seed(tick, location, index),
+                },
+            .style = style,
         });
     }
 }

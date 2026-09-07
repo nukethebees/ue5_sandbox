@@ -1,9 +1,11 @@
 #include "SpaceGameRendering/SparkRendererComponent.h"
 
+#include "GpuSparkBurst.h"
+#include "SparkParticleBuffer.h"
+#include "SparkPendingGpuBatches.h"
 #include "SparkStagingState.h"
 #include "SparkUploadBuffer.h"
 
-#include "Containers/ResourceArray.h"
 #include "MaterialDomain.h"
 #include "Materials/Material.h"
 #include "Materials/MaterialInterface.h"
@@ -11,7 +13,6 @@
 #include "MeshMaterialShader.h"
 #include "PrimitiveSceneProxy.h"
 #include "PrimitiveViewRelevance.h"
-#include "ProfilingDebugging/CountersTrace.h"
 #include "ProfilingDebugging/CsvProfiler.h"
 #include "RenderingThread.h"
 #include "RenderResource.h"
@@ -21,12 +22,9 @@
 #include "UObject/ConstructorHelpers.h"
 #include "VertexFactory.h"
 
-TRACE_DECLARE_INT_COUNTER(SandboxSparkUploadBytes, TEXT("Sandbox/Sparks/UploadBytes"));
-TRACE_DECLARE_FLOAT_COUNTER(SandboxSparkRenderThreadUploadMs,
-                            TEXT("Sandbox/Sparks/RenderThreadUploadMs"));
-
 namespace SpaceGame::Sparks::Private {
 inline constexpr int32 maximum_capacity{1000000};
+inline constexpr uint32 direct_particle_indices{MAX_uint32};
 
 struct FRenderParameters {
     float effect_time{0.0f};
@@ -155,94 +153,26 @@ IMPLEMENT_VERTEX_FACTORY_TYPE(FSparkVertexFactory,
                               "/Plugin/SpaceGame/Private/Sparks/SparkVertexFactory.ush",
                               EVertexFactoryFlags::UsedWithMaterials);
 
-class FParticleBuffer final : public FRenderResource {
-  public:
-    explicit FParticleBuffer(TConstArrayView<FSparkParticleRecord> const initial_data)
-        : initial_data_{initial_data} {}
-
-    void InitRHI(FRHICommandListBase& rhi_command_list) override {
-        if (initial_data_.IsEmpty()) {
-            return;
-        }
-        FResourceArrayUploadArrayView upload_view{initial_data_};
-        auto const buffer_size{initial_data_.Num() * sizeof(FSparkParticleRecord)};
-        auto const description{
-            FRHIBufferCreateDesc::CreateStructured(
-                TEXT("Sparks.ParticleData"), buffer_size, sizeof(FSparkParticleRecord))
-                .AddUsage(EBufferUsageFlags::ShaderResource | EBufferUsageFlags::Static)
-                .SetInitialState(ERHIAccess::SRVMask)
-                .SetInitActionResourceArray(&upload_view)};
-        buffer_ = rhi_command_list.CreateBuffer(description);
-        srv_ = rhi_command_list.CreateShaderResourceView(
-            buffer_, FRHIViewDesc::CreateBufferSRV().SetTypeFromBuffer(buffer_));
-        initial_data_.Reset();
-    }
-
-    void ReleaseRHI() override {
-        srv_.SafeRelease();
-        buffer_.SafeRelease();
-    }
-
-    void upload(FRHICommandListBase& rhi_command_list, FSparkUploadBuffer const& upload_buffer) {
-        auto const start_cycles{FPlatformTime::Cycles64()};
-        int64 upload_bytes{0};
-        check(upload_buffer.destinations.Num() == upload_buffer.counts.Num());
-        int32 source_index{0};
-        auto const range_count{upload_buffer.counts.Num()};
-        for (int32 range_index{0}; range_index < range_count; ++range_index) {
-            auto const particle_count{upload_buffer.counts[range_index]};
-            auto const byte_count{particle_count * sizeof(FSparkParticleRecord)};
-            if (byte_count <= 0) {
-                continue;
-            }
-            check(source_index + particle_count <= upload_buffer.particles.Num());
-            auto const byte_offset{upload_buffer.destinations[range_index] *
-                                   sizeof(FSparkParticleRecord)};
-            auto* const destination{
-                rhi_command_list.LockBuffer(buffer_, byte_offset, byte_count, RLM_WriteOnly)};
-            FMemory::Memcpy(
-                destination, upload_buffer.particles.GetData() + source_index, byte_count);
-            rhi_command_list.UnlockBuffer(buffer_);
-            source_index += particle_count;
-            upload_bytes += byte_count;
-        }
-        check(source_index == upload_buffer.particles.Num());
-        TRACE_COUNTER_SET_ALWAYS(SandboxSparkUploadBytes, upload_bytes);
-        TRACE_COUNTER_SET_ALWAYS(
-            SandboxSparkRenderThreadUploadMs,
-            FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - start_cycles));
-    }
-
-    auto srv() const -> FShaderResourceViewRHIRef { return srv_; }
-  private:
-    TArray<FSparkParticleRecord> initial_data_;
-    FBufferRHIRef buffer_;
-    FShaderResourceViewRHIRef srv_;
-};
-
 class FSceneProxy final : public FPrimitiveSceneProxy {
   public:
     FSceneProxy(USparkRendererComponent const* const component,
-                TConstArrayView<FSparkParticleRecord> const particles,
+                FSparkParticleBuffer& particle_buffer,
+                int32 const particle_count,
                 UMaterialInterface const* const material,
                 FRenderParameters const parameters)
         : FPrimitiveSceneProxy{component}
-        , particle_buffer_{particles}
+        , particle_buffer_{&particle_buffer}
         , vertex_factory_{GetScene().GetFeatureLevel()}
         , material_render_proxy_{material->GetRenderProxy()}
         , material_relevance_{material->GetRelevance_Concurrent(GetScene().GetShaderPlatform())}
         , parameters_{parameters}
-        , particle_count_{particles.Num()} {
+        , particle_count_{particle_count} {
         bWillEverBeLit = false;
         bIsAlwaysVisible = true;
-        BeginInitResource(&particle_buffer_);
         BeginInitResource(&vertex_factory_);
     }
 
-    ~FSceneProxy() override {
-        vertex_factory_.ReleaseResource();
-        particle_buffer_.ReleaseResource();
-    }
+    ~FSceneProxy() override { vertex_factory_.ReleaseResource(); }
 
     void GetDynamicMeshElements(TArray<FSceneView const*> const& views,
                                 FSceneViewFamily const& view_family,
@@ -250,7 +180,7 @@ class FSceneProxy final : public FPrimitiveSceneProxy {
                                 FMeshElementCollector& collector) const override {
         QUICK_SCOPE_CYCLE_COUNTER(STAT_SparkSceneProxy_GetDynamicMeshElements);
         CSV_SCOPED_TIMING_STAT_EXCLUSIVE(SparkSubmit);
-        auto const particle_srv{particle_buffer_.srv()};
+        auto const particle_srv{particle_buffer_->srv()};
         if (!particle_srv.IsValid() || particle_count_ <= 0 ||
             parameters_.effect_time >= parameters_.latest_expiry_time) {
             return;
@@ -308,18 +238,26 @@ class FSceneProxy final : public FPrimitiveSceneProxy {
         return reinterpret_cast<size_t>(&unique_pointer);
     }
 
-    void update(FRHICommandListBase& rhi_command_list,
+    void update(FRHICommandListImmediate& rhi_command_list,
                 FSparkUploadBuffer* const upload_buffer,
+                TArray<FGpuSparkBurst>&& gpu_bursts,
+                TArray<uint32>&& selection_indices,
+                bool const clear,
                 FRenderParameters const parameters) {
         check(IsInRenderingThread());
+        if (clear) {
+            particle_buffer_->clear(rhi_command_list);
+        }
         if (upload_buffer != nullptr) {
-            particle_buffer_.upload(rhi_command_list, *upload_buffer);
+            particle_buffer_->upload(rhi_command_list, *upload_buffer);
             upload_buffer->in_flight.Store(false);
         }
+        particle_buffer_->expand(
+            rhi_command_list, MoveTemp(gpu_bursts), MoveTemp(selection_indices));
         parameters_ = parameters;
     }
   private:
-    FParticleBuffer particle_buffer_;
+    FSparkParticleBuffer* particle_buffer_{nullptr};
     FSparkVertexFactory vertex_factory_;
     FMaterialRenderProxy const* material_render_proxy_;
     FMaterialRelevance material_relevance_;
@@ -343,10 +281,55 @@ auto make_parameters(USparkRendererComponent const& component,
         .latest_expiry_time = latest_expiry_time,
     };
 }
+
+auto valid_particle_count(FSparkBurst const& burst) -> int32 {
+    auto const& emission{burst.emission};
+    auto const& style{burst.style};
+    auto const ranges_are_finite{
+        FMath::IsFinite(style.speed.min) && FMath::IsFinite(style.speed.max) &&
+        FMath::IsFinite(style.lifetime.min) && FMath::IsFinite(style.lifetime.max) &&
+        FMath::IsFinite(style.size.min) && FMath::IsFinite(style.size.max)};
+    auto const valid{style.count > 0 && !emission.location.ContainsNaN() &&
+                     !emission.direction.ContainsNaN() && !emission.colour.ContainsNaN() &&
+                     ranges_are_finite && FMath::IsFinite(style.intensity) &&
+                     style.intensity > 0.0f && FMath::IsFinite(style.spread_angle_degrees) &&
+                     FMath::IsFinite(style.streak_time) &&
+                     FMath::Max(style.lifetime.min, style.lifetime.max) > 0.0f};
+    return valid ? style.count : 0;
+}
+
+auto make_gpu_burst(FSparkBurst const& burst,
+                    float const effect_time,
+                    int32 const first_particle,
+                    int32 const particle_count,
+                    uint32 const selection_first) -> FGpuSparkBurst {
+    auto const& emission{burst.emission};
+    auto const& style{burst.style};
+    auto const direction{emission.direction.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector)};
+    auto const spread_radians{
+        FMath::DegreesToRadians(FMath::Clamp(style.spread_angle_degrees, 0.0f, 180.0f))};
+    return {
+        .location_spawn_time =
+            FVector4f{emission.location.X, emission.location.Y, emission.location.Z, effect_time},
+        .direction_cone_cosine =
+            FVector4f{direction.X, direction.Y, direction.Z, FMath::Cos(spread_radians)},
+        .colour_intensity =
+            FVector4f{emission.colour.X, emission.colour.Y, emission.colour.Z, style.intensity},
+        .speed_lifetime_ranges =
+            FVector4f{style.speed.min, style.speed.max, style.lifetime.min, style.lifetime.max},
+        .size_streak_reserved = FVector4f{style.size.min, style.size.max, style.streak_time, 0.0f},
+        .allocation = FUintVector4{emission.seed,
+                                   static_cast<uint32>(first_particle),
+                                   static_cast<uint32>(particle_count),
+                                   selection_first},
+    };
+}
 } // namespace SpaceGame::Sparks::Private
 
 USparkRendererComponent::USparkRendererComponent()
-    : staging_state_{MakeShared<FSparkStagingState, ESPMode::ThreadSafe>()} {
+    : staging_state_{MakeShared<FSparkStagingState, ESPMode::ThreadSafe>()}
+    , pending_gpu_batches_{new FSparkPendingGpuBatches{}}
+    , particle_buffer_{new FSparkParticleBuffer{}} {
     PrimaryComponentTick.bCanEverTick = false;
     SetCollisionEnabled(ECollisionEnabled::NoCollision);
     SetGenerateOverlapEvents(false);
@@ -360,6 +343,14 @@ USparkRendererComponent::USparkRendererComponent()
     if (material.Succeeded()) {
         material_ = material.Object;
     }
+}
+
+USparkRendererComponent::~USparkRendererComponent() {
+    if (particle_buffer_ && particle_buffer_->IsInitialized()) {
+        ReleaseResourceAndFlush(particle_buffer_);
+    }
+    delete particle_buffer_;
+    delete pending_gpu_batches_;
 }
 
 void USparkRendererComponent::initialise(FSparkRendererSettings const& settings) {
@@ -385,11 +376,25 @@ void USparkRendererComponent::initialise(FSparkRendererSettings const& settings)
                                         : defaults.maximum_length_pixels;
     particle_data_.Reset();
     particle_data_.SetNumZeroed(settings_.capacity);
+    if (particle_buffer_->IsInitialized()) {
+        FlushRenderingCommands();
+    }
+    particle_buffer_->set_initial_data(particle_data_);
+    if (particle_buffer_->IsInitialized()) {
+        BeginUpdateResourceRHI(particle_buffer_);
+    } else {
+        BeginInitResource(particle_buffer_);
+    }
     staging_state_ = MakeShared<FSparkStagingState, ESPMode::ThreadSafe>();
     pending_upload_buffer_ = nullptr;
+    pending_gpu_batches_->bursts.Reset();
+    pending_gpu_batches_->selection_indices.Reset();
     allocation_cursor_ = 0;
+    allocated_slot_count_ = 0;
+    last_submission_upload_bytes_ = 0;
     effect_time_ = 0.0f;
     latest_expiry_time_ = 0.0f;
+    clear_pending_ = false;
     UpdateBounds();
     MarkRenderStateDirty();
 }
@@ -398,10 +403,110 @@ void USparkRendererComponent::clear_sparks() {
     FMemory::Memzero(particle_data_.GetData(), particle_data_.Num() * sizeof(FSparkParticleRecord));
     staging_state_ = MakeShared<FSparkStagingState, ESPMode::ThreadSafe>();
     pending_upload_buffer_ = nullptr;
+    pending_gpu_batches_->bursts.Reset();
+    pending_gpu_batches_->selection_indices.Reset();
     allocation_cursor_ = 0;
+    allocated_slot_count_ = 0;
+    last_submission_upload_bytes_ = 0;
     effect_time_ = 0.0f;
     latest_expiry_time_ = 0.0f;
-    MarkRenderStateDirty();
+    clear_pending_ = true;
+    MarkRenderDynamicDataDirty();
+}
+
+auto USparkRendererComponent::submit_bursts(TConstArrayView<FSparkBurst> const bursts,
+                                            float const effect_time) -> FSparkSubmissionResult {
+    check(IsInGameThread());
+    effect_time_ = effect_time;
+    last_submission_upload_bytes_ = 0;
+    auto const capacity{particle_data_.Num()};
+    if (bursts.IsEmpty() || capacity <= 0) {
+        MarkRenderDynamicDataDirty();
+        return {};
+    }
+
+    TArray<int32, TInlineAllocator<64>> burst_counts;
+    burst_counts.SetNumUninitialized(bursts.Num());
+    int64 requested_count{0};
+    auto const burst_count{bursts.Num()};
+    for (int32 index{0}; index < burst_count; ++index) {
+        burst_counts[index] = SpaceGame::Sparks::Private::valid_particle_count(bursts[index]);
+        requested_count += burst_counts[index];
+    }
+    auto const admitted_count{static_cast<int32>(FMath::Min<int64>(requested_count, capacity))};
+    if (admitted_count <= 0) {
+        MarkRenderDynamicDataDirty();
+        return {.requested = requested_count};
+    }
+
+    auto const unallocated_slots{capacity - allocated_slot_count_};
+    auto const replaced_slots{FMath::Max(admitted_count - unallocated_slots, 0)};
+    allocated_slot_count_ = FMath::Min(capacity, allocated_slot_count_ + admitted_count);
+    auto& pending{*pending_gpu_batches_};
+    auto const initial_burst_count{pending.bursts.Num()};
+    auto const initial_selection_count{pending.selection_indices.Num()};
+    auto cursor{allocation_cursor_};
+    if (requested_count <= capacity) {
+        for (int32 index{0}; index < burst_count; ++index) {
+            auto const count{burst_counts[index]};
+            if (count <= 0) {
+                continue;
+            }
+            pending.bursts.Add(SpaceGame::Sparks::Private::make_gpu_burst(
+                bursts[index],
+                effect_time,
+                cursor,
+                count,
+                SpaceGame::Sparks::Private::direct_particle_indices));
+            cursor = (cursor + count) % capacity;
+            latest_expiry_time_ =
+                FMath::Max(latest_expiry_time_,
+                           effect_time + FMath::Max(bursts[index].style.lifetime.min,
+                                                    bursts[index].style.lifetime.max));
+        }
+    } else {
+        int32 burst_index{0};
+        int64 burst_start{0};
+        FGpuSparkBurst* gpu_burst{nullptr};
+        auto const quotient{requested_count / admitted_count};
+        auto const remainder{requested_count % admitted_count};
+        for (int32 admitted_index{0}; admitted_index < admitted_count; ++admitted_index) {
+            auto const half_remainder_numerator{(quotient % 2) * admitted_count +
+                                                (static_cast<int64>(admitted_index) * 2 + 1) *
+                                                    remainder};
+            auto const flattened_index{static_cast<int64>(admitted_index) * quotient +
+                                       quotient / 2 +
+                                       half_remainder_numerator / (admitted_count * 2)};
+            auto const previous_burst_index{burst_index};
+            while (burst_index + 1 < burst_count &&
+                   flattened_index >= burst_start + burst_counts[burst_index]) {
+                burst_start += burst_counts[burst_index];
+                ++burst_index;
+            }
+            if (gpu_burst == nullptr || burst_index != previous_burst_index) {
+                gpu_burst = &pending.bursts.Add_GetRef(SpaceGame::Sparks::Private::make_gpu_burst(
+                    bursts[burst_index],
+                    effect_time,
+                    cursor,
+                    0,
+                    static_cast<uint32>(pending.selection_indices.Num())));
+                latest_expiry_time_ =
+                    FMath::Max(latest_expiry_time_,
+                               effect_time + FMath::Max(bursts[burst_index].style.lifetime.min,
+                                                        bursts[burst_index].style.lifetime.max));
+            }
+            pending.selection_indices.Add(static_cast<uint32>(flattened_index - burst_start));
+            ++gpu_burst->allocation.Z;
+            cursor = (cursor + 1) % capacity;
+        }
+    }
+    allocation_cursor_ = cursor;
+    last_submission_upload_bytes_ =
+        (pending.bursts.Num() - initial_burst_count) * sizeof(FGpuSparkBurst) +
+        (pending.selection_indices.Num() - initial_selection_count) * sizeof(uint32);
+    MarkRenderDynamicDataDirty();
+    return {
+        .requested = requested_count, .admitted = admitted_count, .replaced_slots = replaced_slots};
 }
 
 auto
@@ -409,12 +514,14 @@ auto
                                               float const effect_time) -> int32 {
     check(IsInGameThread());
     effect_time_ = effect_time;
+    last_submission_upload_bytes_ = 0;
     if (particles.IsEmpty() || particle_data_.IsEmpty()) {
         MarkRenderDynamicDataDirty();
         return 0;
     }
 
     auto const count{FMath::Min(particles.Num(), particle_data_.Num())};
+    last_submission_upload_bytes_ = count * sizeof(FSparkParticleRecord);
     auto overwritten{0};
     if (pending_upload_buffer_ == nullptr) {
         auto& upload_buffer{staging_state_->buffers.next()};
@@ -455,6 +562,7 @@ auto
     append_range(allocation_cursor_, 0, first_count);
     append_range(0, first_count, count - first_count);
     allocation_cursor_ = (allocation_cursor_ + count) % particle_data_.Num();
+    allocated_slot_count_ = FMath::Min(particle_data_.Num(), allocated_slot_count_ + count);
     for (int32 index{0}; index < count; ++index) {
         auto const& particle{particles[index]};
         latest_expiry_time_ = FMath::Max(latest_expiry_time_,
@@ -466,12 +574,13 @@ auto
 }
 
 FPrimitiveSceneProxy* USparkRendererComponent::CreateSceneProxy() {
-    if (!IsValid(material_) || particle_data_.IsEmpty()) {
+    if (!IsValid(material_) || particle_data_.IsEmpty() || !particle_buffer_) {
         return nullptr;
     }
     return new SpaceGame::Sparks::Private::FSceneProxy{
         this,
-        particle_data_,
+        *particle_buffer_,
+        particle_data_.Num(),
         material_,
         SpaceGame::Sparks::Private::make_parameters(
             *this, settings_, effect_time_, latest_expiry_time_)};
@@ -486,12 +595,6 @@ FBoxSphereBounds USparkRendererComponent::CalcBounds(FTransform const& local_to_
 void USparkRendererComponent::SendRenderDynamicData_Concurrent() {
     Super::SendRenderDynamicData_Concurrent();
     if (SceneProxy == nullptr) {
-        if (pending_upload_buffer_ != nullptr) {
-            pending_upload_buffer_->particles.Reset();
-            pending_upload_buffer_->destinations.Reset();
-            pending_upload_buffer_->counts.Reset();
-            pending_upload_buffer_ = nullptr;
-        }
         return;
     }
 
@@ -505,13 +608,27 @@ void USparkRendererComponent::SendRenderDynamicData_Concurrent() {
     }
     auto const parameters{SpaceGame::Sparks::Private::make_parameters(
         *this, settings_, effect_time_, latest_expiry_time_)};
+    auto gpu_bursts{MoveTemp(pending_gpu_batches_->bursts)};
+    auto selection_indices{MoveTemp(pending_gpu_batches_->selection_indices)};
+    auto const clear{clear_pending_};
+    clear_pending_ = false;
     auto* const scene_proxy{static_cast<SpaceGame::Sparks::Private::FSceneProxy*>(SceneProxy)};
     auto staging_state{staging_state_};
     ENQUEUE_RENDER_COMMAND(UpdateSparkRenderer)
-    ([scene_proxy, upload_buffer, staging_state = MoveTemp(staging_state), parameters](
-         FRHICommandListImmediate& command_list) {
+    ([scene_proxy,
+      upload_buffer,
+      staging_state = MoveTemp(staging_state),
+      gpu_bursts = MoveTemp(gpu_bursts),
+      selection_indices = MoveTemp(selection_indices),
+      clear,
+      parameters](FRHICommandListImmediate& command_list) mutable {
         static_cast<void>(staging_state);
-        scene_proxy->update(command_list, upload_buffer, parameters);
+        scene_proxy->update(command_list,
+                            upload_buffer,
+                            MoveTemp(gpu_bursts),
+                            MoveTemp(selection_indices),
+                            clear,
+                            parameters);
     });
 }
 

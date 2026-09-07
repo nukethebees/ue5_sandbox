@@ -5,6 +5,7 @@
 #include <SpaceGame/levels/LevelEventManager.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 

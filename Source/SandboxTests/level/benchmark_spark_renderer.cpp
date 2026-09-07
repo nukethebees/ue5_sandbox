@@ -243,20 +243,23 @@ TEST_CLASS(SparkRendererBenchmark, "Sandbox.SparkBenchmark")
         auto const column{grid_index % 20};
         auto const row{(grid_index / 20) % 10};
         return {
-            .location = {0.0f,
-                         -14250.0f + static_cast<float>(column) * 1500.0f,
-                         -6750.0f + static_cast<float>(row) * 1500.0f},
-            .direction = FVector3f::UpVector,
-            .colour = (grid_index & 1) == 0 ? FLinearColor{1.0f, 0.1f, 0.02f}
-                                            : FLinearColor{0.05f, 0.2f, 1.0f},
-            .speed = {2000.0f, 6000.0f},
-            .lifetime = {0.6f, 1.0f},
-            .size = {20.0f, 50.0f},
-            .intensity = 40.0f,
-            .spread_angle_degrees = 90.0f,
-            .streak_time = 0.025f,
-            .count = sparks_per_hit_,
-            .seed = 0x5a17b00bu ^ static_cast<uint32>(grid_index),
+            .emission =
+                {
+                    .location = {0.0f,
+                                 -14250.0f + static_cast<float>(column) * 1500.0f,
+                                 -6750.0f + static_cast<float>(row) * 1500.0f},
+                    .direction = FVector3f::UpVector,
+                    .colour = (grid_index & 1) == 0 ? FVector3f{1.0f, 0.1f, 0.02f}
+                                                    : FVector3f{0.05f, 0.2f, 1.0f},
+                    .seed = 0x5a17b00bu ^ static_cast<uint32>(grid_index),
+                },
+            .style = {.count = sparks_per_hit_,
+                      .speed = {2000.0f, 6000.0f},
+                      .lifetime = {0.6f, 1.0f},
+                      .size = {20.0f, 50.0f},
+                      .intensity = 40.0f,
+                      .spread_angle_degrees = 90.0f,
+                      .streak_time = 0.025f},
         };
     }
 
@@ -390,7 +393,7 @@ TEST_CLASS(SparkRendererBenchmark, "Sandbox.SparkBenchmark")
         append(TEXT("queue_expand_submit"), TEXT("ms"), submit_ms_);
         append(TEXT("uploaded"),
                TEXT("bytes/frame"),
-               {static_cast<double>(admitted_particles) * sizeof(FSparkParticleRecord)});
+               {static_cast<double>(renderer_->get_last_submission_upload_bytes())});
 
         auto const directory{
             FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("Benchmarks"), TEXT("Sparks"))};

@@ -1,3 +1,4 @@
+#include <SpaceGameRendering/SparkEffects.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <AssetCompilingManager.h>
@@ -18,8 +19,10 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
     USparkRendererComponent* renderer_{nullptr};
     USceneCaptureComponent2D* capture_{nullptr};
     UTextureRenderTarget2D* target_{nullptr};
+    TUniquePtr<FSparkEffects> effects_;
     uint64 submitted_frame_{0};
     float initial_centroid_{0.0f};
+    float effect_time_{0.0f};
     static constexpr int32 image_size{256};
 
     BEFORE_EACH()
@@ -29,7 +32,10 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
     }
 
     AFTER_EACH()
-    { spawner.Reset(); }
+    {
+        effects_.Reset();
+        spawner.Reset();
+    }
 
     void setup() {
         auto& world{spawner->GetWorld()};
@@ -49,6 +55,7 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
             GShaderCompilingManager->FinishAllCompilation();
         }
         renderer_->RegisterComponent();
+        effects_ = MakeUnique<FSparkEffects>(*renderer_);
         world.SendAllEndOfFrameUpdates();
         FlushRenderingCommands();
         TestRunner->TestNotNull(TEXT("The spark scene proxy is created"),
@@ -80,15 +87,23 @@ TEST_CLASS(SparkRendererPixels, "Sandbox.SparkRenderTests")
     }
 
     void set_time(float const effect_time, bool const spawn) {
-        TArray<FSparkParticleRecord> particles;
         if (spawn) {
-            FSparkParticleRecord& particle{particles.AddDefaulted_GetRef()};
-            particle.initial_position_spawn_time = FVector4f{0.0f, 0.0f, 0.0f, 0.0f};
-            particle.initial_velocity_lifetime = FVector4f{0.0f, 0.0f, 1000.0f, 0.2f};
-            particle.emissive_colour_size = FVector4f{8.0f, 0.0f, 0.0f, 20.0f};
-            particle.streak_time_reserved = FVector4f{0.04f, 0.0f, 0.0f, 0.0f};
+            effects_->queue_burst({
+                .emission = {.location = FVector3f::ZeroVector,
+                             .direction = FVector3f::UpVector,
+                             .colour = FVector3f{1.0f, 0.0f, 0.0f},
+                             .seed = 0x12345678u},
+                .style = {.count = 1,
+                          .speed = {1000.0f, 1000.0f},
+                          .lifetime = {0.2f, 0.2f},
+                          .size = {20.0f, 20.0f},
+                          .intensity = 8.0f,
+                          .spread_angle_degrees = 0.0f,
+                          .streak_time = 0.04f},
+            });
         }
-        renderer_->submit_particles(particles, effect_time);
+        effects_->commit(effect_time - effect_time_);
+        effect_time_ = effect_time;
         spawner->GetWorld().SendAllEndOfFrameUpdates();
         submitted_frame_ = GFrameCounter;
     }

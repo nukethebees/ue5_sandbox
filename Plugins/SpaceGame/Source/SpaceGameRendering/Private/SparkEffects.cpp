@@ -15,8 +15,15 @@ TRACE_DECLARE_INT_COUNTER(SandboxSparkAdmitted, TEXT("Sandbox/Sparks/Admitted"))
 TRACE_DECLARE_INT_COUNTER(SandboxSparkOverwritten, TEXT("Sandbox/Sparks/Overwritten"));
 TRACE_DECLARE_INT_COUNTER(SandboxSparkDroppedBursts, TEXT("Sandbox/Sparks/DroppedBursts"));
 TRACE_DECLARE_FLOAT_COUNTER(SandboxSparkExpansionMs, TEXT("Sandbox/Sparks/ExpansionMs"));
+TRACE_DECLARE_FLOAT_COUNTER(SandboxSparkSubmissionMs, TEXT("Sandbox/Sparks/SubmissionMs"));
 
 namespace SpaceGame::Sparks::Private {
+TAutoConsoleVariable<int32> use_cpu_expansion{
+    TEXT("sg.Sparks.CpuExpansion"),
+    0,
+    TEXT("Uses the legacy CPU spark burst expander when non-zero."),
+    ECVF_Default};
+
 auto hash(uint32 value) -> uint32 {
     value ^= value >> 16;
     value *= 0x7feb352du;
@@ -42,16 +49,16 @@ auto is_finite(FSparkScalarRange const range) -> bool {
 }
 
 auto particle_count(FSparkBurst const& burst) -> int32 {
-    auto const colour_is_finite{FMath::IsFinite(burst.colour.R) &&
-                                FMath::IsFinite(burst.colour.G) &&
-                                FMath::IsFinite(burst.colour.B) && FMath::IsFinite(burst.colour.A)};
+    auto const& emission{burst.emission};
+    auto const& style{burst.style};
+    auto const colour_is_finite{!emission.colour.ContainsNaN()};
     auto const valid{
-        burst.count > 0 && !burst.location.ContainsNaN() && !burst.direction.ContainsNaN() &&
-        colour_is_finite && is_finite(burst.speed) && is_finite(burst.lifetime) &&
-        is_finite(burst.size) && FMath::IsFinite(burst.intensity) && burst.intensity > 0.0f &&
-        FMath::IsFinite(burst.spread_angle_degrees) && FMath::IsFinite(burst.streak_time) &&
-        FMath::Max(burst.lifetime.min, burst.lifetime.max) > 0.0f};
-    return valid ? burst.count : 0;
+        style.count > 0 && !emission.location.ContainsNaN() && !emission.direction.ContainsNaN() &&
+        colour_is_finite && is_finite(style.speed) && is_finite(style.lifetime) &&
+        is_finite(style.size) && FMath::IsFinite(style.intensity) && style.intensity > 0.0f &&
+        FMath::IsFinite(style.spread_angle_degrees) && FMath::IsFinite(style.streak_time) &&
+        FMath::Max(style.lifetime.min, style.lifetime.max) > 0.0f};
+    return valid ? style.count : 0;
 }
 
 auto sample_cone(FVector3f direction, float const spread_angle_degrees, uint32& state)
@@ -74,23 +81,25 @@ auto sample_cone(FVector3f direction, float const spread_angle_degrees, uint32& 
 auto expand_particle(FSparkBurst const& burst,
                      int32 const original_particle_index,
                      float const time) -> FSparkParticleRecord {
-    auto state{hash(burst.seed ^ static_cast<uint32>(original_particle_index))};
-    auto const direction{sample_cone(burst.direction, burst.spread_angle_degrees, state)};
-    auto const speed{FMath::Max(0.0f, random_range(state, burst.speed))};
-    auto const lifetime{FMath::Max(0.0f, random_range(state, burst.lifetime))};
-    auto const size{FMath::Max(0.0f, random_range(state, burst.size))};
+    auto const& emission{burst.emission};
+    auto const& style{burst.style};
+    auto state{hash(emission.seed ^ static_cast<uint32>(original_particle_index))};
+    auto const direction{sample_cone(emission.direction, style.spread_angle_degrees, state)};
+    auto const speed{FMath::Max(0.0f, random_range(state, style.speed))};
+    auto const lifetime{FMath::Max(0.0f, random_range(state, style.lifetime))};
+    auto const size{FMath::Max(0.0f, random_range(state, style.size))};
     auto const brightness_variation{FMath::Lerp(0.85f, 1.15f, random_unit_float(state))};
-    auto const intensity{FMath::Max(0.0f, burst.intensity) * brightness_variation};
+    auto const intensity{FMath::Max(0.0f, style.intensity) * brightness_variation};
     return {
         .initial_position_spawn_time =
-            FVector4f{burst.location.X, burst.location.Y, burst.location.Z, time},
+            FVector4f{emission.location.X, emission.location.Y, emission.location.Z, time},
         .initial_velocity_lifetime =
             FVector4f{direction.X * speed, direction.Y * speed, direction.Z * speed, lifetime},
-        .emissive_colour_size = FVector4f{burst.colour.R * intensity,
-                                          burst.colour.G * intensity,
-                                          burst.colour.B * intensity,
+        .emissive_colour_size = FVector4f{emission.colour.X * intensity,
+                                          emission.colour.Y * intensity,
+                                          emission.colour.Z * intensity,
                                           size},
-        .streak_time_reserved = FVector4f{FMath::Max(0.0f, burst.streak_time), 0.0f, 0.0f, 0.0f},
+        .streak_time_reserved = FVector4f{FMath::Max(0.0f, style.streak_time), 0.0f, 0.0f, 0.0f},
     };
 }
 } // namespace SpaceGame::Sparks::Private
@@ -159,25 +168,42 @@ void FSparkEffects::commit(float const dt) {
     }
     auto const capacity{renderer_->get_capacity()};
     for (auto& burst : queued_bursts_) {
-        burst.location = FVector3f{
-            renderer_->GetComponentTransform().InverseTransformPosition(FVector{burst.location})};
-        burst.direction =
+        auto& emission{burst.emission};
+        emission.location = FVector3f{renderer_->GetComponentTransform().InverseTransformPosition(
+            FVector{emission.location})};
+        emission.direction =
             FVector3f{renderer_->GetComponentTransform().InverseTransformVectorNoScale(
-                FVector{burst.direction})};
+                FVector{emission.direction})};
     }
-    auto const expansion_start_cycles{FPlatformTime::Cycles64()};
-    auto const requested_count{
-        expand_spark_bursts(queued_bursts_, capacity, effect_time_, expanded_particles_)};
-    auto const expansion_milliseconds{
-        FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - expansion_start_cycles)};
-    auto const admitted_count{expanded_particles_.Num()};
-
-    auto const overwritten{renderer_->submit_particles(expanded_particles_, effect_time_)};
+    int64 requested_count{0};
+    int32 admitted_count{0};
+    int32 overwritten{0};
+    double expansion_milliseconds{0.0};
+    auto const submission_start_cycles{FPlatformTime::Cycles64()};
+    if (SpaceGame::Sparks::Private::use_cpu_expansion.GetValueOnGameThread() != 0) {
+        auto const expansion_start_cycles{FPlatformTime::Cycles64()};
+        requested_count =
+            expand_spark_bursts(queued_bursts_, capacity, effect_time_, expanded_particles_);
+        expansion_milliseconds =
+            FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - expansion_start_cycles);
+        admitted_count = expanded_particles_.Num();
+        overwritten = renderer_->submit_particles(expanded_particles_, effect_time_);
+    } else {
+        expanded_particles_.Reset();
+        auto const result{renderer_->submit_bursts(queued_bursts_, effect_time_)};
+        requested_count = result.requested;
+        admitted_count = result.admitted;
+        overwritten = result.replaced_slots;
+    }
+    auto const submission_milliseconds{
+        FPlatformTime::ToMilliseconds64(FPlatformTime::Cycles64() - submission_start_cycles) -
+        expansion_milliseconds};
     TRACE_COUNTER_SET(SandboxSparkRequested, requested_count);
     TRACE_COUNTER_SET(SandboxSparkAdmitted, admitted_count);
     TRACE_COUNTER_SET(SandboxSparkOverwritten, overwritten);
     TRACE_COUNTER_SET(SandboxSparkDroppedBursts, dropped_bursts_);
     TRACE_COUNTER_SET(SandboxSparkExpansionMs, expansion_milliseconds);
+    TRACE_COUNTER_SET(SandboxSparkSubmissionMs, submission_milliseconds);
     queued_bursts_.Reset();
 }
 
@@ -218,17 +244,19 @@ void emit_debug_burst(TArray<FString> const& arguments, UWorld* const world) {
                                 : 0.8f};
         FSparkEffects effects{renderer};
         for (int32 burst_index{0}; burst_index < burst_count; ++burst_index) {
-            effects.queue_burst({.location = location,
-                                 .direction = FVector3f::UpVector,
-                                 .colour = FLinearColor{1.0f, 0.35f, 0.05f},
-                                 .speed = {2000.0f, 8000.0f},
-                                 .lifetime = {lifetime, lifetime},
-                                 .size = {5.0f, 15.0f},
-                                 .intensity = 30.0f,
-                                 .spread_angle_degrees = 180.0f,
-                                 .streak_time = 0.03f,
-                                 .count = particles_per_burst,
-                                 .seed = 0x51a7c0deu + static_cast<uint32>(burst_index)});
+            effects.queue_burst({
+                .emission = {.location = location,
+                             .direction = FVector3f::UpVector,
+                             .colour = FVector3f{1.0f, 0.35f, 0.05f},
+                             .seed = 0x51a7c0deu + static_cast<uint32>(burst_index)},
+                .style = {.count = particles_per_burst,
+                          .speed = {2000.0f, 8000.0f},
+                          .lifetime = {lifetime, lifetime},
+                          .size = {5.0f, 15.0f},
+                          .intensity = 30.0f,
+                          .spread_angle_degrees = 180.0f,
+                          .streak_time = 0.03f},
+            });
         }
         effects.commit(0.0f);
         return;
