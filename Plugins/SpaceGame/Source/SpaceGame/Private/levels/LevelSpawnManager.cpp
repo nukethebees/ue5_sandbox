@@ -98,7 +98,7 @@ void FLevelSpawnManager::spawn_turrets(FLevelTurretSpawnEventsConstView const ev
         .healths = events.healths,
         .laser_damages = events.laser_damages,
     };
-    auto const handles{turrets_->register_turrets(spawn_data)};
+    auto const handles{turrets_->register_turrets(spawn_data, events.rotations)};
     auto const count{events.num()};
     turrets_->presentation_spawn_transforms.Reserve(count);
     for (int32 i{}; i < count; ++i) {

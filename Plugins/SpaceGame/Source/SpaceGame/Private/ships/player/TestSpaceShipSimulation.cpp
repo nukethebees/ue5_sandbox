@@ -131,6 +131,7 @@ auto Simulation::get_entity_update_data() const -> RegistryEntityData {
     RegistryEntityData entity_data;
     ml::append(entity_data.locations, transform.GetLocation());
     entity_data.velocities.add(FVector3f{velocity});
+    ml::append(entity_data.rotations, transform.Rotator());
     entity_data.radii.Add(collision_radius);
     entity_data.healths.Add(health.health);
     entity_data.teams.Add(team);

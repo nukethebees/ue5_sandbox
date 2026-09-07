@@ -7,6 +7,7 @@ auto make_view(entity_registry::EntityData const& entities)
     -> entity_registry::EntityData::ConstView {
     return {.locations = {entities.locations.xs, entities.locations.ys, entities.locations.zs},
             .velocities = {entities.velocities.xs, entities.velocities.ys, entities.velocities.zs},
+            .rotations = entities.rotations.get_const_view(),
             .radii = entities.radii,
             .healths = entities.healths,
             .teams = entities.teams,
@@ -21,6 +22,7 @@ void add_entity(entity_registry::EntityData& entities,
                 bool const alive = true) {
     entities.locations.add(location);
     entities.velocities.add(FVector3f::ZeroVector);
+    entities.rotations.add_zeroed(1);
     entities.radii.Add(100.0f);
     entities.healths.Add(100);
     entities.teams.Add(team);

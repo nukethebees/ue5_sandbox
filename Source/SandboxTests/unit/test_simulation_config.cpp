@@ -1,16 +1,20 @@
 #include <SandboxTests/support/SimulationTestAssets.h>
 
+#include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGame/combat/lasers/TestLasersConfig.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShipData.h>
+#include <SpaceGame/simulation/EntityWorldBounds.h>
+#include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SimulationConfig.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
 
 #include <CQTest.h>
+#include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshActor.h>
 #include <GameFramework/Actor.h>
 #include <UObject/Package.h>
@@ -18,6 +22,57 @@
 
 TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
 {
+    TEST_METHOD(RotatedWorldBoundsEncloseTransformedCorners)
+    {
+        ml::ioj::FEntityAABBs bounds{};
+        auto const index{ml::ioj::FEntityAABBs::capital_ship_index};
+        bounds.centre_xs[index] = 30.f;
+        bounds.centre_ys[index] = -10.f;
+        bounds.half_extent_xs[index] = 100.f;
+        bounds.half_extent_ys[index] = 20.f;
+        bounds.half_extent_zs[index] = 5.f;
+        FVector3f const position{400.f, -200.f, 100.f};
+        for (auto const rotation :
+             {FRotator3f::ZeroRotator, FRotator3f{0.f, 90.f, 0.f}, FRotator3f{23.f, 47.f, -16.f}}) {
+            FBox3f expected{ForceInit};
+            auto const centre{bounds.get_centre(index)};
+            auto const extent{bounds.get_half_extents(index)};
+            for (int32 corner{}; corner < 8; ++corner) {
+                FVector3f const offset{(corner & 1) ? extent.X : -extent.X,
+                                       (corner & 2) ? extent.Y : -extent.Y,
+                                       (corner & 4) ? extent.Z : -extent.Z};
+                expected += position + rotation.RotateVector(centre + offset);
+            }
+            auto const actual{ml::ioj::make_entity_world_bounds(bounds, index, position, rotation)};
+            TestRunner->TestTrue(TEXT("World bounds match independently transformed corners"),
+                                 actual.Min.Equals(expected.Min, 0.001f) &&
+                                     actual.Max.Equals(expected.Max, 0.001f));
+        }
+    }
+
+    TEST_METHOD(RotatedCapitalSpawnClearance)
+    {
+        FLevelSimulationInitData data;
+        auto const index{ml::ioj::FEntityAABBs::capital_ship_index};
+        data.entity_bounds.half_extent_xs[index] = 100.f;
+        data.entity_bounds.half_extent_ys[index] = 20.f;
+        data.entity_bounds.half_extent_zs[index] = 10.f;
+        data.fighter_radius = 5.f;
+        data.fighters.avoidance_clearance_buffer = 1.f;
+        data.capital_ships.fighter_spawn_slots_relative_transforms = {
+            FTransform{FVector{0.f, 40.f, 0.f}}};
+        data.capital_spawns.add_defaulted(1);
+        ml::FLevelStartErrors clear_errors;
+        ml::validate_world_fighter_spawn_slots(data, clear_errors);
+        TestRunner->TestFalse(TEXT("Unrotated slot clears capital"), clear_errors.has_errors());
+        ml::assign(data.capital_spawns.rotations, 0, FRotator3f{0.f, 45.f, 0.f});
+        ml::FLevelStartErrors rotated_errors;
+        ml::validate_world_fighter_spawn_slots(data, rotated_errors);
+        TestRunner->TestTrue(
+            TEXT("Rotation can place valid local slot inside conservative world AABB"),
+            rotated_errors.has_errors());
+    }
+
     TEST_METHOD(CollisionGridDefaultsAndValidation)
     {
         FCollisionGridConfig const defaults{};
@@ -99,6 +154,134 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
                              copy->collision_grid.grid_size == source->collision_grid.grid_size);
         TestRunner->TestTrue(TEXT("Collision-grid cell size is preserved"),
                              copy->collision_grid.cell_size == source->collision_grid.cell_size);
+    }
+
+    TEST_METHOD(FighterNavigationDefaultsAndValidation)
+    {
+        FFighterConfig const defaults{};
+        TestRunner->TestEqual(TEXT("Clear navigation defaults to 2 Hz"),
+                              defaults.avoidance_clear_update_frequency,
+                              2.f);
+        TestRunner->TestEqual(TEXT("Nearby navigation preserves the 5 Hz default"),
+                              defaults.avoidance_update_frequency,
+                              5.f);
+        TestRunner->TestEqual(TEXT("Active navigation defaults to 12 Hz"),
+                              defaults.avoidance_active_update_frequency,
+                              12.f);
+        TestRunner->TestEqual(TEXT("Immediate navigation defaults to 30 Hz"),
+                              defaults.avoidance_immediate_update_frequency,
+                              30.f);
+        TestRunner->TestEqual(
+            TEXT("Fighter separation defaults to 2000 cm"), defaults.separation_radius, 2000.f);
+        TestRunner->TestEqual(TEXT("Fighter steering memory defaults to 0.75 seconds"),
+                              defaults.steering_memory_duration,
+                              0.75f);
+        TestRunner->TestEqual(TEXT("Dense traffic defaults to four neighbours"),
+                              defaults.dense_traffic_neighbour_threshold,
+                              4);
+
+        auto const* const source{ml::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
+            return;
+        }
+        auto* const copy{DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        if (!TestRunner->TestNotNull(TEXT("Level config copy is created"), copy)) {
+            return;
+        }
+
+        copy->fighters.avoidance_active_update_frequency =
+            copy->fighters.avoidance_update_frequency * 0.5f;
+        TArray<FString> errors;
+        copy->get_validation_errors(errors);
+        TestRunner->TestFalse(TEXT("Out-of-order navigation tiers are invalid"), copy->is_valid());
+        TestRunner->TestTrue(
+            TEXT("Invalid navigation tiers have a diagnostic"),
+            errors.Contains(TEXT("fighter avoidance update frequencies must be non-decreasing by "
+                                 "risk tier")));
+
+        copy->fighters.avoidance_active_update_frequency = 12.f;
+        copy->fighters.separation_radius = 0.f;
+        errors.Reset();
+        copy->get_validation_errors(errors);
+        TestRunner->TestFalse(TEXT("Zero separation radius is invalid"), copy->is_valid());
+        TestRunner->TestTrue(
+            TEXT("Invalid separation radius has a diagnostic"),
+            errors.Contains(TEXT("fighters.separation_radius must be finite and positive")));
+
+        copy->fighters.separation_radius = 2000.f;
+        copy->fighters.dense_traffic_neighbour_threshold = 1;
+        errors.Reset();
+        copy->get_validation_errors(errors);
+        TestRunner->TestFalse(TEXT("Single-neighbour dense traffic is invalid"), copy->is_valid());
+        TestRunner->TestTrue(
+            TEXT("Invalid dense-traffic threshold has a diagnostic"),
+            errors.Contains(
+                TEXT("fighters.dense_traffic_neighbour_threshold must be at least two")));
+    }
+
+    TEST_METHOD(FighterSpawnSlotsHaveClearance)
+    {
+        auto const* const config{ml::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), config) ||
+            !TestRunner->TestNotNull(TEXT("Fighter mesh loads"), config->fighters.mesh.Get())) {
+            return;
+        }
+
+        auto const& transforms{config->capital_ships.fighter_spawn_slots_relative_transforms};
+        auto const clearance_radius{config->fighters.mesh->GetBounds().SphereRadius +
+                                    config->fighters.avoidance_clearance_buffer};
+        auto minimum_distance{TNumericLimits<float>::Max()};
+        for (int32 i{}; i < transforms.Num(); ++i) {
+            for (int32 j{i + 1}; j < transforms.Num(); ++j) {
+                minimum_distance = FMath::Min(
+                    minimum_distance,
+                    FVector::Dist(transforms[i].GetLocation(), transforms[j].GetLocation()));
+            }
+        }
+
+        TestRunner->TestTrue(TEXT("Authored fighter spawn slots have collision clearance"),
+                             minimum_distance >= clearance_radius * 2.f);
+
+        auto const result{ml::make_level_simulation_init_data(*config)};
+        TestRunner->TestTrue(TEXT("Authored fighter spawn slots pass level-start validation"),
+                             result.has_value());
+    }
+
+    TEST_METHOD(FighterSpawnSlotValidationRejectsInvalidLevelGeometry)
+    {
+        auto const* const source{ml::load_default_level_config()};
+        if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source) ||
+            !TestRunner->TestNotNull(TEXT("Capital mesh loads"),
+                                     source->capital_ships.mesh.Get())) {
+            return;
+        }
+
+        auto* const inside_capital{
+            DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        inside_capital->capital_ships.fighter_spawn_slots_relative_transforms[0].SetLocation(
+            source->capital_ships.mesh->GetBounds().Origin);
+        auto const capital_result{ml::make_level_simulation_init_data(*inside_capital)};
+        TestRunner->TestFalse(TEXT("A fighter slot inside its capital aborts level loading"),
+                              capital_result.has_value());
+        if (!capital_result) {
+            TestRunner->TestTrue(
+                TEXT("Capital intersection has a level-start diagnostic"),
+                capital_result.error().format().Contains(TEXT("intersects the capital collision")));
+        }
+
+        auto* const overlapping_fighters{
+            DuplicateObject<USpaceGameLevelConfig>(source, GetTransientPackage())};
+        overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[1].SetLocation(
+            overlapping_fighters->capital_ships.fighter_spawn_slots_relative_transforms[0]
+                .GetLocation());
+        auto const fighter_result{ml::make_level_simulation_init_data(*overlapping_fighters)};
+        TestRunner->TestFalse(TEXT("Overlapping fighter slots abort level loading"),
+                              fighter_result.has_value());
+        if (!fighter_result) {
+            TestRunner->TestTrue(
+                TEXT("Fighter overlap has a level-start diagnostic"),
+                fighter_result.error().format().Contains(TEXT("fighter spawn slots 0 and 1")));
+        }
     }
 
     TEST_METHOD(RejectsOverlappingStaticCollisionClassLists)

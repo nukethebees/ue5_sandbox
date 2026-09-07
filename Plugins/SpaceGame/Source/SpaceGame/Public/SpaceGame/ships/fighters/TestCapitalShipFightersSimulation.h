@@ -41,6 +41,20 @@ namespace ml::test_capital_ship_fighters {
 class CommandInterface;
 class PhaseInterface;
 
+struct FNavigationTelemetrySnapshot {
+    int32 separating_fighter_count{};
+    int32 avoiding_fighter_count{};
+    int32 clear_risk_count{};
+    int32 nearby_risk_count{};
+    int32 active_risk_count{};
+    int32 immediate_risk_count{};
+    int32 separation_query_count{};
+    int32 separation_candidate_count{};
+    int32 dense_direction_selection_count{};
+    int32 steering_memory_fighter_count{};
+    int32 hard_trace_count{};
+};
+
 struct SPACEGAME_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
     using EntityData = ml::test_capital_ship_fighters::EntityData;
@@ -87,6 +101,9 @@ struct SPACEGAME_API Simulation {
     auto get_target_location(FRegistryEntityHandle fighter_handle) const -> FVector3f;
     auto get_tasks() const -> TConstArrayView<Task>;
     auto get_teams() const -> TConstArrayView<ETestTeam>;
+    auto get_navigation_telemetry() const noexcept -> FNavigationTelemetrySnapshot const& {
+        return navigation_telemetry;
+    }
 
     /* **************************************** */
     // Checks
@@ -119,13 +136,26 @@ struct SPACEGAME_API Simulation {
         FVector3f trace_start;
         FVector3f trace_end;
     };
+    enum class NavigationRiskTier : uint8 {
+        Clear,
+        Nearby,
+        Active,
+        Immediate,
+        Count,
+    };
 
     inline static constexpr int8 direct_movement_choice{-1};
     inline static constexpr int8 stop_movement_choice{-2};
     inline static constexpr int32 n_avoidance_choices{8};
     inline static constexpr uint8 clear_scans_to_end_avoidance{2};
+    inline static constexpr uint8 lower_risk_scans_to_demote{2};
+    inline static constexpr int32 max_separation_neighbours{32};
+    inline static constexpr float crowd_goal_score_weight{0.35f};
+    inline static constexpr float steering_memory_score_weight{0.25f};
     inline static constexpr float half_weight{0.5f};
     inline static constexpr float sqrt_three_over_two{0.8660254f};
+    inline static constexpr float escape_forward_weight{-0.1736482f};
+    inline static constexpr float escape_lateral_weight{0.9848078f};
     inline static constexpr std::array<FirePointAngleOffset, 16> fire_point_angle_offsets{{
         {0.f, 0.f},
         {45.f, 0.f},
@@ -156,6 +186,12 @@ struct SPACEGAME_API Simulation {
         -> TStaticArray<FVector3f, n_avoidance_choices>;
     static auto make_avoidance_choice_order(uint32 integral_bias, int8 previous_choice)
         -> TStaticArray<int8, n_avoidance_choices>;
+    static auto make_coincident_separation_direction(FRegistryEntityHandle self,
+                                                     FRegistryEntityHandle other) -> FVector3f;
+    auto get_navigation_tick_period(NavigationRiskTier tier) const
+        -> FPeriodicTickCountdown16::counter_type;
+    void update_navigation_risk(int32 fighter_index, NavigationRiskTier observed_tier);
+    void reset_navigation_state(int32 fighter_index, NavigationRiskTier initial_tier);
 
     /* **************************************** */
     // Combat
@@ -200,6 +236,15 @@ struct SPACEGAME_API Simulation {
     /* **************************************** */
     void move(float dt, TaskView const& task_span);
     void update_navigation_steering();
+    void collect_navigation_updates();
+    void update_separation_observations();
+    void apply_separation_steering();
+    void scan_preferred_navigation(float clearance, float lookahead_time, float minimum_distance);
+    void scan_alternative_navigation(float clearance, float lookahead_time, float minimum_distance);
+    void execute_navigation_sweeps(float clearance);
+    void select_navigation_alternatives(float safe_progress_time);
+    void apply_navigation_choices();
+    void publish_navigation_telemetry() const;
 
     /* **************************************** */
     // Combat
@@ -260,7 +305,10 @@ struct SPACEGAME_API Simulation {
     FFighterSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     FTickCountdown16::counter_type attack_retry_cooldown_tick_value{0};
-    float navigation_update_interval{0.f};
+    TStaticArray<FPeriodicTickCountdown16::counter_type,
+                 static_cast<int32>(NavigationRiskTier::Count)>
+        navigation_tick_periods{};
+    float minimum_navigation_lookahead_time{};
 
     EntityBuffers entity_buffers{};
     FTestEntityRegistry* entity_registry{nullptr};
@@ -287,13 +335,18 @@ struct SPACEGAME_API Simulation {
     FVectors3f line_of_sight_starts;
     FVectors3f line_of_sight_ends;
     TArray<uint8> line_of_sight_results;
+    TArray<FRegistryEntityHandle> firing_ignored_entities;
     TArray<int32> firing_position_fighter_indices;
     FVectors3f firing_position_candidates;
     FTraceHits navigation_trace_hits;
-    TArray<FRegistryEntityHandle> navigation_trace_ignored_entities;
     TArray<int32> navigation_blocked_fighter_indices;
     TArray<int32> navigation_trace_fighter_indices;
     TArray<int8> navigation_trace_choice_indices;
+    TArray<uint8> navigation_observed_risk_tiers;
+
+    FNavigationTelemetrySnapshot navigation_telemetry;
+    int32 diagnostic_stop_reports{};
+    int32 diagnostic_spawn_reports{};
 
     TArray<int32> presentation_indices_to_remove;
     int32 presentation_spawn_offset{0};

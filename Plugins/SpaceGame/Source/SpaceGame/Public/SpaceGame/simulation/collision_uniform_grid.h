@@ -87,6 +87,10 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto get_runtime_telemetry() const noexcept -> FCollisionGridTelemetrySnapshot;
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_aabbs_; }
+    auto get_entity_world_bounds() const -> WorldAABBs::ConstView {
+        return {entities_buffer_.min_points.get_const_view(),
+                entities_buffer_.max_points.get_const_view()};
+    }
 
     void trace_aabbs(FLineTracesConstView const& traces, FTraceHitsView const& hits) const;
     void trace_aabbs(FLineTracesConstView const& traces,

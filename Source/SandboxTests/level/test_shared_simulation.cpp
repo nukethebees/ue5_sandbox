@@ -75,7 +75,8 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
             test_name.EndsWith(TEXT(".Fighters_InterceptCapital")) ||
             test_name.EndsWith(TEXT(".Fighters_StandbyTransition")) ||
             test_name.EndsWith(TEXT(".Fighters_AttackCapital")) ||
-            test_name.EndsWith(TEXT(".Fighters_ObstacleAvoidance"))};
+            test_name.EndsWith(TEXT(".Fighters_ObstacleAvoidance")) ||
+            test_name.Contains(TEXT(".Fighters_Navigation"))};
         level_used = !headless_capable;
         if (level_used) {
             level_setup.begin_test(TestCommandBuilder, *TestRunner, checks);
@@ -278,6 +279,41 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
                 ml::run_worldless_fighter_obstacle_avoidance(*TestRunner, checks, *config);
             }
         });
+    }
+    TEST_METHOD(Fighters_NavigationCapitalObstruction)
+    {
+        run_worldless_capable_scenario<ml::FFighterAttackScenario>(
+            ml::run_worldless_fighter_capital_obstruction);
+    }
+    TEST_METHOD(Fighters_NavigationClearPath)
+    {
+        run_worldless_capable_scenario<ml::FFighterAttackScenario>(
+            ml::run_worldless_fighter_clear_navigation);
+    }
+    TEST_METHOD(Fighters_NavigationSeparation)
+    {
+        run_worldless_capable_scenario<ml::FFighterAttackScenario>(
+            ml::run_worldless_fighter_separation);
+    }
+    TEST_METHOD(Fighters_NavigationDenseDeterminism)
+    {
+        run_worldless_capable_scenario<ml::FFighterAttackScenario>(
+            ml::run_worldless_fighter_dense_determinism);
+    }
+    TEST_METHOD(Fighters_NavigationLargeCluster)
+    {
+        run_worldless_capable_scenario<ml::FFighterAttackScenario>(
+            ml::run_worldless_fighter_large_cluster);
+    }
+    TEST_METHOD(Fighters_NavigationHardAvoidanceAuthority)
+    {
+        run_worldless_capable_scenario<ml::FFighterAttackScenario>(
+            ml::run_worldless_fighter_hard_avoidance_authority);
+    }
+    TEST_METHOD(Fighters_NavigationFrequency)
+    {
+        run_worldless_capable_scenario<ml::FFighterAttackScenario>(
+            ml::run_worldless_fighter_navigation_frequency);
     }
 
     TEST_METHOD(HUD_InitialCachesPopulateWithoutHUD)

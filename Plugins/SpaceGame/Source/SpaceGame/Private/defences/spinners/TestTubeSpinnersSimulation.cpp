@@ -97,6 +97,9 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
     ml::entity_registry::EntityData entity_data;
     entity_data.add_uninitialised(n);
     ml::assign_from(entity_data.locations, new_locations);
+    for (int32 i{}; i < n; ++i) {
+        ml::assign(entity_data.rotations, i, FRotator3f{0.f, new_yaws[i], 0.f});
+    }
     ml::fill(entity_data.velocities, 0.f);
     ml::fill(entity_data.radii, entity_radius);
     ml::fill(entity_data.healths, 1000000);

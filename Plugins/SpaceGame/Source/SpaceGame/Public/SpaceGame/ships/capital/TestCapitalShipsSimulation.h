@@ -167,6 +167,7 @@ struct SPACEGAME_API Simulation {
     TArray<FRegistryEntityHandle> fighter_handles_scratch;
     FighterReassignment fighter_reassignment_queue;
     int32 fighters_spawned{0};
+    int32 diagnostic_spawn_reports{};
 
     TArray<int32> indices_without_targets_buffer;
     TestCapitalShipFighterOrderQueue fighter_order_queue{};

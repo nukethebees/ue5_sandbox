@@ -9,7 +9,6 @@
 
 #include <Containers/Array.h>
 #include <Containers/ArrayView.h>
-#include <Containers/BitArray.h>
 #include <CoreMinimal.h>
 #include <SandboxCore/soa_vectors.h>
 
@@ -27,7 +26,8 @@ namespace ml::query_manager {
 struct FThreadBuffers {
     FLineTraces line_traces;
     FTraceHits trace_hits;
-    TBitArray<> range_query_seen_entities;
+    TArray<uint32> range_query_entity_stamps;
+    uint32 range_query_stamp{};
 };
 
 class FThreadBufferLease {
@@ -106,6 +106,12 @@ struct SPACEGAME_API FSpatialQueryManager {
         ETestTeam const team,
         float const radius,
         TArrayView<FRegistryEntityHandle> const out_entities) const -> int32;
+    auto collect_entities_of_type_in_range(FVector3f const& origin,
+                                           ETestEntityType entity_type,
+                                           float radius,
+                                           FRegistryEntityHandle ignored_entity,
+                                           TArrayView<FRegistryEntityHandle> out_entities) const
+        -> int32;
     auto get_any_non_team_entity(ETestTeam const team) const -> FRegistryEntityHandle;
     auto get_any_non_team_entity(ETestTeam const team, ETestEntityType const entity_type) const
         -> FRegistryEntityHandle;

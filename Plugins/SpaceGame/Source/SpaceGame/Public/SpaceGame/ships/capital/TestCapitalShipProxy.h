@@ -25,7 +25,9 @@ class ATestCapitalShipProxy
 
     void set_actor_config(FCapitalShipConfig const* const new_config) noexcept {
         actor_config = new_config;
+        level_config_asset = nullptr;
     }
+    void set_level_config_asset(USpaceGameLevelConfig* new_config) noexcept;
 
     auto get_team() const noexcept { return team; }
     auto get_target_ship() const noexcept { return target_ship; }
@@ -54,6 +56,10 @@ class ATestCapitalShipProxy
     void apply_asset_configuration();
     UFUNCTION(CallInEditor, Category = "Ship")
     void apply_asset_configuration_to_all_instances();
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void save_configuration_to_asset();
+    UFUNCTION(CallInEditor, Category = "Ship")
+    void diagnose_fighter_spawn_points();
 
     void set_test_name(FName const new_test_name) noexcept { test_name = new_test_name; }
     auto get_test_name() const noexcept -> FName override { return test_name; }
@@ -62,6 +68,9 @@ class ATestCapitalShipProxy
     void OnConstruction(FTransform const& transform) override;
 
     FCapitalShipConfig const* actor_config{nullptr};
+
+    UPROPERTY()
+    TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
     TObjectPtr<UStaticMeshComponent> mesh{nullptr};

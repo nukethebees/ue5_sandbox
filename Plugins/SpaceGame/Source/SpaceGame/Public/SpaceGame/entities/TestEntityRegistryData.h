@@ -10,6 +10,7 @@
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
+#include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors_3f.h"
 
 #include "Containers/AllowShrinking.h"
@@ -32,6 +33,7 @@ struct EntityDataConstView {
         return std::forward<TFunc>(func)(
             self.locations,
             self.velocities,
+            self.rotations,
             self.radii,
             self.healths,
             self.teams,
@@ -53,6 +55,7 @@ struct EntityDataConstView {
 
     FVectors3f::ConstView locations;
     FVectors3f::ConstView velocities;
+    FRotatorsf::ConstView rotations;
     TConstArrayView<float> radii;
     TConstArrayView<int32> healths;
     TConstArrayView<ETestTeam> teams;
@@ -64,9 +67,10 @@ struct EntityDataView {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) const {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, FRotatorsf::equivalent_type const new_rotations, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) const {
         locations.set(index, new_locations);
         velocities.set(index, new_velocities);
+        rotations.set(index, new_rotations);
         radii[index] = new_radii;
         healths[index] = new_healths;
         teams[index] = new_teams;
@@ -79,6 +83,7 @@ struct EntityDataView {
         return std::forward<TFunc>(func)(
             self.locations,
             self.velocities,
+            self.rotations,
             self.radii,
             self.healths,
             self.teams,
@@ -105,6 +110,7 @@ struct EntityDataView {
 
     FVectors3f::View locations;
     FVectors3f::View velocities;
+    FRotatorsf::View rotations;
     TArrayView<float> radii;
     TArrayView<int32> healths;
     TArrayView<ETestTeam> teams;
@@ -124,9 +130,10 @@ struct EntityData {
 
     void set_all_entity_types(ETestEntityType const value);
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, FRotatorsf::equivalent_type const new_rotations, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) {
         locations.set(index, new_locations);
         velocities.set(index, new_velocities);
+        rotations.set(index, new_rotations);
         radii[index] = new_radii;
         healths[index] = new_healths;
         teams[index] = new_teams;
@@ -134,10 +141,11 @@ struct EntityData {
         alive[index] = new_alive;
     }
 
-    auto add(FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) -> int32 {
+    auto add(FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, FRotatorsf::equivalent_type const new_rotations, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) -> int32 {
         auto const index{num()};
         locations.add(new_locations);
         velocities.add(new_velocities);
+        rotations.add(new_rotations);
         radii.Add(new_radii);
         healths.Add(new_healths);
         teams.Add(new_teams);
@@ -157,6 +165,7 @@ struct EntityData {
     void remove_at_swap(int32 const index, int32 const count, EAllowShrinking const allow_shrinking) {
         locations.remove_at_swap(index, count, allow_shrinking);
         velocities.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
         radii.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
@@ -170,6 +179,7 @@ struct EntityData {
     void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(velocities, dst_i, other.velocities, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
         ml::copy_element(radii, dst_i, other.radii, src_i);
         ml::copy_element(healths, dst_i, other.healths, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
@@ -181,6 +191,7 @@ struct EntityData {
     void copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(velocities, dst_i, other.velocities, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
         ml::copy_elements(radii, dst_i, other.radii, src_i, count);
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
@@ -200,6 +211,7 @@ struct EntityData {
         requires ml::SupportsApplyArrayPairsWith<EntityData, Other> {
         ml::append_from(locations, other.locations);
         ml::append_from(velocities, other.velocities);
+        ml::append_from(rotations, other.rotations);
         ml::append_from(radii, other.radii);
         ml::append_from(healths, other.healths);
         ml::append_from(teams, other.teams);
@@ -240,6 +252,7 @@ struct EntityData {
         return std::forward<TFunc>(func)(
             self.locations,
             self.velocities,
+            self.rotations,
             self.radii,
             self.healths,
             self.teams,
@@ -254,6 +267,7 @@ struct EntityData {
         return std::forward<TFunc>(func)(
             self.locations, other.locations,
             self.velocities, other.velocities,
+            self.rotations, other.rotations,
             self.radii, other.radii,
             self.healths, other.healths,
             self.teams, other.teams,
@@ -280,6 +294,7 @@ struct EntityData {
 
     FVectors3f locations;
     FVectors3f velocities;
+    FRotatorsf rotations;
     TArray<float> radii;
     TArray<int32> healths;
     TArray<ETestTeam> teams;

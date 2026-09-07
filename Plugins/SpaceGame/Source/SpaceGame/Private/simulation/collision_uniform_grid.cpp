@@ -1,7 +1,9 @@
 #include "SpaceGame/simulation/collision_uniform_grid.h"
 
+#include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityType.h>
+#include <SpaceGame/simulation/EntityWorldBounds.h>
 #include <SpaceGame/simulation/LineTraces.h>
 #include <SpaceGame/simulation/TraceHits.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
@@ -308,11 +310,13 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
             auto const entity_type{entity_data.entity_types[i]};
             auto const aabb_index{std::to_underlying(entity_type)};
             auto const entity_location{entity_data.locations[i]};
-            auto const local_aabb_centre{entity_aabbs.get_centre(aabb_index)};
-            auto const half_extents{entity_aabbs.get_half_extents(aabb_index)};
-            auto const world_aabb_centre{entity_location + local_aabb_centre};
-            auto const min_point{world_aabb_centre - half_extents};
-            auto const max_point{world_aabb_centre + half_extents};
+            auto const bounds{
+                make_entity_world_bounds(entity_aabbs,
+                                         aabb_index,
+                                         entity_location,
+                                         FRotator3f{ml::get_rotator3d(entity_data.rotations, i)})};
+            auto const min_point{bounds.Min};
+            auto const max_point{bounds.Max};
 
             auto const [min_coord, max_coord]{to_cell_coord_bounds(min_point, max_point)};
 

@@ -33,8 +33,12 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
@@ -70,8 +74,12 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
@@ -111,8 +119,12 @@ void EntityDataConstView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
+        ml::num(parent_handles),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
+        ml::num(separation_steering),
+        ml::num(navigation_risk_tiers),
+        ml::num(navigation_lower_risk_scan_counts),
         ml::num(avoidance_choice_indices),
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
@@ -160,8 +172,12 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
+        separation_steering.get_view(offset, count),
+        TArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
@@ -197,8 +213,12 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
@@ -234,8 +254,12 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
@@ -275,8 +299,12 @@ void EntityDataView::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
+        ml::num(parent_handles),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
+        ml::num(separation_steering),
+        ml::num(navigation_risk_tiers),
+        ml::num(navigation_lower_risk_scan_counts),
         ml::num(avoidance_choice_indices),
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),
@@ -331,8 +359,12 @@ void EntityData::reset() {
     ml::reset(speeds);
     ml::reset(teams);
     ml::reset(healths);
+    ml::reset(parent_handles);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
+    ml::reset(separation_steering);
+    ml::reset(navigation_risk_tiers);
+    ml::reset(navigation_lower_risk_scan_counts);
     ml::reset(avoidance_choice_indices);
     ml::reset(avoidance_clear_scan_counts);
     ml::reset(attack_reposition_countdowns);
@@ -362,8 +394,12 @@ void EntityData::reserve(int32 const count) {
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
     ml::reserve(healths, count);
+    ml::reserve(parent_handles, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
+    ml::reserve(separation_steering, count);
+    ml::reserve(navigation_risk_tiers, count);
+    ml::reserve(navigation_lower_risk_scan_counts, count);
     ml::reserve(avoidance_choice_indices, count);
     ml::reserve(avoidance_clear_scan_counts, count);
     ml::reserve(attack_reposition_countdowns, count);
@@ -393,8 +429,12 @@ void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(healths, count);
+    ml::add_uninitialised(parent_handles, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
+    ml::add_uninitialised(separation_steering, count);
+    ml::add_uninitialised(navigation_risk_tiers, count);
+    ml::add_uninitialised(navigation_lower_risk_scan_counts, count);
     ml::add_uninitialised(avoidance_choice_indices, count);
     ml::add_uninitialised(avoidance_clear_scan_counts, count);
     ml::add_uninitialised(attack_reposition_countdowns, count);
@@ -424,8 +464,12 @@ void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
     ml::add_defaulted(healths, count);
+    ml::add_defaulted(parent_handles, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
+    ml::add_defaulted(separation_steering, count);
+    ml::add_defaulted(navigation_risk_tiers, count);
+    ml::add_defaulted(navigation_lower_risk_scan_counts, count);
     ml::add_defaulted(avoidance_choice_indices, count);
     ml::add_defaulted(avoidance_clear_scan_counts, count);
     ml::add_defaulted(attack_reposition_countdowns, count);
@@ -455,8 +499,12 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(healths, count, allow_shrinking);
+    ml::set_num(parent_handles, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
+    ml::set_num(separation_steering, count, allow_shrinking);
+    ml::set_num(navigation_risk_tiers, count, allow_shrinking);
+    ml::set_num(navigation_lower_risk_scan_counts, count, allow_shrinking);
     ml::set_num(avoidance_choice_indices, count, allow_shrinking);
     ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
     ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
@@ -488,8 +536,12 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(healths, indices);
+    ml::apply_permutation(parent_handles, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
+    ml::apply_permutation(separation_steering, indices);
+    ml::apply_permutation(navigation_risk_tiers, indices);
+    ml::apply_permutation(navigation_lower_risk_scan_counts, indices);
     ml::apply_permutation(avoidance_choice_indices, indices);
     ml::apply_permutation(avoidance_clear_scan_counts, indices);
     ml::apply_permutation(attack_reposition_countdowns, indices);
@@ -524,8 +576,12 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
+        separation_steering.get_view(offset, count),
+        TArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_view(offset, count),
@@ -561,8 +617,12 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
@@ -598,8 +658,12 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<FRegistryEntityHandle>{parent_handles}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
         TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
         TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
         attack_reposition_countdowns.get_const_view(offset, count),
@@ -639,8 +703,12 @@ void EntityData::validate_array_sizes() const {
         ml::num(speeds),
         ml::num(teams),
         ml::num(healths),
+        ml::num(parent_handles),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
+        ml::num(separation_steering),
+        ml::num(navigation_risk_tiers),
+        ml::num(navigation_lower_risk_scan_counts),
         ml::num(avoidance_choice_indices),
         ml::num(avoidance_clear_scan_counts),
         ml::num(attack_reposition_countdowns),

@@ -65,9 +65,16 @@ auto make_simulation_config(FFighterConfig const& source) -> FFighterSimulationC
     result.fire_dot_product_threshold = source.fire_dot_product_threshold;
     result.speed = source.speed;
     result.turn_speed_unitless = source.turn_speed_unitless;
+    result.avoidance_clear_update_frequency = source.avoidance_clear_update_frequency;
     result.avoidance_update_frequency = source.avoidance_update_frequency;
+    result.avoidance_active_update_frequency = source.avoidance_active_update_frequency;
+    result.avoidance_immediate_update_frequency = source.avoidance_immediate_update_frequency;
     result.avoidance_lookahead_time = source.avoidance_lookahead_time;
     result.avoidance_clearance_buffer = source.avoidance_clearance_buffer;
+    result.separation_radius = source.separation_radius;
+    result.separation_strength = source.separation_strength;
+    result.steering_memory_duration = source.steering_memory_duration;
+    result.dense_traffic_neighbour_threshold = source.dense_traffic_neighbour_threshold;
     result.laser = make_simulation_config(source.laser);
     result.health = source.health;
     result.attack_retry_cooldown = source.attack_retry_cooldown;

@@ -267,7 +267,23 @@ struct SPACEGAME_API FFighterConfig {
     UPROPERTY(EditAnywhere,
               Category = "Movement|Avoidance",
               meta = (ClampMin = "0.001", Units = "Hz"))
+    float avoidance_clear_update_frequency{2.f};
+
+    // This is the nearby-traffic tier frequency.
+    UPROPERTY(EditAnywhere,
+              Category = "Movement|Avoidance",
+              meta = (ClampMin = "0.001", Units = "Hz"))
     float avoidance_update_frequency{5.f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Movement|Avoidance",
+              meta = (ClampMin = "0.001", Units = "Hz"))
+    float avoidance_active_update_frequency{12.f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Movement|Avoidance",
+              meta = (ClampMin = "0.001", Units = "Hz"))
+    float avoidance_immediate_update_frequency{30.f};
 
     UPROPERTY(EditAnywhere, Category = "Movement|Avoidance", meta = (ClampMin = "0.0", Units = "s"))
     float avoidance_lookahead_time{1.f};
@@ -276,6 +292,22 @@ struct SPACEGAME_API FFighterConfig {
               Category = "Movement|Avoidance",
               meta = (ClampMin = "0.0", Units = "cm"))
     float avoidance_clearance_buffer{100.f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Movement|Separation",
+              meta = (ClampMin = "0.001", Units = "cm"))
+    float separation_radius{2000.f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Separation", meta = (ClampMin = "0.0"))
+    float separation_strength{1.f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Movement|Separation",
+              meta = (ClampMin = "0.0", Units = "s"))
+    float steering_memory_duration{0.75f};
+
+    UPROPERTY(EditAnywhere, Category = "Movement|Separation", meta = (ClampMin = "2"))
+    int32 dense_traffic_neighbour_threshold{4};
 
     UPROPERTY(EditAnywhere, Category = "Combat")
     FLaserWeaponConfig laser{};

@@ -4,7 +4,6 @@
 
 #include "CollisionGridVisualizationComponent.generated.h"
 
-struct FTestEntityRegistry;
 struct FCollisionGridConfig;
 
 namespace ml::ioj {
@@ -19,8 +18,7 @@ class SPACEGAME_API UCollisionGridVisualizationComponent final : public UPrimiti
 
     void configure(FCollisionGridConfig const& config);
     void configure_collision_bounds(bool visible, float max_draw_distance);
-    void update_collision_bounds(FTestEntityRegistry const& entity_registry,
-                                 ml::ioj::FCollisionSystem const& collision_system);
+    void update_collision_bounds(ml::ioj::FCollisionSystem const& collision_system);
     void clear_collision_bounds();
     void clear();
 

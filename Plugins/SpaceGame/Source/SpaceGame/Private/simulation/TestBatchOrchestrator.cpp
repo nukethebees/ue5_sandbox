@@ -47,10 +47,6 @@
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
 #include <VisualLogger/VisualLogger.h>
 
-#if WITH_EDITOR
-#include <Editor.h>
-#endif
-
 namespace {
 auto end_play_reason_name(EEndPlayReason::Type const reason) -> FString {
     switch (reason) {
@@ -84,6 +80,18 @@ template <typename TActor, typename TConfig>
 void set_actor_config_on_all(UWorld& world, TConfig* const config) {
     for (TActorIterator<TActor> it{&world}; it; ++it) {
         apply_actor_config(**it, config);
+    }
+}
+
+void set_capital_proxy_config_on_all(UWorld& world, USpaceGameLevelConfig& config) {
+    for (TActorIterator<ATestCapitalShipProxy> it{&world}; it; ++it) {
+        auto& proxy{**it};
+#if WITH_EDITOR
+        if (!world.IsGameWorld()) {
+            proxy.Modify();
+        }
+#endif
+        proxy.set_level_config_asset(&config);
     }
 }
 
@@ -360,7 +368,7 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
 
     auto* const world{GetWorld()};
     if (IsValid(world)) {
-        set_actor_config_on_all<ATestCapitalShipProxy>(*world, &config.capital_ships);
+        set_capital_proxy_config_on_all(*world, config);
         set_actor_config_on_all<ATestStaticTurretsProxy>(*world, &config.turrets);
         set_actor_config_on_all<ATestTubeSpinnerProxy>(*world, &config.tube_spinners);
     }
@@ -547,6 +555,10 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
     }
     data.telemetry_metadata =
         make_level_telemetry_run_metadata(world, mission_definition, presentation_enabled);
+    ml::validate_world_fighter_spawn_slots(data, errors);
+    if (errors.has_errors()) {
+        return false;
+    }
     level_simulation_.Emplace(MoveTemp(data), presentation_enabled ? &presentation : nullptr);
     auto const capital_count{capital_proxies.Num()};
     for (int32 i{}; i < capital_count; ++i) {
@@ -712,8 +724,7 @@ void ATestBatchOrchestrator::handle_level_start_failure(FString message) {
 
     auto* const world{GetWorld()};
 #if WITH_EDITOR
-    if (!GIsAutomationTesting && IsValid(world) && world->WorldType == EWorldType::PIE && GEditor) {
-        GEditor->RequestEndPlayMap();
+    if (IsValid(world) && world->WorldType == EWorldType::PIE) {
         return;
     }
 #endif
@@ -875,7 +886,7 @@ void ATestBatchOrchestrator::update_collision_bounds_visualization() {
     }
 
     collision_grid_visualization->update_collision_bounds(
-        get_entity_registry(), get_spatial_query_manager().get_collision_system());
+        get_spatial_query_manager().get_collision_system());
 }
 
 void ATestBatchOrchestrator::validate_proxy_handles() {

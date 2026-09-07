@@ -109,6 +109,7 @@
         "members": [
           {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
           {"name": "velocities", "kind": "nested", "type": "@vectors_3f"},
+          {"name": "rotations", "kind": "nested", "type": "@rotators_f"},
           {"name": "radii", "kind": "array", "type": "float"},
           {"name": "healths", "kind": "array", "type": "int32"},
           {"name": "teams", "kind": "array", "type": "@team"},
@@ -120,7 +121,7 @@
             "name": "add_disabled", "return_type": "void", "definition_in_source": true,
             "parameters": [{"type": "int32 const", "name": "count"}],
             "dependencies": ["array_fill", "soa_vector_fill"],
-            "body": ["add_uninitialised(count);", "auto view{get_view()};", "auto slice{view.right(count)};", "", "ml::fill(slice.locations, 0.f);", "ml::fill(slice.velocities, 0.f);", "ml::fill(slice.radii, 0.f);", "ml::fill(slice.healths, 0);", "ml::fill(slice.teams, ETestTeam::White);", "ml::fill(slice.entity_types, ETestEntityType::COUNT);", "ml::fill(slice.alive, uint8{0u});"]
+            "body": ["add_uninitialised(count);", "auto view{get_view()};", "auto slice{view.right(count)};", "", "ml::fill(slice.locations, 0.f);", "ml::fill(slice.velocities, 0.f);", "ml::fill(slice.rotations.pitches, 0.f);", "ml::fill(slice.rotations.yaws, 0.f);", "ml::fill(slice.rotations.rolls, 0.f);", "ml::fill(slice.radii, 0.f);", "ml::fill(slice.healths, 0);", "ml::fill(slice.teams, ETestTeam::White);", "ml::fill(slice.entity_types, ETestEntityType::COUNT);", "ml::fill(slice.alive, uint8{0u});"]
           },
           {"name": "set_all_alive", "return_type": "void", "definition_in_source": true, "dependencies": ["array_fill"], "body": ["ml::fill(alive, uint8{1});"]},
           {"name": "set_all_velocities", "return_type": "void", "definition_in_source": true, "parameters": [{"type": "float const", "name": "value"}], "dependencies": ["soa_vector_fill"], "body": ["ml::fill(velocities, value);"]},

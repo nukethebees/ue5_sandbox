@@ -23,6 +23,7 @@
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/simulation/TraceHits.h>
 
+#include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <cmath>
@@ -45,10 +46,16 @@ struct FTraceFixture {
                   FVector3f const aabb_centre = FVector3f::ZeroVector,
                   FIntVector3 const fixture_grid_dims = trace_grid_dims,
                   FVector3f const fixture_cell_dims = trace_cell_dims,
-                  TConstArrayView<ETestEntityType> const fixture_entity_types = {}) {
+                  TConstArrayView<ETestEntityType> const fixture_entity_types = {},
+                  FRotator3f const rotation = FRotator3f::ZeroRotator) {
         FVectors3f registry_locations;
         FVectors3f velocities;
         auto const count{locations.Num()};
+        FRotatorsf rotations;
+        rotations.add_zeroed(count);
+        for (int32 i{}; i < count; ++i) {
+            ml::assign(rotations, i, rotation);
+        }
         registry_locations.reserve(count);
         velocities.reserve(count);
 
@@ -76,6 +83,7 @@ struct FTraceFixture {
         FTestEntityRegistry::EntityData::ConstView const entity_data{
             .locations = registry_locations.get_const_view(),
             .velocities = velocities.get_const_view(),
+            .rotations = rotations.get_const_view(),
             .radii = radii,
             .healths = healths,
             .teams = teams,
@@ -132,6 +140,7 @@ struct FTraceFixture {
         FTestEntityRegistry::EntityData::ConstView const entity_data{
             .locations = registry_locations.get_const_view(),
             .velocities = velocities.get_const_view(),
+            .rotations = {velocities.xs, velocities.ys, velocities.zs},
             .radii = radii,
             .healths = healths,
             .teams = teams,
@@ -168,6 +177,7 @@ struct FTraceFixture {
         FTestEntityRegistry::EntityData::ConstView const entity_data{
             .locations = registry_locations.get_const_view(),
             .velocities = velocities.get_const_view(),
+            .rotations = {velocities.xs, velocities.ys, velocities.zs},
             .radii = radii,
             .healths = healths,
             .teams = teams,
@@ -707,6 +717,52 @@ void FCollisionUniformGridTraceScenario::test_includes_negative_endpoint_boundar
 }
 
 void FCollisionUniformGridTraceScenario::test_applies_aabb_centre() {
+    // A quarter turn moves the offset centre into a different grid cell and swaps X/Y extents.
+    FTraceFixture rotated{TArray<FVector3f>{FVector3f::ZeroVector},
+                          FVector3f{20.f, 5.f, 10.f},
+                          FVector3f{150.f, 0.f, 0.f},
+                          trace_grid_dims,
+                          trace_cell_dims,
+                          {},
+                          FRotator3f{0.f, 90.f, 0.f}};
+    TArray<FVector3f> const rotated_starts{{-50.f, 150.f, 0.f}, {100.f, 0.f, 0.f}};
+    TArray<FVector3f> const rotated_ends{{50.f, 150.f, 0.f}, {200.f, 0.f, 0.f}};
+    auto const rotated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
+    checks.are_equal(
+        uint8{1}, rotated_hits.hits[0], TEXT("Trace finds rotated box in its new grid cell"));
+    checks.are_equal(uint8{0}, rotated_hits.hits[1], TEXT("Trace misses old unrotated box"));
+    checks.dist_zero(FVector3f{-5.f, 150.f, 0.f},
+                     rotated_hits.locations[0],
+                     0.001f,
+                     TEXT("Rotated box has swapped extents"));
+    auto const swept{run_sweeps(rotated, rotated_starts, rotated_ends, FVector3f{2.f, 2.f, 2.f})};
+    checks.are_equal(uint8{1}, swept.hits[0], TEXT("Sweep uses rotated cached box"));
+    checks.dist_zero(FVector3f{-7.f, 150.f, 0.f},
+                     swept.locations[0],
+                     0.001f,
+                     TEXT("Sweep expands rotated world bounds"));
+    auto const cached{rotated.grid.get_entity_world_bounds()};
+    checks.dist_zero(FVector3f{-5.f, 130.f, -10.f},
+                     cached.mins[0],
+                     0.001f,
+                     TEXT("Visualisation reads the same rotated cached bounds"));
+
+    rotated.update_entities(TArray<FVector3f>{FVector3f::ZeroVector}, TArray<uint8>{1});
+    auto const updated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
+    checks.are_equal(uint8{0},
+                     updated_hits.hits[0],
+                     TEXT("Registry rotation update removes old rotated bounds"));
+    checks.are_equal(
+        uint8{1}, updated_hits.hits[1], TEXT("Registry rotation update reaches grid queries"));
+    rotated.update_entities(TArray<FVector3f>{FVector3f::ZeroVector}, TArray<uint8>{0});
+    auto const reused_handle{rotated.add_entity(FVector3f::ZeroVector)};
+    checks.are_equal(
+        rotated.handles[0].index, reused_handle.index, TEXT("Fixture reuses registry slot"));
+    auto const reused_hits{run_traces(rotated, rotated_starts, rotated_ends)};
+    checks.are_equal(reused_handle,
+                     reused_hits.entities[1],
+                     TEXT("Reused slot has current bounds and generation"));
+
     FVector3f const entity_location{};
     FVector3f const local_aabb_centre{40.f, 0.f, 0.f};
     FVector3f const aabb_half_extents{10.f, 10.f, 10.f};

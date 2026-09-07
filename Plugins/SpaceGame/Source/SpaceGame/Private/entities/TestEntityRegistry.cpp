@@ -152,6 +152,7 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
 
         ml::assign_from(entity_data.locations, entity_index, view.locations, i);
         ml::assign_from(entity_data.velocities, entity_index, view.velocities, i);
+        ml::assign(entity_data.rotations, entity_index, ml::get_rotator3d(view.rotations, i));
 
         entity_data.radii[entity_index] = view.radii[i];
         entity_data.healths[entity_index] = view.healths[i];
@@ -221,6 +222,9 @@ void FTestEntityRegistry::commit_entity_updates() {
 
         ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
         ml::assign_from(entity_data.velocities, entity_index, queued_entity_data.velocities, i);
+        ml::assign(entity_data.rotations,
+                   entity_index,
+                   ml::get_rotator3d(queued_entity_data.rotations, i));
         entity_data.healths[entity_index] = queued_entity_data.healths[i];
         entity_data.teams[entity_index] = queued_entity_data.teams[i];
         entity_data.alive[entity_index] = queued_entity_data.alive[i];

@@ -1,6 +1,5 @@
 #include "SpaceGame/simulation/CollisionGridVisualizationComponent.h"
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/simulation/CollisionSystem.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
@@ -311,26 +310,18 @@ void UCollisionGridVisualizationComponent::configure_collision_bounds(
 }
 
 void UCollisionGridVisualizationComponent::update_collision_bounds(
-    FTestEntityRegistry const& entity_registry, ml::ioj::FCollisionSystem const& collision_system) {
+    ml::ioj::FCollisionSystem const& collision_system) {
     if (!show_collision_bounds_) {
         clear_collision_bounds();
         return;
     }
 
-    auto const& entity_data{entity_registry.get_entity_data()};
-    auto const& entity_aabbs{collision_system.get_entity_aabbs()};
-    auto const entity_count{entity_data.num()};
+    auto const entity_aabbs{collision_system.get_uniform_grid().get_entity_world_bounds()};
+    auto const entity_count{entity_aabbs.num()};
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
     for (int32 i{}; i < entity_count; ++i) {
-        if (entity_data.alive[i] == 0) {
-            continue;
-        }
-
-        auto const aabb_index{std::to_underlying(entity_data.entity_types[i])};
-        auto const centre{entity_data.locations[i] + entity_aabbs.get_centre(aabb_index)};
-        auto const half_extent{entity_aabbs.get_half_extents(aabb_index)};
-        entity_bounds_.Emplace(centre - half_extent, centre + half_extent);
+        entity_bounds_.Emplace(entity_aabbs.mins[i], entity_aabbs.maxes[i]);
     }
 
     auto const& static_aabbs{collision_system.get_uniform_grid().get_static_aabbs()};

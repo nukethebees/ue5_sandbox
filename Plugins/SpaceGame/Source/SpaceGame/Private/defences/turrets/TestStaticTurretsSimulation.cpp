@@ -43,7 +43,8 @@ void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulatio
 /* **************************************** */
 // Spawning
 /* **************************************** */
-auto Simulation::register_turrets(SpawnDataConstView const spawn_data)
+auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
+                                  FRotatorsf::ConstView const rotations)
     -> TArray<FRegistryEntityHandle> {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::register_turrets);
     spawn_data.validate_array_sizes();
@@ -97,6 +98,11 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data)
     RegistryEntityData new_entity_data;
     new_entity_data.add_uninitialised(n_to_add);
     ml::assign_from(new_entity_data.locations, spawn_data.locations);
+    for (int32 i{}; i < n_to_add; ++i) {
+        auto const rotation{ml::get_rotator3d(rotations, i)};
+        ml::assign(new_entity_data.rotations, i, rotation);
+        ml::assign(entities.rotations, first_new_index + i, rotation);
+    }
     ml::fill(new_entity_data.velocities, 0.f);
     ml::fill(new_entity_data.radii, entity_radius);
     new_entity_data.set_all_entity_types(ETestEntityType::Turret);
@@ -223,6 +229,7 @@ void Simulation::prepare_entity_update_data() {
     ml::add_uninitialised(entity_update_data, n);
 
     entity_update_data.locations = entities.locations;
+    entity_update_data.rotations = entities.rotations;
     ml::fill(entity_update_data.velocities, 0.f);
     ml::fill(entity_update_data.radii, entity_radius);
     entity_update_data.healths = entities.healths;

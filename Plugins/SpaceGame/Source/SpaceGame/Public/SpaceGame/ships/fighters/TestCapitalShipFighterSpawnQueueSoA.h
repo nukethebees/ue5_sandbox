@@ -33,6 +33,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueueConstView {
             self.locations,
             self.rotations,
             self.teams,
+            self.parents,
             self.targets
         );
     }
@@ -51,6 +52,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueueConstView {
     FVectors3f::ConstView locations;
     FRotatorsf::ConstView rotations;
     TConstArrayView<ETestTeam> teams;
+    TConstArrayView<FRegistryEntityHandle> parents;
     TConstArrayView<FRegistryEntityHandle> targets;
 };
 
@@ -58,10 +60,11 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueueView {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_targets) const {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_parents, FRegistryEntityHandle const new_targets) const {
         locations.set(index, new_locations);
         rotations.set(index, new_rotations);
         teams[index] = new_teams;
+        parents[index] = new_parents;
         targets[index] = new_targets;
     }
 
@@ -71,6 +74,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueueView {
             self.locations,
             self.rotations,
             self.teams,
+            self.parents,
             self.targets
         );
     }
@@ -94,6 +98,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueueView {
     FVectors3f::View locations;
     FRotatorsf::View rotations;
     TArrayView<ETestTeam> teams;
+    TArrayView<FRegistryEntityHandle> parents;
     TArrayView<FRegistryEntityHandle> targets;
 };
 
@@ -101,18 +106,20 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
-    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_targets) {
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_parents, FRegistryEntityHandle const new_targets) {
         locations.set(index, new_locations);
         rotations.set(index, new_rotations);
         teams[index] = new_teams;
+        parents[index] = new_parents;
         targets[index] = new_targets;
     }
 
-    auto add(FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_targets) -> int32 {
+    auto add(FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_parents, FRegistryEntityHandle const new_targets) -> int32 {
         auto const index{num()};
         locations.add(new_locations);
         rotations.add(new_rotations);
         teams.Add(new_teams);
+        parents.Add(new_parents);
         targets.Add(new_targets);
         return index;
     }
@@ -129,6 +136,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
         locations.remove_at_swap(index, count, allow_shrinking);
         rotations.remove_at_swap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
+        parents.RemoveAtSwap(index, count, allow_shrinking);
         targets.RemoveAtSwap(index, count, allow_shrinking);
     }
 
@@ -139,6 +147,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(rotations, dst_i, other.rotations, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(parents, dst_i, other.parents, src_i);
         ml::copy_element(targets, dst_i, other.targets, src_i);
     }
 
@@ -147,6 +156,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(parents, dst_i, other.parents, src_i, count);
         ml::copy_elements(targets, dst_i, other.targets, src_i, count);
     }
 
@@ -163,6 +173,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
         ml::append_from(locations, other.locations);
         ml::append_from(rotations, other.rotations);
         ml::append_from(teams, other.teams);
+        ml::append_from(parents, other.parents);
         ml::append_from(targets, other.targets);
     }
 
@@ -200,6 +211,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
             self.locations,
             self.rotations,
             self.teams,
+            self.parents,
             self.targets
         );
     }
@@ -211,6 +223,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
             self.locations, other.locations,
             self.rotations, other.rotations,
             self.teams, other.teams,
+            self.parents, other.parents,
             self.targets, other.targets
         );
     }
@@ -234,6 +247,7 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
     FVectors3f locations;
     FRotatorsf rotations;
     TArray<ETestTeam> teams;
+    TArray<FRegistryEntityHandle> parents;
     TArray<FRegistryEntityHandle> targets;
 };
 // clang-format on

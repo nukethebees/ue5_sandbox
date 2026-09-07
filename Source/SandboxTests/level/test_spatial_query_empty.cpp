@@ -50,6 +50,8 @@ void run_worldless_spatial_query_range(FAutomationTestBase& test,
     add_worldless_capital_spawn(data, FVector3f{1000.1f, 0.f, 0.f}, ETestTeam::Red);
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
+    auto const ignored_origin{harness.get_simulation().get_capital_ships()->get_handle(0)};
+    auto const friendly{harness.get_simulation().get_capital_ships()->get_handle(1)};
     auto const boundary_enemy{harness.get_simulation().get_capital_ships()->get_handle(2)};
     TStaticArray<FRegistryEntityHandle, 4> results;
     auto const count{
@@ -58,6 +60,17 @@ void run_worldless_spatial_query_range(FAutomationTestBase& test,
     test.TestEqual(TEXT("Only one enemy is within the inclusive radius"), count, 1);
     if (count == 1) {
         checks.are_equal(boundary_enemy, results[0], TEXT("Boundary enemy is included"));
+    }
+
+    auto const type_count{
+        harness.get_simulation().get_spatial_query_manager().collect_entities_of_type_in_range(
+            FVector3f::ZeroVector, ETestEntityType::CapitalShip, 1000.f, ignored_origin, results)};
+    test.TestEqual(
+        TEXT("Type-filtered query ignores self and includes two capitals"), type_count, 2);
+    if (type_count == 2) {
+        checks.are_equal(friendly, results[0], TEXT("Type-filtered order is deterministic"));
+        checks.are_equal(
+            boundary_enemy, results[1], TEXT("Type-filtered query includes the boundary entity"));
     }
 }
 

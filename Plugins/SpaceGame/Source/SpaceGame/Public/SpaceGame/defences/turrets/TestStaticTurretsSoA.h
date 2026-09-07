@@ -10,6 +10,7 @@
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/periodic_tick_countdown.h"
 #include "SandboxCore/soa_concepts.h"
+#include "SandboxCore/soa_rotators.h"
 #include "SandboxCore/soa_vectors_3f.h"
 #include "SandboxCore/tick_countdown.h"
 
@@ -253,6 +254,7 @@ struct SPACEGAME_API EntityDataConstView {
             self.integral_biases,
             self.locations,
             self.fire_point_locations,
+            self.rotations,
             self.teams,
             self.laser_cooldowns,
             self.laser_damages,
@@ -279,6 +281,7 @@ struct SPACEGAME_API EntityDataConstView {
     TConstArrayView<uint32> integral_biases;
     FVectors3f::ConstView locations;
     FVectors3f::ConstView fire_point_locations;
+    FRotatorsf::ConstView rotations;
     TConstArrayView<ETestTeam> teams;
     FTickCountdown16::ConstView laser_cooldowns;
     TConstArrayView<int32> laser_damages;
@@ -300,6 +303,7 @@ struct SPACEGAME_API EntityDataView {
             self.integral_biases,
             self.locations,
             self.fire_point_locations,
+            self.rotations,
             self.teams,
             self.laser_cooldowns,
             self.laser_damages,
@@ -331,6 +335,7 @@ struct SPACEGAME_API EntityDataView {
     TArrayView<uint32> integral_biases;
     FVectors3f::View locations;
     FVectors3f::View fire_point_locations;
+    FRotatorsf::View rotations;
     TArrayView<ETestTeam> teams;
     FTickCountdown16::View laser_cooldowns;
     TArrayView<int32> laser_damages;
@@ -358,6 +363,7 @@ struct SPACEGAME_API EntityData {
         integral_biases.RemoveAtSwap(index, count, allow_shrinking);
         locations.remove_at_swap(index, count, allow_shrinking);
         fire_point_locations.remove_at_swap(index, count, allow_shrinking);
+        rotations.remove_at_swap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         laser_cooldowns.remove_at_swap(index, count, allow_shrinking);
         laser_damages.RemoveAtSwap(index, count, allow_shrinking);
@@ -376,6 +382,7 @@ struct SPACEGAME_API EntityData {
         ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
         ml::copy_element(locations, dst_i, other.locations, src_i);
         ml::copy_element(fire_point_locations, dst_i, other.fire_point_locations, src_i);
+        ml::copy_element(rotations, dst_i, other.rotations, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(laser_cooldowns, dst_i, other.laser_cooldowns, src_i);
         ml::copy_element(laser_damages, dst_i, other.laser_damages, src_i);
@@ -392,6 +399,7 @@ struct SPACEGAME_API EntityData {
         ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
         ml::copy_elements(locations, dst_i, other.locations, src_i, count);
         ml::copy_elements(fire_point_locations, dst_i, other.fire_point_locations, src_i, count);
+        ml::copy_elements(rotations, dst_i, other.rotations, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(laser_cooldowns, dst_i, other.laser_cooldowns, src_i, count);
         ml::copy_elements(laser_damages, dst_i, other.laser_damages, src_i, count);
@@ -416,6 +424,7 @@ struct SPACEGAME_API EntityData {
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(locations, other.locations);
         ml::append_from(fire_point_locations, other.fire_point_locations);
+        ml::append_from(rotations, other.rotations);
         ml::append_from(teams, other.teams);
         ml::append_from(laser_cooldowns, other.laser_cooldowns);
         ml::append_from(laser_damages, other.laser_damages);
@@ -461,6 +470,7 @@ struct SPACEGAME_API EntityData {
             self.integral_biases,
             self.locations,
             self.fire_point_locations,
+            self.rotations,
             self.teams,
             self.laser_cooldowns,
             self.laser_damages,
@@ -480,6 +490,7 @@ struct SPACEGAME_API EntityData {
             self.integral_biases, other.integral_biases,
             self.locations, other.locations,
             self.fire_point_locations, other.fire_point_locations,
+            self.rotations, other.rotations,
             self.teams, other.teams,
             self.laser_cooldowns, other.laser_cooldowns,
             self.laser_damages, other.laser_damages,
@@ -511,6 +522,7 @@ struct SPACEGAME_API EntityData {
     TArray<uint32> integral_biases;
     FVectors3f locations;
     FVectors3f fire_point_locations;
+    FRotatorsf rotations;
     TArray<ETestTeam> teams;
     FTickCountdown16 laser_cooldowns;
     TArray<int32> laser_damages;

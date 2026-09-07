@@ -120,15 +120,40 @@ void USpaceGameLevelConfig::get_validation_errors(TArray<FString>& errors,
                        fighters.fire_dot_product_threshold >= -1.f &&
                        fighters.fire_dot_product_threshold <= 1.f,
                    "fighters.fire_dot_product_threshold must be finite and between -1 and 1");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_clear_update_frequency) &&
+                       fighters.avoidance_clear_update_frequency > 0.f,
+                   "fighters.avoidance_clear_update_frequency must be finite and positive");
     REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_update_frequency) &&
                        fighters.avoidance_update_frequency > 0.f,
                    "fighters.avoidance_update_frequency must be finite and positive");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_active_update_frequency) &&
+                       fighters.avoidance_active_update_frequency > 0.f,
+                   "fighters.avoidance_active_update_frequency must be finite and positive");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_immediate_update_frequency) &&
+                       fighters.avoidance_immediate_update_frequency > 0.f,
+                   "fighters.avoidance_immediate_update_frequency must be finite and positive");
+    REQUIRE_CONFIG(
+        fighters.avoidance_clear_update_frequency <= fighters.avoidance_update_frequency &&
+            fighters.avoidance_update_frequency <= fighters.avoidance_active_update_frequency &&
+            fighters.avoidance_active_update_frequency <=
+                fighters.avoidance_immediate_update_frequency,
+        "fighter avoidance update frequencies must be non-decreasing by risk tier");
     REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_lookahead_time) &&
                        fighters.avoidance_lookahead_time >= 0.f,
                    "fighters.avoidance_lookahead_time must be finite and non-negative");
     REQUIRE_CONFIG(FMath::IsFinite(fighters.avoidance_clearance_buffer) &&
                        fighters.avoidance_clearance_buffer >= 0.f,
                    "fighters.avoidance_clearance_buffer must be finite and non-negative");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.separation_radius) && fighters.separation_radius > 0.f,
+                   "fighters.separation_radius must be finite and positive");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.separation_strength) &&
+                       fighters.separation_strength >= 0.f,
+                   "fighters.separation_strength must be finite and non-negative");
+    REQUIRE_CONFIG(FMath::IsFinite(fighters.steering_memory_duration) &&
+                       fighters.steering_memory_duration >= 0.f,
+                   "fighters.steering_memory_duration must be finite and non-negative");
+    REQUIRE_CONFIG(fighters.dense_traffic_neighbour_threshold >= 2,
+                   "fighters.dense_traffic_neighbour_threshold must be at least two");
     REQUIRE_CONFIG(capital_ships.fighter_spawn_slots >= 0,
                    "capital_ships.fighter_spawn_slots must not be negative");
     REQUIRE_CONFIG(capital_ships.fighter_spawn_slots ==

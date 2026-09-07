@@ -48,6 +48,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void reset_for_new_level();
 
     void set_level_config(USpaceGameLevelConfig& config);
+    auto get_level_config() noexcept -> USpaceGameLevelConfig* { return level_config.Get(); }
     auto get_level_config() const noexcept -> USpaceGameLevelConfig const* {
         return level_config.Get();
     }

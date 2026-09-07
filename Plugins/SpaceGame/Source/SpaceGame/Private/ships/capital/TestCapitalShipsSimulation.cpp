@@ -3,6 +3,7 @@
 #include <SpaceGame/entities/TestBatchActorCore.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <SpaceGame/simulation/FighterDiagnostics.h>
 #include <SpaceGame/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
@@ -169,6 +170,9 @@ auto Simulation::register_ships(SpawnDataConstView const spawn_data)
     RegistryEntityData new_entity_data;
     new_entity_data.add_uninitialised(n_to_add);
     ml::assign_from(new_entity_data.locations, spawn_data.locations);
+    for (int32 i{}; i < n_to_add; ++i) {
+        ml::assign(new_entity_data.rotations, i, ml::get_rotator3d(spawn_data.rotations, i));
+    }
     ml::fill(new_entity_data.velocities, 0.f);
     ml::fill(new_entity_data.radii, entity_radius);
     new_entity_data.set_all_entity_types(ETestEntityType::CapitalShip);
@@ -212,6 +216,7 @@ void Simulation::prepare_entity_update_data() {
     auto const n{get_num_instances()};
     entity_update_data.add_uninitialised(n);
     entity_update_data.locations = entities.locations;
+    entity_update_data.rotations = entities.rotations;
     ml::fill(entity_update_data.velocities, 0.f);
     ml::fill(entity_update_data.radii, entity_radius);
     entity_update_data.healths = entities.healths;
@@ -229,6 +234,9 @@ auto Simulation::get_fighter_spawn_slots() const noexcept -> int32 {
     return config.fighter_spawn_slots;
 }
 void Simulation::queue_fighter_spawns() {
+    if (fighter_diagnostics::enabled.GetValueOnGameThread() == 0) {
+        diagnostic_spawn_reports = 0;
+    }
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::queue_fighter_spawns);
 
     auto& data{tick_buffers.current()};
@@ -269,9 +277,21 @@ void Simulation::queue_fighter_spawns() {
 
         for (auto const& relative_transform : relative_transforms) {
             auto const new_transform{relative_transform * base_transform};
+            if (fighter_diagnostics::take_report(diagnostic_spawn_reports, 64)) {
+                UE_LOG(LogSandbox,
+                       Display,
+                       TEXT("[FighterSpawn] Enqueue parentRegistryIndex=%d capitalIndex=%d "
+                            "base=%s slot=%s world=%s"),
+                       entities.handles[capital_index].index,
+                       capital_index,
+                       *base_transform.ToHumanReadableString(),
+                       *relative_transform.ToHumanReadableString(),
+                       *new_transform.ToHumanReadableString());
+            }
             fighter_queue.add(FVector3f{new_transform.GetLocation()},
                               FRotator3f{new_transform.Rotator()},
                               entities.teams[capital_index],
+                              entities.handles[capital_index],
                               entities.target_handles[capital_index]);
         }
         entities.fighter_spawn_timers.remaining_times[capital_index] =

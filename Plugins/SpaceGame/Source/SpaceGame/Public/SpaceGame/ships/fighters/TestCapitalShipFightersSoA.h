@@ -9,6 +9,7 @@
 
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/periodic_tick_countdown.h"
 #include "SandboxCore/soa_concepts.h"
 #include "SandboxCore/soa_vectors_3f.h"
 #include "SandboxCore/tick_countdown.h"
@@ -46,8 +47,12 @@ struct SPACEGAME_API EntityDataConstView {
             self.speeds,
             self.teams,
             self.healths,
+            self.parent_handles,
             self.awareness_scan_countdowns,
             self.navigation_update_countdowns,
+            self.separation_steering,
+            self.navigation_risk_tiers,
+            self.navigation_lower_risk_scan_counts,
             self.avoidance_choice_indices,
             self.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns,
@@ -88,8 +93,12 @@ struct SPACEGAME_API EntityDataConstView {
     TConstArrayView<float> speeds;
     TConstArrayView<ETestTeam> teams;
     TConstArrayView<int32> healths;
+    TConstArrayView<FRegistryEntityHandle> parent_handles;
     FTickCountdown8::ConstView awareness_scan_countdowns;
-    FTickCountdown8::ConstView navigation_update_countdowns;
+    FPeriodicTickCountdown16::ConstView navigation_update_countdowns;
+    FVectors3f::ConstView separation_steering;
+    TConstArrayView<uint8> navigation_risk_tiers;
+    TConstArrayView<uint8> navigation_lower_risk_scan_counts;
     TConstArrayView<int8> avoidance_choice_indices;
     TConstArrayView<uint8> avoidance_clear_scan_counts;
     FTickCountdown16::ConstView attack_reposition_countdowns;
@@ -125,8 +134,12 @@ struct SPACEGAME_API EntityDataView {
             self.speeds,
             self.teams,
             self.healths,
+            self.parent_handles,
             self.awareness_scan_countdowns,
             self.navigation_update_countdowns,
+            self.separation_steering,
+            self.navigation_risk_tiers,
+            self.navigation_lower_risk_scan_counts,
             self.avoidance_choice_indices,
             self.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns,
@@ -172,8 +185,12 @@ struct SPACEGAME_API EntityDataView {
     TArrayView<float> speeds;
     TArrayView<ETestTeam> teams;
     TArrayView<int32> healths;
+    TArrayView<FRegistryEntityHandle> parent_handles;
     FTickCountdown8::View awareness_scan_countdowns;
-    FTickCountdown8::View navigation_update_countdowns;
+    FPeriodicTickCountdown16::View navigation_update_countdowns;
+    FVectors3f::View separation_steering;
+    TArrayView<uint8> navigation_risk_tiers;
+    TArrayView<uint8> navigation_lower_risk_scan_counts;
     TArrayView<int8> avoidance_choice_indices;
     TArrayView<uint8> avoidance_clear_scan_counts;
     FTickCountdown16::View attack_reposition_countdowns;
@@ -215,8 +232,12 @@ struct SPACEGAME_API EntityData {
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
         healths.RemoveAtSwap(index, count, allow_shrinking);
+        parent_handles.RemoveAtSwap(index, count, allow_shrinking);
         awareness_scan_countdowns.remove_at_swap(index, count, allow_shrinking);
         navigation_update_countdowns.remove_at_swap(index, count, allow_shrinking);
+        separation_steering.remove_at_swap(index, count, allow_shrinking);
+        navigation_risk_tiers.RemoveAtSwap(index, count, allow_shrinking);
+        navigation_lower_risk_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
         avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
         avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
         attack_reposition_countdowns.remove_at_swap(index, count, allow_shrinking);
@@ -249,8 +270,12 @@ struct SPACEGAME_API EntityData {
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
         ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(parent_handles, dst_i, other.parent_handles, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
+        ml::copy_element(separation_steering, dst_i, other.separation_steering, src_i);
+        ml::copy_element(navigation_risk_tiers, dst_i, other.navigation_risk_tiers, src_i);
+        ml::copy_element(navigation_lower_risk_scan_counts, dst_i, other.navigation_lower_risk_scan_counts, src_i);
         ml::copy_element(avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i);
         ml::copy_element(avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i);
         ml::copy_element(attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
@@ -281,8 +306,12 @@ struct SPACEGAME_API EntityData {
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
         ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(parent_handles, dst_i, other.parent_handles, src_i, count);
         ml::copy_elements(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
         ml::copy_elements(navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i, count);
+        ml::copy_elements(separation_steering, dst_i, other.separation_steering, src_i, count);
+        ml::copy_elements(navigation_risk_tiers, dst_i, other.navigation_risk_tiers, src_i, count);
+        ml::copy_elements(navigation_lower_risk_scan_counts, dst_i, other.navigation_lower_risk_scan_counts, src_i, count);
         ml::copy_elements(avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i, count);
         ml::copy_elements(avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i, count);
         ml::copy_elements(attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
@@ -321,8 +350,12 @@ struct SPACEGAME_API EntityData {
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
+        ml::append_from(parent_handles, other.parent_handles);
         ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
         ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
+        ml::append_from(separation_steering, other.separation_steering);
+        ml::append_from(navigation_risk_tiers, other.navigation_risk_tiers);
+        ml::append_from(navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts);
         ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
         ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
@@ -382,8 +415,12 @@ struct SPACEGAME_API EntityData {
             self.speeds,
             self.teams,
             self.healths,
+            self.parent_handles,
             self.awareness_scan_countdowns,
             self.navigation_update_countdowns,
+            self.separation_steering,
+            self.navigation_risk_tiers,
+            self.navigation_lower_risk_scan_counts,
             self.avoidance_choice_indices,
             self.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns,
@@ -417,8 +454,12 @@ struct SPACEGAME_API EntityData {
             self.speeds, other.speeds,
             self.teams, other.teams,
             self.healths, other.healths,
+            self.parent_handles, other.parent_handles,
             self.awareness_scan_countdowns, other.awareness_scan_countdowns,
             self.navigation_update_countdowns, other.navigation_update_countdowns,
+            self.separation_steering, other.separation_steering,
+            self.navigation_risk_tiers, other.navigation_risk_tiers,
+            self.navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts,
             self.avoidance_choice_indices, other.avoidance_choice_indices,
             self.avoidance_clear_scan_counts, other.avoidance_clear_scan_counts,
             self.attack_reposition_countdowns, other.attack_reposition_countdowns,
@@ -464,8 +505,12 @@ struct SPACEGAME_API EntityData {
     TArray<float> speeds;
     TArray<ETestTeam> teams;
     TArray<int32> healths;
+    TArray<FRegistryEntityHandle> parent_handles;
     FTickCountdown8 awareness_scan_countdowns;
-    FTickCountdown8 navigation_update_countdowns;
+    FPeriodicTickCountdown16 navigation_update_countdowns;
+    FVectors3f separation_steering;
+    TArray<uint8> navigation_risk_tiers;
+    TArray<uint8> navigation_lower_risk_scan_counts;
     TArray<int8> avoidance_choice_indices;
     TArray<uint8> avoidance_clear_scan_counts;
     FTickCountdown16 attack_reposition_countdowns;

@@ -130,6 +130,9 @@ inline void append_from(FRotatorsf& vector, FRotatorsf const& to_append) {
 template <>
 struct AppendFromTraits<FRotatorsf> {
     static void append_from(FRotatorsf& dst, FRotatorsf const& src) { ml::append_from(dst, src); }
+    static void append_from(FRotatorsf& dst, FRotatorsf::ConstView const src) {
+        dst.append_from(src);
+    }
 };
 
 /* ---------------------------------------------------------------------------------------------- */

@@ -12,6 +12,9 @@ class UStaticMesh;
 namespace ml {
 using FLevelSimulationBuildResult = std::expected<FLevelSimulationInitData, FLevelStartErrors>;
 
+SPACEGAME_API void validate_world_fighter_spawn_slots(FLevelSimulationInitData const& data,
+                                                      FLevelStartErrors& errors);
+
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                     FFixedTickLoop const& clock_settings = {},

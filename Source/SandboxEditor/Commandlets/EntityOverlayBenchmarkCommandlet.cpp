@@ -17,6 +17,7 @@ auto make_view(FTestEntityRegistry::EntityData const& entities)
     -> FTestEntityRegistry::EntityData::ConstView {
     return {.locations = {entities.locations.xs, entities.locations.ys, entities.locations.zs},
             .velocities = {entities.velocities.xs, entities.velocities.ys, entities.velocities.zs},
+            .rotations = entities.rotations.get_const_view(),
             .radii = entities.radii,
             .healths = entities.healths,
             .teams = entities.teams,
@@ -57,6 +58,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     for (int32 index{0}; index < count; ++index) {
         entities.locations.add(positions[index]);
         entities.velocities.add(FVector3f::ZeroVector);
+        entities.rotations.add_zeroed(1);
         entities.radii.Add(radii[index]);
         entities.healths.Add(health[index]);
         entities.teams.Add(static_cast<ETestTeam>(index % static_cast<int32>(ETestTeam::COUNT)));

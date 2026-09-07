@@ -282,6 +282,7 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_const_view(offset, count),
         fire_point_locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
         TConstArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -303,6 +304,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_const_view(offset, count),
         fire_point_locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
         TConstArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -328,6 +330,7 @@ void EntityDataConstView::validate_array_sizes() const {
         ml::num(integral_biases),
         ml::num(locations),
         ml::num(fire_point_locations),
+        ml::num(rotations),
         ml::num(teams),
         ml::num(laser_cooldowns),
         ml::num(laser_damages),
@@ -361,6 +364,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_view(offset, count),
         fire_point_locations.get_view(offset, count),
+        rotations.get_view(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_view(offset, count),
         TArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -382,6 +386,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_const_view(offset, count),
         fire_point_locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
         TConstArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -403,6 +408,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_const_view(offset, count),
         fire_point_locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
         TConstArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -428,6 +434,7 @@ void EntityDataView::validate_array_sizes() const {
         ml::num(integral_biases),
         ml::num(locations),
         ml::num(fire_point_locations),
+        ml::num(rotations),
         ml::num(teams),
         ml::num(laser_cooldowns),
         ml::num(laser_damages),
@@ -468,6 +475,7 @@ void EntityData::reset() {
     ml::reset(integral_biases);
     ml::reset(locations);
     ml::reset(fire_point_locations);
+    ml::reset(rotations);
     ml::reset(teams);
     ml::reset(laser_cooldowns);
     ml::reset(laser_damages);
@@ -483,6 +491,7 @@ void EntityData::reserve(int32 const count) {
     ml::reserve(integral_biases, count);
     ml::reserve(locations, count);
     ml::reserve(fire_point_locations, count);
+    ml::reserve(rotations, count);
     ml::reserve(teams, count);
     ml::reserve(laser_cooldowns, count);
     ml::reserve(laser_damages, count);
@@ -498,6 +507,7 @@ void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(integral_biases, count);
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(fire_point_locations, count);
+    ml::add_uninitialised(rotations, count);
     ml::add_uninitialised(teams, count);
     ml::add_uninitialised(laser_cooldowns, count);
     ml::add_uninitialised(laser_damages, count);
@@ -513,6 +523,7 @@ void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(integral_biases, count);
     ml::add_defaulted(locations, count);
     ml::add_defaulted(fire_point_locations, count);
+    ml::add_defaulted(rotations, count);
     ml::add_defaulted(teams, count);
     ml::add_defaulted(laser_cooldowns, count);
     ml::add_defaulted(laser_damages, count);
@@ -528,6 +539,7 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(integral_biases, count, allow_shrinking);
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(fire_point_locations, count, allow_shrinking);
+    ml::set_num(rotations, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
     ml::set_num(laser_cooldowns, count, allow_shrinking);
     ml::set_num(laser_damages, count, allow_shrinking);
@@ -545,6 +557,7 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(integral_biases, indices);
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(fire_point_locations, indices);
+    ml::apply_permutation(rotations, indices);
     ml::apply_permutation(teams, indices);
     ml::apply_permutation(laser_cooldowns, indices);
     ml::apply_permutation(laser_damages, indices);
@@ -565,6 +578,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_view(offset, count),
         fire_point_locations.get_view(offset, count),
+        rotations.get_view(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_view(offset, count),
         TArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -586,6 +600,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_const_view(offset, count),
         fire_point_locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
         TConstArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -607,6 +622,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
         locations.get_const_view(offset, count),
         fire_point_locations.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
         laser_cooldowns.get_const_view(offset, count),
         TConstArrayView<int32>{laser_damages}.Slice(offset, count),
@@ -632,6 +648,7 @@ void EntityData::validate_array_sizes() const {
         ml::num(integral_biases),
         ml::num(locations),
         ml::num(fire_point_locations),
+        ml::num(rotations),
         ml::num(teams),
         ml::num(laser_cooldowns),
         ml::num(laser_damages),

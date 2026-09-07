@@ -73,7 +73,8 @@ struct SPACEGAME_API Simulation {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto register_turrets(SpawnDataConstView spawn_data) -> TArray<FRegistryEntityHandle>;
+    auto register_turrets(SpawnDataConstView spawn_data, FRotatorsf::ConstView rotations)
+        -> TArray<FRegistryEntityHandle>;
 
     /* **************************************** */
     // Entity data

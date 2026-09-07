@@ -24,6 +24,9 @@ void EntityData::add_disabled(int32 const count) {
 
     ml::fill(slice.locations, 0.f);
     ml::fill(slice.velocities, 0.f);
+    ml::fill(slice.rotations.pitches, 0.f);
+    ml::fill(slice.rotations.yaws, 0.f);
+    ml::fill(slice.rotations.rolls, 0.f);
     ml::fill(slice.radii, 0.f);
     ml::fill(slice.healths, 0);
     ml::fill(slice.teams, ETestTeam::White);
@@ -51,6 +54,7 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
     return ConstView{
         locations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<float>{radii}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -67,6 +71,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
     return ConstView{
         locations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<float>{radii}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -87,6 +92,7 @@ void EntityDataConstView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
         ml::num(velocities),
+        ml::num(rotations),
         ml::num(radii),
         ml::num(healths),
         ml::num(teams),
@@ -115,6 +121,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
         velocities.get_view(offset, count),
+        rotations.get_view(offset, count),
         TArrayView<float>{radii}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -131,6 +138,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
     return ConstView{
         locations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<float>{radii}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -147,6 +155,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
     return ConstView{
         locations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<float>{radii}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -167,6 +176,7 @@ void EntityDataView::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
         ml::num(velocities),
+        ml::num(rotations),
         ml::num(radii),
         ml::num(healths),
         ml::num(teams),
@@ -202,6 +212,7 @@ auto EntityDataView::right(int32 const count) const -> ConstView {
 void EntityData::reset() {
     ml::reset(locations);
     ml::reset(velocities);
+    ml::reset(rotations);
     ml::reset(radii);
     ml::reset(healths);
     ml::reset(teams);
@@ -212,6 +223,7 @@ void EntityData::reset() {
 void EntityData::reserve(int32 const count) {
     ml::reserve(locations, count);
     ml::reserve(velocities, count);
+    ml::reserve(rotations, count);
     ml::reserve(radii, count);
     ml::reserve(healths, count);
     ml::reserve(teams, count);
@@ -222,6 +234,7 @@ void EntityData::reserve(int32 const count) {
 void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(locations, count);
     ml::add_uninitialised(velocities, count);
+    ml::add_uninitialised(rotations, count);
     ml::add_uninitialised(radii, count);
     ml::add_uninitialised(healths, count);
     ml::add_uninitialised(teams, count);
@@ -232,6 +245,7 @@ void EntityData::add_uninitialised(int32 const count) {
 void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(locations, count);
     ml::add_defaulted(velocities, count);
+    ml::add_defaulted(rotations, count);
     ml::add_defaulted(radii, count);
     ml::add_defaulted(healths, count);
     ml::add_defaulted(teams, count);
@@ -242,6 +256,7 @@ void EntityData::add_defaulted(int32 const count) {
 void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
     ml::set_num(locations, count, allow_shrinking);
     ml::set_num(velocities, count, allow_shrinking);
+    ml::set_num(rotations, count, allow_shrinking);
     ml::set_num(radii, count, allow_shrinking);
     ml::set_num(healths, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
@@ -254,6 +269,7 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     check(indices.Num() == num());
     ml::apply_permutation(locations, indices);
     ml::apply_permutation(velocities, indices);
+    ml::apply_permutation(rotations, indices);
     ml::apply_permutation(radii, indices);
     ml::apply_permutation(healths, indices);
     ml::apply_permutation(teams, indices);
@@ -269,6 +285,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
     return View{
         locations.get_view(offset, count),
         velocities.get_view(offset, count),
+        rotations.get_view(offset, count),
         TArrayView<float>{radii}.Slice(offset, count),
         TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -285,6 +302,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
     return ConstView{
         locations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<float>{radii}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -301,6 +319,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
     return ConstView{
         locations.get_const_view(offset, count),
         velocities.get_const_view(offset, count),
+        rotations.get_const_view(offset, count),
         TConstArrayView<float>{radii}.Slice(offset, count),
         TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<ETestTeam>{teams}.Slice(offset, count),
@@ -321,6 +340,7 @@ void EntityData::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         ml::num(locations),
         ml::num(velocities),
+        ml::num(rotations),
         ml::num(radii),
         ml::num(healths),
         ml::num(teams),

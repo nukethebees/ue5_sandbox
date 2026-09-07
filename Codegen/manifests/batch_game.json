@@ -21,8 +21,12 @@
         {"name":"speeds","kind":"array","type":"float"},
         {"name":"teams","kind":"array","type":"@team"},
         {"name":"healths","kind":"array","type":"int32"},
+        {"name":"parent_handles","kind":"array","type":"@registry_handle"},
         {"name":"awareness_scan_countdowns","kind":"nested","type":"@tick_countdown_8"},
-        {"name":"navigation_update_countdowns","kind":"nested","type":"@tick_countdown_8"},
+        {"name":"navigation_update_countdowns","kind":"nested","type":"@periodic_tick_countdown_16"},
+        {"name":"separation_steering","kind":"nested","type":"@vectors_3f"},
+        {"name":"navigation_risk_tiers","kind":"array","type":"uint8"},
+        {"name":"navigation_lower_risk_scan_counts","kind":"array","type":"uint8"},
         {"name":"avoidance_choice_indices","kind":"array","type":"int8"},
         {"name":"avoidance_clear_scan_counts","kind":"array","type":"uint8"},
         {"name":"attack_reposition_countdowns","kind":"nested","type":"@tick_countdown_16"},
@@ -105,7 +109,8 @@
       "header_include":"SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h", "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
       "structs":[{"name":"TestCapitalShipFighterSpawnQueue","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
         {"name":"locations","kind":"nested","type":"@vectors_3f"}, {"name":"rotations","kind":"nested","type":"@rotators_f"},
-        {"name":"teams","kind":"array","type":"@team"}, {"name":"targets","kind":"array","type":"@registry_handle"}
+        {"name":"teams","kind":"array","type":"@team"}, {"name":"parents","kind":"array","type":"@registry_handle"},
+        {"name":"targets","kind":"array","type":"@registry_handle"}
       ]}]
     },
     {
@@ -138,6 +143,7 @@
       {"name":"EntityData","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
         {"name":"handles","kind":"array","type":"@registry_handle"}, {"name":"integral_biases","kind":"array","type":"uint32"},
         {"name":"locations","kind":"nested","type":"@vectors_3f"}, {"name":"fire_point_locations","kind":"nested","type":"@vectors_3f"},
+        {"name":"rotations","kind":"nested","type":"@rotators_f"},
         {"name":"teams","kind":"array","type":"@team"}, {"name":"laser_cooldowns","kind":"nested","type":"@tick_countdown_16"},
         {"name":"laser_damages","kind":"array","type":"int32"}, {"name":"target_refresh_countdowns","kind":"nested","type":"@periodic_tick_countdown_16"},
         {"name":"target_handles","kind":"array","type":"@registry_handle"}, {"name":"target_locations","kind":"nested","type":"@vectors_3f"},

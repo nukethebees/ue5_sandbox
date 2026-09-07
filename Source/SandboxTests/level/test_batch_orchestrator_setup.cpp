@@ -430,6 +430,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     FTestEntityRegistry::EntityData::ConstView const fixture_entity_data{
         .locations = FVectors3fConstView{locations_x, locations_y, locations_z},
         .velocities = FVectors3fConstView{velocities_x, velocities_y, velocities_z},
+        .rotations = {velocities_x, velocities_y, velocities_z},
         .radii = radii,
         .healths = healths,
         .teams = teams,
