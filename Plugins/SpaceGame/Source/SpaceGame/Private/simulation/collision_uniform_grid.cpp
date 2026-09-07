@@ -437,7 +437,7 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
     }
 }
 
-template <bool ExpandBounds>
+template <CollisionUniformGrid::ETraceKind TraceKind>
 auto CollisionUniformGrid::trace_aabb(WorldAABBs::ConstView const& aabbs,
                                       int32 const aabb_index,
                                       FVector3f const trace_start,
@@ -448,9 +448,11 @@ auto CollisionUniformGrid::trace_aabb(WorldAABBs::ConstView const& aabbs,
 
     auto aabb_min{aabbs.mins[aabb_index]};
     auto aabb_max{aabbs.maxes[aabb_index]};
-    if constexpr (ExpandBounds) {
+    if constexpr (TraceKind == ETraceKind::Sweep) {
         aabb_min -= expansion;
         aabb_max += expansion;
+    } else if constexpr (TraceKind != ETraceKind::Line) {
+        static_assert(false, "Unsupported collision trace kind.");
     }
 
     float tmin{0.f};
@@ -488,7 +490,7 @@ auto CollisionUniformGrid::trace_aabb(WorldAABBs::ConstView const& aabbs,
 void CollisionUniformGrid::trace_aabbs(FLineTracesConstView const& traces,
                                        FTraceHitsView const& hits) const {
     line_trace_count_.fetch_add(static_cast<uint64>(traces.num()), std::memory_order_relaxed);
-    trace_aabbs_impl<false, false, ETraceEntityFilter::None>(
+    trace_aabbs_impl<ETraceKind::Line, EIgnoredEntityMode::None, ETraceEntityFilter::None>(
         traces, hits, {}, FVector3f::ZeroVector);
 }
 
@@ -497,7 +499,7 @@ void CollisionUniformGrid::trace_aabbs(
     FTraceHitsView const& hits,
     TConstArrayView<FRegistryEntityHandle> const ignored_entities) const {
     line_trace_count_.fetch_add(static_cast<uint64>(traces.num()), std::memory_order_relaxed);
-    trace_aabbs_impl<false, true, ETraceEntityFilter::None>(
+    trace_aabbs_impl<ETraceKind::Line, EIgnoredEntityMode::PerTrace, ETraceEntityFilter::None>(
         traces, hits, ignored_entities, FVector3f::ZeroVector);
 }
 
@@ -517,19 +519,27 @@ void
     switch (entity_filter) {
         case ETraceEntityFilter::None:
             if (ignored_entities.IsEmpty()) {
-                trace_aabbs_impl<true, false, ETraceEntityFilter::None>(
+                trace_aabbs_impl<ETraceKind::Sweep,
+                                 EIgnoredEntityMode::None,
+                                 ETraceEntityFilter::None>(
                     centre_paths, hits, ignored_entities, moving_half_extent);
             } else {
-                trace_aabbs_impl<true, true, ETraceEntityFilter::None>(
+                trace_aabbs_impl<ETraceKind::Sweep,
+                                 EIgnoredEntityMode::PerTrace,
+                                 ETraceEntityFilter::None>(
                     centre_paths, hits, ignored_entities, moving_half_extent);
             }
             return;
         case ETraceEntityFilter::ExcludeCapitalShipFighters:
             if (ignored_entities.IsEmpty()) {
-                trace_aabbs_impl<true, false, ETraceEntityFilter::ExcludeCapitalShipFighters>(
+                trace_aabbs_impl<ETraceKind::Sweep,
+                                 EIgnoredEntityMode::None,
+                                 ETraceEntityFilter::ExcludeCapitalShipFighters>(
                     centre_paths, hits, ignored_entities, moving_half_extent);
             } else {
-                trace_aabbs_impl<true, true, ETraceEntityFilter::ExcludeCapitalShipFighters>(
+                trace_aabbs_impl<ETraceKind::Sweep,
+                                 EIgnoredEntityMode::PerTrace,
+                                 ETraceEntityFilter::ExcludeCapitalShipFighters>(
                     centre_paths, hits, ignored_entities, moving_half_extent);
             }
             return;
@@ -553,7 +563,9 @@ auto CollisionUniformGrid::get_runtime_telemetry() const noexcept
     };
 }
 
-template <bool UsePaddedTraversal, bool HasIgnoredEntities, ETraceEntityFilter EntityFilter>
+template <CollisionUniformGrid::ETraceKind TraceKind,
+          CollisionUniformGrid::EIgnoredEntityMode IgnoredEntityMode,
+          ETraceEntityFilter EntityFilter>
 void CollisionUniformGrid::trace_aabbs_impl(
     FLineTracesConstView const& traces,
     FTraceHitsView const& hits,
@@ -563,8 +575,10 @@ void CollisionUniformGrid::trace_aabbs_impl(
 
     auto const n{traces.num()};
     check(n == hits.num());
-    if constexpr (HasIgnoredEntities) {
+    if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {
         check(ignored_entities.Num() == n);
+    } else if constexpr (IgnoredEntityMode != EIgnoredEntityMode::None) {
+        static_assert(false, "Unsupported ignored entity mode.");
     }
 
     auto const grid_width{grid_dims_.X};
@@ -623,12 +637,14 @@ void CollisionUniformGrid::trace_aabbs_impl(
             }
         }};
     FIntVector3 cell_padding{};
-    if constexpr (UsePaddedTraversal) {
+    if constexpr (TraceKind == ETraceKind::Sweep) {
         cell_padding = {
             FMath::CeilToInt(moving_half_extent.X / cell_dims_.X),
             FMath::CeilToInt(moving_half_extent.Y / cell_dims_.Y),
             FMath::CeilToInt(moving_half_extent.Z / cell_dims_.Z),
         };
+    } else if constexpr (TraceKind != ETraceKind::Line) {
+        static_assert(false, "Unsupported collision trace kind.");
     }
 
     for (int32 i_test{0}; i_test < n; ++i_test) {
@@ -682,8 +698,10 @@ void CollisionUniformGrid::trace_aabbs_impl(
         FRegistryEntityHandle nearest_entity;
         int32 nearest_static_index{INDEX_NONE};
         FRegistryEntityHandle ignored_entity{};
-        if constexpr (HasIgnoredEntities) {
+        if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {
             ignored_entity = ignored_entities[i_test];
+        } else if constexpr (IgnoredEntityMode != EIgnoredEntityMode::None) {
+            static_assert(false, "Unsupported ignored entity mode.");
         }
         auto const trace_cell{[&](int32 const cell_index) {
             auto const entity_offset{cell_entity_offsets_[cell_index]};
@@ -695,19 +713,23 @@ void CollisionUniformGrid::trace_aabbs_impl(
                 auto const aabbs{aabbs_.get_const_view(entity_offset, entity_count)};
 
                 for (int32 i_entity{0}; i_entity < entity_count; ++i_entity) {
-                    if constexpr (HasIgnoredEntities) {
+                    if constexpr (IgnoredEntityMode == EIgnoredEntityMode::PerTrace) {
                         if (entities[i_entity] == ignored_entity) {
                             continue;
                         }
+                    } else if constexpr (IgnoredEntityMode != EIgnoredEntityMode::None) {
+                        static_assert(false, "Unsupported ignored entity mode.");
                     }
                     if constexpr (EntityFilter == ETraceEntityFilter::ExcludeCapitalShipFighters) {
                         if (entity_registry_->get_entity_type(entities[i_entity]) ==
                             ETestEntityType::CapitalShipFighter) {
                             continue;
                         }
+                    } else if constexpr (EntityFilter != ETraceEntityFilter::None) {
+                        static_assert(false, "Unsupported trace entity filter.");
                     }
 
-                    auto const hit_t{trace_aabb<UsePaddedTraversal>(
+                    auto const hit_t{trace_aabb<TraceKind>(
                         aabbs, i_entity, p0, inv_delta, delta, moving_half_extent)};
                     if (hit_t < nearest_t) {
                         nearest_t = hit_t;
@@ -730,7 +752,7 @@ void CollisionUniformGrid::trace_aabbs_impl(
                 static_aabb_indices.Slice(static_cast<int32>(offset), static_cast<int32>(count))};
 
             for (auto const static_index : static_indices) {
-                auto const hit_t{trace_aabb<UsePaddedTraversal>(
+                auto const hit_t{trace_aabb<TraceKind>(
                     static_aabbs, static_index, p0, inv_delta, delta, moving_half_extent)};
                 if (hit_t < nearest_t) {
                     nearest_t = hit_t;
@@ -752,7 +774,7 @@ void CollisionUniformGrid::trace_aabbs_impl(
             return true;
         }};
 
-        if constexpr (UsePaddedTraversal) {
+        if constexpr (TraceKind == ETraceKind::Sweep) {
             auto const trace_z_range{
                 [&](int32 const x, int32 const y, int32 const min_z, int32 const max_z) {
                     auto cell_index{x + y * grid_width + min_z * grid_plane_stride};
@@ -842,13 +864,15 @@ void CollisionUniformGrid::trace_aabbs_impl(
                 previous_min_cell = min_cell;
                 previous_max_cell = max_cell;
             }
-        } else {
+        } else if constexpr (TraceKind == ETraceKind::Line) {
             while (true) {
                 trace_cell(to_linear_index(current_cell));
                 if (!try_advance_traversal()) {
                     break;
                 }
             }
+        } else {
+            static_assert(false, "Unsupported collision trace kind.");
         }
 
         if (FMath::IsFinite(nearest_t)) {
