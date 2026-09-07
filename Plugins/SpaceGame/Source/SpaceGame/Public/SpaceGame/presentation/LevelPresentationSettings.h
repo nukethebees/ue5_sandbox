@@ -148,6 +148,26 @@ struct FRadarSettings {
               Category = "Radar|Grid",
               meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
     float strategic_cell_radius{0.025f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs",
+              meta = (ClampMin = "0.5", ClampMax = "2.0", UIMin = "0.5", UIMax = "2.0"))
+    float glyph_size_scale{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs|Objectives",
+              meta = (ClampMin = "1.0", ClampMax = "2.0", UIMin = "1.0", UIMax = "2.0"))
+    float objective_size_multiplier{1.2f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs|Objectives",
+              meta = (ClampMin = "0.0", ClampMax = "12.0", UIMin = "0.0", UIMax = "12.0"))
+    float objective_ring_padding_pixels{3.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs|Objectives",
+              meta = (ClampMin = "0.5", ClampMax = "4.0", UIMin = "0.5", UIMax = "4.0"))
+    float objective_ring_thickness_pixels{1.25f};
 };
 
 USTRUCT()

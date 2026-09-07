@@ -85,12 +85,13 @@ void URadar3DShowcase::populate_frame(int32 const contact_count) {
                                   -0.12f,
                                   -0.35f + 0.35f * static_cast<float>(index - 12)};
             }
+            auto const glyph{static_cast<ERadarGlyph>(1 + index % 6)};
+            auto const heading{glyph == ERadarGlyph::Fighter ? angle + UE_HALF_PI : 0.0f};
             instances.Add({
                 .radar_position = radar_position,
                 .size_scale = 1.0f,
                 .packed_color = pack_radar_color(colors[index % UE_ARRAY_COUNT(colors)]),
-                .packed_glyph_and_flags =
-                    pack_radar_display(static_cast<ERadarGlyph>(1 + index % 6), flags),
+                .packed_glyph_and_flags = pack_radar_display(glyph, flags, heading),
             });
         }
     }

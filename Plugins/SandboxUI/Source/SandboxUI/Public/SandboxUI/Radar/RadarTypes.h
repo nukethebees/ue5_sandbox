@@ -61,10 +61,15 @@ struct SANDBOXUI_API FRadarStyle {
     float strategic_cell_radius{0.025f};
     float stem_opacity{0.42f};
     float glyph_intensity{1.0f};
+    float glyph_size_scale{1.0f};
+    float objective_size_multiplier{1.2f};
+    float objective_ring_padding_pixels{3.0f};
+    float objective_ring_thickness_pixels{1.25f};
     float contact_glow_opacity{0.0f};
     float emphasized_glow_opacity{0.06f};
 };
 
 [[nodiscard]] SANDBOXUI_API auto pack_radar_color(FLinearColor color) -> uint32;
-[[nodiscard]] SANDBOXUI_API auto pack_radar_display(ERadarGlyph glyph, ERadarContactFlags flags)
-    -> uint32;
+[[nodiscard]] SANDBOXUI_API auto pack_radar_display(ERadarGlyph glyph,
+                                                    ERadarContactFlags flags,
+                                                    float heading_radians = 0.0f) -> uint32;

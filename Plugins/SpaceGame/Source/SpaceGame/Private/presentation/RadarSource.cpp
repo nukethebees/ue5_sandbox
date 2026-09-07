@@ -136,6 +136,13 @@ auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
         FMath::Clamp(settings.combat_cell_radius, settings.tactical_cell_radius, 1.0f);
     settings.core_cell_radius =
         FMath::Clamp(settings.core_cell_radius, settings.combat_cell_radius, 1.0f);
+    settings.glyph_size_scale = FMath::Clamp(settings.glyph_size_scale, 0.5f, 2.0f);
+    settings.objective_size_multiplier =
+        FMath::Clamp(settings.objective_size_multiplier, 1.0f, 2.0f);
+    settings.objective_ring_padding_pixels =
+        FMath::Clamp(settings.objective_ring_padding_pixels, 0.0f, 12.0f);
+    settings.objective_ring_thickness_pixels =
+        FMath::Clamp(settings.objective_ring_thickness_pixels, 0.5f, 4.0f);
     return settings;
 }
 
@@ -196,13 +203,22 @@ auto collect_radar_instances(ml::entity_registry::EntityData::ConstView const en
             auto const local_delta{
                 FVector3f{no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
             auto const entity_type{entities.entity_types[index]};
+            auto heading_radians{0.0f};
+            if (entity_type == ETestEntityType::CapitalShipFighter) {
+                auto const world_velocity{entities.velocities[index]};
+                auto const local_velocity{FVector3f{
+                    no_roll_transform.InverseTransformVectorNoScale(FVector{world_velocity})}};
+                if (FVector2f{local_velocity.X, local_velocity.Y}.SizeSquared() > UE_SMALL_NUMBER) {
+                    heading_radians = FMath::Atan2(local_velocity.Y, local_velocity.X);
+                }
+            }
             output_frame.instances.Add({
                 .radar_position = ml::radar_source::to_radar_position(local_delta, settings, curve),
                 .size_scale = ml::radar_source::size_scale(entity_type),
                 .packed_color = pack_radar_color(
                     ml::radar_source::colour(entities.teams[index], player_team, contact_colours)),
-                .packed_glyph_and_flags =
-                    pack_radar_display(ml::radar_source::glyph(entity_type), contact_flags),
+                .packed_glyph_and_flags = pack_radar_display(
+                    ml::radar_source::glyph(entity_type), contact_flags, heading_radians),
             });
         }
     }

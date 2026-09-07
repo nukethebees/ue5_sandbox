@@ -24,6 +24,10 @@ float CombatDisplayRadius;
 float TacticalDisplayRadius;
 float StemOpacity;
 float GlyphIntensity;
+float GlyphSizeScale;
+float ObjectiveSizeMultiplier;
+float ObjectiveRingPaddingPixels;
+float ObjectiveRingThicknessPixels;
 float ContactGlowOpacity;
 float EmphasizedGlowOpacity;
 
@@ -258,7 +262,7 @@ LineOutput radar_structure_vs(uint const vertex_id : SV_VertexID,
 LineOutput radar_stem_vs(uint const vertex_id : SV_VertexID,
                          uint const instance_id : SV_InstanceID) {
     FRadarInstance const instance = Instances[instance_id];
-    uint const flags = instance.packed_glyph_and_flags >> 8u;
+    uint const flags = (instance.packed_glyph_and_flags >> 8u) & 0xffu;
     float const emphasized = flags == 0u ? 0.0 : 1.0;
     float const pixel_scale = logical_pixel_scale();
     float const has_height = abs(instance.radar_position.z) > epsilon ? 1.0 : 0.0;
@@ -314,6 +318,7 @@ struct GlyphOutput {
     nointerpolation float pixel_scale : RADAR_GLYPH_PIXEL_SCALE;
     nointerpolation float altitude    : RADAR_GLYPH_ALTITUDE;
     nointerpolation float4 color      : RADAR_GLYPH_COLOR;
+    nointerpolation float2 heading    : RADAR_GLYPH_HEADING;
     nointerpolation uint glyph        : RADAR_GLYPH_TYPE;
     nointerpolation uint flags        : RADAR_GLYPH_FLAGS;
 };
@@ -326,7 +331,7 @@ float glyph_base_size(uint const glyph) {
         return 3.5;
     }
     if (glyph == glyph_capital_ship) {
-        return 3.6;
+        return 4.8;
     }
     if (glyph == glyph_turret) {
         return 4.8;
@@ -345,17 +350,34 @@ GlyphOutput radar_glyph_vs(uint const vertex_id : SV_VertexID,
     FRadarInstance const instance = Instances[instance_id];
     GlyphOutput output;
     output.glyph = instance.packed_glyph_and_flags & 0xffu;
-    output.flags = instance.packed_glyph_and_flags >> 8u;
+    output.flags = (instance.packed_glyph_and_flags >> 8u) & 0xffu;
     output.pixel_scale = logical_pixel_scale();
     output.altitude = instance.radar_position.z;
-    output.size =
-        glyph_base_size(output.glyph) * output.pixel_scale * clamp(instance.size_scale, 0.85, 1.2);
+    float const objective =
+        (output.flags & (flag_defend_objective | flag_destroy_objective)) != 0u ? 1.0 : 0.0;
+    output.size = glyph_base_size(output.glyph) * output.pixel_scale *
+                  clamp(instance.size_scale, 0.85, 1.2) * max(GlyphSizeScale, 0.01) *
+                  lerp(1.0, max(ObjectiveSizeMultiplier, 1.0), objective);
     float const emphasized = output.flags == 0u ? 0.0 : 1.0;
-    float const extent = output.size + lerp(1.5, 6.0, emphasized) * output.pixel_scale;
+    float decoration_extent = lerp(1.5, 6.0, emphasized) * output.pixel_scale;
+    decoration_extent = max(
+        decoration_extent,
+        objective *
+            (max(ObjectiveRingPaddingPixels, 0.0) + max(ObjectiveRingThicknessPixels, 0.0) + 1.0) *
+            output.pixel_scale);
+    float const extent = output.size + decoration_extent;
     float2 const corner = quad_corner(vertex_id);
     output.local_position = (corner * 2.0 - 1.0) * extent;
-    output.position = pixel_to_clip(project_point(instance.radar_position) + output.local_position);
+    float2 const projected_position = project_point(instance.radar_position);
+    output.position = pixel_to_clip(projected_position + output.local_position);
     output.color = unpack_color(instance.packed_color);
+    float const heading_radians =
+        float((instance.packed_glyph_and_flags >> 16u) & 0xffffu) * (6.28318531 / 65535.0);
+    float2 const radar_heading = float2(cos(heading_radians), sin(heading_radians));
+    float2 const projected_heading =
+        project_point(instance.radar_position + float3(radar_heading * 0.05, 0.0)) -
+        projected_position;
+    output.heading = projected_heading / max(length(projected_heading), epsilon);
     return output;
 }
 
@@ -369,7 +391,7 @@ float glyph_sdf(float2 glyph_point, uint const glyph, float const size) {
         return max(abs(glyph_point.x) * 0.85 + glyph_point.y * 0.55 - 0.58, -glyph_point.y - 0.55);
     }
     if (glyph == glyph_capital_ship) {
-        return abs(glyph_point.x) * 0.52 + abs(glyph_point.y) - 0.62;
+        return hex_sdf(glyph_point.yx, 0.72);
     }
     if (glyph == glyph_turret) {
         return max(abs(glyph_point.x), abs(glyph_point.y)) - 0.52;
@@ -415,7 +437,13 @@ float selection_brackets_sdf(float2 const glyph_point, float const size, float c
 
 float4 radar_glyph_ps(GlyphOutput input)
     : SV_Target0 {
-    float const sdf = glyph_sdf(input.local_position, input.glyph, input.size) * input.size;
+    float2 glyph_position = input.local_position;
+    if (input.glyph == glyph_fighter) {
+        float2 const heading_right = float2(-input.heading.y, input.heading.x);
+        glyph_position = float2(dot(input.local_position, heading_right),
+                                -dot(input.local_position, input.heading));
+    }
+    float const sdf = glyph_sdf(glyph_position, input.glyph, input.size) * input.size;
     float const core = sdf_coverage(sdf);
     float const selected = (input.flags & flag_selected) != 0u ? 1.0 : 0.0;
     float const objective =
@@ -426,10 +454,12 @@ float4 radar_glyph_ps(GlyphOutput input)
     float const glow_opacity = lerp(ContactGlowOpacity, EmphasizedGlowOpacity, emphasized);
     float const glow = (1.0 - smoothstep(0.0, glow_radius, max(sdf, 0.0))) * glow_opacity;
 
-    float const objective_distance =
-        abs(hex_sdf(input.local_position.yx, input.size + 3.0 * input.pixel_scale));
-    float const objective_outline =
-        objective * sdf_coverage(objective_distance - 0.65 * input.pixel_scale);
+    float const objective_ring_radius =
+        input.size + max(ObjectiveRingPaddingPixels, 0.0) * input.pixel_scale;
+    float const objective_ring_distance =
+        abs(length(input.local_position) - objective_ring_radius) -
+        max(ObjectiveRingThicknessPixels, 0.0) * input.pixel_scale * 0.5;
+    float const objective_outline = objective * sdf_coverage(objective_ring_distance);
     float const selection_distance =
         selection_brackets_sdf(input.local_position, input.size, input.pixel_scale);
     float const selection_brackets = selected * sdf_coverage(selection_distance);

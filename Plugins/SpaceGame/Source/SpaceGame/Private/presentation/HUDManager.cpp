@@ -77,6 +77,10 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     radar_style_.combat_cell_radius = radar_settings_.combat_cell_radius;
     radar_style_.tactical_cell_radius = radar_settings_.tactical_cell_radius;
     radar_style_.strategic_cell_radius = radar_settings_.strategic_cell_radius;
+    radar_style_.glyph_size_scale = radar_settings_.glyph_size_scale;
+    radar_style_.objective_size_multiplier = radar_settings_.objective_size_multiplier;
+    radar_style_.objective_ring_padding_pixels = radar_settings_.objective_ring_padding_pixels;
+    radar_style_.objective_ring_thickness_pixels = radar_settings_.objective_ring_thickness_pixels;
     auto const fighter_radius{ml::get_mesh_sphere_bounds(*level_config.fighters.mesh)};
     auto const capital_radius{ml::get_mesh_sphere_bounds(*level_config.capital_ships.mesh)};
     entity_overlay_style_ = {
