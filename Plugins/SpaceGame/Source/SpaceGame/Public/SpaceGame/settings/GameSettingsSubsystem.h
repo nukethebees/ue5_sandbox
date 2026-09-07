@@ -56,10 +56,11 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto set_control_profile(FString const& profile_id) -> bool;
     auto create_custom_control_profile() -> bool;
     auto rename_active_custom_control_profile(FString const& display_name) -> bool;
-    auto delete_active_custom_control_profile() -> bool;
+    auto delete_custom_control_profile(FString const& profile_id) -> bool;
     auto set_control_binding(FControlBindingAddress const& address,
                              FKey key,
                              bool replace_conflicts) -> bool;
+    auto clear_control_binding(FControlBindingAddress const& address) -> bool;
     auto reset_control_binding(FControlBindingAddress const& address) -> bool;
     auto reset_active_control_profile() -> bool;
 

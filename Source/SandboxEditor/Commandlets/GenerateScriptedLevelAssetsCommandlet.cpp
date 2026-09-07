@@ -689,19 +689,7 @@ auto set_profile_override(UInputMappingContext& destination,
     }
 
     auto* const data{reinterpret_cast<FInputMappingContextMappingData*>(value)};
-    data->Mappings.Reset();
-    for (auto const& mapping : destination.GetMappings()) {
-        if (!mapping_device_is_gamepad(mapping)) {
-            data->Mappings.Add(mapping);
-        }
-    }
-    for (auto const& mapping : source.GetMappings()) {
-        if (!data->Mappings.ContainsByPredicate([&mapping](auto const& existing) {
-                return existing.Action == mapping.Action && existing.Key == mapping.Key;
-            })) {
-            data->Mappings.Add(mapping);
-        }
-    }
+    data->Mappings = source.GetMappings();
     for (auto& mapping : data->Mappings) {
         duplicate_instanced_mapping_data(mapping, destination);
     }

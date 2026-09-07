@@ -552,9 +552,9 @@ void SGameOptionsView::rebuild_controls_page() {
             .AutoWidth()[SNew(SGameButton)
                              .Style(&style_->button(EGameButtonStyle::Secondary))
                              .Text(NSLOCTEXT("OptionsMenu", "DeleteCustomProfile", "Delete Custom"))
-                             .OnClicked_Lambda([this] {
+                             .OnClicked_Lambda([this, profile_id = active_profile->id] {
                                  if (auto* const current{settings_.Get()}) {
-                                     if (current->delete_active_custom_control_profile()) {
+                                     if (current->delete_custom_control_profile(profile_id)) {
                                          control_profile_error_ = FText::GetEmpty();
                                      } else {
                                          control_profile_error_ = NSLOCTEXT(
@@ -562,8 +562,11 @@ void SGameOptionsView::rebuild_controls_page() {
                                              "DeleteCustomProfileFailed",
                                              "Could not delete the custom control profile.");
                                      }
-                                     rebuild_controls_page();
-                                     refresh();
+                                     RegisterActiveTimer(
+                                         0.0f,
+                                         FWidgetActiveTimerDelegate::CreateSP(
+                                             this,
+                                             &SGameOptionsView::handle_deferred_controls_rebuild));
                                  }
                                  return FReply::Handled();
                              })];
@@ -679,6 +682,16 @@ void SGameOptionsView::rebuild_controls_page() {
     flush_response();
 }
 
+auto SGameOptionsView::handle_deferred_controls_rebuild(double const current_time,
+                                                        float const delta_time)
+    -> EActiveTimerReturnType {
+    static_cast<void>(current_time);
+    static_cast<void>(delta_time);
+    rebuild_controls_page();
+    refresh();
+    return EActiveTimerReturnType::Stop;
+}
+
 auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> const bindings)
     -> TSharedRef<SWidget> {
     auto result{SNew(SVerticalBox)};
@@ -688,36 +701,64 @@ auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> c
         return result;
     }
     for (auto const& binding : bindings) {
-        auto const key_text{binding.current_key.IsValid()
-                                ? binding.current_key.GetDisplayName()
-                                : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
-        result->AddSlot().AutoHeight().Padding(FMargin{
-            0.0f,
-            2.0f})[SNew(SHorizontalBox) +
-                   SHorizontalBox::Slot().FillWidth(1.0f).Padding(
-                       FMargin{0.0f, 0.0f, style_->settings().button_spacing, 0.0f})
-                       [SNew(SGameButton)
-                            .Style(&style_->button(EGameButtonStyle::Secondary))
-                            .Text(key_text)
-                            .OnClicked_Lambda([this, address = binding.address] {
-                                begin_binding_capture(address);
-                                return FReply::Handled();
-                            })] +
-                   SHorizontalBox::Slot()
-                       .AutoWidth()[SNew(SGameButton)
-                                        .Style(&style_->button(EGameButtonStyle::Secondary))
-                                        .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
-                                        .Enabled(binding.modified)
-                                        .Visibility(binding.custom_profile ? EVisibility::Collapsed
-                                                                           : EVisibility::Visible)
-                                        .OnClicked_Lambda([this, address = binding.address] {
-                                            if (auto* const current{settings_.Get()}) {
-                                                current->reset_control_binding(address);
-                                                rebuild_controls_page();
-                                                refresh();
-                                            }
-                                            return FReply::Handled();
-                                        })]];
+        auto const component_key_text{binding.current_key.IsValid()
+                                          ? binding.current_key.GetDisplayName()
+                                          : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
+        auto key_text{component_key_text};
+        if (binding.chord_key.IsSet()) {
+            auto const chord_key_text{binding.chord_key->IsValid()
+                                          ? binding.chord_key->GetDisplayName()
+                                          : NSLOCTEXT("OptionsMenu", "UnboundChord", "Unbound")};
+            key_text = FText::Format(NSLOCTEXT("OptionsMenu", "ChordBindingFormat", "{0} + {1}"),
+                                     chord_key_text,
+                                     component_key_text);
+        }
+        result->AddSlot().AutoHeight().Padding(FMargin{0.0f, 2.0f})
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot().FillWidth(1.0f).Padding(
+                 FMargin{0.0f, 0.0f, style_->settings().button_spacing, 0.0f})
+                 [SNew(SGameButton)
+                      .Style(&style_->button(EGameButtonStyle::Secondary))
+                      .Text(key_text)
+                      .ToolTipText(binding.chord_key.IsSet()
+                                       ? NSLOCTEXT("OptionsMenu",
+                                                   "ChordBindingTip",
+                                                   "The chord activator is shown first. Click to "
+                                                   "rebind the second key.")
+                                       : FText::GetEmpty())
+                      .OnClicked_Lambda([this, address = binding.address] {
+                          begin_binding_capture(address);
+                          return FReply::Handled();
+                      })] +
+             SHorizontalBox::Slot().AutoWidth().Padding(
+                 FMargin{0.0f, 0.0f, style_->settings().button_spacing, 0.0f})
+                 [SNew(SGameButton)
+                      .Style(&style_->button(EGameButtonStyle::Secondary))
+                      .Text(NSLOCTEXT("OptionsMenu", "ClearBinding", "Clear"))
+                      .Enabled(binding.current_key.IsValid())
+                      .OnClicked_Lambda([this, address = binding.address] {
+                          if (auto* const current{settings_.Get()}) {
+                              current->clear_control_binding(address);
+                              rebuild_controls_page();
+                              refresh();
+                          }
+                          return FReply::Handled();
+                      })] +
+             SHorizontalBox::Slot()
+                 .AutoWidth()[SNew(SGameButton)
+                                  .Style(&style_->button(EGameButtonStyle::Secondary))
+                                  .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
+                                  .Enabled(binding.modified)
+                                  .Visibility(binding.custom_profile ? EVisibility::Collapsed
+                                                                     : EVisibility::Visible)
+                                  .OnClicked_Lambda([this, address = binding.address] {
+                                      if (auto* const current{settings_.Get()}) {
+                                          current->reset_control_binding(address);
+                                          rebuild_controls_page();
+                                          refresh();
+                                      }
+                                      return FReply::Handled();
+                                  })]];
     }
     return result;
 }

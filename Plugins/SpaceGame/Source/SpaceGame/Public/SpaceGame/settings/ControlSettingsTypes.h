@@ -30,6 +30,7 @@ struct FControlBindingView {
     EHardwareDevicePrimaryType device_type{EHardwareDevicePrimaryType::Unspecified};
     FKey current_key;
     FKey default_key;
+    TOptional<FKey> chord_key;
     bool modified{};
     bool custom_profile{};
 };

@@ -18,6 +18,8 @@
 #include <EnhancedInputComponent.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
+#include <Kismet/GameplayStatics.h>
+#include <Misc/Guid.h>
 #include <UObject/UnrealType.h>
 
 TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
@@ -165,6 +167,237 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Profile cycling returns to default"),
                               settings->GetActiveKeyProfileId(),
                               profiles[0].id);
+
+        auto const* const chord_profile{settings->GetKeyProfileWithId(profiles.Last().id)};
+        auto chorded_mapping_count{0};
+        if (IsValid(chord_profile)) {
+            for (auto const& row : chord_profile->GetPlayerMappingRows()) {
+                for (auto const& mapping : row.Value.Mappings) {
+                    if (settings->chord_key_for_mapping(profiles.Last().id, mapping).IsSet()) {
+                        ++chorded_mapping_count;
+                    }
+                }
+            }
+        }
+        TestRunner->TestTrue(TEXT("Chorded mappings resolve their activator keys"),
+                             chorded_mapping_count >= 4);
+    }
+
+    TEST_METHOD(ControlProfileOverridesMatchTheirSourceContexts)
+    {
+        auto* const generated{LoadObject<UInputMappingContext>(
+            nullptr, TEXT("/SpaceGame/Input/SpaceShip/IMC_SpaceShip_Base.IMC_SpaceShip_Base"))};
+        TArray<FString> const source_paths{
+            TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_aim_move."
+                 "IMC_space_ship_twinstick_aim_move"),
+            TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_move_aim."
+                 "IMC_space_ship_twinstick_move_aim"),
+            TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_z-roll_aim."
+                 "IMC_space_ship_twinstick_z-roll_aim"),
+        };
+        if (!TestRunner->TestTrue(TEXT("Generated mapping context loads"), IsValid(generated))) {
+            return;
+        }
+
+        auto const profiles{ml::ioj::control_profile_definitions()};
+        for (int32 source_index{}; source_index < source_paths.Num(); ++source_index) {
+            auto* const source{
+                LoadObject<UInputMappingContext>(nullptr, *source_paths[source_index])};
+            if (!TestRunner->TestTrue(
+                    *FString::Printf(TEXT("Source mapping context %d loads"), source_index),
+                    IsValid(source))) {
+                continue;
+            }
+
+            auto const& expected{source->GetMappings()};
+            if (source_index == 2) {
+                auto vertical_move_mappings{0};
+                auto move_mappings{0};
+                for (auto const& mapping : expected) {
+                    if (!IsValid(mapping.Action)) {
+                        continue;
+                    }
+                    vertical_move_mappings +=
+                        mapping.Action->GetName() == TEXT("IA_ship_vertical_move") ? 1 : 0;
+                    move_mappings += mapping.Action->GetName() == TEXT("IA_ship_move") ? 1 : 0;
+                }
+                TestRunner->TestEqual(TEXT("Z/Roll/Aim has keyboard and gamepad vertical input"),
+                                      vertical_move_mappings,
+                                      3);
+                TestRunner->TestEqual(
+                    TEXT("Z/Roll/Aim does not apply unchorded planar movement"), move_mappings, 0);
+            }
+            auto const& actual{generated->GetMappingsForProfile(profiles[source_index + 1].id)};
+            TestRunner->TestEqual(
+                *FString::Printf(TEXT("Profile %d has the source mapping count"), source_index),
+                actual.Num(),
+                expected.Num());
+            TArray<int32> unmatched_actual;
+            unmatched_actual.Reserve(actual.Num());
+            for (int32 actual_index{}; actual_index < actual.Num(); ++actual_index) {
+                unmatched_actual.Add(actual_index);
+            }
+            for (int32 expected_index{}; expected_index < expected.Num(); ++expected_index) {
+                auto const unmatched_index{unmatched_actual.IndexOfByPredicate(
+                    [&actual, &expected, expected_index](int32 const actual_index) {
+                        if (actual[actual_index].Action != expected[expected_index].Action ||
+                            actual[actual_index].Key != expected[expected_index].Key ||
+                            actual[actual_index].Triggers.Num() !=
+                                expected[expected_index].Triggers.Num()) {
+                            return false;
+                        }
+                        for (int32 trigger_index{};
+                             trigger_index < actual[actual_index].Triggers.Num();
+                             ++trigger_index) {
+                            if (actual[actual_index].Triggers[trigger_index]->GetClass() !=
+                                expected[expected_index].Triggers[trigger_index]->GetClass()) {
+                                return false;
+                            }
+                        }
+                        return true;
+                    })};
+                auto const found{unmatched_index != INDEX_NONE};
+                TestRunner->TestTrue(
+                    *FString::Printf(TEXT("Profile %d source mapping %d is present"),
+                                     source_index,
+                                     expected_index),
+                    found);
+                if (found) {
+                    unmatched_actual.RemoveAtSwap(unmatched_index, EAllowShrinking::No);
+                }
+            }
+        }
+    }
+
+    TEST_METHOD(CustomControlProfileDeletionRemovesTheSavedProfile)
+    {
+        auto const* const config{ml::load_default_level_config()};
+        auto const* const controller_default{
+            IsValid(config) && IsValid(config->classes.player_controller_class)
+                ? config->classes.player_controller_class.GetDefaultObject()
+                : nullptr};
+        auto const* const input_property{
+            controller_default != nullptr
+                ? FindFProperty<FStructProperty>(controller_default->GetClass(), TEXT("input"))
+                : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Controller input property is available"),
+                                  input_property != nullptr)) {
+            return;
+        }
+        auto const* const input{
+            input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller_default)};
+        auto* const mapping_context{input->get_mapping_context()};
+        auto* const local_player{NewObject<ULocalPlayer>(GEngine)};
+        auto* const settings{NewObject<ml::ioj::USpaceGameInputUserSettings>(local_player)};
+        settings->Initialize(local_player);
+        if (!TestRunner->TestTrue(TEXT("Control profiles register"),
+                                  IsValid(mapping_context) && ml::ioj::register_control_profiles(
+                                                                  *settings, *mapping_context))) {
+            return;
+        }
+
+        auto const custom_id{FString::Printf(TEXT("SpaceGame.Controls.Custom.Test%s"),
+                                             *FGuid::NewGuid().ToString())};
+        FPlayerMappableKeyProfileCreationArgs arguments{};
+        arguments.ProfileStringIdentifier = custom_id;
+        arguments.DisplayName = INVTEXT("Deletion test");
+        arguments.bSetAsCurrentProfile = false;
+        auto* const custom{settings->create_custom_key_profile(
+            arguments, ml::ioj::control_profile_definitions()[0].id)};
+        if (!TestRunner->TestTrue(TEXT("Custom profile is created"), IsValid(custom)) ||
+            !TestRunner->TestTrue(TEXT("Custom profile becomes active"),
+                                  settings->SetActiveKeyProfile(custom_id))) {
+            return;
+        }
+        TestRunner->TestEqual(TEXT("Active custom profile uses its source IMC profile"),
+                              custom->GetProfileIdString(),
+                              ml::ioj::control_profile_definitions()[0].id);
+
+        FMapPlayerKeyArgs clear_arguments{};
+        FKey cleared_default_key;
+        for (auto const& row : custom->GetPlayerMappingRows()) {
+            for (auto const& mapping : row.Value.Mappings) {
+                if (mapping.GetCurrentKey() != FKey{}) {
+                    clear_arguments.MappingName = mapping.GetMappingName();
+                    clear_arguments.Slot = mapping.GetSlot();
+                    clear_arguments.HardwareDeviceId =
+                        mapping.GetHardwareDeviceId().HardwareDeviceIdentifier;
+                    clear_arguments.ProfileIdString = custom_id;
+                    cleared_default_key = mapping.GetDefaultKey();
+                    break;
+                }
+            }
+            if (clear_arguments.MappingName != NAME_None) {
+                break;
+            }
+        }
+        if (TestRunner->TestTrue(TEXT("Custom profile has a binding to clear"),
+                                 clear_arguments.MappingName != NAME_None)) {
+            clear_arguments.NewKey = FKey{};
+            FGameplayTagContainer failure_reason;
+            settings->MapPlayerKey(clear_arguments, failure_reason);
+            auto const* const cleared{custom->FindKeyMapping(clear_arguments)};
+            TestRunner->TestTrue(TEXT("Binding clear succeeds"), failure_reason.IsEmpty());
+            TestRunner->TestTrue(TEXT("Cleared binding is unbound"),
+                                 cleared != nullptr && cleared->GetCurrentKey() == FKey{});
+
+            FGameplayTagContainer reset_failure_reason;
+            settings->UnMapPlayerKey(clear_arguments, reset_failure_reason);
+            auto const* const reset{custom->FindKeyMapping(clear_arguments)};
+            TestRunner->TestTrue(TEXT("Binding reset succeeds"), reset_failure_reason.IsEmpty());
+            TestRunner->TestTrue(TEXT("Binding reset restores its default"),
+                                 reset != nullptr && reset->GetCurrentKey() == cleared_default_key);
+        }
+
+        auto const slot_name{
+            FString::Printf(TEXT("ControlProfileDeletionTest_%s"), *FGuid::NewGuid().ToString())};
+        auto const user_index{0};
+        TestRunner->TestTrue(TEXT("Custom profile saves before deletion"),
+                             UGameplayStatics::SaveGameToSlot(settings, slot_name, user_index));
+        auto* const loaded_before_delete{Cast<ml::ioj::USpaceGameInputUserSettings>(
+            UGameplayStatics::LoadGameFromSlot(slot_name, user_index))};
+        TestRunner->TestTrue(TEXT("Custom profile reloads before deletion"),
+                             IsValid(loaded_before_delete));
+        if (IsValid(loaded_before_delete)) {
+            TestRunner->TestEqual(TEXT("Custom profile source persists"),
+                                  loaded_before_delete->custom_key_profile_source_id(custom_id),
+                                  ml::ioj::control_profile_definitions()[0].id);
+            TestRunner->TestEqual(
+                TEXT("Custom profile name persists"),
+                loaded_before_delete->custom_key_profile_display_name(custom_id).ToString(),
+                FString{TEXT("Deletion test")});
+            auto const* const loaded_custom{loaded_before_delete->GetKeyProfileWithId(custom_id)};
+            TestRunner->TestTrue(TEXT("Reloaded custom profile is present"),
+                                 IsValid(loaded_custom));
+            if (IsValid(loaded_custom)) {
+                TestRunner->TestEqual(
+                    TEXT("Reloaded active custom profile retains its source IMC profile"),
+                    loaded_custom->GetProfileIdString(),
+                    ml::ioj::control_profile_definitions()[0].id);
+            }
+        }
+
+        TestRunner->TestTrue(TEXT("Custom profile deletion succeeds"),
+                             settings->delete_custom_key_profile(custom_id));
+        TestRunner->TestTrue(TEXT("Deleted profile is absent"),
+                             settings->GetKeyProfileWithId(custom_id) == nullptr);
+        TestRunner->TestEqual(TEXT("Deletion activates the default profile"),
+                              settings->GetActiveKeyProfileId(),
+                              ml::ioj::control_profile_definitions()[0].id);
+        TestRunner->TestEqual(TEXT("Deleted custom profile restores its unique identity"),
+                              custom->GetProfileIdString(),
+                              custom_id);
+
+        TestRunner->TestTrue(TEXT("Settings save after deletion"),
+                             UGameplayStatics::SaveGameToSlot(settings, slot_name, user_index));
+        auto* const loaded{Cast<ml::ioj::USpaceGameInputUserSettings>(
+            UGameplayStatics::LoadGameFromSlot(slot_name, user_index))};
+        TestRunner->TestTrue(TEXT("Settings reload after deletion"), IsValid(loaded));
+        if (IsValid(loaded)) {
+            TestRunner->TestTrue(TEXT("Deleted profile remains absent after reload"),
+                                 loaded->GetKeyProfileWithId(custom_id) == nullptr);
+        }
+        UGameplayStatics::DeleteGameInSlot(slot_name, user_index);
     }
 
     TEST_METHOD(InputResponseSettingsClampInvalidValues)

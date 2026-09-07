@@ -69,6 +69,8 @@ class SGameOptionsView final : public SCompoundWidget {
     auto build_category_page(EGameSettingCategory category) -> TSharedRef<SWidget>;
     auto build_controls_page() -> TSharedRef<SWidget>;
     void rebuild_controls_page();
+    auto handle_deferred_controls_rebuild(double current_time, float delta_time)
+        -> EActiveTimerReturnType;
     auto build_binding_cell(TConstArrayView<FControlBindingView> bindings) -> TSharedRef<SWidget>;
     void begin_binding_capture(FControlBindingAddress const& address);
     auto accept_binding_key(FKey key) -> FReply;
