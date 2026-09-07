@@ -92,6 +92,13 @@ struct SPACEGAME_API FLineTraces {
         ends.set(index, new_ends);
     }
 
+    auto add(FVectors3f::equivalent_type const new_starts, FVectors3f::equivalent_type const new_ends) -> int32 {
+        auto const index{num()};
+        starts.add(new_starts);
+        ends.add(new_ends);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

@@ -114,6 +114,16 @@ struct SPACEGAME_API FEntityCellData {
         handles[index] = new_handles;
     }
 
+    auto add(FVectors3f::equivalent_type const new_min_points, FVectors3f::equivalent_type const new_max_points, FVectors3i32::equivalent_type const new_mins, FVectors3i32::equivalent_type const new_maxes, FRegistryEntityHandle const new_handles) -> int32 {
+        auto const index{num()};
+        min_points.add(new_min_points);
+        max_points.add(new_max_points);
+        mins.add(new_mins);
+        maxes.add(new_maxes);
+        handles.Add(new_handles);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

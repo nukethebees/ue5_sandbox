@@ -126,9 +126,7 @@ auto FLevelEventSchedule::add_spawn_group(ETestEntityType const type,
     }
 
     tick_counts.spawn_groups = group_count;
-    auto const index{spawn_groups.num()};
-    spawn_groups.add_uninitialised(1);
-    spawn_groups.set(index, type, offset, payload_count);
+    spawn_groups.add(type, offset, payload_count);
     return true;
 }
 
@@ -151,9 +149,7 @@ auto FLevelEventSchedule::add_mission_group(ELevelMissionEventType const type,
 
     tick_counts.mission_groups = group_count;
     auto& groups{mission_events.groups};
-    auto const index{groups.num()};
-    groups.add_uninitialised(1);
-    groups.set(index, type, mission_events.values.Num(), payload_count);
+    groups.add(type, mission_events.values.Num(), payload_count);
     mission_events.values.Append(values.GetData(), count);
     return true;
 }
@@ -261,10 +257,7 @@ auto compile_level_events(FLevelDefinition const& definition,
                 break;
             }
             case level_archetype_detail::EResolvedArchetype::CapitalShip: {
-                auto const event_index{capital_events.num()};
-                capital_events.add_uninitialised(1);
-                capital_events.set(event_index,
-                                   entity_index,
+                capital_events.add(entity_index,
                                    INDEX_NONE,
                                    FVector3f{entity.position},
                                    FRotator3f{entity.rotation},
@@ -275,10 +268,7 @@ auto compile_level_events(FLevelDefinition const& definition,
                 break;
             }
             case level_archetype_detail::EResolvedArchetype::StaticTurret: {
-                auto const event_index{turret_events.num()};
-                turret_events.add_uninitialised(1);
-                turret_events.set(event_index,
-                                  entity_index,
+                turret_events.add(entity_index,
                                   FVector3f{entity.position},
                                   FRotator3f{entity.rotation},
                                   team.GetValue(),

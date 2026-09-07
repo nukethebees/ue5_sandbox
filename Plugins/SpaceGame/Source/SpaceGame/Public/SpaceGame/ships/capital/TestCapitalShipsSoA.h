@@ -130,6 +130,18 @@ struct SPACEGAME_API SpawnData {
         spawn_cooldowns[index] = new_spawn_cooldowns;
     }
 
+    auto add(FRegistryEntityHandle const new_target_handles, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, float const new_initial_spawn_delays, float const new_spawn_cooldowns) -> int32 {
+        auto const index{num()};
+        target_handles.Add(new_target_handles);
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        teams.Add(new_teams);
+        healths.Add(new_healths);
+        initial_spawn_delays.Add(new_initial_spawn_delays);
+        spawn_cooldowns.Add(new_spawn_cooldowns);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

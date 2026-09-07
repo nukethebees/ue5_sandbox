@@ -857,8 +857,22 @@ auto load_types(std::filesystem::path const& path) -> std::map<std::string, CppT
         }
         if (value.contains("operations")) {
             auto const& operations{value.at("operations")};
-            reject_unknown(
-                operations, item_path + "/operations", {"remove_at_swap", "set_element"});
+            reject_unknown(operations,
+                           item_path + "/operations",
+                           {"add_element", "remove_at_swap", "set_element"});
+            if (operations.contains("add_element")) {
+                auto const operation_path{item_path + "/operations/add_element"};
+                auto const& operation{operations.at("add_element")};
+                reject_unknown(operation, operation_path, {"function", "pass_by"});
+                type.member_operations.emplace(
+                    TypeOperation::add_element,
+                    required<std::string>(operation, "function", operation_path));
+                type.member_operation_parameter_passing.emplace(
+                    TypeOperation::add_element,
+                    parse_parameter_passing(
+                        value_or<std::string>(operation, "pass_by", "const_ref", operation_path),
+                        operation_path + "/pass_by"));
+            }
             if (auto operation{
                     optional<std::string>(operations, "remove_at_swap", item_path + "/operations")};
                 operation.has_value()) {

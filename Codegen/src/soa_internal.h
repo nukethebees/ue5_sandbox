@@ -27,6 +27,8 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
 auto soa_set_spec(SoaSchema const& schema,
                   std::vector<ResolvedMember> const& members,
                   bool is_const) -> std::optional<FunctionSpec>;
+auto soa_add_spec(SoaSchema const& schema,
+                  std::vector<ResolvedMember> const& members) -> std::optional<FunctionSpec>;
 auto soa_permutation_specs(std::vector<ResolvedMember> const& members)
     -> std::vector<FunctionSpec>;
 auto soa_storage_node(SoaSchema const& schema,

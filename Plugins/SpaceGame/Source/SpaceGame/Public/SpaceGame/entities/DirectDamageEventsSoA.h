@@ -98,6 +98,14 @@ struct SPACEGAME_API DirectDamageEvents {
         instigators[index] = new_instigators;
     }
 
+    auto add(FRegistryEntityHandle const new_damaged_entities, int32 const new_damage_amounts, FRegistryEntityHandle const new_instigators) -> int32 {
+        auto const index{num()};
+        damaged_entities.Add(new_damaged_entities);
+        damage_amounts.Add(new_damage_amounts);
+        instigators.Add(new_instigators);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

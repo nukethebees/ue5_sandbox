@@ -108,6 +108,15 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
         targets[index] = new_targets;
     }
 
+    auto add(FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_targets) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        teams.Add(new_teams);
+        targets.Add(new_targets);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

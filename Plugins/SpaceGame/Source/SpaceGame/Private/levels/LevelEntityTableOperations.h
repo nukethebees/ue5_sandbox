@@ -4,12 +4,12 @@
 
 namespace ml::level_entity_table_detail {
 inline void append(FLevelEntityTable& entities, FEntitySpawnDefinition const& entity) {
-    entities.ids.Add(entity.id);
-    entities.archetypes.Add(entity.archetype);
-    entities.teams.Add(entity.team);
-    entities.positions.add(entity.position);
-    entities.rotations.add(entity.rotation.Pitch, entity.rotation.Yaw, entity.rotation.Roll);
-    entities.spawn_times_seconds.Add(entity.spawn_time_seconds);
+    entities.add(entity.id,
+                 entity.archetype,
+                 entity.team,
+                 entity.position,
+                 entity.rotation,
+                 entity.spawn_time_seconds);
 }
 
 inline auto get(FLevelEntityTableConstView const entities, int32 const index)

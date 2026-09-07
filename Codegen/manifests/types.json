@@ -154,6 +154,7 @@
       "spelling": "FRotatorsf",
       "header": "SandboxCore/soa_rotators.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "value"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "value"}
       }
@@ -162,6 +163,7 @@
       "spelling": "FRotatorsd",
       "header": "SandboxCore/soa_rotators.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "const_ref"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "const_ref"}
       }
@@ -261,6 +263,7 @@
       "spelling": "FVectors3f",
       "header": "SandboxCore/soa_vectors_3f.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "value"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "value"}
       }
@@ -273,6 +276,7 @@
       "spelling": "FVectors3d",
       "header": "SandboxCore/soa_vectors_3d.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "const_ref"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "const_ref"}
       }
@@ -281,6 +285,7 @@
       "spelling": "FVectors3i32",
       "header": "SandboxCore/soa_vectors_3i32.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "value"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "value"}
       }

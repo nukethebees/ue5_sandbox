@@ -269,10 +269,7 @@ void Simulation::queue_fighter_spawns() {
 
         for (auto const& relative_transform : relative_transforms) {
             auto const new_transform{relative_transform * base_transform};
-            auto const fighter_index{fighter_queue.num()};
-            fighter_queue.add_uninitialised(1);
-            fighter_queue.set(fighter_index,
-                              FVector3f{new_transform.GetLocation()},
+            fighter_queue.add(FVector3f{new_transform.GetLocation()},
                               FRotator3f{new_transform.Rotator()},
                               entities.teams[capital_index],
                               entities.target_handles[capital_index]);

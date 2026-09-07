@@ -419,10 +419,7 @@ void Simulation::fire_at_enemies() {
         FVector3f const intercept_pos{target_location + target_velocity * intercept_time};
         FVector3f const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
 
-        auto const laser_index{new_lasers.num()};
-        new_lasers.add_uninitialised(1);
-        new_lasers.set(laser_index,
-                       laser_location,
+        new_lasers.add(laser_location,
                        fire_dir.ToOrientationRotator(),
                        FVector3f::ZeroVector,
                        entities.laser_damages[i],

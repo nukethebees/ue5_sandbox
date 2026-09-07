@@ -140,6 +140,19 @@ struct SPACEGAME_API SpawnRequests {
         colours[index] = new_colours;
     }
 
+    auto add(FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, FLinearColor const new_colours) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        base_velocities.add(new_base_velocities);
+        damages.Add(new_damages);
+        speeds.Add(new_speeds);
+        max_distances.Add(new_max_distances);
+        instigator_handles.Add(new_instigator_handles);
+        colours.Add(new_colours);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);
@@ -394,6 +407,18 @@ struct SPACEGAME_API Entities {
         instigator_handles[index] = new_instigator_handles;
     }
 
+    auto add(FLinearColor const new_colours, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles) -> int32 {
+        auto const index{num()};
+        colours.Add(new_colours);
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        velocities.add(new_velocities);
+        damages.Add(new_damages);
+        lifetimes_remaining.Add(new_lifetimes_remaining);
+        instigator_handles.Add(new_instigator_handles);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);
@@ -615,6 +640,14 @@ struct SPACEGAME_API HitDetails {
         locations.set(index, new_locations);
         emission_directions.set(index, new_emission_directions);
         colours[index] = new_colours;
+    }
+
+    auto add(FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, FLinearColor const new_colours) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        emission_directions.add(new_emission_directions);
+        colours.Add(new_colours);
+        return index;
     }
 
     void reset();

@@ -98,6 +98,14 @@ struct SANDBOXISMC_API InstanceData {
         scales[index] = new_scales;
     }
 
+    auto add(FVector3f const new_positions, FQuat4f const new_rotations, FVector3f const new_scales) -> int32 {
+        auto const index{num()};
+        positions.Add(new_positions);
+        rotations.Add(new_rotations);
+        scales.Add(new_scales);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);
