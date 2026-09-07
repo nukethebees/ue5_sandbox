@@ -54,7 +54,11 @@ struct SANDBOXUI_API FRadarStyle {
     FLinearColor player_color{1.0f, 0.78f, 0.16f, 1.0f};
     FLinearColor plane_color{FLinearColor::Transparent};
     float structure_opacity{0.82f};
-    float grid_opacity{0.28f};
+    float grid_opacity{0.55f};
+    float core_cell_radius{0.18f};
+    float combat_cell_radius{0.075f};
+    float tactical_cell_radius{0.045f};
+    float strategic_cell_radius{0.025f};
     float stem_opacity{0.42f};
     float glyph_intensity{1.0f};
     float contact_glow_opacity{0.035f};

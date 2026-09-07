@@ -123,6 +123,31 @@ struct FRadarSettings {
 
     UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", ClampMax = "1.0"))
     float combat_display_radius{0.45f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar",
+              meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+    float grid_opacity{0.55f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float core_cell_radius{0.18f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float combat_cell_radius{0.075f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float tactical_cell_radius{0.045f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float strategic_cell_radius{0.025f};
 };
 
 USTRUCT()

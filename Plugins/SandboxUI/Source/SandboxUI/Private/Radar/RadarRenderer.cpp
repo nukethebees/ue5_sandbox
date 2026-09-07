@@ -40,6 +40,10 @@ class FPlanePS final : public FGlobalShader {
     SHADER_PARAMETER(FVector4f, PlaneColor)
     SHADER_PARAMETER(FVector4f, StructureColor)
     SHADER_PARAMETER(float, GridOpacity)
+    SHADER_PARAMETER(float, CoreCellRadius)
+    SHADER_PARAMETER(float, CombatCellRadius)
+    SHADER_PARAMETER(float, TacticalCellRadius)
+    SHADER_PARAMETER(float, StrategicCellRadius)
     SHADER_PARAMETER(float, CombatDisplayRadius)
     SHADER_PARAMETER(float, TacticalDisplayRadius)
     END_SHADER_PARAMETER_STRUCT()
@@ -217,6 +221,10 @@ void execute_graph(FRHICommandListImmediate& command_list,
     plane->PS.PlaneColor = FVector4f{style.plane_color};
     plane->PS.StructureColor = FVector4f{style.structure_color};
     plane->PS.GridOpacity = style.grid_opacity;
+    plane->PS.CoreCellRadius = style.core_cell_radius;
+    plane->PS.CombatCellRadius = style.combat_cell_radius;
+    plane->PS.TacticalCellRadius = style.tactical_cell_radius;
+    plane->PS.StrategicCellRadius = style.strategic_cell_radius;
     plane->PS.CombatDisplayRadius = frame.combat_display_radius;
     plane->PS.TacticalDisplayRadius = frame.tactical_display_radius;
     plane->RenderTargets[0] = FRenderTargetBinding{output, ERenderTargetLoadAction::EClear};

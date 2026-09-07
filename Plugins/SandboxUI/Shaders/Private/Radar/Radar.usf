@@ -15,6 +15,10 @@ float4 ObjectiveColor;
 float4 SelectionColor;
 float4 PlayerColor;
 float GridOpacity;
+float CoreCellRadius;
+float CombatCellRadius;
+float TacticalCellRadius;
+float StrategicCellRadius;
 float StructureOpacity;
 float CombatDisplayRadius;
 float TacticalDisplayRadius;
@@ -123,19 +127,25 @@ float4 radar_plane_ps(PlaneOutput input)
             abs(input.radar_position.y)) /
         0.8660254;
     float const transition_width = 0.025;
+    float const core_display_radius = CombatDisplayRadius * 0.4;
+    float const beyond_core = smoothstep(core_display_radius - transition_width,
+                                         core_display_radius + transition_width,
+                                         zone_radius);
     float const beyond_combat = smoothstep(CombatDisplayRadius - transition_width,
                                            CombatDisplayRadius + transition_width,
                                            zone_radius);
     float const beyond_tactical = smoothstep(TacticalDisplayRadius - transition_width,
                                              TacticalDisplayRadius + transition_width,
                                              zone_radius);
-    float const combat_grid = honeycomb_boundary(input.radar_position, 0.18);
-    float const tactical_grid = honeycomb_boundary(input.radar_position, 0.09);
-    float const strategic_grid = honeycomb_boundary(input.radar_position, 0.045);
-    float const boundary = combat_grid * (1.0 - beyond_combat) +
-                           tactical_grid * beyond_combat * (1.0 - beyond_tactical) * 0.8 +
-                           strategic_grid * beyond_tactical * 0.58;
-    float const edge_fade = saturate((-outer_distance) / 0.28);
+    float const core_grid = honeycomb_boundary(input.radar_position, CoreCellRadius);
+    float const combat_grid = honeycomb_boundary(input.radar_position, CombatCellRadius);
+    float const tactical_grid = honeycomb_boundary(input.radar_position, TacticalCellRadius);
+    float const strategic_grid = honeycomb_boundary(input.radar_position, StrategicCellRadius);
+    float const boundary = core_grid * (1.0 - beyond_core) +
+                           combat_grid * beyond_core * (1.0 - beyond_combat) +
+                           tactical_grid * beyond_combat * (1.0 - beyond_tactical) * 0.72 +
+                           strategic_grid * beyond_tactical * 0.72;
+    float const edge_fade = smoothstep(0.0, 0.02, -outer_distance);
     float const alpha = PlaneColor.a + boundary * GridOpacity * edge_fade;
     float3 const color = lerp(PlaneColor.rgb, StructureColor.rgb, saturate(boundary));
     return float4(color, alpha);

@@ -128,6 +128,14 @@ auto sanitize_radar_settings(FRadarSettings settings) -> FRadarSettings {
                                        : FMath::Clamp(settings.combat_display_radius,
                                                       linear_combat_radius,
                                                       1.0f - UE_KINDA_SMALL_NUMBER);
+    settings.grid_opacity = FMath::Clamp(settings.grid_opacity, 0.0f, 1.0f);
+    settings.strategic_cell_radius = FMath::Clamp(settings.strategic_cell_radius, 0.01f, 1.0f);
+    settings.tactical_cell_radius =
+        FMath::Clamp(settings.tactical_cell_radius, settings.strategic_cell_radius, 1.0f);
+    settings.combat_cell_radius =
+        FMath::Clamp(settings.combat_cell_radius, settings.tactical_cell_radius, 1.0f);
+    settings.core_cell_radius =
+        FMath::Clamp(settings.core_cell_radius, settings.combat_cell_radius, 1.0f);
     return settings;
 }
 
