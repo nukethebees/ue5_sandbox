@@ -287,6 +287,10 @@ void Simulation::select_previous_control_mode() {
 }
 
 void Simulation::start_sampling() noexcept {
+    if (sampling) {
+        return;
+    }
+    target_local_planar_velocity_scale = FVector2D::ZeroVector;
     sampling = true;
 }
 

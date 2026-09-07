@@ -420,6 +420,28 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                               0.95f);
     }
 
+    TEST_METHOD(NewSamplingSessionStartsWithNeutralControl)
+    {
+        ml::test_space_ship::Simulation simulation;
+        simulation.start_sampling();
+        simulation.set_ship_1d_control_y(1.0f);
+        simulation.stop_sampling();
+        TestRunner->TestEqual(TEXT("Released sample retains the committed direction"),
+                              simulation.target_local_planar_velocity_scale,
+                              FVector2D{0.0f, 1.0f});
+
+        simulation.start_sampling();
+        TestRunner->TestEqual(TEXT("New sample starts from neutral"),
+                              simulation.target_local_planar_velocity_scale,
+                              FVector2D::ZeroVector);
+
+        simulation.set_ship_1d_control_x(1.0f);
+        simulation.start_sampling();
+        TestRunner->TestEqual(TEXT("Starting a second axis does not reset the active sample"),
+                              simulation.target_local_planar_velocity_scale,
+                              FVector2D{1.0f, 0.0f});
+    }
+
     TEST_METHOD(ShipBindUnbindOwnsMappingsAndHandlers)
     {
         auto const world_result{ml::get_editor_world()};
