@@ -56,9 +56,12 @@ class SGameOptionsView final : public SCompoundWidget {
     auto OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
     auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
+    auto OnKeyUp(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
     auto OnAnalogValueChanged(FGeometry const& geometry, FAnalogInputEvent const& analog_event)
         -> FReply override;
     auto OnMouseButtonDown(FGeometry const& geometry, FPointerEvent const& mouse_event)
+        -> FReply override;
+    auto OnMouseButtonUp(FGeometry const& geometry, FPointerEvent const& mouse_event)
         -> FReply override;
     auto OnMouseWheel(FGeometry const& geometry, FPointerEvent const& mouse_event)
         -> FReply override;
@@ -73,7 +76,12 @@ class SGameOptionsView final : public SCompoundWidget {
         -> EActiveTimerReturnType;
     auto build_binding_cell(TConstArrayView<FControlBindingView> bindings) -> TSharedRef<SWidget>;
     void begin_binding_capture(FControlBindingAddress const& address);
+    void begin_chord_capture(FControlBindingView const& binding);
     auto accept_binding_key(FKey key) -> FReply;
+    auto accept_chord_key(FKey key, bool can_be_held) -> FReply;
+    auto release_chord_key(FKey key) -> FReply;
+    void clear_chord_capture();
+    auto confirm_chord_capture() -> FReply;
     void close_binding_prompt();
     auto build_setting_row(FGameSettingDescriptor const& descriptor,
                            TFunction<void()>& focus_action) -> TSharedRef<SWidget>;
@@ -114,6 +122,9 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SGameButton> revert_display_button_{};
     TSharedPtr<SGameButton> conflict_replace_button_{};
     TSharedPtr<SGameButton> conflict_cancel_button_{};
+    TSharedPtr<SGameButton> chord_confirm_button_{};
+    TSharedPtr<SGameButton> chord_clear_button_{};
+    TSharedPtr<SGameButton> chord_cancel_button_{};
     TSharedPtr<SWidgetSwitcher> page_switcher_{};
     TSharedPtr<SWidget> dirty_prompt_{};
     TSharedPtr<SWidget> display_prompt_{};
@@ -121,7 +132,11 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SWidget> conflict_prompt_{};
     TSharedPtr<SVerticalBox> controls_content_{};
     TOptional<FControlBindingAddress> captured_binding_{};
+    TOptional<FControlChordBindingView> captured_chord_{};
+    TArray<FKey> held_chord_keys_{};
+    FKey captured_chord_activator_{};
     FKey captured_key_{};
+    int32 captured_chord_dependent_count_{};
     FText control_profile_error_{};
     TWeakPtr<SWidget> previous_focus_{};
     TArray<TFunction<void()>> page_focus_actions_{};
