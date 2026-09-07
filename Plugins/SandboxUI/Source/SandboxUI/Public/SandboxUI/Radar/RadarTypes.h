@@ -61,8 +61,8 @@ struct SANDBOXUI_API FRadarStyle {
     float strategic_cell_radius{0.025f};
     float stem_opacity{0.42f};
     float glyph_intensity{1.0f};
-    float contact_glow_opacity{0.035f};
-    float emphasized_glow_opacity{0.12f};
+    float contact_glow_opacity{0.0f};
+    float emphasized_glow_opacity{0.06f};
 };
 
 [[nodiscard]] SANDBOXUI_API auto pack_radar_color(FLinearColor color) -> uint32;

@@ -320,21 +320,24 @@ struct GlyphOutput {
 
 float glyph_base_size(uint const glyph) {
     if (glyph == glyph_player) {
-        return 10.0;
-    }
-    if (glyph == glyph_fighter) {
-        return 5.5;
-    }
-    if (glyph == glyph_capital_ship) {
         return 6.0;
     }
+    if (glyph == glyph_fighter) {
+        return 3.5;
+    }
+    if (glyph == glyph_capital_ship) {
+        return 3.6;
+    }
     if (glyph == glyph_turret) {
-        return 7.0;
+        return 4.8;
     }
-    if (glyph == glyph_missile || glyph == glyph_waypoint) {
-        return 7.0;
+    if (glyph == glyph_missile) {
+        return 4.0;
     }
-    return 6.0;
+    if (glyph == glyph_waypoint) {
+        return 4.25;
+    }
+    return 5.0;
 }
 
 GlyphOutput radar_glyph_vs(uint const vertex_id : SV_VertexID,
@@ -348,7 +351,7 @@ GlyphOutput radar_glyph_vs(uint const vertex_id : SV_VertexID,
     output.size =
         glyph_base_size(output.glyph) * output.pixel_scale * clamp(instance.size_scale, 0.85, 1.2);
     float const emphasized = output.flags == 0u ? 0.0 : 1.0;
-    float const extent = output.size + (5.0 + emphasized * 7.0) * output.pixel_scale;
+    float const extent = output.size + lerp(1.5, 6.0, emphasized) * output.pixel_scale;
     float2 const corner = quad_corner(vertex_id);
     output.local_position = (corner * 2.0 - 1.0) * extent;
     output.position = pixel_to_clip(project_point(instance.radar_position) + output.local_position);
@@ -393,6 +396,11 @@ float rectangle_sdf(float2 const glyph_point, float2 const half_size) {
     return length(max(delta, 0.0)) + min(max(delta.x, delta.y), 0.0);
 }
 
+float sdf_coverage(float const signed_distance) {
+    float const antialias = max(fwidth(signed_distance), epsilon);
+    return saturate(0.5 - signed_distance / antialias);
+}
+
 float selection_brackets_sdf(float2 const glyph_point, float const size, float const pixel_scale) {
     float2 const mirrored = abs(glyph_point);
     float const corner = size + 4.5 * pixel_scale;
@@ -408,27 +416,23 @@ float selection_brackets_sdf(float2 const glyph_point, float const size, float c
 float4 radar_glyph_ps(GlyphOutput input)
     : SV_Target0 {
     float const sdf = glyph_sdf(input.local_position, input.glyph, input.size) * input.size;
-    float const aa = max(fwidth(sdf), 0.65);
-    float const core = 1.0 - smoothstep(-aa, aa, sdf);
+    float const core = sdf_coverage(sdf);
     float const selected = (input.flags & flag_selected) != 0u ? 1.0 : 0.0;
     float const objective =
         (input.flags & (flag_defend_objective | flag_destroy_objective)) != 0u ? 1.0 : 0.0;
     float const emphasized = max(selected, objective);
     float const player = input.glyph == glyph_player ? 1.0 : 0.0;
-    float glow_radius = lerp(1.25, 2.5, emphasized) * input.pixel_scale;
-    glow_radius = max(glow_radius, player * 2.0 * input.pixel_scale);
-    float glow_opacity = lerp(ContactGlowOpacity, EmphasizedGlowOpacity, emphasized);
-    glow_opacity = max(glow_opacity, player * 0.14);
+    float const glow_radius = lerp(1.0, 2.0, emphasized) * input.pixel_scale;
+    float const glow_opacity = lerp(ContactGlowOpacity, EmphasizedGlowOpacity, emphasized);
     float const glow = (1.0 - smoothstep(0.0, glow_radius, max(sdf, 0.0))) * glow_opacity;
 
     float const objective_distance =
         abs(hex_sdf(input.local_position.yx, input.size + 3.0 * input.pixel_scale));
     float const objective_outline =
-        objective *
-        (1.0 - smoothstep(0.7 * input.pixel_scale, 1.5 * input.pixel_scale, objective_distance));
+        objective * sdf_coverage(objective_distance - 0.65 * input.pixel_scale);
     float const selection_distance =
         selection_brackets_sdf(input.local_position, input.size, input.pixel_scale);
-    float const selection_brackets = selected * (1.0 - smoothstep(-aa, aa, selection_distance));
+    float const selection_brackets = selected * sdf_coverage(selection_distance);
     float const below_opacity = input.altitude < -epsilon ? 0.88 : 1.0;
     float const alpha = saturate(max(core * input.color.a * below_opacity,
                                      max(glow, max(objective_outline, selection_brackets))));
