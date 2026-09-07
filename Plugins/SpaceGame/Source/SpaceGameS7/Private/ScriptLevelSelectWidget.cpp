@@ -9,7 +9,9 @@
 #include <SpaceGame/ui/style/SpaceGameUiTheme.h>
 
 #include <Engine/GameInstance.h>
+#include <IPlatformCrypto.h>
 #include <Kismet/GameplayStatics.h>
+#include <Misc/FileHelper.h>
 
 namespace ml::s7 {
 auto format_level_row_title(FString title, ELevelRowState const state) -> FString {
@@ -130,6 +132,19 @@ auto entry_matches_category(FLevelScriptEntry const& entry, ELevelCatalogCategor
     }
     return catalog_category(entry.definition.GetValue()) == category;
 }
+
+auto source_sha256(FString const& path) -> FString {
+    TArray<uint8> bytes;
+    if (!FFileHelper::LoadFileToArray(bytes, *path)) {
+        return {};
+    }
+    auto context{IPlatformCrypto::Get().CreateContext()};
+    TArray<uint8> hash;
+    if (!context || !context->CalcSHA256(bytes, hash)) {
+        return {};
+    }
+    return BytesToHex(hash.GetData(), hash.Num()).ToLower();
+}
 } // namespace
 
 UScriptLevelSelectWidget::UScriptLevelSelectWidget() = default;
@@ -161,6 +176,12 @@ auto UScriptLevelSelectWidget::RebuildWidget() -> TSharedRef<SWidget> {
                 FOnLevelCategorySelected::CreateUObject(this, &ThisClass::select_category))
             .OnBattleSpeedChanged(
                 FOnBattleSpeedChanged::CreateUObject(this, &ThisClass::set_battle_time_scale))
+            .OnBattleDurationChanged(
+                FOnBattleDurationChanged::CreateUObject(this, &ThisClass::set_battle_duration))
+            .OnBattleSimulationOnlyChanged(
+                FOnBattleBoolChanged::CreateUObject(this, &ThisClass::set_battle_simulation_only))
+            .OnBattleDetailedTimingChanged(
+                FOnBattleBoolChanged::CreateUObject(this, &ThisClass::set_battle_detailed_timing))
             .OnLaunch(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_launch))};
     refresh_levels();
     return result;
@@ -441,7 +462,33 @@ void UScriptLevelSelectWidget::handle_launch() {
     auto const launch_mode{IsValid(save_subsystem) && save_subsystem->start_levels_paused()
                                ? ml::ioj::ELevelLaunchMode::Paused
                                : ml::ioj::ELevelLaunchMode::Running};
-    launch_selected_level(launch_mode, time_scale.GetValue());
+    ml::ioj::FLevelLaunchOptions options{
+        .launch_mode = launch_mode,
+        .requested_time_scale = time_scale.GetValue(),
+    };
+    if (active_category_ == ELevelCatalogCategory::BattleViewer) {
+        options.presentation_mode = battle_simulation_only_
+                                      ? ml::ioj::ELevelPresentationMode::SimulationOnly
+                                      : ml::ioj::ELevelPresentationMode::Visual;
+        options.simulated_duration_seconds = battle_duration_;
+        options.stop_when_battle_resolved = true;
+        options.detailed_timing = battle_detailed_timing_;
+        options.results_navigation = ml::ioj::ELevelResultsNavigation::Telemetry;
+    }
+    launch_selected_level(MoveTemp(options));
+}
+
+void UScriptLevelSelectWidget::set_battle_duration(TOptional<double> duration, bool const valid) {
+    battle_duration_ = duration;
+    battle_duration_valid_ = valid;
+}
+
+void UScriptLevelSelectWidget::set_battle_simulation_only(bool const simulation_only) {
+    battle_simulation_only_ = simulation_only;
+}
+
+void UScriptLevelSelectWidget::set_battle_detailed_timing(bool const enabled) {
+    battle_detailed_timing_ = enabled;
 }
 
 void UScriptLevelSelectWidget::publish_view() {
@@ -456,8 +503,7 @@ void UScriptLevelSelectWidget::publish_catalog() {
     }
 }
 
-void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode const launch_mode,
-                                                     double const time_scale) {
+void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::FLevelLaunchOptions options) {
     if (!entries_.IsValidIndex(selected_entry_index_) || !entries_[selected_entry_index_]) {
         return;
     }
@@ -485,9 +531,9 @@ void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode c
     auto& entry{entries_[selected_entry_index_]};
     auto definition{MoveTemp(entry.definition.GetValue())};
     entry.definition.Reset();
-    game_->set_pending_level(MoveTemp(definition), entry.path, launch_mode, time_scale);
+    game_->set_pending_level(MoveTemp(definition), entry.path, source_sha256(entry.path), options);
     view_state_.can_launch = false;
-    if (launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
+    if (options.launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
         view_state_.status =
             NSLOCTEXT("LevelSelect", "StagingPaused", "STAGING LEVEL IN PAUSED STATE...");
     } else if (active_category_ == ELevelCatalogCategory::BattleViewer) {

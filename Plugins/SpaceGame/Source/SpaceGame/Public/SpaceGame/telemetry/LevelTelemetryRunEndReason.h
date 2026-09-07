@@ -9,6 +9,8 @@
 enum class ELevelTelemetryRunEndReason : uint8 {
     MissionSucceeded,
     MissionFailed,
+    BattleResolved,
+    DurationReached,
     OrchestratorReset,
     WorldEnd,
 };

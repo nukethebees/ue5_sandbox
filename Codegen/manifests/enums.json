@@ -175,6 +175,8 @@
           "values": [
             {"name": "MissionSucceeded", "serialized_name": "mission_succeeded"},
             {"name": "MissionFailed", "serialized_name": "mission_failed"},
+            {"name": "BattleResolved", "serialized_name": "battle_resolved"},
+            {"name": "DurationReached", "serialized_name": "duration_reached"},
             {"name": "OrchestratorReset", "serialized_name": "orchestrator_reset"},
             {"name": "WorldEnd", "serialized_name": "world_end"}
           ],

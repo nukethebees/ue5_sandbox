@@ -17,6 +17,7 @@
 #include <HAL/FileManager.h>
 #include <Layout/ArrangedChildren.h>
 #include <Layout/Geometry.h>
+#include <Widgets/Layout/SWidgetSwitcher.h>
 
 namespace {
 
@@ -262,5 +263,20 @@ TEST_CLASS(MainMenuWidget, "Sandbox.UnitTests")
         widget->select_page(ml::ioj::EMainMenuPage::SelectMission);
         TestRunner->TestTrue(TEXT("Operations remain reachable after configuration"),
                              widget->get_active_page() == ml::ioj::EMainMenuPage::SelectMission);
+
+        auto const switcher_widget{
+            find_slate_descendant(slate_widget, FName{TEXT("SWidgetSwitcher")})};
+        if (!TestRunner->TestTrue(TEXT("Command deck has a page switcher"),
+                                  switcher_widget.IsValid())) {
+            return;
+        }
+        auto const switcher{StaticCastSharedPtr<SWidgetSwitcher>(switcher_widget)};
+        widget->prepare_for_open(level_select_class, false, NAME_None, true);
+        TestRunner->TestTrue(TEXT("A post-construction telemetry request updates the active page"),
+                             widget->get_active_page() == ml::ioj::EMainMenuPage::Telemetry);
+        TestRunner->TestEqual(
+            TEXT("A post-construction telemetry request updates the visible page"),
+            switcher->GetActiveWidgetIndex(),
+            int32{2});
     }
 };

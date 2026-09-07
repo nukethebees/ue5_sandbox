@@ -36,11 +36,18 @@ void UMainMenuWidget::NativeOnInitialized() {
 
 void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
                                        bool const focus_mission_content,
-                                       FName const preferred_level_id) {
+                                       FName const preferred_level_id,
+                                       bool const show_telemetry,
+                                       FString telemetry_run_id,
+                                       FString telemetry_error) {
     level_select_class_ = level_select_class;
     focus_mission_content_ = focus_mission_content;
     preferred_level_id_ = preferred_level_id;
+    initial_telemetry_run_id_ = MoveTemp(telemetry_run_id);
     create_content_widgets();
+    if (show_telemetry) {
+        show_page(EMainMenuPage::Telemetry);
+    }
 
     if (IsValid(level_select_widget_)) {
         level_select_widget_->prepare_for_open(preferred_level_id_);
@@ -51,6 +58,12 @@ void UMainMenuWidget::prepare_for_open(TSubclassOf<ULevelSelectWidget> level_sel
     }
     if (focus_mission_content_ && view_.IsValid()) {
         view_->focus_content_on_next_focus();
+    }
+    if (show_telemetry && IsValid(telemetry_dashboard_)) {
+        telemetry_dashboard_->set_external_error(MoveTemp(telemetry_error));
+        if (!initial_telemetry_run_id_.IsEmpty()) {
+            telemetry_dashboard_->select_run(initial_telemetry_run_id_);
+        }
     }
 }
 

@@ -140,12 +140,12 @@ auto UGameSubsystem::set_ui_theme(USpaceGameUiTheme* const theme) -> bool {
 
 void UGameSubsystem::set_pending_level(FLevelDefinition definition,
                                        FString source_path,
-                                       ELevelLaunchMode const launch_mode,
-                                       double const requested_time_scale) {
+                                       FString source_sha256,
+                                       FLevelLaunchOptions options) {
     pending_level_.Emplace(FPendingLevelDefinition{.definition = MoveTemp(definition),
                                                    .source_path = MoveTemp(source_path),
-                                                   .launch_mode = launch_mode,
-                                                   .requested_time_scale = requested_time_scale});
+                                                   .source_sha256 = MoveTemp(source_sha256),
+                                                   .options = MoveTemp(options)});
     level_launch_error_.Reset();
 }
 
@@ -170,6 +170,30 @@ auto UGameSubsystem::return_to_level_select(FName const preferred_level_id) -> b
 
     pending_level_.Reset();
     level_select_request_.Emplace(FLevelSelectRequest{.preferred_level_id = preferred_level_id});
+    level_transition_in_progress_ = true;
+    UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
+    return true;
+}
+
+auto UGameSubsystem::return_to_telemetry(FString run_id, FString error) -> bool {
+    if (level_transition_in_progress_) {
+        return false;
+    }
+
+    auto* const world{GetWorld()};
+    if (!IsValid(world)) {
+        UE_LOG(LogSandboxSubsystem,
+               Error,
+               TEXT("UGameSubsystem::return_to_telemetry: World is invalid."));
+        return false;
+    }
+
+    pending_level_.Reset();
+    level_select_request_.Emplace(FLevelSelectRequest{
+        .destination = EMainMenuDestination::Telemetry,
+        .selected_telemetry_run_id = MoveTemp(run_id),
+        .telemetry_error = MoveTemp(error),
+    });
     level_transition_in_progress_ = true;
     UGameplayStatics::OpenLevel(world, get_main_menu_level_name());
     return true;

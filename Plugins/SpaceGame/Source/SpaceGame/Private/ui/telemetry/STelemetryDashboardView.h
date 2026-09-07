@@ -10,6 +10,7 @@ class SScrollBox;
 namespace ml::ioj {
 DECLARE_DELEGATE_OneParam(FOnTelemetryRunSelected, FString);
 DECLARE_DELEGATE_OneParam(FOnTelemetryLevelFilterSelected, FString);
+DECLARE_DELEGATE_OneParam(FOnTelemetryBaselineSelected, FString);
 
 enum class ETelemetryDashboardSection : uint8 {
     Overview,
@@ -27,6 +28,7 @@ class STelemetryDashboardView final : public SCompoundWidget {
     SLATE_EVENT(FSimpleDelegate, OnRefresh)
     SLATE_EVENT(FOnTelemetryRunSelected, OnRunSelected)
     SLATE_EVENT(FOnTelemetryLevelFilterSelected, OnLevelFilterSelected)
+    SLATE_EVENT(FOnTelemetryBaselineSelected, OnBaselineSelected)
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
@@ -39,6 +41,7 @@ class STelemetryDashboardView final : public SCompoundWidget {
     auto build_detail() -> TSharedRef<SWidget>;
     auto handle_refresh() -> FReply;
     auto handle_filter() -> FReply;
+    auto handle_baseline() -> FReply;
     auto handle_run(FString run_id) -> FReply;
     auto handle_section(ETelemetryDashboardSection section) -> FReply;
 
@@ -47,6 +50,7 @@ class STelemetryDashboardView final : public SCompoundWidget {
     FSimpleDelegate on_refresh_{};
     FOnTelemetryRunSelected on_run_selected_{};
     FOnTelemetryLevelFilterSelected on_level_filter_selected_{};
+    FOnTelemetryBaselineSelected on_baseline_selected_{};
     TSharedPtr<SButton> primary_button_{};
     TSharedPtr<SScrollBox> detail_scroll_{};
     TSharedPtr<SWidget> timing_section_{};

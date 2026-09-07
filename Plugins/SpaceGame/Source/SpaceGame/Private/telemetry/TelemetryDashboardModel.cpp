@@ -22,7 +22,7 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
     }
     double schema{};
     if (!root->TryGetNumberField(TEXT("schema_version"), schema) ||
-        schema != FLevelTelemetryRunRecord::schema_version) {
+        (schema != 1.0 && schema != FLevelTelemetryRunRecord::schema_version)) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported or missing schema in '%s'"), *path)};
     }
@@ -234,6 +234,8 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
     auto builder = [&builders](ETelemetryDashboardMetric metric) -> FMetricBuilder& {
         return builders[static_cast<uint8>(metric)];
     };
+    auto const use_battle_metrics{record.loaded_schema_version >= 2 &&
+                                  record.battle_samples.Num() >= 2};
 
     auto const& realtime{record.completed_ticks_by_real_time};
     auto const count{realtime.num()};
@@ -276,6 +278,9 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
             }
         }
 
+        if (use_battle_metrics) {
+            continue;
+        }
         add_gauge(builder(ETelemetryDashboardMetric::ActiveEntities),
                   record.tick_series.active_entities,
                   end_tick,
@@ -358,6 +363,136 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
                  end_time,
                  real_delta);
     }
+    auto sum_counts = [](auto const& counts) {
+        double total{};
+        for (auto const& row : counts) {
+            for (auto const value : row) {
+                total += static_cast<double>(value);
+            }
+        }
+        return static_cast<float>(total);
+    };
+    result.battle_simulated_seconds.Reserve(record.battle_samples.Num());
+    result.battle_alive_entities.Reserve(record.battle_samples.Num());
+    result.battle_shots.Reserve(record.battle_samples.Num());
+    result.battle_hits.Reserve(record.battle_samples.Num());
+    result.battle_damage_dealt.Reserve(record.battle_samples.Num());
+    result.battle_kills.Reserve(record.battle_samples.Num());
+    for (auto const& sample : record.battle_samples) {
+        result.battle_simulated_seconds.Add(static_cast<float>(sample.simulated_elapsed_seconds));
+        result.battle_alive_entities.Add(sum_counts(sample.alive));
+        result.battle_shots.Add(sum_counts(sample.combat.shots));
+        result.battle_hits.Add(sum_counts(sample.combat.hits));
+        result.battle_damage_dealt.Add(sum_counts(sample.combat.damage_dealt));
+        result.battle_kills.Add(sum_counts(sample.combat.kills));
+    }
+    if (use_battle_metrics) {
+        constexpr ETelemetryDashboardMetric simulated_metrics[]{
+            ETelemetryDashboardMetric::ActiveEntities,
+            ETelemetryDashboardMetric::PlayerShips,
+            ETelemetryDashboardMetric::Turrets,
+            ETelemetryDashboardMetric::CapitalShips,
+            ETelemetryDashboardMetric::CapitalShipFighters,
+            ETelemetryDashboardMetric::TubeSpinners,
+            ETelemetryDashboardMetric::ActiveLasers,
+            ETelemetryDashboardMetric::RegistrySlots,
+            ETelemetryDashboardMetric::OccupiedSpatialCells,
+            ETelemetryDashboardMetric::SpawnRate,
+            ETelemetryDashboardMetric::DestructionRate,
+            ETelemetryDashboardMetric::KillRate,
+            ETelemetryDashboardMetric::LaserFireRate,
+            ETelemetryDashboardMetric::GridRebuildRate,
+            ETelemetryDashboardMetric::RangeQueryRate,
+            ETelemetryDashboardMetric::LineTraceRate,
+            ETelemetryDashboardMetric::SweepTraceRate,
+        };
+        for (auto const metric : simulated_metrics) {
+            builder(metric).series.uses_simulated_time = true;
+        }
+        constexpr ETelemetryDashboardMetric type_metrics[]{
+            ETelemetryDashboardMetric::PlayerShips,
+            ETelemetryDashboardMetric::Turrets,
+            ETelemetryDashboardMetric::CapitalShips,
+            ETelemetryDashboardMetric::CapitalShipFighters,
+            ETelemetryDashboardMetric::TubeSpinners,
+        };
+        auto add_rate = [&builder](ETelemetryDashboardMetric const metric,
+                                   double const begin,
+                                   double const end,
+                                   double const time,
+                                   double const duration) {
+            if (end >= begin) {
+                builder(metric).add(time, (end - begin) / duration, duration);
+            }
+        };
+        auto type_total = [](FTestEntityRegistry::EntityCounts const& counts, int32 const type) {
+            int32 total{};
+            for (auto const& team : counts) {
+                total += team[type];
+            }
+            return total;
+        };
+        auto const sample_count{record.battle_samples.Num()};
+        for (int32 index{1}; index < sample_count; ++index) {
+            auto const& begin{record.battle_samples[index - 1]};
+            auto const& end{record.battle_samples[index]};
+            auto const duration{end.simulated_elapsed_seconds - begin.simulated_elapsed_seconds};
+            if (!FMath::IsFinite(duration) || duration <= 0.0) {
+                continue;
+            }
+            auto const time{end.simulated_elapsed_seconds};
+            builder(ETelemetryDashboardMetric::ActiveEntities)
+                .add(time, sum_counts(end.alive), duration);
+            for (int32 type{}; type < FLevelTelemetryTickSeries::entity_type_count; ++type) {
+                builder(type_metrics[type]).add(time, type_total(end.alive, type), duration);
+            }
+            builder(ETelemetryDashboardMetric::ActiveLasers).add(time, end.active_lasers, duration);
+            builder(ETelemetryDashboardMetric::RegistrySlots)
+                .add(time, end.registry_slot_count, duration);
+            builder(ETelemetryDashboardMetric::OccupiedSpatialCells)
+                .add(time, end.occupied_spatial_cell_count, duration);
+            add_rate(ETelemetryDashboardMetric::SpawnRate,
+                     sum_counts(begin.combat.spawned),
+                     sum_counts(end.combat.spawned),
+                     time,
+                     duration);
+            add_rate(ETelemetryDashboardMetric::DestructionRate,
+                     sum_counts(begin.combat.destroyed),
+                     sum_counts(end.combat.destroyed),
+                     time,
+                     duration);
+            add_rate(ETelemetryDashboardMetric::KillRate,
+                     sum_counts(begin.combat.kills),
+                     sum_counts(end.combat.kills),
+                     time,
+                     duration);
+            add_rate(ETelemetryDashboardMetric::LaserFireRate,
+                     begin.lasers_fired,
+                     end.lasers_fired,
+                     time,
+                     duration);
+            add_rate(ETelemetryDashboardMetric::GridRebuildRate,
+                     begin.grid_rebuild_count,
+                     end.grid_rebuild_count,
+                     time,
+                     duration);
+            add_rate(ETelemetryDashboardMetric::RangeQueryRate,
+                     begin.range_query_count,
+                     end.range_query_count,
+                     time,
+                     duration);
+            add_rate(ETelemetryDashboardMetric::LineTraceRate,
+                     begin.line_trace_count,
+                     end.line_trace_count,
+                     time,
+                     duration);
+            add_rate(ETelemetryDashboardMetric::SweepTraceRate,
+                     begin.sweep_trace_count,
+                     end.sweep_trace_count,
+                     time,
+                     duration);
+        }
+    }
     result.metrics.Reserve(builders.Num());
     for (auto& value : builders) {
         result.metrics.Add(value.finish());
@@ -428,6 +563,40 @@ bool FTelemetryRunCatalog::select_run(FString const& run_id) {
     return selected_record_.IsSet();
 }
 
+bool FTelemetryRunCatalog::select_baseline(FString const& run_id) {
+    baseline_run_id_ = run_id;
+    baseline_record_.Reset();
+    if (run_id.IsEmpty()) {
+        return true;
+    }
+    for (auto const& run : get_baseline_candidates()) {
+        if (run.run_id != run_id) {
+            continue;
+        }
+        auto record{read_level_telemetry_run(run.path)};
+        if (!record) {
+            return false;
+        }
+        baseline_record_ = MoveTemp(*record);
+        return true;
+    }
+    return false;
+}
+
+auto FTelemetryRunCatalog::get_baseline_candidates() const -> TArray<FTelemetryRunSummary> {
+    TArray<FTelemetryRunSummary> result;
+    if (!selected_record_.IsSet()) {
+        return result;
+    }
+    auto const selected_level{selected_record_->metadata.level_id};
+    for (auto const& run : all_) {
+        if (run.run_id != selected_run_id_ && run.level_id == selected_level) {
+            result.Add(run);
+        }
+    }
+    return result;
+}
+
 void FTelemetryRunCatalog::rebuild_filter() {
     filtered_.Reset();
     for (auto const& run : all_) {
@@ -456,4 +625,9 @@ void FTelemetryRunCatalog::load_selection() {
         return;
     }
     selected_record_ = MoveTemp(*record);
+    if (baseline_record_.IsSet() &&
+        baseline_record_->metadata.level_id != selected_record_->metadata.level_id) {
+        baseline_run_id_.Reset();
+        baseline_record_.Reset();
+    }
 }

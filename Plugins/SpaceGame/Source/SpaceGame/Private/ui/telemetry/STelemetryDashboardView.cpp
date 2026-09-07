@@ -23,6 +23,7 @@ auto chart_title(FGameUiStyle const& style, FString value) -> TSharedRef<SWidget
 
 auto metric_panel(FGameUiStyle const& style,
                   FTelemetryRunAnalysis const& analysis,
+                  FTelemetryRunAnalysis const* const baseline_analysis,
                   ETelemetryDashboardMetric const metric,
                   FGraphPlotStyle const& graph_style,
                   FHistogramStyle const& histogram_style) -> TSharedRef<SWidget> {
@@ -36,6 +37,16 @@ auto metric_panel(FGameUiStyle const& style,
         graph_series.style.color = style.palette().honey;
         TArray<FGraphSeries> timeline_series;
         timeline_series.Add(MoveTemp(graph_series));
+        if (baseline_analysis) {
+            auto const* const baseline{baseline_analysis->find_metric(metric)};
+            if (baseline) {
+                FGraphSeries baseline_series{.name = FText::FromString(TEXT("Baseline")),
+                                             .x = baseline->real_elapsed_seconds,
+                                             .y = baseline->values};
+                baseline_series.style.color = style.palette().text_muted;
+                timeline_series.Add(MoveTemp(baseline_series));
+            }
+        }
         timeline->set_series(MoveTemp(timeline_series));
         if (!series->values.IsEmpty()) {
             auto minimum{FMath::Min(series->values)};
@@ -51,20 +62,33 @@ auto metric_panel(FGameUiStyle const& style,
 
     auto const title{series ? series->title : telemetry_metric_title(metric)};
     auto const units{series ? series->units : telemetry_metric_units(metric)};
+    auto const uses_simulated_time{series && series->uses_simulated_time};
+    auto title_text{FString::Printf(TEXT("%s // %s"), *title, *units)};
+    auto const* const baseline{baseline_analysis ? baseline_analysis->find_metric(metric)
+                                                 : nullptr};
+    if (series && series->weighted_mean.IsSet() && baseline && baseline->weighted_mean.IsSet()) {
+        auto const current{series->weighted_mean.GetValue()};
+        auto const base{baseline->weighted_mean.GetValue()};
+        title_text += FString::Printf(
+            TEXT(" // CURRENT %.3g  BASELINE %.3g  DELTA %+.3g"), current, base, current - base);
+    }
     return SNew(SBorder)
         .BorderImage(&style.panel().background)
         .Padding(style.panel().padding)
             [SNew(SVerticalBox) +
              SVerticalBox::Slot().AutoHeight()[text(
-                 style,
-                 FText::FromString(FString::Printf(TEXT("%s // %s"), *title, *units)),
-                 EGameTextStyle::Heading3)] +
+                 style, FText::FromString(MoveTemp(title_text)), EGameTextStyle::Heading3)] +
              SVerticalBox::Slot().AutoHeight().Padding(0.0f, 4.0f, 0.0f, 2.0f)
                  [SNew(SHorizontalBox) +
-                  SHorizontalBox::Slot().FillWidth(
-                      0.62f)[chart_title(style, TEXT("TIMELINE // REAL ELAPSED TIME (s)"))] +
-                  SHorizontalBox::Slot().FillWidth(0.38f).Padding(8.0f, 0.0f, 0.0f, 0.0f)
-                      [chart_title(style, TEXT("DISTRIBUTION // ~1 HZ INTERVAL COUNTS"))]] +
+                  SHorizontalBox::Slot().FillWidth(0.62f)[chart_title(
+                      style,
+                      uses_simulated_time ? TEXT("TIMELINE // SIMULATED TIME (s)")
+                                          : TEXT("TIMELINE // REAL ELAPSED TIME (s)"))] +
+                  SHorizontalBox::Slot().FillWidth(0.38f).Padding(
+                      8.0f, 0.0f, 0.0f, 0.0f)[chart_title(
+                      style,
+                      uses_simulated_time ? TEXT("DISTRIBUTION // 1 s SIMULATION SAMPLES")
+                                          : TEXT("DISTRIBUTION // ~1 HZ REAL-TIME SAMPLES"))]] +
              SVerticalBox::Slot().AutoHeight()[SNew(SHorizontalBox) +
                                                SHorizontalBox::Slot().FillWidth(0.62f)[timeline] +
                                                SHorizontalBox::Slot().FillWidth(0.38f).Padding(
@@ -73,6 +97,7 @@ auto metric_panel(FGameUiStyle const& style,
 
 auto metric_section(FGameUiStyle const& style,
                     FTelemetryRunAnalysis const& analysis,
+                    FTelemetryRunAnalysis const* const baseline_analysis,
                     FString title,
                     TConstArrayView<ETelemetryDashboardMetric> const metrics,
                     FString note,
@@ -92,11 +117,8 @@ auto metric_section(FGameUiStyle const& style,
             6.0f)[text(style, FText::FromString(MoveTemp(note)), EGameTextStyle::BodySecondary)];
     }
     for (auto const metric : metrics) {
-        content->AddSlot().AutoHeight().Padding(
-            0.0f,
-            0.0f,
-            0.0f,
-            8.0f)[metric_panel(style, analysis, metric, graph_style, histogram_style)];
+        content->AddSlot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 8.0f)[metric_panel(
+            style, analysis, baseline_analysis, metric, graph_style, histogram_style)];
     }
     return content;
 }
@@ -108,6 +130,7 @@ void STelemetryDashboardView::Construct(FArguments const& args) {
     on_refresh_ = args._OnRefresh;
     on_run_selected_ = args._OnRunSelected;
     on_level_filter_selected_ = args._OnLevelFilterSelected;
+    on_baseline_selected_ = args._OnBaselineSelected;
     ChildSlot[build()];
 }
 
@@ -153,6 +176,13 @@ auto STelemetryDashboardView::build_sidebar() -> TSharedRef<SWidget> {
     }
     auto status{FString::Printf(
         TEXT("%d RUNS  //  %d UNREADABLE"), state_.runs.Num(), state_.unreadable_files)};
+    auto baseline_label{FString{TEXT("BASELINE // NONE")}};
+    for (auto const& run : state_.baseline_runs) {
+        if (run.run_id == state_.selected_baseline_run_id) {
+            baseline_label = TEXT("BASELINE // ") + run.launched_utc;
+            break;
+        }
+    }
     return SNew(SVerticalBox) +
            SVerticalBox::Slot().AutoHeight()[telemetry_dashboard_view::text(
                *style_,
@@ -170,6 +200,10 @@ auto STelemetryDashboardView::build_sidebar() -> TSharedRef<SWidget> {
                                          *style_,
                                          NSLOCTEXT("TelemetryDashboard", "Refresh", "REFRESH RUNS"),
                                          EGameTextStyle::Caption)]] +
+           SVerticalBox::Slot().AutoHeight().Padding(
+               0.0f, 6.0f, 0.0f, 0.0f)[SNew(SButton).OnClicked(
+               this, &STelemetryDashboardView::handle_baseline)[telemetry_dashboard_view::text(
+               *style_, FText::FromString(baseline_label), EGameTextStyle::Caption)]] +
            SVerticalBox::Slot().AutoHeight().Padding(0.0f, 8.0f)[telemetry_dashboard_view::text(
                *style_,
                FText::FromString(status),
@@ -222,7 +256,51 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
     TArray<FGraphSeries> throughput_series;
     throughput_series.Add(MoveTemp(observed));
     throughput_series.Add(MoveTemp(requested));
+    if (!state_.selected_baseline_run_id.IsEmpty()) {
+        FGraphSeries baseline{.name =
+                                  NSLOCTEXT("TelemetryDashboard", "Baseline", "Baseline observed"),
+                              .x = state_.baseline_analysis.throughput_real_elapsed_seconds,
+                              .y = state_.baseline_analysis.observed_time_scale};
+        baseline.style.color = style_->palette().text_muted;
+        throughput_series.Add(MoveTemp(baseline));
+    }
     throughput->set_series(MoveTemp(throughput_series));
+
+    auto battle_progress{SNew(SGraphPlot).Style(graph_style)};
+    TArray<FGraphSeries> battle_progress_series;
+    FGraphSeries alive{.name = NSLOCTEXT("TelemetryDashboard", "Alive", "Alive entities"),
+                       .x = state_.analysis.battle_simulated_seconds,
+                       .y = state_.analysis.battle_alive_entities};
+    alive.style.color = style_->palette().honey;
+    battle_progress_series.Add(MoveTemp(alive));
+    if (!state_.selected_baseline_run_id.IsEmpty()) {
+        FGraphSeries baseline_alive{
+            .name = NSLOCTEXT("TelemetryDashboard", "BaselineAlive", "Baseline alive"),
+            .x = state_.baseline_analysis.battle_simulated_seconds,
+            .y = state_.baseline_analysis.battle_alive_entities};
+        baseline_alive.style.color = style_->palette().text_muted;
+        battle_progress_series.Add(MoveTemp(baseline_alive));
+    }
+    battle_progress->set_series(MoveTemp(battle_progress_series));
+
+    auto combat_efficiency{SNew(SGraphPlot).Style(graph_style)};
+    TArray<FGraphSeries> combat_series;
+    FGraphSeries shots{.name = NSLOCTEXT("TelemetryDashboard", "Shots", "Shots"),
+                       .x = state_.analysis.battle_simulated_seconds,
+                       .y = state_.analysis.battle_shots};
+    shots.style.color = style_->palette().text_primary;
+    FGraphSeries hits{.name = NSLOCTEXT("TelemetryDashboard", "Hits", "Hits"),
+                      .x = state_.analysis.battle_simulated_seconds,
+                      .y = state_.analysis.battle_hits};
+    hits.style.color = style_->palette().honey;
+    FGraphSeries kills{.name = NSLOCTEXT("TelemetryDashboard", "Kills", "Kills"),
+                       .x = state_.analysis.battle_simulated_seconds,
+                       .y = state_.analysis.battle_kills};
+    kills.style.color = style_->palette().focus;
+    combat_series.Add(MoveTemp(shots));
+    combat_series.Add(MoveTemp(hits));
+    combat_series.Add(MoveTemp(kills));
+    combat_efficiency->set_series(MoveTemp(combat_series));
 
     static constexpr ETelemetryDashboardMetric timing_metrics[]{
         ETelemetryDashboardMetric::RequestedTimeScaleRatio,
@@ -260,33 +338,40 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
     timing_section_ = telemetry_dashboard_view::metric_section(
         *style_,
         state_.analysis,
-        TEXT("TIMING"),
+        state_.selected_baseline_run_id.IsEmpty() ? nullptr : &state_.baseline_analysis,
+        TEXT("PERFORMANCE"),
         timing_metrics,
         TEXT("Requested-scale ratio is observed time scale divided by requested time scale. "
              "100% matches the request; values above 100% ran faster than requested."),
         graph_style,
         histogram_style);
-    workload_section_ = telemetry_dashboard_view::metric_section(*style_,
-                                                                 state_.analysis,
-                                                                 TEXT("WORKLOAD"),
-                                                                 workload_metrics,
-                                                                 {},
-                                                                 graph_style,
-                                                                 histogram_style);
-    activity_section_ = telemetry_dashboard_view::metric_section(*style_,
-                                                                 state_.analysis,
-                                                                 TEXT("ACTIVITY RATES"),
-                                                                 activity_metrics,
-                                                                 {},
-                                                                 graph_style,
-                                                                 histogram_style);
-    queries_section_ = telemetry_dashboard_view::metric_section(*style_,
-                                                                state_.analysis,
-                                                                TEXT("QUERY RATES"),
-                                                                query_metrics,
-                                                                {},
-                                                                graph_style,
-                                                                histogram_style);
+    workload_section_ = telemetry_dashboard_view::metric_section(
+        *style_,
+        state_.analysis,
+        state_.selected_baseline_run_id.IsEmpty() ? nullptr : &state_.baseline_analysis,
+        TEXT("WORKLOAD"),
+        workload_metrics,
+        {},
+        graph_style,
+        histogram_style);
+    activity_section_ = telemetry_dashboard_view::metric_section(
+        *style_,
+        state_.analysis,
+        state_.selected_baseline_run_id.IsEmpty() ? nullptr : &state_.baseline_analysis,
+        TEXT("COMBAT EFFICIENCY"),
+        activity_metrics,
+        {},
+        graph_style,
+        histogram_style);
+    queries_section_ = telemetry_dashboard_view::metric_section(
+        *style_,
+        state_.analysis,
+        state_.selected_baseline_run_id.IsEmpty() ? nullptr : &state_.baseline_analysis,
+        TEXT("WORKLOAD / QUERIES"),
+        query_metrics,
+        {},
+        graph_style,
+        histogram_style);
 
     auto content{SNew(SVerticalBox)};
     content->AddSlot().AutoHeight()[telemetry_dashboard_view::text(
@@ -296,19 +381,31 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
                         .BorderImage(&style_->panel().background)
                         .Padding(style_->panel().padding)[telemetry_dashboard_view::text(
                             *style_, state_.summary, EGameTextStyle::HudPrimary)]];
+    if (!state_.compatibility_warning.IsEmpty()) {
+        content->AddSlot().AutoHeight().Padding(0.0f, 4.0f)[telemetry_dashboard_view::text(
+            *style_, state_.compatibility_warning, EGameTextStyle::Warning)];
+    }
     content->AddSlot().AutoHeight().Padding(0.0f, 2.0f, 0.0f, 0.0f)[telemetry_dashboard_view::text(
         *style_,
         NSLOCTEXT("TelemetryDashboard",
                   "WarmupIntervalOmitted",
                   "INTERVAL ANALYSIS // FIRST ~1 HZ WARM-UP INTERVAL OMITTED"),
         EGameTextStyle::BodySecondary)];
+    content->AddSlot().AutoHeight().Padding(
+        0.0f, 10.0f, 0.0f, 6.0f)[telemetry_dashboard_view::chart_title(
+        *style_, TEXT("BATTLE PROGRESSION // ALIVE ENTITIES BY SIMULATED TIME (s)"))];
+    content->AddSlot().AutoHeight()[battle_progress];
+    content->AddSlot().AutoHeight().Padding(
+        0.0f, 10.0f, 0.0f, 6.0f)[telemetry_dashboard_view::chart_title(
+        *style_, TEXT("COMBAT EFFICIENCY // CUMULATIVE COUNTS BY SIMULATED TIME (s)"))];
+    content->AddSlot().AutoHeight()[combat_efficiency];
+    content->AddSlot().AutoHeight()[activity_section_.ToSharedRef()];
+    content->AddSlot().AutoHeight()[workload_section_.ToSharedRef()];
+    content->AddSlot().AutoHeight()[queries_section_.ToSharedRef()];
     content->AddSlot().AutoHeight().Padding(0.0f, 6.0f)[telemetry_dashboard_view::chart_title(
-        *style_, TEXT("THROUGHPUT // TIME SCALE (x) BY REAL ELAPSED TIME (s)"))];
+        *style_, TEXT("PERFORMANCE // TIME SCALE (x) BY REAL ELAPSED TIME (s)"))];
     content->AddSlot().AutoHeight()[throughput];
     content->AddSlot().AutoHeight()[timing_section_.ToSharedRef()];
-    content->AddSlot().AutoHeight()[workload_section_.ToSharedRef()];
-    content->AddSlot().AutoHeight()[activity_section_.ToSharedRef()];
-    content->AddSlot().AutoHeight()[queries_section_.ToSharedRef()];
 
     auto navigation{SNew(SHorizontalBox)};
     auto add_jump = [this, &navigation](FText label, ETelemetryDashboardSection const section) {
@@ -319,13 +416,13 @@ auto STelemetryDashboardView::build_detail() -> TSharedRef<SWidget> {
     };
     add_jump(NSLOCTEXT("TelemetryDashboard", "OverviewSection", "OVERVIEW"),
              ETelemetryDashboardSection::Overview);
-    add_jump(NSLOCTEXT("TelemetryDashboard", "TimingSection", "TIMING"),
+    add_jump(NSLOCTEXT("TelemetryDashboard", "TimingSection", "PERFORMANCE"),
              ETelemetryDashboardSection::Timing);
-    add_jump(NSLOCTEXT("TelemetryDashboard", "WorkloadSection", "WORKLOAD"),
+    add_jump(NSLOCTEXT("TelemetryDashboard", "WorkloadSection", "BATTLE PROGRESSION"),
              ETelemetryDashboardSection::Workload);
-    add_jump(NSLOCTEXT("TelemetryDashboard", "ActivitySection", "ACTIVITY"),
+    add_jump(NSLOCTEXT("TelemetryDashboard", "ActivitySection", "COMBAT EFFICIENCY"),
              ETelemetryDashboardSection::Activity);
-    add_jump(NSLOCTEXT("TelemetryDashboard", "QueriesSection", "QUERIES"),
+    add_jump(NSLOCTEXT("TelemetryDashboard", "QueriesSection", "WORKLOAD / QUERIES"),
              ETelemetryDashboardSection::Queries);
 
     return SNew(SVerticalBox) +
@@ -349,6 +446,19 @@ auto STelemetryDashboardView::handle_filter() -> FReply {
         index = (index + 1) % state_.level_filters.Num();
         on_level_filter_selected_.ExecuteIfBound(state_.level_filters[index]);
     }
+    return FReply::Handled();
+}
+auto STelemetryDashboardView::handle_baseline() -> FReply {
+    int32 index{INDEX_NONE};
+    for (int32 candidate{}; candidate < state_.baseline_runs.Num(); ++candidate) {
+        if (state_.baseline_runs[candidate].run_id == state_.selected_baseline_run_id) {
+            index = candidate;
+            break;
+        }
+    }
+    ++index;
+    on_baseline_selected_.ExecuteIfBound(
+        index < state_.baseline_runs.Num() ? state_.baseline_runs[index].run_id : FString{});
     return FReply::Handled();
 }
 auto STelemetryDashboardView::handle_section(ETelemetryDashboardSection const section) -> FReply {

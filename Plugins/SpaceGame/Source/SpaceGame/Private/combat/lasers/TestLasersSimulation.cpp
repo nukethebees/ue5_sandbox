@@ -105,6 +105,7 @@ void Simulation::process_pending_spawns() {
 
     pending_spawns.validate_array_sizes();
     auto const n_to_add{ml::num(pending_spawns)};
+    entity_registry->record_shots(pending_spawns.instigator_handles);
     if (n_to_add <= 0) {
         return;
     }

@@ -90,4 +90,14 @@ auto FLevelEventManager::get_entity_handle(int32 const entity_index) const
     -> FRegistryEntityHandle {
     return spawn_manager_.get_handle(entity_index);
 }
+
+auto FLevelEventManager::has_future_spawns() const noexcept -> bool {
+    auto const event_count{schedule_.event_group_counts.Num()};
+    for (int32 index{next_event_index_}; index < event_count; ++index) {
+        if (schedule_.event_group_counts[index].spawn_groups != 0) {
+            return true;
+        }
+    }
+    return false;
+}
 }

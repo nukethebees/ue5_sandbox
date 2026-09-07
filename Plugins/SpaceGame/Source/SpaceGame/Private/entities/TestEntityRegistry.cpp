@@ -43,6 +43,7 @@ void FTestEntityRegistry::reset() {
     alive_counts_ = {};
     alive_count_ = 0;
     cumulative_kill_count_ = 0;
+    combat_telemetry_ = {};
 }
 
 void FTestEntityRegistry::adjust_alive_count(ETestTeam const team,
@@ -135,6 +136,9 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         unique_entities.alive[i] = view.alive[view_index];
         unique_entities.entity_types[i] = view.entity_types[view_index];
         unique_entities.teams[i] = view.teams[view_index];
+
+        ++combat_telemetry_.spawned[std::to_underlying(view.teams[view_index])]
+                                   [std::to_underlying(view.entity_types[view_index])];
 
         if (view.alive[view_index] != 0) {
             adjust_alive_count(view.teams[view_index], view.entity_types[view_index], 1);
@@ -240,6 +244,12 @@ void FTestEntityRegistry::commit_death_updates() {
 
         unique_entities.alive[victim_id.id] = 0;
         unique_entities.death_reason[victim_id.id] = queued_death_infos.reasons[i];
+        auto const victim_team{unique_entities.teams[victim_id.id]};
+        auto const victim_type{unique_entities.entity_types[victim_id.id]};
+        ++combat_telemetry_
+              .destroyed[std::to_underlying(victim_team)][std::to_underlying(victim_type)];
+        ++combat_telemetry_
+              .losses[std::to_underlying(victim_team)][std::to_underlying(victim_type)];
 
         auto const killer_handle{queued_death_infos.killers[i]};
 
@@ -248,6 +258,12 @@ void FTestEntityRegistry::commit_death_updates() {
             unique_entities.killed_by[victim_id.id] = killer_id;
             unique_entities.kills[killer_id.id] += 1;
             ++cumulative_kill_count_;
+            auto const killer_team{unique_entities.teams[killer_id.id]};
+            auto const killer_type{unique_entities.entity_types[killer_id.id]};
+            ++combat_telemetry_
+                  .kills[std::to_underlying(killer_team)][std::to_underlying(killer_type)];
+            ++combat_telemetry_
+                  .kill_matrix[std::to_underlying(killer_team)][std::to_underlying(victim_team)];
         }
     }
 }
@@ -256,7 +272,40 @@ void FTestEntityRegistry::commit_death_updates() {
 void FTestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
     damage_events.validate_array_sizes();
 
+    auto const count{damage_events.num()};
+    for (int32 index{}; index < count; ++index) {
+        auto const victim_id{find_unique_id(damage_events.damaged_entities[index])};
+        auto const victim_team{unique_entities.teams[victim_id.id]};
+        auto const victim_type{unique_entities.entity_types[victim_id.id]};
+        auto const damage{static_cast<double>(damage_events.damage_amounts[index])};
+        combat_telemetry_
+            .damage_received[std::to_underlying(victim_team)][std::to_underlying(victim_type)] +=
+            damage;
+
+        auto const instigator{damage_events.instigators[index]};
+        if (instigator.is_valid()) {
+            auto const attacker_id{find_unique_id(instigator)};
+            auto const attacker_team{unique_entities.teams[attacker_id.id]};
+            auto const attacker_type{unique_entities.entity_types[attacker_id.id]};
+            ++combat_telemetry_
+                  .hits[std::to_underlying(attacker_team)][std::to_underlying(attacker_type)];
+            combat_telemetry_.damage_dealt[std::to_underlying(attacker_team)]
+                                          [std::to_underlying(attacker_type)] += damage;
+        }
+    }
+
     queued_direct_damage_events.append_from(damage_events);
+}
+void FTestEntityRegistry::record_shots(TConstArrayView<FRegistryEntityHandle> const instigators) {
+    for (auto const instigator : instigators) {
+        if (!instigator.is_valid()) {
+            continue;
+        }
+        auto const attacker_id{find_unique_id(instigator)};
+        auto const team{unique_entities.teams[attacker_id.id]};
+        auto const type{unique_entities.entity_types[attacker_id.id]};
+        ++combat_telemetry_.shots[std::to_underlying(team)][std::to_underlying(type)];
+    }
 }
 auto FTestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEvents const& {
     return queued_direct_damage_events;

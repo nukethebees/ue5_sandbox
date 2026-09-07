@@ -40,6 +40,7 @@
 #include <GameFramework/PlayerController.h>
 #include <GameFramework/PlayerState.h>
 #include <GameFramework/WorldSettings.h>
+#include <HAL/PlatformTime.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/DateTime.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
@@ -229,6 +230,8 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     level_simulation_.Reset();
     level_definition_.Reset();
     launched_paused_ = false;
+    launch_options_ = {};
+    level_source_sha256_.Reset();
     world_collision_.restore_collision();
     collision_grid_visualization->clear_collision_bounds();
     laser_instances_->clear_instances();
@@ -438,6 +441,25 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         }
         result->telemetry_metadata =
             make_level_telemetry_run_metadata(world, mission_definition, presentation_enabled);
+        result->telemetry_metadata->level_id = level_definition_->metadata.id.value;
+        result->telemetry_metadata->level_display_name = level_definition_->metadata.title;
+        result->telemetry_metadata->source_sha256 = level_source_sha256_;
+        result->telemetry_metadata->requested_duration_seconds =
+            launch_options_.simulated_duration_seconds;
+        result->telemetry_metadata->detailed_timing = launch_options_.detailed_timing;
+        result->telemetry_metadata->launch_state =
+            launch_options_.launch_mode == ml::ioj::ELevelLaunchMode::Paused ? TEXT("paused")
+                                                                             : TEXT("running");
+        result->telemetry_metadata->presentation_mode =
+            launch_options_.presentation_mode == ml::ioj::ELevelPresentationMode::SimulationOnly
+                ? TEXT("simulation_only")
+                : TEXT("visual");
+        result->telemetry_metadata->stop_when_battle_resolved =
+            launch_options_.stop_when_battle_resolved;
+        result->telemetry_metadata->results_navigation =
+            launch_options_.results_navigation == ml::ioj::ELevelResultsNavigation::Telemetry
+                ? TEXT("telemetry")
+                : TEXT("none");
         level_simulation_.Emplace(MoveTemp(result.value()),
                                   presentation_enabled ? &presentation : nullptr);
         validate_proxy_handles();
@@ -656,6 +678,10 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     level_simulation_->on_end_tick = [this](FLevelSimulation&) {
         end_tick_test_hook.ExecuteIfBound(*this);
         process_mission_result();
+        process_battle_run_end();
+    };
+    level_simulation_->on_telemetry_persisted = [this](FString run_id, FString error) {
+        handle_telemetry_persisted(MoveTemp(run_id), MoveTemp(error));
     };
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
@@ -728,17 +754,35 @@ void ATestBatchOrchestrator::load_authored_level() {
         handle_level_start_failure(error);
         return;
     }
-    if (!ml::ioj::level_launch::is_valid_time_scale(pending->requested_time_scale)) {
+    auto const& options{pending->options};
+    if (!ml::ioj::level_launch::is_valid_time_scale(options.requested_time_scale)) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot load authored level: requested time scale %.17g is "
                                  "outside the supported range (0, %.0f]."),
-                            pending->requested_time_scale,
+                            options.requested_time_scale,
                             ml::ioj::level_launch::maximum_time_scale));
         return;
     }
 
-    launched_paused_ = pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused;
-    set_time_scale(pending->requested_time_scale);
+    if (options.presentation_mode == ml::ioj::ELevelPresentationMode::SimulationOnly &&
+        !options.simulated_duration_seconds.IsSet()) {
+        handle_level_start_failure(
+            TEXT("Cannot load authored level: simulation-only runs require a duration."));
+        return;
+    }
+    if (options.simulated_duration_seconds.IsSet() &&
+        (!FMath::IsFinite(options.simulated_duration_seconds.GetValue()) ||
+         options.simulated_duration_seconds.GetValue() <= 0.0)) {
+        handle_level_start_failure(
+            TEXT("Cannot load authored level: simulated duration must be finite and positive."));
+        return;
+    }
+
+    launch_options_ = options;
+    level_source_sha256_ = MoveTemp(pending->source_sha256);
+    launched_paused_ = options.launch_mode == ml::ioj::ELevelLaunchMode::Paused;
+    presentation_enabled = options.presentation_mode == ml::ioj::ELevelPresentationMode::Visual;
+    set_time_scale(options.requested_time_scale);
 
     ml::FLevelLoader loader{*this};
     auto const result{loader.load(pending->definition)};
@@ -853,13 +897,25 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     }
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
+    auto const detailed_timing{get_level_telemetry_manager().detailed_timing_enabled()};
     if (presentation_enabled) {
+        auto const hud_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
         hud_tick_loop.add_time(dt);
         while (hud_tick_loop.try_tick()) {
             hud_manager.tick(1);
         }
+        if (detailed_timing) {
+            get_level_telemetry_manager().record_external_timing(
+                ELevelTelemetryTimingSystem::Hud, FPlatformTime::Seconds() - hud_started_at);
+        }
     }
+    auto const presentation_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
     level_simulation_->commit_presentation(dt);
+    if (detailed_timing) {
+        get_level_telemetry_manager().record_external_timing(
+            ELevelTelemetryTimingSystem::Presentation,
+            FPlatformTime::Seconds() - presentation_started_at);
+    }
 }
 
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
@@ -969,4 +1025,52 @@ void ATestBatchOrchestrator::process_mission_result() {
                                     .level_display_name = result->level_display_name,
                                     .state = result->state,
                                     .persisted = persisted});
+}
+
+void ATestBatchOrchestrator::process_battle_run_end() {
+    if (!level_simulation_.IsSet() ||
+        !level_simulation_->get_level_telemetry_manager().is_run_recording()) {
+        return;
+    }
+
+    if (launch_options_.stop_when_battle_resolved &&
+        !level_simulation_->has_future_authored_spawns()) {
+        auto const alive_by_team{get_entity_registry().count_alive_per_team()};
+        int32 living_team_count{};
+        TOptional<ETestTeam> winner;
+        constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+        for (int32 team_index{}; team_index < team_count; ++team_index) {
+            if (alive_by_team[team_index] > 0) {
+                ++living_team_count;
+                winner = static_cast<ETestTeam>(team_index);
+            }
+        }
+        if (living_team_count <= 1) {
+            level_simulation_->complete_telemetry_run(
+                ELevelTelemetryRunEndReason::BattleResolved,
+                living_team_count == 1 ? winner : TOptional<ETestTeam>{});
+            return;
+        }
+    }
+
+    if (launch_options_.simulated_duration_seconds.IsSet() &&
+        get_simulation_time() >= launch_options_.simulated_duration_seconds.GetValue()) {
+        level_simulation_->complete_telemetry_run(ELevelTelemetryRunEndReason::DurationReached);
+    }
+}
+
+void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString error) {
+    if (launch_options_.results_navigation != ml::ioj::ELevelResultsNavigation::Telemetry) {
+        return;
+    }
+    auto* const game_instance{GetGameInstance()};
+    auto* const subsystem{
+        IsValid(game_instance) ? game_instance->GetSubsystem<ml::ioj::UGameSubsystem>() : nullptr};
+    if (!IsValid(subsystem)) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to telemetry: subsystem is unavailable"));
+        return;
+    }
+    if (!subsystem->return_to_telemetry(MoveTemp(run_id), MoveTemp(error))) {
+        UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to completed telemetry run"));
+    }
 }

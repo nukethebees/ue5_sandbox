@@ -48,10 +48,21 @@ class SPACEGAME_API FLevelTelemetryManager {
     void tick();
 
     void begin_run(FLevelTelemetryRunMetadata metadata);
+    void observe_frame(double frame_seconds);
     void capture_realtime_sample();
+    void record_simulation_tick_timing(
+        double elapsed_seconds,
+        TStaticArray<double, FLevelTelemetryPerformanceWindow::system_count> const& systems,
+        TStaticArray<double, FLevelTelemetryPerformanceWindow::phase_count> const& phases);
+    void record_external_timing(ELevelTelemetryTimingSystem system, double elapsed_seconds);
     void mark_mission_terminal(FLevelMissionResult const& result);
     void finalize_interrupted(ELevelTelemetryRunEndReason reason, FString world_end_reason);
+    void finalize_completed(ELevelTelemetryRunEndReason reason,
+                            TOptional<ETestTeam> winning_team = {});
     auto is_run_recording() const noexcept -> bool { return run_recording_; }
+    auto detailed_timing_enabled() const noexcept -> bool {
+        return run_recording_ && run_record_.metadata.detailed_timing;
+    }
     auto take_finalized_run() -> TOptional<FLevelTelemetryRunRecord>;
 
     auto make_snapshot() const -> FLevelTelemetrySnapshot;
@@ -73,7 +84,9 @@ class SPACEGAME_API FLevelTelemetryManager {
     }
   private:
     void update_current_state();
-    void sample_series();
+    void sample_series(bool force = false);
+    void sample_battle_state(bool force = false);
+    void close_performance_window(double monotonic_time);
     auto wall_elapsed(double monotonic_time) const -> double;
     void add_realtime_sample(tick_type completed_tick, double monotonic_time);
     void finalize_run(ELevelTelemetryRunEndReason reason,
@@ -92,4 +105,9 @@ class SPACEGAME_API FLevelTelemetryManager {
     bool run_recording_{};
     bool run_finalized_{};
     bool run_record_taken_{};
+    double next_battle_sample_seconds_{};
+    TArray<double> frame_samples_{};
+    TArray<double> simulation_tick_samples_{};
+    TStaticArray<TArray<double>, FLevelTelemetryPerformanceWindow::system_count> system_samples_{};
+    TStaticArray<TArray<double>, FLevelTelemetryPerformanceWindow::phase_count> phase_samples_{};
 };

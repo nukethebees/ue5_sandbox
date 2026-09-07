@@ -14,6 +14,7 @@ class UGameSubsystem;
 struct FTelemetryDashboardViewState {
     TArray<FTelemetryRunSummary> runs{};
     TArray<FString> level_filters{};
+    TArray<FTelemetryRunSummary> baseline_runs{};
     FString selected_run_id{};
     FString selected_level_filter{TEXT("All levels")};
     int32 unreadable_files{};
@@ -22,6 +23,9 @@ struct FTelemetryDashboardViewState {
     FText header{};
     FText summary{};
     FTelemetryRunAnalysis analysis{};
+    FTelemetryRunAnalysis baseline_analysis{};
+    FString selected_baseline_run_id{};
+    FText compatibility_warning{};
 };
 
 UCLASS()
@@ -33,7 +37,9 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
     void refresh();
     bool select_run(FString const& run_id);
     void select_level_filter(FString const& level_label);
+    void select_baseline(FString const& run_id);
     void focus_primary_action();
+    void set_external_error(FString error);
 
     [[nodiscard]] auto get_catalog() const -> FTelemetryRunCatalog const& { return catalog_; }
     [[nodiscard]] auto get_view_state() const -> FTelemetryDashboardViewState const& {
@@ -48,6 +54,7 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
   private:
     void handle_run_selected(FString run_id);
     void handle_level_filter_selected(FString level_label);
+    void handle_baseline_selected(FString run_id);
     void rebuild_state();
     void publish();
 
@@ -57,5 +64,6 @@ class SPACEGAME_API UTelemetryDashboardWidget : public UUserWidget {
     FGameUiStyle fallback_style_{};
     UPROPERTY(Transient)
     UGameSubsystem* game_{nullptr};
+    FString external_error_{};
 };
 } // namespace ml::ioj

@@ -5,6 +5,7 @@
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/system/GameSubsystem.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -198,6 +199,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto initialise_simulation(ml::FLevelStartErrors& errors) -> bool;
     void handle_level_start_failure(FString message);
     void process_mission_result();
+    void process_battle_run_end();
+    void handle_telemetry_persisted(FString run_id, FString error);
     auto make_presentation_resources() const -> FLevelPresentationResources;
     void bind_capital_ship_proxy_targets(FProxyEntityMap const& proxy_entities);
     void bind_and_destroy_proxies();
@@ -236,6 +239,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TOptional<FLevelSimulation> level_simulation_;
     TOptional<ml::FLevelDefinition> level_definition_;
     bool launched_paused_{};
+    ml::ioj::FLevelLaunchOptions launch_options_{};
+    FString level_source_sha256_{};
     ml::ioj::FLevelCollisionHost world_collision_;
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI", meta = (ShowOnlyInnerProperties))

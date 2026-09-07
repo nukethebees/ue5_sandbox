@@ -71,6 +71,16 @@ enum class ELevelLaunchMode : uint8 {
     Paused,
 };
 
+enum class ELevelPresentationMode : uint8 {
+    Visual,
+    SimulationOnly,
+};
+
+enum class ELevelResultsNavigation : uint8 {
+    None,
+    Telemetry,
+};
+
 namespace level_launch {
 inline constexpr double default_time_scale{1.0};
 inline constexpr double maximum_time_scale{100.0};
@@ -78,15 +88,33 @@ inline constexpr double maximum_time_scale{100.0};
 SPACEGAME_API auto is_valid_time_scale(double value) noexcept -> bool;
 }
 
+struct SPACEGAME_API FLevelLaunchOptions {
+    ELevelLaunchMode launch_mode{ELevelLaunchMode::Running};
+    double requested_time_scale{level_launch::default_time_scale};
+    ELevelPresentationMode presentation_mode{ELevelPresentationMode::Visual};
+    TOptional<double> simulated_duration_seconds{};
+    bool stop_when_battle_resolved{};
+    bool detailed_timing{true};
+    ELevelResultsNavigation results_navigation{ELevelResultsNavigation::None};
+};
+
 struct SPACEGAME_API FPendingLevelDefinition {
     FLevelDefinition definition{};
     FString source_path{};
-    ELevelLaunchMode launch_mode{ELevelLaunchMode::Running};
-    double requested_time_scale{level_launch::default_time_scale};
+    FString source_sha256{};
+    FLevelLaunchOptions options{};
+};
+
+enum class EMainMenuDestination : uint8 {
+    LevelSelect,
+    Telemetry,
 };
 
 struct SPACEGAME_API FLevelSelectRequest {
     FName preferred_level_id{NAME_None};
+    EMainMenuDestination destination{EMainMenuDestination::LevelSelect};
+    FString selected_telemetry_run_id{};
+    FString telemetry_error{};
 };
 
 UCLASS()
@@ -103,11 +131,12 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
 
     void set_pending_level(FLevelDefinition definition,
                            FString source_path,
-                           ELevelLaunchMode launch_mode = ELevelLaunchMode::Running,
-                           double requested_time_scale = level_launch::default_time_scale);
+                           FString source_sha256,
+                           FLevelLaunchOptions options = {});
     auto take_pending_level() -> TOptional<FPendingLevelDefinition>;
 
     [[nodiscard]] auto return_to_level_select(FName preferred_level_id = NAME_None) -> bool;
+    [[nodiscard]] auto return_to_telemetry(FString run_id, FString error = {}) -> bool;
     auto take_level_select_request() -> TOptional<FLevelSelectRequest>;
     static auto get_main_menu_level_name() -> FName;
 

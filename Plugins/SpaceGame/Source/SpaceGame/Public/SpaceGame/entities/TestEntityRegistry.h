@@ -34,6 +34,29 @@ struct SPACEGAME_API FTestEntityRegistry {
     using TeamCounts = TStaticArray<int32, ml::EnumCountTrait<ETestTeam>::count_value>;
     using EntityTypeCounts = TStaticArray<int32, ml::EnumCountTrait<ETestEntityType>::count_value>;
     using EntityCounts = TStaticArray<EntityTypeCounts, ml::EnumCountTrait<ETestTeam>::count_value>;
+    using Uint64EntityTypeCounts =
+        TStaticArray<uint64, ml::EnumCountTrait<ETestEntityType>::count_value>;
+    using Uint64EntityCounts =
+        TStaticArray<Uint64EntityTypeCounts, ml::EnumCountTrait<ETestTeam>::count_value>;
+    using DoubleEntityTypeCounts =
+        TStaticArray<double, ml::EnumCountTrait<ETestEntityType>::count_value>;
+    using DoubleEntityCounts =
+        TStaticArray<DoubleEntityTypeCounts, ml::EnumCountTrait<ETestTeam>::count_value>;
+    using KillMatrix =
+        TStaticArray<TStaticArray<uint64, ml::EnumCountTrait<ETestTeam>::count_value>,
+                     ml::EnumCountTrait<ETestTeam>::count_value>;
+
+    struct CombatTelemetryCounters {
+        Uint64EntityCounts spawned{};
+        Uint64EntityCounts destroyed{};
+        Uint64EntityCounts shots{};
+        Uint64EntityCounts hits{};
+        DoubleEntityCounts damage_dealt{};
+        DoubleEntityCounts damage_received{};
+        Uint64EntityCounts kills{};
+        Uint64EntityCounts losses{};
+        KillMatrix kill_matrix{};
+    };
 
     struct ConstView {
         auto get_num() const { return indices.Num(); }
@@ -63,6 +86,7 @@ struct SPACEGAME_API FTestEntityRegistry {
 
     // Damage events
     void queue_direct_damage_events(DirectDamageEvents const& damage_events);
+    void record_shots(TConstArrayView<FRegistryEntityHandle> instigators);
     auto get_direct_damage_queue_view() const -> DirectDamageEvents const&;
 
     // Handle queries
@@ -106,6 +130,9 @@ struct SPACEGAME_API FTestEntityRegistry {
     auto count_alive_per_team() const noexcept -> TeamCounts;
     auto count_alive_per_team_and_type() const noexcept -> EntityCounts;
     auto count_alive_not_on_team(ETestTeam const team) const noexcept -> int32;
+    auto get_combat_telemetry() const noexcept -> CombatTelemetryCounters const& {
+        return combat_telemetry_;
+    }
 
     // Unique entity queries
     auto get_unique_entities() const noexcept -> TestEntityUniqueEntityData const& {
@@ -165,6 +192,7 @@ struct SPACEGAME_API FTestEntityRegistry {
     EntityCounts alive_counts_{};
     int32 alive_count_{};
     int32 cumulative_kill_count_{};
+    CombatTelemetryCounters combat_telemetry_{};
 };
 
 inline auto FTestEntityRegistry::is_valid_handle(FRegistryEntityHandle const index) const -> bool {

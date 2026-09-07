@@ -36,7 +36,10 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
 
     void prepare_for_open(TSubclassOf<ULevelSelectWidget> level_select_class,
                           bool focus_mission_content,
-                          FName preferred_level_id);
+                          FName preferred_level_id,
+                          bool show_telemetry = false,
+                          FString telemetry_run_id = {},
+                          FString telemetry_error = {});
     void select_page(EMainMenuPage page);
 
     [[nodiscard]] auto get_active_page() const noexcept -> EMainMenuPage { return active_page_; }
@@ -95,5 +98,6 @@ class SPACEGAME_API UMainMenuWidget : public UMenuActivatableWidget {
     bool focus_mission_content_{};
     bool options_open_{};
     bool page_modal_visible_{};
+    FString initial_telemetry_run_id_{};
 };
 } // namespace ml::ioj

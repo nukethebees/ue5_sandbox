@@ -2,6 +2,7 @@
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxGameShared/utilities/enums.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/entities/TestTeam.h>
 #include <SpaceGame/missions/TestMissionFailReason.h>
@@ -43,6 +44,16 @@ struct FLevelTelemetryRunMetadata {
     double tick_period_seconds{};
     double initial_requested_time_scale{1.0};
     bool presentation_enabled{};
+    FString launch_state{TEXT("running")};
+    FString presentation_mode{TEXT("visual")};
+    bool stop_when_battle_resolved{};
+    FString results_navigation{TEXT("none")};
+    FString source_sha256{};
+    TOptional<double> requested_duration_seconds{};
+    double battle_sample_interval_seconds{1.0};
+    double performance_window_seconds{0.25};
+    uint32 detailed_timing_tick_stride{16};
+    bool detailed_timing{};
 };
 
 struct FLevelTelemetryRunCompletion {
@@ -57,6 +68,69 @@ struct FLevelTelemetryRunCompletion {
     uint64 completed_ticks{};
     double simulated_elapsed_seconds{};
     double wall_elapsed_seconds{};
+    TOptional<ETestTeam> winning_team{};
+};
+
+struct FLevelTelemetryBattleSample {
+    uint64 completed_tick{};
+    double simulated_elapsed_seconds{};
+    FTestEntityRegistry::CombatTelemetryCounters combat{};
+    FTestEntityRegistry::EntityCounts alive{};
+    int32 active_lasers{};
+    int32 lasers_fired{};
+    int32 registry_slot_count{};
+    int32 occupied_spatial_cell_count{};
+    uint64 grid_rebuild_count{};
+    uint64 range_query_count{};
+    uint64 line_trace_count{};
+    uint64 sweep_trace_count{};
+};
+
+enum class ELevelTelemetryTimingSystem : uint8 {
+    Player,
+    Capitals,
+    Fighters,
+    Turrets,
+    Spinners,
+    Lasers,
+    Registry,
+    SpatialQueries,
+    Mission,
+    Hud,
+    Presentation,
+    Telemetry,
+    COUNT,
+};
+
+enum class ELevelTelemetryTimingPhase : uint8 {
+    Setup,
+    Decision,
+    Simulation,
+    Resolution,
+    End,
+    COUNT,
+};
+
+struct FLevelTelemetryTimingAggregate {
+    double mean_ms{};
+    double p95_ms{};
+    double max_ms{};
+    uint64 sample_count{};
+};
+
+struct FLevelTelemetryPerformanceWindow {
+    static constexpr int32 system_count{static_cast<int32>(ELevelTelemetryTimingSystem::COUNT)};
+    static constexpr int32 phase_count{static_cast<int32>(ELevelTelemetryTimingPhase::COUNT)};
+    double real_elapsed_seconds{};
+    uint64 completed_tick{};
+    FLevelTelemetryTimingAggregate frame{};
+    FLevelTelemetryTimingAggregate game_thread{};
+    FLevelTelemetryTimingAggregate render_thread{};
+    FLevelTelemetryTimingAggregate gpu{};
+    FLevelTelemetryTimingAggregate simulation_tick{};
+    TStaticArray<FLevelTelemetryTimingAggregate, system_count> systems{};
+    TStaticArray<FLevelTelemetryTimingAggregate, phase_count> phases{};
+    TStaticArray<double, phase_count> phase_cpu_share{};
 };
 
 struct FLevelTelemetryTickSeries {
@@ -87,10 +161,13 @@ struct FLevelTelemetryTickSeries {
 };
 
 struct FLevelTelemetryRunRecord {
-    static constexpr int32 schema_version{1};
+    static constexpr int32 schema_version{2};
 
+    int32 loaded_schema_version{schema_version};
     FLevelTelemetryRunMetadata metadata{};
     FLevelTelemetryRunCompletion completion{};
     FLevelTelemetryTickSeries tick_series{};
     ml::TimeSeriesData<uint64> completed_ticks_by_real_time{};
+    TArray<FLevelTelemetryBattleSample> battle_samples{};
+    TArray<FLevelTelemetryPerformanceWindow> performance_windows{};
 };

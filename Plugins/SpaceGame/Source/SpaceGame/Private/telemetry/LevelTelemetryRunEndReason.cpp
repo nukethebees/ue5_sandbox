@@ -13,6 +13,12 @@ auto get_level_telemetry_run_end_reason_serialized_name(ELevelTelemetryRunEndRea
     case ELevelTelemetryRunEndReason::MissionFailed: {
         return TEXT("mission_failed");
     }
+    case ELevelTelemetryRunEndReason::BattleResolved: {
+        return TEXT("battle_resolved");
+    }
+    case ELevelTelemetryRunEndReason::DurationReached: {
+        return TEXT("duration_reached");
+    }
     case ELevelTelemetryRunEndReason::OrchestratorReset: {
         return TEXT("orchestrator_reset");
     }
@@ -42,6 +48,14 @@ auto try_parse_serialized(FStringView const value, ELevelTelemetryRunEndReason& 
     }
     if (value == TEXT("mission_failed")) {
         result = ELevelTelemetryRunEndReason::MissionFailed;
+        return true;
+    }
+    if (value == TEXT("battle_resolved")) {
+        result = ELevelTelemetryRunEndReason::BattleResolved;
+        return true;
+    }
+    if (value == TEXT("duration_reached")) {
+        result = ELevelTelemetryRunEndReason::DurationReached;
         return true;
     }
     if (value == TEXT("orchestrator_reset")) {

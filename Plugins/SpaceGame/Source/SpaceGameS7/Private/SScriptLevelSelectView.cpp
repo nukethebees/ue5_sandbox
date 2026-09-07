@@ -5,6 +5,7 @@
 #include <SpaceGame/ui/common/SGameButton.h>
 
 #include <InputCoreTypes.h>
+#include <Widgets/Input/SCheckBox.h>
 #include <Widgets/Input/SEditableText.h>
 #include <Widgets/Layout/SBorder.h>
 #include <Widgets/Layout/SBox.h>
@@ -19,6 +20,9 @@ void SScriptLevelSelectView::Construct(FArguments const& args) {
     on_level_selected_ = args._OnLevelSelected;
     on_category_selected_ = args._OnCategorySelected;
     on_battle_speed_changed_ = args._OnBattleSpeedChanged;
+    on_battle_duration_changed_ = args._OnBattleDurationChanged;
+    on_battle_simulation_only_changed_ = args._OnBattleSimulationOnlyChanged;
+    on_battle_detailed_timing_changed_ = args._OnBattleDetailedTimingChanged;
     on_launch_ = args._OnLaunch;
 
     auto const body{SNew(SHorizontalBox) + SHorizontalBox::Slot().AutoWidth()[build_catalog()] +
@@ -61,6 +65,9 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
     battle_speed_error_->SetVisibility(battle_viewer && !battle_speed_valid_
                                            ? EVisibility::HitTestInvisible
                                            : EVisibility::Collapsed);
+    battle_duration_error_->SetVisibility(battle_viewer && !battle_duration_valid_
+                                              ? EVisibility::HitTestInvisible
+                                              : EVisibility::Collapsed);
     update_launch_availability();
     Invalidate(EInvalidateWidgetReason::Layout | EInvalidateWidgetReason::Paint);
 }
@@ -260,7 +267,51 @@ auto SScriptLevelSelectView::build_details() -> TSharedRef<SWidget> {
                                        "InvalidBattleSpeed",
                                        "Enter a battle speed greater than 0 and at most 100."))
                        .TextStyle(&style_->text(EGameTextStyle::Warning))
-                       .Visibility(EVisibility::Collapsed)]};
+                       .Visibility(EVisibility::Collapsed)] +
+        SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 10.0f, 0.0f, 0.0f})
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot().AutoWidth().VAlign(
+                 VAlign_Center)[SNew(STextBlock)
+                                    .Text(NSLOCTEXT("LevelSelect", "BattleDuration", "DURATION //"))
+                                    .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+             SHorizontalBox::Slot().AutoWidth().Padding(
+                 FMargin{10.0f, 0.0f})[SNew(SBox).WidthOverride(
+                 80.0f)[SAssignNew(battle_duration_input_, SEditableText)
+                            .Text(FText::FromString(TEXT("300")))
+                            .Font(style_->text(EGameTextStyle::Body).Font)
+                            .ColorAndOpacity(style_->palette().text_primary)
+                            .SelectAllTextWhenFocused(true)
+                            .RevertTextOnEscape(true)
+                            .OnTextChanged(
+                                this, &SScriptLevelSelectView::handle_battle_duration_changed)]] +
+             SHorizontalBox::Slot().AutoWidth().VAlign(VAlign_Center)
+                 [SNew(STextBlock)
+                      .Text(NSLOCTEXT("LevelSelect", "BattleDurationSuffix", "simulated seconds"))
+                      .TextStyle(&style_->text(EGameTextStyle::Body))]] +
+        SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 6.0f, 0.0f, 0.0f})
+            [SAssignNew(battle_duration_error_, STextBlock)
+                 .Text(NSLOCTEXT("LevelSelect",
+                                 "InvalidBattleDuration",
+                                 "Enter a positive duration; blank is allowed for visual runs."))
+                 .TextStyle(&style_->text(EGameTextStyle::Warning))
+                 .Visibility(EVisibility::Collapsed)] +
+        SVerticalBox::Slot().AutoHeight().Padding(FMargin{0.0f, 10.0f, 0.0f, 0.0f})
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot().AutoWidth()
+                 [SNew(SCheckBox)
+                      .OnCheckStateChanged(this,
+                                           &SScriptLevelSelectView::handle_simulation_only_changed)
+                          [SNew(STextBlock)
+                               .Text(NSLOCTEXT("LevelSelect", "SimulationOnly", "Simulation only"))
+                               .TextStyle(&style_->text(EGameTextStyle::Body))]] +
+             SHorizontalBox::Slot().AutoWidth().Padding(FMargin{18.0f, 0.0f, 0.0f, 0.0f})
+                 [SNew(SCheckBox)
+                      .IsChecked(ECheckBoxState::Checked)
+                      .OnCheckStateChanged(this,
+                                           &SScriptLevelSelectView::handle_detailed_timing_changed)
+                          [SNew(STextBlock)
+                               .Text(NSLOCTEXT("LevelSelect", "DetailedTiming", "Detailed timing"))
+                               .TextStyle(&style_->text(EGameTextStyle::Body))]]]};
 
     return SNew(SBorder)
         .BorderImage(&style_->chrome().body_background)
@@ -358,9 +409,34 @@ void SScriptLevelSelectView::handle_battle_speed_changed(FText const& text) {
                                                                 : TOptional<double>{});
 }
 
+void SScriptLevelSelectView::handle_battle_duration_changed(FText const& text) {
+    auto value_text{text.ToString()};
+    value_text.TrimStartAndEndInline();
+    auto const blank{value_text.IsEmpty()};
+    auto const numeric{value_text.IsNumeric()};
+    auto const value{numeric ? FCString::Atod(*value_text) : 0.0};
+    battle_duration_valid_ = (blank && !battle_simulation_only_) || (numeric && value > 0.0);
+    battle_duration_error_->SetVisibility(battle_duration_valid_ ? EVisibility::Collapsed
+                                                                 : EVisibility::HitTestInvisible);
+    update_launch_availability();
+    on_battle_duration_changed_.ExecuteIfBound(numeric && value > 0.0 ? TOptional<double>{value}
+                                                                      : TOptional<double>{},
+                                               battle_duration_valid_);
+}
+
+void SScriptLevelSelectView::handle_simulation_only_changed(ECheckBoxState const state) {
+    battle_simulation_only_ = state == ECheckBoxState::Checked;
+    handle_battle_duration_changed(battle_duration_input_->GetText());
+    on_battle_simulation_only_changed_.ExecuteIfBound(battle_simulation_only_);
+}
+
+void SScriptLevelSelectView::handle_detailed_timing_changed(ECheckBoxState const state) {
+    on_battle_detailed_timing_changed_.ExecuteIfBound(state == ECheckBoxState::Checked);
+}
+
 void SScriptLevelSelectView::update_launch_availability() {
     auto const speed_is_valid{category_ != ELevelCatalogCategory::BattleViewer ||
-                              battle_speed_valid_};
+                              (battle_speed_valid_ && battle_duration_valid_)};
     launch_button_->SetEnabled(selected_level_can_launch_ && speed_is_valid);
 }
 

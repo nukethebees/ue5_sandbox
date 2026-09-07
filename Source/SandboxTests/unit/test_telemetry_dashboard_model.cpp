@@ -44,6 +44,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
     TEST_METHOD(DerivesWeightedIntervalMetrics)
     {
         FLevelTelemetryRunRecord record;
+        record.loaded_schema_version = 1;
         record.metadata.tick_period_seconds = 1.0 / 60.0;
         record.completed_ticks_by_real_time.add(0.0, uint64{0});
         record.completed_ticks_by_real_time.add(0.5, uint64{90});
@@ -75,6 +76,46 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Weighted summary uses real durations"),
                              observed && observed->weighted_mean.IsSet() &&
                                  FMath::IsNearlyEqual(observed->weighted_mean.GetValue(), 1.0));
+    }
+
+    TEST_METHOD(DerivesCurrentWorkloadAndRatesBySimulatedTime)
+    {
+        FLevelTelemetryRunRecord record;
+        FLevelTelemetryBattleSample begin;
+        begin.simulated_elapsed_seconds = 0.0;
+        begin.alive[0][0] = 2;
+        begin.combat.spawned[0][0] = 2;
+        begin.active_lasers = 3;
+        begin.lasers_fired = 10;
+        begin.range_query_count = 20;
+        FLevelTelemetryBattleSample end{begin};
+        end.completed_tick = 60;
+        end.simulated_elapsed_seconds = 1.0;
+        end.alive[0][0] = 3;
+        end.combat.spawned[0][0] = 5;
+        end.active_lasers = 4;
+        end.lasers_fired = 15;
+        end.range_query_count = 27;
+        record.battle_samples = {begin, end};
+
+        auto const analysis{analyze_level_telemetry_run(record)};
+        auto const* const active{analysis.find_metric(ETelemetryDashboardMetric::ActiveEntities)};
+        auto const* const spawn_rate{analysis.find_metric(ETelemetryDashboardMetric::SpawnRate)};
+        auto const* const laser_rate{
+            analysis.find_metric(ETelemetryDashboardMetric::LaserFireRate)};
+        auto const* const query_rate{
+            analysis.find_metric(ETelemetryDashboardMetric::RangeQueryRate)};
+        TestRunner->TestTrue(TEXT("Current workload uses simulated coordinates"),
+                             active && active->uses_simulated_time &&
+                                 active->real_elapsed_seconds == TArray<float>{1.0f} &&
+                                 active->values == TArray<float>{3.0f});
+        TestRunner->TestTrue(TEXT("Current combat rates use simulated durations"),
+                             spawn_rate && spawn_rate->uses_simulated_time &&
+                                 spawn_rate->values == TArray<float>{3.0f} && laser_rate &&
+                                 laser_rate->values == TArray<float>{5.0f});
+        TestRunner->TestTrue(TEXT("Current query rates use simulated durations"),
+                             query_rate && query_rate->uses_simulated_time &&
+                                 query_rate->values == TArray<float>{7.0f});
     }
 
     TEST_METHOD(ExcludesUnstableRequestedRatioAndRegressingCounters)

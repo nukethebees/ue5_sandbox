@@ -16,6 +16,7 @@ class SPACEGAME_API FLevelEventManager {
     auto dispatch_tick(uint64 tick) -> bool;
     void configure_mission();
     auto get_entity_handle(int32 entity_index) const -> FRegistryEntityHandle;
+    auto has_future_spawns() const noexcept -> bool;
   private:
     FLevelInitialisationData initialisation_{};
     FLevelEventSchedule schedule_{};

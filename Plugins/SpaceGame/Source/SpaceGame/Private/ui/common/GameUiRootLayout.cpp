@@ -24,7 +24,10 @@ auto UGameUiRootLayout::initialise(UTestBatchGameUiData& ui_data) -> bool {
 }
 
 auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
-                                       FName const preferred_level_id) -> bool {
+                                       FName const preferred_level_id,
+                                       bool const show_telemetry,
+                                       FString telemetry_run_id,
+                                       FString telemetry_error) -> bool {
     auto* const ui_data{ui_data_.Get()};
     if (!IsValid(ui_data) || !IsValid(screen_stack)) {
         UE_LOG(LogSandboxUI,
@@ -38,10 +41,18 @@ auto UGameUiRootLayout::show_main_menu(bool const show_level_select_screen,
     auto const level_select_class{ui_data->get_widget_class<ULevelSelectWidget>()};
     auto* const main_menu{screen_stack->AddWidget<UMainMenuWidget>(
         main_menu_class,
-        [level_select_class, show_level_select_screen, preferred_level_id](
-            UMainMenuWidget& widget) {
-            widget.prepare_for_open(
-                level_select_class, show_level_select_screen, preferred_level_id);
+        [level_select_class,
+         show_level_select_screen,
+         preferred_level_id,
+         show_telemetry,
+         telemetry_run_id = MoveTemp(telemetry_run_id),
+         telemetry_error = MoveTemp(telemetry_error)](UMainMenuWidget& widget) {
+            widget.prepare_for_open(level_select_class,
+                                    show_level_select_screen,
+                                    preferred_level_id,
+                                    show_telemetry,
+                                    telemetry_run_id,
+                                    telemetry_error);
         })};
     if (!IsValid(main_menu)) {
         UE_LOG(LogSandboxUI,

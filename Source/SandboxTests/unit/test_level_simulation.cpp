@@ -484,7 +484,7 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         !TestNotNull(TEXT("Serialized run has a root object"), root.Get())) {
         return false;
     }
-    TestEqual(TEXT("JSON records schema version one"),
+    TestEqual(TEXT("JSON records current schema version"),
               root->GetIntegerField(TEXT("schema_version")),
               FLevelTelemetryRunRecord::schema_version);
     auto const realtime_json{root->GetObjectField(TEXT("completed_ticks_by_real_time"))};
@@ -496,24 +496,43 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
               realtime.num());
     TestTrue(TEXT("JSON contains sparse workload series"),
              root->GetObjectField(TEXT("tick_series")).IsValid());
+    auto const battle_samples_json{root->GetArrayField(TEXT("battle_samples"))};
+    TestTrue(TEXT("JSON battle samples contain compact workload counters"),
+             !battle_samples_json.IsEmpty() &&
+                 battle_samples_json.Last()->AsObject()->HasField(TEXT("range_query_count")));
 
     root->SetStringField(TEXT("future_field"), TEXT("ignored"));
     FString json_with_unknown_field;
     auto unknown_writer{TJsonWriterFactory<>::Create(&json_with_unknown_field)};
     FJsonSerializer::Serialize(root.ToSharedRef(), unknown_writer);
     auto const round_trip{deserialize_level_telemetry_run(json_with_unknown_field)};
-    if (TestTrue(TEXT("Schema-v1 JSON deserializes with unknown fields"), round_trip.has_value())) {
+    if (TestTrue(TEXT("Current-schema JSON deserializes with unknown fields"),
+                 round_trip.has_value())) {
         TestEqual(TEXT("Round trip preserves the run id"),
                   round_trip->metadata.run_id,
                   record->metadata.run_id);
         TestEqual(TEXT("Round trip preserves realtime mappings"),
                   round_trip->completed_ticks_by_real_time.num(),
                   realtime.num());
+        TestEqual(TEXT("Round trip preserves battle workload counters"),
+                  round_trip->battle_samples.Last().range_query_count,
+                  record->battle_samples.Last().range_query_count);
     }
+    root->SetNumberField(TEXT("schema_version"), 1);
+    FString legacy_json;
+    auto legacy_writer{TJsonWriterFactory<>::Create(&legacy_json)};
+    FJsonSerializer::Serialize(root.ToSharedRef(), legacy_writer);
+    auto const legacy_round_trip{deserialize_level_telemetry_run(legacy_json)};
+    if (TestTrue(TEXT("Schema-v1 JSON remains readable"), legacy_round_trip.has_value())) {
+        TestEqual(TEXT("Legacy schema is identified"), legacy_round_trip->loaded_schema_version, 1);
+        TestTrue(TEXT("Legacy runs do not expose v2 battle samples"),
+                 legacy_round_trip->battle_samples.IsEmpty());
+    }
+    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryRunRecord::schema_version);
     TestFalse(TEXT("Malformed JSON returns an error"),
               deserialize_level_telemetry_run(TEXT("{")).has_value());
     auto unsupported_json{json};
-    unsupported_json.ReplaceInline(TEXT("\"schema_version\": 1"), TEXT("\"schema_version\": 2"));
+    unsupported_json.ReplaceInline(TEXT("\"schema_version\": 2"), TEXT("\"schema_version\": 3"));
     TestFalse(TEXT("Unsupported schemas return an error"),
               deserialize_level_telemetry_run(unsupported_json).has_value());
 

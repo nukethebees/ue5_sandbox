@@ -384,7 +384,18 @@ void ASpaceGamePlayerController::initialise_main_menu() {
                                                         subsystem->has_level_launch_error())};
     auto const preferred_level_id{
         level_select_request.IsSet() ? level_select_request->preferred_level_id : NAME_None};
-    if (!ui_root->show_main_menu(show_level_select, preferred_level_id)) {
+    auto const show_telemetry{level_select_request.IsSet() &&
+                              level_select_request->destination ==
+                                  ml::ioj::EMainMenuDestination::Telemetry};
+    auto const telemetry_run_id{
+        level_select_request.IsSet() ? level_select_request->selected_telemetry_run_id : FString{}};
+    auto const telemetry_error{level_select_request.IsSet() ? level_select_request->telemetry_error
+                                                            : FString{}};
+    if (!ui_root->show_main_menu(show_level_select,
+                                 preferred_level_id,
+                                 show_telemetry,
+                                 telemetry_run_id,
+                                 telemetry_error)) {
         return;
     }
 

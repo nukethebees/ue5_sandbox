@@ -70,11 +70,16 @@ struct SPACEGAME_API FLevelSimulation {
     void commit_presentation(time_type dt);
     void set_time_scale(time_type scale);
     void finalize_telemetry_run(ELevelTelemetryRunEndReason reason, FString detail = {});
+    void complete_telemetry_run(ELevelTelemetryRunEndReason reason,
+                                TOptional<ETestTeam> winning_team = {});
     auto take_mission_result() -> TOptional<FLevelMissionResult>;
     auto get_state() const noexcept -> EOrchestratorState { return state_; }
     auto get_clock() const noexcept -> FSimulationClock const& { return clock_; }
     auto get_time_scale() const noexcept -> time_type { return clock_.get_time_scale(); }
     auto has_presentation() const noexcept -> bool { return presentation_.IsSet(); }
+    auto has_future_authored_spawns() const noexcept -> bool {
+        return event_manager_.has_future_spawns();
+    }
     auto get_player_ship_simulation() -> ml::test_space_ship::Simulation* {
         return player_ship_simulation_.IsSet() ? &player_ship_simulation_.GetValue() : nullptr;
     }
@@ -120,6 +125,7 @@ struct SPACEGAME_API FLevelSimulation {
 
     TFunction<void()> on_mission_evaluated;
     TFunction<void(FLevelSimulation&)> on_end_tick;
+    TFunction<void(FString, FString)> on_telemetry_persisted;
   private:
     friend class ATestBatchOrchestrator;
     void bind_simulation_dependencies();
