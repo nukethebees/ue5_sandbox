@@ -1,8 +1,5 @@
 #pragma once
 
-#include <SpaceGame/support/DrawDebugConfig.h>
-#include <SpaceGameRendering/SparkRendererSettings.h>
-
 #include "LevelPresentationSettings.generated.h"
 
 USTRUCT(BlueprintType)
@@ -104,7 +101,6 @@ struct FEntityOverlaySettings {
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
 };
-
 USTRUCT(BlueprintType)
 struct FRadarSettings {
     GENERATED_BODY()
@@ -168,33 +164,4 @@ struct FRadarSettings {
               Category = "Radar|Glyphs|Objectives",
               meta = (ClampMin = "0.5", ClampMax = "4.0", UIMin = "0.5", UIMax = "4.0"))
     float objective_ring_thickness_pixels{1.25f};
-};
-
-USTRUCT()
-struct FLevelPresentationSettings {
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    FDrawDebugConfig laser_debug_drawer;
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool laser_debug_shapes{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool capital_debug_shapes{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool fighter_debug_targets{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool fighter_debug_locations{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool turret_debug_targets{false};
-    UPROPERTY(EditAnywhere, Category = "Debug")
-    bool turret_debug_entities{false};
-
-    UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
-    FEntityOverlaySettings entity_overlay;
-
-    UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
-    FSparkRendererSettings sparks;
-
-    UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
-    FRadarSettings radar;
 };

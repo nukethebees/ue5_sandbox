@@ -1,8 +1,10 @@
 #pragma once
 
 #include <SpaceGameRendering/SparkBurstStyle.h>
+#include <SpaceGameRendering/SparkRendererSettings.h>
 
 #include <SpaceGame/combat/lasers/AttackDistanceBand.h>
+#include <SpaceGame/presentation/LevelPresentationSettings.h>
 #include <SpaceGame/ships/common/BarrelRoll.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
 
@@ -448,4 +450,34 @@ class SPACEGAME_API USpaceGameLevelConfig : public UDataAsset {
 
     UPROPERTY(EditAnywhere, Category = "Level")
     FCollisionGridConfig collision_grid;
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    FDrawDebugConfig laser_debug_drawer;
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool laser_debug_shapes{false};
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool capital_debug_shapes{false};
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool fighter_debug_targets{false};
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool fighter_debug_locations{false};
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool turret_debug_targets{false};
+
+    UPROPERTY(EditAnywhere, Category = "Debug")
+    bool turret_debug_entities{false};
+
+    UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
+    FEntityOverlaySettings entity_overlay;
+
+    UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
+    FRadarSettings radar;
+
+    UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
+    FSparkRendererSettings sparks;
 };
