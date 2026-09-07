@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/simulation/LevelTelemetrySnapshot.h"
 #include "SpaceGame/ui/style/GameUiStyle.h"
 
@@ -26,7 +27,9 @@ class SLevelCompletionView final : public SCompoundWidget {
     SLATE_END_ARGS()
 
     void Construct(FArguments const& args);
-    void update_report(FString const& level_display_name, FLevelTelemetrySnapshot const& snapshot);
+    void update_report(FString const& level_display_name,
+                       ETestMissionState state,
+                       FLevelTelemetrySnapshot const& snapshot);
     void focus_primary_action();
 
     auto SupportsKeyboardFocus() const -> bool override { return true; }
@@ -49,6 +52,8 @@ class SLevelCompletionView final : public SCompoundWidget {
     ELevelCompletionAction focused_action_{ELevelCompletionAction::ReturnToMissionControl};
 
     TSharedPtr<STextBlock> mission_name_{};
+    TSharedPtr<STextBlock> mission_result_{};
+    TSharedPtr<STextBlock> objective_status_{};
     TSharedPtr<STextBlock> elapsed_time_{};
     TSharedPtr<STextBlock> kills_{};
     TSharedPtr<STextBlock> destroyed_entities_{};

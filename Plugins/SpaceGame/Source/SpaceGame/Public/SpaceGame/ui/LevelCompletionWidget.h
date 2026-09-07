@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/simulation/LevelTelemetrySnapshot.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGame/ui/style/GameUiStyle.h"
@@ -20,7 +21,9 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
   public:
     ULevelCompletionWidget();
 
-    void prepare_for_open(FString level_display_name, FLevelTelemetrySnapshot snapshot);
+    void prepare_for_open(FString level_display_name,
+                          ETestMissionState state,
+                          FLevelTelemetrySnapshot snapshot);
     void request_return_to_mission_control();
     void request_keep_operating();
 
@@ -46,6 +49,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
     void publish_report();
 
     FString level_display_name_{};
+    ETestMissionState mission_state_{ETestMissionState::Succeeded};
     FLevelTelemetrySnapshot stats_snapshot_{};
     TSharedPtr<SLevelCompletionView> view_{};
     FGameUiStyle fallback_style_{};

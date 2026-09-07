@@ -41,10 +41,23 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 }
 
 void SLevelCompletionView::update_report(FString const& level_display_name,
+                                         ETestMissionState const state,
                                          FLevelTelemetrySnapshot const& snapshot) {
+    check(state == ETestMissionState::Succeeded || state == ETestMissionState::Failed);
+    auto const succeeded{state == ETestMissionState::Succeeded};
     mission_name_->SetText(level_display_name.IsEmpty()
                                ? NSLOCTEXT("LevelCompletion", "UnknownMission", "UNNAMED OPERATION")
                                : FText::FromString(level_display_name.ToUpper()));
+    mission_result_->SetText(
+        succeeded ? NSLOCTEXT("LevelCompletion", "MissionComplete", "MISSION COMPLETE")
+                  : NSLOCTEXT("LevelCompletion", "MissionFailed", "MISSION FAILED"));
+    mission_result_->SetColorAndOpacity(succeeded ? style_->palette().success
+                                                  : style_->palette().danger);
+    objective_status_->SetText(
+        succeeded
+            ? NSLOCTEXT("LevelCompletion", "ObjectiveSatisfied", "OBJECTIVE STATUS // SATISFIED")
+            : NSLOCTEXT(
+                  "LevelCompletion", "ObjectiveUnsatisfied", "OBJECTIVE STATUS // UNSATISFIED"));
     elapsed_time_->SetText(
         level_telemetry_presentation::format_elapsed_time(snapshot.elapsed_seconds));
     kills_->SetText(FText::AsNumber(snapshot.kills));
@@ -121,18 +134,11 @@ auto SLevelCompletionView::build_summary() -> TSharedRef<SWidget> {
     details->AddSlot().AutoHeight()[SAssignNew(mission_name_, STextBlock)
                                         .TextStyle(&style_->text(EGameTextStyle::Heading2))
                                         .AutoWrapText(true)];
-    details->AddSlot().AutoHeight().Padding(FMargin{
-        0.0f,
-        10.0f,
-        0.0f,
-        4.0f})[SNew(STextBlock)
-                   .Text(NSLOCTEXT("LevelCompletion", "MissionComplete", "MISSION COMPLETE"))
-                   .TextStyle(&style_->text(EGameTextStyle::Heading3))
-                   .ColorAndOpacity(style_->palette().success)];
-    details->AddSlot().AutoHeight()
-        [SNew(STextBlock)
-             .Text(NSLOCTEXT("LevelCompletion", "ObjectiveStatus", "OBJECTIVE STATUS // SATISFIED"))
-             .TextStyle(&style_->text(EGameTextStyle::Caption))];
+    details->AddSlot().AutoHeight().Padding(
+        FMargin{0.0f, 10.0f, 0.0f, 4.0f})[SAssignNew(mission_result_, STextBlock)
+                                              .TextStyle(&style_->text(EGameTextStyle::Heading3))];
+    details->AddSlot().AutoHeight()[SAssignNew(objective_status_, STextBlock)
+                                        .TextStyle(&style_->text(EGameTextStyle::Caption))];
     details->AddSlot().AutoHeight().Padding(FMargin{0.0f, 22.0f})[SNew(SBox).HeightOverride(
         2.0f)[SNew(SBorder).BorderImage(&style_->chrome().focus)]];
     details->AddSlot().AutoHeight().Padding(
