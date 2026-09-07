@@ -10,6 +10,7 @@
 
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
+#include "Misc/StringBuilder.h"
 #include "Widgets/Images/SImage.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
@@ -21,6 +22,11 @@
 
 namespace ml::ioj {
 namespace {
+struct FSimdFeatureDisplay {
+    bool supported{};
+    TCHAR const* name{};
+};
+
 auto category_label(EGameSettingCategory const category) -> FText {
     for (auto const& descriptor : game_setting_category_descriptors()) {
         if (descriptor.id == category) {
@@ -69,6 +75,22 @@ auto friendly_platform_name(FString value) -> FText {
 
 auto capability_text(FString const& value) -> FText {
     return FText::FromString(value.IsEmpty() ? TEXT("Unknown") : value);
+}
+
+auto simd_feature_text(std::initializer_list<FSimdFeatureDisplay> const features) -> FText {
+    TStringBuilder<128> supported_features;
+    for (auto const& feature : features) {
+        if (feature.supported) {
+            if (supported_features.Len() > 0) {
+                supported_features.Append(TEXT(", "));
+            }
+            supported_features.Append(feature.name);
+        }
+    }
+    if (supported_features.Len() == 0) {
+        return NSLOCTEXT("OptionsMenu", "SimdUnsupported", "Unsupported");
+    }
+    return FText::FromString(FString{supported_features});
 }
 
 #if PLATFORM_WINDOWS
@@ -568,6 +590,37 @@ auto SGameOptionsView::build_system_page() -> TSharedRef<SWidget> {
           FText::AsNumber(capabilities_->physical_core_count)},
          {NSLOCTEXT("OptionsMenu", "LogicalCoresLabel", "Logical Cores"),
           FText::AsNumber(capabilities_->logical_core_count)}});
+    auto const& simd{capabilities_->cpu_simd};
+    if (simd.available) {
+        add_section(NSLOCTEXT("OptionsMenu", "SimdSection", "SIMD Features"),
+                    {{NSLOCTEXT("OptionsMenu", "SseLabel", "SSE"),
+                      simd_feature_text({{simd.sse, TEXT("SSE")},
+                                         {simd.sse2, TEXT("SSE2")},
+                                         {simd.sse3, TEXT("SSE3")},
+                                         {simd.ssse3, TEXT("SSSE3")},
+                                         {simd.sse4_1, TEXT("SSE4.1")},
+                                         {simd.sse4_2, TEXT("SSE4.2")},
+                                         {simd.sse4a, TEXT("SSE4a")}})},
+                     {NSLOCTEXT("OptionsMenu", "AvxLabel", "AVX"),
+                      simd_feature_text({{simd.avx, TEXT("AVX")},
+                                         {simd.avx2, TEXT("AVX2")},
+                                         {simd.avx_vnni, TEXT("AVX-VNNI")}})},
+                     {NSLOCTEXT("OptionsMenu", "Avx512Label", "AVX-512"),
+                      simd_feature_text({{simd.avx512_f, TEXT("AVX-512F")},
+                                         {simd.avx512_cd, TEXT("AVX-512CD")},
+                                         {simd.avx512_bw, TEXT("AVX-512BW")},
+                                         {simd.avx512_dq, TEXT("AVX-512DQ")},
+                                         {simd.avx512_vl, TEXT("AVX-512VL")}})},
+                     {NSLOCTEXT("OptionsMenu", "AmxLabel", "AMX"),
+                      simd_feature_text({{simd.amx_tile, TEXT("AMX-TILE")},
+                                         {simd.amx_bf16, TEXT("AMX-BF16")},
+                                         {simd.amx_int8, TEXT("AMX-INT8")},
+                                         {simd.amx_fp16, TEXT("AMX-FP16")}})}});
+    } else {
+        add_section(NSLOCTEXT("OptionsMenu", "SimdSection", "SIMD Features"),
+                    {{NSLOCTEXT("OptionsMenu", "SimdDetectionLabel", "Detection"),
+                      NSLOCTEXT("OptionsMenu", "SimdDetectionUnavailable", "Unavailable")}});
+    }
     add_section(NSLOCTEXT("OptionsMenu", "GraphicsSection", "Graphics"),
                 {{NSLOCTEXT("OptionsMenu", "GpuLabel", "GPU"),
                   capability_text(capabilities_->primary_gpu_brand)}});
