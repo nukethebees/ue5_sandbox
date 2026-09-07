@@ -22,6 +22,7 @@
 
 #include <Camera/CameraActor.h>
 #include <Camera/PlayerCameraManager.h>
+#include <Engine/GameViewportClient.h>
 #include <EngineUtils.h>
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
@@ -119,6 +120,12 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Benchmark context removes simulation HUDs"));
         checks.is_true(player_controller->get_benchmark_hud() != nullptr,
                        TEXT("Benchmark context creates the minimal benchmark HUD"));
+        checks.is_true(player_controller->ShouldShowMouseCursor(),
+                       TEXT("Benchmark context shows the mouse cursor"));
+        if (auto* const viewport{context_.world.GetGameViewport()}; IsValid(viewport)) {
+            checks.is_true(viewport->GetMouseCaptureMode() == EMouseCaptureMode::NoCapture,
+                           TEXT("Benchmark context releases mouse capture for HUD interaction"));
+        }
         checks.is_true(camera->GetActorTransform().Equals(observer_transform),
                        TEXT("Entering benchmark retains the observer camera transform"));
 

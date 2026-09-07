@@ -657,14 +657,30 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
             set_control_context(EPlayerControlContext::None);
             return false;
         }
-        FInputModeGameAndUI input_mode{};
-        input_mode.SetHideCursorDuringCapture(false);
-        input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-        SetInputMode(input_mode);
-        SetShowMouseCursor(true);
+        apply_benchmark_input_mode();
+        GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::apply_benchmark_input_mode);
     }
     SetActorTickEnabled(true);
     return true;
+}
+
+void ASpaceGamePlayerController::apply_benchmark_input_mode() {
+    if (active_control_context_ != EPlayerControlContext::Benchmark ||
+        !IsValid(benchmark_hud_widget)) {
+        return;
+    }
+
+    FInputModeGameAndUI input_mode{};
+    input_mode.SetHideCursorDuringCapture(false);
+    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(input_mode);
+    if (auto* const world{GetWorld()}; IsValid(world)) {
+        if (auto* const viewport{world->GetGameViewport()}; IsValid(viewport)) {
+            viewport->SetMouseCaptureMode(EMouseCaptureMode::NoCapture);
+            viewport->SetMouseLockMode(EMouseLockMode::DoNotLock);
+        }
+    }
+    SetShowMouseCursor(true);
 }
 
 void ASpaceGamePlayerController::set_observer_look_active(bool const active) {
