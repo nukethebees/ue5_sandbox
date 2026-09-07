@@ -25,6 +25,7 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 #include <SandboxISMCComponent.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <CoreGlobals.h>
 #include <Engine/GameInstance.h>
@@ -133,6 +134,8 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     RootComponent = collision_grid_visualization;
     laser_instances_ = CreateDefaultSubobject<USandboxISMCComponent>(TEXT("Lasers"));
     laser_instances_->SetupAttachment(RootComponent);
+    spark_renderer_ = CreateDefaultSubobject<USparkRendererComponent>(TEXT("Sparks"));
+    spark_renderer_->SetupAttachment(RootComponent);
     capital_instances_ =
         CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("CapitalShips"));
     capital_instances_->SetupAttachment(RootComponent);
@@ -910,6 +913,7 @@ auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresen
             .fighters = fighter_instances_,
             .turrets = turret_instances_,
             .spinners = spinner_instances_,
+            .sparks = spark_renderer_,
             .config = level_config,
             .player = player_ship,
             .settings = presentation_settings};

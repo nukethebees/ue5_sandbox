@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SpaceGame/support/DrawDebugConfig.h>
+#include <SpaceGameRendering/SparkRendererSettings.h>
 
 #include "LevelPresentationSettings.generated.h"
 
@@ -125,4 +126,7 @@ struct FLevelPresentationSettings {
 
     UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
     FEntityOverlaySettings entity_overlay;
+
+    UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
+    FSparkRendererSettings sparks;
 };

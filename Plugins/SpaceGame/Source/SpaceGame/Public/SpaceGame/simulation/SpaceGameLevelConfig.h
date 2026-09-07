@@ -1,5 +1,7 @@
 #pragma once
 
+#include <SpaceGameRendering/SparkBurstStyle.h>
+
 #include <SpaceGame/combat/lasers/AttackDistanceBand.h>
 #include <SpaceGame/ships/common/BarrelRoll.h>
 #include <SpaceGame/support/DrawDebugConfig.h>
@@ -171,8 +173,8 @@ struct SPACEGAME_API FLaserProjectileConfig {
     UPROPERTY(EditAnywhere, Category = "Visuals")
     float max_cull_distance{50000.f};
 
-    UPROPERTY(EditAnywhere, Category = "Visuals")
-    TObjectPtr<UNiagaraSystem> hit_effect{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Visuals|Sparks", meta = (ShowOnlyInnerProperties))
+    FSparkBurstStyle impact_sparks;
 };
 
 USTRUCT(BlueprintType)

@@ -30,6 +30,7 @@ public class SpaceGame : ModuleRules
             "RenderCore",
             "SandboxUI",
             "SlateCore",
+            "SpaceGameRendering",
             "UMG",
             "SGCollision",
         });

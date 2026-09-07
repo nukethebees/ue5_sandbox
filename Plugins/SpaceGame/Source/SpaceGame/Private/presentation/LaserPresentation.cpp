@@ -7,12 +7,21 @@
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxISMCComponent.h>
+#include <SpaceGameRendering/SparkEffects.h>
 
 #include <Components/SceneComponent.h>
-#include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
+
+namespace SpaceGame::LaserPresentation::Private {
+auto make_seed(uint64 const tick, FVector3f const location, int32 const ordinal) -> uint32 {
+    auto seed{HashCombineFast(GetTypeHash(static_cast<uint32>(tick)),
+                              GetTypeHash(static_cast<uint32>(tick >> 32)))};
+    seed = HashCombineFast(seed, GetTypeHash(location));
+    return HashCombineFast(seed, GetTypeHash(ordinal));
+}
+} // namespace SpaceGame::LaserPresentation::Private
 
 FLaserPresentation::FLaserPresentation(USandboxISMCComponent& component)
     : instances{&component} {}
@@ -60,11 +69,7 @@ void FLaserPresentation::update_visual_data() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::update_visual_data);
     synchronize_material_data();
     update_ismc();
-}
-
-void FLaserPresentation::commit_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::commit_visual_data);
-    spawn_hit_effects();
+    queue_hit_sparks();
 }
 
 void FLaserPresentation::end_tick_presentation() {
@@ -140,51 +145,30 @@ void FLaserPresentation::update_ismc() {
         });
 }
 
-void FLaserPresentation::spawn_hit_effects() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::spawn_hit_effects);
-
-    static FName const colour_parameter{TEXT("User.Colour")};
-    static FName const ribbon_colour_parameter{TEXT("User.Ribbon_Colour")};
-
-    auto* const hit_effect{actor_config->hit_effect.Get()};
-    if (!IsValid(hit_effect)) {
-        if (!have_warned_hit_effect) {
-            UE_LOG(LogSandbox,
-                   Warning,
-                   TEXT("FLaserPresentation::spawn_hit_effects: hit_effect is nullptr"));
-            have_warned_hit_effect = true;
-        }
+void FLaserPresentation::queue_hit_sparks() {
+    if (spark_effects_ == nullptr || actor_config == nullptr ||
+        actor_config->impact_sparks.count <= 0) {
         return;
     }
 
     auto const& hit_details{simulation().hit_details};
-    auto const n{ml::num(hit_details)};
-    if (n < 1) {
-        return;
-    }
-
-    auto* const world{instances->GetWorld()};
-    for (int32 i{0}; i < n; ++i) {
-        constexpr bool auto_destroy{true};
-        constexpr bool auto_activate{false};
-        auto* const system{UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            world,
-            hit_effect,
-            ml::get_vector3d(hit_details.locations, i),
-            FRotator::ZeroRotator,
-            FVector::OneVector,
-            auto_destroy,
-            auto_activate,
-            ENCPoolMethod::AutoRelease)};
-        if (!IsValid(system)) {
-            continue;
-        }
-
-        constexpr double colour_scale{20.0};
-        auto const colour{hit_details.colours[i] * colour_scale};
-        system->SetVariableLinearColor(colour_parameter, colour);
-        system->SetVariableLinearColor(ribbon_colour_parameter, colour);
-        system->Activate();
+    auto const count{ml::num(hit_details)};
+    auto const tick{simulation().simulation_clock.get_completed_ticks()};
+    auto const& style{actor_config->impact_sparks};
+    for (int32 index{0}; index < count; ++index) {
+        auto const location{ml::get_vector3f(hit_details.locations, index)};
+        spark_effects_->queue_burst({
+            .emission =
+                {
+                    .location = location,
+                    .direction = ml::get_vector3f(hit_details.emission_directions, index),
+                    .colour = FVector3f{hit_details.colours[index].R,
+                                        hit_details.colours[index].G,
+                                        hit_details.colours[index].B},
+                    .seed = SpaceGame::LaserPresentation::Private::make_seed(tick, location, index),
+                },
+            .style = style,
+        });
     }
 }
 

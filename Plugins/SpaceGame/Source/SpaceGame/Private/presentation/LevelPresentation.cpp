@@ -2,15 +2,17 @@
 #include <SpaceGame/presentation/LevelPresentation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 
 auto FLevelPresentationResources::is_valid() const -> bool {
     return IsValid(lasers) && IsValid(capital_ships) && IsValid(fighters) && IsValid(turrets) &&
-           IsValid(spinners) && IsValid(config);
+           IsValid(spinners) && IsValid(sparks) && IsValid(config);
 }
 FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resources,
                                        FLevelSimulation& simulation,
                                        TArray<FTransform> turret_transforms)
-    : lasers{*resources.lasers}
+    : sparks{*resources.sparks}
+    , lasers{*resources.lasers}
     , capital_ships{*resources.capital_ships}
     , capital_ship_fighters{*resources.fighters}
     , turrets{*resources.turrets}
@@ -18,6 +20,8 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     , player_{resources.player} {
     auto const& config{*resources.config};
     auto const& settings{resources.settings};
+    resources.sparks->initialise(settings.sparks);
+    sparks.clear();
 #if WITH_EDITORONLY_DATA
     lasers.debug_drawer = settings.laser_debug_drawer;
     lasers.debugging_shapes_enabled = settings.laser_debug_shapes;
@@ -28,6 +32,7 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     turrets.draw_target_arrows_enabled = settings.turret_debug_targets;
     turrets.draw_debug_entity_info_enabled = settings.turret_debug_entities;
     lasers.set_actor_config(&config.laser_projectiles);
+    lasers.set_spark_effects(sparks);
     capital_ships.set_actor_config(&config.capital_ships);
     capital_ship_fighters.set_actor_config(&config.fighters);
     turrets.set_actor_config(&config.turrets);
@@ -78,7 +83,7 @@ void FLevelPresentation::commit_visual_data(float dt) {
     capital_ship_fighters.commit_visual_data();
     turrets.commit_visual_data();
     spinners.commit_visual_data();
-    lasers.commit_visual_data();
+    sparks.commit(dt);
     effects.update_spawns(dt, *lasers.instances->GetWorld());
 }
 void FLevelPresentation::handle_player_death() {

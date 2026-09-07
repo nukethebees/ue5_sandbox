@@ -5,6 +5,7 @@
 #include <SpaceGame/levels/LevelEventManager.h>
 #include <SpaceGame/simulation/LevelSimulation.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
+#include <SpaceGameRendering/SparkRendererComponent.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 
@@ -244,6 +245,9 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
     resources.lasers = NewObject<USandboxISMCComponent>(owner);
     owner->AddInstanceComponent(resources.lasers);
     resources.lasers->RegisterComponent();
+    resources.sparks = NewObject<USparkRendererComponent>(owner);
+    owner->AddInstanceComponent(resources.sparks);
+    resources.sparks->RegisterComponent();
     for (auto** slot :
          {&resources.capital_ships, &resources.fighters, &resources.turrets, &resources.spinners}) {
         *slot = NewObject<UInstancedStaticMeshComponent>(owner);

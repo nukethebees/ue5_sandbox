@@ -82,6 +82,19 @@
       }
     },
     {
+      "name": "spark-benchmark",
+      "displayName": "Spark renderer benchmark",
+      "inherits": "development",
+      "cacheVariables": {
+        "SANDBOX_TEST_SUITE": "editor-only",
+        "SANDBOX_SPARK_BENCHMARK_SECONDS": "10",
+        "SANDBOX_SPARK_BENCHMARK_CAPACITY": "50000",
+        "SANDBOX_SPARK_BENCHMARK_SPARKS_PER_HIT": "96",
+        "SANDBOX_SPARK_BENCHMARK_IMPACTS_PER_FRAME": "100",
+        "SANDBOX_SPARK_BENCHMARK_WARMUP_FRAMES": "60"
+      }
+    },
+    {
       "name": "shipping",
       "displayName": "Shipping",
       "inherits": "base",
@@ -182,6 +195,11 @@
     {
       "name": "sandbox-ismc-benchmark",
       "configurePreset": "sandbox-ismc-benchmark",
+      "targets": ["editor"]
+    },
+    {
+      "name": "spark-benchmark",
+      "configurePreset": "spark-benchmark",
       "targets": ["editor"]
     }
   ],
@@ -300,6 +318,21 @@
       "filter": {
         "include": {
           "label": "sandbox-ismc-benchmark"
+        }
+      },
+      "execution": {
+        "noTestsAction": "error"
+      }
+    },
+    {
+      "name": "spark-benchmark",
+      "configurePreset": "spark-benchmark",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "label": "spark-benchmark"
         }
       },
       "execution": {
@@ -478,6 +511,14 @@
         { "type": "configure", "name": "sandbox-ismc-benchmark" },
         { "type": "build", "name": "sandbox-ismc-benchmark" },
         { "type": "test", "name": "sandbox-ismc-benchmark" }
+      ]
+    },
+    {
+      "name": "spark-benchmark",
+      "steps": [
+        { "type": "configure", "name": "spark-benchmark" },
+        { "type": "build", "name": "spark-benchmark" },
+        { "type": "test", "name": "spark-benchmark" }
       ]
     },
     {
