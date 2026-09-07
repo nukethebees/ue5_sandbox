@@ -5,6 +5,8 @@
 
 #include <Widgets/SCompoundWidget.h>
 
+class SEditableText;
+
 namespace ml::ioj {
 class SGameButton;
 }
@@ -12,6 +14,7 @@ class SGameButton;
 namespace ml::s7 {
 DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
 DECLARE_DELEGATE_OneParam(FOnLevelCategorySelected, ELevelCatalogCategory);
+DECLARE_DELEGATE_OneParam(FOnBattleSpeedChanged, TOptional<double>);
 
 class SScriptLevelSelectView final : public SCompoundWidget {
   public:
@@ -20,6 +23,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     SLATE_ARGUMENT(ml::ioj::FGameUiStyle const*, Style)
     SLATE_EVENT(FOnLevelRowSelected, OnLevelSelected)
     SLATE_EVENT(FOnLevelCategorySelected, OnCategorySelected)
+    SLATE_EVENT(FOnBattleSpeedChanged, OnBattleSpeedChanged)
     SLATE_EVENT(FSimpleDelegate, OnLaunch)
     SLATE_END_ARGS()
 
@@ -43,6 +47,8 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     auto handle_category_selected(ELevelCatalogCategory category) -> FReply;
     auto handle_level_selected(int32 button_index) -> FReply;
     auto handle_action(FSimpleDelegate delegate) -> FReply;
+    void handle_battle_speed_changed(FText const& text);
+    void update_launch_availability();
     void rebuild_catalog(FLevelSelectViewState const& state);
     void update_selection(int32 button_index);
     void update_category_selection();
@@ -52,6 +58,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     ml::ioj::FGameUiStyle const* style_{};
     FOnLevelRowSelected on_level_selected_{};
     FOnLevelCategorySelected on_category_selected_{};
+    FOnBattleSpeedChanged on_battle_speed_changed_{};
     FSimpleDelegate on_launch_{};
 
     TSharedPtr<SVerticalBox> catalog_rows_{};
@@ -62,11 +69,16 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<STextBlock> details_{};
     TSharedPtr<STextBlock> script_{};
     TSharedPtr<STextBlock> launch_mode_status_{};
+    TSharedPtr<SVerticalBox> battle_speed_control_{};
+    TSharedPtr<SEditableText> battle_speed_input_{};
+    TSharedPtr<STextBlock> battle_speed_error_{};
     TSharedPtr<ml::ioj::SGameButton> launch_button_{};
     TSharedPtr<ml::ioj::SGameButton> mission_category_button_{};
     TSharedPtr<ml::ioj::SGameButton> battle_viewer_category_button_{};
     TArray<TSharedPtr<ml::ioj::SGameButton>> level_buttons_{};
     ELevelCatalogCategory category_{ELevelCatalogCategory::Mission};
     int32 selected_button_index_{INDEX_NONE};
+    bool selected_level_can_launch_{};
+    bool battle_speed_valid_{true};
 };
 } // namespace ml::s7

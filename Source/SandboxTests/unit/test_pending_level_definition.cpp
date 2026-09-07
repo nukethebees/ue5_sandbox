@@ -4,6 +4,8 @@
 #include <CQTest.h>
 #include <Engine/GameInstance.h>
 
+#include <limits>
+
 TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
 {
     TEST_METHOD(IsTransferredToTheRuntimeExactlyOnce)
@@ -17,7 +19,8 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
         subsystem->set_level_launch_error(TEXT("old error"));
         subsystem->set_pending_level(ml::example_levels::make_native_example(),
                                      TEXT("LevelScripts/Example.scm"),
-                                     ml::ioj::ELevelLaunchMode::Paused);
+                                     ml::ioj::ELevelLaunchMode::Paused,
+                                     4.0);
 
         TestRunner->TestFalse(TEXT("Selecting a new level clears an old launch error"),
                               subsystem->has_level_launch_error());
@@ -34,7 +37,22 @@ TEST_CLASS(PendingLevelDefinition, "Sandbox.UnitTests")
                               FString{TEXT("Native Example")});
         TestRunner->TestTrue(TEXT("Launch mode is retained"),
                              pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused);
+        TestRunner->TestEqual(
+            TEXT("Requested time scale is retained"), pending->requested_time_scale, 4.0);
         TestRunner->TestFalse(TEXT("Pending level is consumed exactly once"),
                               subsystem->take_pending_level().IsSet());
+
+        for (auto const value : {0.25, 1.0, 100.0}) {
+            TestRunner->TestTrue(TEXT("Supported time scale is accepted"),
+                                 ml::ioj::level_launch::is_valid_time_scale(value));
+        }
+        for (auto const value : {0.0,
+                                 -1.0,
+                                 100.0001,
+                                 std::numeric_limits<double>::infinity(),
+                                 std::numeric_limits<double>::quiet_NaN()}) {
+            TestRunner->TestFalse(TEXT("Unsupported time scale is rejected"),
+                                  ml::ioj::level_launch::is_valid_time_scale(value));
+        }
     }
 };

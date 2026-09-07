@@ -159,6 +159,8 @@ auto UScriptLevelSelectWidget::RebuildWidget() -> TSharedRef<SWidget> {
             .OnLevelSelected(FOnLevelRowSelected::CreateUObject(this, &ThisClass::select_level))
             .OnCategorySelected(
                 FOnLevelCategorySelected::CreateUObject(this, &ThisClass::select_category))
+            .OnBattleSpeedChanged(
+                FOnBattleSpeedChanged::CreateUObject(this, &ThisClass::set_battle_time_scale))
             .OnLaunch(FSimpleDelegate::CreateUObject(this, &ThisClass::handle_launch))};
     refresh_levels();
     return result;
@@ -367,6 +369,10 @@ void UScriptLevelSelectWidget::select_level(int32 const button_index) {
     publish_view();
 }
 
+void UScriptLevelSelectWidget::set_battle_time_scale(TOptional<double> time_scale) {
+    battle_time_scale_ = MoveTemp(time_scale);
+}
+
 void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
     if (!level_entry_indices_.IsValidIndex(button_index)) {
         return;
@@ -422,13 +428,20 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 }
 
 void UScriptLevelSelectWidget::handle_launch() {
+    auto const time_scale{active_category_ == ELevelCatalogCategory::BattleViewer
+                              ? battle_time_scale_
+                              : TOptional<double>{ml::ioj::level_launch::default_time_scale}};
+    if (!time_scale.IsSet()) {
+        return;
+    }
+
     auto* const game_instance{GetGameInstance()};
     auto const* const save_subsystem{
         IsValid(game_instance) ? game_instance->GetSubsystem<USpaceSaveSubsystem>() : nullptr};
     auto const launch_mode{IsValid(save_subsystem) && save_subsystem->start_levels_paused()
                                ? ml::ioj::ELevelLaunchMode::Paused
                                : ml::ioj::ELevelLaunchMode::Running};
-    launch_selected_level(launch_mode);
+    launch_selected_level(launch_mode, time_scale.GetValue());
 }
 
 void UScriptLevelSelectWidget::publish_view() {
@@ -443,7 +456,8 @@ void UScriptLevelSelectWidget::publish_catalog() {
     }
 }
 
-void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode const launch_mode) {
+void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode const launch_mode,
+                                                     double const time_scale) {
     if (!entries_.IsValidIndex(selected_entry_index_) || !entries_[selected_entry_index_]) {
         return;
     }
@@ -471,7 +485,7 @@ void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::ELevelLaunchMode c
     auto& entry{entries_[selected_entry_index_]};
     auto definition{MoveTemp(entry.definition.GetValue())};
     entry.definition.Reset();
-    game_->set_pending_level(MoveTemp(definition), entry.path, launch_mode);
+    game_->set_pending_level(MoveTemp(definition), entry.path, launch_mode, time_scale);
     view_state_.can_launch = false;
     if (launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
         view_state_.status =

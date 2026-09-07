@@ -728,8 +728,17 @@ void ATestBatchOrchestrator::load_authored_level() {
         handle_level_start_failure(error);
         return;
     }
+    if (!ml::ioj::level_launch::is_valid_time_scale(pending->requested_time_scale)) {
+        handle_level_start_failure(
+            FString::Printf(TEXT("Cannot load authored level: requested time scale %.17g is "
+                                 "outside the supported range (0, %.0f]."),
+                            pending->requested_time_scale,
+                            ml::ioj::level_launch::maximum_time_scale));
+        return;
+    }
 
     launched_paused_ = pending->launch_mode == ml::ioj::ELevelLaunchMode::Paused;
+    set_time_scale(pending->requested_time_scale);
 
     ml::FLevelLoader loader{*this};
     auto const result{loader.load(pending->definition)};

@@ -52,7 +52,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
         return selected_level_id_;
     }
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
-        return view_state_.can_launch;
+        return view_state_.can_launch && (active_category_ != ELevelCatalogCategory::BattleViewer ||
+                                          battle_time_scale_.IsSet());
     }
     [[nodiscard]] auto get_active_category() const noexcept -> ELevelCatalogCategory {
         return active_category_;
@@ -66,11 +67,12 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     auto NativeOnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
   private:
-    void launch_selected_level(ml::ioj::ELevelLaunchMode launch_mode);
+    void launch_selected_level(ml::ioj::ELevelLaunchMode launch_mode, double time_scale);
     void refresh_levels();
     void rebuild_catalog(FName focus_level_id);
     void select_category(ELevelCatalogCategory category);
     void select_level(int32 button_index);
+    void set_battle_time_scale(TOptional<double> time_scale);
     void apply_level_selection(int32 button_index);
 
     void handle_launch();
@@ -90,5 +92,6 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
     ELevelCatalogCategory active_category_{ELevelCatalogCategory::Mission};
+    TOptional<double> battle_time_scale_{1.0};
 };
 }
