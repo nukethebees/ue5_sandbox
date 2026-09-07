@@ -48,6 +48,7 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     auto create_custom_key_profile(FPlayerMappableKeyProfileCreationArgs const& arguments,
                                    FString const& source_profile_id)
         -> UEnhancedPlayerMappableKeyProfile*;
+    auto rename_custom_key_profile(FString const& profile_id, FText const& display_name) -> bool;
     auto delete_custom_key_profile(FString const& profile_id) -> bool;
   protected:
     auto DetermineHardwareDeviceForActionMapping(FEnhancedActionKeyMapping const& action_mapping,

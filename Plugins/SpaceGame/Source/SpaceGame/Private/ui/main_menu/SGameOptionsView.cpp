@@ -11,6 +11,7 @@
 #include "Framework/Application/SlateApplication.h"
 #include "InputCoreTypes.h"
 #include "Widgets/Images/SImage.h"
+#include "Widgets/Input/SEditableText.h"
 #include "Widgets/Layout/SBorder.h"
 #include "Widgets/Layout/SBox.h"
 #include "Widgets/Layout/SScrollBox.h"
@@ -505,6 +506,48 @@ void SGameOptionsView::rebuild_controls_page() {
                        return FReply::Handled();
                    })];
     if (active_profile != nullptr && active_profile->custom) {
+        auto const name_input{
+            SNew(SBorder)
+                .BorderImage(&style_->chrome().frame_border)
+                .Padding(FMargin{1.0f})
+                    [SNew(SBorder)
+                         .BorderImage(&style_->chrome().body_background)
+                         .Padding(FMargin{12.0f, 8.0f})
+                             [SNew(SEditableText)
+                                  .Text(active_profile->display_name)
+                                  .HintText(NSLOCTEXT(
+                                      "OptionsMenu", "CustomProfileNameHint", "Profile name"))
+                                  .Font(style_->text(EGameTextStyle::Body).Font)
+                                  .ColorAndOpacity(style_->palette().text_primary)
+                                  .SelectAllTextWhenFocused(true)
+                                  .OnTextCommitted_Lambda(
+                                      [this](FText const& text, ETextCommit::Type const commit) {
+                                          if (commit == ETextCommit::OnCleared) {
+                                              return;
+                                          }
+                                          auto* const current{settings_.Get()};
+                                          if (current == nullptr ||
+                                              !current->rename_active_custom_control_profile(
+                                                  text.ToString())) {
+                                              control_profile_error_ = NSLOCTEXT(
+                                                  "OptionsMenu",
+                                                  "RenameCustomProfileFailed",
+                                                  "Profile names must be unique and contain 1–48 "
+                                                  "characters.");
+                                          } else {
+                                              control_profile_error_ = FText::GetEmpty();
+                                          }
+                                          rebuild_controls_page();
+                                          refresh();
+                                      })]]};
+        profile_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
+            [SNew(SSettingsRow)
+                 .Style(&style_->settings())
+                 .Label(NSLOCTEXT("OptionsMenu", "CustomProfileName", "Profile Name"))
+                 .ToolTipText(
+                     NSLOCTEXT("OptionsMenu",
+                               "CustomProfileNameTip",
+                               "Rename this custom profile. Names must be unique."))[name_input]];
         profile_actions->AddSlot()
             .AutoWidth()[SNew(SGameButton)
                              .Style(&style_->button(EGameButtonStyle::Secondary))

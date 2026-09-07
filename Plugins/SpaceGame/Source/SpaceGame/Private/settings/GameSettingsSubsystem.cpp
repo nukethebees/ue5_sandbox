@@ -499,6 +499,35 @@ auto UGameSettingsSubsystem::create_custom_control_profile() -> bool {
     return true;
 }
 
+auto UGameSettingsSubsystem::rename_active_custom_control_profile(FString const& display_name)
+    -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr ||
+        !is_custom_control_profile_id(settings->GetActiveKeyProfileId())) {
+        return false;
+    }
+
+    auto normalized{display_name};
+    normalized.TrimStartAndEndInline();
+    constexpr int32 maximum_profile_name_length{48};
+    if (normalized.IsEmpty() || normalized.Len() > maximum_profile_name_length) {
+        return false;
+    }
+    auto const profiles{control_profiles()};
+    if (profiles.ContainsByPredicate([&normalized, settings](auto const& profile) {
+            return profile.id != settings->GetActiveKeyProfileId() &&
+                   profile.display_name.ToString().Equals(normalized, ESearchCase::IgnoreCase);
+        })) {
+        return false;
+    }
+    if (!settings->rename_custom_key_profile(settings->GetActiveKeyProfileId(),
+                                             FText::FromString(normalized))) {
+        return false;
+    }
+    settings_changed.Broadcast();
+    return true;
+}
+
 auto UGameSettingsSubsystem::delete_active_custom_control_profile() -> bool {
     auto* const settings{input_user_settings()};
     if (!editing_ || settings == nullptr ||

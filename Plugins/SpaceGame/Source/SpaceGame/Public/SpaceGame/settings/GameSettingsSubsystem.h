@@ -55,6 +55,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
         -> TArray<FControlBindingView>;
     auto set_control_profile(FString const& profile_id) -> bool;
     auto create_custom_control_profile() -> bool;
+    auto rename_active_custom_control_profile(FString const& display_name) -> bool;
     auto delete_active_custom_control_profile() -> bool;
     auto set_control_binding(FControlBindingAddress const& address,
                              FKey key,

@@ -65,6 +65,17 @@ auto USpaceGameInputUserSettings::create_custom_key_profile(
     return profile;
 }
 
+auto USpaceGameInputUserSettings::rename_custom_key_profile(FString const& profile_id,
+                                                            FText const& display_name) -> bool {
+    auto* const profile{GetKeyProfileWithId(profile_id)};
+    if (!is_custom_control_profile_id(profile_id) || !IsValid(profile)) {
+        return false;
+    }
+    profile->SetDisplayName(display_name);
+    OnSettingsChanged.Broadcast(this);
+    return true;
+}
+
 auto USpaceGameInputUserSettings::delete_custom_key_profile(FString const& profile_id) -> bool {
     if (!is_custom_control_profile_id(profile_id) || !SavedKeyProfilesMap.Contains(profile_id)) {
         return false;
