@@ -245,8 +245,6 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<ATestSpaceShip> player_ship{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox", meta = (ShowOnlyInnerProperties))
     FLevelMissionDefinition mission_definition;
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Presentation")
-    FLevelPresentationSettings presentation_settings;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<USandboxISMCComponent> laser_instances_;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")

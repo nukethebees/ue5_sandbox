@@ -664,7 +664,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                hud_tick_loop.tick_rate,
                                get_player_ship_simulation(),
                                *level_config,
-                               presentation_settings.entity_overlay);
+                               level_config->entity_overlay);
     }
     bool const automatic{
         start_mode == EOrchestratorStartMode::Automatic ||
@@ -915,8 +915,7 @@ auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresen
             .spinners = spinner_instances_,
             .sparks = spark_renderer_,
             .config = level_config,
-            .player = player_ship,
-            .settings = presentation_settings};
+            .player = player_ship};
 }
 auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component) -> bool {
     check(level_simulation_.IsSet());

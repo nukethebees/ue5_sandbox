@@ -20,7 +20,6 @@ struct SPACEGAME_API FLevelPresentationResources {
     USparkRendererComponent* sparks{nullptr};
     USpaceGameLevelConfig const* config{nullptr};
     TWeakObjectPtr<ATestSpaceShip> player;
-    FLevelPresentationSettings settings;
     auto is_valid() const -> bool;
 };
 

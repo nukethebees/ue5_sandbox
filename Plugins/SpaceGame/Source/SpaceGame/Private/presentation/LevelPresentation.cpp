@@ -19,18 +19,17 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     , spinners{*resources.spinners}
     , player_{resources.player} {
     auto const& config{*resources.config};
-    auto const& settings{resources.settings};
-    resources.sparks->initialise(settings.sparks);
+    resources.sparks->initialise(config.sparks);
     sparks.clear();
 #if WITH_EDITORONLY_DATA
-    lasers.debug_drawer = settings.laser_debug_drawer;
-    lasers.debugging_shapes_enabled = settings.laser_debug_shapes;
+    lasers.debug_drawer = config.laser_debug_drawer;
+    lasers.debugging_shapes_enabled = config.laser_debug_shapes;
 #endif
-    capital_ships.debugging_shapes_enabled = settings.capital_debug_shapes;
-    capital_ship_fighters.enable_target_debug_drawing = settings.fighter_debug_targets;
-    capital_ship_fighters.enable_ship_location_debug_drawing = settings.fighter_debug_locations;
-    turrets.draw_target_arrows_enabled = settings.turret_debug_targets;
-    turrets.draw_debug_entity_info_enabled = settings.turret_debug_entities;
+    capital_ships.debugging_shapes_enabled = config.capital_debug_shapes;
+    capital_ship_fighters.enable_target_debug_drawing = config.fighter_debug_targets;
+    capital_ship_fighters.enable_ship_location_debug_drawing = config.fighter_debug_locations;
+    turrets.draw_target_arrows_enabled = config.turret_debug_targets;
+    turrets.draw_debug_entity_info_enabled = config.turret_debug_entities;
     lasers.set_actor_config(&config.laser_projectiles);
     lasers.set_spark_effects(sparks);
     capital_ships.set_actor_config(&config.capital_ships);
