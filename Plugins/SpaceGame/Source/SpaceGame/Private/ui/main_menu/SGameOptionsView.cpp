@@ -581,41 +581,82 @@ void SGameOptionsView::rebuild_controls_page() {
     };
     add_section(NSLOCTEXT("OptionsMenu", "ProfilesSection", "Profiles"), profile_rows);
 
-    auto add_binding_sections = [this, settings, &add_section](
-                                    EHardwareDevicePrimaryType const device,
-                                    FText const& empty_title) {
-        auto const bindings{settings->control_bindings(device)};
-        FText category;
-        TSharedPtr<SVerticalBox> rows;
-        auto flush = [&] {
-            if (rows.IsValid()) {
-                add_section(category, rows.ToSharedRef());
-            }
-        };
-        for (auto const& binding : bindings) {
-            if (!rows.IsValid() || !binding.display_category.EqualTo(category)) {
-                flush();
-                category = binding.display_category;
-                rows = SNew(SVerticalBox);
-            }
-            rows->AddSlot().AutoHeight().Padding(
-                style_->settings().row_padding)[build_binding_row(binding)];
+    struct FBindingTableRow {
+        FName mapping_name;
+        FText display_name;
+        FText display_category;
+        TArray<FControlBindingView> keyboard_mouse;
+        TArray<FControlBindingView> controller;
+    };
+    TArray<FBindingTableRow> binding_rows;
+    for (auto const& binding :
+         settings->control_bindings(EHardwareDevicePrimaryType::Unspecified)) {
+        auto* row{binding_rows.FindByPredicate([&binding](auto const& candidate) {
+            return candidate.mapping_name == binding.address.mapping_name;
+        })};
+        if (row == nullptr) {
+            row = &binding_rows.Add_GetRef(FBindingTableRow{
+                .mapping_name = binding.address.mapping_name,
+                .display_name = binding.display_name,
+                .display_category = binding.display_category,
+            });
         }
-        flush();
-        if (bindings.IsEmpty()) {
-            auto empty_rows{SNew(SVerticalBox)};
-            empty_rows->AddSlot()
-                .AutoHeight()[SNew(STextBlock)
-                                  .Text(NSLOCTEXT(
-                                      "OptionsMenu", "NoControlBindings", "No bindings available."))
-                                  .TextStyle(&style_->settings().empty_text)];
-            add_section(empty_title, empty_rows);
+        auto& device_bindings{binding.device_type == EHardwareDevicePrimaryType::Gamepad
+                                  ? row->controller
+                                  : row->keyboard_mouse};
+        device_bindings.Add(binding);
+    }
+
+    FText binding_category;
+    TSharedPtr<SVerticalBox> rows;
+    auto flush_binding_category = [&] {
+        if (rows.IsValid()) {
+            add_section(binding_category, rows.ToSharedRef());
         }
     };
-    add_binding_sections(EHardwareDevicePrimaryType::KeyboardAndMouse,
-                         NSLOCTEXT("OptionsMenu", "KeyboardMouseSection", "Keyboard & Mouse"));
-    add_binding_sections(EHardwareDevicePrimaryType::Gamepad,
-                         NSLOCTEXT("OptionsMenu", "ControllerSection", "Controller"));
+    for (auto const& row : binding_rows) {
+        if (!rows.IsValid() || !row.display_category.EqualTo(binding_category)) {
+            flush_binding_category();
+            binding_category = row.display_category;
+            rows = SNew(SVerticalBox);
+            rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
+                [SNew(SHorizontalBox) +
+                 SHorizontalBox::Slot().FillWidth(
+                     0.4f)[SNew(STextBlock)
+                               .Text(NSLOCTEXT("OptionsMenu", "ControlActionColumn", "Action"))
+                               .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+                 SHorizontalBox::Slot().FillWidth(0.3f).Padding(
+                     FMargin{style_->settings().button_spacing, 0.0f})
+                     [SNew(STextBlock)
+                          .Text(NSLOCTEXT("OptionsMenu", "KeyboardMouseColumn", "Keyboard & Mouse"))
+                          .TextStyle(&style_->text(EGameTextStyle::Caption))] +
+                 SHorizontalBox::Slot().FillWidth(0.3f).Padding(FMargin{
+                     style_->settings().button_spacing,
+                     0.0f})[SNew(STextBlock)
+                                .Text(NSLOCTEXT("OptionsMenu", "ControllerColumn", "Controller"))
+                                .TextStyle(&style_->text(EGameTextStyle::Caption))]];
+        }
+        rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
+            [SNew(SHorizontalBox) +
+             SHorizontalBox::Slot().FillWidth(0.4f).VAlign(
+                 VAlign_Center)[SNew(STextBlock)
+                                    .Text(row.display_name)
+                                    .TextStyle(&style_->text(EGameTextStyle::Body))] +
+             SHorizontalBox::Slot().FillWidth(0.3f).Padding(FMargin{
+                 style_->settings().button_spacing, 0.0f})[build_binding_cell(row.keyboard_mouse)] +
+             SHorizontalBox::Slot().FillWidth(0.3f).Padding(FMargin{
+                 style_->settings().button_spacing, 0.0f})[build_binding_cell(row.controller)]];
+    }
+    flush_binding_category();
+    if (binding_rows.IsEmpty()) {
+        auto empty_rows{SNew(SVerticalBox)};
+        empty_rows->AddSlot()
+            .AutoHeight()[SNew(STextBlock)
+                              .Text(NSLOCTEXT(
+                                  "OptionsMenu", "NoControlBindings", "No bindings available."))
+                              .TextStyle(&style_->settings().empty_text)];
+        add_section(NSLOCTEXT("OptionsMenu", "BindingsSection", "Bindings"), empty_rows);
+    }
 
     FText response_section;
     TSharedPtr<SVerticalBox> response_rows;
@@ -638,45 +679,47 @@ void SGameOptionsView::rebuild_controls_page() {
     flush_response();
 }
 
-auto SGameOptionsView::build_binding_row(FControlBindingView const& binding)
+auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> const bindings)
     -> TSharedRef<SWidget> {
-    auto label{binding.display_name};
-    if (binding.address.slot == EPlayerMappableKeySlot::Second) {
-        label =
-            FText::Format(NSLOCTEXT("OptionsMenu", "SecondaryBinding", "{0} (Secondary)"), label);
+    auto result{SNew(SVerticalBox)};
+    if (bindings.IsEmpty()) {
+        result->AddSlot().AutoHeight().VAlign(VAlign_Center)
+            [SNew(STextBlock).Text(INVTEXT("—")).TextStyle(&style_->settings().empty_text)];
+        return result;
     }
-    auto const key_text{binding.current_key.IsValid()
-                            ? binding.current_key.GetDisplayName()
-                            : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
-    return SNew(SHorizontalBox) +
-           SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
-               [SNew(STextBlock).Text(label).TextStyle(&style_->text(EGameTextStyle::Body))] +
-           SHorizontalBox::Slot().AutoWidth().Padding(
-               FMargin{0.0f,
-                       0.0f,
-                       style_->settings().button_spacing,
-                       0.0f})[SNew(SGameButton)
-                                  .Style(&style_->button(EGameButtonStyle::Secondary))
-                                  .Text(key_text)
-                                  .OnClicked_Lambda([this, address = binding.address] {
-                                      begin_binding_capture(address);
-                                      return FReply::Handled();
-                                  })] +
-           SHorizontalBox::Slot()
-               .AutoWidth()[SNew(SGameButton)
-                                .Style(&style_->button(EGameButtonStyle::Secondary))
-                                .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
-                                .Enabled(binding.modified)
-                                .Visibility(binding.custom_profile ? EVisibility::Collapsed
-                                                                   : EVisibility::Visible)
-                                .OnClicked_Lambda([this, address = binding.address] {
-                                    if (auto* const current{settings_.Get()}) {
-                                        current->reset_control_binding(address);
-                                        rebuild_controls_page();
-                                        refresh();
-                                    }
-                                    return FReply::Handled();
-                                })];
+    for (auto const& binding : bindings) {
+        auto const key_text{binding.current_key.IsValid()
+                                ? binding.current_key.GetDisplayName()
+                                : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
+        result->AddSlot().AutoHeight().Padding(FMargin{
+            0.0f,
+            2.0f})[SNew(SHorizontalBox) +
+                   SHorizontalBox::Slot().FillWidth(1.0f).Padding(
+                       FMargin{0.0f, 0.0f, style_->settings().button_spacing, 0.0f})
+                       [SNew(SGameButton)
+                            .Style(&style_->button(EGameButtonStyle::Secondary))
+                            .Text(key_text)
+                            .OnClicked_Lambda([this, address = binding.address] {
+                                begin_binding_capture(address);
+                                return FReply::Handled();
+                            })] +
+                   SHorizontalBox::Slot()
+                       .AutoWidth()[SNew(SGameButton)
+                                        .Style(&style_->button(EGameButtonStyle::Secondary))
+                                        .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
+                                        .Enabled(binding.modified)
+                                        .Visibility(binding.custom_profile ? EVisibility::Collapsed
+                                                                           : EVisibility::Visible)
+                                        .OnClicked_Lambda([this, address = binding.address] {
+                                            if (auto* const current{settings_.Get()}) {
+                                                current->reset_control_binding(address);
+                                                rebuild_controls_page();
+                                                refresh();
+                                            }
+                                            return FReply::Handled();
+                                        })]];
+    }
+    return result;
 }
 
 void SGameOptionsView::begin_binding_capture(FControlBindingAddress const& address) {

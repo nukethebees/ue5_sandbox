@@ -69,7 +69,7 @@ class SGameOptionsView final : public SCompoundWidget {
     auto build_category_page(EGameSettingCategory category) -> TSharedRef<SWidget>;
     auto build_controls_page() -> TSharedRef<SWidget>;
     void rebuild_controls_page();
-    auto build_binding_row(FControlBindingView const& binding) -> TSharedRef<SWidget>;
+    auto build_binding_cell(TConstArrayView<FControlBindingView> bindings) -> TSharedRef<SWidget>;
     void begin_binding_capture(FControlBindingAddress const& address);
     auto accept_binding_key(FKey key) -> FReply;
     void close_binding_prompt();
