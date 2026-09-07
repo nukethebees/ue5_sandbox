@@ -19,6 +19,12 @@
 #include <Engine/StaticMesh.h>
 #include <EngineUtils.h>
 
+#if WITH_EDITOR
+#include <SpaceGame/simulation/EntityWorldBounds.h>
+#include <SpaceGame/simulation/LevelCollisionHost.h>
+#include <SpaceGame/support/mesh.h>
+#endif
+
 ATestCapitalShipProxy::ATestCapitalShipProxy()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
     RootComponent = CreateDefaultSubobject<USceneComponent>(TEXT("root"));
@@ -26,6 +32,9 @@ ATestCapitalShipProxy::ATestCapitalShipProxy()
     mesh->SetupAttachment(RootComponent);
 
     PrimaryActorTick.bCanEverTick = false;
+#if WITH_EDITOR
+    PrimaryActorTick.bCanEverTick = true;
+#endif
     PrimaryActorTick.bStartWithTickEnabled = false;
 }
 
@@ -82,6 +91,101 @@ void ATestCapitalShipProxy::OnConstruction(FTransform const& transform) {
 }
 
 #if WITH_EDITOR
+void ATestCapitalShipProxy::PostRegisterAllComponents() {
+    Super::PostRegisterAllComponents();
+    auto const* const world{GetWorld()};
+    SetActorTickEnabled(IsValid(world) && world->WorldType == EWorldType::Editor);
+}
+
+void ATestCapitalShipProxy::Tick(float const delta_seconds) {
+    Super::Tick(delta_seconds);
+    auto const* const world{GetWorld()};
+    if (IsValid(world) && world->WorldType == EWorldType::Editor && IsSelected() &&
+        show_fighter_spawn_preview) {
+        draw_fighter_spawn_preview();
+    }
+}
+
+void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
+    auto* const world{GetWorld()};
+    auto const* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
+    auto const* const config{IsValid(orchestrator) ? orchestrator->get_level_config()
+                                                   : level_config_asset.Get()};
+    auto const report_error{[this](FString const& message) {
+        if (spawn_preview_error != message) {
+            UE_LOG(LogSandbox,
+                   Warning,
+                   TEXT("Fighter spawn preview for %s: %s"),
+                   *GetPathName(),
+                   *message);
+            spawn_preview_error = message;
+        }
+    }};
+    if (!IsValid(config) || !IsValid(config->capital_ships.mesh) ||
+        !IsValid(config->fighters.mesh)) {
+        report_error(TEXT("A level configuration with capital and fighter meshes is required."));
+        return;
+    }
+
+    ml::ioj::FLevelCollisionHost::EntityMeshes meshes{};
+    meshes[ETestEntityType::CapitalShip] = config->capital_ships.mesh;
+    auto const local_bounds{ml::ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
+    if (!local_bounds) {
+        report_error(local_bounds.error().format());
+        return;
+    }
+    auto const slot_count{fighter_spawn_slots.Num()};
+    for (int32 i{}; i < slot_count; ++i) {
+        if (!IsValid(fighter_spawn_slots[i])) {
+            report_error(FString::Printf(TEXT("Spawn arrow %d is missing."), i));
+            return;
+        }
+    }
+    spawn_preview_error.Reset();
+    // Runtime uses the actor pivot/rotation, not the preview mesh component's relative transform.
+    auto const bounds{ml::ioj::make_entity_world_bounds(*local_bounds,
+                                                        ml::ioj::FEntityAABBs::capital_ship_index,
+                                                        FVector3f{GetActorLocation()},
+                                                        FRotator3f{GetActorRotation()})};
+    auto const clearance{ml::get_mesh_sphere_bounds(*config->fighters.mesh) +
+                         config->fighters.avoidance_clearance_buffer};
+    auto const clearance_bounds{bounds.ExpandBy(clearance)};
+    DrawDebugBox(
+        world, FVector{bounds.GetCenter()}, FVector{bounds.GetExtent()}, FColor::Green, false, 0.f);
+    DrawDebugBox(world,
+                 FVector{clearance_bounds.GetCenter()},
+                 FVector{clearance_bounds.GetExtent()},
+                 FColor::Orange,
+                 false,
+                 0.f);
+
+    auto const minimum_spacing_sq{FMath::Square(clearance * 2.f)};
+    for (int32 i{}; i < slot_count; ++i) {
+        auto const* const arrow{fighter_spawn_slots[i].Get()};
+        auto const position{arrow->GetComponentLocation()};
+        auto const blocked{clearance_bounds.IsInsideOrOn(FVector3f{position})};
+        bool too_close{};
+        for (int32 j{}; j < slot_count; ++j) {
+            auto const* const neighbour{fighter_spawn_slots[j].Get()};
+            if (i != j && IsValid(neighbour) &&
+                FVector::DistSquared(position, neighbour->GetComponentLocation()) <
+                    minimum_spacing_sq) {
+                too_close = true;
+                break;
+            }
+        }
+        auto const colour{blocked || too_close ? FColor::Red : FColor::Cyan};
+        DrawDebugSphere(world, position, 150.f, 12, colour, false, 0.f);
+        DrawDebugDirectionalArrow(world,
+                                  position,
+                                  position + arrow->GetForwardVector() * 600.f,
+                                  120.f,
+                                  colour,
+                                  false,
+                                  0.f);
+    }
+}
+
 void ATestCapitalShipProxy::diagnose_fighter_spawn_points() {
     auto* const world{GetWorld()};
     auto* const orchestrator{IsValid(world) ? ml::get_first_actor<ATestBatchOrchestrator>(*world)

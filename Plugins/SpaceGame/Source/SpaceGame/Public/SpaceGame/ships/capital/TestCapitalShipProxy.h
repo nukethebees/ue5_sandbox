@@ -52,6 +52,10 @@ class ATestCapitalShipProxy
     void set_entity_handle(FRegistryEntityHandle const h) noexcept { entity_handle = h; }
 
 #if WITH_EDITOR
+    void Tick(float delta_seconds) override;
+    auto ShouldTickIfViewportsOnly() const -> bool override { return true; }
+    void PostRegisterAllComponents() override;
+
     UFUNCTION(CallInEditor, Category = "Ship")
     void apply_asset_configuration();
     UFUNCTION(CallInEditor, Category = "Ship")
@@ -94,8 +98,16 @@ class ATestCapitalShipProxy
     TOptional<float> spawn_cooldown{NullOpt};
 
 #if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "Ship|Spawn Preview")
+    bool show_fighter_spawn_preview{true};
+
     UPROPERTY(EditAnywhere, Category = "Test")
     FName test_name{NAME_None};
+#endif
+
+#if WITH_EDITOR
+    void draw_fighter_spawn_preview();
+    FString spawn_preview_error;
 #endif
 
     FRegistryEntityHandle entity_handle;

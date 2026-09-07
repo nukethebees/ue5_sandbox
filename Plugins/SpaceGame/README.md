@@ -79,3 +79,78 @@ Static collision is harvested once during level initialization from query-enable
 geometry on configured actor classes. Each supported primitive component becomes one combined
 world-space AABB, and its Unreal collision is disabled only after the static grid is built. Harvested
 components must remain static afterward; moving one requires rebuilding the harvested geometry.
+
+## Collision and fighter-spawn visualisation
+
+### Before Play: place capital fighter spawn arrows
+
+1. Select a capital ship proxy in the level editor.
+2. Enable viewport **Realtime** so the preview refreshes while moving the capital or its arrows.
+3. In the capital's Details panel, leave **Ship > Spawn Preview > Show Fighter Spawn Preview**
+   enabled. It is enabled by default and only draws for selected capitals in the level editor.
+4. Move the spawn arrows until their preview markers are cyan and outside the amber box.
+5. Click **Save Configuration to Asset** on the capital, then save the level-config asset and
+   the level. Moving an arrow alone does not update the runtime spawn configuration.
+
+| Editor preview colour | Meaning |
+|---|---|
+| Green box | Capital's world-space collision AABB, calculated using the runtime bounds rules. |
+| Amber/orange box | Capital AABB expanded by the fighter mesh bounding-sphere radius plus `Avoidance Clearance Buffer`. The arrow's position must be outside this box; contact with its boundary is invalid. |
+| Cyan sphere and directional-arrow marker | Live arrow clears its parent capital and the other spawn arrows on that capital. |
+| Red sphere and directional-arrow marker | Live arrow intersects the expanded capital box, or is closer than twice the fighter clearance to another arrow on the same capital. |
+
+The coloured markers are temporary overlays. They do not change the authored arrow colours,
+positions or asset data. The preview does not run during Play.
+
+**Save** captures the live arrows in the actor-space frame used by runtime spawning, including
+the effect of their component attachments. **Apply Asset Configuration** does the reverse: it
+replaces the arrows from the saved asset. Do not use Apply to preserve unsaved arrow edits.
+The spawn-slot configuration is shared by capitals using that level-config asset, so check the
+other capital orientations after saving it.
+
+The preview uses the orchestrator's level configuration, falling back to the capital's assigned
+level-config asset when no orchestrator is available. Missing configuration, meshes or arrow
+references are reported in the Output Log.
+
+### During Play: inspect actual grid collision
+
+Select the **TestBatchOrchestrator** and enable **Show Collision Bounds** under
+**Sandbox > Collision > Visualization** (or search the Details panel for the setting), then Play.
+Increase **Collision Bounds Max Draw Distance** if necessary; its default is 200,000 cm (2 km).
+
+| Runtime display colour | Meaning |
+|---|---|
+| Green boxes | Registered entities' cached world-space collision AABBs. |
+| Orange boxes | Harvested static geometry's collision AABBs—not fighter-clearance boundaries. |
+
+Runtime visualisation reads the same cached boxes used by the grid's line and sweep queries.
+Fighter navigation additionally expands solid obstacles by fighter clearance, so a fighter can
+stop before reaching the displayed collision box.
+
+### Bounds, diagnostics and current limits
+
+An AABB remains world-axis aligned. Rotating an entity rotates its local collision-centre offset
+and expands the world box to enclose the rotated local collision box. A diagonal or irregular
+capital can therefore have substantial empty space inside its AABB. This is conservative collision,
+not a tight hull outline; place arrows outside the clearance box even if they look far from the mesh.
+The calculation uses the simulation actor's position and rotation, not the editor mesh component's
+relative transform or scale.
+
+The editor preview checks live arrows against their own capital and sibling arrows only. Cyan is
+not a guarantee of clearance from other capitals, stations, world bounds or future traffic, and it
+does not mean those live positions have been saved. Level-start validation also checks saved slots
+against the parent capital's world bounds at its authored rotation; invalid slots prevent simulation
+startup and log errors.
+
+For saved-versus-live spawn mismatches, use **Diagnose Fighter Spawn Points** on the capital.
+That separate diagnostic draws green predicted runtime positions, cyan live positions and red
+connecting lines for 30 seconds. Its green/cyan colours describe position sources, not validity.
+For runtime spawn/stop reports, use `sg.FighterDiagnostics 1` in the console. Reports are bounded;
+toggle it off and back on while the simulation runs to rearm reporting.
+
+The pre-Play preview currently supports capital proxies only. A future general preview should share
+the runtime extraction rules for registered entity types and configured harvested static geometry,
+but collect them without mutating components or starting simulation. Visible meshes that are omitted
+from custom collision, or have unsupported collision geometry, must not be presented as valid grid
+obstacles. Keeping that collection separate from rendering would allow one level-wide preview,
+with selected-object filtering and refreshes when transforms or collision configuration change.
