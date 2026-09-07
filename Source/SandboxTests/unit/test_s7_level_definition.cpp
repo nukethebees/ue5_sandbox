@@ -30,7 +30,6 @@ constexpr TCHAR valid_camera_level[]{LR"(
 (level
   (id 'camera-example)
   (title "Camera Example")
-  (category 'battle-viewer)
   (teams (team 'blue) (team 'red))
   (camera
     (look-at 'blue-capital 'red-capital)
@@ -112,9 +111,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
                                  ml::FLevelId{FName{TEXT("scripted-example")}});
         TestRunner->TestEqual(
             TEXT("Title is decoded"), definition.metadata.title, FString{TEXT("Scripted Example")});
-        TestRunner->TestTrue(TEXT("Omitted category defaults to mission"),
-                             definition.metadata.catalog_category ==
-                                 ml::ELevelCatalogCategory::Mission);
         TestRunner->TestTrue(TEXT("Player id is decoded"),
                              definition.player_entity_id ==
                                  ml::FLevelEntityId{FName{TEXT("player")}});
@@ -166,9 +162,6 @@ TEST_CLASS(S7LevelDefinition, "Sandbox.UnitTests")
         }
 
         auto const& definition{result.definition.GetValue()};
-        TestRunner->TestTrue(TEXT("Battle Viewer category is decoded"),
-                             definition.metadata.catalog_category ==
-                                 ml::ELevelCatalogCategory::BattleViewer);
         TestRunner->TestFalse(TEXT("Camera level has no player"),
                               definition.player_entity_id.is_set());
         if (!TestRunner->TestTrue(TEXT("Camera is decoded"), definition.camera.IsSet())) {

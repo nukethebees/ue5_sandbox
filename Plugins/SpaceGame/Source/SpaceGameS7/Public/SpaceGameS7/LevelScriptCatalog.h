@@ -4,6 +4,11 @@
 #include <SpaceGame/levels/LevelDefinition.h>
 
 namespace ml::s7 {
+enum class ELevelCatalogCategory : uint8 {
+    Mission,
+    BattleViewer,
+};
+
 struct SPACEGAMES7_API FLevelScriptEntry {
     FString filename{};
     FString path{};
@@ -32,6 +37,8 @@ struct SPACEGAMES7_API FLevelScriptCatalogResult {
     TArray<FCampaignScriptEntry> campaigns{};
 };
 
+SPACEGAMES7_API auto catalog_category(FLevelDefinition const& definition) noexcept
+    -> ELevelCatalogCategory;
 SPACEGAMES7_API auto default_level_script_directory() -> FString;
 SPACEGAMES7_API auto default_campaign_script_directory() -> FString;
 SPACEGAMES7_API auto discover_level_scripts(FStringView directory) -> FLevelScriptCatalogResult;
