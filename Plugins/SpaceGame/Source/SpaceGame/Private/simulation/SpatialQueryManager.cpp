@@ -73,11 +73,9 @@ auto trace_impl(ml::FSpatialQueryManager const& manager, FTraceRequest const& re
             traces.set_num(count, EAllowShrinking::No);
             for (int32 i{}; i < count; ++i) {
                 if constexpr (Mode == EQueryMode::TargetLineOfSight) {
-                    traces.starts.set(i, request.scalar_start);
-                    traces.ends.set(i, ml::get_vector3f(request.end_locations, i));
+                    traces.set(i, request.scalar_start, ml::get_vector3f(request.end_locations, i));
                 } else {
-                    traces.starts.set(i, request.scalar_start);
-                    traces.ends.set(i, request.scalar_end);
+                    traces.set(i, request.scalar_start, request.scalar_end);
                 }
             }
             return traces.get_const_view();

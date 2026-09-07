@@ -81,11 +81,10 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data)
     FVector3f const fire_point_offset{config.fire_point_offset.GetLocation()};
     for (int32 local_index{}; local_index < n_to_add; ++local_index) {
         auto const i{first_new_index + local_index};
-        ml::assign(entities.fire_point_locations,
-                   i,
-                   entities.locations.xs[i] + fire_point_offset.X,
-                   entities.locations.ys[i] + fire_point_offset.Y,
-                   entities.locations.zs[i] + fire_point_offset.Z);
+        entities.fire_point_locations.set(i,
+                                          entities.locations.xs[i] + fire_point_offset.X,
+                                          entities.locations.ys[i] + fire_point_offset.Y,
+                                          entities.locations.zs[i] + fire_point_offset.Z);
 
         entities.target_refresh_countdowns.remaining_ticks[i] =
             static_cast<FPeriodicTickCountdown16::counter_type>(target_refresh_next_offset);
@@ -298,9 +297,8 @@ void Simulation::perform_search_on_slice(int32 const job_index,
             has_line_of_sight.set_num_uninitialised(target_count);
             auto candidate_locations_view{candidate_locations.get_view()};
             for (int32 target_index{}; target_index < target_count; ++target_index) {
-                ml::assign(candidate_locations_view,
-                           target_index,
-                           entity_registry->get_location(target_handles[target_index]));
+                candidate_locations_view.set(
+                    target_index, entity_registry->get_location(target_handles[target_index]));
             }
 
             spatial_query_manager->has_line_of_sight_to_targets(
@@ -421,14 +419,14 @@ void Simulation::fire_at_enemies() {
         FVector3f const intercept_pos{target_location + target_velocity * intercept_time};
         FVector3f const fire_dir{(intercept_pos - laser_location).GetSafeNormal()};
 
-        ml::append(new_lasers.locations, loc_x, loc_y, loc_z);
-        ml::append(new_lasers.rotations, fire_dir);
-        ml::append(new_lasers.base_velocities, 0.f, 0.f, 0.f);
-        new_lasers.damages.Add(entities.laser_damages[i]);
-        new_lasers.speeds.Add(laser_speed);
-        new_lasers.max_distances.Add(laser_max_distance);
-        new_lasers.instigator_handles.Add(entities.handles[i]);
-        new_lasers.colours.Add(colour_cache[entities.teams[i]]);
+        new_lasers.add(laser_location,
+                       fire_dir.ToOrientationRotator(),
+                       FVector3f::ZeroVector,
+                       entities.laser_damages[i],
+                       laser_speed,
+                       laser_max_distance,
+                       entities.handles[i],
+                       colour_cache[entities.teams[i]]);
     }
 
     laser_simulation->queue_laser_spawns(new_lasers);

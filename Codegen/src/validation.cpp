@@ -693,6 +693,15 @@ void validate_homogeneous(HomogeneousModuleSchema const& module,
             reject_generated_name_collision(
                 component, "Homogeneous layout '" + layout.name + "' component", true);
         }
+        if (!layout.input_members.empty() &&
+            layout.input_members.size() != layout.components.size()) {
+            throw std::invalid_argument{"Homogeneous layout '" + layout.name +
+                                        "' input members must match its components"};
+        }
+        for (auto const& input_member : layout.input_members) {
+            require_identifier(input_member,
+                               "Homogeneous layout '" + layout.name + "' input member");
+        }
         std::set<char> parameter_names;
         for (auto const& component : layout.components) {
             if (!parameter_names.insert(component.front()).second) {
@@ -731,9 +740,11 @@ void validate_homogeneous(HomogeneousModuleSchema const& module,
                         "' has duplicate equivalent specialisation: " + value_spelling};
                 }
             }
-            if (!value.input_types.empty() && layout.components.size() > 3) {
+            if (layout.input_members.empty() && layout.components.size() > 3 &&
+                (value.equivalent_type.has_value() || !value.input_types.empty())) {
                 throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                            "' input overloads require at most three components"};
+                                            "' input APIs require at most three components without "
+                                            "explicit input members"};
             }
             std::set<std::string> input_types;
             for (auto const& input : value.input_types) {

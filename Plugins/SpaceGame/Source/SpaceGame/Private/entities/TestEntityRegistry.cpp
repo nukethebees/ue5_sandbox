@@ -320,16 +320,12 @@ void FTestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandl
     for (int32 i{}; i < n; ++i) {
         auto const handle{handles[i]};
         if (handle.is_null()) {
-            locations.xs[i] = 0.f;
-            locations.ys[i] = 0.f;
-            locations.zs[i] = 0.f;
+            locations.set(i, FVector3f::ZeroVector);
         } else {
             check(generations.IsValidIndex(handle.index));
             check(handle.generation == generations[handle.index]);
 
-            locations.xs[i] = entity_data.locations.xs[handle.index];
-            locations.ys[i] = entity_data.locations.ys[handle.index];
-            locations.zs[i] = entity_data.locations.zs[handle.index];
+            locations.set(i, entity_data.locations[handle.index]);
         }
     }
 }
@@ -368,9 +364,7 @@ void FTestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> 
             auto const handle{handles[i]};
 
             if (handle.is_null()) {
-                velocities.xs[i] = 0.0f;
-                velocities.ys[i] = 0.0f;
-                velocities.zs[i] = 0.0f;
+                velocities.set(i, FVector3f::ZeroVector);
                 continue;
             }
 

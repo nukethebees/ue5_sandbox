@@ -110,6 +110,15 @@ struct SPACEGAME_API SpawnData {
         laser_damages[index] = new_laser_damages;
     }
 
+    auto add(FVectors3f::equivalent_type const new_locations, ETestTeam const new_teams, int32 const new_healths, int32 const new_laser_damages) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        teams.Add(new_teams);
+        healths.Add(new_healths);
+        laser_damages.Add(new_laser_damages);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

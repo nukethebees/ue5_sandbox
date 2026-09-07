@@ -134,6 +134,18 @@ struct EntityData {
         alive[index] = new_alive;
     }
 
+    auto add(FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_velocities, float const new_radii, int32 const new_healths, ETestTeam const new_teams, ETestEntityType const new_entity_types, uint8 const new_alive) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        velocities.add(new_velocities);
+        radii.Add(new_radii);
+        healths.Add(new_healths);
+        teams.Add(new_teams);
+        entity_types.Add(new_entity_types);
+        alive.Add(new_alive);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

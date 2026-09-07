@@ -788,8 +788,13 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
         for (std::size_t layout_index{0}; layout_index < layout_values.size(); ++layout_index) {
             auto const& layout{layout_values[layout_index]};
             auto const layout_path{path + "/layouts/" + std::to_string(layout_index)};
-            reject_unknown(
-                layout, layout_path, {"name", "components", "value_types", "export_specifier"});
+            reject_unknown(layout,
+                           layout_path,
+                           {"name",
+                            "components",
+                            "input_members",
+                            "value_types",
+                            "export_specifier"});
             std::vector<HomogeneousValueSchema> value_types;
             auto const& type_values{required_array(layout, "value_types", layout_path)};
             for (std::size_t type_index{0}; type_index < type_values.size(); ++type_index) {
@@ -821,6 +826,10 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
             layouts.push_back(HomogeneousLayoutSchema{
                 .name = required<std::string>(layout, "name", layout_path),
                 .components = required<std::vector<std::string>>(layout, "components", layout_path),
+                .input_members = optional<std::vector<std::string>>(layout,
+                                                                    "input_members",
+                                                                    layout_path)
+                                     .value_or(std::vector<std::string>{}),
                 .value_types = std::move(value_types),
                 .export_specifier = optional<std::string>(layout, "export_specifier", layout_path),
             });
@@ -848,8 +857,22 @@ auto load_types(std::filesystem::path const& path) -> std::map<std::string, CppT
         }
         if (value.contains("operations")) {
             auto const& operations{value.at("operations")};
-            reject_unknown(
-                operations, item_path + "/operations", {"remove_at_swap", "set_element"});
+            reject_unknown(operations,
+                           item_path + "/operations",
+                           {"add_element", "remove_at_swap", "set_element"});
+            if (operations.contains("add_element")) {
+                auto const operation_path{item_path + "/operations/add_element"};
+                auto const& operation{operations.at("add_element")};
+                reject_unknown(operation, operation_path, {"function", "pass_by"});
+                type.member_operations.emplace(
+                    TypeOperation::add_element,
+                    required<std::string>(operation, "function", operation_path));
+                type.member_operation_parameter_passing.emplace(
+                    TypeOperation::add_element,
+                    parse_parameter_passing(
+                        value_or<std::string>(operation, "pass_by", "const_ref", operation_path),
+                        operation_path + "/pass_by"));
+            }
             if (auto operation{
                     optional<std::string>(operations, "remove_at_swap", item_path + "/operations")};
                 operation.has_value()) {

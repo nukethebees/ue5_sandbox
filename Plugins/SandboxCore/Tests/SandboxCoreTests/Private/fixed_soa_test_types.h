@@ -95,6 +95,13 @@ struct FTestFixedChild {
         references[index] = new_references;
     }
 
+    auto add(FString const& new_names, TSharedPtr<int32> const& new_references) -> int32 {
+        auto const index{num()};
+        names.Add(new_names);
+        references.Add(new_references);
+        return index;
+    }
+
     void apply_permutation(TArrayView<int32> indices);
 
     template <typename Compare>

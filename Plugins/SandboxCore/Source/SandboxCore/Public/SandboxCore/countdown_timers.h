@@ -87,6 +87,12 @@ struct SANDBOXCORE_API FCountdownTimers {
         remaining_times[index] = new_remaining_times;
     }
 
+    auto add(float const new_remaining_times) -> int32 {
+        auto const index{num()};
+        remaining_times.Add(new_remaining_times);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

@@ -135,6 +135,19 @@ struct SPACEGAME_API TestEntityUniqueEntityData {
         death_reason[index] = new_death_reason;
     }
 
+    auto add(FRegistryEntityHandle::index_type const new_registry_indices, FRegistryEntityHandle::generation_type const new_registry_generations, ETestEntityType const new_entity_types, ETestTeam const new_teams, uint32 const new_kills, uint8 const new_alive, TestEntityUniqueId const new_killed_by, ETestDeathReason const new_death_reason) -> int32 {
+        auto const index{num()};
+        registry_indices.Add(new_registry_indices);
+        registry_generations.Add(new_registry_generations);
+        entity_types.Add(new_entity_types);
+        teams.Add(new_teams);
+        kills.Add(new_kills);
+        alive.Add(new_alive);
+        killed_by.Add(new_killed_by);
+        death_reason.Add(new_death_reason);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

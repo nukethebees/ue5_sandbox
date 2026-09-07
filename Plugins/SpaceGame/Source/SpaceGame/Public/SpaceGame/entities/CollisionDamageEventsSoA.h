@@ -113,6 +113,16 @@ struct SPACEGAME_API UnresolvedCollisionDamageEvents {
         instigators[index] = new_instigators;
     }
 
+    auto add(AActor* const new_damaged_actors, int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) -> int32 {
+        auto const index{num()};
+        damaged_actors.Add(new_damaged_actors);
+        damage_amounts.Add(new_damage_amounts);
+        actor_components.Add(new_actor_components);
+        hit_items.Add(new_hit_items);
+        instigators.Add(new_instigators);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);
@@ -326,6 +336,15 @@ struct SPACEGAME_API CollisionDamageEvents {
         actor_components[index] = new_actor_components;
         hit_items[index] = new_hit_items;
         instigators[index] = new_instigators;
+    }
+
+    auto add(int32 const new_damage_amounts, UActorComponent* const new_actor_components, int32 const new_hit_items, FRegistryEntityHandle const new_instigators) -> int32 {
+        auto const index{num()};
+        damage_amounts.Add(new_damage_amounts);
+        actor_components.Add(new_actor_components);
+        hit_items.Add(new_hit_items);
+        instigators.Add(new_instigators);
+        return index;
     }
 
     void reset();

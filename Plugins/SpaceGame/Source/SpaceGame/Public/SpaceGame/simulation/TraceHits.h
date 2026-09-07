@@ -107,6 +107,15 @@ struct SPACEGAME_API FTraceHits {
         hits[index] = new_hits;
     }
 
+    auto add(FVectors3f::equivalent_type const new_locations, FRegistryEntityHandle const new_entities, int32 const new_static_geometry_indices, uint8 const new_hits) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        entities.Add(new_entities);
+        static_geometry_indices.Add(new_static_geometry_indices);
+        hits.Add(new_hits);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

@@ -68,6 +68,16 @@ struct SPACEGAME_API SpawnDataView {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
 
+    void set(int32 const index, FRegistryEntityHandle const new_target_handles, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, float const new_initial_spawn_delays, float const new_spawn_cooldowns) const {
+        target_handles[index] = new_target_handles;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        initial_spawn_delays[index] = new_initial_spawn_delays;
+        spawn_cooldowns[index] = new_spawn_cooldowns;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -109,6 +119,28 @@ struct SPACEGAME_API SpawnDataView {
 struct SPACEGAME_API SpawnData {
     using View = SpawnDataView;
     using ConstView = SpawnDataConstView;
+
+    void set(int32 const index, FRegistryEntityHandle const new_target_handles, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, float const new_initial_spawn_delays, float const new_spawn_cooldowns) {
+        target_handles[index] = new_target_handles;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        initial_spawn_delays[index] = new_initial_spawn_delays;
+        spawn_cooldowns[index] = new_spawn_cooldowns;
+    }
+
+    auto add(FRegistryEntityHandle const new_target_handles, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, float const new_initial_spawn_delays, float const new_spawn_cooldowns) -> int32 {
+        auto const index{num()};
+        target_handles.Add(new_target_handles);
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        teams.Add(new_teams);
+        healths.Add(new_healths);
+        initial_spawn_delays.Add(new_initial_spawn_delays);
+        spawn_cooldowns.Add(new_spawn_cooldowns);
+        return index;
+    }
 
     void reset();
 

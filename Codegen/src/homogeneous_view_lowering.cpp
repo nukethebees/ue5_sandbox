@@ -8,6 +8,7 @@ namespace {
 
 TypeDependency const std_forward{"std::forward", "utility", {}};
 TypeDependency const std_remove_const{"std::remove_const_t", "type_traits", {}};
+TypeDependency const std_is_const{"std::is_const_v", "type_traits", {}};
 TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
@@ -25,7 +26,8 @@ auto homogeneous_function(std::string name,
                           FunctionQualifiers qualifiers = {},
                           std::optional<std::string> function_template = std::nullopt,
                           FunctionFormatting formatting = {},
-                          std::vector<TypeDependency> dependencies = {}) -> Node {
+                          std::vector<TypeDependency> dependencies = {},
+                          std::optional<std::string> requires_clause = std::nullopt) -> Node {
     return header_function(FunctionSpec{
         .name = std::move(name),
         .return_type = std::move(return_type),
@@ -34,6 +36,7 @@ auto homogeneous_function(std::string name,
         .qualifiers = std::move(qualifiers),
         .is_inline = true,
         .template_parameters = std::move(function_template),
+        .requires_clause = std::move(requires_clause),
         .formatting = formatting,
     });
 }
@@ -167,7 +170,42 @@ auto homogeneous_view_node(HomogeneousLayoutSchema const& layout, bool const has
                                   {FunctionParameter{"size_type const", "count"}},
                                   "return " + view_name + "{" + slice_values("Right(count)") + "};",
                                   {.trailing_return_type = CppType{view_name}, .is_const = true}));
+    std::vector<FunctionParameter> component_parameters{
+        FunctionParameter{"size_type const", "index"}};
+    std::vector<std::string> assignments;
+    for (auto const& component : layout.components) {
+        component_parameters.emplace_back("value_type const", std::string{component.front()});
+        assignments.push_back(component + "[index] = " + component.front() + ";");
+    }
+    children.new_lines().add(
+        homogeneous_function("set",
+                             "void",
+                             std::move(component_parameters),
+                             join_lines(assignments),
+                             {.is_const = true},
+                             std::nullopt,
+                             {},
+                             {std_is_const},
+                             "(!std::is_const_v<T>)"));
     if (has_equivalent_type) {
+        static std::vector<std::string> const default_input_members{"X", "Y", "Z"};
+        auto const& input_members{layout.input_members.empty() ? default_input_members
+                                                               : layout.input_members};
+        std::vector<std::string> arguments;
+        for (std::size_t index{0}; index < layout.components.size(); ++index) {
+            arguments.push_back("value." + input_members[index]);
+        }
+        children.new_lines().add(
+            homogeneous_function("set",
+                                 "void",
+                                 {FunctionParameter{"size_type const", "index"},
+                                  FunctionParameter{"equivalent_type const&", "value"}},
+                                 "set(index, " + join(arguments, ", ") + ");",
+                                 {.is_const = true},
+                                 std::nullopt,
+                                 {},
+                                 {std_is_const},
+                                 "(!std::is_const_v<T>)"));
         std::vector<std::string> values;
         for (auto const& component : layout.components) {
             values.push_back(component + ".GetData()[index]");

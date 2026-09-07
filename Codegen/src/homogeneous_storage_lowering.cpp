@@ -417,6 +417,20 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
     for (auto const& component : layout.components) {
         component_parameters.emplace_back("value_type const", std::string{component.front()});
     }
+    NodeListBuilder set_body;
+    for (auto const& component : layout.components) {
+        set_body.add(
+            AssignmentStatement{component + "[index]", std::string{component.front()}});
+    }
+    auto set_parameters{component_parameters};
+    set_parameters.insert(set_parameters.begin(), FunctionParameter{"size_type const", "index"});
+    result.add(homogeneous_function(
+                   "set",
+                   "void",
+                   std::move(set_parameters),
+                   set_body.build(),
+                   {}),
+               1);
     NodeListBuilder component_body;
     auto const& first_component{layout.components.front()};
     component_body.add(VariableDeclarationStatement{
@@ -437,20 +451,29 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
         return result.build();
     }
 
-    static std::vector<std::string> const axes{"X", "Y", "Z"};
+    static std::vector<std::string> const default_input_members{"X", "Y", "Z"};
+    auto const& input_members{layout.input_members.empty() ? default_input_members
+                                                           : layout.input_members};
     std::vector<std::string> arguments;
     for (std::size_t index{0}; index < layout.components.size(); ++index) {
-        arguments.push_back("value." + axes[index]);
+        arguments.push_back("value." + input_members[index]);
     }
     for (auto const& input_reference : value.input_types) {
         auto input_type{qualify(resolve_type(input_reference, types), " const&")};
-        result.add(
-            homogeneous_function("add",
-                                 "auto",
-                                 {FunctionParameter{std::move(input_type), "value"}},
-                                 Nodes{ReturnStatement{"add(" + join(arguments, ", ") + ")"}},
-                                 {.trailing_return_type = CppType{"size_type"}}),
-            1);
+        result
+            .add(homogeneous_function(
+                     "set",
+                     "void",
+                     {FunctionParameter{"size_type const", "index"},
+                      FunctionParameter{input_type, "value"}},
+                     Nodes{ExpressionStatement{"set(index, " + join(arguments, ", ") + ")"}}),
+                 1)
+            .add(homogeneous_function("add",
+                                      "auto",
+                                      {FunctionParameter{std::move(input_type), "value"}},
+                                      Nodes{ReturnStatement{"add(" + join(arguments, ", ") + ")"}},
+                                      {.trailing_return_type = CppType{"size_type"}}),
+                 1);
     }
     return result.build();
 }

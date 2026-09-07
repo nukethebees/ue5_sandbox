@@ -141,18 +141,31 @@
       "spelling": "TArray<FRegistryEntityHandle>",
       "header": "Containers/Array.h"
     },
+    "rotator_3f": {
+      "spelling": "FRotator3f",
+      "header": "CoreMinimal.h",
+      "pass_by": "value"
+    },
+    "rotator_3d": {
+      "spelling": "FRotator3d",
+      "header": "CoreMinimal.h"
+    },
     "rotators_f": {
       "spelling": "FRotatorsf",
       "header": "SandboxCore/soa_rotators.h",
       "operations": {
-        "remove_at_swap": "remove_at_swap"
+        "add_element": {"function": "add", "pass_by": "value"},
+        "remove_at_swap": "remove_at_swap",
+        "set_element": {"function": "set", "pass_by": "value"}
       }
     },
     "rotators_d": {
       "spelling": "FRotatorsd",
       "header": "SandboxCore/soa_rotators.h",
       "operations": {
-        "remove_at_swap": "remove_at_swap"
+        "add_element": {"function": "add", "pass_by": "const_ref"},
+        "remove_at_swap": "remove_at_swap",
+        "set_element": {"function": "set", "pass_by": "const_ref"}
       }
     },
     "soa_vector_fill": {
@@ -250,6 +263,7 @@
       "spelling": "FVectors3f",
       "header": "SandboxCore/soa_vectors_3f.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "value"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "value"}
       }
@@ -262,6 +276,7 @@
       "spelling": "FVectors3d",
       "header": "SandboxCore/soa_vectors_3d.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "const_ref"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "const_ref"}
       }
@@ -270,6 +285,7 @@
       "spelling": "FVectors3i32",
       "header": "SandboxCore/soa_vectors_3i32.h",
       "operations": {
+        "add_element": {"function": "add", "pass_by": "value"},
         "remove_at_swap": "remove_at_swap",
         "set_element": {"function": "set", "pass_by": "value"}
       }

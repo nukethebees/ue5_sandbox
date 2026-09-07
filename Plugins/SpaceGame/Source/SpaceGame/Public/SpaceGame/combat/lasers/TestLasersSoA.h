@@ -66,6 +66,17 @@ struct SPACEGAME_API SpawnRequestsView {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, FLinearColor const new_colours) const {
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        base_velocities.set(index, new_base_velocities);
+        damages[index] = new_damages;
+        speeds[index] = new_speeds;
+        max_distances[index] = new_max_distances;
+        instigator_handles[index] = new_instigator_handles;
+        colours[index] = new_colours;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -117,6 +128,30 @@ struct SPACEGAME_API SpawnRequests {
     void set_max_distances(float const value);
 
     void set_colours(FLinearColor const value);
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, FLinearColor const new_colours) {
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        base_velocities.set(index, new_base_velocities);
+        damages[index] = new_damages;
+        speeds[index] = new_speeds;
+        max_distances[index] = new_max_distances;
+        instigator_handles[index] = new_instigator_handles;
+        colours[index] = new_colours;
+    }
+
+    auto add(FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_base_velocities, int32 const new_damages, float const new_speeds, float const new_max_distances, FRegistryEntityHandle const new_instigator_handles, FLinearColor const new_colours) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        base_velocities.add(new_base_velocities);
+        damages.Add(new_damages);
+        speeds.Add(new_speeds);
+        max_distances.Add(new_max_distances);
+        instigator_handles.Add(new_instigator_handles);
+        colours.Add(new_colours);
+        return index;
+    }
 
     void reset();
 
@@ -310,6 +345,16 @@ struct SPACEGAME_API EntitiesView {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
 
+    void set(int32 const index, FLinearColor const new_colours, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles) const {
+        colours[index] = new_colours;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        velocities.set(index, new_velocities);
+        damages[index] = new_damages;
+        lifetimes_remaining[index] = new_lifetimes_remaining;
+        instigator_handles[index] = new_instigator_handles;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -351,6 +396,28 @@ struct SPACEGAME_API EntitiesView {
 struct SPACEGAME_API Entities {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
+
+    void set(int32 const index, FLinearColor const new_colours, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles) {
+        colours[index] = new_colours;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        velocities.set(index, new_velocities);
+        damages[index] = new_damages;
+        lifetimes_remaining[index] = new_lifetimes_remaining;
+        instigator_handles[index] = new_instigator_handles;
+    }
+
+    auto add(FLinearColor const new_colours, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, FVectors3f::equivalent_type const new_velocities, int32 const new_damages, float const new_lifetimes_remaining, FRegistryEntityHandle const new_instigator_handles) -> int32 {
+        auto const index{num()};
+        colours.Add(new_colours);
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        velocities.add(new_velocities);
+        damages.Add(new_damages);
+        lifetimes_remaining.Add(new_lifetimes_remaining);
+        instigator_handles.Add(new_instigator_handles);
+        return index;
+    }
 
     void reset();
 
@@ -573,6 +640,14 @@ struct SPACEGAME_API HitDetails {
         locations.set(index, new_locations);
         emission_directions.set(index, new_emission_directions);
         colours[index] = new_colours;
+    }
+
+    auto add(FVectors3f::equivalent_type const new_locations, FVectors3f::equivalent_type const new_emission_directions, FLinearColor const new_colours) -> int32 {
+        auto const index{num()};
+        locations.add(new_locations);
+        emission_directions.add(new_emission_directions);
+        colours.Add(new_colours);
+        return index;
     }
 
     void reset();

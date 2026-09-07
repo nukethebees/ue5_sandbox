@@ -407,8 +407,7 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
 
                         entities_[write_index] = entities_buffer_.handles[i];
 
-                        aabbs_.mins.set(write_index, min_point);
-                        aabbs_.maxes.set(write_index, max_point);
+                        aabbs_.set(write_index, min_point, max_point);
                     }
                 }
             }
@@ -876,10 +875,8 @@ void CollisionUniformGrid::trace_aabbs_impl(
         }
 
         if (FMath::IsFinite(nearest_t)) {
-            hits.locations.set(i_test, p0 + delta * nearest_t);
-            hits.entities[i_test] = nearest_entity;
-            hits.static_geometry_indices[i_test] = nearest_static_index;
-            hits.hits[i_test] = uint8{1};
+            hits.set(
+                i_test, p0 + delta * nearest_t, nearest_entity, nearest_static_index, uint8{1});
         }
     }
 }

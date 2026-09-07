@@ -126,11 +126,7 @@ auto FLevelEventSchedule::add_spawn_group(ETestEntityType const type,
     }
 
     tick_counts.spawn_groups = group_count;
-    auto const index{spawn_groups.num()};
-    spawn_groups.add_uninitialised(1);
-    spawn_groups.types[index] = type;
-    spawn_groups.offsets[index] = offset;
-    spawn_groups.counts[index] = payload_count;
+    spawn_groups.add(type, offset, payload_count);
     return true;
 }
 
@@ -153,11 +149,7 @@ auto FLevelEventSchedule::add_mission_group(ELevelMissionEventType const type,
 
     tick_counts.mission_groups = group_count;
     auto& groups{mission_events.groups};
-    auto const index{groups.num()};
-    groups.add_uninitialised(1);
-    groups.types[index] = type;
-    groups.offsets[index] = mission_events.values.Num();
-    groups.counts[index] = payload_count;
+    groups.add(type, mission_events.values.Num(), payload_count);
     mission_events.values.Append(values.GetData(), count);
     return true;
 }
@@ -265,27 +257,23 @@ auto compile_level_events(FLevelDefinition const& definition,
                 break;
             }
             case level_archetype_detail::EResolvedArchetype::CapitalShip: {
-                auto const event_index{capital_events.num()};
-                capital_events.add_uninitialised(1);
-                capital_events.entity_indices[event_index] = entity_index;
-                capital_events.target_entity_indices[event_index] = INDEX_NONE;
-                capital_events.locations.set(event_index, FVector3f{entity.position});
-                ml::assign(capital_events.rotations, event_index, entity.rotation);
-                capital_events.teams[event_index] = team.GetValue();
-                capital_events.healths[event_index] = capital_config.max_health;
-                capital_events.initial_fighter_spawn_delays[event_index] = 0.f;
-                capital_events.fighter_spawn_cooldowns[event_index] = capital_config.spawn_delay;
+                capital_events.add(entity_index,
+                                   INDEX_NONE,
+                                   FVector3f{entity.position},
+                                   FRotator3f{entity.rotation},
+                                   team.GetValue(),
+                                   capital_config.max_health,
+                                   0.f,
+                                   capital_config.spawn_delay);
                 break;
             }
             case level_archetype_detail::EResolvedArchetype::StaticTurret: {
-                auto const event_index{turret_events.num()};
-                turret_events.add_uninitialised(1);
-                turret_events.entity_indices[event_index] = entity_index;
-                turret_events.locations.set(event_index, FVector3f{entity.position});
-                ml::assign(turret_events.rotations, event_index, entity.rotation);
-                turret_events.teams[event_index] = team.GetValue();
-                turret_events.healths[event_index] = turret_config.max_health;
-                turret_events.laser_damages[event_index] = turret_config.laser.damage;
+                turret_events.add(entity_index,
+                                  FVector3f{entity.position},
+                                  FRotator3f{entity.rotation},
+                                  team.GetValue(),
+                                  turret_config.max_health,
+                                  turret_config.laser.damage);
                 break;
             }
         }

@@ -269,10 +269,10 @@ void Simulation::queue_fighter_spawns() {
 
         for (auto const& relative_transform : relative_transforms) {
             auto const new_transform{relative_transform * base_transform};
-            ml::append(fighter_queue.locations, new_transform.GetLocation());
-            ml::append(fighter_queue.rotations, new_transform.Rotator());
-            fighter_queue.teams.Add(entities.teams[capital_index]);
-            fighter_queue.targets.Add(entities.target_handles[capital_index]);
+            fighter_queue.add(FVector3f{new_transform.GetLocation()},
+                              FRotator3f{new_transform.Rotator()},
+                              entities.teams[capital_index],
+                              entities.target_handles[capital_index]);
         }
         entities.fighter_spawn_timers.remaining_times[capital_index] =
             entities.fighter_spawn_cooldowns[capital_index];

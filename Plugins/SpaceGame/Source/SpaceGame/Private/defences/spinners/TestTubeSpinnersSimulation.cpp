@@ -165,19 +165,17 @@ void Simulation::fire_lasers() {
         auto const& offset{firing_point_offsets[fire_point_index]};
 
         auto const fire_point_location{offset.GetLocation()};
-        ml::assign(new_lasers.locations,
-                   i,
-                   entities.locations.xs[index] + fire_point_location.X,
-                   entities.locations.ys[index] + fire_point_location.Y,
-                   entities.locations.zs[index] + fire_point_location.Z);
+        new_lasers.locations.set(i,
+                                 entities.locations.xs[index] + fire_point_location.X,
+                                 entities.locations.ys[index] + fire_point_location.Y,
+                                 entities.locations.zs[index] + fire_point_location.Z);
 
         auto const fire_point_rotation{offset.Rotator()};
-        ml::assign(new_lasers.rotations,
-                   i,
-                   fire_point_rotation.Pitch,
-                   fire_point_rotation.Yaw + entities.yaws[index],
-                   fire_point_rotation.Roll);
-        ml::assign(new_lasers.base_velocities, i, FVector3f::ZeroVector);
+        new_lasers.rotations.set(i,
+                                 fire_point_rotation.Pitch,
+                                 fire_point_rotation.Yaw + entities.yaws[index],
+                                 fire_point_rotation.Roll);
+        new_lasers.base_velocities.set(i, FVector3f::ZeroVector);
 
         new_lasers.damages[i] = laser_damage;
         new_lasers.speeds[i] = laser_speed;

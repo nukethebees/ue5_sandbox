@@ -292,8 +292,11 @@ TEST(Lowering, UsesRegisteredAndGenericNestedRemovalOperations) {
               std::string::npos);
 }
 
-TEST(Lowering, EmitsLogicalElementSettersForArraysAndSupportedNestedMembers) {
+TEST(Lowering, EmitsLogicalElementSettersAndAddForArraysAndSupportedNestedMembers) {
     CppType vectors{"FVectors3f", "Project/Vectors.h"};
+    vectors.member_operations.emplace(TypeOperation::add_element, "add");
+    vectors.member_operation_parameter_passing.emplace(TypeOperation::add_element,
+                                                       ParameterPassing::value);
     vectors.member_operations.emplace(TypeOperation::set_element, "set");
     vectors.member_operation_parameter_passing.emplace(TypeOperation::set_element,
                                                        ParameterPassing::value);
@@ -316,9 +319,17 @@ TEST(Lowering, EmitsLogicalElementSettersForArraysAndSupportedNestedMembers) {
     EXPECT_NE(output.header.find("locations.set(index, new_locations);"), std::string::npos);
     EXPECT_NE(output.header.find("teams[index] = new_teams;"), std::string::npos);
     EXPECT_NE(output.header.find("healths[index] = new_healths;"), std::string::npos);
+    EXPECT_NE(output.header.find("auto add(FVectors3f::equivalent_type const new_locations, "
+                                 "ETeam const& new_teams, int32 const new_healths) -> int32"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("auto const index{num()};"), std::string::npos);
+    EXPECT_NE(output.header.find("locations.add(new_locations);"), std::string::npos);
+    EXPECT_NE(output.header.find("teams.Add(new_teams);"), std::string::npos);
+    EXPECT_NE(output.header.find("healths.Add(new_healths);"), std::string::npos);
+    EXPECT_NE(output.header.find("return index;"), std::string::npos);
 }
 
-TEST(Lowering, OmitsLogicalElementSetterForUnsupportedNestedMembers) {
+TEST(Lowering, OmitsLogicalElementSetterAndAddForUnsupportedNestedMembers) {
     auto schema{SoaSchema{
         .name = "FData",
         .members = {
@@ -329,6 +340,7 @@ TEST(Lowering, OmitsLogicalElementSetterForUnsupportedNestedMembers) {
     auto const output{render_soa(std::move(schema), {{"nested", CppType{"FNested"}}})};
 
     EXPECT_EQ(output.header.find("void set("), std::string::npos);
+    EXPECT_EQ(output.header.find("auto add("), std::string::npos);
 }
 
 TEST(Lowering, SupportsMemberwiseCopying) {

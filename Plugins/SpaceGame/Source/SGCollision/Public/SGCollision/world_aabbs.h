@@ -92,6 +92,13 @@ struct SGCOLLISION_API WorldAABBs {
         maxes.set(index, new_maxes);
     }
 
+    auto add(FVectors3f::equivalent_type const new_mins, FVectors3f::equivalent_type const new_maxes) -> int32 {
+        auto const index{num()};
+        mins.add(new_mins);
+        maxes.add(new_maxes);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);

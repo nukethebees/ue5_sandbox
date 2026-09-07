@@ -67,6 +67,15 @@ struct SPACEGAME_API FLevelEntityTableView {
     using View = FLevelEntityTableView;
     using ConstView = FLevelEntityTableConstView;
 
+    void set(int32 const index, ml::FLevelEntityId const new_ids, ml::FEntityArchetypeId const new_archetypes, ml::FLevelTeamId const new_teams, FVectors3d::equivalent_type const& new_positions, FRotatorsd::equivalent_type const& new_rotations, double const new_spawn_times_seconds) const {
+        ids[index] = new_ids;
+        archetypes[index] = new_archetypes;
+        teams[index] = new_teams;
+        positions.set(index, new_positions);
+        rotations.set(index, new_rotations);
+        spawn_times_seconds[index] = new_spawn_times_seconds;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -106,6 +115,26 @@ struct SPACEGAME_API FLevelEntityTableView {
 struct SPACEGAME_API FLevelEntityTable {
     using View = FLevelEntityTableView;
     using ConstView = FLevelEntityTableConstView;
+
+    void set(int32 const index, ml::FLevelEntityId const new_ids, ml::FEntityArchetypeId const new_archetypes, ml::FLevelTeamId const new_teams, FVectors3d::equivalent_type const& new_positions, FRotatorsd::equivalent_type const& new_rotations, double const new_spawn_times_seconds) {
+        ids[index] = new_ids;
+        archetypes[index] = new_archetypes;
+        teams[index] = new_teams;
+        positions.set(index, new_positions);
+        rotations.set(index, new_rotations);
+        spawn_times_seconds[index] = new_spawn_times_seconds;
+    }
+
+    auto add(ml::FLevelEntityId const new_ids, ml::FEntityArchetypeId const new_archetypes, ml::FLevelTeamId const new_teams, FVectors3d::equivalent_type const& new_positions, FRotatorsd::equivalent_type const& new_rotations, double const new_spawn_times_seconds) -> int32 {
+        auto const index{num()};
+        ids.Add(new_ids);
+        archetypes.Add(new_archetypes);
+        teams.Add(new_teams);
+        positions.add(new_positions);
+        rotations.add(new_rotations);
+        spawn_times_seconds.Add(new_spawn_times_seconds);
+        return index;
+    }
 
     void reset();
 
@@ -323,6 +352,14 @@ struct SPACEGAME_API FLevelSpawnGroups {
         counts[index] = new_counts;
     }
 
+    auto add(ETestEntityType const new_types, int32 const new_offsets, ml::FLevelEventCount const new_counts) -> int32 {
+        auto const index{num()};
+        types.Add(new_types);
+        offsets.Add(new_offsets);
+        counts.Add(new_counts);
+        return index;
+    }
+
     void reset();
 
     void reserve(int32 const count);
@@ -482,6 +519,17 @@ struct SPACEGAME_API FLevelCapitalSpawnEventsView {
     using View = FLevelCapitalSpawnEventsView;
     using ConstView = FLevelCapitalSpawnEventsConstView;
 
+    void set(int32 const index, int32 const new_entity_indices, int32 const new_target_entity_indices, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, float const new_initial_fighter_spawn_delays, float const new_fighter_spawn_cooldowns) const {
+        entity_indices[index] = new_entity_indices;
+        target_entity_indices[index] = new_target_entity_indices;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        initial_fighter_spawn_delays[index] = new_initial_fighter_spawn_delays;
+        fighter_spawn_cooldowns[index] = new_fighter_spawn_cooldowns;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -525,6 +573,30 @@ struct SPACEGAME_API FLevelCapitalSpawnEventsView {
 struct SPACEGAME_API FLevelCapitalSpawnEvents {
     using View = FLevelCapitalSpawnEventsView;
     using ConstView = FLevelCapitalSpawnEventsConstView;
+
+    void set(int32 const index, int32 const new_entity_indices, int32 const new_target_entity_indices, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, float const new_initial_fighter_spawn_delays, float const new_fighter_spawn_cooldowns) {
+        entity_indices[index] = new_entity_indices;
+        target_entity_indices[index] = new_target_entity_indices;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        initial_fighter_spawn_delays[index] = new_initial_fighter_spawn_delays;
+        fighter_spawn_cooldowns[index] = new_fighter_spawn_cooldowns;
+    }
+
+    auto add(int32 const new_entity_indices, int32 const new_target_entity_indices, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, float const new_initial_fighter_spawn_delays, float const new_fighter_spawn_cooldowns) -> int32 {
+        auto const index{num()};
+        entity_indices.Add(new_entity_indices);
+        target_entity_indices.Add(new_target_entity_indices);
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        teams.Add(new_teams);
+        healths.Add(new_healths);
+        initial_fighter_spawn_delays.Add(new_initial_fighter_spawn_delays);
+        fighter_spawn_cooldowns.Add(new_fighter_spawn_cooldowns);
+        return index;
+    }
 
     void reset();
 
@@ -716,6 +788,15 @@ struct SPACEGAME_API FLevelTurretSpawnEventsView {
     using View = FLevelTurretSpawnEventsView;
     using ConstView = FLevelTurretSpawnEventsConstView;
 
+    void set(int32 const index, int32 const new_entity_indices, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, int32 const new_laser_damages) const {
+        entity_indices[index] = new_entity_indices;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        laser_damages[index] = new_laser_damages;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -755,6 +836,26 @@ struct SPACEGAME_API FLevelTurretSpawnEventsView {
 struct SPACEGAME_API FLevelTurretSpawnEvents {
     using View = FLevelTurretSpawnEventsView;
     using ConstView = FLevelTurretSpawnEventsConstView;
+
+    void set(int32 const index, int32 const new_entity_indices, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, int32 const new_laser_damages) {
+        entity_indices[index] = new_entity_indices;
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        healths[index] = new_healths;
+        laser_damages[index] = new_laser_damages;
+    }
+
+    auto add(int32 const new_entity_indices, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, int32 const new_healths, int32 const new_laser_damages) -> int32 {
+        auto const index{num()};
+        entity_indices.Add(new_entity_indices);
+        locations.add(new_locations);
+        rotations.add(new_rotations);
+        teams.Add(new_teams);
+        healths.Add(new_healths);
+        laser_damages.Add(new_laser_damages);
+        return index;
+    }
 
     void reset();
 
@@ -970,6 +1071,14 @@ struct SPACEGAME_API FLevelMissionEventGroups {
         types[index] = new_types;
         offsets[index] = new_offsets;
         counts[index] = new_counts;
+    }
+
+    auto add(ml::ELevelMissionEventType const new_types, int32 const new_offsets, ml::FLevelEventCount const new_counts) -> int32 {
+        auto const index{num()};
+        types.Add(new_types);
+        offsets.Add(new_offsets);
+        counts.Add(new_counts);
+        return index;
     }
 
     void reset();

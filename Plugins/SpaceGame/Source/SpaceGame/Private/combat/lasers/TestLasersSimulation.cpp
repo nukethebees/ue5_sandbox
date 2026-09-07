@@ -140,8 +140,8 @@ void Simulation::process_pending_spawns() {
         auto const spawn_location{base_spawn_location + forward_velocity * tick_period +
                                   forward_direction * fixed_spawn_offset};
 
-        ml::assign(entities.locations, index, spawn_location);
-        ml::assign(entities.velocities, index, velocity);
+        entities.locations.set(index, spawn_location);
+        entities.velocities.set(index, velocity);
         entities.lifetimes_remaining[index] = lifetime;
 
         auto const base{i * 5};
@@ -211,8 +211,7 @@ void Simulation::check_collision_thread(int32 const job_index,
         auto const entity_index{i_start + trace_index};
         auto const start{ml::get_vector3f(simulation.entities.locations, entity_index)};
         auto const velocity{ml::get_vector3f(simulation.entities.velocities, entity_index)};
-        data.traces.starts.set(trace_index, start);
-        data.traces.ends.set(trace_index, start + dt * velocity);
+        data.traces.set(trace_index, start, start + dt * velocity);
     }
 
     auto const ignored_entities{
@@ -231,17 +230,15 @@ void Simulation::check_collision_thread(int32 const job_index,
 
         auto const damaged_entity{data.trace_hits.entities[trace_index]};
         if (damaged_entity.is_valid()) {
-            data.damage_events.damaged_entities.Add(damaged_entity);
-            data.damage_events.damage_amounts.Add(simulation.entities.damages[entity_index]);
-            data.damage_events.instigators.Add(
-                simulation.entities.instigator_handles[entity_index]);
+            data.damage_events.add(damaged_entity,
+                                   simulation.entities.damages[entity_index],
+                                   simulation.entities.instigator_handles[entity_index]);
         }
 
-        data.hit_details.locations.add(data.trace_hits.locations[trace_index]);
         auto const velocity{ml::get_vector3f(simulation.entities.velocities, entity_index)};
-        data.hit_details.emission_directions.add(
-            -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector));
-        data.hit_details.colours.Add(simulation.entities.colours[entity_index]);
+        data.hit_details.add(data.trace_hits.locations[trace_index],
+                             -velocity.GetSafeNormal(UE_SMALL_NUMBER, FVector3f::UpVector),
+                             simulation.entities.colours[entity_index]);
     }
 }
 
@@ -257,17 +254,16 @@ void Simulation::merge_collision_data() {
         for (int32 j{}; j < n_hits; ++j) {
             auto const entity_index{thread_data.to_remove[j]};
             to_remove.Add(entity_index);
-            hit_details.locations.add(thread_data.hit_details.locations[j]);
-            hit_details.emission_directions.add(thread_data.hit_details.emission_directions[j]);
-            hit_details.colours.Add(thread_data.hit_details.colours[j]);
+            hit_details.add(thread_data.hit_details.locations[j],
+                            thread_data.hit_details.emission_directions[j],
+                            thread_data.hit_details.colours[j]);
         }
 
         auto const damage_count{thread_data.damage_events.num()};
         for (int32 j{}; j < damage_count; ++j) {
-            collision_damage_events.damaged_entities.Add(
-                thread_data.damage_events.damaged_entities[j]);
-            collision_damage_events.damage_amounts.Add(thread_data.damage_events.damage_amounts[j]);
-            collision_damage_events.instigators.Add(thread_data.damage_events.instigators[j]);
+            collision_damage_events.add(thread_data.damage_events.damaged_entities[j],
+                                        thread_data.damage_events.damage_amounts[j],
+                                        thread_data.damage_events.instigators[j]);
         }
     }
 }
