@@ -32,15 +32,12 @@ struct SPACEGAME_API FShipControlContext {
     [[nodiscard]] auto can_bind() const -> bool;
     [[nodiscard]] auto is_initialised() const noexcept -> bool { return initialised_; }
     [[nodiscard]] auto is_bound() const noexcept -> bool { return bound_; }
-    [[nodiscard]] auto get_mapping_context_index() const noexcept -> int32 {
-        return mapping_context_index_;
-    }
   private:
     void bind_actions();
     void remove_action_bindings();
     void neutralise_ship_input();
-    void add_selected_mapping_context();
-    void remove_selected_mapping_context();
+    void add_mapping_context();
+    void remove_mapping_context();
 
     void set_move_input(FInputActionValue const& value);
     void move_completed();
@@ -81,7 +78,6 @@ struct SPACEGAME_API FShipControlContext {
     IEnhancedInputSubsystemInterface* input_subsystem_{nullptr};
     FSpaceShipControllerInputs const* input_{nullptr};
     TArray<uint32> binding_handles_;
-    int32 mapping_context_index_{0};
     bool initialised_{false};
     bool bound_{false};
 };

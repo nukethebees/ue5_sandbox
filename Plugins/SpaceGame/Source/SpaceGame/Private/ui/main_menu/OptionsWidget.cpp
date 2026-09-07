@@ -89,12 +89,12 @@ void UOptionsWidget::prepare_for_open() {
     exit_after_confirmation_ = false;
     leave_continuation_.Unbind();
     if (IsValid(settings_)) {
-        settings_->begin_edit();
+        settings_->begin_edit(GetOwningLocalPlayer());
     }
     if (options_view_.IsValid()) {
         options_view_->hide_dirty_prompt();
+        options_view_->refresh_controls();
     }
-    refresh_view();
 }
 
 void UOptionsWidget::request_leave(FSimpleDelegate continuation) {

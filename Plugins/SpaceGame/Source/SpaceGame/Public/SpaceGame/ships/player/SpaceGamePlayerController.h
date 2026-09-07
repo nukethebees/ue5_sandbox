@@ -52,12 +52,13 @@ class ASpaceGamePlayerController : public APlayerController {
     // Input orchestration
     auto initialise_global_input(UEnhancedInputComponent& input_component,
                                  UEnhancedInputLocalPlayerSubsystem& input_subsystem) -> bool;
+    void initialise_input_user_settings();
     void shutdown_global_input();
     auto set_control_context(EPlayerControlContext context) -> bool;
     auto can_bind_context(EPlayerControlContext context) const -> bool;
     auto bind_context(EPlayerControlContext context) -> bool;
     void unbind_context(EPlayerControlContext context);
-    void on_ship_mapping_context_changed(UInputMappingContext const& context);
+    void on_ship_control_profile_changed(FString const& profile_name);
     void toggle_pause_game();
 
     // UI and simulation transitions

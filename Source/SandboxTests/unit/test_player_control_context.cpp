@@ -3,6 +3,8 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
+#include <SpaceGame/input/ControlProfiles.h>
+#include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/ships/common/LaserFiringState.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -11,6 +13,8 @@
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 
 #include <CQTest.h>
+#include <Engine/Engine.h>
+#include <Engine/LocalPlayer.h>
 #include <EnhancedInputComponent.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
@@ -82,59 +86,105 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             return;
         }
 
-        auto const mapping_context_count{input->mapping_contexts.Num()};
-        for (int32 mapping_context_index{0}; mapping_context_index < mapping_context_count;
-             ++mapping_context_index) {
-            auto const* const mapping_context{input->mapping_contexts[mapping_context_index]};
-            auto const context_label{
-                FString::Printf(TEXT("Mapping context %d is configured"), mapping_context_index)};
-            if (!TestRunner->TestTrue(*context_label, IsValid(mapping_context))) {
-                continue;
-            }
-
-            TestRunner->TestTrue(
-                *FString::Printf(TEXT("Mapping context %d belongs to SpaceGame"),
-                                 mapping_context_index),
-                mapping_context->GetOutermost()->GetName().StartsWith(TEXT("/SpaceGame/")));
-            TestRunner->TestTrue(*FString::Printf(TEXT("Mapping context %d contains turning"),
-                                                  mapping_context_index),
-                                 mapping_context->HasMappingForInputAction(input->turn));
-            TestRunner->TestTrue(
-                *FString::Printf(TEXT("Mapping context %d contains context cycling"),
-                                 mapping_context_index),
-                mapping_context->HasMappingForInputAction(input->cycle_input_mapping_context));
-
-            auto const& mappings{mapping_context->GetMappings()};
-            for (auto const& mapping : mappings) {
-                TestRunner->TestTrue(
-                    *FString::Printf(TEXT("Mapping context %d contains a valid action"),
-                                     mapping_context_index),
-                    IsValid(mapping.Action));
-                if (IsValid(mapping.Action)) {
-                    TestRunner->TestTrue(
-                        *FString::Printf(TEXT("Mapping context %d action belongs to SpaceGame"),
-                                         mapping_context_index),
-                        mapping.Action->GetOutermost()->GetName().StartsWith(TEXT("/SpaceGame/")));
-                }
-            }
-        }
-
-        if (!TestRunner->TestTrue(
-                TEXT("Initial mapping index is valid"),
-                input->mapping_contexts.IsValidIndex(input->initial_mapping_context_index)) ||
-            !TestRunner->TestTrue(
-                TEXT("Initial mapping context is configured"),
-                input->mapping_contexts.IsValidIndex(input->initial_mapping_context_index) &&
-                    IsValid(input->mapping_contexts[input->initial_mapping_context_index]))) {
+        auto const* const mapping_context{input->get_mapping_context()};
+        if (!TestRunner->TestTrue(TEXT("Mapping context is configured"),
+                                  IsValid(mapping_context))) {
             return;
         }
 
-        auto const* const mapping_context{
-            input->mapping_contexts[input->initial_mapping_context_index]};
-        TestRunner->TestTrue(TEXT("Initial mapping contains movement"),
+        TestRunner->TestTrue(
+            TEXT("Mapping context belongs to SpaceGame"),
+            mapping_context->GetOutermost()->GetName().StartsWith(TEXT("/SpaceGame/")));
+        TestRunner->TestTrue(TEXT("Mapping contains movement"),
                              mapping_context->HasMappingForInputAction(input->move));
-        TestRunner->TestTrue(TEXT("Initial mapping contains turning"),
+        TestRunner->TestTrue(TEXT("Mapping contains turning"),
                              mapping_context->HasMappingForInputAction(input->turn));
+        TestRunner->TestTrue(
+            TEXT("Mapping contains profile cycling"),
+            mapping_context->HasMappingForInputAction(input->cycle_input_mapping_context));
+
+        mapping_context->ForEachKeyMapping([this](FEnhancedActionKeyMapping const& mapping) {
+            TestRunner->TestTrue(TEXT("Mapping contains a valid action"), IsValid(mapping.Action));
+            TestRunner->TestTrue(TEXT("Mapping is player mappable"), mapping.IsPlayerMappable());
+        });
+    }
+
+    TEST_METHOD(ControlProfilesRegisterAndCycle)
+    {
+        auto const* const config{ml::load_default_level_config()};
+        if (!TestRunner->TestTrue(TEXT("Level config loads"), IsValid(config)) ||
+            !TestRunner->TestTrue(TEXT("Player controller class is configured"),
+                                  config && IsValid(config->classes.player_controller_class))) {
+            return;
+        }
+
+        auto const* const controller_default{
+            config->classes.player_controller_class.GetDefaultObject()};
+        auto const* const input_property{
+            FindFProperty<FStructProperty>(controller_default->GetClass(), TEXT("input"))};
+        if (!TestRunner->TestTrue(TEXT("Controller input property is available"),
+                                  input_property != nullptr)) {
+            return;
+        }
+        auto const* const input{
+            input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller_default)};
+        auto* const mapping_context{input->get_mapping_context()};
+        if (!TestRunner->TestTrue(TEXT("Mapping context is configured"),
+                                  IsValid(mapping_context))) {
+            return;
+        }
+
+        auto* const local_player{NewObject<ULocalPlayer>(GEngine)};
+        auto* const settings{NewObject<ml::ioj::USpaceGameInputUserSettings>(local_player)};
+        settings->Initialize(local_player);
+        TestRunner->TestTrue(TEXT("All control profiles register"),
+                             ml::ioj::register_control_profiles(*settings, *mapping_context));
+
+        auto const profiles{ml::ioj::control_profile_definitions()};
+        TestRunner->TestTrue(TEXT("Control profiles are configured"), !profiles.IsEmpty());
+        for (auto const& profile : profiles) {
+            auto const* const registered{settings->GetKeyProfileWithId(profile.id)};
+            TestRunner->TestTrue(*FString::Printf(TEXT("Profile '%s' is registered"), *profile.id),
+                                 IsValid(registered));
+            if (IsValid(registered)) {
+                TestRunner->TestTrue(
+                    *FString::Printf(TEXT("Profile '%s' contains mappings"), *profile.id),
+                    !registered->GetPlayerMappingRows().IsEmpty());
+            }
+        }
+
+        for (int32 index{1}; index < profiles.Num(); ++index) {
+            TestRunner->TestTrue(TEXT("Profile cycling succeeds"),
+                                 ml::ioj::cycle_control_profile(*settings));
+            TestRunner->TestEqual(TEXT("Profile cycling follows the configured order"),
+                                  settings->GetActiveKeyProfileId(),
+                                  profiles[index].id);
+        }
+        TestRunner->TestTrue(TEXT("Profile cycling wraps"),
+                             ml::ioj::cycle_control_profile(*settings));
+        TestRunner->TestEqual(TEXT("Profile cycling returns to default"),
+                              settings->GetActiveKeyProfileId(),
+                              profiles[0].id);
+    }
+
+    TEST_METHOD(InputResponseSettingsClampInvalidValues)
+    {
+        auto* const settings{NewObject<ml::ioj::USpaceGameInputUserSettings>()};
+        settings->set_mouse_turn_sensitivity(-1.0f);
+        settings->set_gamepad_turn_sensitivity(-1.0f);
+        settings->set_gamepad_turn_dead_zone(-1.0f);
+        settings->set_gamepad_move_dead_zone(2.0f);
+
+        TestRunner->TestEqual(
+            TEXT("Mouse sensitivity is non-negative"), settings->mouse_turn_sensitivity(), 0.0f);
+        TestRunner->TestEqual(TEXT("Gamepad sensitivity is non-negative"),
+                              settings->gamepad_turn_sensitivity(),
+                              0.0f);
+        TestRunner->TestEqual(
+            TEXT("Turn dead zone is non-negative"), settings->gamepad_turn_dead_zone(), 0.0f);
+        TestRunner->TestEqual(TEXT("Move dead zone leaves usable axis range"),
+                              settings->gamepad_move_dead_zone(),
+                              0.95f);
     }
 
     TEST_METHOD(ShipBindUnbindOwnsMappingsAndHandlers)
@@ -170,7 +220,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         input_subsystem->initialise();
 
         FSpaceShipControllerInputs input;
-        input.mapping_contexts.Add(mapping_context);
+        input.mapping_context = mapping_context;
         input.move = move_action;
         input.turn = move_action;
         input.fire_laser = move_action;

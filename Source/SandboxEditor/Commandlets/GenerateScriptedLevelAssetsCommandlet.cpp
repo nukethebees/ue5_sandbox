@@ -1,6 +1,8 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
 #include <SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h>
+#include <SpaceGame/input/ControlProfiles.h>
+#include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/presentation/widgets/TeamEntityTableWidget.h>
 #include <SpaceGame/presentation/widgets/TopKillersWidget.h>
@@ -44,10 +46,15 @@
 #include <InputAction.h>
 #include <InputCoreTypes.h>
 #include <InputMappingContext.h>
+#include <InputModifiers.h>
+#include <InputTriggers.h>
+#include <Kismet2/BlueprintEditorUtils.h>
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Misc/PackageName.h>
+#include <PlayerMappableKeySettings.h>
 #include <UObject/Package.h>
 #include <UObject/SavePackage.h>
+#include <UObject/UnrealType.h>
 #include <WidgetBlueprint.h>
 #include <WidgetBlueprintOperationUtils.h>
 #include <Widgets/CommonActivatableWidgetContainer.h>
@@ -84,6 +91,17 @@ constexpr TCHAR menu_mapping_object_path[]{TEXT("/SpaceGame/Input/UI/IMC_menu.IM
 constexpr TCHAR global_mapping_object_path[]{
     TEXT("/SpaceGame/Input/Player/IMC_Player_Global.IMC_Player_Global")};
 constexpr TCHAR pause_action_object_path[]{TEXT("/SpaceGame/Input/SpaceShip/IA_pause.IA_pause")};
+constexpr TCHAR ship_base_mapping_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IMC_SpaceShip_Base.IMC_SpaceShip_Base")};
+constexpr TCHAR ship_aim_move_mapping_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_aim_move."
+         "IMC_space_ship_twinstick_aim_move")};
+constexpr TCHAR ship_move_aim_mapping_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_move_aim."
+         "IMC_space_ship_twinstick_move_aim")};
+constexpr TCHAR ship_z_roll_aim_mapping_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_z-roll_aim."
+         "IMC_space_ship_twinstick_z-roll_aim")};
 FName const generation_context{TEXT("GenerateScriptedLevelAssets")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
@@ -535,6 +553,174 @@ auto generate_menu_input_assets() -> bool {
     return save_asset(*back_action) && save_asset(*menu_mapping) && save_asset(*global_mapping);
 }
 
+auto input_category(UInputAction const& action) -> FText {
+    auto const name{action.GetName().ToLower()};
+    if (name.Contains(TEXT("fire"))) {
+        return NSLOCTEXT("Controls", "CombatCategory", "Combat");
+    }
+    if (name.Contains(TEXT("cycle")) || name.Contains(TEXT("sample"))) {
+        return NSLOCTEXT("Controls", "UtilityCategory", "Utility");
+    }
+    return NSLOCTEXT("Controls", "FlightCategory", "Flight");
+}
+
+auto action_display_name(UInputAction const& action) -> FString {
+    auto result{action.GetName()};
+    result.RemoveFromStart(TEXT("IA_"));
+    result.RemoveFromStart(TEXT("ship_"));
+    result.ReplaceInline(TEXT("_"), TEXT(" "));
+    result = result.ToLower();
+    if (!result.IsEmpty()) {
+        result[0] = FChar::ToUpper(result[0]);
+    }
+    return result;
+}
+
+auto mapping_device_is_gamepad(FEnhancedActionKeyMapping const& mapping) -> bool {
+    return mapping.Key.IsGamepadKey();
+}
+
+void duplicate_instanced_mapping_data(FEnhancedActionKeyMapping& mapping,
+                                      UInputMappingContext& destination) {
+    for (auto& modifier : mapping.Modifiers) {
+        modifier =
+            IsValid(modifier) ? DuplicateObject<UInputModifier>(modifier, &destination) : nullptr;
+    }
+    for (auto& trigger : mapping.Triggers) {
+        trigger =
+            IsValid(trigger) ? DuplicateObject<UInputTrigger>(trigger, &destination) : nullptr;
+    }
+}
+
+void configure_mapping(FEnhancedActionKeyMapping& mapping,
+                       UInputMappingContext& owner,
+                       int32 const same_device_action_count,
+                       int32 const same_device_action_index) {
+    if (!IsValid(mapping.Action)) {
+        return;
+    }
+
+    auto* const behavior_property{FindFProperty<FEnumProperty>(
+        FEnhancedActionKeyMapping::StaticStruct(), TEXT("SettingBehavior"))};
+    auto* const settings_property{FindFProperty<FObjectProperty>(
+        FEnhancedActionKeyMapping::StaticStruct(), TEXT("PlayerMappableKeySettings"))};
+    check(behavior_property != nullptr && settings_property != nullptr);
+    behavior_property->GetUnderlyingProperty()->SetIntPropertyValue(
+        behavior_property->ContainerPtrToValuePtr<void>(&mapping),
+        static_cast<int64>(EPlayerMappableKeySettingBehaviors::OverrideSettings));
+    auto* const settings{NewObject<UPlayerMappableKeySettings>(&owner)};
+    auto mapping_name{mapping.Action->GetFName().ToString()};
+    if (same_device_action_count > 1) {
+        mapping_name += FString::Printf(TEXT(".%d"), same_device_action_index + 1);
+    }
+    settings->Name = FName{mapping_name};
+
+    auto display_name{action_display_name(*mapping.Action)};
+    if (same_device_action_count > 1) {
+        display_name += FString::Printf(TEXT(" — %s"), *mapping.Key.GetDisplayName().ToString());
+    }
+    settings->DisplayName = FText::FromString(display_name);
+    settings->DisplayCategory = input_category(*mapping.Action);
+    settings_property->SetObjectPropertyValue_InContainer(&mapping, settings);
+
+    auto const analog{mapping.Key.IsAxis1D() || mapping.Key.IsAxis2D() || mapping.Key.IsAxis3D()};
+    if (!analog) {
+        return;
+    }
+    mapping.Modifiers.RemoveAll([](TObjectPtr<UInputModifier> const& modifier) {
+        return IsValid(modifier) && (modifier->IsA<UInputModifierDeadZone>() ||
+                                     modifier->IsA<ml::ioj::USpaceGameInputModifier>());
+    });
+
+    auto* const response_modifier{NewObject<ml::ioj::USpaceGameInputModifier>(&owner)};
+    auto const action_name{mapping.Action->GetName()};
+    if (!mapping_device_is_gamepad(mapping)) {
+        if (!action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
+            return;
+        }
+        response_modifier->response = ml::ioj::ESpaceGameInputResponse::MouseTurn;
+    } else if (action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
+        response_modifier->response = ml::ioj::ESpaceGameInputResponse::GamepadTurn;
+    } else {
+        response_modifier->response = ml::ioj::ESpaceGameInputResponse::GamepadMove;
+    }
+    mapping.Modifiers.Add(response_modifier);
+}
+
+void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings, UInputMappingContext& owner) {
+    auto mapping_group = [](FEnhancedActionKeyMapping const& mapping) {
+        return FString::Printf(
+            TEXT("%s:%s"),
+            IsValid(mapping.Action) ? *mapping.Action->GetPathName() : TEXT("Invalid"),
+            mapping_device_is_gamepad(mapping) ? TEXT("Gamepad") : TEXT("KeyboardMouse"));
+    };
+    TMap<FString, int32> counts;
+    for (auto const& mapping : mappings) {
+        counts.FindOrAdd(mapping_group(mapping))++;
+    }
+
+    TMap<FString, int32> indices;
+    for (auto& mapping : mappings) {
+        auto const key{mapping_group(mapping)};
+        auto& index{indices.FindOrAdd(key)};
+        configure_mapping(mapping, owner, counts.FindRef(key), index);
+        ++index;
+    }
+}
+
+auto set_profile_override(UInputMappingContext& destination,
+                          FString const& profile_id,
+                          UInputMappingContext const& source) -> bool {
+    auto* const property{FindFProperty<FMapProperty>(UInputMappingContext::StaticClass(),
+                                                     TEXT("MappingProfileOverrides"))};
+    if (property == nullptr) {
+        UE_LOG(LogTemp, Error, TEXT("Could not find MappingProfileOverrides property"));
+        return false;
+    }
+
+    FScriptMapHelper mappings{property, property->ContainerPtrToValuePtr<void>(&destination)};
+    auto* value{mappings.FindValueFromHash(&profile_id)};
+    if (value == nullptr) {
+        auto const index{mappings.AddDefaultValue_Invalid_NeedsRehash()};
+        CastFieldChecked<FStrProperty>(property->KeyProp)
+            ->SetPropertyValue(mappings.GetKeyPtr(index), profile_id);
+        mappings.Rehash();
+        value = mappings.FindValueFromHash(&profile_id);
+    }
+
+    auto* const data{reinterpret_cast<FInputMappingContextMappingData*>(value)};
+    data->Mappings = source.GetMappings();
+    for (auto& mapping : data->Mappings) {
+        duplicate_instanced_mapping_data(mapping, destination);
+    }
+    configure_mappings(data->Mappings, destination);
+    return true;
+}
+
+auto generate_gameplay_input_assets() -> bool {
+    auto* const base{LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
+    auto* const aim_move{
+        LoadObject<UInputMappingContext>(nullptr, ship_aim_move_mapping_object_path)};
+    auto* const move_aim{
+        LoadObject<UInputMappingContext>(nullptr, ship_move_aim_mapping_object_path)};
+    auto* const z_roll_aim{
+        LoadObject<UInputMappingContext>(nullptr, ship_z_roll_aim_mapping_object_path)};
+    if (!IsValid(base) || !IsValid(aim_move) || !IsValid(move_aim) || !IsValid(z_roll_aim)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load ship input mapping contexts"));
+        return false;
+    }
+
+    base->Modify();
+    auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
+    configure_mappings(default_mappings, *base);
+
+    auto const profiles{ml::ioj::control_profile_definitions()};
+    auto const success{set_profile_override(*base, profiles[1].id, *aim_move) &&
+                       set_profile_override(*base, profiles[2].id, *move_aim) &&
+                       set_profile_override(*base, profiles[3].id, *z_roll_aim)};
+    return success && save_asset(*base);
+}
+
 auto configure_ui_data(UClass& root_class,
                        UClass& button_class,
                        UClass& main_class,
@@ -612,6 +798,38 @@ auto load_or_create_player_controller() -> UBlueprint* {
         UE_LOG(LogTemp, Error, TEXT("BP_SpaceGamePlayerController failed to compile"));
         return nullptr;
     }
+
+    auto* const controller{
+        blueprint->GeneratedClass->GetDefaultObject<ASpaceGamePlayerController>()};
+    auto* const input_property{
+        FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("input"))};
+    auto* const mapping_context{
+        LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
+    if (!IsValid(controller) || input_property == nullptr || !IsValid(mapping_context)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not configure player controller input context"));
+        return nullptr;
+    }
+    controller->Modify();
+    auto* const input{
+        input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller)};
+    input->mapping_context = mapping_context;
+    blueprint->Modify();
+    FBlueprintEditorUtils::MarkBlueprintAsModified(blueprint);
+    FKismetEditorUtilities::CompileBlueprint(blueprint);
+    if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
+        UE_LOG(LogTemp,
+               Error,
+               TEXT("BP_SpaceGamePlayerController failed to compile after input migration"));
+        return nullptr;
+    }
+    auto* const compiled_controller{
+        blueprint->GeneratedClass->GetDefaultObject<ASpaceGamePlayerController>()};
+    auto* const compiled_input_property{
+        FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("input"))};
+    check(IsValid(compiled_controller) && compiled_input_property != nullptr);
+    compiled_controller->Modify();
+    compiled_input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(compiled_controller)
+        ->mapping_context = mapping_context;
     return save_asset(*blueprint) ? blueprint : nullptr;
 }
 
@@ -733,7 +951,7 @@ UGenerateScriptedLevelAssetsCommandlet::UGenerateScriptedLevelAssetsCommandlet()
 }
 
 int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
-    auto const input_generated{generate_menu_input_assets()};
+    auto const input_generated{generate_menu_input_assets() && generate_gameplay_input_assets()};
     auto* const button_class{generate_menu_button_widget()};
     auto* const root_class{generate_root_layout_widget()};
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)

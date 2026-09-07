@@ -1,5 +1,6 @@
 #pragma once
 
+#include "SpaceGame/settings/ControlSettingsTypes.h"
 #include "SpaceGame/settings/GameSettings.generated.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/style/GameUiStyle.h"
@@ -7,6 +8,7 @@
 #include <Widgets/SCompoundWidget.h>
 
 class SWidgetSwitcher;
+class SVerticalBox;
 
 namespace SlateGenerated::ml::ioj {
 struct SGameOptionsViewBuilder;
@@ -44,6 +46,7 @@ class SGameOptionsView final : public SCompoundWidget {
     void Construct(FArguments const& args);
     void set_active_tab(EOptionsTab tab);
     void refresh();
+    void refresh_controls();
     void focus_content();
     void show_dirty_prompt();
     void hide_dirty_prompt();
@@ -53,16 +56,30 @@ class SGameOptionsView final : public SCompoundWidget {
     auto OnFocusReceived(FGeometry const& geometry, FFocusEvent const& focus_event)
         -> FReply override;
     auto OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply override;
+    auto OnAnalogValueChanged(FGeometry const& geometry, FAnalogInputEvent const& analog_event)
+        -> FReply override;
+    auto OnMouseButtonDown(FGeometry const& geometry, FPointerEvent const& mouse_event)
+        -> FReply override;
+    auto OnMouseWheel(FGeometry const& geometry, FPointerEvent const& mouse_event)
+        -> FReply override;
   private:
     auto build_header() -> TSharedRef<SWidget>;
     auto build_body() -> TSharedRef<SWidget>;
     auto build_footer() -> TSharedRef<SWidget>;
     auto build_category_page(EGameSettingCategory category) -> TSharedRef<SWidget>;
+    auto build_controls_page() -> TSharedRef<SWidget>;
+    void rebuild_controls_page();
+    auto build_binding_row(FControlBindingView const& binding) -> TSharedRef<SWidget>;
+    void begin_binding_capture(FControlBindingAddress const& address);
+    auto accept_binding_key(FKey key) -> FReply;
+    void close_binding_prompt();
     auto build_setting_row(FGameSettingDescriptor const& descriptor,
                            TFunction<void()>& focus_action) -> TSharedRef<SWidget>;
     auto build_system_page() -> TSharedRef<SWidget>;
     auto build_dirty_prompt() -> TSharedRef<SWidget>;
     auto build_display_prompt() -> TSharedRef<SWidget>;
+    auto build_capture_prompt() -> TSharedRef<SWidget>;
+    auto build_conflict_prompt() -> TSharedRef<SWidget>;
     auto build_modal(TAttribute<FText> title, TArray<TSharedRef<SGameButton>> const& buttons)
         -> TSharedRef<SWidget>;
     auto tab_text(EOptionsTab tab) const -> FText;
@@ -93,9 +110,16 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SGameButton> dirty_stay_button_{};
     TSharedPtr<SGameButton> confirm_display_button_{};
     TSharedPtr<SGameButton> revert_display_button_{};
+    TSharedPtr<SGameButton> conflict_replace_button_{};
+    TSharedPtr<SGameButton> conflict_cancel_button_{};
     TSharedPtr<SWidgetSwitcher> page_switcher_{};
     TSharedPtr<SWidget> dirty_prompt_{};
     TSharedPtr<SWidget> display_prompt_{};
+    TSharedPtr<SWidget> capture_prompt_{};
+    TSharedPtr<SWidget> conflict_prompt_{};
+    TSharedPtr<SVerticalBox> controls_content_{};
+    TOptional<FControlBindingAddress> captured_binding_{};
+    FKey captured_key_{};
     TWeakPtr<SWidget> previous_focus_{};
     TArray<TFunction<void()>> page_focus_actions_{};
     bool dirty_prompt_visible_{};

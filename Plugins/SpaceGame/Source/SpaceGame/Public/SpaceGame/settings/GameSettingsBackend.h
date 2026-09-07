@@ -2,9 +2,12 @@
 
 #include "SpaceGame/settings/GameSettings.generated.h"
 
+class ULocalPlayer;
+
 namespace ml::ioj {
 
 class USpaceGameUserSettings;
+class USpaceGameInputUserSettings;
 
 struct SPACEGAME_API FGameSettingOption {
     FGameSettingValue value;
@@ -13,6 +16,7 @@ struct SPACEGAME_API FGameSettingOption {
 
 class SPACEGAME_API FGameSettingsBackend {
   public:
+    void set_local_player(ULocalPlayer* local_player);
     auto read() const -> FGameSettingsState;
     auto defaults() const -> FGameSettingsState;
 
@@ -28,7 +32,10 @@ class SPACEGAME_API FGameSettingsBackend {
                       FGameSettingsState const& state) const -> bool;
   private:
     auto user_settings() const -> USpaceGameUserSettings*;
+    auto input_user_settings() const -> USpaceGameInputUserSettings*;
     void write_non_display(USpaceGameUserSettings& settings, FGameSettingsState const& state) const;
+
+    ULocalPlayer* local_player_{};
 };
 
 } // namespace ml::ioj

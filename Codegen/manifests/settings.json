@@ -172,6 +172,66 @@
           "backend": "custom",
           "apply": "immediate",
           "control": {"kind": "integer_range", "min": 0, "max": 5, "step": 1}
+        },
+        {
+          "name": "mouse_turn_sensitivity",
+          "label": "Mouse Sensitivity",
+          "tooltip": "Mouse turning sensitivity.",
+          "category": "controls",
+          "value_type": "float",
+          "backend": "enhanced_input_user_settings",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0.01, "max": 0.2, "step": 0.005}
+        },
+        {
+          "name": "gamepad_turn_sensitivity",
+          "label": "Controller Sensitivity",
+          "tooltip": "Controller turning sensitivity.",
+          "category": "controls",
+          "value_type": "float",
+          "backend": "enhanced_input_user_settings",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0.25, "max": 2.0, "step": 0.05}
+        },
+        {
+          "name": "gamepad_turn_dead_zone",
+          "label": "Turn Stick Dead Zone",
+          "tooltip": "Inner dead zone for the stick controlling turning or aiming.",
+          "category": "controls",
+          "value_type": "float",
+          "backend": "enhanced_input_user_settings",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0.0, "max": 0.5, "step": 0.01}
+        },
+        {
+          "name": "gamepad_move_dead_zone",
+          "label": "Movement Stick Dead Zone",
+          "tooltip": "Inner dead zone for sticks controlling movement.",
+          "category": "controls",
+          "value_type": "float",
+          "backend": "enhanced_input_user_settings",
+          "apply": "immediate",
+          "control": {"kind": "float_range", "min": 0.0, "max": 0.5, "step": 0.01}
+        },
+        {
+          "name": "invert_mouse_pitch",
+          "label": "Invert Mouse Pitch",
+          "tooltip": "Invert vertical mouse turning.",
+          "category": "controls",
+          "value_type": "bool",
+          "backend": "enhanced_input_user_settings",
+          "apply": "immediate",
+          "control": {"kind": "toggle"}
+        },
+        {
+          "name": "invert_gamepad_pitch",
+          "label": "Invert Controller Pitch",
+          "tooltip": "Invert vertical controller turning.",
+          "category": "controls",
+          "value_type": "bool",
+          "backend": "enhanced_input_user_settings",
+          "apply": "immediate",
+          "control": {"kind": "toggle"}
         }
       ]
     }

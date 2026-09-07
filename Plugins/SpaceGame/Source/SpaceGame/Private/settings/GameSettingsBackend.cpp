@@ -1,7 +1,10 @@
 #include "SpaceGame/settings/GameSettingsBackend.h"
 
 #include "Engine/Engine.h"
+#include "Engine/LocalPlayer.h"
+#include "EnhancedInputSubsystems.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "SpaceGame/input/SpaceGameInputUserSettings.h"
 #include "SpaceGame/settings/SpaceGameUserSettings.h"
 
 namespace ml::ioj {
@@ -45,6 +48,10 @@ auto make_option(FGameSettingValue value, TCHAR const* label) -> FGameSettingOpt
 
 } // namespace
 
+void FGameSettingsBackend::set_local_player(ULocalPlayer* const local_player) {
+    local_player_ = local_player;
+}
+
 auto FGameSettingsBackend::read() const -> FGameSettingsState {
     auto* settings{user_settings()};
     if (settings == nullptr) {
@@ -58,6 +65,8 @@ auto FGameSettingsBackend::read() const -> FGameSettingsState {
     settings->GetResolutionScaleInformationEx(
         normalized_scale, resolution_scale, minimum_scale, maximum_scale);
 
+    auto const* const input_settings{input_user_settings()};
+    auto const* const input_defaults{GetDefault<USpaceGameInputUserSettings>()};
     return FGameSettingsState{
         .resolution = settings->GetScreenResolution(),
         .window_mode = to_game_window_mode(settings->GetFullscreenMode()),
@@ -76,6 +85,22 @@ auto FGameSettingsBackend::read() const -> FGameSettingsState {
         .sfx_volume = settings->sfx_volume(),
         .ui_volume = settings->ui_volume(),
         .bees = settings->bees(),
+        .mouse_turn_sensitivity = input_settings != nullptr
+                                    ? input_settings->mouse_turn_sensitivity()
+                                    : input_defaults->mouse_turn_sensitivity(),
+        .gamepad_turn_sensitivity = input_settings != nullptr
+                                      ? input_settings->gamepad_turn_sensitivity()
+                                      : input_defaults->gamepad_turn_sensitivity(),
+        .gamepad_turn_dead_zone = input_settings != nullptr
+                                    ? input_settings->gamepad_turn_dead_zone()
+                                    : input_defaults->gamepad_turn_dead_zone(),
+        .gamepad_move_dead_zone = input_settings != nullptr
+                                    ? input_settings->gamepad_move_dead_zone()
+                                    : input_defaults->gamepad_move_dead_zone(),
+        .invert_mouse_pitch = input_settings != nullptr ? input_settings->invert_mouse_pitch()
+                                                        : input_defaults->invert_mouse_pitch(),
+        .invert_gamepad_pitch = input_settings != nullptr ? input_settings->invert_gamepad_pitch()
+                                                          : input_defaults->invert_gamepad_pitch(),
     };
 }
 
@@ -95,6 +120,7 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
     float maximum_scale{};
     defaults->GetResolutionScaleInformationEx(
         normalized_scale, resolution_scale, minimum_scale, maximum_scale);
+    auto const* const input_defaults{GetDefault<USpaceGameInputUserSettings>()};
     return FGameSettingsState{
         .resolution = resolution,
         .window_mode = to_game_window_mode(defaults->GetFullscreenMode()),
@@ -113,6 +139,12 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
         .sfx_volume = defaults->sfx_volume(),
         .ui_volume = defaults->ui_volume(),
         .bees = defaults->bees(),
+        .mouse_turn_sensitivity = input_defaults->mouse_turn_sensitivity(),
+        .gamepad_turn_sensitivity = input_defaults->gamepad_turn_sensitivity(),
+        .gamepad_turn_dead_zone = input_defaults->gamepad_turn_dead_zone(),
+        .gamepad_move_dead_zone = input_defaults->gamepad_move_dead_zone(),
+        .invert_mouse_pitch = input_defaults->invert_mouse_pitch(),
+        .invert_gamepad_pitch = input_defaults->invert_gamepad_pitch(),
     };
 }
 
@@ -144,6 +176,23 @@ void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
             settings->set_bees(state.bees);
             break;
         }
+        case EGameSetting::MouseTurnSensitivity:
+        case EGameSetting::GamepadTurnSensitivity:
+        case EGameSetting::GamepadTurnDeadZone:
+        case EGameSetting::GamepadMoveDeadZone:
+        case EGameSetting::InvertMousePitch:
+        case EGameSetting::InvertGamepadPitch: {
+            if (auto* const input_settings{input_user_settings()}) {
+                input_settings->set_mouse_turn_sensitivity(state.mouse_turn_sensitivity);
+                input_settings->set_gamepad_turn_sensitivity(state.gamepad_turn_sensitivity);
+                input_settings->set_gamepad_turn_dead_zone(state.gamepad_turn_dead_zone);
+                input_settings->set_gamepad_move_dead_zone(state.gamepad_move_dead_zone);
+                input_settings->set_invert_mouse_pitch(state.invert_mouse_pitch);
+                input_settings->set_invert_gamepad_pitch(state.invert_gamepad_pitch);
+                input_settings->ApplySettings();
+            }
+            break;
+        }
         default: {
             break;
         }
@@ -157,6 +206,15 @@ void FGameSettingsBackend::apply_non_display(FGameSettingsState const& state) co
     }
     write_non_display(*settings, state);
     settings->ApplyNonResolutionSettings();
+    if (auto* const input_settings{input_user_settings()}) {
+        input_settings->set_mouse_turn_sensitivity(state.mouse_turn_sensitivity);
+        input_settings->set_gamepad_turn_sensitivity(state.gamepad_turn_sensitivity);
+        input_settings->set_gamepad_turn_dead_zone(state.gamepad_turn_dead_zone);
+        input_settings->set_gamepad_move_dead_zone(state.gamepad_move_dead_zone);
+        input_settings->set_invert_mouse_pitch(state.invert_mouse_pitch);
+        input_settings->set_invert_gamepad_pitch(state.invert_gamepad_pitch);
+        input_settings->ApplySettings();
+    }
 }
 
 void FGameSettingsBackend::apply_display(FGameSettingsState const& state) const {
@@ -185,6 +243,9 @@ void FGameSettingsBackend::revert_display() const {
 void FGameSettingsBackend::save() const {
     if (auto* settings{user_settings()}) {
         settings->SaveSettings();
+    }
+    if (auto* const input_settings{input_user_settings()}) {
+        input_settings->AsyncSaveSettings();
     }
 }
 
@@ -278,6 +339,27 @@ auto FGameSettingsBackend::user_settings() const -> USpaceGameUserSettings* {
         UE_LOG(LogTemp,
                Error,
                TEXT("Configured GameUserSettings class is not USpaceGameUserSettings"));
+    }
+    return result;
+}
+
+auto FGameSettingsBackend::input_user_settings() const -> USpaceGameInputUserSettings* {
+    auto* const local_player{local_player_};
+    if (!IsValid(local_player)) {
+        return nullptr;
+    }
+    auto* const subsystem{
+        ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)};
+    if (!IsValid(subsystem)) {
+        UE_LOG(LogTemp, Error, TEXT("Enhanced Input local-player subsystem is unavailable"));
+        return nullptr;
+    }
+    auto* const result{Cast<USpaceGameInputUserSettings>(subsystem->GetUserSettings())};
+    if (!IsValid(result)) {
+        UE_LOG(LogTemp,
+               Error,
+               TEXT("Configured Enhanced Input settings class is not "
+                    "USpaceGameInputUserSettings"));
     }
     return result;
 }

@@ -53,6 +53,14 @@ auto section_label(FGameSettingDescriptor const& descriptor) -> FText {
             return NSLOCTEXT("OptionsMenu", "VolumeSection", "Volume");
         case EGameSetting::Bees:
             return NSLOCTEXT("OptionsMenu", "GameplaySection", "Gameplay");
+        case EGameSetting::MouseTurnSensitivity:
+        case EGameSetting::GamepadTurnSensitivity:
+        case EGameSetting::InvertMousePitch:
+        case EGameSetting::InvertGamepadPitch:
+            return NSLOCTEXT("OptionsMenu", "ResponseSection", "Response");
+        case EGameSetting::GamepadTurnDeadZone:
+        case EGameSetting::GamepadMoveDeadZone:
+            return NSLOCTEXT("OptionsMenu", "DeadZoneSection", "Controller Dead Zones");
     }
     return category_label(descriptor.category);
 }
@@ -110,6 +118,8 @@ void SGameOptionsView::Construct(FArguments const& args) {
     auto footer{build_footer()};
     dirty_prompt_ = build_dirty_prompt();
     display_prompt_ = build_display_prompt();
+    capture_prompt_ = build_capture_prompt();
+    conflict_prompt_ = build_conflict_prompt();
 
     auto panel{SNew(SBorder)
                    .BorderImage(&style_->chrome().body_background)
@@ -120,9 +130,13 @@ void SGameOptionsView::Construct(FArguments const& args) {
 
     dirty_prompt_->SetVisibility(EVisibility::Collapsed);
     display_prompt_->SetVisibility(EVisibility::Collapsed);
+    capture_prompt_->SetVisibility(EVisibility::Collapsed);
+    conflict_prompt_->SetVisibility(EVisibility::Collapsed);
     ChildSlot[SNew(SOverlay) + SOverlay::Slot()[panel] +
               SOverlay::Slot()[dirty_prompt_.ToSharedRef()] +
-              SOverlay::Slot()[display_prompt_.ToSharedRef()]];
+              SOverlay::Slot()[display_prompt_.ToSharedRef()] +
+              SOverlay::Slot()[capture_prompt_.ToSharedRef()] +
+              SOverlay::Slot()[conflict_prompt_.ToSharedRef()]];
     refresh();
 }
 
@@ -169,6 +183,11 @@ void SGameOptionsView::refresh() {
     }
 }
 
+void SGameOptionsView::refresh_controls() {
+    rebuild_controls_page();
+    refresh();
+}
+
 void SGameOptionsView::focus_content() {
     auto const index{static_cast<int32>(active_tab_)};
     if (page_focus_actions_.IsValidIndex(index) && page_focus_actions_[index]) {
@@ -212,11 +231,21 @@ auto SGameOptionsView::OnFocusReceived(FGeometry const& geometry, FFocusEvent co
 
 auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key_event) -> FReply {
     auto const key{key_event.GetKey()};
+    if (captured_binding_.IsSet() && captured_key_ == EKeys::Invalid) {
+        if (key == EKeys::Escape || key == EKeys::Gamepad_FaceButton_Right) {
+            close_binding_prompt();
+            return FReply::Handled();
+        }
+        return accept_binding_key(key);
+    }
+
     auto buttons{TArray<TSharedPtr<SGameButton>>{}};
     if (dirty_prompt_visible_) {
         buttons = {dirty_apply_button_, dirty_discard_button_, dirty_stay_button_};
     } else if (display_prompt_visible_) {
         buttons = {confirm_display_button_, revert_display_button_};
+    } else if (captured_binding_.IsSet()) {
+        buttons = {conflict_replace_button_, conflict_cancel_button_};
     } else {
         return SCompoundWidget::OnKeyDown(geometry, key_event);
     }
@@ -246,6 +275,33 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
     return FReply::Handled();
 }
 
+auto SGameOptionsView::OnMouseButtonDown(FGeometry const& geometry,
+                                         FPointerEvent const& mouse_event) -> FReply {
+    if (captured_binding_.IsSet() && captured_key_ == EKeys::Invalid) {
+        return accept_binding_key(mouse_event.GetEffectingButton());
+    }
+    return SCompoundWidget::OnMouseButtonDown(geometry, mouse_event);
+}
+
+auto SGameOptionsView::OnAnalogValueChanged(FGeometry const& geometry,
+                                            FAnalogInputEvent const& analog_event) -> FReply {
+    if (captured_binding_.IsSet() && captured_key_ == EKeys::Invalid &&
+        FMath::Abs(analog_event.GetAnalogValue()) >= 0.5f) {
+        return accept_binding_key(analog_event.GetKey());
+    }
+    return SCompoundWidget::OnAnalogValueChanged(geometry, analog_event);
+}
+
+auto SGameOptionsView::OnMouseWheel(FGeometry const& geometry, FPointerEvent const& mouse_event)
+    -> FReply {
+    if (captured_binding_.IsSet() && captured_key_ == EKeys::Invalid &&
+        !FMath::IsNearlyZero(mouse_event.GetWheelDelta())) {
+        return accept_binding_key(mouse_event.GetWheelDelta() > 0.0f ? EKeys::MouseScrollUp
+                                                                     : EKeys::MouseScrollDown);
+    }
+    return SCompoundWidget::OnMouseWheel(geometry, mouse_event);
+}
+
 auto SGameOptionsView::build_header() -> TSharedRef<SWidget> {
     return SNew(SVerticalBox) +
            SVerticalBox::Slot()
@@ -263,7 +319,7 @@ auto SGameOptionsView::build_body() -> TSharedRef<SWidget> {
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Video)] +
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Gameplay)] +
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Audio)] +
-        SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Controls)] +
+        SWidgetSwitcher::Slot()[build_controls_page()] +
         SWidgetSwitcher::Slot()[build_category_page(EGameSettingCategory::Accessibility)] +
         SWidgetSwitcher::Slot()[build_system_page()];
     return page_switcher_.ToSharedRef();
@@ -350,6 +406,226 @@ auto SGameOptionsView::build_category_page(EGameSettingCategory const category)
                .ScrollBarAlwaysVisible(false)
                .AnimateWheelScrolling(true) +
            SScrollBox::Slot()[content];
+}
+
+auto SGameOptionsView::build_controls_page() -> TSharedRef<SWidget> {
+    SAssignNew(controls_content_, SVerticalBox);
+    rebuild_controls_page();
+    return SNew(SScrollBox)
+               .ScrollBarStyle(&style_->settings().scroll_bar)
+               .Orientation(Orient_Vertical)
+               .ScrollBarAlwaysVisible(false)
+               .AnimateWheelScrolling(true) +
+           SScrollBox::Slot()[controls_content_.ToSharedRef()];
+}
+
+void SGameOptionsView::rebuild_controls_page() {
+    auto* const settings{settings_.Get()};
+    if (!controls_content_.IsValid() || settings == nullptr) {
+        return;
+    }
+    controls_content_->ClearChildren();
+
+    auto const add_section = [this](FText const& title, TSharedRef<SVerticalBox> const& rows) {
+        controls_content_->AddSlot().AutoHeight().Padding(
+            FMargin{0.0f,
+                    0.0f,
+                    0.0f,
+                    style_->settings()
+                        .section_spacing})[SNew(SSettingsSection)
+                                               .Style(&style_->settings())
+                                               .Header()[SNew(SHiveSectionHeader)
+                                                             .Style(style_)
+                                                             .Icon(&style_->icon(EGameUiIcon::Hive))
+                                                             .Text(title)]
+                                               .Title(title)[rows]];
+    };
+
+    auto const profiles{settings->control_profiles()};
+    TArray<FText> profile_labels;
+    profile_labels.Reserve(profiles.Num());
+    for (auto const& profile : profiles) {
+        profile_labels.Add(profile.modified ? FText::Format(NSLOCTEXT("OptionsMenu",
+                                                                      "ModifiedControlProfile",
+                                                                      "{0} (Modified)"),
+                                                            profile.display_name)
+                                            : profile.display_name);
+    }
+    TSharedPtr<SSettingsChoice> profile_choice;
+    auto profile_rows{SNew(SVerticalBox)};
+    profile_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
+        [SAssignNew(profile_choice, SSettingsChoice)
+             .Style(&style_->settings())
+             .Label(NSLOCTEXT("OptionsMenu", "ControlProfile", "Control Profile"))
+             .ToolTipText(NSLOCTEXT("OptionsMenu",
+                                    "ControlProfileTip",
+                                    "Choose a preset. Rebinding modifies the selected profile."))
+             .Options(MoveTemp(profile_labels))
+             .SelectedIndex_Lambda([weak_settings = settings_, profiles] {
+                 auto const* const current{weak_settings.Get()};
+                 if (current == nullptr) {
+                     return int32{INDEX_NONE};
+                 }
+                 auto const current_profiles{current->control_profiles()};
+                 return current_profiles.IndexOfByPredicate(
+                     [](FControlProfileView const& profile) { return profile.active; });
+             })
+             .OnSelectionChanged_Lambda([this, profiles](int32 const index) {
+                 if (auto* const current{settings_.Get()};
+                     profiles.IsValidIndex(index) && current != nullptr &&
+                     current->set_control_profile(profiles[index].id)) {
+                     rebuild_controls_page();
+                     refresh();
+                 }
+             })];
+    page_focus_actions_[static_cast<int32>(EOptionsTab::Controls)] = [profile_choice] {
+        profile_choice->focus();
+    };
+    add_section(NSLOCTEXT("OptionsMenu", "ProfilesSection", "Profiles"), profile_rows);
+
+    auto add_binding_sections = [this, settings, &add_section](
+                                    EHardwareDevicePrimaryType const device,
+                                    FText const& empty_title) {
+        auto const bindings{settings->control_bindings(device)};
+        FText category;
+        TSharedPtr<SVerticalBox> rows;
+        auto flush = [&] {
+            if (rows.IsValid()) {
+                add_section(category, rows.ToSharedRef());
+            }
+        };
+        for (auto const& binding : bindings) {
+            if (!rows.IsValid() || !binding.display_category.EqualTo(category)) {
+                flush();
+                category = binding.display_category;
+                rows = SNew(SVerticalBox);
+            }
+            rows->AddSlot().AutoHeight().Padding(
+                style_->settings().row_padding)[build_binding_row(binding)];
+        }
+        flush();
+        if (bindings.IsEmpty()) {
+            auto empty_rows{SNew(SVerticalBox)};
+            empty_rows->AddSlot()
+                .AutoHeight()[SNew(STextBlock)
+                                  .Text(NSLOCTEXT(
+                                      "OptionsMenu", "NoControlBindings", "No bindings available."))
+                                  .TextStyle(&style_->settings().empty_text)];
+            add_section(empty_title, empty_rows);
+        }
+    };
+    add_binding_sections(EHardwareDevicePrimaryType::KeyboardAndMouse,
+                         NSLOCTEXT("OptionsMenu", "KeyboardMouseSection", "Keyboard & Mouse"));
+    add_binding_sections(EHardwareDevicePrimaryType::Gamepad,
+                         NSLOCTEXT("OptionsMenu", "ControllerSection", "Controller"));
+
+    FText response_section;
+    TSharedPtr<SVerticalBox> response_rows;
+    auto flush_response = [&] {
+        if (response_rows.IsValid()) {
+            add_section(response_section, response_rows.ToSharedRef());
+        }
+    };
+    for (auto const* const descriptor : settings->descriptors(EGameSettingCategory::Controls)) {
+        auto const next_section{section_label(*descriptor)};
+        if (!response_rows.IsValid() || !next_section.EqualTo(response_section)) {
+            flush_response();
+            response_section = next_section;
+            response_rows = SNew(SVerticalBox);
+        }
+        TFunction<void()> unused_focus;
+        response_rows->AddSlot().AutoHeight().Padding(
+            style_->settings().row_padding)[build_setting_row(*descriptor, unused_focus)];
+    }
+    flush_response();
+}
+
+auto SGameOptionsView::build_binding_row(FControlBindingView const& binding)
+    -> TSharedRef<SWidget> {
+    auto label{binding.display_name};
+    if (binding.address.slot == EPlayerMappableKeySlot::Second) {
+        label =
+            FText::Format(NSLOCTEXT("OptionsMenu", "SecondaryBinding", "{0} (Secondary)"), label);
+    }
+    auto const key_text{binding.current_key.IsValid()
+                            ? binding.current_key.GetDisplayName()
+                            : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
+    return SNew(SHorizontalBox) +
+           SHorizontalBox::Slot().FillWidth(1.0f).VAlign(VAlign_Center)
+               [SNew(STextBlock).Text(label).TextStyle(&style_->text(EGameTextStyle::Body))] +
+           SHorizontalBox::Slot().AutoWidth().Padding(
+               FMargin{0.0f,
+                       0.0f,
+                       style_->settings().button_spacing,
+                       0.0f})[SNew(SGameButton)
+                                  .Style(&style_->button(EGameButtonStyle::Secondary))
+                                  .Text(key_text)
+                                  .OnClicked_Lambda([this, address = binding.address] {
+                                      begin_binding_capture(address);
+                                      return FReply::Handled();
+                                  })] +
+           SHorizontalBox::Slot()
+               .AutoWidth()[SNew(SGameButton)
+                                .Style(&style_->button(EGameButtonStyle::Secondary))
+                                .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
+                                .Enabled(binding.modified)
+                                .OnClicked_Lambda([this, address = binding.address] {
+                                    if (auto* const current{settings_.Get()}) {
+                                        current->reset_control_binding(address);
+                                        rebuild_controls_page();
+                                        refresh();
+                                    }
+                                    return FReply::Handled();
+                                })];
+}
+
+void SGameOptionsView::begin_binding_capture(FControlBindingAddress const& address) {
+    remember_focus();
+    captured_binding_ = address;
+    captured_key_ = EKeys::Invalid;
+    capture_prompt_->SetVisibility(EVisibility::Visible);
+    FSlateApplication::Get().SetKeyboardFocus(SharedThis(this), EFocusCause::SetDirectly);
+}
+
+auto SGameOptionsView::accept_binding_key(FKey const key) -> FReply {
+    auto* const settings{settings_.Get()};
+    if (settings == nullptr || !captured_binding_.IsSet() || !key.IsValid()) {
+        return FReply::Handled();
+    }
+    auto const mappings{settings->control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+    auto const* const target{mappings.FindByPredicate([this](auto const& candidate) {
+        return candidate.address == captured_binding_.GetValue();
+    })};
+    if (target == nullptr ||
+        (target->device_type == EHardwareDevicePrimaryType::Gamepad) != key.IsGamepadKey()) {
+        return FReply::Handled();
+    }
+
+    auto const conflicts{settings->binding_conflicts(captured_binding_.GetValue(), key)};
+    capture_prompt_->SetVisibility(EVisibility::Collapsed);
+    if (!conflicts.IsEmpty()) {
+        captured_key_ = key;
+        conflict_prompt_->SetVisibility(EVisibility::Visible);
+        conflict_replace_button_->focus();
+        return FReply::Handled();
+    }
+    settings->set_control_binding(captured_binding_.GetValue(), key, false);
+    close_binding_prompt();
+    rebuild_controls_page();
+    refresh();
+    return FReply::Handled();
+}
+
+void SGameOptionsView::close_binding_prompt() {
+    if (capture_prompt_.IsValid()) {
+        capture_prompt_->SetVisibility(EVisibility::Collapsed);
+    }
+    if (conflict_prompt_.IsValid()) {
+        conflict_prompt_->SetVisibility(EVisibility::Collapsed);
+    }
+    captured_binding_.Reset();
+    captured_key_ = EKeys::Invalid;
+    restore_focus();
 }
 
 auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descriptor,
@@ -649,6 +925,45 @@ auto SGameOptionsView::build_display_prompt() -> TSharedRef<SWidget> {
                              FText::AsNumber(seconds));
     })};
     return build_modal(MoveTemp(title), {confirm, revert});
+}
+
+auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
+    return build_modal(
+        NSLOCTEXT("OptionsMenu",
+                  "CaptureBindingPrompt",
+                  "Press a keyboard, mouse, or controller button. Press Back to cancel."),
+        {});
+}
+
+auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
+    auto replace{SAssignNew(conflict_replace_button_, SGameButton)
+                     .Style(&style_->button(EGameButtonStyle::Primary))
+                     .Text(NSLOCTEXT("OptionsMenu", "ReplaceBinding", "Replace"))
+                     .OnClicked_Lambda([this] {
+                         if (auto* const settings{settings_.Get()};
+                             captured_binding_.IsSet() && settings != nullptr) {
+                             settings->set_control_binding(
+                                 captured_binding_.GetValue(), captured_key_, true);
+                         }
+                         close_binding_prompt();
+                         rebuild_controls_page();
+                         refresh();
+                         return FReply::Handled();
+                     })};
+    auto cancel{SAssignNew(conflict_cancel_button_, SGameButton)
+                    .Style(&style_->button(EGameButtonStyle::Secondary))
+                    .Text(NSLOCTEXT("OptionsMenu", "CancelBinding", "Cancel"))
+                    .OnClicked_Lambda([this] {
+                        close_binding_prompt();
+                        return FReply::Handled();
+                    })};
+    auto title{TAttribute<FText>::CreateLambda([this] {
+        return FText::Format(NSLOCTEXT("OptionsMenu",
+                                       "BindingConflictPrompt",
+                                       "{0} is already assigned. Replace that binding?"),
+                             captured_key_.GetDisplayName());
+    })};
+    return build_modal(MoveTemp(title), {replace, cancel});
 }
 
 auto SGameOptionsView::build_modal(TAttribute<FText> title,

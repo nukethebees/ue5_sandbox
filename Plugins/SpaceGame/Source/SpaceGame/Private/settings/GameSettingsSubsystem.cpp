@@ -1,7 +1,11 @@
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 
 #include "Containers/Ticker.h"
+#include "Engine/LocalPlayer.h"
+#include "EnhancedInputSubsystems.h"
 #include "HAL/PlatformTime.h"
+#include "SpaceGame/input/ControlProfiles.h"
+#include "SpaceGame/input/SpaceGameInputUserSettings.h"
 
 namespace ml::ioj {
 constexpr double display_confirmation_duration_seconds{15.0};
@@ -19,11 +23,14 @@ void UGameSettingsSubsystem::Deinitialize() {
     Super::Deinitialize();
 }
 
-void UGameSettingsSubsystem::begin_edit() {
+void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
     if (awaiting_display_confirmation_) {
         return;
     }
+    backend_.set_local_player(local_player);
+    editing_local_player_ = local_player;
     edit_state_.begin(backend_.read(), backend_.defaults());
+    capture_input_edit_state();
     editing_ = true;
     settings_changed.Broadcast();
 }
@@ -32,6 +39,7 @@ void UGameSettingsSubsystem::cancel() {
     if (!editing_ || awaiting_display_confirmation_) {
         return;
     }
+    restore_input_edit_state();
     preview_immediate_settings(edit_state_.applied());
     edit_state_.cancel();
     editing_ = false;
@@ -48,6 +56,7 @@ void UGameSettingsSubsystem::apply() {
     auto const display_changed{pending.resolution != applied.resolution ||
                                pending.window_mode != applied.window_mode};
     backend_.apply_non_display(pending);
+    capture_input_edit_state();
     if (!display_changed) {
         backend_.save();
         edit_state_.commit_all();
@@ -77,6 +86,9 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
     }
     auto const before{edit_state_.pending()};
     edit_state_.reset_category(category);
+    if (category == EGameSettingCategory::Controls) {
+        reset_active_control_profile();
+    }
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category &&
             descriptor.apply_mode == ESettingApplyMode::Immediate &&
@@ -175,14 +187,21 @@ auto UGameSettingsSubsystem::is_available(EGameSetting const setting) const -> b
 }
 
 auto UGameSettingsSubsystem::is_dirty() const -> bool {
-    return edit_state_.is_dirty();
+    return edit_state_.is_dirty() || input_is_dirty();
 }
 
 auto UGameSettingsSubsystem::is_dirty(EGameSettingCategory const category) const -> bool {
-    return edit_state_.is_dirty(category);
+    return edit_state_.is_dirty(category) ||
+           (category == EGameSettingCategory::Controls && input_is_dirty());
 }
 
 auto UGameSettingsSubsystem::is_at_defaults(EGameSettingCategory const category) const -> bool {
+    if (category == EGameSettingCategory::Controls) {
+        auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+        auto const has_modified_binding{
+            bindings.ContainsByPredicate([](auto const& binding) { return binding.modified; })};
+        return edit_state_.is_at_defaults(category) && !has_modified_binding;
+    }
     return edit_state_.is_at_defaults(category);
 }
 
@@ -251,6 +270,301 @@ auto UGameSettingsSubsystem::normalize_value(FGameSettingDescriptor const& descr
         }
     }
     return value;
+}
+
+auto UGameSettingsSubsystem::input_user_settings() const -> USpaceGameInputUserSettings* {
+    auto* const local_player{editing_local_player_.Get()};
+    auto* const subsystem{
+        local_player != nullptr
+            ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)
+            : nullptr};
+    return subsystem != nullptr ? Cast<USpaceGameInputUserSettings>(subsystem->GetUserSettings())
+                                : nullptr;
+}
+
+auto UGameSettingsSubsystem::control_profiles() const -> TArray<FControlProfileView> {
+    TArray<FControlProfileView> result;
+    auto const* const settings{input_user_settings()};
+    if (settings == nullptr) {
+        return result;
+    }
+
+    for (auto const& definition : control_profile_definitions()) {
+        auto const* const profile{settings->GetKeyProfileWithId(definition.id)};
+        if (!IsValid(profile)) {
+            continue;
+        }
+        auto modified{false};
+        for (auto const& row : profile->GetPlayerMappingRows()) {
+            for (auto const& mapping : row.Value.Mappings) {
+                modified |= mapping.IsCustomized();
+            }
+        }
+        result.Add(FControlProfileView{
+            .id = definition.id,
+            .display_name = definition.display_name,
+            .active = definition.id == settings->GetActiveKeyProfileId(),
+            .modified = modified,
+        });
+    }
+    return result;
+}
+
+auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBindingView> {
+    TArray<FControlBindingView> result;
+    auto const* const settings{input_user_settings()};
+    if (settings == nullptr) {
+        return result;
+    }
+
+    for (auto const& profile_pair : settings->GetAllAvailableKeyProfiles()) {
+        auto const* const profile{profile_pair.Value.Get()};
+        if (!IsValid(profile)) {
+            continue;
+        }
+        for (auto const& row : profile->GetPlayerMappingRows()) {
+            for (auto const& mapping : row.Value.Mappings) {
+                result.Add(FControlBindingView{
+                    .address =
+                        {
+                            .profile_id = profile_pair.Key,
+                            .mapping_name = mapping.GetMappingName(),
+                            .hardware_device_id =
+                                mapping.GetHardwareDeviceId().HardwareDeviceIdentifier,
+                            .slot = mapping.GetSlot(),
+                        },
+                    .display_name = mapping.GetDisplayName(),
+                    .display_category = mapping.GetDisplayCategory(),
+                    .device_type = mapping.GetPrimaryDeviceType(),
+                    .current_key = mapping.GetCurrentKey(),
+                    .default_key = mapping.GetDefaultKey(),
+                    .modified = mapping.IsCustomized(),
+                });
+            }
+        }
+    }
+    result.Sort([](auto const& left, auto const& right) {
+        if (left.address.profile_id != right.address.profile_id) {
+            return left.address.profile_id < right.address.profile_id;
+        }
+        if (!left.display_category.EqualTo(right.display_category)) {
+            return left.display_category.ToString() < right.display_category.ToString();
+        }
+        if (!left.display_name.EqualTo(right.display_name)) {
+            return left.display_name.ToString() < right.display_name.ToString();
+        }
+        if (left.device_type != right.device_type) {
+            return static_cast<uint8>(left.device_type) < static_cast<uint8>(right.device_type);
+        }
+        return static_cast<uint8>(left.address.slot) < static_cast<uint8>(right.address.slot);
+    });
+    return result;
+}
+
+auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const device_type) const
+    -> TArray<FControlBindingView> {
+    auto* const settings{input_user_settings()};
+    if (settings == nullptr) {
+        return {};
+    }
+    auto result{
+        all_control_bindings().FilterByPredicate([settings, device_type](auto const& binding) {
+            return binding.address.profile_id == settings->GetActiveKeyProfileId() &&
+                   (device_type == EHardwareDevicePrimaryType::Unspecified ||
+                    binding.device_type == device_type);
+        })};
+    return result;
+}
+
+auto UGameSettingsSubsystem::binding_conflicts(FControlBindingAddress const& address,
+                                               FKey const key) const
+    -> TArray<FControlBindingView> {
+    if (!key.IsValid()) {
+        return {};
+    }
+    return control_bindings(EHardwareDevicePrimaryType::Unspecified)
+        .FilterByPredicate([&address, key](auto const& binding) {
+            return binding.address.profile_id == address.profile_id &&
+                   binding.address.hardware_device_id == address.hardware_device_id &&
+                   binding.address != address && binding.current_key == key;
+        });
+}
+
+auto UGameSettingsSubsystem::set_control_profile(FString const& profile_id) -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr || !settings->SetActiveKeyProfile(profile_id)) {
+        return false;
+    }
+    settings_changed.Broadcast();
+    return true;
+}
+
+auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& address,
+                                                 FKey const key,
+                                                 bool const replace_conflicts) -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr || !key.IsValid() ||
+        address.profile_id != settings->GetActiveKeyProfileId()) {
+        return false;
+    }
+
+    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+    auto const* const target{bindings.FindByPredicate(
+        [&address](auto const& binding) { return binding.address == address; })};
+    if (target == nullptr ||
+        (target->device_type == EHardwareDevicePrimaryType::Gamepad) != key.IsGamepadKey()) {
+        return false;
+    }
+    auto const conflicts{bindings.FilterByPredicate([&address, key](auto const& binding) {
+        return binding.address.profile_id == address.profile_id &&
+               binding.address.hardware_device_id == address.hardware_device_id &&
+               binding.address != address && binding.current_key == key;
+    })};
+    if (!conflicts.IsEmpty() && !replace_conflicts) {
+        return false;
+    }
+
+    auto map_key = [settings](FControlBindingAddress const& target, FKey const mapped_key) {
+        FMapPlayerKeyArgs arguments{};
+        arguments.MappingName = target.mapping_name;
+        arguments.Slot = target.slot;
+        arguments.NewKey = mapped_key;
+        arguments.HardwareDeviceId = target.hardware_device_id;
+        arguments.ProfileIdString = target.profile_id;
+        FGameplayTagContainer failure_reason;
+        settings->MapPlayerKey(arguments, failure_reason);
+        if (!failure_reason.IsEmpty()) {
+            UE_LOG(LogTemp,
+                   Warning,
+                   TEXT("Could not map control '%s': %s"),
+                   *target.mapping_name.ToString(),
+                   *failure_reason.ToStringSimple());
+            return false;
+        }
+        return true;
+    };
+
+    TArray<FControlBindingView> unmapped_conflicts;
+    unmapped_conflicts.Reserve(conflicts.Num());
+    for (auto const& conflict : conflicts) {
+        if (!map_key(conflict.address, EKeys::Invalid)) {
+            for (auto const& unmapped : unmapped_conflicts) {
+                static_cast<void>(map_key(unmapped.address, unmapped.current_key));
+            }
+            return false;
+        }
+        unmapped_conflicts.Add(conflict);
+    }
+    if (!map_key(address, key)) {
+        for (auto const& unmapped : unmapped_conflicts) {
+            static_cast<void>(map_key(unmapped.address, unmapped.current_key));
+        }
+        return false;
+    }
+    settings_changed.Broadcast();
+    return true;
+}
+
+auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const& address) -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr) {
+        return false;
+    }
+    FMapPlayerKeyArgs arguments{};
+    arguments.MappingName = address.mapping_name;
+    arguments.Slot = address.slot;
+    arguments.HardwareDeviceId = address.hardware_device_id;
+    arguments.ProfileIdString = address.profile_id;
+    FGameplayTagContainer failure_reason;
+    settings->UnMapPlayerKey(arguments, failure_reason);
+    if (!failure_reason.IsEmpty()) {
+        UE_LOG(LogTemp,
+               Warning,
+               TEXT("Could not reset control '%s': %s"),
+               *address.mapping_name.ToString(),
+               *failure_reason.ToStringSimple());
+        return false;
+    }
+    settings_changed.Broadcast();
+    return true;
+}
+
+auto UGameSettingsSubsystem::reset_active_control_profile() -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr) {
+        return false;
+    }
+    FGameplayTagContainer failure_reason;
+    settings->ResetKeyProfileIdToDefault(settings->GetActiveKeyProfileId(), failure_reason);
+    if (!failure_reason.IsEmpty()) {
+        UE_LOG(LogTemp,
+               Warning,
+               TEXT("Could not reset active control profile: %s"),
+               *failure_reason.ToStringSimple());
+        return false;
+    }
+    settings_changed.Broadcast();
+    return true;
+}
+
+void UGameSettingsSubsystem::capture_input_edit_state() {
+    auto const* const settings{input_user_settings()};
+    if (settings == nullptr) {
+        applied_control_bindings_.Reset();
+        applied_control_profile_id_.Reset();
+        return;
+    }
+    applied_control_bindings_ = all_control_bindings();
+    applied_control_profile_id_ = settings->GetActiveKeyProfileId();
+}
+
+void UGameSettingsSubsystem::restore_input_edit_state() {
+    auto* const settings{input_user_settings()};
+    if (settings == nullptr || applied_control_profile_id_.IsEmpty()) {
+        return;
+    }
+
+    for (auto const& profile : control_profile_definitions()) {
+        FGameplayTagContainer failure_reason;
+        settings->ResetKeyProfileIdToDefault(profile.id, failure_reason);
+    }
+    for (auto const& binding : applied_control_bindings_) {
+        if (binding.current_key == binding.default_key) {
+            continue;
+        }
+        FMapPlayerKeyArgs arguments{};
+        arguments.MappingName = binding.address.mapping_name;
+        arguments.Slot = binding.address.slot;
+        arguments.NewKey = binding.current_key;
+        arguments.HardwareDeviceId = binding.address.hardware_device_id;
+        arguments.ProfileIdString = binding.address.profile_id;
+        FGameplayTagContainer failure_reason;
+        settings->MapPlayerKey(arguments, failure_reason);
+    }
+    settings->SetActiveKeyProfile(applied_control_profile_id_);
+    settings->ApplySettings();
+}
+
+auto UGameSettingsSubsystem::input_is_dirty() const -> bool {
+    auto const* const settings{input_user_settings()};
+    if (settings == nullptr) {
+        return false;
+    }
+    if (settings->GetActiveKeyProfileId() != applied_control_profile_id_) {
+        return true;
+    }
+    auto const current{all_control_bindings()};
+    if (current.Num() != applied_control_bindings_.Num()) {
+        return true;
+    }
+    auto const binding_count{current.Num()};
+    for (int32 index{}; index < binding_count; ++index) {
+        if (current[index].address != applied_control_bindings_[index].address ||
+            current[index].current_key != applied_control_bindings_[index].current_key) {
+            return true;
+        }
+    }
+    return false;
 }
 
 } // namespace ml::ioj

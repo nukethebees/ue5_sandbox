@@ -1,6 +1,7 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/presentation/widgets/ShipHudWidget.h>
@@ -23,6 +24,7 @@
 #include <Kismet/KismetSystemLibrary.h>
 #include <TimerManager.h>
 #include <UnrealClient.h>
+#include <UserSettings/EnhancedInputUserSettings.h>
 
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 
@@ -175,20 +177,18 @@ auto ASpaceGamePlayerController::set_control_context(EPlayerControlContext const
     return false;
 }
 
-void ASpaceGamePlayerController::on_ship_mapping_context_changed(
-    UInputMappingContext const& context) {
-    auto const context_name{GetNameSafe(&context)};
-    UE_LOG(LogSandbox, Display, TEXT("Setting context to: %s"), *context_name);
+void ASpaceGamePlayerController::on_ship_control_profile_changed(FString const& profile_name) {
+    UE_LOG(LogSandbox, Display, TEXT("Setting control profile to: %s"), *profile_name);
 
     auto* const orchestrator{hud_orchestrator.Get()};
     if (!IsValid(orchestrator)) {
         UE_LOG(LogSandboxController,
                Warning,
-               TEXT("ASpaceGamePlayerController::on_ship_mapping_context_changed: HUD "
+               TEXT("ASpaceGamePlayerController::on_ship_control_profile_changed: HUD "
                     "orchestrator is invalid."));
         return;
     }
-    orchestrator->get_hud_manager().set_selected_mapping_context(context_name);
+    orchestrator->get_hud_manager().set_selected_mapping_context(profile_name);
 }
 
 void ASpaceGamePlayerController::toggle_pause_game() {
@@ -239,6 +239,7 @@ void ASpaceGamePlayerController::toggle_pause_game() {
 void ASpaceGamePlayerController::BeginPlay() {
     Super::BeginPlay();
 
+    initialise_input_user_settings();
     begin_play_finished_ = true;
     initialise_ui_root();
     if (main_menu_requested_) {
@@ -247,6 +248,24 @@ void ASpaceGamePlayerController::BeginPlay() {
     }
 
     initialise_gameplay();
+}
+
+void ASpaceGamePlayerController::initialise_input_user_settings() {
+    auto* const local_player{GetLocalPlayer()};
+    auto* const subsystem{
+        IsValid(local_player)
+            ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)
+            : nullptr};
+    auto* const settings{IsValid(subsystem) ? subsystem->GetUserSettings() : nullptr};
+    auto* const mapping_context{input.get_mapping_context()};
+    if (!IsValid(settings) || !IsValid(mapping_context)) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::initialise_input_user_settings: Input settings "
+                    "or mapping context are invalid."));
+        return;
+    }
+    ml::ioj::register_control_profiles(*settings, *mapping_context);
 }
 
 void ASpaceGamePlayerController::initialise_gameplay() {
