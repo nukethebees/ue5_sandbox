@@ -301,6 +301,16 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
         return;
     }
 
+    if (actor_config->fighter_spawn_slots < 0 ||
+        actor_config->fighter_spawn_slots_relative_transforms.Num() !=
+            actor_config->fighter_spawn_slots) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("ATestCapitalShipProxy::apply_asset_configuration: saved spawn slot count "
+                    "does not match its transforms; existing arrows were left unchanged."));
+        return;
+    }
+
     ml::destroy_components_array(fighter_spawn_slots);
     fighter_spawn_slots.Reserve(actor_config->fighter_spawn_slots);
 

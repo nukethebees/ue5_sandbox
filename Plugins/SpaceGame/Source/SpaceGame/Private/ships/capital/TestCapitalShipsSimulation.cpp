@@ -265,7 +265,7 @@ void Simulation::queue_fighter_spawns() {
         return;
     }
 
-    auto const relative_transforms{config.fighter_spawn_slots_relative_transforms};
+    auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
         auto const base_location{ml::get_vector3f(entities.locations, capital_index)};
         auto const base_rotation{ml::get_rotator3f(entities.rotations, capital_index)};
