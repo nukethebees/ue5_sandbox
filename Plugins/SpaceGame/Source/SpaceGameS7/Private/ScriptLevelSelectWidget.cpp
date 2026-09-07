@@ -130,7 +130,10 @@ auto entry_matches_category(FLevelScriptEntry const& entry, ELevelCatalogCategor
     if (!entry) {
         return category == ELevelCatalogCategory::Mission;
     }
-    return catalog_category(entry.definition.GetValue()) == category;
+    auto const content_category{catalog_category(entry.definition.GetValue())};
+    return category == ELevelCatalogCategory::Mission
+             ? content_category == ELevelCatalogCategory::Mission
+             : content_category == ELevelCatalogCategory::BattleViewer;
 }
 
 auto source_sha256(FString const& path) -> FString {
@@ -245,6 +248,10 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
         view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
         view_state_.description = NSLOCTEXT(
             "LevelSelect", "SelectLevelDetail", "Select a mission record to review its directive.");
+    } else if (active_category_ == ELevelCatalogCategory::Benchmark) {
+        view_state_.title = NSLOCTEXT("LevelSelect", "SelectBenchmark", "SELECT A BENCHMARK");
+        view_state_.description = NSLOCTEXT(
+            "LevelSelect", "SelectBenchmarkDetail", "Select a scenario to run as a benchmark.");
     } else {
         view_state_.title = NSLOCTEXT("LevelSelect", "SelectBattle", "SELECT A BATTLE");
         view_state_.description = NSLOCTEXT(
@@ -355,19 +362,30 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
 
     auto status{catalog_error_};
     if (status.IsEmpty() && visible_entry_count == 0) {
-        status = active_category_ == ELevelCatalogCategory::Mission
-                   ? FString::Printf(TEXT("No mission scripts found in %s"), *catalog_directory_)
-                   : FString::Printf(TEXT("No Battle Viewer scenarios found in %s"),
+        if (active_category_ == ELevelCatalogCategory::Mission) {
+            status = FString::Printf(TEXT("No mission scripts found in %s"), *catalog_directory_);
+        } else if (active_category_ == ELevelCatalogCategory::Benchmark) {
+            status =
+                FString::Printf(TEXT("No benchmark scenarios found in %s"), *catalog_directory_);
+        } else {
+            status = FString::Printf(TEXT("No Battle Viewer scenarios found in %s"),
                                      *catalog_directory_);
+        }
     } else if (status.IsEmpty()) {
-        status = active_category_ == ELevelCatalogCategory::Mission
-                   ? FString::Printf(TEXT("%d mission records available across %d campaigns."),
+        if (active_category_ == ELevelCatalogCategory::Mission) {
+            status = FString::Printf(TEXT("%d mission records available across %d campaigns."),
                                      visible_entry_count,
-                                     visible_campaign_count)
-                   : FString::Printf(TEXT("%d Battle Viewer scenarios available across %d "
+                                     visible_campaign_count);
+        } else if (active_category_ == ELevelCatalogCategory::Benchmark) {
+            status = FString::Printf(TEXT("%d benchmark scenarios available across %d campaigns."),
+                                     visible_entry_count,
+                                     visible_campaign_count);
+        } else {
+            status = FString::Printf(TEXT("%d Battle Viewer scenarios available across %d "
                                           "campaigns."),
                                      visible_entry_count,
                                      visible_campaign_count);
+        }
     }
     view_state_.status = FText::FromString(status);
 
@@ -449,7 +467,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 }
 
 void UScriptLevelSelectWidget::handle_launch() {
-    auto const time_scale{active_category_ == ELevelCatalogCategory::BattleViewer
+    auto const time_scale{active_category_ != ELevelCatalogCategory::Mission
                               ? battle_time_scale_
                               : TOptional<double>{ml::ioj::level_launch::default_time_scale}};
     if (!time_scale.IsSet()) {
@@ -466,7 +484,7 @@ void UScriptLevelSelectWidget::handle_launch() {
         .launch_mode = launch_mode,
         .requested_time_scale = time_scale.GetValue(),
     };
-    if (active_category_ == ELevelCatalogCategory::BattleViewer) {
+    if (active_category_ != ELevelCatalogCategory::Mission) {
         options.presentation_mode = battle_simulation_only_
                                       ? ml::ioj::ELevelPresentationMode::SimulationOnly
                                       : ml::ioj::ELevelPresentationMode::Visual;
@@ -531,11 +549,17 @@ void UScriptLevelSelectWidget::launch_selected_level(ml::ioj::FLevelLaunchOption
     auto& entry{entries_[selected_entry_index_]};
     auto definition{MoveTemp(entry.definition.GetValue())};
     entry.definition.Reset();
+    options.control_context =
+        active_category_ == ELevelCatalogCategory::Mission     ? EPlayerControlContext::Player
+        : active_category_ == ELevelCatalogCategory::Benchmark ? EPlayerControlContext::Benchmark
+                                                               : EPlayerControlContext::Observer;
     game_->set_pending_level(MoveTemp(definition), entry.path, source_sha256(entry.path), options);
     view_state_.can_launch = false;
     if (options.launch_mode == ml::ioj::ELevelLaunchMode::Paused) {
         view_state_.status =
             NSLOCTEXT("LevelSelect", "StagingPaused", "STAGING LEVEL IN PAUSED STATE...");
+    } else if (options.control_context == EPlayerControlContext::Benchmark) {
+        view_state_.status = NSLOCTEXT("LevelSelect", "StartingBenchmark", "STARTING BENCHMARK...");
     } else if (active_category_ == ELevelCatalogCategory::BattleViewer) {
         view_state_.status =
             NSLOCTEXT("LevelSelect", "OpeningBattleViewer", "OPENING BATTLE VIEWER...");

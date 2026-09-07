@@ -2,6 +2,7 @@
 
 #include "SpaceGame/levels/LevelDefinition.h"
 #include "SpaceGame/persistence/SaveGameBrowser.h"
+#include "SpaceGame/ships/player/PlayerControlContext.h"
 #include "SpaceGame/ui/style/GameUiStyle.h"
 
 #include "Subsystems/GameInstanceSubsystem.h"
@@ -96,6 +97,7 @@ struct SPACEGAME_API FLevelLaunchOptions {
     bool stop_when_battle_resolved{};
     bool detailed_timing{true};
     ELevelResultsNavigation results_navigation{ELevelResultsNavigation::None};
+    EPlayerControlContext control_context{EPlayerControlContext::Player};
 };
 
 struct SPACEGAME_API FPendingLevelDefinition {

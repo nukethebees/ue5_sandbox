@@ -8,7 +8,10 @@
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/levels/LevelLoader.h>
+#include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
+#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
@@ -64,7 +67,8 @@ void FLevelLoaderCameraScenario::load_fixture() {
     checks.is_true(!IsValid(context_.orchestrator.get_player_ship()),
                    TEXT("Orchestrator has no player ship"));
 
-    auto* const player_controller{UGameplayStatics::GetPlayerController(&context_.world, 0)};
+    auto* const player_controller{Cast<ASpaceGamePlayerController>(
+        UGameplayStatics::GetPlayerController(&context_.world, 0))};
     checks.is_valid(player_controller, TEXT("Test world has a player controller"));
     auto const expected_focus{FVector{10000.0, 0.0, 0.0}};
     auto const expected_camera_position{expected_focus +
@@ -90,6 +94,42 @@ void FLevelLoaderCameraScenario::load_fixture() {
         IsValid(camera)) {
         checks.is_true(player_controller->GetViewTarget() == camera,
                        TEXT("Player controller uses the authored camera"));
+        checks.is_true(player_controller->get_active_control_context() ==
+                           EPlayerControlContext::Observer,
+                       TEXT("Playerless Battle Viewer enters observer context"));
+        checks.is_true(player_controller->is_observer_movement_enabled(),
+                       TEXT("Observer movement input is enabled"));
+        checks.is_true(Cast<UBattleViewerHudWidget>(player_controller->get_active_hud()) != nullptr,
+                       TEXT("Observer context creates the Battle Viewer HUD"));
+        checks.is_true(Cast<UShipHudWidget>(player_controller->get_active_hud()) == nullptr,
+                       TEXT("Observer context does not create the player HUD"));
+
+        auto const observer_transform{camera->GetActorTransform()};
+        checks.is_true(
+            player_controller->activate_playerless_camera(*camera,
+                                                          EPlayerControlContext::Benchmark),
+            TEXT("Benchmark context can be selected when activating the playerless camera"));
+        checks.is_true(player_controller->get_active_control_context() ==
+                           EPlayerControlContext::Benchmark,
+                       TEXT("Benchmark context becomes active"));
+        checks.is_true(!player_controller->is_observer_movement_enabled(),
+                       TEXT("Benchmark context disables observer movement"));
+        checks.is_true(player_controller->get_active_hud() == nullptr,
+                       TEXT("Benchmark context removes presentation HUDs"));
+        checks.is_true(camera->GetActorTransform().Equals(observer_transform),
+                       TEXT("Entering benchmark retains the observer camera transform"));
+
+        checks.is_true(player_controller->set_benchmark_enabled(false),
+                       TEXT("Benchmark context can be exited"));
+        checks.is_true(player_controller->get_active_control_context() ==
+                           EPlayerControlContext::Observer,
+                       TEXT("Exiting benchmark returns to observer context"));
+        checks.is_true(player_controller->is_observer_movement_enabled(),
+                       TEXT("Exiting benchmark restores observer movement"));
+        checks.is_true(Cast<UBattleViewerHudWidget>(player_controller->get_active_hud()) != nullptr,
+                       TEXT("Exiting benchmark restores the Battle Viewer HUD"));
+        checks.is_true(camera->GetActorTransform().Equals(observer_transform),
+                       TEXT("Exiting benchmark retains the camera transform"));
     }
 
     reset_and_reserve_time_series(context_.orchestrator, 0.05, entity_counts_);
@@ -249,10 +289,16 @@ void FLevelLoaderScenario::load_fixture() {
 
     auto const* const player{context_.orchestrator.get_player_ship()};
     if (checks.is_valid(player, TEXT("Loader binds the player to the orchestrator"))) {
-        auto* const player_controller{context_.world.GetFirstPlayerController()};
+        auto* const player_controller{
+            Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
         if (checks.is_valid(player_controller, TEXT("Test world has a player controller"))) {
             checks.is_true(player_controller->GetPawn() == player,
                            TEXT("Player controller possesses the authored player ship"));
+            checks.is_true(player_controller->get_active_control_context() ==
+                               EPlayerControlContext::Player,
+                           TEXT("Playable level enters player context"));
+            checks.is_true(Cast<UShipHudWidget>(player_controller->get_active_hud()) != nullptr,
+                           TEXT("Player context creates the normal player HUD"));
         }
         checks.are_equal(
             ETestTeam::Blue, player->get_team(), TEXT("Loader resolves the player team"));

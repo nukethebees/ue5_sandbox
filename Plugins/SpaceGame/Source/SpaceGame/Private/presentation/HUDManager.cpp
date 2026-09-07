@@ -3,6 +3,7 @@
 #include "SpaceGame/entities/TestTeamVisualData.h"
 #include "SpaceGame/missions/TestMissionManager.h"
 #include "SpaceGame/presentation/widgets/ShipHudWidget.h"
+#include "SpaceGame/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGame/ships/player/TestSpaceShipSimulation.h"
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
@@ -155,14 +156,19 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         auto* const hud{registration.hud.Get()};
         check(IsValid(hud));
         hud->set_entity_overlay_style(entity_overlay_style_);
-        hud->set_radar_style(radar_style_);
+        auto* const ship_hud{registration.ship_hud.Get()};
+        if (IsValid(ship_hud)) {
+            ship_hud->set_radar_style(radar_style_);
+        }
         if (entity_overlay_settings_.enabled) {
             hud->set_entity_overlay_frame_store(registration.entity_overlay_frame_store);
         } else {
             hud->set_entity_overlay_frame_store({});
         }
-        hud->set_radar_frame_store(radar_settings_.enabled ? registration.radar_frame_store
-                                                           : FRadarFrameStorePtr{});
+        if (IsValid(ship_hud)) {
+            ship_hud->set_radar_frame_store(radar_settings_.enabled ? registration.radar_frame_store
+                                                                    : FRadarFrameStorePtr{});
+        }
         synchronise_hud(*hud);
     }
     for (auto& registration : registered_huds) {
@@ -195,7 +201,9 @@ void FHUDManager::deactivate() {
             continue;
         }
         hud->set_entity_overlay_frame_store({});
-        hud->set_radar_frame_store({});
+        if (auto* const ship_hud{registration.ship_hud.Get()}; IsValid(ship_hud)) {
+            ship_hud->set_radar_frame_store({});
+        }
     }
     registered_huds.Reset();
     player_ship = nullptr;
@@ -256,7 +264,7 @@ void FHUDManager::force_sample() {
     update_radars();
 }
 
-void FHUDManager::register_hud(UShipHudWidget& hud) {
+void FHUDManager::register_hud(USimulationHudWidget& hud) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::register_hud);
     check(IsValid(&hud));
     check(!registered_huds.ContainsByPredicate(
@@ -264,19 +272,22 @@ void FHUDManager::register_hud(UShipHudWidget& hud) {
 
     auto& registration{registered_huds.Emplace_GetRef()};
     registration.hud = &hud;
+    registration.ship_hud = Cast<UShipHudWidget>(&hud);
     registration.entity_overlay_frame_store =
         MakeShared<FEntityOverlayFrameStore, ESPMode::ThreadSafe>();
-    registration.radar_frame_store = MakeShared<FRadarFrameStore, ESPMode::ThreadSafe>();
     hud.set_entity_overlay_style(entity_overlay_style_);
-    hud.set_radar_style(radar_style_);
     if (state == EHUDManagerState::Active && entity_overlay_settings_.enabled) {
         hud.set_entity_overlay_frame_store(registration.entity_overlay_frame_store);
     } else {
         hud.set_entity_overlay_frame_store({});
     }
-    hud.set_radar_frame_store(state == EHUDManagerState::Active && radar_settings_.enabled
-                                  ? registration.radar_frame_store
-                                  : FRadarFrameStorePtr{});
+    if (auto* const ship_hud{registration.ship_hud.Get()}; IsValid(ship_hud)) {
+        registration.radar_frame_store = MakeShared<FRadarFrameStore, ESPMode::ThreadSafe>();
+        ship_hud->set_radar_style(radar_style_);
+        ship_hud->set_radar_frame_store(state == EHUDManagerState::Active && radar_settings_.enabled
+                                            ? registration.radar_frame_store
+                                            : FRadarFrameStorePtr{});
+    }
     if (state == EHUDManagerState::Active) {
         synchronise_hud(hud);
         if (entity_overlay_settings_.enabled) {
@@ -287,7 +298,7 @@ void FHUDManager::register_hud(UShipHudWidget& hud) {
         }
     }
 }
-void FHUDManager::unregister_hud(UShipHudWidget& hud) {
+void FHUDManager::unregister_hud(USimulationHudWidget& hud) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::unregister_hud);
     check(IsValid(&hud));
 
@@ -334,7 +345,8 @@ void FHUDManager::update_entity_overlays(float const delta_seconds) {
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, 0);
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, 0);
     TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes, 0);
-    if (!entity_overlay_settings_.enabled && !radar_settings_.enabled) {
+    if (registered_huds.IsEmpty() ||
+        (!entity_overlay_settings_.enabled && !radar_settings_.enabled)) {
         return;
     }
 
@@ -435,7 +447,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float cons
 
     check(entity_registry);
     FSoftTargetSelectionResult soft_target;
-    if (validate_player_ship_for_collection()) {
+    if (registration.ship_hud.IsValid() && validate_player_ship_for_collection()) {
         auto const firing_transform{player_ship->get_middle_socket()};
         auto const camera_transform{FRotationMatrix{camera_rotation}};
         soft_target =
@@ -540,7 +552,7 @@ void FHUDManager::update_radars() {
     TRACE_COUNTER_SET(SandboxRadarCandidateCount, 0);
     TRACE_COUNTER_SET(SandboxRadarVisibleCount, 0);
     TRACE_COUNTER_SET(SandboxRadarUploadBytes, 0);
-    if (!radar_settings_.enabled) {
+    if (!radar_settings_.enabled || registered_huds.IsEmpty()) {
         return;
     }
 
@@ -551,8 +563,11 @@ void FHUDManager::update_radars() {
 
 void FHUDManager::update_radar(FRegisteredHud& registration) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Radar::Collect);
-    auto* const hud{registration.hud.Get()};
+    auto* const hud{registration.ship_hud.Get()};
     if (!IsValid(hud)) {
+        return;
+    }
+    if (!registration.radar_frame_store.IsValid()) {
         UE_LOG(LogSandboxUI, Error, TEXT("FHUDManager: Registered radar HUD is invalid."));
         return;
     }
@@ -766,20 +781,21 @@ void FHUDManager::update_huds(ml::hud_manager::FDataChanges const& changes) {
         if (changes.entity_counts) {
             update_entity_count_hud(*hud);
         }
-        if (changes.player_status) {
-            update_player_status_hud(*hud);
+        auto* const ship_hud{registration.ship_hud.Get()};
+        if (IsValid(ship_hud) && changes.player_status) {
+            update_player_status_hud(*ship_hud);
         }
-        if (changes.player_flight) {
-            update_player_flight_hud(*hud);
+        if (IsValid(ship_hud) && changes.player_flight) {
+            update_player_flight_hud(*ship_hud);
         }
 #if WITH_EDITOR
-        if (changes.sampled_speed) {
-            update_sampled_speed_hud(*hud);
+        if (IsValid(ship_hud) && changes.sampled_speed) {
+            update_sampled_speed_hud(*ship_hud);
         }
 #endif
     }
 }
-void FHUDManager::synchronise_hud(UShipHudWidget& hud) const {
+void FHUDManager::synchronise_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::synchronise_hud);
     check(IsValid(&hud));
 
@@ -787,23 +803,29 @@ void FHUDManager::synchronise_hud(UShipHudWidget& hud) const {
         update_mission_hud(hud);
     }
     update_entity_count_hud(hud);
-    update_player_status_hud(hud);
-    update_player_flight_hud(hud);
+    auto* const ship_hud{Cast<UShipHudWidget>(&hud)};
+    if (!IsValid(ship_hud)) {
+        return;
+    }
+    update_player_status_hud(*ship_hud);
+    update_player_flight_hud(*ship_hud);
 #if WITH_EDITOR
     if (has_sampled_speed_data) {
-        update_sampled_speed_hud(hud);
+        update_sampled_speed_hud(*ship_hud);
     }
 #endif
 }
 
-void FHUDManager::update_mission_hud(UShipHudWidget& hud) const {
+void FHUDManager::update_mission_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_mission_hud);
     check(has_mission_data);
     auto const& data{mission_data_buffers.current()};
     hud.set_mission_data(data);
-    hud.set_stopwatch_time(data.status_data.mission_stopwatch);
+    if (auto* const ship_hud{Cast<UShipHudWidget>(&hud)}; IsValid(ship_hud)) {
+        ship_hud->set_stopwatch_time(data.status_data.mission_stopwatch);
+    }
 }
-void FHUDManager::update_entity_count_hud(UShipHudWidget& hud) const {
+void FHUDManager::update_entity_count_hud(USimulationHudWidget& hud) const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::update_entity_count_hud);
     hud.set_entity_counts(entity_count_data_buffers.current().alive_per_team_and_type);
 }

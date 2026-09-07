@@ -17,7 +17,10 @@
 #include <Editor.h>
 #include <Editor/UnrealEdEngine.h>
 #include <Engine/World.h>
+#include <FileHelpers.h>
 #include <GameFramework/Actor.h>
+#include <GameFramework/GameModeBase.h>
+#include <GameFramework/WorldSettings.h>
 #include <HAL/FileManager.h>
 #include <Kismet/GameplayStatics.h>
 #include <LevelEditorSubsystem.h>
@@ -161,6 +164,20 @@ auto FTestBatchOrchestratorLevelSetup::construct_level() -> bool {
         FPackageName::FilenameToLongPackageName(FPaths::Combine(map_directory, map_name))};
     auto* const level_editor_subsystem{GEditor->GetEditorSubsystem<ULevelEditorSubsystem>()};
     if (!IsValid(level_editor_subsystem) || !level_editor_subsystem->NewLevel(package_name)) {
+        return false;
+    }
+
+    auto* const editor_world{GEditor->GetEditorWorldContext().World()};
+    auto* const game_mode_class{LoadClass<AGameModeBase>(
+        nullptr, TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C"))};
+    auto* const world_settings{IsValid(editor_world) ? editor_world->GetWorldSettings() : nullptr};
+    if (!IsValid(game_mode_class) || !IsValid(world_settings)) {
+        return false;
+    }
+    world_settings->DefaultGameMode = game_mode_class;
+    auto const filename{FPackageName::LongPackageNameToFilename(
+        package_name, FPackageName::GetMapPackageExtension())};
+    if (!FEditorFileUtils::SaveLevel(editor_world->PersistentLevel, filename)) {
         return false;
     }
 

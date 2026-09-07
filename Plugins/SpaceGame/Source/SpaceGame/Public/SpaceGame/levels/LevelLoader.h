@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SpaceGame/levels/LevelDefinition.h>
+#include <SpaceGame/ships/player/PlayerControlContext.h>
 
 class ATestBatchOrchestrator;
 
@@ -34,7 +35,9 @@ class SPACEGAME_API FLevelLoader {
     explicit FLevelLoader(ATestBatchOrchestrator& orchestrator)
         : orchestrator_{orchestrator} {}
 
-    auto load(FLevelDefinition const& definition) const -> FLevelLoadResult;
+    auto load(FLevelDefinition const& definition,
+              EPlayerControlContext playerless_control_context =
+                  EPlayerControlContext::Observer) const -> FLevelLoadResult;
   private:
     ATestBatchOrchestrator& orchestrator_;
 };

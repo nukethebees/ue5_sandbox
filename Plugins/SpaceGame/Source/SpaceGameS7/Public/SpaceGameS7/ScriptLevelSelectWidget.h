@@ -53,8 +53,9 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
         return selected_level_id_;
     }
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
-        return view_state_.can_launch && (active_category_ != ELevelCatalogCategory::BattleViewer ||
-                                          (battle_time_scale_.IsSet() && battle_duration_valid_));
+        return view_state_.can_launch &&
+               (active_category_ == ELevelCatalogCategory::Mission ||
+                (battle_time_scale_.IsSet() && battle_duration_valid_));
     }
     [[nodiscard]] auto get_active_category() const noexcept -> ELevelCatalogCategory {
         return active_category_;

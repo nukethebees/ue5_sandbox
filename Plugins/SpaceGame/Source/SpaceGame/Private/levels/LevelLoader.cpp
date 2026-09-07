@@ -5,6 +5,7 @@
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -107,11 +108,12 @@ auto initial_camera_transform(FLevelDefinition const& definition,
 }
 
 auto spawn_initial_camera(UWorld& world,
-                          APlayerController& player_controller,
+                          ASpaceGamePlayerController& player_controller,
                           FLevelDefinition const& definition,
                           FLevelEntityTableConstView const& entities,
                           FSpawnedActorTransaction& transaction,
-                          FLevelLoadResult& result) -> bool {
+                          FLevelLoadResult& result,
+                          EPlayerControlContext const control_context) -> bool {
     auto const transform{initial_camera_transform(definition, entities)};
     auto* const camera{
         world.SpawnActorDeferred<ACameraActor>(ACameraActor::StaticClass(), transform)};
@@ -130,13 +132,20 @@ auto spawn_initial_camera(UWorld& world,
         return false;
     }
 
-    player_controller.SetViewTarget(camera);
+    if (!player_controller.activate_playerless_camera(*camera, control_context)) {
+        add_error(result,
+                  ELevelLoadErrorCode::MissingInfrastructure,
+                  TEXT("Failed to activate the playerless control context"));
+        return false;
+    }
     return true;
 }
 
 }
 
-auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadResult {
+auto FLevelLoader::load(FLevelDefinition const& definition,
+                        EPlayerControlContext const playerless_control_context) const
+    -> FLevelLoadResult {
     FLevelLoadResult result;
     auto validation{validate_level(definition)};
     if (!validation) {
@@ -163,6 +172,14 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     auto const* const config{orchestrator_.get_level_config()};
     auto const has_player{definition.player_entity_id.is_set()};
     auto const presentation_enabled{orchestrator_.is_presentation_enabled()};
+    if (!has_player && presentation_enabled &&
+        playerless_control_context != EPlayerControlContext::Observer &&
+        playerless_control_context != EPlayerControlContext::Benchmark) {
+        add_error(result,
+                  ELevelLoadErrorCode::InvalidDefinition,
+                  TEXT("Playerless level requires Observer or Benchmark control context"));
+        return result;
+    }
     if (has_player && !presentation_enabled) {
         add_error(result,
                   ELevelLoadErrorCode::InvalidDefinition,
@@ -187,11 +204,13 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     }
 
     auto* const player_controller{
-        presentation_enabled ? UGameplayStatics::GetPlayerController(world, 0) : nullptr};
+        presentation_enabled
+            ? Cast<ASpaceGamePlayerController>(UGameplayStatics::GetPlayerController(world, 0))
+            : nullptr};
     if (presentation_enabled && !IsValid(player_controller)) {
         add_error(result,
                   ELevelLoadErrorCode::MissingInfrastructure,
-                  TEXT("Authored level requires a local player controller"));
+                  TEXT("Authored level requires a space-game player controller"));
         return result;
     }
 
@@ -220,8 +239,13 @@ auto FLevelLoader::load(FLevelDefinition const& definition) const -> FLevelLoadR
     }
 
     if (presentation_enabled && definition.camera.IsSet()) {
-        if (!spawn_initial_camera(
-                *world, *player_controller, definition, entities, transaction, result)) {
+        if (!spawn_initial_camera(*world,
+                                  *player_controller,
+                                  definition,
+                                  entities,
+                                  transaction,
+                                  result,
+                                  playerless_control_context)) {
             return result;
         }
     } else if (presentation_enabled) {

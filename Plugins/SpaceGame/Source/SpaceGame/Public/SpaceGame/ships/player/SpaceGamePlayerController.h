@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SpaceGame/ships/player/ObserverControlContext.h>
 #include <SpaceGame/ships/player/PlayerControlContext.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/support/logging/ActorLoggingConfig.h>
@@ -12,11 +13,14 @@
 
 class ATestBatchOrchestrator;
 class ATestSpaceShip;
+class ACameraActor;
 struct FTestMissionCompletion;
 class UEnhancedInputComponent;
 class UEnhancedInputLocalPlayerSubsystem;
 class UInputMappingContext;
 class UShipHudWidget;
+class USimulationHudWidget;
+class UBattleViewerHudWidget;
 class UTestBatchGameUiData;
 
 namespace ml::ioj {
@@ -26,10 +30,11 @@ class UPauseMenuWidget;
 }
 
 UCLASS()
-class ASpaceGamePlayerController : public APlayerController {
+class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     GENERATED_BODY()
 
     friend struct FShipControlContext;
+    friend struct FObserverControlContext;
   public:
     using Pawn = ATestSpaceShip;
 
@@ -39,9 +44,16 @@ class ASpaceGamePlayerController : public APlayerController {
     void Tick(float dt) override;
 
     void show_main_menu();
+    auto activate_playerless_camera(ACameraActor& camera, EPlayerControlContext context) -> bool;
+    auto set_benchmark_enabled(bool enabled) -> bool;
 
     [[nodiscard]] auto get_active_control_context() const noexcept -> EPlayerControlContext {
         return active_control_context_;
+    }
+    [[nodiscard]] auto get_active_hud() const -> USimulationHudWidget const* { return hud_widget; }
+    [[nodiscard]] auto is_observer_movement_enabled() const noexcept -> bool {
+        return active_control_context_ == EPlayerControlContext::Observer &&
+               observer_control_context_.is_bound();
     }
   protected:
     void BeginPlay() override;
@@ -53,12 +65,18 @@ class ASpaceGamePlayerController : public APlayerController {
     auto initialise_global_input(UEnhancedInputComponent& input_component,
                                  UEnhancedInputLocalPlayerSubsystem& input_subsystem) -> bool;
     void shutdown_global_input();
+    void set_global_mapping_enabled(bool enabled);
     auto set_control_context(EPlayerControlContext context) -> bool;
     auto can_bind_context(EPlayerControlContext context) const -> bool;
     auto bind_context(EPlayerControlContext context) -> bool;
     void unbind_context(EPlayerControlContext context);
     void on_ship_mapping_context_changed(UInputMappingContext const& context);
     void toggle_pause_game();
+    void exit_benchmark();
+    auto bind_benchmark_context() -> bool;
+    void unbind_benchmark_context();
+    void set_observer_look_active(bool active);
+    void set_observer_movement_speed(float speed);
 
     // UI and simulation transitions
     void initialise_main_menu();
@@ -66,7 +84,8 @@ class ASpaceGamePlayerController : public APlayerController {
     void initialise_gameplay();
     auto initialise_ui_root() -> bool;
     void shutdown_ui_root();
-    void initialise_hud();
+    auto initialise_hud(EPlayerControlContext context) -> bool;
+    void shutdown_hud();
     void hide_hud_for_modal();
     void restore_hud_after_modal();
     void show_initial_pause_menu();
@@ -91,7 +110,7 @@ class ASpaceGamePlayerController : public APlayerController {
     TWeakObjectPtr<ATestBatchOrchestrator> hud_orchestrator;
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|UI")
-    TObjectPtr<UShipHudWidget> hud_widget{nullptr};
+    TObjectPtr<USimulationHudWidget> hud_widget{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|UI")
     TObjectPtr<UTestBatchGameUiData> ui_data{nullptr};
@@ -112,15 +131,24 @@ class ASpaceGamePlayerController : public APlayerController {
     FGlobalControlInputs global_input;
 
     FShipControlContext ship_control_context_;
+    FObserverControlContext observer_control_context_;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    FObserverControlInputs observer_input;
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Input")
+    FBenchmarkControlInputs benchmark_input;
 
     TWeakObjectPtr<UEnhancedInputComponent> global_input_component_;
     TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> global_input_subsystem_;
     uint32 global_input_binding_handle_{0};
+    uint32 benchmark_exit_binding_handle_{0};
     EPlayerControlContext active_control_context_{EPlayerControlContext::None};
     bool global_input_bound_{false};
+    bool global_mapping_enabled_{false};
     bool begin_play_finished_{false};
     bool main_menu_requested_{false};
-    bool restore_ship_controls_after_modal_{false};
+    EPlayerControlContext modal_restore_context_{EPlayerControlContext::None};
     bool modal_resume_pending_{false};
     bool hud_restore_pending_{false};
     bool return_to_level_select_pending_{false};

@@ -4,5 +4,7 @@
 
 enum class EPlayerControlContext : uint8 {
     None,
-    Ship,
+    Player,
+    Observer,
+    Benchmark,
 };

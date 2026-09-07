@@ -11,6 +11,9 @@ class SCheckBox;
 namespace ml::ioj {
 class SGameButton;
 }
+namespace SlateGenerated::ml::s7 {
+struct SScriptLevelSelectViewBuilder;
+}
 
 namespace ml::s7 {
 DECLARE_DELEGATE_OneParam(FOnLevelRowSelected, int32);
@@ -20,6 +23,7 @@ DECLARE_DELEGATE_TwoParams(FOnBattleDurationChanged, TOptional<double>, bool);
 DECLARE_DELEGATE_OneParam(FOnBattleBoolChanged, bool);
 
 class SScriptLevelSelectView final : public SCompoundWidget {
+    friend struct ::SlateGenerated::ml::s7::SScriptLevelSelectViewBuilder;
   public:
     SLATE_BEGIN_ARGS(SScriptLevelSelectView)
         : _Style(nullptr) {}
@@ -81,7 +85,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<STextBlock> details_{};
     TSharedPtr<STextBlock> script_{};
     TSharedPtr<STextBlock> launch_mode_status_{};
-    TSharedPtr<SVerticalBox> battle_speed_control_{};
+    TSharedPtr<SVerticalBox> battle_options_{};
     TSharedPtr<SEditableText> battle_speed_input_{};
     TSharedPtr<STextBlock> battle_speed_error_{};
     TSharedPtr<SEditableText> battle_duration_input_{};
@@ -89,6 +93,7 @@ class SScriptLevelSelectView final : public SCompoundWidget {
     TSharedPtr<ml::ioj::SGameButton> launch_button_{};
     TSharedPtr<ml::ioj::SGameButton> mission_category_button_{};
     TSharedPtr<ml::ioj::SGameButton> battle_viewer_category_button_{};
+    TSharedPtr<ml::ioj::SGameButton> benchmark_category_button_{};
     TArray<TSharedPtr<ml::ioj::SGameButton>> level_buttons_{};
     ELevelCatalogCategory category_{ELevelCatalogCategory::Mission};
     int32 selected_button_index_{INDEX_NONE};

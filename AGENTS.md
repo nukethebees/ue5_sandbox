@@ -67,6 +67,7 @@ Unreal Engine 5.8 project.
 
 * Use `BindWidget` for UPROPERTY widgets. Use `BindWidgetOptional` only when the widget is explicitly generated in C++ every time.
 * For generated UMG widgets whose root is a panel widget, use `meta=(GeneratorRoot)`.
+* When writing Slate layouts, consider using the repository's Slate DSL where its static-tree generation would improve clarity; keep dynamic state and iteration in handwritten code.
 * Keep gameplay logic out of UI widgets.
 
 # Testing

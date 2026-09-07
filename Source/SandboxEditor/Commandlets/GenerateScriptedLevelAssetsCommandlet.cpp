@@ -2,6 +2,9 @@
 
 #include <SbxShadersExperiments/GpuStarfield/GpuStarfieldExperimentActor.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
+#include <SpaceGame/presentation/widgets/ForceStatusWidget.h>
+#include <SpaceGame/presentation/widgets/MissionStatusWidget.h>
 #include <SpaceGame/presentation/widgets/TeamEntityTableWidget.h>
 #include <SpaceGame/presentation/widgets/TopKillersWidget.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -44,10 +47,14 @@
 #include <InputAction.h>
 #include <InputCoreTypes.h>
 #include <InputMappingContext.h>
+#include <InputModifiers.h>
+#include <Kismet2/BlueprintEditorUtils.h>
 #include <Kismet2/KismetEditorUtilities.h>
 #include <Misc/PackageName.h>
+#include <SandboxGameShared/ui/widgets/ValueWidget.h>
 #include <UObject/Package.h>
 #include <UObject/SavePackage.h>
+#include <UObject/UnrealType.h>
 #include <WidgetBlueprint.h>
 #include <WidgetBlueprintOperationUtils.h>
 #include <Widgets/CommonActivatableWidgetContainer.h>
@@ -84,6 +91,12 @@ constexpr TCHAR menu_mapping_object_path[]{TEXT("/SpaceGame/Input/UI/IMC_menu.IM
 constexpr TCHAR global_mapping_object_path[]{
     TEXT("/SpaceGame/Input/Player/IMC_Player_Global.IMC_Player_Global")};
 constexpr TCHAR pause_action_object_path[]{TEXT("/SpaceGame/Input/SpaceShip/IA_pause.IA_pause")};
+constexpr TCHAR battle_viewer_widget_object_path[]{
+    TEXT("/SpaceGame/UI/InGame/WBP_BattleViewerHud.WBP_BattleViewerHud")};
+constexpr TCHAR battle_viewer_widget_package_name[]{
+    TEXT("/SpaceGame/UI/InGame/WBP_BattleViewerHud")};
+constexpr TCHAR observer_input_package_path[]{TEXT("/SpaceGame/Input/Observer/")};
+constexpr TCHAR benchmark_input_package_path[]{TEXT("/SpaceGame/Input/Benchmark/")};
 FName const generation_context{TEXT("GenerateScriptedLevelAssets")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
@@ -535,12 +548,164 @@ auto generate_menu_input_assets() -> bool {
     return save_asset(*back_action) && save_asset(*menu_mapping) && save_asset(*global_mapping);
 }
 
+auto create_input_action(TCHAR const* const package_path,
+                         TCHAR const* const asset_name,
+                         EInputActionValueType const value_type) -> UInputAction* {
+    auto const package_name{FString::Printf(TEXT("%s%s"), package_path, asset_name)};
+    auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, asset_name)};
+    auto* const action{
+        load_or_create_asset<UInputAction>(*object_path, *package_name, FName{asset_name})};
+    if (IsValid(action)) {
+        action->Modify();
+        action->ValueType = value_type;
+    }
+    return action;
+}
+
+void add_negate_modifier(FEnhancedActionKeyMapping& mapping, UInputMappingContext& outer) {
+    mapping.Modifiers.Add(NewObject<UInputModifierNegate>(&outer));
+}
+
+void add_swizzle_modifier(FEnhancedActionKeyMapping& mapping, UInputMappingContext& outer) {
+    mapping.Modifiers.Add(NewObject<UInputModifierSwizzleAxis>(&outer));
+}
+
+auto generate_control_context_input_assets(FObserverControlInputs& observer,
+                                           FBenchmarkControlInputs& benchmark) -> bool {
+    observer.move = create_input_action(
+        observer_input_package_path, TEXT("IA_ObserverMove"), EInputActionValueType::Axis2D);
+    observer.vertical_move = create_input_action(observer_input_package_path,
+                                                 TEXT("IA_ObserverVerticalMove"),
+                                                 EInputActionValueType::Axis1D);
+    observer.look = create_input_action(
+        observer_input_package_path, TEXT("IA_ObserverLook"), EInputActionValueType::Axis2D);
+    observer.engage_look = create_input_action(
+        observer_input_package_path, TEXT("IA_ObserverEngageLook"), EInputActionValueType::Boolean);
+    observer.adjust_speed = create_input_action(
+        observer_input_package_path, TEXT("IA_ObserverAdjustSpeed"), EInputActionValueType::Axis1D);
+    observer.boost = create_input_action(
+        observer_input_package_path, TEXT("IA_ObserverBoost"), EInputActionValueType::Boolean);
+
+    auto const observer_mapping_package{
+        FString::Printf(TEXT("%s%s"), observer_input_package_path, TEXT("IMC_Observer"))};
+    auto const observer_mapping_object{
+        FString::Printf(TEXT("%s.%s"), *observer_mapping_package, TEXT("IMC_Observer"))};
+    observer.mapping_context = load_or_create_asset<UInputMappingContext>(
+        *observer_mapping_object, *observer_mapping_package, TEXT("IMC_Observer"));
+
+    benchmark.exit = create_input_action(
+        benchmark_input_package_path, TEXT("IA_ExitBenchmark"), EInputActionValueType::Boolean);
+    auto const benchmark_mapping_package{
+        FString::Printf(TEXT("%s%s"), benchmark_input_package_path, TEXT("IMC_Benchmark"))};
+    auto const benchmark_mapping_object{
+        FString::Printf(TEXT("%s.%s"), *benchmark_mapping_package, TEXT("IMC_Benchmark"))};
+    benchmark.mapping_context = load_or_create_asset<UInputMappingContext>(
+        *benchmark_mapping_object, *benchmark_mapping_package, TEXT("IMC_Benchmark"));
+
+    if (!observer.is_valid() || !benchmark.is_valid()) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load or create control-context input assets"));
+        return false;
+    }
+
+    observer.mapping_context->Modify();
+    observer.mapping_context->UnmapAll();
+    observer.mapping_context->MapKey(observer.move, EKeys::D);
+    auto& move_left{observer.mapping_context->MapKey(observer.move, EKeys::A)};
+    add_negate_modifier(move_left, *observer.mapping_context);
+    auto& move_forward{observer.mapping_context->MapKey(observer.move, EKeys::W)};
+    add_swizzle_modifier(move_forward, *observer.mapping_context);
+    auto& move_backward{observer.mapping_context->MapKey(observer.move, EKeys::S)};
+    add_swizzle_modifier(move_backward, *observer.mapping_context);
+    add_negate_modifier(move_backward, *observer.mapping_context);
+    observer.mapping_context->MapKey(observer.vertical_move, EKeys::E);
+    auto& move_down{observer.mapping_context->MapKey(observer.vertical_move, EKeys::Q)};
+    add_negate_modifier(move_down, *observer.mapping_context);
+    observer.mapping_context->MapKey(observer.look, EKeys::Mouse2D);
+    observer.mapping_context->MapKey(observer.engage_look, EKeys::RightMouseButton);
+    observer.mapping_context->MapKey(observer.adjust_speed, EKeys::MouseWheelAxis);
+    observer.mapping_context->MapKey(observer.boost, EKeys::LeftShift);
+
+    benchmark.mapping_context->Modify();
+    benchmark.mapping_context->UnmapAll();
+    benchmark.mapping_context->MapKey(benchmark.exit, EKeys::Escape);
+
+    TArray<UObject*> const assets{observer.move,
+                                  observer.vertical_move,
+                                  observer.look,
+                                  observer.engage_look,
+                                  observer.adjust_speed,
+                                  observer.boost,
+                                  observer.mapping_context,
+                                  benchmark.exit,
+                                  benchmark.mapping_context};
+    for (auto* const asset : assets) {
+        if (!save_asset(*asset)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+auto generate_battle_viewer_widget() -> UClass* {
+    auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
+    if (!IsValid(ui_data)) {
+        return nullptr;
+    }
+    auto const mission_status_class{ui_data->get_widget_class<UMissionStatusWidget>()};
+    auto const value_class{ui_data->get_widget_class<UValueWidget>()};
+    if (!IsValid(mission_status_class) || !IsValid(value_class)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load Battle Viewer child widget classes"));
+        return nullptr;
+    }
+
+    auto* const blueprint{load_or_create_widget_blueprint(battle_viewer_widget_object_path,
+                                                          battle_viewer_widget_package_name,
+                                                          TEXT("WBP_BattleViewerHud"),
+                                                          *UBattleViewerHudWidget::StaticClass())};
+    if (!IsValid(blueprint)) {
+        return nullptr;
+    }
+
+    auto& tree{*blueprint->WidgetTree};
+    auto* const root{make_widget<UOverlay>(tree, TEXT("battle_viewer_root"))};
+
+    auto* const force_status{make_widget<UForceStatusWidget>(tree, TEXT("force_status_widget"))};
+    auto* const force_slot{root->AddChildToOverlay(force_status)};
+    force_slot->SetHorizontalAlignment(HAlign_Left);
+    force_slot->SetVerticalAlignment(VAlign_Top);
+    force_slot->SetPadding(FMargin{24.0f});
+
+    auto* const mission_status{make_widget<UMissionStatusWidget>(
+        tree, *mission_status_class.Get(), TEXT("mission_status_panel"))};
+    auto* const mission_slot{root->AddChildToOverlay(mission_status)};
+    mission_slot->SetHorizontalAlignment(HAlign_Right);
+    mission_slot->SetVerticalAlignment(VAlign_Top);
+    mission_slot->SetPadding(FMargin{24.0f});
+
+    auto* const controls{make_widget<UVerticalBox>(tree, TEXT("observer_controls"))};
+    auto* const controls_slot{root->AddChildToOverlay(controls)};
+    controls_slot->SetHorizontalAlignment(HAlign_Center);
+    controls_slot->SetVerticalAlignment(VAlign_Top);
+    controls_slot->SetPadding(FMargin{24.0f});
+
+    auto* const camera_speed{
+        make_widget<UValueWidget>(tree, *value_class.Get(), TEXT("camera_speed_widget"))};
+    controls->AddChildToVerticalBox(camera_speed);
+    auto* const controls_label{make_widget<UTextBlock>(tree, TEXT("controls_label"))};
+    controls_label->SetAutoWrapText(true);
+    controls->AddChildToVerticalBox(controls_label)->SetPadding(FMargin{0.0f, 4.0f, 0.0f, 0.0f});
+
+    tree.RootWidget = root;
+    return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
+}
+
 auto configure_ui_data(UClass& root_class,
                        UClass& button_class,
                        UClass& main_class,
                        UClass& level_class,
                        UClass& pause_class,
-                       UClass& completion_class) -> bool {
+                       UClass& completion_class,
+                       UClass& battle_viewer_class) -> bool {
     auto* const ui_data{ml::test_batch_game_ui_data::get_data_asset()};
     if (!IsValid(ui_data)) {
         return false;
@@ -553,6 +718,8 @@ auto configure_ui_data(UClass& root_class,
     ui_data->widget_classes.classes.Add(ml::ioj::UPauseMenuWidget::StaticClass(), &pause_class);
     ui_data->widget_classes.classes.Add(ml::ioj::ULevelCompletionWidget::StaticClass(),
                                         &completion_class);
+    ui_data->widget_classes.classes.Add(UBattleViewerHudWidget::StaticClass(),
+                                        &battle_viewer_class);
     return save_asset(*ui_data);
 }
 
@@ -584,7 +751,33 @@ auto generate_save_game_viewer_widget() -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-auto load_or_create_player_controller() -> UBlueprint* {
+auto configure_control_context_inputs(UBlueprint& blueprint,
+                                      FObserverControlInputs const& observer,
+                                      FBenchmarkControlInputs const& benchmark) -> bool {
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
+    auto* const observer_property{
+        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("observer_input"))};
+    auto* const benchmark_property{
+        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("benchmark_input"))};
+    if (!IsValid(controller) || !observer_property || !benchmark_property) {
+        UE_LOG(LogTemp, Error, TEXT("Could not configure player controller context inputs"));
+        return false;
+    }
+
+    controller->Modify();
+    observer_property->CopyCompleteValue(
+        observer_property->ContainerPtrToValuePtr<void>(controller), &observer);
+    benchmark_property->CopyCompleteValue(
+        benchmark_property->ContainerPtrToValuePtr<void>(controller), &benchmark);
+    FPropertyChangedEvent property_changed{observer_property, EPropertyChangeType::ValueSet};
+    controller->PostEditChangeProperty(property_changed);
+    FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
+    return true;
+}
+
+auto load_or_create_player_controller(FObserverControlInputs const& observer,
+                                      FBenchmarkControlInputs const& benchmark) -> UBlueprint* {
     auto* blueprint{LoadObject<UBlueprint>(nullptr, player_controller_object_path)};
     if (!IsValid(blueprint)) {
         auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
@@ -610,6 +803,31 @@ auto load_or_create_player_controller() -> UBlueprint* {
     FKismetEditorUtilities::CompileBlueprint(blueprint);
     if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
         UE_LOG(LogTemp, Error, TEXT("BP_SpaceGamePlayerController failed to compile"));
+        return nullptr;
+    }
+    if (!configure_control_context_inputs(*blueprint, observer, benchmark)) {
+        return nullptr;
+    }
+    FKismetEditorUtilities::CompileBlueprint(blueprint);
+    auto const* const compiled_controller{
+        Cast<ASpaceGamePlayerController>(blueprint->GeneratedClass->GetDefaultObject())};
+    auto const* const compiled_observer_property{
+        FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("observer_input"))};
+    auto const* const compiled_benchmark_property{
+        FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("benchmark_input"))};
+    auto const* const compiled_observer{
+        IsValid(compiled_controller) && compiled_observer_property
+            ? compiled_observer_property->ContainerPtrToValuePtr<FObserverControlInputs>(
+                  compiled_controller)
+            : nullptr};
+    auto const* const compiled_benchmark{
+        IsValid(compiled_controller) && compiled_benchmark_property
+            ? compiled_benchmark_property->ContainerPtrToValuePtr<FBenchmarkControlInputs>(
+                  compiled_controller)
+            : nullptr};
+    if (!compiled_observer || !compiled_observer->is_valid() || !compiled_benchmark ||
+        !compiled_benchmark->is_valid()) {
+        UE_LOG(LogTemp, Error, TEXT("Player controller context inputs did not compile"));
         return nullptr;
     }
     return save_asset(*blueprint) ? blueprint : nullptr;
@@ -659,8 +877,9 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGam
     return save_asset(*config) ? config : nullptr;
 }
 
-auto generate_runtime_map() -> bool {
-    auto* const controller_blueprint{load_or_create_player_controller()};
+auto generate_runtime_map(FObserverControlInputs const& observer,
+                          FBenchmarkControlInputs const& benchmark) -> bool {
+    auto* const controller_blueprint{load_or_create_player_controller(observer, benchmark)};
     auto* const controller_class{
         IsValid(controller_blueprint) ? controller_blueprint->GeneratedClass.Get() : nullptr};
     if (!IsValid(controller_class) || !configure_runtime_game_mode(*controller_class)) {
@@ -733,7 +952,11 @@ UGenerateScriptedLevelAssetsCommandlet::UGenerateScriptedLevelAssetsCommandlet()
 }
 
 int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
-    auto const input_generated{generate_menu_input_assets()};
+    FObserverControlInputs observer_input;
+    FBenchmarkControlInputs benchmark_input;
+    auto const input_generated{
+        generate_menu_input_assets() &&
+        generate_control_context_input_assets(observer_input, benchmark_input)};
     auto* const button_class{generate_menu_button_widget()};
     auto* const root_class{generate_root_layout_widget()};
     auto* const pause_class{IsValid(button_class) ? generate_pause_menu_widget(*button_class)
@@ -742,15 +965,19 @@ int32 UGenerateScriptedLevelAssetsCommandlet::Main(FString const&) {
     auto const save_viewer_generated{IsValid(generate_save_game_viewer_widget())};
     auto* const main_class{generate_main_menu_widget()};
     auto* const level_class{generate_level_select_widget()};
+    auto* const battle_viewer_class{generate_battle_viewer_widget()};
     auto const ui_generated{save_viewer_generated && IsValid(root_class) && IsValid(button_class) &&
                             IsValid(main_class) && IsValid(level_class) && IsValid(pause_class) &&
-                            IsValid(completion_class) &&
+                            IsValid(completion_class) && IsValid(battle_viewer_class) &&
                             configure_ui_data(*root_class,
                                               *button_class,
                                               *main_class,
                                               *level_class,
                                               *pause_class,
-                                              *completion_class)};
-    auto const map_generated{generate_runtime_map() && generate_main_menu_map()};
+                                              *completion_class,
+                                              *battle_viewer_class)};
+    auto const map_generated{input_generated &&
+                             generate_runtime_map(observer_input, benchmark_input) &&
+                             generate_main_menu_map()};
     return input_generated && ui_generated && map_generated ? 0 : 1;
 }

@@ -27,6 +27,7 @@
 struct FTestEntityRegistry;
 struct FTestMissionManager;
 class USpaceGameLevelConfig;
+class USimulationHudWidget;
 class UShipHudWidget;
 
 namespace ml::test_space_ship {
@@ -165,8 +166,8 @@ struct SPACEGAME_API FHUDManager {
     void tick(FPeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
 
-    void register_hud(UShipHudWidget& hud);
-    void unregister_hud(UShipHudWidget& hud);
+    void register_hud(USimulationHudWidget& hud);
+    void unregister_hud(USimulationHudWidget& hud);
     void set_selected_mapping_context(FString const& context_name);
 
     auto get_state() const noexcept -> EHUDManagerState { return state; }
@@ -194,7 +195,8 @@ struct SPACEGAME_API FHUDManager {
 #endif
   private:
     struct FRegisteredHud {
-        TWeakObjectPtr<UShipHudWidget> hud;
+        TWeakObjectPtr<USimulationHudWidget> hud;
+        TWeakObjectPtr<UShipHudWidget> ship_hud;
         FEntityOverlayFrameStorePtr entity_overlay_frame_store;
         FEntityOverlayCollector entity_overlay_collector;
         FRadarFrameStorePtr radar_frame_store;
@@ -228,9 +230,9 @@ struct SPACEGAME_API FHUDManager {
 #endif
 
     void update_huds(ml::hud_manager::FDataChanges const& changes);
-    void synchronise_hud(UShipHudWidget& hud) const;
-    void update_mission_hud(UShipHudWidget& hud) const;
-    void update_entity_count_hud(UShipHudWidget& hud) const;
+    void synchronise_hud(USimulationHudWidget& hud) const;
+    void update_mission_hud(USimulationHudWidget& hud) const;
+    void update_entity_count_hud(USimulationHudWidget& hud) const;
     void update_player_status_hud(UShipHudWidget& hud) const;
     void update_player_flight_hud(UShipHudWidget& hud) const;
 #if WITH_EDITOR

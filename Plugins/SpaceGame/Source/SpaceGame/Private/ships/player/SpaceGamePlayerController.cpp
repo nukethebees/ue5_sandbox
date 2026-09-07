@@ -3,7 +3,9 @@
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
+#include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
 #include <SpaceGame/presentation/widgets/ShipHudWidget.h>
+#include <SpaceGame/presentation/widgets/SimulationHudWidget.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
@@ -12,6 +14,7 @@
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
 
+#include <Camera/CameraActor.h>
 #include <Engine/Engine.h>
 #include <Engine/GameInstance.h>
 #include <Engine/GameViewportClient.h>
@@ -23,6 +26,7 @@
 #include <Kismet/KismetSystemLibrary.h>
 #include <TimerManager.h>
 #include <UnrealClient.h>
+#include <UObject/ConstructorHelpers.h>
 
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
 
@@ -33,6 +37,35 @@ constexpr int32 global_mapping_priority{100};
 ASpaceGamePlayerController::ASpaceGamePlayerController() {
     PrimaryActorTick.bCanEverTick = true;
     PrimaryActorTick.bStartWithTickEnabled = true;
+
+    static ConstructorHelpers::FObjectFinder<UInputMappingContext> observer_mapping{
+        TEXT("/SpaceGame/Input/Observer/IMC_Observer")};
+    static ConstructorHelpers::FObjectFinder<UInputAction> observer_move{
+        TEXT("/SpaceGame/Input/Observer/IA_ObserverMove")};
+    static ConstructorHelpers::FObjectFinder<UInputAction> observer_vertical_move{
+        TEXT("/SpaceGame/Input/Observer/IA_ObserverVerticalMove")};
+    static ConstructorHelpers::FObjectFinder<UInputAction> observer_look{
+        TEXT("/SpaceGame/Input/Observer/IA_ObserverLook")};
+    static ConstructorHelpers::FObjectFinder<UInputAction> observer_engage_look{
+        TEXT("/SpaceGame/Input/Observer/IA_ObserverEngageLook")};
+    static ConstructorHelpers::FObjectFinder<UInputAction> observer_adjust_speed{
+        TEXT("/SpaceGame/Input/Observer/IA_ObserverAdjustSpeed")};
+    static ConstructorHelpers::FObjectFinder<UInputAction> observer_boost{
+        TEXT("/SpaceGame/Input/Observer/IA_ObserverBoost")};
+    static ConstructorHelpers::FObjectFinder<UInputMappingContext> benchmark_mapping{
+        TEXT("/SpaceGame/Input/Benchmark/IMC_Benchmark")};
+    static ConstructorHelpers::FObjectFinder<UInputAction> benchmark_exit{
+        TEXT("/SpaceGame/Input/Benchmark/IA_ExitBenchmark")};
+
+    observer_input.mapping_context = observer_mapping.Object;
+    observer_input.move = observer_move.Object;
+    observer_input.vertical_move = observer_vertical_move.Object;
+    observer_input.look = observer_look.Object;
+    observer_input.engage_look = observer_engage_look.Object;
+    observer_input.adjust_speed = observer_adjust_speed.Object;
+    observer_input.boost = observer_boost.Object;
+    benchmark_input.mapping_context = benchmark_mapping.Object;
+    benchmark_input.exit = benchmark_exit.Object;
 }
 
 /* ---------------------------------------------------------------------------------------------- */
@@ -51,6 +84,10 @@ void ASpaceGamePlayerController::SetupInputComponent() {
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
 
     if (!ship_control_context_.initialise(*this, *input_component, *input_subsystem, input)) {
+        return;
+    }
+    if (!observer_control_context_.initialise(
+            *this, *input_component, *input_subsystem, observer_input)) {
         return;
     }
     initialise_global_input(*input_component, *input_subsystem);
@@ -80,6 +117,7 @@ auto ASpaceGamePlayerController::initialise_global_input(
     global_input_subsystem_ = &input_subsystem;
     input_subsystem.AddMappingContext(global_input.mapping_context, global_mapping_priority);
     global_input_bound_ = true;
+    global_mapping_enabled_ = true;
     return true;
 }
 
@@ -88,10 +126,7 @@ void ASpaceGamePlayerController::shutdown_global_input() {
         return;
     }
 
-    if (auto* const input_subsystem{global_input_subsystem_.Get()};
-        IsValid(input_subsystem) && IsValid(global_input.mapping_context)) {
-        input_subsystem->RemoveMappingContext(global_input.mapping_context);
-    }
+    set_global_mapping_enabled(false);
     if (auto* const input_component{global_input_component_.Get()}; IsValid(input_component)) {
         input_component->RemoveBindingByHandle(global_input_binding_handle_);
     }
@@ -102,14 +137,38 @@ void ASpaceGamePlayerController::shutdown_global_input() {
     global_input_bound_ = false;
 }
 
+void ASpaceGamePlayerController::set_global_mapping_enabled(bool const enabled) {
+    if (!global_input_bound_ || global_mapping_enabled_ == enabled) {
+        return;
+    }
+    auto* const input_subsystem{global_input_subsystem_.Get()};
+    if (!IsValid(input_subsystem) || !IsValid(global_input.mapping_context)) {
+        return;
+    }
+
+    if (enabled) {
+        input_subsystem->AddMappingContext(global_input.mapping_context, global_mapping_priority);
+    } else {
+        input_subsystem->RemoveMappingContext(global_input.mapping_context);
+    }
+    global_mapping_enabled_ = enabled;
+}
+
 auto ASpaceGamePlayerController::can_bind_context(EPlayerControlContext const context) const
     -> bool {
     switch (context) {
         case EPlayerControlContext::None: {
             return true;
         }
-        case EPlayerControlContext::Ship: {
+        case EPlayerControlContext::Player: {
             return ship_control_context_.can_bind();
+        }
+        case EPlayerControlContext::Observer: {
+            return observer_control_context_.can_bind();
+        }
+        case EPlayerControlContext::Benchmark: {
+            return IsValid(benchmark_input.mapping_context) && IsValid(benchmark_input.exit) &&
+                   global_input_component_.IsValid() && global_input_subsystem_.IsValid();
         }
     }
     return false;
@@ -120,8 +179,16 @@ auto ASpaceGamePlayerController::bind_context(EPlayerControlContext const contex
         case EPlayerControlContext::None: {
             return true;
         }
-        case EPlayerControlContext::Ship: {
+        case EPlayerControlContext::Player: {
+            set_global_mapping_enabled(true);
             return ship_control_context_.bind();
+        }
+        case EPlayerControlContext::Observer: {
+            set_global_mapping_enabled(true);
+            return observer_control_context_.bind();
+        }
+        case EPlayerControlContext::Benchmark: {
+            return bind_benchmark_context();
         }
     }
     return false;
@@ -132,11 +199,50 @@ void ASpaceGamePlayerController::unbind_context(EPlayerControlContext const cont
         case EPlayerControlContext::None: {
             break;
         }
-        case EPlayerControlContext::Ship: {
+        case EPlayerControlContext::Player: {
             ship_control_context_.unbind();
             break;
         }
+        case EPlayerControlContext::Observer: {
+            observer_control_context_.unbind();
+            break;
+        }
+        case EPlayerControlContext::Benchmark: {
+            unbind_benchmark_context();
+            break;
+        }
     }
+}
+
+auto ASpaceGamePlayerController::bind_benchmark_context() -> bool {
+    auto* const input_component{global_input_component_.Get()};
+    auto* const input_subsystem{global_input_subsystem_.Get()};
+    if (!IsValid(input_component) || !IsValid(input_subsystem) ||
+        !IsValid(benchmark_input.mapping_context) || !IsValid(benchmark_input.exit)) {
+        return false;
+    }
+
+    set_global_mapping_enabled(false);
+    auto& binding{input_component->BindAction(
+        benchmark_input.exit, ETriggerEvent::Started, this, &ThisClass::exit_benchmark)};
+    benchmark_exit_binding_handle_ = binding.GetHandle();
+    input_subsystem->AddMappingContext(benchmark_input.mapping_context, global_mapping_priority);
+    return true;
+}
+
+void ASpaceGamePlayerController::unbind_benchmark_context() {
+    if (auto* const input_subsystem{global_input_subsystem_.Get()};
+        IsValid(input_subsystem) && IsValid(benchmark_input.mapping_context)) {
+        input_subsystem->RemoveMappingContext(benchmark_input.mapping_context);
+    }
+    if (auto* const input_component{global_input_component_.Get()}; IsValid(input_component)) {
+        input_component->RemoveBindingByHandle(benchmark_exit_binding_handle_);
+    }
+    benchmark_exit_binding_handle_ = 0;
+}
+
+void ASpaceGamePlayerController::exit_benchmark() {
+    set_benchmark_enabled(false);
 }
 
 auto ASpaceGamePlayerController::set_control_context(EPlayerControlContext const context) -> bool {
@@ -255,17 +361,14 @@ void ASpaceGamePlayerController::initialise_gameplay() {
     SetShowMouseCursor(false);
 
     bind_orchestrator_events();
-    initialise_hud();
 
     auto* const ship{Cast<Pawn>(GetPawn())};
     if (IsValid(ship)) {
         ship_control_context_.set_ship(ship);
-        set_control_context(EPlayerControlContext::Ship);
+        set_control_context(EPlayerControlContext::Player);
+        initialise_hud(EPlayerControlContext::Player);
     } else {
-        UE_LOG(LogSandbox,
-               Display,
-               TEXT("ASpaceGamePlayerController::BeginPlay: No valid pawn, disabling tick."));
-        SetActorTickEnabled(false);
+        UE_LOG(LogSandbox, Display, TEXT("ASpaceGamePlayerController::BeginPlay: No player pawn."));
     }
 
     GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::show_initial_pause_menu);
@@ -286,6 +389,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     completion_menu = nullptr;
     shutdown_ui_root();
     set_control_context(EPlayerControlContext::None);
+    observer_control_context_.shutdown();
     ship_control_context_.shutdown();
     shutdown_global_input();
 
@@ -294,15 +398,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
         orchestrator->on_mission_completed.RemoveAll(this);
     }
 
-    if (IsValid(hud_widget)) {
-        if (auto* const orchestrator{hud_orchestrator.Get()};
-            IsValid(orchestrator) &&
-            orchestrator->get_hud_manager().get_state() == EHUDManagerState::Active) {
-            orchestrator->get_hud_manager().unregister_hud(*hud_widget);
-        }
-        hud_widget->RemoveFromParent();
-    }
-    hud_widget = nullptr;
+    shutdown_hud();
     hud_orchestrator.Reset();
 
     Super::EndPlay(reason);
@@ -313,10 +409,6 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
 /* ---------------------------------------------------------------------------------------------- */
 void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
     Super::OnPossess(in_pawn);
-
-    if (!main_menu_requested_) {
-        initialise_hud();
-    }
 
     auto* const ship{Cast<Pawn>(in_pawn)};
     if (!IsValid(ship)) {
@@ -330,7 +422,8 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
     ship->on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
     ship_control_context_.set_ship(ship);
     if (begin_play_finished_ && !IsValid(pause_menu) && !main_menu_requested_) {
-        set_control_context(EPlayerControlContext::Ship);
+        set_control_context(EPlayerControlContext::Player);
+        initialise_hud(EPlayerControlContext::Player);
     }
 
     SetActorTickEnabled(true);
@@ -342,7 +435,7 @@ void ASpaceGamePlayerController::OnUnPossess() {
         ship->on_player_ship_died.Unbind();
     }
 
-    if (active_control_context_ == EPlayerControlContext::Ship) {
+    if (active_control_context_ == EPlayerControlContext::Player) {
         set_control_context(EPlayerControlContext::None);
     }
     ship_control_context_.set_ship(nullptr);
@@ -368,6 +461,7 @@ void ASpaceGamePlayerController::show_main_menu() {
 
 void ASpaceGamePlayerController::initialise_main_menu() {
     set_control_context(EPlayerControlContext::None);
+    shutdown_hud();
     ship_control_context_.shutdown();
     shutdown_global_input();
 
@@ -468,7 +562,7 @@ void ASpaceGamePlayerController::bind_orchestrator_events() {
     if (!IsValid(orchestrator)) {
         UE_LOG(
             LogSandboxController,
-            Error,
+            Warning,
             TEXT("ASpaceGamePlayerController::bind_orchestrator_events: Orchestrator is invalid."));
         return;
     }
@@ -491,10 +585,11 @@ void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& o
     restore_hud_after_modal();
     pause_menu = nullptr;
     completion_menu = nullptr;
-    restore_ship_controls_after_modal_ = false;
+    modal_restore_context_ = EPlayerControlContext::None;
     modal_resume_pending_ = false;
     return_to_level_select_pending_ = false;
     set_control_context(EPlayerControlContext::None);
+    shutdown_hud();
 
     auto* const player_ship{const_cast<ATestSpaceShip*>(orchestrator.get_player_ship())};
     if (!IsValid(player_ship)) {
@@ -508,13 +603,121 @@ void ASpaceGamePlayerController::on_orchestrator_reset(ATestBatchOrchestrator& o
         Possess(player_ship);
     } else {
         ship_control_context_.set_ship(player_ship);
-        set_control_context(EPlayerControlContext::Ship);
+        set_control_context(EPlayerControlContext::Player);
+        initialise_hud(EPlayerControlContext::Player);
     }
 }
 
-void ASpaceGamePlayerController::initialise_hud() {
-    if (IsValid(hud_widget)) {
+auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera,
+                                                            EPlayerControlContext const context)
+    -> bool {
+    if (main_menu_requested_) {
+        return false;
+    }
+    if (context != EPlayerControlContext::Observer && context != EPlayerControlContext::Benchmark) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::activate_playerless_camera: Context must be "
+                    "Observer or Benchmark."));
+        return false;
+    }
+    if (IsValid(GetPawn())) {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("ASpaceGamePlayerController::activate_playerless_camera: Controller still has "
+                    "a pawn."));
+        return false;
+    }
+
+    observer_control_context_.set_camera(&camera);
+    SetViewTarget(&camera);
+    if (!set_control_context(context)) {
+        return false;
+    }
+
+    if (context == EPlayerControlContext::Observer) {
+        if (!initialise_ui_root() || !initialise_hud(EPlayerControlContext::Observer)) {
+            set_control_context(EPlayerControlContext::None);
+            return false;
+        }
+        FInputModeGameAndUI input_mode{};
+        input_mode.SetHideCursorDuringCapture(false);
+        input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+        SetInputMode(input_mode);
+        SetShowMouseCursor(true);
+    } else {
+        shutdown_hud();
+        shutdown_ui_root();
+        FInputModeGameOnly input_mode{};
+        SetInputMode(input_mode);
+        SetShowMouseCursor(false);
+    }
+    SetActorTickEnabled(true);
+    return true;
+}
+
+auto ASpaceGamePlayerController::set_benchmark_enabled(bool const enabled) -> bool {
+    if (enabled) {
+        if (active_control_context_ != EPlayerControlContext::Observer ||
+            !set_control_context(EPlayerControlContext::Benchmark)) {
+            return false;
+        }
+        shutdown_hud();
+        shutdown_ui_root();
+        FInputModeGameOnly input_mode{};
+        SetInputMode(input_mode);
+        SetShowMouseCursor(false);
+        return true;
+    }
+
+    if (active_control_context_ != EPlayerControlContext::Benchmark ||
+        !set_control_context(EPlayerControlContext::Observer)) {
+        return false;
+    }
+    if (!initialise_ui_root() || !initialise_hud(EPlayerControlContext::Observer)) {
+        return false;
+    }
+    FInputModeGameAndUI input_mode{};
+    input_mode.SetHideCursorDuringCapture(false);
+    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+    SetInputMode(input_mode);
+    SetShowMouseCursor(true);
+    return true;
+}
+
+void ASpaceGamePlayerController::set_observer_look_active(bool const active) {
+    if (active) {
+        FInputModeGameOnly input_mode{};
+        SetInputMode(input_mode);
+        SetShowMouseCursor(false);
         return;
+    }
+
+    if (active_control_context_ == EPlayerControlContext::Observer) {
+        FInputModeGameAndUI input_mode{};
+        input_mode.SetHideCursorDuringCapture(false);
+        input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
+        SetInputMode(input_mode);
+        SetShowMouseCursor(true);
+    }
+}
+
+void ASpaceGamePlayerController::set_observer_movement_speed(float const speed) {
+    if (auto* const viewer_hud{Cast<UBattleViewerHudWidget>(hud_widget)}; IsValid(viewer_hud)) {
+        viewer_hud->set_movement_speed(speed);
+    }
+}
+
+auto ASpaceGamePlayerController::initialise_hud(EPlayerControlContext const context) -> bool {
+    if (IsValid(hud_widget)) {
+        auto const correct_type{context == EPlayerControlContext::Player
+                                    ? hud_widget->IsA<UShipHudWidget>()
+                                    : context == EPlayerControlContext::Observer &&
+                                          hud_widget->IsA<UBattleViewerHudWidget>()};
+        if (correct_type) {
+            return true;
+        }
+        shutdown_hud();
     }
 
     auto* const world{GetWorld()};
@@ -522,14 +725,14 @@ void ASpaceGamePlayerController::initialise_hud() {
         UE_LOG(LogSandboxController,
                Warning,
                TEXT("ASpaceGamePlayerController::initialise_hud: World is not available yet."));
-        return;
+        return false;
     }
     if (!IsValid(GetLocalPlayer())) {
         UE_LOG(LogSandboxController,
                Warning,
                TEXT("ASpaceGamePlayerController::initialise_hud: Local player is not available "
                     "yet."));
-        return;
+        return false;
     }
 
     auto* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
@@ -538,13 +741,13 @@ void ASpaceGamePlayerController::initialise_hud() {
                Warning,
                TEXT("ASpaceGamePlayerController::initialise_hud: Orchestrator is not available "
                     "yet."));
-        return;
+        return false;
     }
     if (!IsValid(ui_data)) {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("ASpaceGamePlayerController::initialise_hud: UI data is invalid."));
-        return;
+        return false;
     }
     hud_orchestrator = orchestrator;
 
@@ -553,21 +756,31 @@ void ASpaceGamePlayerController::initialise_hud() {
         UE_LOG(LogSandbox,
                Error,
                TEXT("ASpaceGamePlayerController::initialise_hud: Team visual data is invalid."));
-        return;
+        return false;
     }
 
-    auto const hud_widget_class{ui_data->get_widget_class<UShipHudWidget>()};
+    TSubclassOf<USimulationHudWidget> hud_widget_class;
+    FName widget_name;
+    if (context == EPlayerControlContext::Player) {
+        hud_widget_class = ui_data->get_widget_class<UShipHudWidget>();
+        widget_name = TEXT("ship_hud");
+    } else if (context == EPlayerControlContext::Observer) {
+        hud_widget_class = ui_data->get_widget_class<UBattleViewerHudWidget>();
+        widget_name = TEXT("battle_viewer_hud");
+    } else {
+        return false;
+    }
     if (!hud_widget_class) {
-        return;
+        return false;
     }
 
     auto* const created_widget{
-        CreateWidget<UShipHudWidget>(this, hud_widget_class, TEXT("ship_hud"))};
+        CreateWidget<USimulationHudWidget>(this, hud_widget_class, widget_name)};
     if (!IsValid(created_widget)) {
         UE_LOG(LogSandbox,
                Error,
                TEXT("ASpaceGamePlayerController::initialise_hud: Failed to create HUD widget."));
-        return;
+        return false;
     }
 
     hud_widget = created_widget;
@@ -581,8 +794,27 @@ void ASpaceGamePlayerController::initialise_hud() {
     }
     created_widget->AddToViewport();
     created_widget->set_entity_colours(team_visual_data->build_team_colour_cache());
-    created_widget->set_crosshair_distances(ui_data->crosshair_distances);
+    if (auto* const ship_hud{Cast<UShipHudWidget>(created_widget)}; IsValid(ship_hud)) {
+        ship_hud->set_crosshair_distances(ui_data->crosshair_distances);
+    }
+    if (auto* const viewer_hud{Cast<UBattleViewerHudWidget>(created_widget)}; IsValid(viewer_hud)) {
+        viewer_hud->set_movement_speed(observer_control_context_.get_movement_speed());
+    }
     orchestrator->get_hud_manager().register_hud(*created_widget);
+    return true;
+}
+
+void ASpaceGamePlayerController::shutdown_hud() {
+    if (!IsValid(hud_widget)) {
+        return;
+    }
+    if (auto* const orchestrator{hud_orchestrator.Get()};
+        IsValid(orchestrator) && orchestrator->get_hud_manager().get_registered_hud_count() > 0) {
+        orchestrator->get_hud_manager().unregister_hud(*hud_widget);
+    }
+    hud_widget->RemoveFromParent();
+    hud_widget = nullptr;
+    hud_restore_pending_ = false;
 }
 
 void ASpaceGamePlayerController::hide_hud_for_modal() {
@@ -610,15 +842,18 @@ void ASpaceGamePlayerController::show_initial_pause_menu() {
     auto* const orchestrator{hud_orchestrator.Get()};
     if (!IsValid(orchestrator) || !orchestrator->was_launched_paused() ||
         orchestrator->get_state() != EOrchestratorState::Paused || main_menu_requested_ ||
+        active_control_context_ == EPlayerControlContext::Benchmark ||
         return_to_level_select_pending_ || IsValid(pause_menu) || IsValid(completion_menu)) {
         return;
     }
 
-    restore_ship_controls_after_modal_ =
-        active_control_context_ == EPlayerControlContext::Ship || IsValid(Cast<Pawn>(GetPawn()));
+    modal_restore_context_ = active_control_context_;
+    if (modal_restore_context_ == EPlayerControlContext::None && IsValid(Cast<Pawn>(GetPawn()))) {
+        modal_restore_context_ = EPlayerControlContext::Player;
+    }
     modal_resume_pending_ = true;
     if (!set_control_context(EPlayerControlContext::None)) {
-        restore_ship_controls_after_modal_ = false;
+        modal_restore_context_ = EPlayerControlContext::None;
         modal_resume_pending_ = false;
         return;
     }
@@ -677,11 +912,11 @@ auto ASpaceGamePlayerController::suspend_gameplay_for_modal() -> bool {
         return false;
     }
 
-    restore_ship_controls_after_modal_ = active_control_context_ == EPlayerControlContext::Ship;
+    modal_restore_context_ = active_control_context_;
     modal_resume_pending_ = true;
     orchestrator->pause_simulation();
     if (!set_control_context(EPlayerControlContext::None)) {
-        restore_ship_controls_after_modal_ = false;
+        modal_restore_context_ = EPlayerControlContext::None;
         modal_resume_pending_ = false;
         orchestrator->start_simulation();
         return false;
@@ -705,16 +940,14 @@ void ASpaceGamePlayerController::resume_game() {
         return;
     }
 
-    auto const should_restore_ship{modal_resume_pending_ ? restore_ship_controls_after_modal_
-                                                         : IsValid(Cast<Pawn>(GetPawn()))};
-    auto const target_context{should_restore_ship && IsValid(Cast<Pawn>(GetPawn()))
-                                  ? EPlayerControlContext::Ship
-                                  : EPlayerControlContext::None};
+    auto const target_context{modal_resume_pending_            ? modal_restore_context_
+                              : IsValid(Cast<Pawn>(GetPawn())) ? EPlayerControlContext::Player
+                                                               : EPlayerControlContext::None};
     if (!set_control_context(target_context)) {
         return;
     }
     restore_hud_after_modal();
-    restore_ship_controls_after_modal_ = false;
+    modal_restore_context_ = EPlayerControlContext::None;
     modal_resume_pending_ = false;
 
     switch (orchestrator->get_state()) {

@@ -7,6 +7,7 @@ namespace ml::s7 {
 enum class ELevelCatalogCategory : uint8 {
     Mission,
     BattleViewer,
+    Benchmark,
 };
 
 struct SPACEGAMES7_API FLevelScriptEntry {

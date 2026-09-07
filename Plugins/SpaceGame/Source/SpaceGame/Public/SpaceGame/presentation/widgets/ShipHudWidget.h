@@ -1,13 +1,10 @@
 #pragma once
 
-#include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
-#include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 #include "SandboxUI/Radar/RadarFrameStore.h"
 #include "SandboxUI/Radar/RadarTypes.h"
-#include "SpaceGame/entities/TestEntityRegistry.h"
-#include "SpaceGame/entities/TestTeamVisualData.h"
 #include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/presentation/HudCrosshairDistances.h"
+#include "SpaceGame/presentation/widgets/SimulationHudWidget.h"
 #include "SpaceGame/ships/common/ShipHealth.h"
 
 #include "CoreMinimal.h"
@@ -41,12 +38,12 @@ class FGameUiStyle;
 }
 
 UCLASS()
-class SPACEGAME_API UShipHudWidget : public UUserWidget {
+class SPACEGAME_API UShipHudWidget : public USimulationHudWidget {
   public:
     GENERATED_BODY()
 
     void set_speed(float value);
-    void apply_ui_style(ml::ioj::FGameUiStyle const& style);
+    void apply_ui_style(ml::ioj::FGameUiStyle const& style) override;
     void set_speed_widget_visibility(ESlateVisibility const new_visibility);
 
     void set_health(FShipHealth value);
@@ -91,17 +88,11 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void set_flight_mode(FStringView value);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
-    void set_entity_counts(FTestEntityRegistry::EntityCounts const& counts);
-    void set_entity_colours(UTestTeamVisualData::FColourArray const& colours);
-    void set_mission_data(ml::hud_manager::FMissionDataCache const& data);
     void set_mission_state(ETestMissionState const new_state);
     void set_mission_time(float const mission_time);
     void set_mission_time_remaining(float const time_remaining);
     void set_mission_enemies_remaining(int32 const enemies_remaining);
 
-    void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
-    void set_entity_overlay_style(FEntityOverlayStyle const& style);
-    [[nodiscard]] auto try_get_entity_overlay_view(FEntityOverlayView& view) const -> bool;
     void set_radar_frame_store(FRadarFrameStoreConstPtr frame_store);
     void set_radar_style(FRadarStyle const& style);
 
@@ -117,7 +108,6 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
 
     void set_common_widget_properties();
     void update_crosshair_colours();
-    void apply_entity_overlay_colours();
     void apply_radar_colours();
     void set_widget_visibility_checked(UWidget* const widget,
                                        ESlateVisibility const new_visibility);
@@ -154,12 +144,6 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     UPROPERTY(meta = (BindWidget))
     UValueWidget* flight_mode_widget{nullptr};
 
-    UPROPERTY(meta = (BindWidget))
-    UForceStatusWidget* force_status_widget{nullptr};
-
-    UPROPERTY(meta = (BindWidget))
-    UMissionStatusWidget* mission_status_panel{nullptr};
-
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     int32 font_size{24};
 
@@ -175,23 +159,14 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
 
     FHudCrosshairDistances crosshair_distances{};
-    FEntityOverlayFrameStoreConstPtr entity_overlay_frame_store_;
-    FEntityOverlayStyle entity_overlay_style_;
-    TSharedPtr<SEntityOverlayWidget> entity_overlay_widget_;
     FRadarFrameStoreConstPtr radar_frame_store_;
     FRadarStyle radar_style_;
     TSharedPtr<SRadarWidget> radar_widget_;
-    FLinearColor entity_overlay_background_colour_{};
-    FLinearColor entity_overlay_fill_colour_{};
     FLinearColor entity_overlay_defend_colour_{};
-    FLinearColor entity_overlay_destroy_colour_{};
-    FLinearColor entity_overlay_soft_target_neutral_colour_{};
-    FLinearColor entity_overlay_soft_target_in_range_colour_{};
     FLinearColor reticle_normal_colour_{FLinearColor::Green};
     FLinearColor reticle_warning_colour_{FLinearColor::Yellow};
     FLinearColor reticle_danger_colour_{FLinearColor::Red};
     bool crosshair_targeting_{};
-    bool has_ui_style_{};
 
     UPROPERTY(meta = (BindWidget))
     UNativeWidgetHost* radar_host{nullptr};

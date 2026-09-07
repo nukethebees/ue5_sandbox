@@ -785,7 +785,7 @@ void ATestBatchOrchestrator::load_authored_level() {
     set_time_scale(options.requested_time_scale);
 
     ml::FLevelLoader loader{*this};
-    auto const result{loader.load(pending->definition)};
+    auto const result{loader.load(pending->definition, options.control_context)};
     if (!result) {
         TArray<FString> messages;
         messages.Reserve(result.validation_errors.Num() + result.errors.Num());

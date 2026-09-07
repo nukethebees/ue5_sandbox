@@ -1,0 +1,65 @@
+(widget-class ml::s7::SScriptLevelSelectView
+  (function BuildRoot
+    (params
+      (value body_background)
+      (existing header)
+      (existing catalog)
+      (existing details))
+    (SBorder
+      :BorderImage body_background
+      :Padding 24
+      (vbox
+        (auto (existing header))
+        (fill :padding (0 18 0 0)
+          (hbox
+            (auto (existing catalog))
+            (fill :padding (2 0 0 0) (existing details)))))))
+
+  (function BuildHeader
+    (params
+      (value frame_border)
+      (value caption_style)
+      (value heading_style)
+      (existing mission_button)
+      (existing battle_viewer_button)
+      (existing benchmark_button))
+    (hbox
+      (fill :valign center
+        (STextBlock
+          :Text (loc "LevelSelect" "SystemContext" "TACTICAL OPERATIONS // LEVEL CATALOG")
+          :TextStyle caption_style))
+      (auto :padding (0 0 12 0) :valign center
+        (STextBlock
+          :Text (loc "LevelSelect" "Title" "MISSION CONTROL //")
+          :TextStyle heading_style))
+      (auto
+        (SBorder
+          :BorderImage frame_border
+          :Padding 1
+          (hbox
+            (auto (SBox :WidthOverride 150 (existing mission_button)))
+            (auto (SBox :WidthOverride 190 (existing battle_viewer_button)))
+            (auto (SBox :WidthOverride 160 (existing benchmark_button))))))))
+
+  (function BuildCatalog
+    (params
+      (value navigation_background)
+      (value caption_style)
+      (value heading_style)
+      (existing catalog_scroll))
+    (SBorder
+      :BorderImage navigation_background
+      :Padding 18
+      (SBox
+        :WidthOverride 350
+        :MinDesiredHeight 400
+        (vbox
+          (auto :padding (0 0 0 4)
+            (STextBlock
+              :Text (method catalog_caption)
+              :TextStyle caption_style))
+          (auto :padding (0 0 0 16)
+            (STextBlock
+              :Text (method catalog_title)
+              :TextStyle heading_style))
+          (fill (existing catalog_scroll)))))))
