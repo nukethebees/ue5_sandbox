@@ -103,12 +103,7 @@ void FLevelTelemetryManager::tick() {
     check(lasers_ != nullptr);
     check(spatial_queries_ != nullptr);
     update_current_state();
-    auto& requested_time_scale{run_record_.tick_series.requested_time_scale};
-    auto const completed_tick{clock_->get_completed_ticks()};
-    auto const time_scale{clock_->get_time_scale()};
-    if (requested_time_scale.is_empty() || requested_time_scale.last_value() != time_scale) {
-        requested_time_scale.add(completed_tick, time_scale);
-    }
+    sample_live_series();
     auto const simulated_seconds{clock_->get_simulation_time()};
     if (simulated_seconds + UE_DOUBLE_SMALL_NUMBER >= next_battle_sample_seconds_) {
         sample_series();
@@ -207,6 +202,34 @@ void FLevelTelemetryManager::update_current_state() {
     current_state_.sweep_trace_count = spatial.sweep_trace_count;
 
     check(current_state_.destroyed_entities >= 0);
+}
+
+void FLevelTelemetryManager::sample_live_series() {
+    auto const tick{clock_->get_completed_ticks()};
+    auto const add_if_changed{[tick](auto& data, auto const value) {
+        if (data.is_empty() || data.last_value() != value) {
+            data.add(tick, value);
+        }
+    }};
+    auto& series{run_record_.tick_series};
+    add_if_changed(series.active_entities, current_state_.active_entities);
+
+    constexpr auto team_count{FLevelTelemetryTickSeries::team_count};
+    constexpr auto entity_type_count{FLevelTelemetryTickSeries::entity_type_count};
+    for (int32 entity_type_index{}; entity_type_index < entity_type_count; ++entity_type_index) {
+        int32 type_total{};
+        for (int32 team_index{}; team_index < team_count; ++team_index) {
+            auto const count{
+                current_state_.active_entities_by_team_and_type[team_index][entity_type_index]};
+            type_total += count;
+            add_if_changed(series.active_entities_by_team_and_type[team_index][entity_type_index],
+                           count);
+        }
+        add_if_changed(series.active_entities_by_type[entity_type_index], type_total);
+    }
+
+    add_if_changed(series.kills, current_state_.kills);
+    add_if_changed(series.requested_time_scale, clock_->get_time_scale());
 }
 
 void FLevelTelemetryManager::sample_series(bool const force) {

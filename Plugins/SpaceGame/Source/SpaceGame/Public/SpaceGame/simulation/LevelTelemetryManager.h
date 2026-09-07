@@ -84,6 +84,7 @@ class SPACEGAME_API FLevelTelemetryManager {
     }
   private:
     void update_current_state();
+    void sample_live_series();
     void sample_series(bool force = false);
     void sample_battle_state(bool force = false);
     void close_performance_window(double monotonic_time);
