@@ -402,13 +402,49 @@ auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const d
     if (settings == nullptr) {
         return {};
     }
-    auto result{
-        all_control_bindings().FilterByPredicate([settings, device_type](auto const& binding) {
-            return binding.address.profile_id == settings->GetActiveKeyProfileId() &&
-                   (device_type == EHardwareDevicePrimaryType::Unspecified ||
-                    binding.device_type == device_type);
-        })};
-    return result;
+    auto bindings{all_control_bindings().FilterByPredicate([settings](auto const& binding) {
+        return binding.address.profile_id == settings->GetActiveKeyProfileId();
+    })};
+
+    TArray<FControlBindingView> missing_device_bindings;
+    for (auto const& binding : bindings) {
+        auto add_missing_device = [&](EHardwareDevicePrimaryType const missing_device,
+                                      FHardwareDeviceIdentifier const& hardware_device) {
+            if (bindings.ContainsByPredicate([&binding, missing_device](auto const& candidate) {
+                    return candidate.address.mapping_name == binding.address.mapping_name &&
+                           candidate.device_type == missing_device;
+                }) ||
+                missing_device_bindings.ContainsByPredicate(
+                    [&binding, missing_device](auto const& candidate) {
+                        return candidate.address.mapping_name == binding.address.mapping_name &&
+                               candidate.device_type == missing_device;
+                    })) {
+                return;
+            }
+            auto missing{binding};
+            missing.address.hardware_device_id = hardware_device.HardwareDeviceIdentifier;
+            missing.address.slot = EPlayerMappableKeySlot::First;
+            missing.device_type = missing_device;
+            missing.current_key = EKeys::Invalid;
+            missing.default_key = EKeys::Invalid;
+            missing.modified = false;
+            missing_device_bindings.Add(MoveTemp(missing));
+        };
+
+        if (binding.device_type == EHardwareDevicePrimaryType::Gamepad) {
+            add_missing_device(EHardwareDevicePrimaryType::KeyboardAndMouse,
+                               FHardwareDeviceIdentifier::DefaultKeyboardAndMouse);
+        } else {
+            add_missing_device(EHardwareDevicePrimaryType::Gamepad,
+                               FHardwareDeviceIdentifier::DefaultGamepad);
+        }
+    }
+    bindings.Append(MoveTemp(missing_device_bindings));
+    if (device_type == EHardwareDevicePrimaryType::Unspecified) {
+        return bindings;
+    }
+    return bindings.FilterByPredicate(
+        [device_type](auto const& binding) { return binding.device_type == device_type; });
 }
 
 auto UGameSettingsSubsystem::binding_conflicts(FControlBindingAddress const& address,

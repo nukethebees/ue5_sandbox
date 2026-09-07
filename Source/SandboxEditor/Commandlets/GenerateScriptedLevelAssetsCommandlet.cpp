@@ -696,7 +696,9 @@ auto set_profile_override(UInputMappingContext& destination,
         }
     }
     for (auto const& mapping : source.GetMappings()) {
-        if (mapping_device_is_gamepad(mapping)) {
+        if (!data->Mappings.ContainsByPredicate([&mapping](auto const& existing) {
+                return existing.Action == mapping.Action && existing.Key == mapping.Key;
+            })) {
             data->Mappings.Add(mapping);
         }
     }
