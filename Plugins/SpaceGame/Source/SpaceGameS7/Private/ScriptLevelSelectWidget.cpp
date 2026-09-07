@@ -244,6 +244,9 @@ void UScriptLevelSelectWidget::rebuild_catalog(FName const focus_level_id) {
     selected_level_id_ = NAME_None;
     view_state_ = FLevelSelectViewState{};
     view_state_.category = active_category_;
+    if (active_category_ != ELevelCatalogCategory::Mission) {
+        view_state_.playerless_time_scale = get_active_playerless_time_scale();
+    }
     if (active_category_ == ELevelCatalogCategory::Mission) {
         view_state_.title = NSLOCTEXT("LevelSelect", "SelectLevel", "SELECT AN OPERATION");
         view_state_.description = NSLOCTEXT(
@@ -409,7 +412,11 @@ void UScriptLevelSelectWidget::select_level(int32 const button_index) {
 }
 
 void UScriptLevelSelectWidget::set_battle_time_scale(TOptional<double> time_scale) {
-    battle_time_scale_ = MoveTemp(time_scale);
+    auto& active_time_scale{active_category_ == ELevelCatalogCategory::Benchmark
+                                ? benchmark_time_scale_
+                                : battle_viewer_time_scale_};
+    active_time_scale = MoveTemp(time_scale);
+    view_state_.playerless_time_scale = active_time_scale;
 }
 
 void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
@@ -468,7 +475,7 @@ void UScriptLevelSelectWidget::apply_level_selection(int32 const button_index) {
 
 void UScriptLevelSelectWidget::handle_launch() {
     auto const time_scale{active_category_ != ELevelCatalogCategory::Mission
-                              ? battle_time_scale_
+                              ? get_active_playerless_time_scale()
                               : TOptional<double>{ml::ioj::level_launch::default_time_scale}};
     if (!time_scale.IsSet()) {
         return;

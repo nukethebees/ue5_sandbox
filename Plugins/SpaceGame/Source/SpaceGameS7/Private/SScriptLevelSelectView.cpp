@@ -56,6 +56,13 @@ void SScriptLevelSelectView::update_state(FLevelSelectViewState const& state) {
     selected_level_can_launch_ = state.can_launch;
     auto const playerless{category_ != ELevelCatalogCategory::Mission};
     if (playerless) {
+        auto const speed_text{
+            state.playerless_time_scale.IsSet()
+                ? FText::FromString(FString::SanitizeFloat(state.playerless_time_scale.GetValue()))
+                : FText::GetEmpty()};
+        if (!battle_speed_input_->GetText().EqualTo(speed_text)) {
+            battle_speed_input_->SetText(speed_text);
+        }
         handle_battle_duration_changed(battle_duration_input_->GetText());
     }
     battle_options_->SetVisibility(playerless ? EVisibility::Visible : EVisibility::Collapsed);

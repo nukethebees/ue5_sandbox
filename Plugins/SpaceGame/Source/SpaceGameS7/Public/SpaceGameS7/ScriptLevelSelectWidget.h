@@ -39,6 +39,7 @@ struct FLevelSelectViewState {
     FText script{};
     FText launch_mode_status{};
     ELevelCatalogCategory category{ELevelCatalogCategory::Mission};
+    TOptional<double> playerless_time_scale{};
     int32 selected_button_index{INDEX_NONE};
     bool can_launch{};
 };
@@ -55,7 +56,7 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     [[nodiscard]] auto can_launch_selected_level() const noexcept -> bool {
         return view_state_.can_launch &&
                (active_category_ == ELevelCatalogCategory::Mission ||
-                (battle_time_scale_.IsSet() && battle_duration_valid_));
+                (get_active_playerless_time_scale().IsSet() && battle_duration_valid_));
     }
     [[nodiscard]] auto get_active_category() const noexcept -> ELevelCatalogCategory {
         return active_category_;
@@ -80,6 +81,12 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     void set_battle_detailed_timing(bool enabled);
     void apply_level_selection(int32 button_index);
 
+    [[nodiscard]] auto get_active_playerless_time_scale() const noexcept
+        -> TOptional<double> const& {
+        return active_category_ == ELevelCatalogCategory::Benchmark ? benchmark_time_scale_
+                                                                    : battle_viewer_time_scale_;
+    }
+
     void handle_launch();
     void publish_view();
     void publish_catalog();
@@ -97,7 +104,8 @@ class SPACEGAMES7_API UScriptLevelSelectWidget : public ml::ioj::ULevelSelectWid
     int32 selected_entry_index_{INDEX_NONE};
     FName selected_level_id_{NAME_None};
     ELevelCatalogCategory active_category_{ELevelCatalogCategory::Mission};
-    TOptional<double> battle_time_scale_{1.0};
+    TOptional<double> battle_viewer_time_scale_{1.0};
+    TOptional<double> benchmark_time_scale_{10.0};
     TOptional<double> battle_duration_{300.0};
     bool battle_duration_valid_{true};
     bool battle_simulation_only_{};
