@@ -705,9 +705,9 @@ auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> c
                                           ? binding.current_key.GetDisplayName()
                                           : NSLOCTEXT("OptionsMenu", "UnboundControl", "Unbound")};
         auto key_text{component_key_text};
-        if (binding.chord_key.IsSet()) {
-            auto const chord_key_text{binding.chord_key->IsValid()
-                                          ? binding.chord_key->GetDisplayName()
+        if (binding.chord.IsSet()) {
+            auto const chord_key_text{binding.chord->current_key.IsValid()
+                                          ? binding.chord->current_key.GetDisplayName()
                                           : NSLOCTEXT("OptionsMenu", "UnboundChord", "Unbound")};
             key_text = FText::Format(NSLOCTEXT("OptionsMenu", "ChordBindingFormat", "{0} + {1}"),
                                      chord_key_text,
@@ -720,7 +720,7 @@ auto SGameOptionsView::build_binding_cell(TConstArrayView<FControlBindingView> c
                  [SNew(SGameButton)
                       .Style(&style_->button(EGameButtonStyle::Secondary))
                       .Text(key_text)
-                      .ToolTipText(binding.chord_key.IsSet()
+                      .ToolTipText(binding.chord.IsSet()
                                        ? NSLOCTEXT("OptionsMenu",
                                                    "ChordBindingTip",
                                                    "The chord activator is shown first. Click to "

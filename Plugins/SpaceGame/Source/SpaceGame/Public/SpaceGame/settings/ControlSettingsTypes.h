@@ -23,6 +23,12 @@ struct FControlBindingAddress {
     auto operator==(FControlBindingAddress const&) const -> bool = default;
 };
 
+struct FControlChordBindingView {
+    FControlBindingAddress address;
+    FKey current_key;
+    FKey default_key;
+};
+
 struct FControlBindingView {
     FControlBindingAddress address;
     FText display_name;
@@ -30,7 +36,7 @@ struct FControlBindingView {
     EHardwareDevicePrimaryType device_type{EHardwareDevicePrimaryType::Unspecified};
     FKey current_key;
     FKey default_key;
-    TOptional<FKey> chord_key;
+    TOptional<FControlChordBindingView> chord;
     bool modified{};
     bool custom_profile{};
 };

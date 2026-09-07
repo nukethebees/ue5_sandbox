@@ -132,9 +132,9 @@ auto USpaceGameInputUserSettings::custom_key_profile_display_name(FString const&
     return IsValid(profile) ? profile->GetProfileDisplayName() : FText::GetEmpty();
 }
 
-auto USpaceGameInputUserSettings::chord_key_for_mapping(FString const& profile_id,
-                                                        FPlayerKeyMapping const& mapping) const
-    -> TOptional<FKey> {
+auto USpaceGameInputUserSettings::chord_mapping_for_mapping(FString const& profile_id,
+                                                            FPlayerKeyMapping const& mapping) const
+    -> FPlayerKeyMapping const* {
     auto const* const profile{GetKeyProfileWithId(profile_id)};
     auto const* const action{mapping.GetAssociatedInputAction()};
     if (!IsValid(profile) || !IsValid(action)) {
@@ -163,11 +163,11 @@ auto USpaceGameInputUserSettings::chord_key_for_mapping(FString const& profile_i
                     for (auto const& candidate : row.Value.Mappings) {
                         if (candidate.GetAssociatedInputAction() == chord_trigger->ChordAction &&
                             candidate.GetPrimaryDeviceType() == mapping.GetPrimaryDeviceType()) {
-                            return candidate.GetCurrentKey();
+                            return &candidate;
                         }
                     }
                 }
-                return FKey{};
+                return nullptr;
             }
         }
     }

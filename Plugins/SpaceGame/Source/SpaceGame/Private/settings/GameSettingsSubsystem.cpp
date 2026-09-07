@@ -363,6 +363,22 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
         }
         for (auto const& row : profile->GetPlayerMappingRows()) {
             for (auto const& mapping : row.Value.Mappings) {
+                TOptional<FControlChordBindingView> chord;
+                if (auto const* const chord_mapping{
+                        settings->chord_mapping_for_mapping(profile_pair.Key, mapping)}) {
+                    chord = FControlChordBindingView{
+                        .address =
+                            {
+                                .profile_id = profile_pair.Key,
+                                .mapping_name = chord_mapping->GetMappingName(),
+                                .hardware_device_id =
+                                    chord_mapping->GetHardwareDeviceId().HardwareDeviceIdentifier,
+                                .slot = chord_mapping->GetSlot(),
+                            },
+                        .current_key = chord_mapping->GetCurrentKey(),
+                        .default_key = chord_mapping->GetDefaultKey(),
+                    };
+                }
                 result.Add(FControlBindingView{
                     .address =
                         {
@@ -377,7 +393,7 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
                     .device_type = mapping.GetPrimaryDeviceType(),
                     .current_key = mapping.GetCurrentKey(),
                     .default_key = mapping.GetDefaultKey(),
-                    .chord_key = settings->chord_key_for_mapping(profile_pair.Key, mapping),
+                    .chord = MoveTemp(chord),
                     .modified = mapping.IsCustomized(),
                     .custom_profile = is_custom_control_profile_id(profile_pair.Key),
                 });
@@ -433,7 +449,7 @@ auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const d
             missing.device_type = missing_device;
             missing.current_key = EKeys::Invalid;
             missing.default_key = EKeys::Invalid;
-            missing.chord_key.Reset();
+            missing.chord.Reset();
             missing.modified = false;
             missing_device_bindings.Add(MoveTemp(missing));
         };

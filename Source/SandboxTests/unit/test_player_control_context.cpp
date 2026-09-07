@@ -173,7 +173,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         if (IsValid(chord_profile)) {
             for (auto const& row : chord_profile->GetPlayerMappingRows()) {
                 for (auto const& mapping : row.Value.Mappings) {
-                    if (settings->chord_key_for_mapping(profiles.Last().id, mapping).IsSet()) {
+                    if (settings->chord_mapping_for_mapping(profiles.Last().id, mapping) !=
+                        nullptr) {
                         ++chorded_mapping_count;
                     }
                 }
@@ -181,6 +182,33 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         }
         TestRunner->TestTrue(TEXT("Chorded mappings resolve their activator keys"),
                              chorded_mapping_count >= 4);
+
+        FPlayerMappableKeyProfileCreationArgs custom_arguments{};
+        custom_arguments.ProfileStringIdentifier = TEXT("SpaceGame.Controls.Custom.ChordTest");
+        custom_arguments.DisplayName = INVTEXT("Chord test");
+        auto* const custom_chord_profile{
+            settings->create_custom_key_profile(custom_arguments, profiles.Last().id)};
+        auto custom_chorded_mapping_count{0};
+        if (TestRunner->TestTrue(TEXT("Chord test custom profile is created"),
+                                 IsValid(custom_chord_profile))) {
+            for (auto const& row : custom_chord_profile->GetPlayerMappingRows()) {
+                for (auto const& mapping : row.Value.Mappings) {
+                    auto const* const chord_mapping{settings->chord_mapping_for_mapping(
+                        custom_arguments.ProfileStringIdentifier, mapping)};
+                    if (chord_mapping != nullptr) {
+                        ++custom_chorded_mapping_count;
+                        TestRunner->TestTrue(TEXT("Chord activator has a mapping name"),
+                                             chord_mapping->GetMappingName().IsValid());
+                        TestRunner->TestEqual(TEXT("Chord activator uses the same device"),
+                                              chord_mapping->GetPrimaryDeviceType(),
+                                              mapping.GetPrimaryDeviceType());
+                    }
+                }
+            }
+        }
+        TestRunner->TestEqual(TEXT("Custom profile retains authored chord relationships"),
+                              custom_chorded_mapping_count,
+                              chorded_mapping_count);
     }
 
     TEST_METHOD(ControlProfileOverridesMatchTheirSourceContexts)

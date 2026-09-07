@@ -56,9 +56,9 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     auto delete_custom_key_profile(FString const& profile_id) -> bool;
     [[nodiscard]] auto custom_key_profile_source_id(FString const& profile_id) const -> FString;
     [[nodiscard]] auto custom_key_profile_display_name(FString const& profile_id) const -> FText;
-    [[nodiscard]] auto chord_key_for_mapping(FString const& profile_id,
-                                             FPlayerKeyMapping const& mapping) const
-        -> TOptional<FKey>;
+    [[nodiscard]] auto chord_mapping_for_mapping(FString const& profile_id,
+                                                 FPlayerKeyMapping const& mapping) const
+        -> FPlayerKeyMapping const*;
   protected:
     auto RegisterKeyMappingsToProfile(UEnhancedPlayerMappableKeyProfile& profile,
                                       UInputMappingContext const* mapping_context) -> bool override;
