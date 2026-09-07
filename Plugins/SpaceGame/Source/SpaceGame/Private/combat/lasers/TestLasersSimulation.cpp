@@ -140,8 +140,8 @@ void Simulation::process_pending_spawns() {
         auto const spawn_location{base_spawn_location + forward_velocity * tick_period +
                                   forward_direction * fixed_spawn_offset};
 
-        ml::assign(entities.locations, index, spawn_location);
-        ml::assign(entities.velocities, index, velocity);
+        entities.locations.set(index, spawn_location);
+        entities.velocities.set(index, velocity);
         entities.lifetimes_remaining[index] = lifetime;
 
         auto const base{i * 5};
@@ -211,8 +211,7 @@ void Simulation::check_collision_thread(int32 const job_index,
         auto const entity_index{i_start + trace_index};
         auto const start{ml::get_vector3f(simulation.entities.locations, entity_index)};
         auto const velocity{ml::get_vector3f(simulation.entities.velocities, entity_index)};
-        data.traces.starts.set(trace_index, start);
-        data.traces.ends.set(trace_index, start + dt * velocity);
+        data.traces.set(trace_index, start, start + dt * velocity);
     }
 
     auto const ignored_entities{

@@ -92,6 +92,7 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
         .equivalent_type = TypeRef{"@vector"},
         .input_types = {TypeRef{"@vector"}, TypeRef{"@point"}},
     }})};
+    module.layouts.front().input_members = {"U", "V"};
     auto const output{render_homogeneous(std::move(module),
                                          {{"vector", CppType{"FVector2f", "Project/Vector.h"}},
                                           {"point", CppType{"FPoint2f", "Project/Point.h"}}})};
@@ -114,7 +115,17 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
               std::string::npos);
     EXPECT_NE(output.header.find("auto add(FPoint2f const& value) -> size_type"),
               std::string::npos);
-    EXPECT_NE(output.header.find("return add(value.X, value.Y);"), std::string::npos);
+    EXPECT_NE(output.header.find("void set(size_type const index, value_type const x, "
+                                 "value_type const y) const"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("requires (!std::is_const_v<T>)"), std::string::npos);
+    EXPECT_NE(output.header.find(
+                  "void set(size_type const index, equivalent_type const& value) const"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("void set(size_type const index, FVector2f const& value)"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("set(index, value.U, value.V);"), std::string::npos);
+    EXPECT_NE(output.header.find("return add(value.U, value.V);"), std::string::npos);
     EXPECT_NE(output.header.find("#include \"Project/Vector.h\""), std::string::npos);
     EXPECT_NE(output.header.find("#include \"Project/Point.h\""), std::string::npos);
 }

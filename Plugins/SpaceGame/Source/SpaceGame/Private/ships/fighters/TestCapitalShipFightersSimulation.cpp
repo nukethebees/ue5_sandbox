@@ -311,7 +311,7 @@ void Simulation::move(float const dt) {
                                               attack_view.intercept_times[i]};
             auto const desired_firing_direction{
                 (intercept_location - ml::get_vector3f(attack_view.locations, i)).GetSafeNormal()};
-            ml::assign(attack_view.desired_aiming_directions, i, desired_firing_direction);
+            attack_view.desired_aiming_directions.set(i, desired_firing_direction);
 
             if (!attack_view.attack_reposition_countdowns.try_consume(i)) {
                 continue;
@@ -329,11 +329,11 @@ void Simulation::move(float const dt) {
             auto const target_direction{(ml::get_vector3f(attack_view.target_locations, i) -
                                          ml::get_vector3f(attack_view.locations, i))
                                             .GetSafeNormal()};
-            ml::assign(attack_view.target_directions, i, target_direction);
-            ml::assign(attack_view.desired_move_locations,
-                       i,
-                       ml::get_vector3f(attack_view.target_locations, i) -
-                           target_direction * desired_attack_distance);
+            attack_view.target_directions.set(i, target_direction);
+            attack_view.desired_move_locations.set(
+                i,
+                ml::get_vector3f(attack_view.target_locations, i) -
+                    target_direction * desired_attack_distance);
         }
     }
 
@@ -351,7 +351,7 @@ void Simulation::move(float const dt) {
                     : ml::get_vector3f(attack_view.desired_aiming_directions, i)};
             auto const aim_direction{FMath::Lerp(
                 ml::get_vector3f(attack_view.aim_directions, i), desired_direction, d_turn)};
-            ml::assign(attack_view.aim_directions, i, aim_direction);
+            attack_view.aim_directions.set(i, aim_direction);
         }
     }
 
@@ -428,7 +428,7 @@ void Simulation::move(float const dt, TaskView const& fighters) {
         fighters.move_distances[i] = FMath::Min(fighters.move_distances[i], max_move_distance);
         auto const velocity{ml::get_vector3f(fighters.movement_directions, i) *
                             (fighters.move_distances[i] / dt)};
-        ml::assign(fighters.velocities, i, velocity);
+        fighters.velocities.set(i, velocity);
     }
 
     ml::add_scaled_in_place(fighters.locations,
@@ -648,12 +648,11 @@ void Simulation::update_navigation_steering() {
                     ml::get_vector3f(data.movement_directions, fighter_index)};
                 auto const avoidance_frame{
                     make_avoidance_frame(preferred_direction, data.float_biases[fighter_index])};
-                ml::assign(data.movement_directions,
-                           fighter_index,
-                           make_avoidance_direction(avoidance_frame, choice));
+                data.movement_directions.set(fighter_index,
+                                             make_avoidance_direction(avoidance_frame, choice));
                 ++avoiding_count;
             } else if (choice == stop_movement_choice) {
-                ml::assign(data.movement_directions, fighter_index, FVector3f::ZeroVector);
+                data.movement_directions.set(fighter_index, FVector3f::ZeroVector);
                 ++avoiding_count;
             }
         }
@@ -917,7 +916,7 @@ void Simulation::commit_spawns() {
     ml::fill(new_spawn_entity_data.alive, uint8{1});
     for (int32 i{0}; i < n_new; ++i) {
         auto const index{n_cur + i};
-        ml::assign(data.aim_directions, index, ml::get_vector3f(new_rotations, i));
+        data.aim_directions.set(index, ml::get_vector3f(new_rotations, i));
         ml::assign_from(new_spawn_entity_data.locations, i, data.locations, index);
         new_spawn_entity_data.healths[i] = data.healths[index];
         new_spawn_entity_data.teams[i] = data.teams[index];
@@ -1092,9 +1091,8 @@ void Simulation::handle_firing(TaskView const& data) {
             }
 
             auto const ship_index{firing_position_fighter_indices[i]};
-            ml::assign(data.desired_move_locations,
-                       ship_index,
-                       ml::get_vector3f(firing_position_candidates, i));
+            data.desired_move_locations.set(ship_index,
+                                            ml::get_vector3f(firing_position_candidates, i));
             firing_position_fighter_indices.RemoveAtSwap(i, EAllowShrinking::No);
         }
     }
@@ -1105,9 +1103,9 @@ void Simulation::handle_firing(TaskView const& data) {
         auto const ship_index{can_fire[i]};
         auto const ship_location{ml::get_vector3f(data.locations, ship_index)};
         auto const direction{ml::get_vector3f(data.aim_directions, ship_index)};
-        ml::assign(new_lasers.locations, i, ship_location + direction * fire_point_distance);
-        ml::assign(new_lasers.rotations, i, direction.ToOrientationRotator());
-        ml::assign(new_lasers.base_velocities, i, ml::get_vector3f(data.velocities, ship_index));
+        new_lasers.locations.set(i, ship_location + direction * fire_point_distance);
+        new_lasers.rotations.set(i, direction.ToOrientationRotator());
+        new_lasers.base_velocities.set(i, ml::get_vector3f(data.velocities, ship_index));
         new_lasers.instigator_handles[i] = data.entity_handles[ship_index];
         new_lasers.colours[i] = colour_cache[data.teams[ship_index]];
         data.attack_cooldowns.restart_counter(ship_index);

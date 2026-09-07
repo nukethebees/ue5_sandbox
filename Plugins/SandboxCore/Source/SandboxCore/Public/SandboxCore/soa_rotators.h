@@ -15,11 +15,25 @@
 #include <utility>
 
 template <typename T>
+struct TRotatorsEquivalentType;
+
+template <>
+struct TRotatorsEquivalentType<float> {
+    using type = FRotator3f;
+};
+
+template <>
+struct TRotatorsEquivalentType<double> {
+    using type = FRotator3d;
+};
+
+template <typename T>
 struct TRotatorsView {
     using size_type = TArrayView<T>::SizeType;
     using value_type = std::remove_const_t<T>;
     using View = TRotatorsView<T>;
     using ConstView = TRotatorsView<value_type const>;
+    using equivalent_type = typename TRotatorsEquivalentType<value_type>::type;
 
     TArrayView<T> pitches;
     TArrayView<T> yaws;
@@ -56,10 +70,29 @@ struct TRotatorsView {
     auto right(size_type const count) const -> TRotatorsView {
         return TRotatorsView{pitches.Right(count), yaws.Right(count), rolls.Right(count)};
     }
+    void set(size_type const index, value_type const p, value_type const y, value_type const r) const
+        requires (!std::is_const_v<T>) {
+        pitches[index] = p;
+        yaws[index] = y;
+        rolls[index] = r;
+    }
+    void set(size_type const index, equivalent_type const& value) const
+        requires (!std::is_const_v<T>) {
+        set(index, value.Pitch, value.Yaw, value.Roll);
+    }
+    auto operator[](size_type const index) const -> equivalent_type {
+        return {pitches.GetData()[index], yaws.GetData()[index], rolls.GetData()[index]};
+    }
+    auto at(size_type const index) const -> equivalent_type {
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
 };
 
 struct SANDBOXCORE_API FRotatorsf {
     using value_type = float;
+    using equivalent_type = FRotator3f;
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
@@ -135,11 +168,31 @@ struct SANDBOXCORE_API FRotatorsf {
         scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
         apply_permutation(scratch_indices);
     }
+    auto operator[](size_type const index) const -> equivalent_type {
+        return {pitches.GetData()[index], yaws.GetData()[index], rolls.GetData()[index]};
+    }
+    auto at(size_type const index) const -> equivalent_type {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
+    void set(size_type const index, value_type const p, value_type const y, value_type const r) {
+        pitches[index] = p;
+        yaws[index] = y;
+        rolls[index] = r;
+    }
     auto add(value_type const p, value_type const y, value_type const r) -> size_type {
         auto const index{pitches.Add(p)};
         yaws.Add(y);
         rolls.Add(r);
         return index;
+    }
+    void set(size_type const index, FRotator3f const& value) {
+        set(index, value.Pitch, value.Yaw, value.Roll);
+    }
+    auto add(FRotator3f const& value) -> size_type {
+        return add(value.Pitch, value.Yaw, value.Roll);
     }
     auto reset() -> void {
         pitches.Reset();
@@ -190,6 +243,7 @@ struct SANDBOXCORE_API FRotatorsf {
 
 struct SANDBOXCORE_API FRotatorsd {
     using value_type = double;
+    using equivalent_type = FRotator3d;
     using size_type = TArray<value_type>::SizeType;
     using View = TRotatorsView<value_type>;
     using ConstView = TRotatorsView<value_type const>;
@@ -265,11 +319,31 @@ struct SANDBOXCORE_API FRotatorsd {
         scratch_indices.Sort([this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
         apply_permutation(scratch_indices);
     }
+    auto operator[](size_type const index) const -> equivalent_type {
+        return {pitches.GetData()[index], yaws.GetData()[index], rolls.GetData()[index]};
+    }
+    auto at(size_type const index) const -> equivalent_type {
+        validate_array_sizes();
+        check(index >= 0);
+        check(index < num());
+        return (*this)[index];
+    }
+    void set(size_type const index, value_type const p, value_type const y, value_type const r) {
+        pitches[index] = p;
+        yaws[index] = y;
+        rolls[index] = r;
+    }
     auto add(value_type const p, value_type const y, value_type const r) -> size_type {
         auto const index{pitches.Add(p)};
         yaws.Add(y);
         rolls.Add(r);
         return index;
+    }
+    void set(size_type const index, FRotator3d const& value) {
+        set(index, value.Pitch, value.Yaw, value.Roll);
+    }
+    auto add(FRotator3d const& value) -> size_type {
+        return add(value.Pitch, value.Yaw, value.Roll);
     }
     auto reset() -> void {
         pitches.Reset();

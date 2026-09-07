@@ -436,9 +436,9 @@ void Simulation::fire_lasers_from(TConstArrayView<FTransform> const fire_points)
     ml::add_uninitialised(laser_count, new_lasers);
 
     for (int32 i{0}; i < laser_count; ++i) {
-        ml::assign(new_lasers.locations, i, fire_points[i].GetLocation());
-        ml::assign(new_lasers.rotations, i, fire_points[i].Rotator());
-        ml::assign(new_lasers.base_velocities, i, FVector3f{velocity});
+        new_lasers.locations.set(i, FVector3f{fire_points[i].GetLocation()});
+        new_lasers.rotations.set(i, FRotator3f{fire_points[i].Rotator()});
+        new_lasers.base_velocities.set(i, FVector3f{velocity});
     }
 
     new_lasers.set_damages(config.laser.damage);

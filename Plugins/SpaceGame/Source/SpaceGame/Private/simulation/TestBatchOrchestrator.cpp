@@ -463,8 +463,8 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         ml::add_uninitialised(n_to_add, spawn_data);
         for (int32 i{0}; i < n_to_add; ++i) {
             auto const& proxy_transform{capital_proxies[i]->GetActorTransform()};
-            ml::assign(spawn_data.locations, i, proxy_transform.GetLocation());
-            ml::assign(spawn_data.rotations, i, proxy_transform.Rotator());
+            spawn_data.locations.set(i, FVector3f{proxy_transform.GetLocation()});
+            spawn_data.rotations.set(i, FRotator3f{proxy_transform.Rotator()});
             spawn_data.teams[i] = capital_proxies[i]->get_team();
             spawn_data.healths[i] =
                 capital_proxies[i]->get_health().Get(level_config->capital_ships.max_health);
@@ -509,7 +509,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
             auto* proxy{spinner_proxies[i]};
             auto const& transform{proxy->GetActorTransform()};
 
-            ml::assign(new_locations, i, transform.GetLocation());
+            new_locations.set(i, FVector3f{transform.GetLocation()});
             new_yaws[i] = transform.Rotator().Yaw;
             new_fire_point_indices[i] = proxy->get_initial_active_fire_point();
         }

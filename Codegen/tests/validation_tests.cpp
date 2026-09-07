@@ -723,6 +723,11 @@ TEST(Validation, RejectsDuplicateHomogeneousInputTypes) {
 
 TEST(Validation, RejectsHomogeneousInputOverloadsWithMoreThanThreeComponents) {
     auto module{valid_homogeneous_module()};
+    module.layouts.front().input_members = {"X"};
+
+    EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
+
+    module.layouts.front().input_members.clear();
     module.layouts.front().components = {"xs", "ys", "zs", "ws"};
     module.layouts.front().value_types.front().input_types = {TypeRef{"FVector4f"}};
 

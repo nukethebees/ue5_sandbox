@@ -23,39 +23,38 @@ auto make_legacy_level_initialisation(FLevelSimulationInitData const& data)
     initial_spawns.capital_spawns.add_uninitialised(capital_count);
     for (int32 i{}; i < capital_count; ++i) {
         auto const entity_index{player_offset + i};
-        initial_spawns.capital_spawns.entity_indices[i] = entity_index;
         auto const target_index{data.capital_target_spawn_indices.IsValidIndex(i)
                                     ? data.capital_target_spawn_indices[i]
                                     : INDEX_NONE};
-        initial_spawns.capital_spawns.target_entity_indices[i] =
+        auto const target_entity_index{
             target_index == FLevelSimulationInitData::player_target_spawn_index
                 ? initialisation.player_entity_index
-                : (target_index == INDEX_NONE ? INDEX_NONE : player_offset + target_index);
-        ml::assign_from(
-            initial_spawns.capital_spawns.locations, i, data.capital_spawns.locations, i);
-        ml::assign(initial_spawns.capital_spawns.rotations,
-                   i,
-                   ml::get_rotator3d(data.capital_spawns.rotations, i));
-        initial_spawns.capital_spawns.teams[i] = data.capital_spawns.teams[i];
-        initial_spawns.capital_spawns.healths[i] = data.capital_spawns.healths[i];
-        initial_spawns.capital_spawns.initial_fighter_spawn_delays[i] =
-            data.capital_spawns.initial_spawn_delays[i];
-        initial_spawns.capital_spawns.fighter_spawn_cooldowns[i] =
-            data.capital_spawns.spawn_cooldowns[i];
+                : (target_index == INDEX_NONE ? INDEX_NONE : player_offset + target_index)};
+        initial_spawns.capital_spawns.set(
+            i,
+            entity_index,
+            target_entity_index,
+            data.capital_spawns.locations[i],
+            FRotator3f{ml::get_rotator3d(data.capital_spawns.rotations, i)},
+            data.capital_spawns.teams[i],
+            data.capital_spawns.healths[i],
+            data.capital_spawns.initial_spawn_delays[i],
+            data.capital_spawns.spawn_cooldowns[i]);
     }
 
     initial_spawns.turret_spawns.add_uninitialised(turret_count);
     for (int32 i{}; i < turret_count; ++i) {
         auto const entity_index{player_offset + capital_count + i};
-        initial_spawns.turret_spawns.entity_indices[i] = entity_index;
-        ml::assign_from(initial_spawns.turret_spawns.locations, i, data.turret_spawns.locations, i);
         auto const rotation{data.turret_transforms.IsValidIndex(i)
                                 ? data.turret_transforms[i].Rotator()
                                 : FRotator::ZeroRotator};
-        ml::assign(initial_spawns.turret_spawns.rotations, i, rotation);
-        initial_spawns.turret_spawns.teams[i] = data.turret_spawns.teams[i];
-        initial_spawns.turret_spawns.healths[i] = data.turret_spawns.healths[i];
-        initial_spawns.turret_spawns.laser_damages[i] = data.turret_spawns.laser_damages[i];
+        initial_spawns.turret_spawns.set(i,
+                                         entity_index,
+                                         data.turret_spawns.locations[i],
+                                         FRotator3f{rotation},
+                                         data.turret_spawns.teams[i],
+                                         data.turret_spawns.healths[i],
+                                         data.turret_spawns.laser_damages[i]);
     }
     return compiled;
 }

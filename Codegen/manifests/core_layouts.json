@@ -134,9 +134,20 @@
         {
           "name": "Rotators",
           "components": ["pitches", "yaws", "rolls"],
+          "input_members": ["Pitch", "Yaw", "Roll"],
           "value_types": [
-            {"type": "float", "suffix": "f"},
-            {"type": "double", "suffix": "d"}
+            {
+              "type": "float",
+              "suffix": "f",
+              "equivalent_type": "@rotator_3f",
+              "input_types": ["@rotator_3f"]
+            },
+            {
+              "type": "double",
+              "suffix": "d",
+              "equivalent_type": "@rotator_3d",
+              "input_types": ["@rotator_3d"]
+            }
           ],
           "export_specifier": "SANDBOXCORE_API"
         }

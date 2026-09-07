@@ -58,6 +58,13 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueueView {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
 
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_targets) const {
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        targets[index] = new_targets;
+    }
+
     template <typename TFunc>
     auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
         return std::forward<TFunc>(func)(
@@ -93,6 +100,13 @@ struct SPACEGAME_API TestCapitalShipFighterSpawnQueueView {
 struct SPACEGAME_API TestCapitalShipFighterSpawnQueue {
     using View = TestCapitalShipFighterSpawnQueueView;
     using ConstView = TestCapitalShipFighterSpawnQueueConstView;
+
+    void set(int32 const index, FVectors3f::equivalent_type const new_locations, FRotatorsf::equivalent_type const new_rotations, ETestTeam const new_teams, FRegistryEntityHandle const new_targets) {
+        locations.set(index, new_locations);
+        rotations.set(index, new_rotations);
+        teams[index] = new_teams;
+        targets[index] = new_targets;
+    }
 
     void reset();
 
