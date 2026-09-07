@@ -664,7 +664,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                hud_tick_loop.tick_rate,
                                get_player_ship_simulation(),
                                *level_config,
-                               presentation_settings.entity_overlay);
+                               presentation_settings.entity_overlay,
+                               presentation_settings.radar);
     }
     bool const automatic{
         start_mode == EOrchestratorStartMode::Automatic ||

@@ -4,6 +4,7 @@
 
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SandboxUI/EntityOverlay/SEntityOverlayWidget.h"
+#include "SandboxUI/Radar/SRadarWidget.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
 #include "SpaceGame/presentation/widgets/DebugGraphWidget.h"
 #include "SpaceGame/presentation/widgets/ForceStatusWidget.h"
@@ -17,8 +18,10 @@
 #include "SpaceGame/ui/style/GameUiStyle.h"
 
 #include <Blueprint/WidgetTree.h>
+#include <Components/Border.h>
 #include <Components/CanvasPanelSlot.h>
 #include <Components/Image.h>
+#include <Components/NativeWidgetHost.h>
 #include <Components/PanelWidget.h>
 #include <Components/TextBlock.h>
 #include <Components/Widget.h>
@@ -49,8 +52,43 @@ void set_font_size_on_widgets(int32 const font_size, WidgetTypes* const... widge
 }
 }
 
+namespace ml::ship_hud {
+inline constexpr float radar_display_dimension{640.0f};
+inline constexpr float radar_viewport_margin{32.0f};
+
+void configure_radar_canvas_slot(UWidget* const widget) {
+    auto* const slot{Cast<UCanvasPanelSlot>(widget->Slot)};
+    if (slot == nullptr) {
+        return;
+    }
+
+    slot->SetAnchors(FAnchors{1.0f, 1.0f});
+    slot->SetAlignment(FVector2D{1.0, 1.0});
+    slot->SetPosition(FVector2D{-radar_viewport_margin, -radar_viewport_margin});
+    slot->SetSize(FVector2D{radar_display_dimension, radar_display_dimension});
+    slot->SetAutoSize(false);
+}
+} // namespace ml::ship_hud
+
 auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
     auto const hud_content{Super::RebuildWidget()};
+    if (IsValid(radar_background)) {
+        radar_background->SetBrushColor(FLinearColor::Transparent);
+        ml::ship_hud::configure_radar_canvas_slot(radar_background);
+    } else {
+        UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar background."));
+    }
+    auto const radar{SAssignNew(radar_widget_, SRadarWidget)};
+    radar_widget_->set_frame_store(radar_frame_store_);
+    radar_widget_->set_style(radar_style_);
+    radar_widget_->SetVisibility(radar_frame_store_.IsValid() ? EVisibility::HitTestInvisible
+                                                              : EVisibility::Collapsed);
+    if (IsValid(radar_host)) {
+        ml::ship_hud::configure_radar_canvas_slot(radar_host);
+        radar_host->SetContent(radar);
+    } else {
+        UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no radar NativeWidgetHost."));
+    }
     auto const overlay{SAssignNew(entity_overlay_widget_, SEntityOverlayWidget)};
     entity_overlay_widget_->SetVisibility(entity_overlay_frame_store_.IsValid()
                                               ? EVisibility::HitTestInvisible
@@ -63,11 +101,15 @@ auto UShipHudWidget::RebuildWidget() -> TSharedRef<SWidget> {
 void UShipHudWidget::ReleaseSlateResources(bool const release_children) {
     Super::ReleaseSlateResources(release_children);
     entity_overlay_widget_.Reset();
+    radar_widget_.Reset();
 }
 
 void UShipHudWidget::NativeTick(FGeometry const& geometry, float const delta_time) {
     Super::NativeTick(geometry, delta_time);
 
+    if (radar_widget_.IsValid() && radar_frame_store_.IsValid()) {
+        radar_widget_->render();
+    }
     if (!entity_overlay_widget_.IsValid() || !entity_overlay_frame_store_.IsValid()) {
         return;
     }
@@ -118,6 +160,23 @@ void UShipHudWidget::set_entity_overlay_style(FEntityOverlayStyle const& style) 
     apply_entity_overlay_colours();
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_style(entity_overlay_style_);
+    }
+}
+
+void UShipHudWidget::set_radar_frame_store(FRadarFrameStoreConstPtr frame_store) {
+    radar_frame_store_ = MoveTemp(frame_store);
+    if (radar_widget_.IsValid()) {
+        radar_widget_->set_frame_store(radar_frame_store_);
+        radar_widget_->SetVisibility(radar_frame_store_.IsValid() ? EVisibility::HitTestInvisible
+                                                                  : EVisibility::Collapsed);
+    }
+}
+
+void UShipHudWidget::set_radar_style(FRadarStyle const& style) {
+    radar_style_ = style;
+    apply_radar_colours();
+    if (radar_widget_.IsValid()) {
+        radar_widget_->set_style(radar_style_);
     }
 }
 
@@ -243,6 +302,7 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     }
 
     apply_entity_overlay_colours();
+    apply_radar_colours();
     update_crosshair_colours();
 }
 
@@ -447,6 +507,20 @@ void UShipHudWidget::apply_entity_overlay_colours() {
     entity_overlay_style_.soft_target_in_range_color = entity_overlay_soft_target_in_range_colour_;
     if (entity_overlay_widget_.IsValid()) {
         entity_overlay_widget_->set_style(entity_overlay_style_);
+    }
+}
+
+void UShipHudWidget::apply_radar_colours() {
+    if (!has_ui_style_) {
+        return;
+    }
+
+    radar_style_.objective_color = entity_overlay_defend_colour_;
+    radar_style_.player_color = entity_overlay_defend_colour_;
+    radar_style_.structure_color = entity_overlay_defend_colour_;
+    radar_style_.plane_color = FLinearColor::Transparent;
+    if (radar_widget_.IsValid()) {
+        radar_widget_->set_style(radar_style_);
     }
 }
 void UShipHudWidget::set_crosshair_widget_visibility(ESlateVisibility const new_visibility) {

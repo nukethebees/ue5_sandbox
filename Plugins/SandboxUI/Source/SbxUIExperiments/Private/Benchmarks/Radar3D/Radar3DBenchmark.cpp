@@ -2,35 +2,40 @@
 
 #include "Benchmarks/BenchmarkStatistics.h"
 
+#include "HAL/PlatformTime.h"
 #include "Math/UnrealMathUtility.h"
-#include "Radar3D/Radar3DRenderer.h"
 #include "RenderingThread.h"
+#include "SandboxUI/Radar/RadarTypes.h"
 
 namespace {
-auto make_contacts(int32 const contact_count) -> TArray<FRadar3DContact> {
-    FVector4f const colors[]{
-        FVector4f{1.0f, 0.28f, 0.12f, 1.0f},
-        FVector4f{0.2f, 0.85f, 1.0f, 1.0f},
-        FVector4f{0.42f, 1.0f, 0.38f, 1.0f},
-        FVector4f{1.0f, 0.88f, 0.22f, 1.0f},
-        FVector4f{0.75f, 0.38f, 1.0f, 1.0f},
+auto make_frame(int32 const contact_count) -> FRadarFrame {
+    FLinearColor const colors[]{
+        {0.12f, 0.72f, 1.0f, 1.0f},
+        {1.0f, 0.08f, 0.035f, 1.0f},
+        {0.78f, 0.84f, 0.86f, 1.0f},
     };
 
-    TArray<FRadar3DContact> contacts;
-    contacts.SetNumUninitialized(contact_count);
+    FRadarFrame frame;
+    frame.instances.SetNumUninitialized(contact_count);
     for (int32 index{0}; index < contact_count; ++index) {
         auto const fraction{static_cast<float>(index) / static_cast<float>(contact_count)};
         auto const radius{0.18f + 0.68f * FMath::Fmod(index * 0.618034f, 1.0f)};
         auto const angle{fraction * 17.0f + index * 0.37f};
-        contacts[index] = {
-            .position = FVector3f{radius * FMath::Cos(angle),
-                                  radius * FMath::Sin(angle),
-                                  -0.8f + 1.6f * FMath::Fmod(index * 0.414214f, 1.0f)},
-            .size = 4.5f + static_cast<float>(index % 4),
-            .color = colors[index % UE_ARRAY_COUNT(colors)],
+        auto const flags{index % 31 == 0   ? ERadarContactFlags::Selected
+                         : index % 23 == 0 ? ERadarContactFlags::DestroyObjective
+                         : index % 19 == 0 ? ERadarContactFlags::DefendObjective
+                                           : ERadarContactFlags::None};
+        frame.instances[index] = {
+            .radar_position = FVector3f{radius * FMath::Cos(angle),
+                                        radius * FMath::Sin(angle),
+                                        -0.9f + 1.8f * FMath::Fmod(index * 0.414214f, 1.0f)},
+            .size_scale = 0.85f + static_cast<float>(index % 4) * 0.15f,
+            .packed_color = pack_radar_color(colors[index % UE_ARRAY_COUNT(colors)]),
+            .packed_glyph_and_flags =
+                pack_radar_display(static_cast<ERadarGlyph>(1 + index % 6), flags),
         };
     }
-    return contacts;
+    return frame;
 }
 
 auto summarize(FString stage, int32 const contact_count, TArray<double> samples)
@@ -85,16 +90,26 @@ auto run_radar_3d_benchmark(FRadar3DBenchmarkOptions const& options) -> FRadar3D
             continue;
         }
 
-        auto const contacts{make_contacts(contact_count)};
+        TArray<double> collection_samples;
+        collection_samples.Reserve(options.measured_iterations);
+        for (int32 iteration{0}; iteration < options.measured_iterations; ++iteration) {
+            auto const start_seconds{FPlatformTime::Seconds()};
+            auto frame{make_frame(contact_count)};
+            collection_samples.Add((FPlatformTime::Seconds() - start_seconds) * 1'000'000.0);
+            static_cast<void>(frame);
+        }
+        auto const frame{make_frame(contact_count)};
         TArray<double> submission_samples;
         TArray<double> gpu_samples;
         submission_samples.Reserve(options.measured_iterations);
         gpu_samples.Reserve(options.measured_iterations);
-        benchmark_radar_3d_rdg(contacts,
+        benchmark_radar_3d_rdg(frame,
                                options.warmup_iterations,
                                options.measured_iterations,
                                submission_samples,
                                gpu_samples);
+        report.results.Add(
+            summarize(TEXT("collection_transform"), contact_count, MoveTemp(collection_samples)));
         report.results.Add(
             summarize(TEXT("api_submission"), contact_count, MoveTemp(submission_samples)));
         if (!gpu_samples.IsEmpty()) {

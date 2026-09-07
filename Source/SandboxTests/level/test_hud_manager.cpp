@@ -96,6 +96,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                    60.0,
                    simulation.get_player_ship_simulation(),
                    config,
+                   {},
                    {});
     checks.are_equal(0, hud.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
     checks.are_equal(EHUDManagerState::Active, hud.get_state(), TEXT("HUD manager is active"));
@@ -635,6 +636,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
                                      orchestrator->get_hud_tick_loop().tick_rate,
                                      orchestrator->get_player_ship_simulation(),
                                      *orchestrator->get_level_config(),
+                                     {},
                                      {});
     return true;
 }

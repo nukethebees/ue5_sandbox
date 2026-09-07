@@ -4,10 +4,10 @@
 #include "Containers/ArrayView.h"
 #include "Containers/UnrealString.h"
 
-struct FRadar3DContact;
+struct FRadarFrame;
 
 struct FRadar3DBenchmarkOptions {
-    TArray<int32> contact_counts{1, 4, 16, 64, 256};
+    TArray<int32> contact_counts{32, 128, 256, 512};
     int32 warmup_iterations{3};
     int32 measured_iterations{20};
 };
@@ -32,7 +32,7 @@ struct FRadar3DBenchmarkReport {
 [[nodiscard]] auto run_radar_3d_benchmark(FRadar3DBenchmarkOptions const& options)
     -> FRadar3DBenchmarkReport;
 
-void benchmark_radar_3d_rdg(TConstArrayView<FRadar3DContact> contacts,
+void benchmark_radar_3d_rdg(FRadarFrame const& frame,
                             int32 warmup_iterations,
                             int32 measured_iterations,
                             TArray<double>& submission_samples,

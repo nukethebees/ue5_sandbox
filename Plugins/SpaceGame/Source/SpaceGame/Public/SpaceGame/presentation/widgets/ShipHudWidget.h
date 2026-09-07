@@ -2,6 +2,8 @@
 
 #include "SandboxUI/EntityOverlay/EntityOverlayFrameStore.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
+#include "SandboxUI/Radar/RadarFrameStore.h"
+#include "SandboxUI/Radar/RadarTypes.h"
 #include "SpaceGame/entities/TestEntityRegistry.h"
 #include "SpaceGame/entities/TestTeamVisualData.h"
 #include "SpaceGame/missions/TestMissionState.h"
@@ -16,6 +18,8 @@
 class UImage;
 class UMaterialInterface;
 class UMaterialInstanceDynamic;
+class UNativeWidgetHost;
+class UBorder;
 
 class UShipSpeedWidget;
 class UShipHealthWidget;
@@ -28,6 +32,7 @@ class UDebugGraphWidget;
 class UForceStatusWidget;
 class UMissionStatusWidget;
 class SEntityOverlayWidget;
+class SRadarWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
 }
@@ -97,6 +102,8 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_entity_overlay_style(FEntityOverlayStyle const& style);
     [[nodiscard]] auto try_get_entity_overlay_view(FEntityOverlayView& view) const -> bool;
+    void set_radar_frame_store(FRadarFrameStoreConstPtr frame_store);
+    void set_radar_style(FRadarStyle const& style);
 
 #if WITH_EDITOR
     void update_sampled_speed(TConstArrayView<FVector2d> samples, int32 oldest_index);
@@ -111,6 +118,7 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     void set_common_widget_properties();
     void update_crosshair_colours();
     void apply_entity_overlay_colours();
+    void apply_radar_colours();
     void set_widget_visibility_checked(UWidget* const widget,
                                        ESlateVisibility const new_visibility);
 
@@ -170,6 +178,9 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     FEntityOverlayFrameStoreConstPtr entity_overlay_frame_store_;
     FEntityOverlayStyle entity_overlay_style_;
     TSharedPtr<SEntityOverlayWidget> entity_overlay_widget_;
+    FRadarFrameStoreConstPtr radar_frame_store_;
+    FRadarStyle radar_style_;
+    TSharedPtr<SRadarWidget> radar_widget_;
     FLinearColor entity_overlay_background_colour_{};
     FLinearColor entity_overlay_fill_colour_{};
     FLinearColor entity_overlay_defend_colour_{};
@@ -181,6 +192,11 @@ class SPACEGAME_API UShipHudWidget : public UUserWidget {
     FLinearColor reticle_danger_colour_{FLinearColor::Red};
     bool crosshair_targeting_{};
     bool has_ui_style_{};
+
+    UPROPERTY(meta = (BindWidget))
+    UNativeWidgetHost* radar_host{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UBorder* radar_background{nullptr};
 
     UPROPERTY(meta = (BindWidget))
     UImage* lock_on_widget{nullptr};

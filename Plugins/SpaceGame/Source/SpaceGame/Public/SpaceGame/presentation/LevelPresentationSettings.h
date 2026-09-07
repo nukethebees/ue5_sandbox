@@ -105,6 +105,71 @@ struct FEntityOverlaySettings {
     FLinearColor fill_color{0.10f, 0.85f, 0.20f, 1.0f};
 };
 
+USTRUCT(BlueprintType)
+struct FRadarSettings {
+    GENERATED_BODY()
+
+    UPROPERTY(EditAnywhere, Category = "Radar")
+    bool enabled{true};
+
+    UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", Units = "cm"))
+    float combat_range{100000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", Units = "cm"))
+    float tactical_range{400000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", Units = "cm"))
+    float maximum_range{2000000.0f};
+
+    UPROPERTY(EditAnywhere, Category = "Radar", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+    float combat_display_radius{0.45f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar",
+              meta = (ClampMin = "0.0", ClampMax = "1.0", UIMin = "0.0", UIMax = "1.0"))
+    float grid_opacity{0.55f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float core_cell_radius{0.18f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float combat_cell_radius{0.075f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float tactical_cell_radius{0.045f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Grid",
+              meta = (ClampMin = "0.01", ClampMax = "1.0", UIMin = "0.01", UIMax = "1.0"))
+    float strategic_cell_radius{0.025f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs",
+              meta = (ClampMin = "0.5", ClampMax = "2.0", UIMin = "0.5", UIMax = "2.0"))
+    float glyph_size_scale{1.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs|Objectives",
+              meta = (ClampMin = "1.0", ClampMax = "2.0", UIMin = "1.0", UIMax = "2.0"))
+    float objective_size_multiplier{1.2f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs|Objectives",
+              meta = (ClampMin = "0.0", ClampMax = "12.0", UIMin = "0.0", UIMax = "12.0"))
+    float objective_ring_padding_pixels{3.0f};
+
+    UPROPERTY(EditAnywhere,
+              Category = "Radar|Glyphs|Objectives",
+              meta = (ClampMin = "0.5", ClampMax = "4.0", UIMin = "0.5", UIMax = "4.0"))
+    float objective_ring_thickness_pixels{1.25f};
+};
+
 USTRUCT()
 struct FLevelPresentationSettings {
     GENERATED_BODY()
@@ -129,4 +194,7 @@ struct FLevelPresentationSettings {
 
     UPROPERTY(EditAnywhere, Category = "Sparks", meta = (ShowOnlyInnerProperties))
     FSparkRendererSettings sparks;
+
+    UPROPERTY(EditAnywhere, Category = "UI", meta = (ShowOnlyInnerProperties))
+    FRadarSettings radar;
 };

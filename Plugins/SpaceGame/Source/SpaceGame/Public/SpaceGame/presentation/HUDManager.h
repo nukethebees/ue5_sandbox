@@ -4,12 +4,15 @@
 #include <SandboxCore/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>
+#include <SandboxUI/Radar/RadarFrameStore.h>
+#include <SandboxUI/Radar/RadarTypes.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 #include <SpaceGame/missions/TestMissionState.h>
 #include <SpaceGame/presentation/EntityOverlaySource.h>
 #include <SpaceGame/presentation/LevelPresentationSettings.h>
+#include <SpaceGame/presentation/RadarSource.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGame/ships/common/ShipHealth.h>
@@ -156,7 +159,8 @@ struct SPACEGAME_API FHUDManager {
                     double update_tick_rate,
                     ml::test_space_ship::Simulation const* new_player_ship,
                     USpaceGameLevelConfig const& level_config,
-                    FEntityOverlaySettings const& entity_overlay_settings);
+                    FEntityOverlaySettings const& entity_overlay_settings,
+                    FRadarSettings const& radar_settings);
     void deactivate();
     void tick(FPeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
@@ -189,10 +193,11 @@ struct SPACEGAME_API FHUDManager {
     }
 #endif
   private:
-    struct FRegisteredEntityOverlayHud {
+    struct FRegisteredHud {
         TWeakObjectPtr<UShipHudWidget> hud;
-        FEntityOverlayFrameStorePtr frame_store;
-        FEntityOverlayCollector collector;
+        FEntityOverlayFrameStorePtr entity_overlay_frame_store;
+        FEntityOverlayCollector entity_overlay_collector;
+        FRadarFrameStorePtr radar_frame_store;
         FRegistryEntityHandle soft_target{};
         float soft_target_range_progress{0.0f};
         float soft_target_radius_pixels{0.0f};
@@ -215,7 +220,9 @@ struct SPACEGAME_API FHUDManager {
     bool collect_player_flight_data();
     void update_entity_overlays(float delta_seconds);
     void update_entity_overlay_objective_roles();
-    void update_entity_overlay(FRegisteredEntityOverlayHud& registration, float delta_seconds);
+    void update_entity_overlay(FRegisteredHud& registration, float delta_seconds);
+    void update_radars();
+    void update_radar(FRegisteredHud& registration);
 #if WITH_EDITOR
     bool collect_sampled_speed_data();
 #endif
@@ -233,7 +240,7 @@ struct SPACEGAME_API FHUDManager {
     bool validate_player_ship_for_collection() const;
 
     EHUDManagerState state{EHUDManagerState::Disabled};
-    TArray<FRegisteredEntityOverlayHud> registered_huds;
+    TArray<FRegisteredHud> registered_huds;
     ml::test_space_ship::Simulation const* player_ship{nullptr};
     FTestMissionManager const* mission_manager{nullptr};
     FTestEntityRegistry const* entity_registry{nullptr};
@@ -258,6 +265,9 @@ struct SPACEGAME_API FHUDManager {
     float soft_target_pulse_duration_{0.15f};
     float soft_target_fade_out_duration_{0.15f};
     float seconds_per_tick_{0.0f};
+    FRadarSettings radar_settings_;
+    FRadarStyle radar_style_;
+    FRadarContactColours radar_contact_colours_;
 
 #if WITH_EDITOR
     ml::MultiBuffer<ml::hud_manager::FSampledSpeedDataCache, 2> sampled_speed_data_buffers;
