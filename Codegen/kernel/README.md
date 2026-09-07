@@ -12,7 +12,7 @@ document      := kernel_module+ EOF
 kernel_module := "(" "kernel-module" identifier module_item+ ")"
 module_item   := emit | type_set | map | sum
 emit          := "(" "emit" ("unreal" | "standard" | "unreal-avx2-lab" | "native-x86-simd-lab") emit_item+ ")"
-emit_item     := header | source | avx512_source | dispatch_source | tests | header_include | namespace | export | select
+emit_item     := header | source | avx512_source | dispatch_source | tests | header_include | namespace | export | select | soaos | vector3_groups
 header        := "(" "header" quoted_path ")"
 source        := "(" "source" quoted_path ")"
 avx512_source := "(" "avx512-source" quoted_path ")"
@@ -26,6 +26,9 @@ selection_item := "(" "operation" identifier ")"
                 | "(" "type" concrete_type ")"
                 | "(" "storage" ("array" | "scalar")+ ")"
                 | "(" "variant" ("out-of-place" | "in-place" | "sum") ")"
+soaos         := "(" "soaos" "16" ")"
+vector3_groups := "(" "vector3-groups" vector3_group+ ")"
+vector3_group := "(" identifier identifier identifier identifier ")"
 type_set      := "(" "type-set" identifier concrete_type+ ")"
 concrete_type := "int32" | "uint32" | "float" | "double"
 map           := "(" "map" identifier map_item+ ")"
@@ -96,6 +99,12 @@ padding. No other width or profile accepts this field. This is effectively an ar
 and keeps storage selection separate from the operation expression without inventing an
 operation-specific struct or a general layout DSL.
 
+For out-of-place float maps, `(vector3-groups (name x y z) ...)` groups selected scalar-array
+operands into logical three-float vectors. The native lab then emits three overloads from the same
+expression: separate component pointers, packed 12-byte XYZ records, and 16-row blocks with
+separate aligned X/Y/Z arrays. This field requires `(soaos 16)`, and every selected operand must
+belong to exactly one group.
+
 Sum reductions default to `(floating-point-modes strict)`. A reduction may explicitly request
 `(floating-point-modes strict relaxed)` to generate both an ordered source loop and a second source
 loop that may be reassociated by the compiler. Relaxed loops are emitted into dedicated translation
@@ -104,11 +113,12 @@ disabled in both modes, keeping reassociation separate from contraction as a ben
 
 ## Native SIMD benchmark
 
-The native benchmark measures two generated kernels:
+The native benchmark measures three generated kernels:
 
 ```text
 out[i] = base[i] + value[i] * scale
 dot_product = sum(lhs[i] * rhs[i])
+out[i] = dot(lhs_3d[i], rhs_3d[i])
 ```
 
 Dot product is a useful second target because it combines vector arithmetic with a reduction. A
@@ -117,14 +127,21 @@ independent vector accumulators to test whether breaking that chain repays the e
 reductions change the order of floating-point additions, so the dot-product correctness tests use a
 high-precision scalar reference and a relative tolerance rather than requiring bitwise equality.
 
-Both operations are measured over two generated layouts. `flat` is the existing pointer-and-count
-API, including scalar tails. `chunked16` uses separate arrays of `FloatChunk16` for each operand and
-result. Its kernels use aligned AVX2 or AVX-512 loads and stores and always process all 16 lanes of
-every chunk, with no scalar element tail. Dot-product padding is zero-filled so padded products are
-neutral; `add_scaled` padding is ordinary storage and is deliberately processed. This is an
+The scalar add and reduction operations are measured over two generated layouts. `flat` is the
+existing pointer-and-count API, including scalar tails. `chunked16` uses separate arrays of
+`FloatChunk16` for each operand and result. Its kernels use aligned AVX2 or AVX-512 loads and stores
+and always process all 16 lanes of every chunk, with no scalar element tail. Dot-product padding is
+zero-filled so padded products are neutral; `add_scaled` padding is ordinary storage and is
+deliberately processed. This is an
 experimental contract, not a public SandboxCore API. The generated autovec source disables
 vectorization of the outer chunk loop while leaving the fixed 16-lane inner loop available; relaxed
 dot product accumulates 16 lanes across chunks and reduces those lanes once after the loop.
+
+The 3D dot-product map is the focused vector-layout comparison. `aos` uses packed XYZ records,
+`soa-flat` uses six independent component pointers like `FVectors3f`, and `soa-chunked16` uses
+aligned blocks containing 16 Xs, 16 Ys, and 16 Zs per operand. It registers only matching autovec
+and explicit AVX2/AVX-512 backends at 4,096, 16,384, 65,536, and 100,000 vectors, plus the scalar
+AOS loop as the natural naïve baseline.
 
 Google Benchmark is the timing harness. The executable registers each case with
 `benchmark::RegisterBenchmark`, links `benchmark::benchmark_main`, and lets Google Benchmark
@@ -148,7 +165,20 @@ out/build/<preset>/Codegen/kernel/native-simd-generated/native/generated/
   dot_product_x86_simd_lab_avx512.cpp
   dot_product_x86_simd_lab_relaxed_avx2.cpp
   dot_product_x86_simd_lab_relaxed_avx512.cpp
+  dot_product_3d_x86_simd_lab.h
+  dot_product_3d_x86_simd_lab_avx2.cpp
+  dot_product_3d_x86_simd_lab_avx512.cpp
 ```
+
+Every native benchmark build also refreshes a stable convenience mirror, independent of the active
+build preset:
+
+```text
+out/benchmarks/kernel/generated/
+```
+
+This is a regular mirrored directory rather than a symbolic link, so it works on Windows without
+Developer Mode or elevated link privileges.
 
 For the plotting preset, `<preset>` is `kernel-benchmark-plots`. The AVX2 translation unit contains
 the strict scalar/autovec functions and relaxed explicit AVX2 functions. The AVX-512 translation
@@ -161,7 +191,8 @@ and relaxed AVX-512 object libraries and links the objects into `kernel-native-b
 relaxed targets enable reassociation while disabling contraction;
 the remaining targets retain source-order floating-point compilation. The harnesses in
 `Codegen/kernel/benchmarks/add_scaled_benchmarks.cpp` and
-`Codegen/kernel/benchmarks/dot_product_benchmarks.cpp` call the resulting functions. The semantic
+`Codegen/kernel/benchmarks/dot_product_benchmarks.cpp` call the resulting functions. The focused
+layout comparison is in `Codegen/kernel/benchmarks/dot_product_3d_benchmarks.cpp`. The semantic
 declarations in `Plugins/SandboxCore/Source/SandboxCore/Kernels/candidate_math.sbxkernel` and the
 renderer in `Codegen/kernel/src/avx2_lab_renderer.cpp` are the committed sources of truth.
 
@@ -298,6 +329,7 @@ cmake --build --preset codegen --target check-generated-kernel-avx2-lab
 cmake --workflow --preset kernel-benchmark
 cmake --workflow --preset kernel-benchmark-plots
 cmake --workflow --preset kernel-benchmark-plots-full
+cmake --workflow --preset kernel-vector-layout-benchmark-plots
 out/build/kernel-benchmark/Codegen/kernel/kernel-native-benchmarks.exe --benchmark_repetitions=5 --benchmark_enable_random_interleaving=true
 ```
 

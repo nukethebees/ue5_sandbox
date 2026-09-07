@@ -259,6 +259,15 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx512.cpp"
   )
+  set(KERNEL_NATIVE_DOT3_HEADER
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab.h"
+  )
+  set(KERNEL_NATIVE_DOT3_AVX2_SOURCE
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx2.cpp"
+  )
+  set(KERNEL_NATIVE_DOT3_AVX512_SOURCE
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx512.cpp"
+  )
   set(KERNEL_NATIVE_SIMD_FILES
     "${KERNEL_NATIVE_SIMD_HEADER}"
     "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
@@ -268,6 +277,9 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
     "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
     "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
+    "${KERNEL_NATIVE_DOT3_HEADER}"
+    "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
+    "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
   )
   add_custom_command(
     OUTPUT ${KERNEL_NATIVE_SIMD_FILES}
@@ -282,14 +294,29 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     COMMENT "Generating the native x86 SIMD kernel experiment"
     VERBATIM
   )
+  set(KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY
+    "${PROJECT_SOURCE_DIR}/out/benchmarks/kernel/generated"
+  )
+  add_custom_target(kernel-native-generated-sources
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+      "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
+    COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
+      "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated"
+      "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
+    DEPENDS ${KERNEL_NATIVE_SIMD_FILES}
+    COMMENT "Updating the stable native SIMD generated-source mirror"
+    VERBATIM
+  )
 
   add_library(kernel-native-simd-avx2 OBJECT
     "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
     "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
+    "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
   )
   add_library(kernel-native-simd-avx512 OBJECT
     "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
     "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
+    "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
   )
   add_library(kernel-native-dot-relaxed-avx2 OBJECT
     "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
@@ -363,6 +390,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     tests/x86_simd_lab_tests.cpp
     ${KERNEL_NATIVE_SIMD_OBJECTS}
   )
+  add_dependencies(kernel-native-simd-tests kernel-native-generated-sources)
   target_compile_features(kernel-native-simd-tests PRIVATE cxx_std_23)
   target_include_directories(kernel-native-simd-tests PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
   target_link_libraries(kernel-native-simd-tests PRIVATE
@@ -385,8 +413,10 @@ if(SANDBOX_KERNEL_BENCHMARKS)
   add_executable(kernel-native-benchmarks
     benchmarks/add_scaled_benchmarks.cpp
     benchmarks/dot_product_benchmarks.cpp
+    benchmarks/dot_product_3d_benchmarks.cpp
     ${KERNEL_NATIVE_SIMD_OBJECTS}
   )
+  add_dependencies(kernel-native-benchmarks kernel-native-generated-sources)
   target_compile_features(kernel-native-benchmarks PRIVATE cxx_std_23)
   target_include_directories(kernel-native-benchmarks PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
   target_link_libraries(kernel-native-benchmarks PRIVATE
@@ -490,6 +520,10 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     add_kernel_benchmark_report(kernel-benchmark-report
       FILTER "^(add_scaled/elementwise|dot_product/relaxed)/(flat|chunked16)/[^/]+/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
       COMMENT "Benchmarking representative generated kernel workloads and plotting the results"
+    )
+    add_kernel_benchmark_report(kernel-vector-layout-benchmark-report
+      FILTER "^dot_product_3d/elementwise/(aos/(scalar|autovec-avx2|avx2|autovec-avx512|avx512)|(soa-flat|soa-chunked16)/(autovec-avx2|avx2|autovec-avx512|avx512))/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
+      COMMENT "Benchmarking generated 3D dot products across AOS and SOA layouts"
     )
     add_kernel_benchmark_report(kernel-benchmark-report-full
       COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"

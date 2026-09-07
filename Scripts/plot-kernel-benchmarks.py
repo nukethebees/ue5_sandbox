@@ -61,6 +61,10 @@ class BenchmarkPoint:
     def giga_elements_per_second(self) -> float:
         return self.key.count / self.median_time_ns
 
+    @property
+    def elements_per_second(self) -> float:
+        return self.key.count * 1_000_000_000.0 / self.median_time_ns
+
 
 @dataclass(frozen=True)
 class LoadedBenchmarks:
@@ -320,7 +324,11 @@ def write_alignment_penalty(
 
 
 def write_layout_speedup(
-    points: list[BenchmarkPoint], output_path: Path, title: str
+    points: list[BenchmarkPoint],
+    output_path: Path,
+    title: str,
+    baseline_layout: str,
+    comparison_layouts: tuple[str, ...],
 ) -> None:
     plt = load_pyplot()
 
@@ -328,38 +336,90 @@ def write_layout_speedup(
     backends = sorted({point.key.backend for point in points})
     plotted = False
     for backend in backends:
-        flat = {
+        baseline = {
             point.key.count: point.median_time_ns
             for point in points
             if point.key.backend == backend
-            and point.key.layout == "flat"
+            and point.key.layout == baseline_layout
             and point.key.alignment == "aligned"
         }
-        chunked = {
-            point.key.count: point.median_time_ns
-            for point in points
-            if point.key.backend == backend
-            and point.key.layout == "chunked16"
-            and point.key.alignment == "aligned"
-        }
-        counts = sorted(set(flat) & set(chunked))
-        if not counts:
-            continue
-        plotted = True
-        axis.plot(
-            counts,
-            [flat[count] / chunked[count] for count in counts],
-            marker="o",
-            label=backend,
-        )
+        for layout in comparison_layouts:
+            comparison = {
+                point.key.count: point.median_time_ns
+                for point in points
+                if point.key.backend == backend
+                and point.key.layout == layout
+                and point.key.alignment == "aligned"
+            }
+            counts = sorted(set(baseline) & set(comparison))
+            if not counts:
+                continue
+            plotted = True
+            axis.plot(
+                counts,
+                [baseline[count] / comparison[count] for count in counts],
+                marker="o",
+                label=f"{layout}/{backend}",
+            )
 
     if not plotted:
         plt.close(figure)
-        raise ValueError(f"no flat/chunked16 pairs are available for {title}")
+        raise ValueError(f"no layout pairs are available for {title}")
 
-    configure_axis(axis, "Chunked16 speedup over flat")
+    configure_axis(axis, f"Speedup over {baseline_layout}")
     axis.axhline(1.0, color="black", linewidth=1.0, alpha=0.5)
     axis.legend(ncols=2)
+    figure.suptitle(title)
+    figure.tight_layout()
+    figure.savefig(output_path, bbox_inches="tight")
+    plt.close(figure)
+
+
+def write_combined_throughput(
+    points: list[BenchmarkPoint], output_path: Path, title: str
+) -> None:
+    plt = load_pyplot()
+    ticker = cast(Any, importlib.import_module("matplotlib.ticker"))
+
+    figure, axis = plt.subplots(figsize=(12, 7))
+    layouts = sorted({point.key.layout for point in points})
+    backends = sorted({point.key.backend for point in points})
+    colors = plt.get_cmap("tab10").colors
+    implementation_markers = {
+        "autovec": "o",
+        "explicit": "s",
+        "scalar": "^",
+    }
+    for layout_index, layout in enumerate(layouts):
+        for backend in backends:
+            series = sorted(
+                (
+                    point
+                    for point in points
+                    if point.key.layout == layout and point.key.backend == backend
+                ),
+                key=lambda point: point.key.count,
+            )
+            if not series:
+                continue
+            if backend.startswith("autovec-"):
+                implementation = "autovec"
+            elif backend in ("avx2", "avx512"):
+                implementation = "explicit"
+            else:
+                implementation = "scalar"
+            axis.plot(
+                [point.key.count for point in series],
+                [point.elements_per_second for point in series],
+                color=colors[layout_index % len(colors)],
+                linestyle="--" if "avx512" in backend else "-",
+                marker=implementation_markers[implementation],
+                label=f"{layout}/{backend}",
+            )
+
+    configure_axis(axis, "Throughput (elements/s)")
+    axis.yaxis.set_major_formatter(ticker.EngFormatter())
+    axis.legend(ncols=3, loc="upper center", bbox_to_anchor=(0.5, -0.14))
     figure.suptitle(title)
     figure.tight_layout()
     figure.savefig(output_path, bbox_inches="tight")
@@ -384,6 +444,27 @@ def write_plots(
         for policy in policies:
             policy_points = [point for point in operation_points if point.key.policy == policy]
             layouts = sorted({point.key.layout for point in policy_points})
+            value_sets = sorted({point.key.value_set for point in policy_points})
+            for value_set in value_sets:
+                value_points = [
+                    point for point in policy_points if point.key.value_set == value_set
+                ]
+                alignments = sorted({point.key.alignment for point in value_points})
+                for alignment in alignments:
+                    comparison_points = [
+                        point for point in value_points if point.key.alignment == alignment
+                    ]
+                    throughput_path = output_directory / (
+                        f"{slugify(operation)}-{slugify(policy)}-{slugify(value_set)}-"
+                        f"{slugify(alignment)}-all-throughput.{file_format}"
+                    )
+                    write_combined_throughput(
+                        comparison_points,
+                        throughput_path,
+                        f"{operation} ({policy}): {value_set}, {alignment} throughput",
+                    )
+                    written.append(throughput_path)
+
             for layout in layouts:
                 layout_points = [point for point in policy_points if point.key.layout == layout]
                 value_sets = sorted({point.key.value_set for point in layout_points})
@@ -438,6 +519,30 @@ def write_plots(
                         value_points,
                         layout_path,
                         f"{operation} ({policy}): {value_set} Chunked16 speedup over flat",
+                        "flat",
+                        ("chunked16",),
+                    )
+                    written.append(layout_path)
+
+            soa_layouts = tuple(
+                layout for layout in ("soa-flat", "soa-chunked16") if layout in layouts
+            )
+            if "aos" in layouts and soa_layouts:
+                value_sets = sorted({point.key.value_set for point in policy_points})
+                for value_set in value_sets:
+                    value_points = [
+                        point for point in policy_points if point.key.value_set == value_set
+                    ]
+                    layout_path = output_directory / (
+                        f"{slugify(operation)}-{slugify(policy)}-{slugify(value_set)}-"
+                        f"aos-layout-speedup.{file_format}"
+                    )
+                    write_layout_speedup(
+                        value_points,
+                        layout_path,
+                        f"{operation} ({policy}): {value_set} SOA speedup over AOS",
+                        "aos",
+                        soa_layouts,
                     )
                     written.append(layout_path)
 

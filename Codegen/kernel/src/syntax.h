@@ -2,6 +2,7 @@
 
 #include <codegen/sexpr/syntax.h>
 
+#include <array>
 #include <filesystem>
 #include <optional>
 #include <string>
@@ -68,6 +69,12 @@ struct VariantSelection {
     SourceSpan span;
 };
 
+struct Vector3Group {
+    std::string name;
+    std::array<std::string, 3> components;
+    SourceSpan span;
+};
+
 struct Emission {
     Profile profile;
     std::filesystem::path header;
@@ -81,6 +88,7 @@ struct Emission {
     std::string cpp_namespace;
     std::string export_specifier;
     std::optional<int> soaos_lanes;
+    std::vector<Vector3Group> vector3_groups;
     std::optional<VariantSelection> selection;
     SourceSpan span;
 };

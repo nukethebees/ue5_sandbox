@@ -813,6 +813,365 @@ auto render_soaos_sum_vector_function(ExpandedVariant const& expanded,
     return result;
 }
 
+auto native_restrict_definition() -> std::string_view;
+auto render_declaration(ExpandedVariant const& expanded,
+                        std::string_view suffix,
+                        std::string_view count_type,
+                        std::string_view restriction) -> std::string;
+auto wrap_namespace(std::string_view cpp_namespace, std::string const& content) -> std::string;
+
+enum class Vector3Layout { aos, chunked };
+
+struct GroupedComponent {
+    std::string_view group;
+    int component;
+};
+
+auto grouped_component(Emission const& emission, std::string_view const operand)
+    -> GroupedComponent {
+    for (auto const& group : emission.vector3_groups) {
+        for (int component{}; component < 3; ++component) {
+            if (group.components[static_cast<std::size_t>(component)] == operand) {
+                return {group.name, component};
+            }
+        }
+    }
+    throw std::invalid_argument{"vector3 expression references an ungrouped operand"};
+}
+
+auto vector3_member(int const component, bool const plural) -> std::string_view {
+    constexpr std::array singular{"x", "y", "z"};
+    constexpr std::array plural_names{"xs", "ys", "zs"};
+    return plural ? plural_names[static_cast<std::size_t>(component)]
+                  : singular[static_cast<std::size_t>(component)];
+}
+
+auto vector3_aos_parameters(Emission const& emission,
+                            ExpandedVariant const& expanded,
+                            std::string_view const restriction) -> std::string {
+    std::string result;
+    for (auto const& group : emission.vector3_groups) {
+        if (!result.empty()) {
+            result += ", ";
+        }
+        result += "Float3 const* ";
+        result += restriction;
+        result += group.name;
+    }
+    result += ", float* ";
+    result += restriction;
+    result += expanded.operation->output;
+    return result + ", std::int32_t const count";
+}
+
+auto vector3_chunk_parameters(Emission const& emission,
+                              ExpandedVariant const& expanded,
+                              std::string_view const restriction) -> std::string {
+    std::string result;
+    for (auto const& group : emission.vector3_groups) {
+        if (!result.empty()) {
+            result += ", ";
+        }
+        result += "Float3Chunk16 const* ";
+        result += restriction;
+        result += group.name;
+    }
+    result += ", FloatChunk16* ";
+    result += restriction;
+    result += expanded.operation->output;
+    return result + ", std::int32_t const chunk_count";
+}
+
+auto render_vector3_types() -> std::string {
+    return "struct Float3 {\n"
+           "    float x{};\n"
+           "    float y{};\n"
+           "    float z{};\n"
+           "};\n\n"
+           "static_assert(sizeof(Float3) == 12);\n\n"
+           "struct alignas(64) Float3Chunk16 {\n"
+           "    static constexpr std::int32_t capacity{16};\n\n"
+           "    std::array<float, capacity> xs{};\n"
+           "    std::array<float, capacity> ys{};\n"
+           "    std::array<float, capacity> zs{};\n"
+           "};\n\n"
+           "static_assert(sizeof(Float3Chunk16) == 192);\n"
+           "static_assert(alignof(Float3Chunk16) == 64);\n\n"
+           "struct alignas(64) FloatChunk16 {\n"
+           "    static constexpr std::int32_t capacity{16};\n\n"
+           "    std::array<float, capacity> values{};\n"
+           "};\n\n"
+           "static_assert(sizeof(FloatChunk16) == 64);\n"
+           "static_assert(alignof(FloatChunk16) == 64);\n\n";
+}
+
+auto render_vector3_scalar_expression(Expression const& expression,
+                                      Emission const& emission,
+                                      Vector3Layout const layout,
+                                      std::string_view const outer_index,
+                                      std::string_view const lane_index = {}) -> std::string {
+    if (expression.kind == ExpressionKind::reference) {
+        auto const component{grouped_component(emission, expression.value)};
+        auto result{std::string{component.group} + "[" + std::string{outer_index} + "]." +
+                    std::string{vector3_member(component.component,
+                                               layout == Vector3Layout::chunked)}};
+        if (layout == Vector3Layout::chunked) {
+            result += "[" + std::string{lane_index} + "]";
+        }
+        return result;
+    }
+    if (expression.kind != ExpressionKind::binary ||
+        (expression.value != "+" && expression.value != "*")) {
+        throw std::invalid_argument{
+            "vector3 SIMD lab supports only references, addition, and multiplication"};
+    }
+    return "(" + render_vector3_scalar_expression(
+                       expression.arguments[0], emission, layout, outer_index, lane_index) +
+           " " + expression.value + " " +
+           render_vector3_scalar_expression(
+               expression.arguments[1], emission, layout, outer_index, lane_index) +
+           ")";
+}
+
+class Vector3ExpressionRenderer {
+  public:
+    Vector3ExpressionRenderer(Emission const& emission,
+                              VectorIntrinsics const& intrinsics,
+                              Vector3Layout const layout,
+                              std::string_view const outer_index,
+                              int const lane_offset)
+        : emission_{emission},
+          intrinsics_{intrinsics},
+          layout_{layout},
+          outer_index_{outer_index},
+          lane_offset_{lane_offset} {}
+
+    auto render(Expression const& expression) -> std::string {
+        if (expression.kind == ExpressionKind::reference) {
+            return render_reference(expression.value);
+        }
+        if (expression.kind != ExpressionKind::binary ||
+            (expression.value != "+" && expression.value != "*")) {
+            throw std::invalid_argument{
+                "vector3 SIMD lab supports only references, addition, and multiplication"};
+        }
+        auto const lhs{render(expression.arguments[0])};
+        auto const rhs{render(expression.arguments[1])};
+        auto const value{"vector_" + std::to_string(next_value_++)};
+        auto const intrinsic{expression.value == "+" ? intrinsics_.add : intrinsics_.multiply};
+        statements_ += "        auto const " + value + "{" + std::string{intrinsic} + "(" + lhs +
+                       ", " + rhs + ")};\n";
+        return value;
+    }
+
+    auto statements() const -> std::string const& { return statements_; }
+
+  private:
+    auto render_reference(std::string_view const operand) -> std::string {
+        auto const component{grouped_component(emission_, operand)};
+        auto const value{"vector_" + std::to_string(next_value_++)};
+        if (layout_ == Vector3Layout::aos) {
+            auto const gather{intrinsics_.width == 8 ? "_mm256_i32gather_ps"
+                                                     : "_mm512_i32gather_ps"};
+            auto const base{"reinterpret_cast<float const*>(" + std::string{component.group} +
+                            " + " + std::string{outer_index_} + ") + " +
+                            std::to_string(component.component)};
+            auto const arguments{intrinsics_.width == 8 ? base + ", gather_indices, 4"
+                                                         : "gather_indices, " + base + ", 4"};
+            statements_ += "        auto const " + value + "{" + gather + "(" + arguments +
+                           ")};\n";
+        } else {
+            auto const offset{lane_offset_ == 0 ? std::string{}
+                                                : " + " + std::to_string(lane_offset_)};
+            statements_ += "        auto const " + value + "{" +
+                           std::string{intrinsics_.aligned_load} + "(" +
+                           std::string{component.group} + "[" + std::string{outer_index_} + "]." +
+                           std::string{vector3_member(component.component, true)} + ".data()" +
+                           offset + ")};\n";
+        }
+        return value;
+    }
+
+    Emission const& emission_;
+    VectorIntrinsics const& intrinsics_;
+    Vector3Layout layout_;
+    std::string_view outer_index_;
+    int lane_offset_;
+    int next_value_{};
+    std::string statements_;
+};
+
+auto render_vector3_aos_loop_function(Emission const& emission,
+                                      ExpandedVariant const& expanded,
+                                      bool const scalar) -> std::string {
+    auto result{"void " + expanded.operation->name + "(" +
+                vector3_aos_parameters(emission, expanded, "ML_KERNEL_LAB_RESTRICT ") +
+                ") noexcept {\n"};
+    if (scalar) {
+        result += std::string{scalar_loop_controls()};
+    }
+    result += "    for (std::int32_t i{}; i < count; ++i) {\n"
+              "        " +
+              expanded.operation->output + "[i] = " +
+              render_vector3_scalar_expression(
+                  expanded.operation->expression, emission, Vector3Layout::aos, "i") +
+              ";\n"
+              "    }\n"
+              "}\n\n";
+    return result;
+}
+
+auto render_vector3_chunk_loop_function(Emission const& emission,
+                                        ExpandedVariant const& expanded,
+                                        bool const scalar) -> std::string {
+    auto result{"void " + expanded.operation->name + "(" +
+                vector3_chunk_parameters(emission, expanded, "ML_KERNEL_LAB_RESTRICT ") +
+                ") noexcept {\n"};
+    if (!scalar) {
+        result += "#if defined(__clang__)\n"
+                  "    #pragma clang loop vectorize(disable) interleave(disable)\n"
+                  "#elif defined(_MSC_VER)\n"
+                  "    #pragma loop(no_vector)\n"
+                  "#endif\n";
+    }
+    result +=
+        "    for (std::int32_t chunk_index{}; chunk_index < chunk_count; ++chunk_index) {\n";
+    if (scalar) {
+        result += std::string{scalar_loop_controls()};
+    }
+    result += "        for (std::int32_t lane{}; lane < Float3Chunk16::capacity; ++lane) {\n"
+              "            " +
+              expanded.operation->output + "[chunk_index].values[lane] = " +
+              render_vector3_scalar_expression(expanded.operation->expression,
+                                               emission,
+                                               Vector3Layout::chunked,
+                                               "chunk_index",
+                                               "lane") +
+              ";\n"
+              "        }\n"
+              "    }\n"
+              "}\n\n";
+    return result;
+}
+
+auto render_gather_indices(VectorIntrinsics const& intrinsics) -> std::string {
+    std::string result{"    auto const gather_indices{"};
+    result += intrinsics.width == 8 ? "_mm256_setr_epi32(" : "_mm512_setr_epi32(";
+    for (int lane{}; lane < intrinsics.width; ++lane) {
+        if (lane != 0) {
+            result += ", ";
+        }
+        result += std::to_string(lane * 3);
+    }
+    return result + ")};\n";
+}
+
+auto render_vector3_aos_vector_function(Emission const& emission,
+                                        ExpandedVariant const& expanded,
+                                        VectorIntrinsics const& intrinsics) -> std::string {
+    Vector3ExpressionRenderer renderer{emission, intrinsics, Vector3Layout::aos, "i", 0};
+    auto const value{renderer.render(expanded.operation->expression)};
+    return "void " + expanded.operation->name + "(" +
+           vector3_aos_parameters(emission, expanded, "ML_KERNEL_LAB_RESTRICT ") +
+           ") noexcept {\n" + render_gather_indices(intrinsics) +
+           "    std::int32_t i{};\n"
+           "    std::int32_t const vectorized_count{count - (count % " +
+           std::to_string(intrinsics.width) + ")};\n"
+           "    for (; i < vectorized_count; i += " + std::to_string(intrinsics.width) + ") {\n" +
+           renderer.statements() + "        " + std::string{intrinsics.store} + "(" +
+           expanded.operation->output + " + i, " + value + ");\n"
+           "    }\n"
+           "    for (; i < count; ++i) {\n"
+           "        " + expanded.operation->output + "[i] = " +
+           render_vector3_scalar_expression(
+               expanded.operation->expression, emission, Vector3Layout::aos, "i") +
+           ";\n"
+           "    }\n"
+           "}\n\n";
+}
+
+auto render_vector3_chunk_vector_function(Emission const& emission,
+                                          ExpandedVariant const& expanded,
+                                          VectorIntrinsics const& intrinsics) -> std::string {
+    auto result{"void " + expanded.operation->name + "(" +
+                vector3_chunk_parameters(emission, expanded, "ML_KERNEL_LAB_RESTRICT ") +
+                ") noexcept {\n"
+                "    for (std::int32_t chunk_index{}; chunk_index < chunk_count; ++chunk_index) {\n"};
+    for (int offset{}; offset < 16; offset += intrinsics.width) {
+        Vector3ExpressionRenderer renderer{
+            emission, intrinsics, Vector3Layout::chunked, "chunk_index", offset};
+        auto const value{renderer.render(expanded.operation->expression)};
+        auto const lane_offset{offset == 0 ? std::string{} : " + " + std::to_string(offset)};
+        result += "        {\n" + renderer.statements() + "        " +
+                  std::string{intrinsics.aligned_store} + "(" + expanded.operation->output +
+                  "[chunk_index].values.data()" + lane_offset + ", " + value + ");\n"
+                  "        }\n";
+    }
+    return result + "    }\n}\n\n";
+}
+
+auto render_vector3_declaration(Emission const& emission,
+                                ExpandedVariant const& expanded) -> std::string {
+    return render_declaration(
+               expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+           "void " + expanded.operation->name + "(" +
+           vector3_aos_parameters(emission, expanded, "ML_KERNEL_LAB_RESTRICT ") +
+           ") noexcept;\n\n"
+           "void " + expanded.operation->name + "(" +
+           vector3_chunk_parameters(emission, expanded, "ML_KERNEL_LAB_RESTRICT ") +
+           ") noexcept;\n\n";
+}
+
+auto render_vector3_header(Emission const& emission, ExpandedVariant const& expanded)
+    -> std::string {
+    auto result{std::string{generated_warning} +
+                "#pragma once\n\n#include <array>\n#include <cstdint>\n\n" +
+                std::string{native_restrict_definition()} + "namespace " +
+                emission.cpp_namespace + " {\n\n" + render_vector3_types()};
+    for (auto const backend : {"backend::scalar",
+                               "backend::autovec_avx2",
+                               "backend::avx2",
+                               "backend::autovec_avx512",
+                               "backend::avx512"}) {
+        result += wrap_namespace(backend, render_vector3_declaration(emission, expanded));
+    }
+    return result + "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
+}
+
+auto render_vector3_source(Emission const& emission,
+                           ExpandedVariant const& expanded,
+                           VectorIntrinsics const& intrinsics,
+                           bool const include_scalar) -> std::string {
+    std::string functions;
+    if (include_scalar) {
+        functions += wrap_namespace(
+            "backend::scalar",
+            render_map_scalar_function(
+                expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+                render_vector3_aos_loop_function(emission, expanded, true) +
+                render_vector3_chunk_loop_function(emission, expanded, true));
+    }
+    auto const autovec_namespace{intrinsics.width == 8 ? "backend::autovec_avx2"
+                                                        : "backend::autovec_avx512"};
+    functions += wrap_namespace(
+        autovec_namespace,
+        render_map_autovec_function(
+            expanded, "", "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+            render_vector3_aos_loop_function(emission, expanded, false) +
+            render_vector3_chunk_loop_function(emission, expanded, false));
+    auto const explicit_namespace{intrinsics.width == 8 ? "backend::avx2" : "backend::avx512"};
+    functions += wrap_namespace(
+        explicit_namespace,
+        render_map_vector_function(
+            expanded, intrinsics, "", 1, "std::int32_t", "ML_KERNEL_LAB_RESTRICT ") +
+            render_vector3_aos_vector_function(emission, expanded, intrinsics) +
+            render_vector3_chunk_vector_function(emission, expanded, intrinsics));
+    return std::string{generated_warning} + "#include \"" + emission.header_include +
+           "\"\n\n#include <immintrin.h>\n\n" + std::string{native_restrict_definition()} +
+           "namespace " + emission.cpp_namespace + " {\n\n" + functions +
+           "}\n\n#undef ML_KERNEL_LAB_RESTRICT\n";
+}
+
 auto native_restrict_definition() -> std::string_view {
     return "#if defined(_MSC_VER)\n"
            "#define ML_KERNEL_LAB_RESTRICT __restrict\n"
@@ -894,6 +1253,9 @@ auto render_avx2_lab_source(Emission const& emission, ExpandedVariant const& exp
 auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
+    if (!emission.vector3_groups.empty()) {
+        return render_vector3_header(emission, expanded);
+    }
     auto result{std::string{generated_warning} +
                 "#pragma once\n\n" +
                 (emission.soaos_lanes ? "#include <array>\n" : "") +
@@ -954,6 +1316,9 @@ auto render_native_simd_lab_header(Emission const& emission, ExpandedVariant con
 auto render_native_avx2_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
+    if (!emission.vector3_groups.empty()) {
+        return render_vector3_source(emission, expanded, Avx2, true);
+    }
     auto functions{std::string{}};
     if (expanded.operation->kind == OperationKind::map) {
         functions += wrap_namespace(
@@ -1027,6 +1392,9 @@ auto render_native_avx2_lab_source(Emission const& emission, ExpandedVariant con
 auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string {
     validate_lab_variant(expanded);
+    if (!emission.vector3_groups.empty()) {
+        return render_vector3_source(emission, expanded, Avx512, false);
+    }
     auto functions{std::string{}};
     if (expanded.operation->kind == OperationKind::map) {
         functions += wrap_namespace(

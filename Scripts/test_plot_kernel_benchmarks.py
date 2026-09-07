@@ -147,7 +147,7 @@ class PlotSmokeTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stderr)
         output_paths = sorted(output_directory.glob("*.png"))
-        self.assertEqual(len(output_paths), 5)
+        self.assertEqual(len(output_paths), 7)
         for output_path in output_paths:
             self.assertTrue(output_path.read_bytes().startswith(b"\x89PNG\r\n\x1a\n"))
 

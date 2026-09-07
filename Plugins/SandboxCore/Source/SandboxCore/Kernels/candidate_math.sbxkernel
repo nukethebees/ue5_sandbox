@@ -137,3 +137,36 @@
     (aliasing pairwise-disjoint)
     (floating-point-modes strict relaxed)
     (expression (* lhs rhs))))
+
+(kernel-module dot_product_3d_benchmark
+  (emit native-x86-simd-lab
+    (header "native/generated/dot_product_3d_x86_simd_lab.h")
+    (source "native/generated/dot_product_3d_x86_simd_lab_avx2.cpp")
+    (avx512-source "native/generated/dot_product_3d_x86_simd_lab_avx512.cpp")
+    (header-include "native/generated/dot_product_3d_x86_simd_lab.h")
+    (namespace ml::kernel_benchmark::dot_product_3d_lab)
+    (soaos 16)
+    (vector3-groups
+      (lhs lhs_x lhs_y lhs_z)
+      (rhs rhs_x rhs_y rhs_z))
+    (select
+      (operation dot_product_3d)
+      (type float)
+      (storage array array array array array array)
+      (variant out-of-place)))
+
+  (type-set floating float)
+
+  (map dot_product_3d
+    (types floating)
+    (operand lhs_x array)
+    (operand lhs_y array)
+    (operand lhs_z array)
+    (operand rhs_x array)
+    (operand rhs_y array)
+    (operand rhs_z array)
+    (output out)
+    (aliasing pairwise-disjoint)
+    (expression (+ (+ (* lhs_x rhs_x) (* lhs_y rhs_y)) (* lhs_z rhs_z)))
+    (variants
+      (out-of-place dot_product_3d))))
