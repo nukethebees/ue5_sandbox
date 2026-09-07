@@ -7,9 +7,11 @@ namespace ml::ioj {
 
 struct FControlProfileView {
     FString id;
+    FString mapping_profile_id;
     FText display_name;
     bool active{};
     bool modified{};
+    bool custom{};
 };
 
 struct FControlBindingAddress {
@@ -29,6 +31,7 @@ struct FControlBindingView {
     FKey current_key;
     FKey default_key;
     bool modified{};
+    bool custom_profile{};
 };
 
 } // namespace ml::ioj

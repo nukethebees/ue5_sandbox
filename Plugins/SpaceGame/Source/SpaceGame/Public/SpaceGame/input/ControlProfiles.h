@@ -14,6 +14,7 @@ struct FControlProfileDefinition {
 };
 
 SPACEGAME_API auto control_profile_definitions() -> TConstArrayView<FControlProfileDefinition>;
+SPACEGAME_API auto is_custom_control_profile_id(FString const& profile_id) -> bool;
 SPACEGAME_API auto register_control_profiles(UEnhancedInputUserSettings& settings,
                                              UInputMappingContext& mapping_context) -> bool;
 SPACEGAME_API auto cycle_control_profile(UEnhancedInputUserSettings& settings) -> bool;

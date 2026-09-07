@@ -4,6 +4,7 @@
 #include "Engine/LocalPlayer.h"
 #include "EnhancedInputSubsystems.h"
 #include "HAL/PlatformTime.h"
+#include "Misc/Guid.h"
 #include "SpaceGame/input/ControlProfiles.h"
 #include "SpaceGame/input/SpaceGameInputUserSettings.h"
 
@@ -197,6 +198,12 @@ auto UGameSettingsSubsystem::is_dirty(EGameSettingCategory const category) const
 
 auto UGameSettingsSubsystem::is_at_defaults(EGameSettingCategory const category) const -> bool {
     if (category == EGameSettingCategory::Controls) {
+        auto const profiles{control_profiles()};
+        auto const* const active_profile{
+            profiles.FindByPredicate([](auto const& profile) { return profile.active; })};
+        if (active_profile != nullptr && active_profile->custom) {
+            return edit_state_.is_at_defaults(category);
+        }
         auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
         auto const has_modified_binding{
             bindings.ContainsByPredicate([](auto const& binding) { return binding.modified; })};
@@ -289,24 +296,51 @@ auto UGameSettingsSubsystem::control_profiles() const -> TArray<FControlProfileV
         return result;
     }
 
+    auto make_view = [settings](FString const& id,
+                                UEnhancedPlayerMappableKeyProfile const& profile,
+                                bool const custom) {
+        auto modified{false};
+        for (auto const& row : profile.GetPlayerMappingRows()) {
+            for (auto const& mapping : row.Value.Mappings) {
+                if (mapping.IsCustomized()) {
+                    modified = true;
+                    break;
+                }
+            }
+            if (modified) {
+                break;
+            }
+        }
+        return FControlProfileView{
+            .id = id,
+            .mapping_profile_id = profile.GetProfileIdString(),
+            .display_name = profile.GetProfileDisplayName(),
+            .active = id == settings->GetActiveKeyProfileId(),
+            .modified = modified,
+            .custom = custom,
+        };
+    };
+
     for (auto const& definition : control_profile_definitions()) {
         auto const* const profile{settings->GetKeyProfileWithId(definition.id)};
         if (!IsValid(profile)) {
             continue;
         }
-        auto modified{false};
-        for (auto const& row : profile->GetPlayerMappingRows()) {
-            for (auto const& mapping : row.Value.Mappings) {
-                modified |= mapping.IsCustomized();
-            }
-        }
-        result.Add(FControlProfileView{
-            .id = definition.id,
-            .display_name = definition.display_name,
-            .active = definition.id == settings->GetActiveKeyProfileId(),
-            .modified = modified,
-        });
+        result.Add(make_view(definition.id, *profile, false));
     }
+
+    TArray<FControlProfileView> custom_profiles;
+    for (auto const& profile_pair : settings->GetAllAvailableKeyProfiles()) {
+        auto const* const profile{profile_pair.Value.Get()};
+        if (IsValid(profile) && is_custom_control_profile_id(profile_pair.Key)) {
+            custom_profiles.Add(make_view(profile_pair.Key, *profile, true));
+        }
+    }
+    custom_profiles.Sort([](auto const& left, auto const& right) {
+        auto const name_order{left.display_name.ToString().Compare(right.display_name.ToString())};
+        return name_order == 0 ? left.id < right.id : name_order < 0;
+    });
+    result.Append(MoveTemp(custom_profiles));
     return result;
 }
 
@@ -339,6 +373,7 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
                     .current_key = mapping.GetCurrentKey(),
                     .default_key = mapping.GetDefaultKey(),
                     .modified = mapping.IsCustomized(),
+                    .custom_profile = is_custom_control_profile_id(profile_pair.Key),
                 });
             }
         }
@@ -393,6 +428,81 @@ auto UGameSettingsSubsystem::binding_conflicts(FControlBindingAddress const& add
 auto UGameSettingsSubsystem::set_control_profile(FString const& profile_id) -> bool {
     auto* const settings{input_user_settings()};
     if (!editing_ || settings == nullptr || !settings->SetActiveKeyProfile(profile_id)) {
+        return false;
+    }
+    settings_changed.Broadcast();
+    return true;
+}
+
+auto UGameSettingsSubsystem::create_custom_control_profile() -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr) {
+        return false;
+    }
+
+    auto const source_bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+    if (source_bindings.IsEmpty()) {
+        return false;
+    }
+    auto const profiles{control_profiles()};
+    auto custom_number{1};
+    FText display_name;
+    for (;;) {
+        display_name = FText::Format(NSLOCTEXT("Controls", "CustomProfileName", "Custom {0}"),
+                                     FText::AsNumber(custom_number));
+        if (!profiles.ContainsByPredicate([&display_name](auto const& profile) {
+                return profile.display_name.EqualTo(display_name);
+            })) {
+            break;
+        }
+        ++custom_number;
+    }
+
+    FPlayerMappableKeyProfileCreationArgs arguments{};
+    arguments.ProfileStringIdentifier = FString::Printf(
+        TEXT("SpaceGame.Controls.Custom.%s"), *FGuid::NewGuid().ToString(EGuidFormats::Digits));
+    arguments.UserId = settings->GetLocalPlayer() != nullptr
+                         ? settings->GetLocalPlayer()->GetPlatformUserId()
+                         : PLATFORMUSERID_NONE;
+    arguments.DisplayName = display_name;
+    arguments.bSetAsCurrentProfile = false;
+    auto* const profile{
+        settings->create_custom_key_profile(arguments, settings->GetActiveKeyProfileId())};
+    if (!IsValid(profile)) {
+        return false;
+    }
+
+    for (auto const& binding : source_bindings) {
+        FMapPlayerKeyArgs map_arguments{};
+        map_arguments.MappingName = binding.address.mapping_name;
+        map_arguments.Slot = binding.address.slot;
+        map_arguments.NewKey = binding.current_key;
+        map_arguments.HardwareDeviceId = binding.address.hardware_device_id;
+        map_arguments.ProfileIdString = arguments.ProfileStringIdentifier;
+        FGameplayTagContainer failure_reason;
+        settings->MapPlayerKey(map_arguments, failure_reason);
+        if (!failure_reason.IsEmpty()) {
+            settings->delete_custom_key_profile(arguments.ProfileStringIdentifier);
+            UE_LOG(LogTemp,
+                   Warning,
+                   TEXT("Could not copy control '%s' to custom profile: %s"),
+                   *binding.address.mapping_name.ToString(),
+                   *failure_reason.ToStringSimple());
+            return false;
+        }
+    }
+    if (!settings->SetActiveKeyProfile(arguments.ProfileStringIdentifier)) {
+        settings->delete_custom_key_profile(arguments.ProfileStringIdentifier);
+        return false;
+    }
+    settings_changed.Broadcast();
+    return true;
+}
+
+auto UGameSettingsSubsystem::delete_active_custom_control_profile() -> bool {
+    auto* const settings{input_user_settings()};
+    if (!editing_ || settings == nullptr ||
+        !settings->delete_custom_key_profile(settings->GetActiveKeyProfileId())) {
         return false;
     }
     settings_changed.Broadcast();
@@ -467,7 +577,7 @@ auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& a
 
 auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const& address) -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr) {
+    if (!editing_ || settings == nullptr || is_custom_control_profile_id(address.profile_id)) {
         return false;
     }
     FMapPlayerKeyArgs arguments{};
@@ -491,7 +601,8 @@ auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const&
 
 auto UGameSettingsSubsystem::reset_active_control_profile() -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr) {
+    if (!editing_ || settings == nullptr ||
+        is_custom_control_profile_id(settings->GetActiveKeyProfileId())) {
         return false;
     }
     FGameplayTagContainer failure_reason;
@@ -510,10 +621,12 @@ auto UGameSettingsSubsystem::reset_active_control_profile() -> bool {
 void UGameSettingsSubsystem::capture_input_edit_state() {
     auto const* const settings{input_user_settings()};
     if (settings == nullptr) {
+        applied_control_profiles_.Reset();
         applied_control_bindings_.Reset();
         applied_control_profile_id_.Reset();
         return;
     }
+    applied_control_profiles_ = control_profiles();
     applied_control_bindings_ = all_control_bindings();
     applied_control_profile_id_ = settings->GetActiveKeyProfileId();
 }
@@ -524,9 +637,31 @@ void UGameSettingsSubsystem::restore_input_edit_state() {
         return;
     }
 
-    for (auto const& profile : control_profile_definitions()) {
+    auto const current_profiles{control_profiles()};
+    for (auto const& profile : current_profiles) {
+        if (profile.custom &&
+            !applied_control_profiles_.ContainsByPredicate(
+                [&profile](auto const& applied) { return applied.id == profile.id; })) {
+            settings->delete_custom_key_profile(profile.id);
+        }
+    }
+    for (auto const& profile : applied_control_profiles_) {
+        if (!profile.custom || settings->GetKeyProfileWithId(profile.id) != nullptr) {
+            continue;
+        }
+        FPlayerMappableKeyProfileCreationArgs arguments{};
+        arguments.ProfileStringIdentifier = profile.id;
+        arguments.UserId = settings->GetLocalPlayer() != nullptr
+                             ? settings->GetLocalPlayer()->GetPlatformUserId()
+                             : PLATFORMUSERID_NONE;
+        arguments.DisplayName = profile.display_name;
+        arguments.bSetAsCurrentProfile = false;
+        settings->create_custom_key_profile(arguments, profile.mapping_profile_id);
+    }
+
+    for (auto const& profile_pair : settings->GetAllAvailableKeyProfiles()) {
         FGameplayTagContainer failure_reason;
-        settings->ResetKeyProfileIdToDefault(profile.id, failure_reason);
+        settings->ResetKeyProfileIdToDefault(profile_pair.Key, failure_reason);
     }
     for (auto const& binding : applied_control_bindings_) {
         if (binding.current_key == binding.default_key) {
@@ -552,6 +687,19 @@ auto UGameSettingsSubsystem::input_is_dirty() const -> bool {
     }
     if (settings->GetActiveKeyProfileId() != applied_control_profile_id_) {
         return true;
+    }
+    auto const profiles{control_profiles()};
+    if (profiles.Num() != applied_control_profiles_.Num()) {
+        return true;
+    }
+    auto const profile_count{profiles.Num()};
+    for (int32 index{}; index < profile_count; ++index) {
+        if (profiles[index].id != applied_control_profiles_[index].id ||
+            profiles[index].mapping_profile_id !=
+                applied_control_profiles_[index].mapping_profile_id ||
+            !profiles[index].display_name.EqualTo(applied_control_profiles_[index].display_name)) {
+            return true;
+        }
     }
     auto const current{all_control_bindings()};
     if (current.Num() != applied_control_bindings_.Num()) {

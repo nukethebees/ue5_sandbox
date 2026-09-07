@@ -54,6 +54,8 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto binding_conflicts(FControlBindingAddress const& address, FKey key) const
         -> TArray<FControlBindingView>;
     auto set_control_profile(FString const& profile_id) -> bool;
+    auto create_custom_control_profile() -> bool;
+    auto delete_active_custom_control_profile() -> bool;
     auto set_control_binding(FControlBindingAddress const& address,
                              FKey key,
                              bool replace_conflicts) -> bool;
@@ -76,6 +78,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
     FGameSettingsBackend backend_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
     FGameSettingsEditState edit_state_{};
+    TArray<FControlProfileView> applied_control_profiles_{};
     TArray<FControlBindingView> applied_control_bindings_{};
     FString applied_control_profile_id_{};
     double display_confirmation_deadline_{};

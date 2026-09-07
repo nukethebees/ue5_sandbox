@@ -445,21 +445,23 @@ void SGameOptionsView::rebuild_controls_page() {
     TArray<FText> profile_labels;
     profile_labels.Reserve(profiles.Num());
     for (auto const& profile : profiles) {
-        profile_labels.Add(profile.modified ? FText::Format(NSLOCTEXT("OptionsMenu",
-                                                                      "ModifiedControlProfile",
-                                                                      "{0} (Modified)"),
-                                                            profile.display_name)
-                                            : profile.display_name);
+        profile_labels.Add(
+            profile.modified && !profile.custom
+                ? FText::Format(
+                      NSLOCTEXT("OptionsMenu", "ModifiedControlProfile", "{0} (Modified)"),
+                      profile.display_name)
+                : profile.display_name);
     }
+    auto const* const active_profile{
+        profiles.FindByPredicate([](auto const& profile) { return profile.active; })};
     TSharedPtr<SSettingsChoice> profile_choice;
     auto profile_rows{SNew(SVerticalBox)};
     profile_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
         [SAssignNew(profile_choice, SSettingsChoice)
              .Style(&style_->settings())
              .Label(NSLOCTEXT("OptionsMenu", "ControlProfile", "Control Profile"))
-             .ToolTipText(NSLOCTEXT("OptionsMenu",
-                                    "ControlProfileTip",
-                                    "Choose a preset. Rebinding modifies the selected profile."))
+             .ToolTipText(NSLOCTEXT(
+                 "OptionsMenu", "ControlProfileTip", "Choose a preset or custom control profile."))
              .Options(MoveTemp(profile_labels))
              .SelectedIndex_Lambda([weak_settings = settings_, profiles] {
                  auto const* const current{weak_settings.Get()};
@@ -474,10 +476,63 @@ void SGameOptionsView::rebuild_controls_page() {
                  if (auto* const current{settings_.Get()};
                      profiles.IsValidIndex(index) && current != nullptr &&
                      current->set_control_profile(profiles[index].id)) {
+                     control_profile_error_ = FText::GetEmpty();
                      rebuild_controls_page();
                      refresh();
                  }
              })];
+    auto profile_actions{SNew(SHorizontalBox)};
+    profile_actions->AddSlot().AutoWidth().Padding(FMargin{
+        0.0f,
+        0.0f,
+        style_->settings().button_spacing,
+        0.0f})[SNew(SGameButton)
+                   .Style(&style_->button(EGameButtonStyle::Secondary))
+                   .Text(NSLOCTEXT("OptionsMenu", "CreateCustomProfile", "Copy to New Custom"))
+                   .OnClicked_Lambda([this] {
+                       if (auto* const current{settings_.Get()}) {
+                           if (current->create_custom_control_profile()) {
+                               control_profile_error_ = FText::GetEmpty();
+                           } else {
+                               control_profile_error_ =
+                                   NSLOCTEXT("OptionsMenu",
+                                             "CreateCustomProfileFailed",
+                                             "Could not create the custom control profile.");
+                           }
+                           rebuild_controls_page();
+                           refresh();
+                       }
+                       return FReply::Handled();
+                   })];
+    if (active_profile != nullptr && active_profile->custom) {
+        profile_actions->AddSlot()
+            .AutoWidth()[SNew(SGameButton)
+                             .Style(&style_->button(EGameButtonStyle::Secondary))
+                             .Text(NSLOCTEXT("OptionsMenu", "DeleteCustomProfile", "Delete Custom"))
+                             .OnClicked_Lambda([this] {
+                                 if (auto* const current{settings_.Get()}) {
+                                     if (current->delete_active_custom_control_profile()) {
+                                         control_profile_error_ = FText::GetEmpty();
+                                     } else {
+                                         control_profile_error_ = NSLOCTEXT(
+                                             "OptionsMenu",
+                                             "DeleteCustomProfileFailed",
+                                             "Could not delete the custom control profile.");
+                                     }
+                                     rebuild_controls_page();
+                                     refresh();
+                                 }
+                                 return FReply::Handled();
+                             })];
+    }
+    profile_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)[profile_actions];
+    if (!control_profile_error_.IsEmpty()) {
+        profile_rows->AddSlot().AutoHeight().Padding(
+            style_->settings().row_padding)[SNew(STextBlock)
+                                                .Text(control_profile_error_)
+                                                .TextStyle(&style_->text(EGameTextStyle::Caption))
+                                                .ColorAndOpacity(style_->palette().danger)];
+    }
     page_focus_actions_[static_cast<int32>(EOptionsTab::Controls)] = [profile_choice] {
         profile_choice->focus();
     };
@@ -569,6 +624,8 @@ auto SGameOptionsView::build_binding_row(FControlBindingView const& binding)
                                 .Style(&style_->button(EGameButtonStyle::Secondary))
                                 .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
                                 .Enabled(binding.modified)
+                                .Visibility(binding.custom_profile ? EVisibility::Collapsed
+                                                                   : EVisibility::Visible)
                                 .OnClicked_Lambda([this, address = binding.address] {
                                     if (auto* const current{settings_.Get()}) {
                                         current->reset_control_binding(address);

@@ -120,6 +120,7 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SVerticalBox> controls_content_{};
     TOptional<FControlBindingAddress> captured_binding_{};
     FKey captured_key_{};
+    FText control_profile_error_{};
     TWeakPtr<SWidget> previous_focus_{};
     TArray<TFunction<void()>> page_focus_actions_{};
     bool dirty_prompt_visible_{};

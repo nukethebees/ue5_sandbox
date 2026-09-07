@@ -7,6 +7,13 @@
 namespace ml::ioj {
 
 UCLASS()
+class SPACEGAME_API USpaceGameKeyProfile final : public UEnhancedPlayerMappableKeyProfile {
+    GENERATED_BODY()
+  public:
+    void set_mapping_profile_id(FString const& profile_id);
+};
+
+UCLASS()
 class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUserSettings {
     GENERATED_BODY()
   public:
@@ -37,6 +44,11 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
         return invert_gamepad_pitch_;
     }
     void set_invert_gamepad_pitch(bool value) noexcept;
+
+    auto create_custom_key_profile(FPlayerMappableKeyProfileCreationArgs const& arguments,
+                                   FString const& source_profile_id)
+        -> UEnhancedPlayerMappableKeyProfile*;
+    auto delete_custom_key_profile(FString const& profile_id) -> bool;
   protected:
     auto DetermineHardwareDeviceForActionMapping(FEnhancedActionKeyMapping const& action_mapping,
                                                  UInputMappingContext const* mapping_context) const

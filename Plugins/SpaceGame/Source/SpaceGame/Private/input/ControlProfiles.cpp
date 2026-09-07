@@ -5,6 +5,7 @@
 
 namespace ml::ioj {
 namespace control_profile_details {
+inline constexpr TCHAR custom_profile_id_prefix[]{TEXT("SpaceGame.Controls.Custom.")};
 inline TArray<FControlProfileDefinition> const profiles{
     {TEXT("InputUserSettings.Profiles.Default"),
      NSLOCTEXT("Controls", "DefaultProfile", "Default")},
@@ -19,6 +20,10 @@ inline TArray<FControlProfileDefinition> const profiles{
 
 auto control_profile_definitions() -> TConstArrayView<FControlProfileDefinition> {
     return control_profile_details::profiles;
+}
+
+auto is_custom_control_profile_id(FString const& profile_id) -> bool {
+    return profile_id.StartsWith(control_profile_details::custom_profile_id_prefix);
 }
 
 auto register_control_profiles(UEnhancedInputUserSettings& settings,
