@@ -232,6 +232,11 @@ void discover_campaigns(FLevelScriptCatalogResult& result) {
 }
 }
 
+auto catalog_category(FLevelDefinition const& definition) noexcept -> ELevelCatalogCategory {
+    return definition.player_entity_id.is_set() ? ELevelCatalogCategory::Mission
+                                                : ELevelCatalogCategory::BattleViewer;
+}
+
 auto default_level_script_directory() -> FString {
     return FPaths::ConvertRelativePathToFull(
         FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts")));

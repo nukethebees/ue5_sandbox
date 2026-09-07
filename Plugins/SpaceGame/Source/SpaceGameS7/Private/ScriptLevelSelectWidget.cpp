@@ -128,7 +128,7 @@ auto entry_matches_category(FLevelScriptEntry const& entry, ELevelCatalogCategor
     if (!entry) {
         return category == ELevelCatalogCategory::Mission;
     }
-    return entry.definition->metadata.catalog_category == category;
+    return catalog_category(entry.definition.GetValue()) == category;
 }
 } // namespace
 

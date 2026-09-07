@@ -31,6 +31,18 @@ auto valid_level_script(FStringView const id,
                            *FString{title},
                            *FString{unlock});
 }
+
+auto valid_camera_level_script(FStringView const id, FStringView const title) -> FString {
+    return FString::Printf(TEXT("(level (id '%s) (title \"%s\") "
+                                "(description \"Catalog test\") "
+                                "(teams (team 'blue)) "
+                                "(camera (look-at 'capital) (distance 10000) "
+                                "(offset-direction -1 0 0)) "
+                                "(entities (entity 'capital 'capital-ship 'blue "
+                                "(position 0 0 0) (rotation 0 0 0))))"),
+                           *FString{id},
+                           *FString{title});
+}
 }
 
 TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
@@ -48,8 +60,8 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
         auto const files_written{
             FFileHelper::SaveStringToFile(valid_level_script(TEXT("alpha"), TEXT("Alpha Level")),
                                           *alpha_path) &&
-            FFileHelper::SaveStringToFile(valid_level_script(TEXT("bravo"), TEXT("Bravo Level")),
-                                          *bravo_path) &&
+            FFileHelper::SaveStringToFile(
+                valid_camera_level_script(TEXT("bravo"), TEXT("Bravo Level")), *bravo_path) &&
             FFileHelper::SaveStringToFile(TEXT("(level (title \"Broken\"))"), *invalid_path) &&
             FFileHelper::SaveStringToFile(TEXT("not a level"), *ignored_path) &&
             FFileHelper::SaveStringToFile(valid_level_script(TEXT("nested"), TEXT("Nested Level")),
@@ -77,6 +89,12 @@ TEST_CLASS(LevelScriptCatalog, "Sandbox.UnitTests")
                               FString{TEXT("Catalog test")});
         TestRunner->TestTrue(TEXT("Valid entries retain their native definitions"),
                              static_cast<bool>(result.entries[0]));
+        TestRunner->TestTrue(TEXT("Player levels are catalogued as missions"),
+                             ml::s7::catalog_category(result.entries[0].definition.GetValue()) ==
+                                 ml::s7::ELevelCatalogCategory::Mission);
+        TestRunner->TestTrue(TEXT("Playerless levels are catalogued for Battle Viewer"),
+                             ml::s7::catalog_category(result.entries[1].definition.GetValue()) ==
+                                 ml::s7::ELevelCatalogCategory::BattleViewer);
         TestRunner->TestFalse(TEXT("Malformed entries are retained but invalid"),
                               static_cast<bool>(result.entries[2]));
         TestRunner->TestTrue(TEXT("Malformed entries include a useful error"),
