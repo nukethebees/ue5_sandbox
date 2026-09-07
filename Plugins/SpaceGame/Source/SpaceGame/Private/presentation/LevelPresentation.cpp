@@ -83,7 +83,6 @@ void FLevelPresentation::commit_visual_data(float dt) {
     capital_ship_fighters.commit_visual_data();
     turrets.commit_visual_data();
     spinners.commit_visual_data();
-    lasers.commit_visual_data();
     sparks.commit(dt);
     effects.update_spawns(dt, *lasers.instances->GetWorld());
 }

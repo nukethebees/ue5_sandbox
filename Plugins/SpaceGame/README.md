@@ -4,6 +4,58 @@
 namespace, allowing types such as `ml::ioj::UPauseMenuWidget` to remain short while retaining clear
 context and collision isolation.
 
+## Spark configuration
+
+The spark system has two configuration scopes. The orchestrator owns one persistent renderer for
+the level, while each effect producer supplies the style of the bursts it emits. The `Sparks`
+component shown beneath an orchestrator is runtime-owned and is not the place to configure burst
+appearance.
+
+### Laser impact bursts
+
+Laser impact appearance is configured on the `USpaceGameLevelConfig` data asset assigned to the
+orchestrator:
+
+1. Select the orchestrator and open its `Level Config` asset, or open that asset directly in the
+   Content Browser.
+2. Expand `Laser Projectiles`, then `Impact Sparks`.
+3. Edit the burst style and save the data asset.
+
+`Count` is the exact number of particles emitted by each laser hit; zero disables laser-impact
+sparks. `Size Min` and `Size Max` control particle thickness in world-space centimetres. These are
+the settings to change when a burst needs more particles or physically larger sparks.
+
+The remaining burst settings are:
+
+| Setting | Effect |
+|---|---|
+| `Speed Min/Max` | Initial particle speed in centimetres per second. |
+| `Lifetime Min/Max` | Particle lifetime in seconds. |
+| `Intensity` | Multiplier applied to the laser's team colour before rendering. Increase this for brighter HDR sparks and stronger bloom. |
+| `Spread Angle Degrees` | Half-angle of the emission cone. `0` follows the emission direction, `90` is a hemisphere, and `180` is isotropic. |
+| `Streak Time` | Length of the velocity-aligned streak expressed as travel time; larger values make longer streaks. |
+
+Laser spark colour is taken from the hit laser's team colour. The burst style changes its intensity
+but does not replace its base colour.
+
+### Level renderer settings
+
+Renderer-wide settings are configured on the orchestrator under `Presentation Settings > Sparks`:
+
+| Setting | Effect |
+|---|---|
+| `Capacity` | Maximum number of particle slots in the level-wide ring buffer. New particles overwrite the oldest slots when it is full. This is separate from `Laser Projectiles > N Preallocated Instances`, which sizes the laser projectile presentation pool. |
+| `Maximum Draw Distance` | Distance beyond which sparks are rejected. |
+| `Acceleration` | Constant world-space acceleration applied to every spark, normally gravity. |
+| `Minimum Thickness Pixels` | Lower screen-space thickness clamp. Enlarged sparks have their energy reduced to compensate. |
+| `Maximum Thickness Pixels` | Upper screen-space thickness clamp used to bound close-range fill cost. |
+| `Maximum Length Pixels` | Upper screen-space streak-length clamp. |
+
+The renderer settings are copied into the persistent component when level presentation is created.
+Stop and restart Play In Editor after changing them. Burst styles are likewise intended to be
+authored before starting the level; restart the level after editing the level-config asset when
+checking a change.
+
 ## Collision contracts
 
 `CollisionUniformGrid` uses a half-open world-space domain: the negative grid bounds are included

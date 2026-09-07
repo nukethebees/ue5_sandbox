@@ -173,9 +173,6 @@ struct SPACEGAME_API FLaserProjectileConfig {
     UPROPERTY(EditAnywhere, Category = "Visuals")
     float max_cull_distance{50000.f};
 
-    UPROPERTY(EditAnywhere, Category = "Visuals")
-    TObjectPtr<UNiagaraSystem> hit_effect{nullptr};
-
     UPROPERTY(EditAnywhere, Category = "Visuals|Sparks", meta = (ShowOnlyInnerProperties))
     FSparkBurstStyle impact_sparks;
 };

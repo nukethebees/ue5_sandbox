@@ -32,14 +32,12 @@ struct SPACEGAME_API FLaserPresentation {
     void clear_runtime_state_presentation();
     void begin_play_presentation();
     void update_visual_data();
-    void commit_visual_data();
     void end_tick_presentation();
 
     void configure_ismc();
     void synchronize_material_data();
     void update_ismc();
     void queue_hit_sparks();
-    void spawn_hit_effects();
     void validate_array_sizes() const;
 
     FLaserProjectileConfig const* actor_config{nullptr};
@@ -53,7 +51,6 @@ struct SPACEGAME_API FLaserPresentation {
     USandboxISMCComponent* instances{nullptr};
     TArray<FMaterialData> material_data;
 
-    bool have_warned_hit_effect{false};
     FSparkEffects* spark_effects_{nullptr};
 
 #if WITH_EDITORONLY_DATA

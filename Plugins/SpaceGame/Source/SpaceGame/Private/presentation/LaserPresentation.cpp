@@ -10,19 +10,11 @@
 #include <SpaceGameRendering/SparkEffects.h>
 
 #include <Components/SceneComponent.h>
-#include <HAL/IConsoleManager.h>
-#include <NiagaraFunctionLibrary.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
 TRACE_DECLARE_INT_COUNTER(SandboxTestLaserISMCCount, TEXT("Sandbox/TestLaserISMCCount"));
 
 namespace SpaceGame::LaserPresentation::Private {
-TAutoConsoleVariable<int32> impact_renderer{
-    TEXT("sg.Sparks.LaserImpactRenderer"),
-    0,
-    TEXT("Laser impact renderer: 0 custom analytic sparks, 1 legacy Niagara."),
-    ECVF_Default};
-
 auto make_seed(uint64 const tick, FVector3f const location, int32 const ordinal) -> uint32 {
     auto seed{HashCombineFast(GetTypeHash(static_cast<uint32>(tick)),
                               GetTypeHash(static_cast<uint32>(tick >> 32)))};
@@ -78,13 +70,6 @@ void FLaserPresentation::update_visual_data() {
     synchronize_material_data();
     update_ismc();
     queue_hit_sparks();
-}
-
-void FLaserPresentation::commit_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::commit_visual_data);
-    if (SpaceGame::LaserPresentation::Private::impact_renderer.GetValueOnGameThread() != 0) {
-        spawn_hit_effects();
-    }
 }
 
 void FLaserPresentation::end_tick_presentation() {
@@ -162,7 +147,6 @@ void FLaserPresentation::update_ismc() {
 
 void FLaserPresentation::queue_hit_sparks() {
     if (spark_effects_ == nullptr || actor_config == nullptr ||
-        SpaceGame::LaserPresentation::Private::impact_renderer.GetValueOnGameThread() != 0 ||
         actor_config->impact_sparks.count <= 0) {
         return;
     }
@@ -185,54 +169,6 @@ void FLaserPresentation::queue_hit_sparks() {
                 },
             .style = style,
         });
-    }
-}
-
-void FLaserPresentation::spawn_hit_effects() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FLaserPresentation::spawn_hit_effects);
-
-    static FName const colour_parameter{TEXT("User.Colour")};
-    static FName const ribbon_colour_parameter{TEXT("User.Ribbon_Colour")};
-
-    auto* const hit_effect{actor_config->hit_effect.Get()};
-    if (!IsValid(hit_effect)) {
-        if (!have_warned_hit_effect) {
-            UE_LOG(LogSandbox,
-                   Warning,
-                   TEXT("FLaserPresentation::spawn_hit_effects: hit_effect is nullptr"));
-            have_warned_hit_effect = true;
-        }
-        return;
-    }
-
-    auto const& hit_details{simulation().hit_details};
-    auto const n{ml::num(hit_details)};
-    if (n < 1) {
-        return;
-    }
-
-    auto* const world{instances->GetWorld()};
-    for (int32 i{0}; i < n; ++i) {
-        constexpr bool auto_destroy{true};
-        constexpr bool auto_activate{false};
-        auto* const system{UNiagaraFunctionLibrary::SpawnSystemAtLocation(
-            world,
-            hit_effect,
-            ml::get_vector3d(hit_details.locations, i),
-            FRotator::ZeroRotator,
-            FVector::OneVector,
-            auto_destroy,
-            auto_activate,
-            ENCPoolMethod::AutoRelease)};
-        if (!IsValid(system)) {
-            continue;
-        }
-
-        constexpr double colour_scale{20.0};
-        auto const colour{hit_details.colours[i] * colour_scale};
-        system->SetVariableLinearColor(colour_parameter, colour);
-        system->SetVariableLinearColor(ribbon_colour_parameter, colour);
-        system->Activate();
     }
 }
 
