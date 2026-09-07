@@ -8,7 +8,16 @@
 #include <Components/Border.h>
 #include <Components/TextBlock.h>
 #include <Engine/World.h>
+#include <Input/CommonUIInputTypes.h>
 #include <TimerManager.h>
+
+TOptional<FUIInputConfig> UBenchmarkHudWidget::GetDesiredInputConfig() const {
+    auto config{FUIInputConfig{
+        ECommonInputMode::All, EMouseCaptureMode::NoCapture, EMouseLockMode::DoNotLock, false}};
+    config.bIgnoreMoveInput = true;
+    config.bIgnoreLookInput = true;
+    return config;
+}
 
 void UBenchmarkHudWidget::NativeOnInitialized() {
     Super::NativeOnInitialized();

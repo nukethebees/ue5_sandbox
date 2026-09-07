@@ -120,6 +120,8 @@ void FLevelLoaderCameraScenario::load_fixture() {
                        TEXT("Benchmark context removes simulation HUDs"));
         checks.is_true(player_controller->get_benchmark_hud() != nullptr,
                        TEXT("Benchmark context creates the minimal benchmark HUD"));
+        checks.is_true(player_controller->get_benchmark_hud()->IsActivated(),
+                       TEXT("Benchmark HUD is the active CommonUI input root"));
         checks.is_true(player_controller->ShouldShowMouseCursor(),
                        TEXT("Benchmark context shows the mouse cursor"));
         if (auto* const viewport{context_.world.GetGameViewport()}; IsValid(viewport)) {

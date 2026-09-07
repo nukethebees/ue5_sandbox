@@ -347,7 +347,6 @@ void ASpaceGamePlayerController::BeginPlay() {
     Super::BeginPlay();
 
     begin_play_finished_ = true;
-    initialise_ui_root();
     if (main_menu_requested_) {
         initialise_main_menu();
         return;
@@ -365,6 +364,7 @@ void ASpaceGamePlayerController::initialise_gameplay() {
 
     auto* const ship{Cast<Pawn>(GetPawn())};
     if (IsValid(ship)) {
+        initialise_ui_root();
         ship_control_context_.set_ship(ship);
         set_control_context(EPlayerControlContext::Player);
         initialise_hud(EPlayerControlContext::Player);
@@ -424,6 +424,7 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
     ship->on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
     ship_control_context_.set_ship(ship);
     if (begin_play_finished_ && !IsValid(pause_menu) && !main_menu_requested_) {
+        initialise_ui_root();
         set_control_context(EPlayerControlContext::Player);
         initialise_hud(EPlayerControlContext::Player);
     }
@@ -657,30 +658,9 @@ auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera
             set_control_context(EPlayerControlContext::None);
             return false;
         }
-        apply_benchmark_input_mode();
-        GetWorldTimerManager().SetTimerForNextTick(this, &ThisClass::apply_benchmark_input_mode);
     }
     SetActorTickEnabled(true);
     return true;
-}
-
-void ASpaceGamePlayerController::apply_benchmark_input_mode() {
-    if (active_control_context_ != EPlayerControlContext::Benchmark ||
-        !IsValid(benchmark_hud_widget)) {
-        return;
-    }
-
-    FInputModeGameAndUI input_mode{};
-    input_mode.SetHideCursorDuringCapture(false);
-    input_mode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-    SetInputMode(input_mode);
-    if (auto* const world{GetWorld()}; IsValid(world)) {
-        if (auto* const viewport{world->GetGameViewport()}; IsValid(viewport)) {
-            viewport->SetMouseCaptureMode(EMouseCaptureMode::NoCapture);
-            viewport->SetMouseLockMode(EMouseLockMode::DoNotLock);
-        }
-    }
-    SetShowMouseCursor(true);
 }
 
 void ASpaceGamePlayerController::set_observer_look_active(bool const active) {
@@ -864,7 +844,8 @@ auto ASpaceGamePlayerController::initialise_benchmark_hud() -> bool {
     }
     created_widget->set_orchestrator(*orchestrator);
     created_widget->end_requested.AddUObject(this, &ThisClass::return_to_level_select);
-    created_widget->AddToViewport(100);
+    created_widget->AddToPlayerScreen(100);
+    created_widget->ActivateWidget();
     return true;
 }
 
@@ -873,6 +854,7 @@ void ASpaceGamePlayerController::shutdown_benchmark_hud() {
         return;
     }
     benchmark_hud_widget->end_requested.RemoveAll(this);
+    benchmark_hud_widget->DeactivateWidget();
     benchmark_hud_widget->RemoveFromParent();
     benchmark_hud_widget = nullptr;
 }
