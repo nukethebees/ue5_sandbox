@@ -1270,64 +1270,28 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         std::numeric_limits<byte_size_type>::max()};
     inline static constexpr size_type capacity_granularity{64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<Handle>,
-        "Single-allocation leaf entity_handles requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type entity_handles_alignment{
         alignof(Handle) > 64 ? alignof(Handle) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<uint32>,
-        "Single-allocation leaf integral_biases requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type integral_biases_alignment{
         alignof(uint32) > 64 ? alignof(uint32) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<float>,
-        "Single-allocation leaf float_biases requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type float_biases_alignment{
         alignof(float) > 64 ? alignof(float) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<Task>,
-        "Single-allocation leaf tasks requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type tasks_alignment{alignof(Task) > 64 ? alignof(Task) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<Team>,
-        "Single-allocation leaf teams requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type teams_alignment{alignof(Team) > 64 ? alignof(Team) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<int32>,
-        "Single-allocation leaf healths requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type healths_alignment{alignof(int32) > 64 ? alignof(int32)
                                                                                  : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<int8>,
-        "Single-allocation leaf awareness_scan_countdowns.counters requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type awareness_scan_countdowns_counters_alignment{
         alignof(int8) > 64 ? alignof(int8) : 64};
 
-    static_assert(ml::single_allocation_experiment::supported_leaf<int16>,
-                  "Single-allocation leaf navigation_update_countdowns.remaining_ticks requires a "
-                  "non-cv, trivially copyable/copy-constructible/destructible, nothrow "
-                  "default-constructible object type.");
     inline static constexpr byte_size_type navigation_update_countdowns_remaining_ticks_alignment{
         alignof(int16) > 64 ? alignof(int16) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<uint8>,
-        "Single-allocation leaf navigation_risk_tiers requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type navigation_risk_tiers_alignment{
         alignof(uint8) > 64 ? alignof(uint8) : 64};
 
@@ -1341,228 +1305,167 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
                   awareness_scan_countdowns_counters_alignment,
                   navigation_update_countdowns_remaining_ticks_alignment,
                   navigation_risk_tiers_alignment})};
-    static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
 
     inline static constexpr byte_size_type entity_handles_block_offset{
         ml::single_allocation_experiment::layout_align(0, entity_handles_alignment)};
-    static_assert(sizeof(Handle) <=
-                  (max_allocation_size - entity_handles_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type entity_handles_block_end{
         entity_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
     inline static constexpr byte_size_type integral_biases_block_offset{
         ml::single_allocation_experiment::layout_align(entity_handles_block_end,
                                                        integral_biases_alignment)};
-    static_assert(sizeof(uint32) <=
-                  (max_allocation_size - integral_biases_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type integral_biases_block_end{
         integral_biases_block_offset + capacity_granularity * sizeof(uint32)};
 
     inline static constexpr byte_size_type float_biases_block_offset{
         ml::single_allocation_experiment::layout_align(integral_biases_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - float_biases_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type float_biases_block_end{
         float_biases_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type tasks_block_offset{
         ml::single_allocation_experiment::layout_align(float_biases_block_end, tasks_alignment)};
-    static_assert(sizeof(Task) <=
-                  (max_allocation_size - tasks_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type tasks_block_end{tasks_block_offset +
                                                            capacity_granularity * sizeof(Task)};
 
     inline static constexpr byte_size_type locations_xs_block_offset{
         ml::single_allocation_experiment::layout_align(tasks_block_end, float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - locations_xs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type locations_xs_block_end{
         locations_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type locations_ys_block_offset{
         ml::single_allocation_experiment::layout_align(locations_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - locations_ys_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type locations_ys_block_end{
         locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type locations_zs_block_offset{
         ml::single_allocation_experiment::layout_align(locations_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - locations_zs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type locations_zs_block_end{
         locations_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_move_locations_xs_block_offset{
         ml::single_allocation_experiment::layout_align(locations_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - desired_move_locations_xs_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type desired_move_locations_xs_block_end{
         desired_move_locations_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_move_locations_ys_block_offset{
         ml::single_allocation_experiment::layout_align(desired_move_locations_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - desired_move_locations_ys_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type desired_move_locations_ys_block_end{
         desired_move_locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_move_locations_zs_block_offset{
         ml::single_allocation_experiment::layout_align(desired_move_locations_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - desired_move_locations_zs_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type desired_move_locations_zs_block_end{
         desired_move_locations_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aim_directions_xs_block_offset{
         ml::single_allocation_experiment::layout_align(desired_move_locations_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - aim_directions_xs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type aim_directions_xs_block_end{
         aim_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aim_directions_ys_block_offset{
         ml::single_allocation_experiment::layout_align(aim_directions_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - aim_directions_ys_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type aim_directions_ys_block_end{
         aim_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aim_directions_zs_block_offset{
         ml::single_allocation_experiment::layout_align(aim_directions_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - aim_directions_zs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type aim_directions_zs_block_end{
         aim_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_aiming_directions_xs_block_offset{
         ml::single_allocation_experiment::layout_align(aim_directions_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - desired_aiming_directions_xs_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type desired_aiming_directions_xs_block_end{
         desired_aiming_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_aiming_directions_ys_block_offset{
         ml::single_allocation_experiment::layout_align(desired_aiming_directions_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - desired_aiming_directions_ys_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type desired_aiming_directions_ys_block_end{
         desired_aiming_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_aiming_directions_zs_block_offset{
         ml::single_allocation_experiment::layout_align(desired_aiming_directions_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - desired_aiming_directions_zs_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type desired_aiming_directions_zs_block_end{
         desired_aiming_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type movement_directions_xs_block_offset{
         ml::single_allocation_experiment::layout_align(desired_aiming_directions_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - movement_directions_xs_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type movement_directions_xs_block_end{
         movement_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type movement_directions_ys_block_offset{
         ml::single_allocation_experiment::layout_align(movement_directions_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - movement_directions_ys_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type movement_directions_ys_block_end{
         movement_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type movement_directions_zs_block_offset{
         ml::single_allocation_experiment::layout_align(movement_directions_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - movement_directions_zs_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type movement_directions_zs_block_end{
         movement_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type velocities_xs_block_offset{
         ml::single_allocation_experiment::layout_align(movement_directions_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - velocities_xs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type velocities_xs_block_end{
         velocities_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type velocities_ys_block_offset{
         ml::single_allocation_experiment::layout_align(velocities_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - velocities_ys_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type velocities_ys_block_end{
         velocities_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type velocities_zs_block_offset{
         ml::single_allocation_experiment::layout_align(velocities_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - velocities_zs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type velocities_zs_block_end{
         velocities_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type move_distances_block_offset{
         ml::single_allocation_experiment::layout_align(velocities_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - move_distances_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type move_distances_block_end{
         move_distances_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type speeds_block_offset{
         ml::single_allocation_experiment::layout_align(move_distances_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - speeds_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type speeds_block_end{speeds_block_offset +
                                                             capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type teams_block_offset{
         ml::single_allocation_experiment::layout_align(speeds_block_end, teams_alignment)};
-    static_assert(sizeof(Team) <=
-                  (max_allocation_size - teams_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type teams_block_end{teams_block_offset +
                                                            capacity_granularity * sizeof(Team)};
 
     inline static constexpr byte_size_type healths_block_offset{
         ml::single_allocation_experiment::layout_align(teams_block_end, healths_alignment)};
-    static_assert(sizeof(int32) <=
-                  (max_allocation_size - healths_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type healths_block_end{healths_block_offset +
                                                              capacity_granularity * sizeof(int32)};
 
     inline static constexpr byte_size_type parent_handles_block_offset{
         ml::single_allocation_experiment::layout_align(healths_block_end,
                                                        entity_handles_alignment)};
-    static_assert(sizeof(Handle) <=
-                  (max_allocation_size - parent_handles_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type parent_handles_block_end{
         parent_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
     inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_offset{
         ml::single_allocation_experiment::layout_align(
             parent_handles_block_end, awareness_scan_countdowns_counters_alignment)};
-    static_assert(sizeof(int8) <=
-                  (max_allocation_size - awareness_scan_countdowns_counters_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_end{
         awareness_scan_countdowns_counters_block_offset + capacity_granularity * sizeof(int8)};
 
@@ -1571,9 +1474,6 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
             ml::single_allocation_experiment::layout_align(
                 awareness_scan_countdowns_counters_block_end,
                 navigation_update_countdowns_remaining_ticks_alignment)};
-    static_assert(sizeof(int16) <= (max_allocation_size -
-                                    navigation_update_countdowns_remaining_ticks_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type navigation_update_countdowns_remaining_ticks_block_end{
         navigation_update_countdowns_remaining_ticks_block_offset +
         capacity_granularity * sizeof(int16)};
@@ -1582,50 +1482,36 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         ml::single_allocation_experiment::layout_align(
             navigation_update_countdowns_remaining_ticks_block_end,
             navigation_update_countdowns_remaining_ticks_alignment)};
-    static_assert(sizeof(int16) <=
-                  (max_allocation_size - navigation_update_countdowns_periods_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type navigation_update_countdowns_periods_block_end{
         navigation_update_countdowns_periods_block_offset + capacity_granularity * sizeof(int16)};
 
     inline static constexpr byte_size_type separation_steering_xs_block_offset{
         ml::single_allocation_experiment::layout_align(
             navigation_update_countdowns_periods_block_end, float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - separation_steering_xs_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type separation_steering_xs_block_end{
         separation_steering_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type separation_steering_ys_block_offset{
         ml::single_allocation_experiment::layout_align(separation_steering_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - separation_steering_ys_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type separation_steering_ys_block_end{
         separation_steering_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type separation_steering_zs_block_offset{
         ml::single_allocation_experiment::layout_align(separation_steering_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <= (max_allocation_size - separation_steering_zs_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type separation_steering_zs_block_end{
         separation_steering_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type navigation_risk_tiers_block_offset{
         ml::single_allocation_experiment::layout_align(separation_steering_zs_block_end,
                                                        navigation_risk_tiers_alignment)};
-    static_assert(sizeof(uint8) <= (max_allocation_size - navigation_risk_tiers_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type navigation_risk_tiers_block_end{
         navigation_risk_tiers_block_offset + capacity_granularity * sizeof(uint8)};
 
     inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_offset{
         ml::single_allocation_experiment::layout_align(navigation_risk_tiers_block_end,
                                                        navigation_risk_tiers_alignment)};
-    static_assert(sizeof(uint8) <=
-                  (max_allocation_size - navigation_lower_risk_scan_counts_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_end{
         navigation_lower_risk_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
 
@@ -1633,17 +1519,12 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         ml::single_allocation_experiment::layout_align(
             navigation_lower_risk_scan_counts_block_end,
             awareness_scan_countdowns_counters_alignment)};
-    static_assert(sizeof(int8) <= (max_allocation_size - avoidance_choice_indices_block_offset) /
-                                      capacity_granularity);
     inline static constexpr byte_size_type avoidance_choice_indices_block_end{
         avoidance_choice_indices_block_offset + capacity_granularity * sizeof(int8)};
 
     inline static constexpr byte_size_type avoidance_clear_scan_counts_block_offset{
         ml::single_allocation_experiment::layout_align(avoidance_choice_indices_block_end,
                                                        navigation_risk_tiers_alignment)};
-    static_assert(sizeof(uint8) <=
-                  (max_allocation_size - avoidance_clear_scan_counts_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type avoidance_clear_scan_counts_block_end{
         avoidance_clear_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
 
@@ -1651,9 +1532,6 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         ml::single_allocation_experiment::layout_align(
             avoidance_clear_scan_counts_block_end,
             navigation_update_countdowns_remaining_ticks_alignment)};
-    static_assert(sizeof(int16) <=
-                  (max_allocation_size - attack_reposition_countdowns_counters_block_offset) /
-                      capacity_granularity);
     inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_end{
         attack_reposition_countdowns_counters_block_offset + capacity_granularity * sizeof(int16)};
 
@@ -1661,120 +1539,90 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         ml::single_allocation_experiment::layout_align(
             attack_reposition_countdowns_counters_block_end,
             navigation_update_countdowns_remaining_ticks_alignment)};
-    static_assert(sizeof(int16) <= (max_allocation_size - attack_cooldowns_counters_block_offset) /
-                                       capacity_granularity);
     inline static constexpr byte_size_type attack_cooldowns_counters_block_end{
         attack_cooldowns_counters_block_offset + capacity_granularity * sizeof(int16)};
 
     inline static constexpr byte_size_type target_handles_block_offset{
         ml::single_allocation_experiment::layout_align(attack_cooldowns_counters_block_end,
                                                        entity_handles_alignment)};
-    static_assert(sizeof(Handle) <=
-                  (max_allocation_size - target_handles_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_handles_block_end{
         target_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
     inline static constexpr byte_size_type target_locations_xs_block_offset{
         ml::single_allocation_experiment::layout_align(target_handles_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_locations_xs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_locations_xs_block_end{
         target_locations_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_locations_ys_block_offset{
         ml::single_allocation_experiment::layout_align(target_locations_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_locations_ys_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_locations_ys_block_end{
         target_locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_locations_zs_block_offset{
         ml::single_allocation_experiment::layout_align(target_locations_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_locations_zs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_locations_zs_block_end{
         target_locations_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_velocities_xs_block_offset{
         ml::single_allocation_experiment::layout_align(target_locations_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_velocities_xs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_velocities_xs_block_end{
         target_velocities_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_velocities_ys_block_offset{
         ml::single_allocation_experiment::layout_align(target_velocities_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_velocities_ys_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_velocities_ys_block_end{
         target_velocities_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_velocities_zs_block_offset{
         ml::single_allocation_experiment::layout_align(target_velocities_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_velocities_zs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_velocities_zs_block_end{
         target_velocities_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_directions_xs_block_offset{
         ml::single_allocation_experiment::layout_align(target_velocities_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_directions_xs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_directions_xs_block_end{
         target_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_directions_ys_block_offset{
         ml::single_allocation_experiment::layout_align(target_directions_xs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_directions_ys_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_directions_ys_block_end{
         target_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_directions_zs_block_offset{
         ml::single_allocation_experiment::layout_align(target_directions_ys_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_directions_zs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_directions_zs_block_end{
         target_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type intercept_times_block_offset{
         ml::single_allocation_experiment::layout_align(target_directions_zs_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - intercept_times_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type intercept_times_block_end{
         intercept_times_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_distance_sq_block_offset{
         ml::single_allocation_experiment::layout_align(intercept_times_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_distance_sq_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_distance_sq_block_end{
         target_distance_sq_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_distances_block_offset{
         ml::single_allocation_experiment::layout_align(target_distance_sq_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_distances_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_distances_block_end{
         target_distances_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_radii_block_offset{
         ml::single_allocation_experiment::layout_align(target_distances_block_end,
                                                        float_biases_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - target_radii_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type target_radii_block_end{
         target_radii_block_offset + capacity_granularity * sizeof(float)};
 
@@ -1783,8 +1631,171 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
                                                        allocation_alignment)};
     inline static constexpr size_type max_capacity{
         ml::single_allocation_experiment::maximum_capacity(block_bytes)};
-    static_assert(max_capacity >= capacity_granularity);
+  private:
+    inline static constexpr auto validate_layout = []() consteval -> bool {
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<Handle>,
+            "Single-allocation leaf entity_handles requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<uint32>,
+            "Single-allocation leaf integral_biases requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<float>,
+            "Single-allocation leaf float_biases requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<Task>,
+            "Single-allocation leaf tasks requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<Team>,
+            "Single-allocation leaf teams requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<int32>,
+            "Single-allocation leaf healths requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(ml::single_allocation_experiment::supported_leaf<int8>,
+                      "Single-allocation leaf awareness_scan_countdowns.counters requires a "
+                      "non-cv, trivially copyable/copy-constructible/destructible, nothrow "
+                      "default-constructible object type.");
+        static_assert(ml::single_allocation_experiment::supported_leaf<int16>,
+                      "Single-allocation leaf navigation_update_countdowns.remaining_ticks "
+                      "requires a non-cv, trivially copyable/copy-constructible/destructible, "
+                      "nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<uint8>,
+            "Single-allocation leaf navigation_risk_tiers requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
+        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
+        static_assert(sizeof(Handle) <=
+                      (max_allocation_size - entity_handles_block_offset) / capacity_granularity);
+        static_assert(sizeof(uint32) <=
+                      (max_allocation_size - integral_biases_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - float_biases_block_offset) / capacity_granularity);
+        static_assert(sizeof(Task) <=
+                      (max_allocation_size - tasks_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - locations_xs_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - locations_ys_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - locations_zs_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - desired_move_locations_xs_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - desired_move_locations_ys_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - desired_move_locations_zs_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_xs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_ys_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_zs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - desired_aiming_directions_xs_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - desired_aiming_directions_ys_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - desired_aiming_directions_zs_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_xs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_ys_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_zs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - velocities_xs_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - velocities_ys_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - velocities_zs_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - move_distances_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - speeds_block_offset) / capacity_granularity);
+        static_assert(sizeof(Team) <=
+                      (max_allocation_size - teams_block_offset) / capacity_granularity);
+        static_assert(sizeof(int32) <=
+                      (max_allocation_size - healths_block_offset) / capacity_granularity);
+        static_assert(sizeof(Handle) <=
+                      (max_allocation_size - parent_handles_block_offset) / capacity_granularity);
+        static_assert(sizeof(int8) <=
+                      (max_allocation_size - awareness_scan_countdowns_counters_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(int16) <= (max_allocation_size -
+                                        navigation_update_countdowns_remaining_ticks_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(int16) <=
+                      (max_allocation_size - navigation_update_countdowns_periods_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_xs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_ys_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_zs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(uint8) <= (max_allocation_size - navigation_risk_tiers_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(uint8) <=
+                      (max_allocation_size - navigation_lower_risk_scan_counts_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(int8) <=
+                      (max_allocation_size - avoidance_choice_indices_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(uint8) <=
+                      (max_allocation_size - avoidance_clear_scan_counts_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(int16) <=
+                      (max_allocation_size - attack_reposition_countdowns_counters_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(int16) <=
+                      (max_allocation_size - attack_cooldowns_counters_block_offset) /
+                          capacity_granularity);
+        static_assert(sizeof(Handle) <=
+                      (max_allocation_size - target_handles_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_locations_xs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_locations_ys_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_locations_zs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_xs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_ys_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_zs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_directions_xs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_directions_ys_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_directions_zs_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - intercept_times_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <= (max_allocation_size - target_distance_sq_block_offset) /
+                                           capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - target_distances_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - target_radii_block_offset) / capacity_granularity);
+        static_assert(max_capacity >= capacity_granularity);
+        return true;
+    };
+    static_assert(validate_layout());
+  public:
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -2842,58 +2853,26 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
         std::numeric_limits<byte_size_type>::max()};
     inline static constexpr size_type capacity_granularity{64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<uint8>,
-        "Single-allocation leaf bytes requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type bytes_alignment{alignof(uint8) > 64 ? alignof(uint8)
                                                                                : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<OddBytes>,
-        "Single-allocation leaf odd requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type odd_alignment{alignof(OddBytes) > 64 ? alignof(OddBytes)
                                                                                 : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<Aligned32>,
-        "Single-allocation leaf aligned32 requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type aligned32_alignment{
         alignof(Aligned32) > 64 ? alignof(Aligned32) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<float>,
-        "Single-allocation leaf nested.xs requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type nested_xs_alignment{alignof(float) > 64 ? alignof(float)
                                                                                    : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<Aligned64>,
-        "Single-allocation leaf aligned64 requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type aligned64_alignment{
         alignof(Aligned64) > 64 ? alignof(Aligned64) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<int8>,
-        "Single-allocation leaf small requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type small_alignment{alignof(int8) > 64 ? alignof(int8) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<Aligned256>,
-        "Single-allocation leaf aligned256 requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type aligned256_alignment{
         alignof(Aligned256) > 64 ? alignof(Aligned256) : 64};
 
-    static_assert(
-        ml::single_allocation_experiment::supported_leaf<Handle>,
-        "Single-allocation leaf handles requires a non-cv, trivially "
-        "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
     inline static constexpr byte_size_type handles_alignment{alignof(Handle) > 64 ? alignof(Handle)
                                                                                   : 64};
 
@@ -2905,75 +2884,54 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
                                                                           small_alignment,
                                                                           aligned256_alignment,
                                                                           handles_alignment})};
-    static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
 
     inline static constexpr byte_size_type bytes_block_offset{
         ml::single_allocation_experiment::layout_align(0, bytes_alignment)};
-    static_assert(sizeof(uint8) <=
-                  (max_allocation_size - bytes_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type bytes_block_end{bytes_block_offset +
                                                            capacity_granularity * sizeof(uint8)};
 
     inline static constexpr byte_size_type odd_block_offset{
         ml::single_allocation_experiment::layout_align(bytes_block_end, odd_alignment)};
-    static_assert(sizeof(OddBytes) <=
-                  (max_allocation_size - odd_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type odd_block_end{odd_block_offset +
                                                          capacity_granularity * sizeof(OddBytes)};
 
     inline static constexpr byte_size_type aligned32_block_offset{
         ml::single_allocation_experiment::layout_align(odd_block_end, aligned32_alignment)};
-    static_assert(sizeof(Aligned32) <=
-                  (max_allocation_size - aligned32_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type aligned32_block_end{
         aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
 
     inline static constexpr byte_size_type nested_xs_block_offset{
         ml::single_allocation_experiment::layout_align(aligned32_block_end, nested_xs_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - nested_xs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type nested_xs_block_end{
         nested_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type nested_ys_block_offset{
         ml::single_allocation_experiment::layout_align(nested_xs_block_end, nested_xs_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - nested_ys_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type nested_ys_block_end{
         nested_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type nested_zs_block_offset{
         ml::single_allocation_experiment::layout_align(nested_ys_block_end, nested_xs_alignment)};
-    static_assert(sizeof(float) <=
-                  (max_allocation_size - nested_zs_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type nested_zs_block_end{
         nested_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aligned64_block_offset{
         ml::single_allocation_experiment::layout_align(nested_zs_block_end, aligned64_alignment)};
-    static_assert(sizeof(Aligned64) <=
-                  (max_allocation_size - aligned64_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type aligned64_block_end{
         aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
 
     inline static constexpr byte_size_type small_block_offset{
         ml::single_allocation_experiment::layout_align(aligned64_block_end, small_alignment)};
-    static_assert(sizeof(int8) <=
-                  (max_allocation_size - small_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type small_block_end{small_block_offset +
                                                            capacity_granularity * sizeof(int8)};
 
     inline static constexpr byte_size_type aligned256_block_offset{
         ml::single_allocation_experiment::layout_align(small_block_end, aligned256_alignment)};
-    static_assert(sizeof(Aligned256) <=
-                  (max_allocation_size - aligned256_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type aligned256_block_end{
         aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
 
     inline static constexpr byte_size_type handles_block_offset{
         ml::single_allocation_experiment::layout_align(aligned256_block_end, handles_alignment)};
-    static_assert(sizeof(Handle) <=
-                  (max_allocation_size - handles_block_offset) / capacity_granularity);
     inline static constexpr byte_size_type handles_block_end{handles_block_offset +
                                                              capacity_granularity * sizeof(Handle)};
 
@@ -2981,8 +2939,67 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
         ml::single_allocation_experiment::layout_align(handles_block_end, allocation_alignment)};
     inline static constexpr size_type max_capacity{
         ml::single_allocation_experiment::maximum_capacity(block_bytes)};
-    static_assert(max_capacity >= capacity_granularity);
+  private:
+    inline static constexpr auto validate_layout = []() consteval -> bool {
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<uint8>,
+            "Single-allocation leaf bytes requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<OddBytes>,
+            "Single-allocation leaf odd requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<Aligned32>,
+            "Single-allocation leaf aligned32 requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<float>,
+            "Single-allocation leaf nested.xs requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<Aligned64>,
+            "Single-allocation leaf aligned64 requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<int8>,
+            "Single-allocation leaf small requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<Aligned256>,
+            "Single-allocation leaf aligned256 requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
+        static_assert(
+            ml::single_allocation_experiment::supported_leaf<Handle>,
+            "Single-allocation leaf handles requires a non-cv, trivially "
+            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
+        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
+        static_assert(sizeof(uint8) <=
+                      (max_allocation_size - bytes_block_offset) / capacity_granularity);
+        static_assert(sizeof(OddBytes) <=
+                      (max_allocation_size - odd_block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned32) <=
+                      (max_allocation_size - aligned32_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - nested_xs_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - nested_ys_block_offset) / capacity_granularity);
+        static_assert(sizeof(float) <=
+                      (max_allocation_size - nested_zs_block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned64) <=
+                      (max_allocation_size - aligned64_block_offset) / capacity_granularity);
+        static_assert(sizeof(int8) <=
+                      (max_allocation_size - small_block_offset) / capacity_granularity);
+        static_assert(sizeof(Aligned256) <=
+                      (max_allocation_size - aligned256_block_offset) / capacity_granularity);
+        static_assert(sizeof(Handle) <=
+                      (max_allocation_size - handles_block_offset) / capacity_granularity);
+        static_assert(max_capacity >= capacity_granularity);
+        return true;
+    };
+    static_assert(validate_layout());
+  public:
     /* **************************************** */
     // Lifetime
     /* **************************************** */

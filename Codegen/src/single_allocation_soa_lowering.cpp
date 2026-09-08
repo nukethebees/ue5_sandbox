@@ -50,6 +50,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
                    << " * sizeof(" << leaf->type.spelling << ")};\n";
         }
     };
+    std::ostringstream assertions;
     std::ostringstream out;
     out << "struct " << storage_name << " : ml::single_allocation_experiment::StorageOperations {\n"
         << "using View = " << schema.view_name.value_or(schema.name + "View") << ";\n"
@@ -63,17 +64,18 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     for (auto const* leaf : unique_types) {
         auto const id{fixed_leaf_argument(*leaf)};
         auto const& type{leaf->type.spelling};
-        out << "static_assert(ml::single_allocation_experiment::supported_leaf<" << type
+        assertions
+            << "static_assert(ml::single_allocation_experiment::supported_leaf<" << type
             << ">, \"Single-allocation leaf " << join(leaf->path, ".")
             << " requires a non-cv, trivially copyable/copy-constructible/destructible, nothrow "
-               "default-constructible object type.\");\n"
-            << "inline static constexpr byte_size_type " << id << "_alignment{alignof(" << type
+               "default-constructible object type.\");\n";
+        out << "inline static constexpr byte_size_type " << id << "_alignment{alignof(" << type
             << ") > 64 ? alignof(" << type << ") : 64};\n\n";
         alignments.push_back(id + "_alignment");
     }
     out << "inline static constexpr byte_size_type allocation_alignment{std::max({"
-        << join(alignments, ", ") << "})};\n"
-        << "static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());\n\n";
+        << join(alignments, ", ") << "})};\n\n";
+    assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<uint32>::max());\n";
     std::string previous{"0"};
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
@@ -90,10 +92,10 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         out << "inline static constexpr byte_size_type " << id
             << "_block_offset{ml::single_allocation_experiment::layout_align(" << previous << ", "
             << type_ids.at(type) << "_alignment)};\n"
-            << "static_assert(sizeof(" << type << ") <= (max_allocation_size - " << id
-            << "_block_offset) / capacity_granularity);\n"
             << "inline static constexpr byte_size_type " << id << "_block_end{" << id
             << "_block_offset + capacity_granularity * sizeof(" << type << ")};\n\n";
+        assertions << "static_assert(sizeof(" << type << ") <= (max_allocation_size - " << id
+                   << "_block_offset) / capacity_granularity);\n";
         previous = id + "_block_end";
     }
     out << "inline static constexpr byte_size_type "
@@ -101,7 +103,10 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << previous << ", allocation_alignment)};\n"
         << "inline static constexpr size_type "
            "max_capacity{ml::single_allocation_experiment::maximum_capacity(block_bytes)};\n"
-        << "static_assert(max_capacity >= capacity_granularity);\n\n"
+        << "\nprivate:\ninline static constexpr auto validate_layout = []() consteval -> bool {\n"
+        << assertions.str()
+        << "static_assert(max_capacity >= capacity_granularity);\nreturn true;\n};\n"
+        << "static_assert(validate_layout());\n\npublic:\n"
         << "/* **************************************** */\n// Lifetime\n/* "
            "**************************************** */\n"
         << storage_name << "() noexcept = default;\n"

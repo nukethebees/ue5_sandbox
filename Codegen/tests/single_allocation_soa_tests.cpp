@@ -90,6 +90,23 @@ TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
     EXPECT_NE(output.find("Single-allocation leaf nested.wide requires"), std::string::npos);
 }
 
+TEST(SingleAllocationSoa, GroupsDiagnosticsInFoldableImmediateFunction) {
+    auto const output{render(schemas())};
+    auto const owner{output.substr(output.find("struct SingleRowsStorage"))};
+    auto const validation{
+        owner.find("inline static constexpr auto validate_layout = []() consteval -> bool {")};
+    auto const invocation{owner.find("static_assert(validate_layout());")};
+    ASSERT_NE(validation, std::string::npos);
+    ASSERT_NE(invocation, std::string::npos);
+    EXPECT_LT(validation, invocation);
+    for (auto position{owner.find("static_assert(")}; position != std::string::npos;
+         position = owner.find("static_assert(", position + 1)) {
+        EXPECT_GT(position, validation);
+        EXPECT_LE(position, invocation);
+    }
+    EXPECT_NE(owner.find("return true;", validation), std::string::npos);
+}
+
 TEST(SingleAllocationSoa, SharesTypeChecksAlignmentAndCopySizesAcrossNestedLeaves) {
     auto input{schemas()};
     input.front().members.push_back({"xs", SoaMemberKind::array, TypeRef{"float"}});
