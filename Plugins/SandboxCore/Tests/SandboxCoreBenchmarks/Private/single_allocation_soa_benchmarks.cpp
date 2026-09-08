@@ -1,19 +1,13 @@
-#include <SbxCoreExperiments/soa_test_support.h>
 #include <SbxCoreExperiments/soa_types.h>
 
-#include "benchmark_cli_args.h"
+#include "single_allocation_soa_benchmark_counts.h"
 #include "TestHarness.h"
 
 #include <catch2/benchmark/catch_benchmark.hpp>
-#include <catch2/reporters/catch_reporter_event_listener.hpp>
-#include <catch2/reporters/catch_reporter_registrars.hpp>
 
 #include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstdio>
+
 #include <string>
-#include <type_traits>
 
 namespace ml::single_allocation_benchmarks {
 using namespace single_allocation_experiment;
@@ -33,30 +27,36 @@ enum class Operation {
     Views,
 };
 
-struct Scenario {
-    char const* name;
-    Operation operation;
-    int32 batch;
-};
-
-inline constexpr std::array scenarios{
-    Scenario{"natural_append_1", Operation::NaturalAppend, 1},
-    Scenario{"natural_append_64", Operation::NaturalAppend, 64},
-    Scenario{"reserved_append_1", Operation::ReservedAppend, 1},
-    Scenario{"reserved_append_64", Operation::ReservedAppend, 64},
-    Scenario{"defaulted_append_1", Operation::DefaultedAppend, 1},
-    Scenario{"defaulted_append_64", Operation::DefaultedAppend, 64},
-    Scenario{"reserve", Operation::Reserve, 1},
-    Scenario{"populated_growth", Operation::Growth, 1},
-    Scenario{"set_num_grow", Operation::SetNum, 1},
-    Scenario{"set_num_shrink_reuse", Operation::SetNumShrink, 1},
-    Scenario{"reset_reuse", Operation::ResetReuse, 1},
-    Scenario{"remove_swap", Operation::RemoveSwap, 1},
-    Scenario{"iterate", Operation::Iterate, 1},
-    Scenario{"iterate_wide", Operation::IterateWide, 1},
-    Scenario{"construct_views", Operation::Views, 1},
-};
-
+auto operation_name(Operation const operation, int32 const batch) -> std::string {
+    switch (operation) {
+        case Operation::NaturalAppend:
+            return "natural_append_" + std::to_string(batch);
+        case Operation::ReservedAppend:
+            return "reserved_append_" + std::to_string(batch);
+        case Operation::DefaultedAppend:
+            return "defaulted_append_" + std::to_string(batch);
+        case Operation::Reserve:
+            return "reserve";
+        case Operation::Growth:
+            return "populated_growth";
+        case Operation::SetNum:
+            return "set_num_grow";
+        case Operation::SetNumShrink:
+            return "set_num_shrink_reuse";
+        case Operation::ResetReuse:
+            return "reset_reuse";
+        case Operation::RemoveSwap:
+            return "remove_swap";
+        case Operation::Iterate:
+            return "iterate";
+        case Operation::IterateWide:
+            return "iterate_wide";
+        case Operation::Views:
+            return "construct_views";
+    }
+    FAIL("Unknown benchmark operation");
+    return {};
+}
 template <typename Owner>
 FORCENOINLINE void append(Owner& owner, int32 const count, bool const defaulted) {
     if (defaulted) {
@@ -141,13 +141,13 @@ void prepare(Owner& owner, Operation const operation, int32 const count) {
 }
 
 template <typename Owner>
-FORCENOINLINE auto execute(Owner& owner, Scenario const scenario, int32 const count) -> int64 {
-    switch (scenario.operation) {
+FORCENOINLINE auto execute(Owner& owner, Operation const operation, int32 const count, int32 const batch) -> int64 {
+    switch (operation) {
         case Operation::NaturalAppend:
         case Operation::ReservedAppend:
         case Operation::DefaultedAppend:
-            for (int32 index{}; index < count; index += scenario.batch) {
-                append(owner, std::min(scenario.batch, count - index), scenario.operation == Operation::DefaultedAppend);
+            for (int32 index{}; index < count; index += batch) {
+                append(owner, std::min(batch, count - index), operation == Operation::DefaultedAppend);
             }
             break;
         case Operation::Reserve:
@@ -191,98 +191,82 @@ FORCENOINLINE auto execute(Owner& owner, Scenario const scenario, int32 const co
 }
 
 template <typename Owner>
-void run_once(Scenario const scenario, int32 const count) {
+void run_once(Operation const operation, int32 const count, int32 const batch) {
     Owner owner;
-    prepare(owner, scenario.operation, count);
-    bool const iteration{scenario.operation == Operation::Iterate || scenario.operation == Operation::IterateWide};
+    prepare(owner, operation, count);
+    bool const iteration{operation == Operation::Iterate || operation == Operation::IterateWide};
     auto view{owner.get_view()};
     int64 observable{};
     if (iteration) {
-        iterate(view, scenario.operation == Operation::IterateWide);
+        iterate(view, operation == Operation::IterateWide);
     } else {
-        observable = execute(owner, scenario, count);
+        observable = execute(owner, operation, count, batch);
     }
     REQUIRE(observable >= 0);
     if (iteration) {
         REQUIRE(owner.get_view().locations.zs[count - 1] == 1.5f);
-        if (scenario.operation == Operation::IterateWide) {
+        if (operation == Operation::IterateWide) {
             REQUIRE(owner.get_view().target_locations.zs[count - 1] == 3.f);
         }
-    } else if (scenario.operation == Operation::RemoveSwap) {
+    } else if (operation == Operation::RemoveSwap) {
         REQUIRE(owner.num() == count - count / 4);
-    } else if (scenario.operation == Operation::Reserve) {
+    } else if (operation == Operation::Reserve) {
         REQUIRE(owner.num() == 0);
     } else {
         REQUIRE(owner.num() == count);
     }
-    if (scenario.operation == Operation::Growth) {
+    if (operation == Operation::Growth) {
         REQUIRE(owner.get_view().healths[count - 1] == count - 1);
     }
 }
 
-auto counts() -> TArray<int32> {
-    auto const args{get_benchmark_cli_args()};
-    if (args.benchmark_entities) {
-        REQUIRE(*args.benchmark_entities > 0);
-        REQUIRE(*args.benchmark_entities <= 1048576);
-        return {*args.benchmark_entities};
-    }
-    return {4096, 65536, 1048576};
-}
-
 TEST_CASE("SandboxCore.SingleAllocation.BenchmarkCorrectness") {
-    for (auto const scenario : scenarios) {
-        CAPTURE(scenario.name);
-        run_once<EntityData>(scenario, 129);
-        run_once<SingleAllocationEntityData>(scenario, 129);
+    for (auto const operation : {Operation::NaturalAppend,
+                                 Operation::ReservedAppend,
+                                 Operation::DefaultedAppend,
+                                 Operation::Reserve,
+                                 Operation::Growth,
+                                 Operation::SetNum,
+                                 Operation::SetNumShrink,
+                                 Operation::ResetReuse,
+                                 Operation::RemoveSwap,
+                                 Operation::Iterate,
+                                 Operation::IterateWide,
+                                 Operation::Views}) {
+        auto const append_operation{operation == Operation::NaturalAppend || operation == Operation::ReservedAppend ||
+                                    operation == Operation::DefaultedAppend};
+        for (int32 const batch : {1, 64}) {
+            if (batch == 64 && !append_operation) {
+                continue;
+            }
+            CAPTURE(operation_name(operation, batch));
+            run_once<EntityData>(operation, 129, batch);
+            run_once<SingleAllocationEntityData>(operation, 129, batch);
+        }
     }
 }
-
-class BenchmarkCsvListener : public Catch::EventListenerBase {
-  public:
-    using EventListenerBase::EventListenerBase;
-
-    void benchmarkEnded(Catch::BenchmarkStats<> const& stats) override {
-        if (!stats.info.name.starts_with("SOA,")) {
-            return;
-        }
-        std::printf("\nSOA_CATCH,%s,%.9g,%.9g,%.9g,%.9g,%d,%u\n",
-                    stats.info.name.c_str() + 4,
-                    stats.mean.point.count(),
-                    stats.mean.lower_bound.count(),
-                    stats.mean.upper_bound.count(),
-                    stats.mean.confidence_interval,
-                    stats.info.iterations,
-                    stats.info.samples);
-        std::fflush(stdout);
-    }
-};
-
-CATCH_REGISTER_LISTENER(BenchmarkCsvListener)
-
 template <typename Owner>
-void benchmark_owner(Scenario const scenario, int32 const count, char const* const label) {
-    auto const name{std::string{"SOA,"} + std::to_string(count) + "," + scenario.name + "," + label};
+void benchmark_owner(Operation const operation, int32 const count, int32 const batch, char const* const label) {
+    auto const name{std::string{"SOA,"} + std::to_string(count) + "," + operation_name(operation, batch) + "," + label};
     BENCHMARK_ADVANCED(std::string{name})(Catch::Benchmark::Chronometer meter) {
         // Fresh allocation lifecycles keep memory bounded independently of Catch2's calibrated run count.
-        if (scenario.operation == Operation::NaturalAppend || scenario.operation == Operation::Reserve ||
-            scenario.operation == Operation::Growth) {
+        if (operation == Operation::NaturalAppend || operation == Operation::Reserve || operation == Operation::Growth) {
             meter.measure([&] {
                 Owner owner;
-                prepare(owner, scenario.operation, count);
-                return execute(owner, scenario, count);
+                prepare(owner, operation, count);
+                return execute(owner, operation, count, batch);
             });
             return;
         }
 
         Owner owner;
-        prepare(owner, scenario.operation, count);
+        prepare(owner, operation, count);
         auto const view{owner.get_view()};
         meter.measure([&] {
-            switch (scenario.operation) {
+            switch (operation) {
                 case Operation::Iterate:
                 case Operation::IterateWide:
-                    iterate(view, scenario.operation == Operation::IterateWide);
+                    iterate(view, operation == Operation::IterateWide);
                     return int64{view.num()};
                 case Operation::ReservedAppend:
                 case Operation::DefaultedAppend:
@@ -295,191 +279,86 @@ void benchmark_owner(Scenario const scenario, int32 const count, char const* con
                 default:
                     break;
             }
-            return execute(owner, scenario, count);
+            return execute(owner, operation, count, batch);
         });
     };
 }
 
-void run_comparison(char const* const operation_name) {
-    auto const found{std::ranges::find_if(
-        scenarios, [operation_name](Scenario const& candidate) { return std::string{candidate.name} == operation_name; })};
-    REQUIRE(found != scenarios.end());
+void run_comparison(Operation const operation, int32 const count, int32 const batch = 1) {
+    benchmark_owner<EntityData>(operation, count, batch, "TArray");
+    benchmark_owner<SingleAllocationEntityData>(operation, count, batch, "Single");
+}
+void run_comparisons(Operation const operation, int32 const batch = 1) {
     for (int32 const count : counts()) {
-        benchmark_owner<EntityData>(*found, count, "TArray");
-        benchmark_owner<SingleAllocationEntityData>(*found, count, "Single");
+        run_comparison(operation, count, batch);
     }
 }
 TEST_CASE("SandboxCore.SingleAllocation.Timing.natural_append_1", "[benchmark]") {
-    run_comparison("natural_append_1");
+    run_comparisons(Operation::NaturalAppend, 1);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.natural_append_64", "[benchmark]") {
-    run_comparison("natural_append_64");
+    run_comparisons(Operation::NaturalAppend, 64);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.reserved_append_1", "[benchmark]") {
-    run_comparison("reserved_append_1");
+    run_comparisons(Operation::ReservedAppend, 1);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.reserved_append_64", "[benchmark]") {
-    run_comparison("reserved_append_64");
+    run_comparisons(Operation::ReservedAppend, 64);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.defaulted_append_1", "[benchmark]") {
-    run_comparison("defaulted_append_1");
+    run_comparisons(Operation::DefaultedAppend, 1);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.defaulted_append_64", "[benchmark]") {
-    run_comparison("defaulted_append_64");
+    run_comparisons(Operation::DefaultedAppend, 64);
 }
 
-TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve", "[benchmark]") {
-    run_comparison("reserve");
+TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_4096", "[benchmark]") {
+    run_comparison(Operation::Reserve, 4096);
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_65536", "[benchmark]") {
+    run_comparison(Operation::Reserve, 65536);
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_1048576", "[benchmark]") {
+    run_comparison(Operation::Reserve, 1048576);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.populated_growth", "[benchmark]") {
-    run_comparison("populated_growth");
+    run_comparisons(Operation::Growth);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.set_num_grow", "[benchmark]") {
-    run_comparison("set_num_grow");
+    run_comparisons(Operation::SetNum);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.set_num_shrink_reuse", "[benchmark]") {
-    run_comparison("set_num_shrink_reuse");
+    run_comparisons(Operation::SetNumShrink);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.reset_reuse", "[benchmark]") {
-    run_comparison("reset_reuse");
+    run_comparisons(Operation::ResetReuse);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.remove_swap", "[benchmark]") {
-    run_comparison("remove_swap");
+    run_comparisons(Operation::RemoveSwap);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.iterate", "[benchmark]") {
-    run_comparison("iterate");
+    run_comparisons(Operation::Iterate);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.iterate_wide", "[benchmark]") {
-    run_comparison("iterate_wide");
+    run_comparisons(Operation::IterateWide);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.construct_views", "[benchmark]") {
-    run_comparison("construct_views");
-}
-
-struct AllocationSnapshot {
-    SIZE_T requested{};
-    SIZE_T usable{};
-    SIZE_T live{};
-    SIZE_T padding{};
-    std::array<SIZE_T, 53> column_bytes{};
-    int32 blocks{};
-    int32 min_capacity{std::numeric_limits<int32>::max()};
-    int32 max_capacity{};
-};
-
-auto snapshot(EntityData& owner, bool const query_allocator) -> AllocationSnapshot {
-    AllocationSnapshot result;
-    int32 leaf{};
-    each_leaf(owner, [&](auto& column) {
-        using Element = std::remove_cvref_t<decltype(column[0])>;
-        auto const bytes{static_cast<SIZE_T>(column.Max()) * sizeof(Element)};
-        result.column_bytes[leaf++] = bytes;
-        result.requested += bytes;
-        result.live += static_cast<SIZE_T>(column.Num()) * sizeof(Element);
-        result.min_capacity = std::min(result.min_capacity, column.Max());
-        result.max_capacity = std::max(result.max_capacity, column.Max());
-        if (column.GetData() != nullptr) {
-            ++result.blocks;
-            if (query_allocator) {
-                result.usable += FMemory::GetAllocSize(column.GetData());
-            }
-        }
-    });
-    return result;
-}
-
-auto snapshot(SingleAllocationEntityData& owner, bool const query_allocator) -> AllocationSnapshot {
-    AllocationSnapshot result;
-    result.requested = owner.allocated_bytes();
-    result.column_bytes[0] = result.requested;
-    result.min_capacity = owner.capacity();
-    result.max_capacity = owner.capacity();
-    SIZE_T row_bytes{};
-    each_leaf(owner.get_view(), [&](auto column) {
-        using Element = std::remove_cvref_t<decltype(column[0])>;
-        row_bytes += sizeof(Element);
-    });
-    result.live = row_bytes * static_cast<SIZE_T>(owner.num());
-    result.padding = result.requested - row_bytes * static_cast<SIZE_T>(owner.capacity());
-    if (owner.capacity() > 0) {
-        result.blocks = 1;
-        if (query_allocator) {
-            result.usable = FMemory::GetAllocSize(owner.get_view().entity_handles.GetData());
-        }
-    }
-    return result;
-}
-
-template <typename Owner>
-void allocation_diagnostics(char const* const name, int32 const count, bool const reserve_first) {
-    Owner owner;
-    auto previous{snapshot(owner, false)};
-    SIZE_T requests{};
-    SIZE_T peak_bound{};
-    auto record = [&] {
-        auto const current{snapshot(owner, false)};
-        auto running_bytes{previous.requested};
-        auto const leaf_count{current.column_bytes.size()};
-        for (SIZE_T leaf{}; leaf < leaf_count; ++leaf) {
-            auto const old_bytes{previous.column_bytes[leaf]};
-            auto const new_bytes{current.column_bytes[leaf]};
-            if (old_bytes != new_bytes) {
-                ++requests;
-                peak_bound = std::max(peak_bound, running_bytes + new_bytes);
-                running_bytes += new_bytes - old_bytes;
-            }
-        }
-        previous = current;
-    };
-    if (reserve_first) {
-        owner.reserve(count);
-        record();
-    }
-    for (int32 index{}; index < count; ++index) {
-        owner.add_uninitialised(1);
-        record();
-    }
-    auto const final{snapshot(owner, true)};
-    std::printf("SOA_ALLOCATION,%s,%d,%d,%zu,%d,%zu,%zu,%zu,%zu,%zu,%zu,%d,%d,%zu\n",
-                name,
-                count,
-                reserve_first ? 1 : 0,
-                static_cast<std::size_t>(requests),
-                final.blocks,
-                static_cast<std::size_t>(final.requested),
-                static_cast<std::size_t>(final.usable),
-                static_cast<std::size_t>(final.live),
-                static_cast<std::size_t>(final.requested - final.live - final.padding),
-                static_cast<std::size_t>(final.padding),
-                static_cast<std::size_t>(peak_bound),
-                final.min_capacity,
-                final.max_capacity,
-                sizeof(Owner));
-}
-
-TEST_CASE("SandboxCore.SingleAllocation.AllocationDiagnostics") {
-    std::printf("SOA_ALLOCATOR,%s\n", TCHAR_TO_UTF8(UE::Private::GMalloc->GetDescriptiveName()));
-    std::printf("SOA_ALLOCATION,owner,count,reserved,allocation_requests,retained_blocks,requested_bytes,usable_bytes,live_bytes,row_slack_"
-                "bytes,padding_bytes,peak_requested_bound,min_capacity,max_capacity,owner_bytes\n");
-    for (int32 const count : counts()) {
-        for (bool const reserve_first : {false, true}) {
-            allocation_diagnostics<EntityData>("TArray", count, reserve_first);
-            allocation_diagnostics<SingleAllocationEntityData>("Single", count, reserve_first);
-        }
-    }
+    run_comparisons(Operation::Views);
 }
 
 }

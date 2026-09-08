@@ -248,7 +248,7 @@
       "inherits": "single-allocation-soa-benchmark",
       "filter": {
         "include": {
-          "name": "^SandboxCore\\.SingleAllocation\\.Timing\\.reserve$"
+          "name": "^SandboxCore\\.SingleAllocation\\.Timing\\.reserve_[0-9]+$"
         }
       }
     },

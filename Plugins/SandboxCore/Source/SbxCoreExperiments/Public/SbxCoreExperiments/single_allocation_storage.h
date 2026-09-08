@@ -60,7 +60,7 @@ inline auto allocation_bytes(int32 const capacity, SIZE_T const block_bytes) -> 
 }
 
 inline auto allocate(SIZE_T const bytes, uint32 const alignment) -> std::byte* {
-    auto* const allocation{FMemory::Malloc(bytes, alignment)};
+    auto* const allocation{FMemory::Realloc(nullptr, bytes, alignment)};
     require(allocation != nullptr);
     // The byte array provides storage and starts implicit-lifetime leaf arrays without
     // initialization.

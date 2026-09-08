@@ -6,6 +6,9 @@
 #include <malloc.h>
 
 struct FMemory {
+    static auto Realloc(std::nullptr_t, SIZE_T const bytes, uint32 const alignment) -> void* {
+        return Malloc(bytes, alignment);
+    }
     static auto Malloc(SIZE_T const bytes, uint32 const alignment) -> void* {
 #ifdef _MSC_VER
         return _aligned_malloc(bytes, alignment);
