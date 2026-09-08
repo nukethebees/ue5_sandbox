@@ -467,6 +467,15 @@ add_custom_target(dev-core
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
   add_low_level_test_suite(benchmarks SandboxCoreBenchmarks SandboxCore benchmark)
   add_dependencies(benchmarks check-generated-code)
+  add_custom_target(single-allocation-soa-plots
+    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/plot-single-allocation-soa-benchmarks.py"
+      --input "${CMAKE_BINARY_DIR}/Testing/Temporary/LastTest.log"
+      --output-dir "${CMAKE_BINARY_DIR}/single-allocation-soa-plots"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    COMMENT "Plotting the single-allocation SoA comparison"
+    VERBATIM
+    USES_TERMINAL
+  )
 elseif(SANDBOX_TEST_SUITE STREQUAL "default")
   add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore low-level-core)
   add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative low-level-native)

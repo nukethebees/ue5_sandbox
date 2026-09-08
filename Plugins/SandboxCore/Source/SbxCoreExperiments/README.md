@@ -69,6 +69,51 @@ Views use the existing `get_view`/`get_const_view` names, including ranges and s
 
 Generator coverage uses existing GTest structural tests, the generated C++ compile fixture with the real experimental storage helper and Unreal API stubs, and expected compilation failures for unsupported copy/destructor/default-constructor types. Catch2 runtime tests use the real Unreal allocator and generated module. They cover layout, boundaries, every leaf across repeated growth, mutation, default construction, moves, views, and arithmetic limits.
 
+Build and run only this experiment from the repository root:
+
+```powershell
+cmake --workflow --preset single-allocation-soa-benchmark
+```
+
+The workflow configures and builds the Development benchmark target, then runs correctness, allocation diagnostics, and the timed comparison serially. CSV result rows are printed to the console, including successful runs. A final build step automatically generates PNG/SVG plots and extracted CSVs under `out/build/benchmark/single-allocation-soa-plots/` using `uv` and matplotlib. It uses the default 4,096, 65,536, and 1,048,576 entity counts. Stop competing workloads before running it. The latest test log is under `out/build/benchmark/Testing/Temporary/LastTest.log`.
+
+To rerun without rebuilding:
+
+```powershell
+ctest --preset single-allocation-soa-benchmark
+```
+
+### Plotting results
+
+The workflow generates plots automatically. To regenerate its plots without rerunning the benchmark:
+
+```powershell
+cmake --build --preset single-allocation-soa-plots
+```
+
+You can also invoke the matplotlib script directly:
+
+```powershell
+uv run Scripts/plot-single-allocation-soa-benchmarks.py
+```
+
+`uv` installs the script's declared matplotlib dependency in an isolated environment. Python 3.11+ is required. If matplotlib is already installed, `python Scripts/plot-single-allocation-soa-benchmarks.py` also works. Plotting is headless and does not run the benchmark again. Images are written through a temporary sibling file and replaced atomically. If an image viewer prevents replacement, a uniquely named image is retained and its path is printed; close the old image before rerunning to restore the usual filename.
+
+By default the script reads `out/build/benchmark/Testing/Temporary/LastTest.log` and writes under `.local/benchmarks/single-allocation/plots/`:
+
+- `timings.png` / `.svg`: per-operation median durations in milliseconds on logarithmic axes, with p10–p90 error bars.
+- `relative-performance.png` / `.svg`: TArray median divided by single-allocation median. Above 1 means single allocation is faster; below 1 means slower. Colour is symmetric in log space around equal performance.
+- `allocations.png` / `.svg`: requested/usable storage, row slack, peak requested-byte bounds, capacity-changing requests, and retained allocations, split by row count and reserve mode.
+- `timings.csv` and `allocations.csv`: extracted source records for later inspection or replotting.
+
+CTest replaces its latest log on subsequent test runs. Save it before running other tests if you want to keep a measurement. A log containing only allocation diagnostics cannot produce timing plots. You can pass saved logs, captured verbose CTest console output, or the exported CSV files explicitly:
+
+```powershell
+uv run Scripts/plot-single-allocation-soa-benchmarks.py --input .local/benchmarks/single-allocation/timed-comparison.log .local/benchmarks/single-allocation/allocation-diagnostics.log --output-dir .local/benchmarks/single-allocation/plots
+```
+
+Use files from one measurement run. Conflicting duplicate results are rejected rather than silently combined. Timing-only inputs generate the two timing figures; allocation figures require allocation records. Missing operation/count combinations are left blank. Error bars show sample variability, not confidence intervals. Reserved append/resize durations exclude reserve cost, and uninitialised append does not write row contents. The allocation peak chart is a bound, not measured RSS.
+
 Relevant commands, run from the repository root:
 
 ```powershell
@@ -98,6 +143,8 @@ Iteration calls the same non-templated function through identical view types, wi
 
 Untimed allocation diagnostics track capacity changes as allocation requests, not physical heap allocations. They report retained blocks, requested/allocator-usable bytes, live bytes, row slack, layout padding, min/max column capacity, and owner size. Peak requested bytes are a conservative bound assuming each old leaf allocation remains live while its replacement is allocated. That bound is exact for the experimental owner; the baseline may use in-place reallocation. Allocator metadata/fragmentation and system RSS are not measured.
 
-Timing results and a performance recommendation must wait for the confirmed measurement run. Passing correctness tests alone does not justify production adoption.
+The initial confirmed run showed faster reserved append/reuse but substantial reserve and growth regressions; keep this experimental. Reserve times include allocator behavior and should not be interpreted as layout-math cost. Inspection of the optimized MSVC benchmark object confirms that the byte-array placement new emits no instructions: empty reserve calls `FMemory::Malloc` and skips all column-pointer/copy work. The allocator receives one large 64-byte-aligned request, while the ordinary owner uses separate per-column reallocations. Allocation diagnostics print `SOA_ALLOCATOR` to identify the active allocator. The diagnostic run reports Mimalloc. This Unreal Windows build selects mimalloc 2.0.0, whose large-object limit is 4 MiB (`Engine/Source/ThirdParty/mimalloc/2.0.0/include/mimalloc-types.h`). At 65,536 rows the single block is 12.1875 MiB, versus at most 512 KiB per ordinary column. It crosses into mimalloc's dedicated huge-segment allocation path while the individual columns do not. Huge-segment freeing is forced rather than normal small/large-page reuse (`src/segment.c`). Here “huge” is mimalloc's object-size classification, not added OS large-page support. This explains why allocation count alone cannot predict reserve cost; attributing exact time to caching, commit, or page faults still requires profiling.
+
+The placement new is retained to establish the storage-providing byte array and implicit-lifetime objects without relying on the implementation of Unreal's custom allocator. C++ does not require this particular spelling: standard allocation functions and C++23 lifetime-start facilities offer other routes. Removing it solely for speed is unsupported by the emitted code.
 
 Generated modules opting into single-allocation storage run through clang-format before writing or checking outputs, using the nearest project `.clang-format`. Formatting failures leave existing outputs untouched. Other generator modes retain their existing formatting policy.

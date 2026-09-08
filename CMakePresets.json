@@ -121,6 +121,11 @@
   ],
   "buildPresets": [
     {
+      "name": "single-allocation-soa-plots",
+      "configurePreset": "benchmark",
+      "targets": ["single-allocation-soa-plots"]
+    },
+    {
       "name": "codegen",
       "configurePreset": "codegen",
       "targets": ["sandbox-codegen", "sandbox-slatec", "sandbox-kernelc", "codegen-tests", "slate-codegen-tests", "kernel-codegen-tests"]
@@ -217,6 +222,22 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "single-allocation-soa-benchmark",
+      "displayName": "Single-allocation SoA comparison",
+      "inherits": "benchmark-tests",
+      "output": {
+        "verbosity": "verbose"
+      },
+      "filter": {
+        "include": {
+          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|AllocationDiagnostics|TimedComparison)$"
+        }
+      },
+      "execution": {
+        "jobs": 1
+      }
+    },
     {
       "name": "kernel-benchmark-tests",
       "configurePreset": "kernel-benchmark",
@@ -399,6 +420,16 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "single-allocation-soa-benchmark",
+      "displayName": "Build and run the single-allocation SoA comparison",
+      "steps": [
+        { "type": "configure", "name": "benchmark" },
+        { "type": "build", "name": "benchmark" },
+        { "type": "test", "name": "single-allocation-soa-benchmark" },
+        { "type": "build", "name": "single-allocation-soa-plots" }
+      ]
+    },
     {
       "name": "kernel-benchmark",
       "steps": [

@@ -389,6 +389,7 @@ void allocation_diagnostics(char const* const name, int32 const count, bool cons
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.AllocationDiagnostics") {
+    std::printf("SOA_ALLOCATOR,%s\n", TCHAR_TO_UTF8(UE::Private::GMalloc->GetDescriptiveName()));
     std::printf("SOA_ALLOCATION,owner,count,reserved,allocation_requests,retained_blocks,requested_bytes,usable_bytes,live_bytes,row_slack_"
                 "bytes,padding_bytes,peak_requested_bound,min_capacity,max_capacity,owner_bytes\n");
     for (int32 const count : counts()) {
