@@ -97,10 +97,15 @@ void FTestPlayerShipDeathScenario::on_end_tick(ATestBatchOrchestrator&) {
         SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     }
 
+    auto const* const controller{
+        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
     samples.add(test_driver->get_time(),
                 FSimulationSample{test_driver->get_registry().is_valid_dead(player_ship_handle),
                                   IsValid(player_ship.Get()),
-                                  static_cast<bool>(unique_entities.alive[player_ship_id.id])});
+                                  static_cast<bool>(unique_entities.alive[player_ship_id.id]),
+                                  IsValid(controller) && IsValid(controller->GetPawn()),
+                                  IsValid(controller) && controller->get_active_control_context() ==
+                                                             EPlayerControlContext::Player});
     test_driver->advance_timeline();
 }
 
@@ -113,6 +118,8 @@ void FTestPlayerShipDeathScenario::check_player_ship_death() {
     checks.is_true(sample.player_handle_is_dead, TEXT("Player ship handle is dead"));
     checks.is_true(!sample.player_actor_is_valid, TEXT("Player ship actor is destroyed"));
     checks.is_true(!sample.player_unique_entity_is_alive, TEXT("Player ship entity is dead"));
+    checks.is_true(!sample.controller_has_pawn, TEXT("Death unpossesses the controller"));
+    checks.is_true(!sample.ship_control_active, TEXT("Death disables ship control"));
 
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }

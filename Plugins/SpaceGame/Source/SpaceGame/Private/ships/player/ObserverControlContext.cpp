@@ -60,7 +60,8 @@ auto FObserverControlContext::bind() -> bool {
 
     bound_ = true;
     bind_actions();
-    input_subsystem_->AddMappingContext(input_->mapping_context, 0);
+    registered_mapping_ = input_->mapping_context;
+    input_subsystem_->AddMappingContext(registered_mapping_.Get(), 0);
     publish_speed();
     return true;
 }
@@ -72,10 +73,10 @@ void FObserverControlContext::unbind() {
 
     end_look();
     boosting_ = false;
-    if (input_subsystem_object_.IsValid() && input_subsystem_ && input_ &&
-        IsValid(input_->mapping_context)) {
-        input_subsystem_->RemoveMappingContext(input_->mapping_context);
+    if (input_subsystem_object_.IsValid() && input_subsystem_ && registered_mapping_.IsValid()) {
+        input_subsystem_->RemoveMappingContext(registered_mapping_.Get());
     }
+    registered_mapping_.Reset();
     remove_action_bindings();
     bound_ = false;
 }
