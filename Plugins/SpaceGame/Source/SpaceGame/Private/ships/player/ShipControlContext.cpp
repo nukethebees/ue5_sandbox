@@ -1,5 +1,6 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
+#include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
@@ -10,6 +11,7 @@
 #include <InputAction.h>
 #include <InputActionValue.h>
 #include <InputMappingContext.h>
+#include <UserSettings/EnhancedInputUserSettings.h>
 
 auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
                                      UEnhancedInputComponent& input_component,
@@ -35,7 +37,6 @@ auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
     input_subsystem_object_ = input_subsystem_object;
     input_subsystem_ = &input_subsystem;
     input_ = &input;
-    mapping_context_index_ = input.initial_mapping_context_index;
     initialised_ = true;
     return true;
 }
@@ -46,8 +47,7 @@ auto FShipControlContext::can_bind() const -> bool {
         return false;
     }
 
-    return input_->mapping_contexts.IsValidIndex(mapping_context_index_) &&
-           IsValid(input_->mapping_contexts[mapping_context_index_]);
+    return IsValid(input_->get_mapping_context());
 }
 
 auto FShipControlContext::bind() -> bool {
@@ -64,7 +64,7 @@ auto FShipControlContext::bind() -> bool {
 
     bound_ = true;
     bind_actions();
-    add_selected_mapping_context();
+    add_mapping_context();
     return true;
 }
 
@@ -75,7 +75,7 @@ void FShipControlContext::unbind() {
 
     bound_ = false;
     neutralise_ship_input();
-    remove_selected_mapping_context();
+    remove_mapping_context();
     remove_action_bindings();
 }
 
@@ -201,25 +201,29 @@ void FShipControlContext::remove_action_bindings() {
     binding_handles_.Reset();
 }
 
-void FShipControlContext::add_selected_mapping_context() {
+void FShipControlContext::add_mapping_context() {
     check(input_subsystem_object_.IsValid() && input_subsystem_);
-    check(input_ && input_->mapping_contexts.IsValidIndex(mapping_context_index_));
+    check(input_ && IsValid(input_->get_mapping_context()));
 
-    auto* const context{input_->mapping_contexts[mapping_context_index_]};
-    input_subsystem_->AddMappingContext(context, 0);
+    FModifyContextOptions options{};
+    options.bNotifyUserSettings = true;
+    input_subsystem_->AddMappingContext(input_->get_mapping_context(), 0, options);
 
     if (auto* const owner{owner_.Get()}) {
-        owner->on_ship_mapping_context_changed(*context);
+        auto const* const settings{input_subsystem_->GetUserSettings()};
+        auto const* const profile{settings != nullptr ? settings->GetActiveKeyProfile() : nullptr};
+        owner->on_ship_control_profile_changed(
+            profile != nullptr ? profile->GetProfileDisplayName().ToString() : FString{});
     }
 }
 
-void FShipControlContext::remove_selected_mapping_context() {
+void FShipControlContext::remove_mapping_context() {
     if (!input_subsystem_object_.IsValid() || !input_subsystem_ || !input_ ||
-        !input_->mapping_contexts.IsValidIndex(mapping_context_index_)) {
+        !IsValid(input_->get_mapping_context())) {
         return;
     }
 
-    input_subsystem_->RemoveMappingContext(input_->mapping_contexts[mapping_context_index_]);
+    input_subsystem_->RemoveMappingContext(input_->get_mapping_context());
 }
 
 void FShipControlContext::neutralise_ship_input() {
@@ -394,28 +398,28 @@ void FShipControlContext::cycle_next_fire_rate() {
 }
 
 void FShipControlContext::cycle_input_mapping_context() {
-    if (!bound_ || !input_) {
+    if (!bound_ || !input_subsystem_) {
         return;
     }
-
-    auto const n_contexts{input_->mapping_contexts.Num()};
-    if (n_contexts <= 0 || !input_->mapping_contexts.IsValidIndex(mapping_context_index_)) {
+    auto* const settings{input_subsystem_->GetUserSettings()};
+    if (!IsValid(settings)) {
+        UE_LOG(
+            LogSandboxController,
+            Error,
+            TEXT("FShipControlContext::cycle_input_mapping_context: Input settings are invalid."));
+        return;
+    }
+    if (!ml::ioj::cycle_control_profile(*settings)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("FShipControlContext::cycle_input_mapping_context: Mapping index is invalid."));
+               TEXT("FShipControlContext::cycle_input_mapping_context: Could not select the next "
+                    "control profile."));
         return;
     }
-
-    auto const next_context_index{(mapping_context_index_ + 1) % n_contexts};
-    if (!IsValid(input_->mapping_contexts[next_context_index])) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FShipControlContext::cycle_input_mapping_context: Next mapping context is "
-                    "invalid."));
-        return;
+    settings->AsyncSaveSettings();
+    if (auto* const owner{owner_.Get()}) {
+        auto const* const profile{settings->GetActiveKeyProfile()};
+        owner->on_ship_control_profile_changed(
+            profile != nullptr ? profile->GetProfileDisplayName().ToString() : FString{});
     }
-
-    remove_selected_mapping_context();
-    mapping_context_index_ = next_context_index;
-    add_selected_mapping_context();
 }

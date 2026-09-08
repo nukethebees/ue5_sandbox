@@ -51,6 +51,7 @@ public class SandboxTests : ModuleRules
             "CommonUI",
             "CQTest",
             "EnhancedInput",
+            "InputCore",
             "UMG",
         });
     }

@@ -1,0 +1,49 @@
+#pragma once
+
+#include "CoreMinimal.h"
+#include "UserSettings/EnhancedInputUserSettings.h"
+
+namespace ml::ioj {
+
+inline auto can_hold_chord_key(FKey const key) -> bool {
+    return key.IsValid() && !key.IsAxis1D() && !key.IsAxis2D() && !key.IsAxis3D() &&
+           key != EKeys::MouseScrollUp && key != EKeys::MouseScrollDown;
+}
+
+struct FControlProfileView {
+    FString id;
+    FString mapping_profile_id;
+    FText display_name;
+    bool active{};
+    bool modified{};
+    bool custom{};
+};
+
+struct FControlBindingAddress {
+    FString profile_id;
+    FName mapping_name;
+    FName hardware_device_id;
+    EPlayerMappableKeySlot slot{EPlayerMappableKeySlot::Unspecified};
+
+    auto operator==(FControlBindingAddress const&) const -> bool = default;
+};
+
+struct FControlChordBindingView {
+    FControlBindingAddress address;
+    FKey current_key;
+    FKey default_key;
+};
+
+struct FControlBindingView {
+    FControlBindingAddress address;
+    FText display_name;
+    FText display_category;
+    EHardwareDevicePrimaryType device_type{EHardwareDevicePrimaryType::Unspecified};
+    FKey current_key;
+    FKey default_key;
+    TOptional<FControlChordBindingView> chord;
+    bool modified{};
+    bool custom_profile{};
+};
+
+} // namespace ml::ioj

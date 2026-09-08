@@ -34,6 +34,12 @@ static TArray<FGameSettingDescriptor> const descriptors{
     {EGameSetting::SfxVolume, EGameSettingCategory::Audio, EGameSettingValueType::Float, EGameSettingBackend::Audio, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("sfx_volume"), FText::FromString(TEXT("SFX Volume")), FText::FromString(TEXT("")), 0, 1, 0.01, TEXT("")},
     {EGameSetting::UIVolume, EGameSettingCategory::Audio, EGameSettingValueType::Float, EGameSettingBackend::Audio, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("ui_volume"), FText::FromString(TEXT("UI Volume")), FText::FromString(TEXT("")), 0, 1, 0.01, TEXT("")},
     {EGameSetting::Bees, EGameSettingCategory::Gameplay, EGameSettingValueType::Int32, EGameSettingBackend::Custom, ESettingApplyMode::Immediate, ESettingControlKind::IntegerRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("bees"), FText::FromString(TEXT("Bees")), FText::FromString(TEXT("Number of bees.")), 0, 5, 1, TEXT("")},
+    {EGameSetting::MouseTurnSensitivity, EGameSettingCategory::Controls, EGameSettingValueType::Float, EGameSettingBackend::EnhancedInputUserSettings, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("mouse_turn_sensitivity"), FText::FromString(TEXT("Mouse Sensitivity")), FText::FromString(TEXT("Mouse turning sensitivity.")), 0.01, 0.2, 0.005, TEXT("")},
+    {EGameSetting::GamepadTurnSensitivity, EGameSettingCategory::Controls, EGameSettingValueType::Float, EGameSettingBackend::EnhancedInputUserSettings, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("gamepad_turn_sensitivity"), FText::FromString(TEXT("Controller Sensitivity")), FText::FromString(TEXT("Controller turning sensitivity.")), 0.25, 2, 0.05, TEXT("")},
+    {EGameSetting::GamepadTurnDeadZone, EGameSettingCategory::Controls, EGameSettingValueType::Float, EGameSettingBackend::EnhancedInputUserSettings, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("gamepad_turn_dead_zone"), FText::FromString(TEXT("Turn Stick Dead Zone")), FText::FromString(TEXT("Inner dead zone for the stick controlling turning or aiming.")), 0, 0.5, 0.01, TEXT("")},
+    {EGameSetting::GamepadMoveDeadZone, EGameSettingCategory::Controls, EGameSettingValueType::Float, EGameSettingBackend::EnhancedInputUserSettings, ESettingApplyMode::Immediate, ESettingControlKind::FloatRange, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("gamepad_move_dead_zone"), FText::FromString(TEXT("Movement Stick Dead Zone")), FText::FromString(TEXT("Inner dead zone for sticks controlling movement.")), 0, 0.5, 0.01, TEXT("")},
+    {EGameSetting::InvertMousePitch, EGameSettingCategory::Controls, EGameSettingValueType::Bool, EGameSettingBackend::EnhancedInputUserSettings, ESettingApplyMode::Immediate, ESettingControlKind::Toggle, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("invert_mouse_pitch"), FText::FromString(TEXT("Invert Mouse Pitch")), FText::FromString(TEXT("Invert vertical mouse turning.")), 0, 0, 0, TEXT("")},
+    {EGameSetting::InvertGamepadPitch, EGameSettingCategory::Controls, EGameSettingValueType::Bool, EGameSettingBackend::EnhancedInputUserSettings, ESettingApplyMode::Immediate, ESettingControlKind::Toggle, EGameSettingOptionProvider::None, EGameSettingAvailabilityProvider::Always, TEXT("invert_gamepad_pitch"), FText::FromString(TEXT("Invert Controller Pitch")), FText::FromString(TEXT("Invert vertical controller turning.")), 0, 0, 0, TEXT("")},
 };
 
 } // namespace
@@ -69,6 +75,12 @@ auto game_setting_value(FGameSettingsState const& state, EGameSetting const id) 
     case EGameSetting::SfxVolume: return FGameSettingValue{state.sfx_volume};
     case EGameSetting::UIVolume: return FGameSettingValue{state.ui_volume};
     case EGameSetting::Bees: return FGameSettingValue{state.bees};
+    case EGameSetting::MouseTurnSensitivity: return FGameSettingValue{state.mouse_turn_sensitivity};
+    case EGameSetting::GamepadTurnSensitivity: return FGameSettingValue{state.gamepad_turn_sensitivity};
+    case EGameSetting::GamepadTurnDeadZone: return FGameSettingValue{state.gamepad_turn_dead_zone};
+    case EGameSetting::GamepadMoveDeadZone: return FGameSettingValue{state.gamepad_move_dead_zone};
+    case EGameSetting::InvertMousePitch: return FGameSettingValue{state.invert_mouse_pitch};
+    case EGameSetting::InvertGamepadPitch: return FGameSettingValue{state.invert_gamepad_pitch};
     }
     checkNoEntry();
     return FGameSettingValue{state.resolution};
@@ -176,6 +188,42 @@ auto set_game_setting_value(FGameSettingsState& state, EGameSetting const id, FG
         auto const* typed_value{std::get_if<int32>(&value)};
         if (typed_value == nullptr) { return false; }
         state.bees = *typed_value;
+        return true;
+    }
+    case EGameSetting::MouseTurnSensitivity: {
+        auto const* typed_value{std::get_if<float>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.mouse_turn_sensitivity = *typed_value;
+        return true;
+    }
+    case EGameSetting::GamepadTurnSensitivity: {
+        auto const* typed_value{std::get_if<float>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.gamepad_turn_sensitivity = *typed_value;
+        return true;
+    }
+    case EGameSetting::GamepadTurnDeadZone: {
+        auto const* typed_value{std::get_if<float>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.gamepad_turn_dead_zone = *typed_value;
+        return true;
+    }
+    case EGameSetting::GamepadMoveDeadZone: {
+        auto const* typed_value{std::get_if<float>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.gamepad_move_dead_zone = *typed_value;
+        return true;
+    }
+    case EGameSetting::InvertMousePitch: {
+        auto const* typed_value{std::get_if<bool>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.invert_mouse_pitch = *typed_value;
+        return true;
+    }
+    case EGameSetting::InvertGamepadPitch: {
+        auto const* typed_value{std::get_if<bool>(&value)};
+        if (typed_value == nullptr) { return false; }
+        state.invert_gamepad_pitch = *typed_value;
         return true;
     }
     }

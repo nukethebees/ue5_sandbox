@@ -8,14 +8,21 @@ class UInputMappingContext;
 class UInputAction;
 
 USTRUCT(BlueprintType)
-struct FSpaceShipControllerInputs {
+struct SPACEGAME_API FSpaceShipControllerInputs {
     GENERATED_BODY()
 
-    UPROPERTY(EditDefaultsOnly, Category = "Input")
-    TArray<UInputMappingContext*> mapping_contexts;
+    auto get_mapping_context() const -> UInputMappingContext*;
 
     UPROPERTY(EditDefaultsOnly, Category = "Input")
-    int32 initial_mapping_context_index{0};
+    UInputMappingContext* mapping_context{nullptr};
+
+    UPROPERTY(meta = (DeprecatedProperty,
+                      DeprecationMessage = "Migrated to the profile overrides on mapping_context"))
+    TArray<UInputMappingContext*> mapping_contexts_DEPRECATED{};
+
+    UPROPERTY(meta = (DeprecatedProperty,
+                      DeprecationMessage = "The active profile is owned by Enhanced Input"))
+    int32 initial_mapping_context_index_DEPRECATED{};
 
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* move{nullptr};

@@ -30,6 +30,12 @@ enum class EGameSetting : uint8 {
     SfxVolume,
     UIVolume,
     Bees,
+    MouseTurnSensitivity,
+    GamepadTurnSensitivity,
+    GamepadTurnDeadZone,
+    GamepadMoveDeadZone,
+    InvertMousePitch,
+    InvertGamepadPitch,
 };
 
 enum class EGameSettingCategory : uint8 {
@@ -43,7 +49,7 @@ enum class EGameSettingCategory : uint8 {
 enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };
 enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, Custom };
 enum class EGameSettingValueType : uint8 { IntPoint, GameWindowMode, Bool, Float, GameAntiAliasingMethod, GameQualityLevel, Int32 };
-enum class EGameSettingBackend : uint8 { Audio, Custom, GameUserSettings };
+enum class EGameSettingBackend : uint8 { Audio, Custom, EnhancedInputUserSettings, GameUserSettings };
 enum class EGameSettingOptionProvider : uint8 { None, AAMethods, FrameRateLimits, QualityLevels, SupportedResolutions, WindowModes };
 enum class EGameSettingAvailabilityProvider : uint8 { Always, AAQuality };
 
@@ -88,6 +94,12 @@ struct SPACEGAME_API FGameSettingsState {
     float sfx_volume{};
     float ui_volume{};
     int32 bees{};
+    float mouse_turn_sensitivity{};
+    float gamepad_turn_sensitivity{};
+    float gamepad_turn_dead_zone{};
+    float gamepad_move_dead_zone{};
+    bool invert_mouse_pitch{};
+    bool invert_gamepad_pitch{};
 
     auto operator==(FGameSettingsState const&) const -> bool = default;
 };
@@ -237,6 +249,54 @@ public:
 
     void set_bees(int32 const value) {
         derived().set_setting(EGameSetting::Bees, FGameSettingValue{value});
+    }
+
+    auto mouse_turn_sensitivity() const -> float {
+        return derived().settings_state().mouse_turn_sensitivity;
+    }
+
+    void set_mouse_turn_sensitivity(float const value) {
+        derived().set_setting(EGameSetting::MouseTurnSensitivity, FGameSettingValue{value});
+    }
+
+    auto gamepad_turn_sensitivity() const -> float {
+        return derived().settings_state().gamepad_turn_sensitivity;
+    }
+
+    void set_gamepad_turn_sensitivity(float const value) {
+        derived().set_setting(EGameSetting::GamepadTurnSensitivity, FGameSettingValue{value});
+    }
+
+    auto gamepad_turn_dead_zone() const -> float {
+        return derived().settings_state().gamepad_turn_dead_zone;
+    }
+
+    void set_gamepad_turn_dead_zone(float const value) {
+        derived().set_setting(EGameSetting::GamepadTurnDeadZone, FGameSettingValue{value});
+    }
+
+    auto gamepad_move_dead_zone() const -> float {
+        return derived().settings_state().gamepad_move_dead_zone;
+    }
+
+    void set_gamepad_move_dead_zone(float const value) {
+        derived().set_setting(EGameSetting::GamepadMoveDeadZone, FGameSettingValue{value});
+    }
+
+    auto invert_mouse_pitch() const -> bool {
+        return derived().settings_state().invert_mouse_pitch;
+    }
+
+    void set_invert_mouse_pitch(bool const value) {
+        derived().set_setting(EGameSetting::InvertMousePitch, FGameSettingValue{value});
+    }
+
+    auto invert_gamepad_pitch() const -> bool {
+        return derived().settings_state().invert_gamepad_pitch;
+    }
+
+    void set_invert_gamepad_pitch(bool const value) {
+        derived().set_setting(EGameSetting::InvertGamepadPitch, FGameSettingValue{value});
     }
 
 private:
