@@ -1,5 +1,7 @@
 {
   "types": {
+    "soa_experiment_MallocAllocator": {"spelling": "MallocAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
+    "soa_experiment_ReallocAllocator": {"spelling": "ReallocAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
     "soa_experiment_Handle": {"spelling": "Handle", "header": "SbxCoreExperiments/soa_leaf_types.h"},
     "soa_experiment_Task": {"spelling": "Task", "header": "SbxCoreExperiments/soa_leaf_types.h"},
     "soa_experiment_Team": {"spelling": "Team", "header": "SbxCoreExperiments/soa_leaf_types.h"},

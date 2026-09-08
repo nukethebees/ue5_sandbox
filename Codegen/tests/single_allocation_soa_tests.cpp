@@ -54,6 +54,28 @@ auto render(std::vector<SoaSchema> structs) -> std::string {
     return files.front().content;
 }
 
+TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
+    auto module{SoaModuleSchema{
+        .settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
+        .structs = schemas(),
+        .experimental_array_allocators = {{"Malloc", TypeRef{"MallocAllocator"}},
+                                          {"Realloc", TypeRef{"ReallocAllocator"}}}}};
+    auto const files{render_modules(
+        lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}))};
+    auto const& output{files.front().content};
+    EXPECT_NE(output.find("TArray<uint8, MallocAllocator> small;"), std::string::npos);
+    EXPECT_NE(output.find("TArray<int32, MallocAllocator> ids;"), std::string::npos);
+    EXPECT_NE(output.find("MallocChild nested;"), std::string::npos);
+    EXPECT_NE(output.find("TArray<Aligned256, ReallocAllocator> wide;"), std::string::npos);
+    EXPECT_NE(output.find("ReallocChild nested;"), std::string::npos);
+    EXPECT_NE(output.find("TArray<uint8> small;"), std::string::npos);
+    EXPECT_EQ(output.find("MallocSingleRows"), std::string::npos);
+    module.experimental_array_allocators.push_back({"Malloc", TypeRef{"ReallocAllocator"}});
+    EXPECT_THROW(
+        lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}),
+        std::invalid_argument);
+}
+
 TEST(SingleAllocationSoa, EmitsSiblingWithSharedViewsAndOneOwnerState) {
     auto const output{render(schemas())};
     auto const start{output.find("struct SingleRows")};
@@ -234,5 +256,4 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
         EXPECT_EQ(experiment[index]["type"], found == equivalents.end() ? type : found->second);
     }
 }
-
 }

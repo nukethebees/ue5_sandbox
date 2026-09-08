@@ -26,6 +26,7 @@ struct SoaSchema {
     bool copy_element_memberwise{false};
     std::optional<FixedSoaSchema> fixed;
     std::optional<std::string> experimental_single_allocation;
+    std::optional<TypeRef> array_allocator;
 };
 
 } // namespace codegen

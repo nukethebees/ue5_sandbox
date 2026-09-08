@@ -12,6 +12,7 @@
 #include "SandboxCore/soa_concepts.h"
 #include "SbxCoreExperiments/single_allocation_storage.h"
 #include "SbxCoreExperiments/soa_leaf_types.h"
+#include "SbxCoreExperiments/soa_reference_allocators.h"
 
 #include <utility>
 
@@ -3266,5 +3267,2973 @@ struct SingleAllocationAlignmentData : SingleAllocationAlignmentDataStorage {
     auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
         return get_view(offset, count);
     }
+};
+
+struct MallocVectorsView;
+struct MallocVectorsConstView;
+
+struct SBXCOREEXPERIMENTS_API MallocVectorsConstView {
+    using View = MallocVectorsView;
+    using ConstView = MallocVectorsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<float> xs;
+    TConstArrayView<float> ys;
+    TConstArrayView<float> zs;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocVectorsView {
+    using View = MallocVectorsView;
+    using ConstView = MallocVectorsConstView;
+
+    void set(int32 const index, float const new_xs, float const new_ys, float const new_zs) const {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
+        zs[index] = new_zs;
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<float> xs;
+    TArrayView<float> ys;
+    TArrayView<float> zs;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocVectors {
+    using View = MallocVectorsView;
+    using ConstView = MallocVectorsConstView;
+
+    void set(int32 const index, float const new_xs, float const new_ys, float const new_zs) {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
+        zs[index] = new_zs;
+    }
+
+    auto add(float const new_xs, float const new_ys, float const new_zs) -> int32 {
+        auto const index{num()};
+        xs.Add(new_xs);
+        ys.Add(new_ys);
+        zs.Add(new_zs);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+        zs.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(xs, dst_i, other.xs, src_i);
+        ml::copy_element(ys, dst_i, other.ys, src_i);
+        ml::copy_element(zs, dst_i, other.zs, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(xs, dst_i, other.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, other.ys, src_i, count);
+        ml::copy_elements(zs, dst_i, other.zs, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<MallocVectors, Other>
+    {
+        ml::append_from(xs, other.xs);
+        ml::append_from(ys, other.ys);
+        ml::append_from(zs, other.zs);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, other.xs, self.ys, other.ys, self.zs, other.zs);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<float, MallocAllocator> xs;
+    TArray<float, MallocAllocator> ys;
+    TArray<float, MallocAllocator> zs;
+};
+
+struct MallocCountdown8View;
+struct MallocCountdown8ConstView;
+
+struct SBXCOREEXPERIMENTS_API MallocCountdown8ConstView {
+    using View = MallocCountdown8View;
+    using ConstView = MallocCountdown8ConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int8> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocCountdown8View {
+    using View = MallocCountdown8View;
+    using ConstView = MallocCountdown8ConstView;
+
+    void set(int32 const index, int8 const new_counters) const { counters[index] = new_counters; }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int8> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocCountdown8 {
+    using View = MallocCountdown8View;
+    using ConstView = MallocCountdown8ConstView;
+
+    void set(int32 const index, int8 const new_counters) { counters[index] = new_counters; }
+
+    auto add(int8 const new_counters) -> int32 {
+        auto const index{num()};
+        counters.Add(new_counters);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        counters.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(counters, dst_i, other.counters, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(counters, dst_i, other.counters, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<MallocCountdown8, Other>
+    {
+        ml::append_from(counters, other.counters);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters, other.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int8, MallocAllocator> counters;
+};
+
+struct MallocCountdown16View;
+struct MallocCountdown16ConstView;
+
+struct SBXCOREEXPERIMENTS_API MallocCountdown16ConstView {
+    using View = MallocCountdown16View;
+    using ConstView = MallocCountdown16ConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int16> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocCountdown16View {
+    using View = MallocCountdown16View;
+    using ConstView = MallocCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_counters) const { counters[index] = new_counters; }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int16> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocCountdown16 {
+    using View = MallocCountdown16View;
+    using ConstView = MallocCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_counters) { counters[index] = new_counters; }
+
+    auto add(int16 const new_counters) -> int32 {
+        auto const index{num()};
+        counters.Add(new_counters);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        counters.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(counters, dst_i, other.counters, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(counters, dst_i, other.counters, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<MallocCountdown16, Other>
+    {
+        ml::append_from(counters, other.counters);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters, other.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int16, MallocAllocator> counters;
+};
+
+struct MallocPeriodicCountdown16View;
+struct MallocPeriodicCountdown16ConstView;
+
+struct SBXCOREEXPERIMENTS_API MallocPeriodicCountdown16ConstView {
+    using View = MallocPeriodicCountdown16View;
+    using ConstView = MallocPeriodicCountdown16ConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.remaining_ticks, self.periods);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int16> remaining_ticks;
+    TConstArrayView<int16> periods;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocPeriodicCountdown16View {
+    using View = MallocPeriodicCountdown16View;
+    using ConstView = MallocPeriodicCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_remaining_ticks, int16 const new_periods) const {
+        remaining_ticks[index] = new_remaining_ticks;
+        periods[index] = new_periods;
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.remaining_ticks, self.periods);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int16> remaining_ticks;
+    TArrayView<int16> periods;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocPeriodicCountdown16 {
+    using View = MallocPeriodicCountdown16View;
+    using ConstView = MallocPeriodicCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_remaining_ticks, int16 const new_periods) {
+        remaining_ticks[index] = new_remaining_ticks;
+        periods[index] = new_periods;
+    }
+
+    auto add(int16 const new_remaining_ticks, int16 const new_periods) -> int32 {
+        auto const index{num()};
+        remaining_ticks.Add(new_remaining_ticks);
+        periods.Add(new_periods);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        remaining_ticks.RemoveAtSwap(index, count, allow_shrinking);
+        periods.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(remaining_ticks, dst_i, other.remaining_ticks, src_i);
+        ml::copy_element(periods, dst_i, other.periods, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(remaining_ticks, dst_i, other.remaining_ticks, src_i, count);
+        ml::copy_elements(periods, dst_i, other.periods, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<MallocPeriodicCountdown16, Other>
+    {
+        ml::append_from(remaining_ticks, other.remaining_ticks);
+        ml::append_from(periods, other.periods);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.remaining_ticks, self.periods);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.remaining_ticks, other.remaining_ticks, self.periods, other.periods);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int16, MallocAllocator> remaining_ticks;
+    TArray<int16, MallocAllocator> periods;
+};
+
+struct MallocEntityDataView;
+struct MallocEntityDataConstView;
+
+struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
+    using View = MallocEntityDataView;
+    using ConstView = MallocEntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.integral_biases,
+                                         self.float_biases,
+                                         self.tasks,
+                                         self.locations,
+                                         self.desired_move_locations,
+                                         self.aim_directions,
+                                         self.desired_aiming_directions,
+                                         self.movement_directions,
+                                         self.velocities,
+                                         self.move_distances,
+                                         self.speeds,
+                                         self.teams,
+                                         self.healths,
+                                         self.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         self.target_handles,
+                                         self.target_locations,
+                                         self.target_velocities,
+                                         self.target_directions,
+                                         self.intercept_times,
+                                         self.target_distance_sq,
+                                         self.target_distances,
+                                         self.target_radii);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<Handle> entity_handles;
+    TConstArrayView<uint32> integral_biases;
+    TConstArrayView<float> float_biases;
+    TConstArrayView<Task> tasks;
+    MallocVectors::ConstView locations;
+    MallocVectors::ConstView desired_move_locations;
+    MallocVectors::ConstView aim_directions;
+    MallocVectors::ConstView desired_aiming_directions;
+    MallocVectors::ConstView movement_directions;
+    MallocVectors::ConstView velocities;
+    TConstArrayView<float> move_distances;
+    TConstArrayView<float> speeds;
+    TConstArrayView<Team> teams;
+    TConstArrayView<int32> healths;
+    TConstArrayView<Handle> parent_handles;
+    MallocCountdown8::ConstView awareness_scan_countdowns;
+    MallocPeriodicCountdown16::ConstView navigation_update_countdowns;
+    MallocVectors::ConstView separation_steering;
+    TConstArrayView<uint8> navigation_risk_tiers;
+    TConstArrayView<uint8> navigation_lower_risk_scan_counts;
+    TConstArrayView<int8> avoidance_choice_indices;
+    TConstArrayView<uint8> avoidance_clear_scan_counts;
+    MallocCountdown16::ConstView attack_reposition_countdowns;
+    MallocCountdown16::ConstView attack_cooldowns;
+    TConstArrayView<Handle> target_handles;
+    MallocVectors::ConstView target_locations;
+    MallocVectors::ConstView target_velocities;
+    MallocVectors::ConstView target_directions;
+    TConstArrayView<float> intercept_times;
+    TConstArrayView<float> target_distance_sq;
+    TConstArrayView<float> target_distances;
+    TConstArrayView<float> target_radii;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
+    using View = MallocEntityDataView;
+    using ConstView = MallocEntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.integral_biases,
+                                         self.float_biases,
+                                         self.tasks,
+                                         self.locations,
+                                         self.desired_move_locations,
+                                         self.aim_directions,
+                                         self.desired_aiming_directions,
+                                         self.movement_directions,
+                                         self.velocities,
+                                         self.move_distances,
+                                         self.speeds,
+                                         self.teams,
+                                         self.healths,
+                                         self.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         self.target_handles,
+                                         self.target_locations,
+                                         self.target_velocities,
+                                         self.target_directions,
+                                         self.intercept_times,
+                                         self.target_distance_sq,
+                                         self.target_distances,
+                                         self.target_radii);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<Handle> entity_handles;
+    TArrayView<uint32> integral_biases;
+    TArrayView<float> float_biases;
+    TArrayView<Task> tasks;
+    MallocVectors::View locations;
+    MallocVectors::View desired_move_locations;
+    MallocVectors::View aim_directions;
+    MallocVectors::View desired_aiming_directions;
+    MallocVectors::View movement_directions;
+    MallocVectors::View velocities;
+    TArrayView<float> move_distances;
+    TArrayView<float> speeds;
+    TArrayView<Team> teams;
+    TArrayView<int32> healths;
+    TArrayView<Handle> parent_handles;
+    MallocCountdown8::View awareness_scan_countdowns;
+    MallocPeriodicCountdown16::View navigation_update_countdowns;
+    MallocVectors::View separation_steering;
+    TArrayView<uint8> navigation_risk_tiers;
+    TArrayView<uint8> navigation_lower_risk_scan_counts;
+    TArrayView<int8> avoidance_choice_indices;
+    TArrayView<uint8> avoidance_clear_scan_counts;
+    MallocCountdown16::View attack_reposition_countdowns;
+    MallocCountdown16::View attack_cooldowns;
+    TArrayView<Handle> target_handles;
+    MallocVectors::View target_locations;
+    MallocVectors::View target_velocities;
+    MallocVectors::View target_directions;
+    TArrayView<float> intercept_times;
+    TArrayView<float> target_distance_sq;
+    TArrayView<float> target_distances;
+    TArrayView<float> target_radii;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocEntityData {
+    using View = MallocEntityDataView;
+    using ConstView = MallocEntityDataConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        entity_handles.RemoveAtSwap(index, count, allow_shrinking);
+        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
+        float_biases.RemoveAtSwap(index, count, allow_shrinking);
+        tasks.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
+        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(velocities, index, count, allow_shrinking);
+        move_distances.RemoveAtSwap(index, count, allow_shrinking);
+        speeds.RemoveAtSwap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        parent_handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
+        navigation_risk_tiers.RemoveAtSwap(index, count, allow_shrinking);
+        navigation_lower_risk_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
+        avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
+        avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
+        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
+        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
+        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
+        intercept_times.RemoveAtSwap(index, count, allow_shrinking);
+        target_distance_sq.RemoveAtSwap(index, count, allow_shrinking);
+        target_distances.RemoveAtSwap(index, count, allow_shrinking);
+        target_radii.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(entity_handles, dst_i, other.entity_handles, src_i);
+        ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
+        ml::copy_element(float_biases, dst_i, other.float_biases, src_i);
+        ml::copy_element(tasks, dst_i, other.tasks, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(desired_move_locations, dst_i, other.desired_move_locations, src_i);
+        ml::copy_element(aim_directions, dst_i, other.aim_directions, src_i);
+        ml::copy_element(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i);
+        ml::copy_element(movement_directions, dst_i, other.movement_directions, src_i);
+        ml::copy_element(velocities, dst_i, other.velocities, src_i);
+        ml::copy_element(move_distances, dst_i, other.move_distances, src_i);
+        ml::copy_element(speeds, dst_i, other.speeds, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(parent_handles, dst_i, other.parent_handles, src_i);
+        ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
+        ml::copy_element(
+            navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
+        ml::copy_element(separation_steering, dst_i, other.separation_steering, src_i);
+        ml::copy_element(navigation_risk_tiers, dst_i, other.navigation_risk_tiers, src_i);
+        ml::copy_element(navigation_lower_risk_scan_counts,
+                         dst_i,
+                         other.navigation_lower_risk_scan_counts,
+                         src_i);
+        ml::copy_element(avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i);
+        ml::copy_element(
+            avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i);
+        ml::copy_element(
+            attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
+        ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
+        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
+        ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
+        ml::copy_element(target_directions, dst_i, other.target_directions, src_i);
+        ml::copy_element(intercept_times, dst_i, other.intercept_times, src_i);
+        ml::copy_element(target_distance_sq, dst_i, other.target_distance_sq, src_i);
+        ml::copy_element(target_distances, dst_i, other.target_distances, src_i);
+        ml::copy_element(target_radii, dst_i, other.target_radii, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(entity_handles, dst_i, other.entity_handles, src_i, count);
+        ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
+        ml::copy_elements(float_biases, dst_i, other.float_biases, src_i, count);
+        ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(
+            desired_move_locations, dst_i, other.desired_move_locations, src_i, count);
+        ml::copy_elements(aim_directions, dst_i, other.aim_directions, src_i, count);
+        ml::copy_elements(
+            desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i, count);
+        ml::copy_elements(movement_directions, dst_i, other.movement_directions, src_i, count);
+        ml::copy_elements(velocities, dst_i, other.velocities, src_i, count);
+        ml::copy_elements(move_distances, dst_i, other.move_distances, src_i, count);
+        ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(parent_handles, dst_i, other.parent_handles, src_i, count);
+        ml::copy_elements(
+            awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
+        ml::copy_elements(
+            navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i, count);
+        ml::copy_elements(separation_steering, dst_i, other.separation_steering, src_i, count);
+        ml::copy_elements(navigation_risk_tiers, dst_i, other.navigation_risk_tiers, src_i, count);
+        ml::copy_elements(navigation_lower_risk_scan_counts,
+                          dst_i,
+                          other.navigation_lower_risk_scan_counts,
+                          src_i,
+                          count);
+        ml::copy_elements(
+            avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i, count);
+        ml::copy_elements(
+            avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i, count);
+        ml::copy_elements(
+            attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
+        ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
+        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
+        ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
+        ml::copy_elements(target_directions, dst_i, other.target_directions, src_i, count);
+        ml::copy_elements(intercept_times, dst_i, other.intercept_times, src_i, count);
+        ml::copy_elements(target_distance_sq, dst_i, other.target_distance_sq, src_i, count);
+        ml::copy_elements(target_distances, dst_i, other.target_distances, src_i, count);
+        ml::copy_elements(target_radii, dst_i, other.target_radii, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<MallocEntityData, Other>
+    {
+        ml::append_from(entity_handles, other.entity_handles);
+        ml::append_from(integral_biases, other.integral_biases);
+        ml::append_from(float_biases, other.float_biases);
+        ml::append_from(tasks, other.tasks);
+        ml::append_from(locations, other.locations);
+        ml::append_from(desired_move_locations, other.desired_move_locations);
+        ml::append_from(aim_directions, other.aim_directions);
+        ml::append_from(desired_aiming_directions, other.desired_aiming_directions);
+        ml::append_from(movement_directions, other.movement_directions);
+        ml::append_from(velocities, other.velocities);
+        ml::append_from(move_distances, other.move_distances);
+        ml::append_from(speeds, other.speeds);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(parent_handles, other.parent_handles);
+        ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
+        ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
+        ml::append_from(separation_steering, other.separation_steering);
+        ml::append_from(navigation_risk_tiers, other.navigation_risk_tiers);
+        ml::append_from(navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts);
+        ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
+        ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
+        ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
+        ml::append_from(attack_cooldowns, other.attack_cooldowns);
+        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_locations, other.target_locations);
+        ml::append_from(target_velocities, other.target_velocities);
+        ml::append_from(target_directions, other.target_directions);
+        ml::append_from(intercept_times, other.intercept_times);
+        ml::append_from(target_distance_sq, other.target_distance_sq);
+        ml::append_from(target_distances, other.target_distances);
+        ml::append_from(target_radii, other.target_radii);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.integral_biases,
+                                         self.float_biases,
+                                         self.tasks,
+                                         self.locations,
+                                         self.desired_move_locations,
+                                         self.aim_directions,
+                                         self.desired_aiming_directions,
+                                         self.movement_directions,
+                                         self.velocities,
+                                         self.move_distances,
+                                         self.speeds,
+                                         self.teams,
+                                         self.healths,
+                                         self.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         self.target_handles,
+                                         self.target_locations,
+                                         self.target_velocities,
+                                         self.target_directions,
+                                         self.intercept_times,
+                                         self.target_distance_sq,
+                                         self.target_distances,
+                                         self.target_radii);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         other.entity_handles,
+                                         self.integral_biases,
+                                         other.integral_biases,
+                                         self.float_biases,
+                                         other.float_biases,
+                                         self.tasks,
+                                         other.tasks,
+                                         self.locations,
+                                         other.locations,
+                                         self.desired_move_locations,
+                                         other.desired_move_locations,
+                                         self.aim_directions,
+                                         other.aim_directions,
+                                         self.desired_aiming_directions,
+                                         other.desired_aiming_directions,
+                                         self.movement_directions,
+                                         other.movement_directions,
+                                         self.velocities,
+                                         other.velocities,
+                                         self.move_distances,
+                                         other.move_distances,
+                                         self.speeds,
+                                         other.speeds,
+                                         self.teams,
+                                         other.teams,
+                                         self.healths,
+                                         other.healths,
+                                         self.parent_handles,
+                                         other.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         other.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         other.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         other.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         other.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         other.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         other.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         other.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         other.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         other.attack_cooldowns,
+                                         self.target_handles,
+                                         other.target_handles,
+                                         self.target_locations,
+                                         other.target_locations,
+                                         self.target_velocities,
+                                         other.target_velocities,
+                                         self.target_directions,
+                                         other.target_directions,
+                                         self.intercept_times,
+                                         other.intercept_times,
+                                         self.target_distance_sq,
+                                         other.target_distance_sq,
+                                         self.target_distances,
+                                         other.target_distances,
+                                         self.target_radii,
+                                         other.target_radii);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<Handle, MallocAllocator> entity_handles;
+    TArray<uint32, MallocAllocator> integral_biases;
+    TArray<float, MallocAllocator> float_biases;
+    TArray<Task, MallocAllocator> tasks;
+    MallocVectors locations;
+    MallocVectors desired_move_locations;
+    MallocVectors aim_directions;
+    MallocVectors desired_aiming_directions;
+    MallocVectors movement_directions;
+    MallocVectors velocities;
+    TArray<float, MallocAllocator> move_distances;
+    TArray<float, MallocAllocator> speeds;
+    TArray<Team, MallocAllocator> teams;
+    TArray<int32, MallocAllocator> healths;
+    TArray<Handle, MallocAllocator> parent_handles;
+    MallocCountdown8 awareness_scan_countdowns;
+    MallocPeriodicCountdown16 navigation_update_countdowns;
+    MallocVectors separation_steering;
+    TArray<uint8, MallocAllocator> navigation_risk_tiers;
+    TArray<uint8, MallocAllocator> navigation_lower_risk_scan_counts;
+    TArray<int8, MallocAllocator> avoidance_choice_indices;
+    TArray<uint8, MallocAllocator> avoidance_clear_scan_counts;
+    MallocCountdown16 attack_reposition_countdowns;
+    MallocCountdown16 attack_cooldowns;
+    TArray<Handle, MallocAllocator> target_handles;
+    MallocVectors target_locations;
+    MallocVectors target_velocities;
+    MallocVectors target_directions;
+    TArray<float, MallocAllocator> intercept_times;
+    TArray<float, MallocAllocator> target_distance_sq;
+    TArray<float, MallocAllocator> target_distances;
+    TArray<float, MallocAllocator> target_radii;
+};
+
+struct MallocAlignmentDataView;
+struct MallocAlignmentDataConstView;
+
+struct SBXCOREEXPERIMENTS_API MallocAlignmentDataConstView {
+    using View = MallocAlignmentDataView;
+    using ConstView = MallocAlignmentDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         self.odd,
+                                         self.aligned32,
+                                         self.nested,
+                                         self.aligned64,
+                                         self.small,
+                                         self.aligned256,
+                                         self.handles);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<uint8> bytes;
+    TConstArrayView<OddBytes> odd;
+    TConstArrayView<Aligned32> aligned32;
+    MallocVectors::ConstView nested;
+    TConstArrayView<Aligned64> aligned64;
+    TConstArrayView<int8> small;
+    TConstArrayView<Aligned256> aligned256;
+    TConstArrayView<Handle> handles;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocAlignmentDataView {
+    using View = MallocAlignmentDataView;
+    using ConstView = MallocAlignmentDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         self.odd,
+                                         self.aligned32,
+                                         self.nested,
+                                         self.aligned64,
+                                         self.small,
+                                         self.aligned256,
+                                         self.handles);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<uint8> bytes;
+    TArrayView<OddBytes> odd;
+    TArrayView<Aligned32> aligned32;
+    MallocVectors::View nested;
+    TArrayView<Aligned64> aligned64;
+    TArrayView<int8> small;
+    TArrayView<Aligned256> aligned256;
+    TArrayView<Handle> handles;
+};
+
+struct SBXCOREEXPERIMENTS_API MallocAlignmentData {
+    using View = MallocAlignmentDataView;
+    using ConstView = MallocAlignmentDataConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        bytes.RemoveAtSwap(index, count, allow_shrinking);
+        odd.RemoveAtSwap(index, count, allow_shrinking);
+        aligned32.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(nested, index, count, allow_shrinking);
+        aligned64.RemoveAtSwap(index, count, allow_shrinking);
+        small.RemoveAtSwap(index, count, allow_shrinking);
+        aligned256.RemoveAtSwap(index, count, allow_shrinking);
+        handles.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(bytes, dst_i, other.bytes, src_i);
+        ml::copy_element(odd, dst_i, other.odd, src_i);
+        ml::copy_element(aligned32, dst_i, other.aligned32, src_i);
+        ml::copy_element(nested, dst_i, other.nested, src_i);
+        ml::copy_element(aligned64, dst_i, other.aligned64, src_i);
+        ml::copy_element(small, dst_i, other.small, src_i);
+        ml::copy_element(aligned256, dst_i, other.aligned256, src_i);
+        ml::copy_element(handles, dst_i, other.handles, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(bytes, dst_i, other.bytes, src_i, count);
+        ml::copy_elements(odd, dst_i, other.odd, src_i, count);
+        ml::copy_elements(aligned32, dst_i, other.aligned32, src_i, count);
+        ml::copy_elements(nested, dst_i, other.nested, src_i, count);
+        ml::copy_elements(aligned64, dst_i, other.aligned64, src_i, count);
+        ml::copy_elements(small, dst_i, other.small, src_i, count);
+        ml::copy_elements(aligned256, dst_i, other.aligned256, src_i, count);
+        ml::copy_elements(handles, dst_i, other.handles, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<MallocAlignmentData, Other>
+    {
+        ml::append_from(bytes, other.bytes);
+        ml::append_from(odd, other.odd);
+        ml::append_from(aligned32, other.aligned32);
+        ml::append_from(nested, other.nested);
+        ml::append_from(aligned64, other.aligned64);
+        ml::append_from(small, other.small);
+        ml::append_from(aligned256, other.aligned256);
+        ml::append_from(handles, other.handles);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         self.odd,
+                                         self.aligned32,
+                                         self.nested,
+                                         self.aligned64,
+                                         self.small,
+                                         self.aligned256,
+                                         self.handles);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         other.bytes,
+                                         self.odd,
+                                         other.odd,
+                                         self.aligned32,
+                                         other.aligned32,
+                                         self.nested,
+                                         other.nested,
+                                         self.aligned64,
+                                         other.aligned64,
+                                         self.small,
+                                         other.small,
+                                         self.aligned256,
+                                         other.aligned256,
+                                         self.handles,
+                                         other.handles);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<uint8, MallocAllocator> bytes;
+    TArray<OddBytes, MallocAllocator> odd;
+    TArray<Aligned32, MallocAllocator> aligned32;
+    MallocVectors nested;
+    TArray<Aligned64, MallocAllocator> aligned64;
+    TArray<int8, MallocAllocator> small;
+    TArray<Aligned256, MallocAllocator> aligned256;
+    TArray<Handle, MallocAllocator> handles;
+};
+
+struct ReallocVectorsView;
+struct ReallocVectorsConstView;
+
+struct SBXCOREEXPERIMENTS_API ReallocVectorsConstView {
+    using View = ReallocVectorsView;
+    using ConstView = ReallocVectorsConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<float> xs;
+    TConstArrayView<float> ys;
+    TConstArrayView<float> zs;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocVectorsView {
+    using View = ReallocVectorsView;
+    using ConstView = ReallocVectorsConstView;
+
+    void set(int32 const index, float const new_xs, float const new_ys, float const new_zs) const {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
+        zs[index] = new_zs;
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<float> xs;
+    TArrayView<float> ys;
+    TArrayView<float> zs;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocVectors {
+    using View = ReallocVectorsView;
+    using ConstView = ReallocVectorsConstView;
+
+    void set(int32 const index, float const new_xs, float const new_ys, float const new_zs) {
+        xs[index] = new_xs;
+        ys[index] = new_ys;
+        zs[index] = new_zs;
+    }
+
+    auto add(float const new_xs, float const new_ys, float const new_zs) -> int32 {
+        auto const index{num()};
+        xs.Add(new_xs);
+        ys.Add(new_ys);
+        zs.Add(new_zs);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        xs.RemoveAtSwap(index, count, allow_shrinking);
+        ys.RemoveAtSwap(index, count, allow_shrinking);
+        zs.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(xs, dst_i, other.xs, src_i);
+        ml::copy_element(ys, dst_i, other.ys, src_i);
+        ml::copy_element(zs, dst_i, other.zs, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(xs, dst_i, other.xs, src_i, count);
+        ml::copy_elements(ys, dst_i, other.ys, src_i, count);
+        ml::copy_elements(zs, dst_i, other.zs, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<ReallocVectors, Other>
+    {
+        ml::append_from(xs, other.xs);
+        ml::append_from(ys, other.ys);
+        ml::append_from(zs, other.zs);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, self.ys, self.zs);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.xs, other.xs, self.ys, other.ys, self.zs, other.zs);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<float, ReallocAllocator> xs;
+    TArray<float, ReallocAllocator> ys;
+    TArray<float, ReallocAllocator> zs;
+};
+
+struct ReallocCountdown8View;
+struct ReallocCountdown8ConstView;
+
+struct SBXCOREEXPERIMENTS_API ReallocCountdown8ConstView {
+    using View = ReallocCountdown8View;
+    using ConstView = ReallocCountdown8ConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int8> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocCountdown8View {
+    using View = ReallocCountdown8View;
+    using ConstView = ReallocCountdown8ConstView;
+
+    void set(int32 const index, int8 const new_counters) const { counters[index] = new_counters; }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int8> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocCountdown8 {
+    using View = ReallocCountdown8View;
+    using ConstView = ReallocCountdown8ConstView;
+
+    void set(int32 const index, int8 const new_counters) { counters[index] = new_counters; }
+
+    auto add(int8 const new_counters) -> int32 {
+        auto const index{num()};
+        counters.Add(new_counters);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        counters.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(counters, dst_i, other.counters, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(counters, dst_i, other.counters, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<ReallocCountdown8, Other>
+    {
+        ml::append_from(counters, other.counters);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters, other.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int8, ReallocAllocator> counters;
+};
+
+struct ReallocCountdown16View;
+struct ReallocCountdown16ConstView;
+
+struct SBXCOREEXPERIMENTS_API ReallocCountdown16ConstView {
+    using View = ReallocCountdown16View;
+    using ConstView = ReallocCountdown16ConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int16> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocCountdown16View {
+    using View = ReallocCountdown16View;
+    using ConstView = ReallocCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_counters) const { counters[index] = new_counters; }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int16> counters;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocCountdown16 {
+    using View = ReallocCountdown16View;
+    using ConstView = ReallocCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_counters) { counters[index] = new_counters; }
+
+    auto add(int16 const new_counters) -> int32 {
+        auto const index{num()};
+        counters.Add(new_counters);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        counters.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(counters, dst_i, other.counters, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(counters, dst_i, other.counters, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<ReallocCountdown16, Other>
+    {
+        ml::append_from(counters, other.counters);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.counters, other.counters);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int16, ReallocAllocator> counters;
+};
+
+struct ReallocPeriodicCountdown16View;
+struct ReallocPeriodicCountdown16ConstView;
+
+struct SBXCOREEXPERIMENTS_API ReallocPeriodicCountdown16ConstView {
+    using View = ReallocPeriodicCountdown16View;
+    using ConstView = ReallocPeriodicCountdown16ConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.remaining_ticks, self.periods);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<int16> remaining_ticks;
+    TConstArrayView<int16> periods;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocPeriodicCountdown16View {
+    using View = ReallocPeriodicCountdown16View;
+    using ConstView = ReallocPeriodicCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_remaining_ticks, int16 const new_periods) const {
+        remaining_ticks[index] = new_remaining_ticks;
+        periods[index] = new_periods;
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.remaining_ticks, self.periods);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<int16> remaining_ticks;
+    TArrayView<int16> periods;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocPeriodicCountdown16 {
+    using View = ReallocPeriodicCountdown16View;
+    using ConstView = ReallocPeriodicCountdown16ConstView;
+
+    void set(int32 const index, int16 const new_remaining_ticks, int16 const new_periods) {
+        remaining_ticks[index] = new_remaining_ticks;
+        periods[index] = new_periods;
+    }
+
+    auto add(int16 const new_remaining_ticks, int16 const new_periods) -> int32 {
+        auto const index{num()};
+        remaining_ticks.Add(new_remaining_ticks);
+        periods.Add(new_periods);
+        return index;
+    }
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        remaining_ticks.RemoveAtSwap(index, count, allow_shrinking);
+        periods.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(remaining_ticks, dst_i, other.remaining_ticks, src_i);
+        ml::copy_element(periods, dst_i, other.periods, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(remaining_ticks, dst_i, other.remaining_ticks, src_i, count);
+        ml::copy_elements(periods, dst_i, other.periods, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<ReallocPeriodicCountdown16, Other>
+    {
+        ml::append_from(remaining_ticks, other.remaining_ticks);
+        ml::append_from(periods, other.periods);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.remaining_ticks, self.periods);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(
+            self.remaining_ticks, other.remaining_ticks, self.periods, other.periods);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<int16, ReallocAllocator> remaining_ticks;
+    TArray<int16, ReallocAllocator> periods;
+};
+
+struct ReallocEntityDataView;
+struct ReallocEntityDataConstView;
+
+struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
+    using View = ReallocEntityDataView;
+    using ConstView = ReallocEntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.integral_biases,
+                                         self.float_biases,
+                                         self.tasks,
+                                         self.locations,
+                                         self.desired_move_locations,
+                                         self.aim_directions,
+                                         self.desired_aiming_directions,
+                                         self.movement_directions,
+                                         self.velocities,
+                                         self.move_distances,
+                                         self.speeds,
+                                         self.teams,
+                                         self.healths,
+                                         self.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         self.target_handles,
+                                         self.target_locations,
+                                         self.target_velocities,
+                                         self.target_directions,
+                                         self.intercept_times,
+                                         self.target_distance_sq,
+                                         self.target_distances,
+                                         self.target_radii);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<Handle> entity_handles;
+    TConstArrayView<uint32> integral_biases;
+    TConstArrayView<float> float_biases;
+    TConstArrayView<Task> tasks;
+    ReallocVectors::ConstView locations;
+    ReallocVectors::ConstView desired_move_locations;
+    ReallocVectors::ConstView aim_directions;
+    ReallocVectors::ConstView desired_aiming_directions;
+    ReallocVectors::ConstView movement_directions;
+    ReallocVectors::ConstView velocities;
+    TConstArrayView<float> move_distances;
+    TConstArrayView<float> speeds;
+    TConstArrayView<Team> teams;
+    TConstArrayView<int32> healths;
+    TConstArrayView<Handle> parent_handles;
+    ReallocCountdown8::ConstView awareness_scan_countdowns;
+    ReallocPeriodicCountdown16::ConstView navigation_update_countdowns;
+    ReallocVectors::ConstView separation_steering;
+    TConstArrayView<uint8> navigation_risk_tiers;
+    TConstArrayView<uint8> navigation_lower_risk_scan_counts;
+    TConstArrayView<int8> avoidance_choice_indices;
+    TConstArrayView<uint8> avoidance_clear_scan_counts;
+    ReallocCountdown16::ConstView attack_reposition_countdowns;
+    ReallocCountdown16::ConstView attack_cooldowns;
+    TConstArrayView<Handle> target_handles;
+    ReallocVectors::ConstView target_locations;
+    ReallocVectors::ConstView target_velocities;
+    ReallocVectors::ConstView target_directions;
+    TConstArrayView<float> intercept_times;
+    TConstArrayView<float> target_distance_sq;
+    TConstArrayView<float> target_distances;
+    TConstArrayView<float> target_radii;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
+    using View = ReallocEntityDataView;
+    using ConstView = ReallocEntityDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.integral_biases,
+                                         self.float_biases,
+                                         self.tasks,
+                                         self.locations,
+                                         self.desired_move_locations,
+                                         self.aim_directions,
+                                         self.desired_aiming_directions,
+                                         self.movement_directions,
+                                         self.velocities,
+                                         self.move_distances,
+                                         self.speeds,
+                                         self.teams,
+                                         self.healths,
+                                         self.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         self.target_handles,
+                                         self.target_locations,
+                                         self.target_velocities,
+                                         self.target_directions,
+                                         self.intercept_times,
+                                         self.target_distance_sq,
+                                         self.target_distances,
+                                         self.target_radii);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<Handle> entity_handles;
+    TArrayView<uint32> integral_biases;
+    TArrayView<float> float_biases;
+    TArrayView<Task> tasks;
+    ReallocVectors::View locations;
+    ReallocVectors::View desired_move_locations;
+    ReallocVectors::View aim_directions;
+    ReallocVectors::View desired_aiming_directions;
+    ReallocVectors::View movement_directions;
+    ReallocVectors::View velocities;
+    TArrayView<float> move_distances;
+    TArrayView<float> speeds;
+    TArrayView<Team> teams;
+    TArrayView<int32> healths;
+    TArrayView<Handle> parent_handles;
+    ReallocCountdown8::View awareness_scan_countdowns;
+    ReallocPeriodicCountdown16::View navigation_update_countdowns;
+    ReallocVectors::View separation_steering;
+    TArrayView<uint8> navigation_risk_tiers;
+    TArrayView<uint8> navigation_lower_risk_scan_counts;
+    TArrayView<int8> avoidance_choice_indices;
+    TArrayView<uint8> avoidance_clear_scan_counts;
+    ReallocCountdown16::View attack_reposition_countdowns;
+    ReallocCountdown16::View attack_cooldowns;
+    TArrayView<Handle> target_handles;
+    ReallocVectors::View target_locations;
+    ReallocVectors::View target_velocities;
+    ReallocVectors::View target_directions;
+    TArrayView<float> intercept_times;
+    TArrayView<float> target_distance_sq;
+    TArrayView<float> target_distances;
+    TArrayView<float> target_radii;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocEntityData {
+    using View = ReallocEntityDataView;
+    using ConstView = ReallocEntityDataConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        entity_handles.RemoveAtSwap(index, count, allow_shrinking);
+        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
+        float_biases.RemoveAtSwap(index, count, allow_shrinking);
+        tasks.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(locations, index, count, allow_shrinking);
+        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
+        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
+        ml::remove_at_swap(velocities, index, count, allow_shrinking);
+        move_distances.RemoveAtSwap(index, count, allow_shrinking);
+        speeds.RemoveAtSwap(index, count, allow_shrinking);
+        teams.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
+        parent_handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
+        navigation_risk_tiers.RemoveAtSwap(index, count, allow_shrinking);
+        navigation_lower_risk_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
+        avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
+        avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
+        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
+        target_handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
+        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
+        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
+        intercept_times.RemoveAtSwap(index, count, allow_shrinking);
+        target_distance_sq.RemoveAtSwap(index, count, allow_shrinking);
+        target_distances.RemoveAtSwap(index, count, allow_shrinking);
+        target_radii.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(entity_handles, dst_i, other.entity_handles, src_i);
+        ml::copy_element(integral_biases, dst_i, other.integral_biases, src_i);
+        ml::copy_element(float_biases, dst_i, other.float_biases, src_i);
+        ml::copy_element(tasks, dst_i, other.tasks, src_i);
+        ml::copy_element(locations, dst_i, other.locations, src_i);
+        ml::copy_element(desired_move_locations, dst_i, other.desired_move_locations, src_i);
+        ml::copy_element(aim_directions, dst_i, other.aim_directions, src_i);
+        ml::copy_element(desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i);
+        ml::copy_element(movement_directions, dst_i, other.movement_directions, src_i);
+        ml::copy_element(velocities, dst_i, other.velocities, src_i);
+        ml::copy_element(move_distances, dst_i, other.move_distances, src_i);
+        ml::copy_element(speeds, dst_i, other.speeds, src_i);
+        ml::copy_element(teams, dst_i, other.teams, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
+        ml::copy_element(parent_handles, dst_i, other.parent_handles, src_i);
+        ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
+        ml::copy_element(
+            navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i);
+        ml::copy_element(separation_steering, dst_i, other.separation_steering, src_i);
+        ml::copy_element(navigation_risk_tiers, dst_i, other.navigation_risk_tiers, src_i);
+        ml::copy_element(navigation_lower_risk_scan_counts,
+                         dst_i,
+                         other.navigation_lower_risk_scan_counts,
+                         src_i);
+        ml::copy_element(avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i);
+        ml::copy_element(
+            avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i);
+        ml::copy_element(
+            attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i);
+        ml::copy_element(attack_cooldowns, dst_i, other.attack_cooldowns, src_i);
+        ml::copy_element(target_handles, dst_i, other.target_handles, src_i);
+        ml::copy_element(target_locations, dst_i, other.target_locations, src_i);
+        ml::copy_element(target_velocities, dst_i, other.target_velocities, src_i);
+        ml::copy_element(target_directions, dst_i, other.target_directions, src_i);
+        ml::copy_element(intercept_times, dst_i, other.intercept_times, src_i);
+        ml::copy_element(target_distance_sq, dst_i, other.target_distance_sq, src_i);
+        ml::copy_element(target_distances, dst_i, other.target_distances, src_i);
+        ml::copy_element(target_radii, dst_i, other.target_radii, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(entity_handles, dst_i, other.entity_handles, src_i, count);
+        ml::copy_elements(integral_biases, dst_i, other.integral_biases, src_i, count);
+        ml::copy_elements(float_biases, dst_i, other.float_biases, src_i, count);
+        ml::copy_elements(tasks, dst_i, other.tasks, src_i, count);
+        ml::copy_elements(locations, dst_i, other.locations, src_i, count);
+        ml::copy_elements(
+            desired_move_locations, dst_i, other.desired_move_locations, src_i, count);
+        ml::copy_elements(aim_directions, dst_i, other.aim_directions, src_i, count);
+        ml::copy_elements(
+            desired_aiming_directions, dst_i, other.desired_aiming_directions, src_i, count);
+        ml::copy_elements(movement_directions, dst_i, other.movement_directions, src_i, count);
+        ml::copy_elements(velocities, dst_i, other.velocities, src_i, count);
+        ml::copy_elements(move_distances, dst_i, other.move_distances, src_i, count);
+        ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
+        ml::copy_elements(teams, dst_i, other.teams, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
+        ml::copy_elements(parent_handles, dst_i, other.parent_handles, src_i, count);
+        ml::copy_elements(
+            awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
+        ml::copy_elements(
+            navigation_update_countdowns, dst_i, other.navigation_update_countdowns, src_i, count);
+        ml::copy_elements(separation_steering, dst_i, other.separation_steering, src_i, count);
+        ml::copy_elements(navigation_risk_tiers, dst_i, other.navigation_risk_tiers, src_i, count);
+        ml::copy_elements(navigation_lower_risk_scan_counts,
+                          dst_i,
+                          other.navigation_lower_risk_scan_counts,
+                          src_i,
+                          count);
+        ml::copy_elements(
+            avoidance_choice_indices, dst_i, other.avoidance_choice_indices, src_i, count);
+        ml::copy_elements(
+            avoidance_clear_scan_counts, dst_i, other.avoidance_clear_scan_counts, src_i, count);
+        ml::copy_elements(
+            attack_reposition_countdowns, dst_i, other.attack_reposition_countdowns, src_i, count);
+        ml::copy_elements(attack_cooldowns, dst_i, other.attack_cooldowns, src_i, count);
+        ml::copy_elements(target_handles, dst_i, other.target_handles, src_i, count);
+        ml::copy_elements(target_locations, dst_i, other.target_locations, src_i, count);
+        ml::copy_elements(target_velocities, dst_i, other.target_velocities, src_i, count);
+        ml::copy_elements(target_directions, dst_i, other.target_directions, src_i, count);
+        ml::copy_elements(intercept_times, dst_i, other.intercept_times, src_i, count);
+        ml::copy_elements(target_distance_sq, dst_i, other.target_distance_sq, src_i, count);
+        ml::copy_elements(target_distances, dst_i, other.target_distances, src_i, count);
+        ml::copy_elements(target_radii, dst_i, other.target_radii, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<ReallocEntityData, Other>
+    {
+        ml::append_from(entity_handles, other.entity_handles);
+        ml::append_from(integral_biases, other.integral_biases);
+        ml::append_from(float_biases, other.float_biases);
+        ml::append_from(tasks, other.tasks);
+        ml::append_from(locations, other.locations);
+        ml::append_from(desired_move_locations, other.desired_move_locations);
+        ml::append_from(aim_directions, other.aim_directions);
+        ml::append_from(desired_aiming_directions, other.desired_aiming_directions);
+        ml::append_from(movement_directions, other.movement_directions);
+        ml::append_from(velocities, other.velocities);
+        ml::append_from(move_distances, other.move_distances);
+        ml::append_from(speeds, other.speeds);
+        ml::append_from(teams, other.teams);
+        ml::append_from(healths, other.healths);
+        ml::append_from(parent_handles, other.parent_handles);
+        ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
+        ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
+        ml::append_from(separation_steering, other.separation_steering);
+        ml::append_from(navigation_risk_tiers, other.navigation_risk_tiers);
+        ml::append_from(navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts);
+        ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
+        ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
+        ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
+        ml::append_from(attack_cooldowns, other.attack_cooldowns);
+        ml::append_from(target_handles, other.target_handles);
+        ml::append_from(target_locations, other.target_locations);
+        ml::append_from(target_velocities, other.target_velocities);
+        ml::append_from(target_directions, other.target_directions);
+        ml::append_from(intercept_times, other.intercept_times);
+        ml::append_from(target_distance_sq, other.target_distance_sq);
+        ml::append_from(target_distances, other.target_distances);
+        ml::append_from(target_radii, other.target_radii);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         self.integral_biases,
+                                         self.float_biases,
+                                         self.tasks,
+                                         self.locations,
+                                         self.desired_move_locations,
+                                         self.aim_directions,
+                                         self.desired_aiming_directions,
+                                         self.movement_directions,
+                                         self.velocities,
+                                         self.move_distances,
+                                         self.speeds,
+                                         self.teams,
+                                         self.healths,
+                                         self.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         self.target_handles,
+                                         self.target_locations,
+                                         self.target_velocities,
+                                         self.target_directions,
+                                         self.intercept_times,
+                                         self.target_distance_sq,
+                                         self.target_distances,
+                                         self.target_radii);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.entity_handles,
+                                         other.entity_handles,
+                                         self.integral_biases,
+                                         other.integral_biases,
+                                         self.float_biases,
+                                         other.float_biases,
+                                         self.tasks,
+                                         other.tasks,
+                                         self.locations,
+                                         other.locations,
+                                         self.desired_move_locations,
+                                         other.desired_move_locations,
+                                         self.aim_directions,
+                                         other.aim_directions,
+                                         self.desired_aiming_directions,
+                                         other.desired_aiming_directions,
+                                         self.movement_directions,
+                                         other.movement_directions,
+                                         self.velocities,
+                                         other.velocities,
+                                         self.move_distances,
+                                         other.move_distances,
+                                         self.speeds,
+                                         other.speeds,
+                                         self.teams,
+                                         other.teams,
+                                         self.healths,
+                                         other.healths,
+                                         self.parent_handles,
+                                         other.parent_handles,
+                                         self.awareness_scan_countdowns,
+                                         other.awareness_scan_countdowns,
+                                         self.navigation_update_countdowns,
+                                         other.navigation_update_countdowns,
+                                         self.separation_steering,
+                                         other.separation_steering,
+                                         self.navigation_risk_tiers,
+                                         other.navigation_risk_tiers,
+                                         self.navigation_lower_risk_scan_counts,
+                                         other.navigation_lower_risk_scan_counts,
+                                         self.avoidance_choice_indices,
+                                         other.avoidance_choice_indices,
+                                         self.avoidance_clear_scan_counts,
+                                         other.avoidance_clear_scan_counts,
+                                         self.attack_reposition_countdowns,
+                                         other.attack_reposition_countdowns,
+                                         self.attack_cooldowns,
+                                         other.attack_cooldowns,
+                                         self.target_handles,
+                                         other.target_handles,
+                                         self.target_locations,
+                                         other.target_locations,
+                                         self.target_velocities,
+                                         other.target_velocities,
+                                         self.target_directions,
+                                         other.target_directions,
+                                         self.intercept_times,
+                                         other.intercept_times,
+                                         self.target_distance_sq,
+                                         other.target_distance_sq,
+                                         self.target_distances,
+                                         other.target_distances,
+                                         self.target_radii,
+                                         other.target_radii);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<Handle, ReallocAllocator> entity_handles;
+    TArray<uint32, ReallocAllocator> integral_biases;
+    TArray<float, ReallocAllocator> float_biases;
+    TArray<Task, ReallocAllocator> tasks;
+    ReallocVectors locations;
+    ReallocVectors desired_move_locations;
+    ReallocVectors aim_directions;
+    ReallocVectors desired_aiming_directions;
+    ReallocVectors movement_directions;
+    ReallocVectors velocities;
+    TArray<float, ReallocAllocator> move_distances;
+    TArray<float, ReallocAllocator> speeds;
+    TArray<Team, ReallocAllocator> teams;
+    TArray<int32, ReallocAllocator> healths;
+    TArray<Handle, ReallocAllocator> parent_handles;
+    ReallocCountdown8 awareness_scan_countdowns;
+    ReallocPeriodicCountdown16 navigation_update_countdowns;
+    ReallocVectors separation_steering;
+    TArray<uint8, ReallocAllocator> navigation_risk_tiers;
+    TArray<uint8, ReallocAllocator> navigation_lower_risk_scan_counts;
+    TArray<int8, ReallocAllocator> avoidance_choice_indices;
+    TArray<uint8, ReallocAllocator> avoidance_clear_scan_counts;
+    ReallocCountdown16 attack_reposition_countdowns;
+    ReallocCountdown16 attack_cooldowns;
+    TArray<Handle, ReallocAllocator> target_handles;
+    ReallocVectors target_locations;
+    ReallocVectors target_velocities;
+    ReallocVectors target_directions;
+    TArray<float, ReallocAllocator> intercept_times;
+    TArray<float, ReallocAllocator> target_distance_sq;
+    TArray<float, ReallocAllocator> target_distances;
+    TArray<float, ReallocAllocator> target_radii;
+};
+
+struct ReallocAlignmentDataView;
+struct ReallocAlignmentDataConstView;
+
+struct SBXCOREEXPERIMENTS_API ReallocAlignmentDataConstView {
+    using View = ReallocAlignmentDataView;
+    using ConstView = ReallocAlignmentDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         self.odd,
+                                         self.aligned32,
+                                         self.nested,
+                                         self.aligned64,
+                                         self.small,
+                                         self.aligned256,
+                                         self.handles);
+    }
+
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TConstArrayView<uint8> bytes;
+    TConstArrayView<OddBytes> odd;
+    TConstArrayView<Aligned32> aligned32;
+    ReallocVectors::ConstView nested;
+    TConstArrayView<Aligned64> aligned64;
+    TConstArrayView<int8> small;
+    TConstArrayView<Aligned256> aligned256;
+    TConstArrayView<Handle> handles;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocAlignmentDataView {
+    using View = ReallocAlignmentDataView;
+    using ConstView = ReallocAlignmentDataConstView;
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         self.odd,
+                                         self.aligned32,
+                                         self.nested,
+                                         self.aligned64,
+                                         self.small,
+                                         self.aligned256,
+                                         self.handles);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArrayView<uint8> bytes;
+    TArrayView<OddBytes> odd;
+    TArrayView<Aligned32> aligned32;
+    ReallocVectors::View nested;
+    TArrayView<Aligned64> aligned64;
+    TArrayView<int8> small;
+    TArrayView<Aligned256> aligned256;
+    TArrayView<Handle> handles;
+};
+
+struct SBXCOREEXPERIMENTS_API ReallocAlignmentData {
+    using View = ReallocAlignmentDataView;
+    using ConstView = ReallocAlignmentDataConstView;
+
+    void reset();
+
+    void reserve(int32 const count);
+
+    void add_uninitialised(int32 const count);
+
+    void add_defaulted(int32 const count);
+
+    void remove_at_swap(int32 const index,
+                        int32 const count,
+                        EAllowShrinking const allow_shrinking) {
+        bytes.RemoveAtSwap(index, count, allow_shrinking);
+        odd.RemoveAtSwap(index, count, allow_shrinking);
+        aligned32.RemoveAtSwap(index, count, allow_shrinking);
+        ml::remove_at_swap(nested, index, count, allow_shrinking);
+        aligned64.RemoveAtSwap(index, count, allow_shrinking);
+        small.RemoveAtSwap(index, count, allow_shrinking);
+        aligned256.RemoveAtSwap(index, count, allow_shrinking);
+        handles.RemoveAtSwap(index, count, allow_shrinking);
+    }
+
+    void set_num(int32 const count, EAllowShrinking const allow_shrinking);
+
+    template <typename Other>
+    void copy_element(int32 const dst_i, Other const& other, int32 const src_i) {
+        ml::copy_element(bytes, dst_i, other.bytes, src_i);
+        ml::copy_element(odd, dst_i, other.odd, src_i);
+        ml::copy_element(aligned32, dst_i, other.aligned32, src_i);
+        ml::copy_element(nested, dst_i, other.nested, src_i);
+        ml::copy_element(aligned64, dst_i, other.aligned64, src_i);
+        ml::copy_element(small, dst_i, other.small, src_i);
+        ml::copy_element(aligned256, dst_i, other.aligned256, src_i);
+        ml::copy_element(handles, dst_i, other.handles, src_i);
+    }
+
+    template <typename Other>
+    void
+        copy_elements(int32 const dst_i, Other const& other, int32 const src_i, int32 const count) {
+        ml::copy_elements(bytes, dst_i, other.bytes, src_i, count);
+        ml::copy_elements(odd, dst_i, other.odd, src_i, count);
+        ml::copy_elements(aligned32, dst_i, other.aligned32, src_i, count);
+        ml::copy_elements(nested, dst_i, other.nested, src_i, count);
+        ml::copy_elements(aligned64, dst_i, other.aligned64, src_i, count);
+        ml::copy_elements(small, dst_i, other.small, src_i, count);
+        ml::copy_elements(aligned256, dst_i, other.aligned256, src_i, count);
+        ml::copy_elements(handles, dst_i, other.handles, src_i, count);
+    }
+
+    template <typename Other>
+    void copy_to_tail(Other const& other) {
+        auto const count{other.num()};
+        check(num() >= count);
+        copy_elements(num() - count, other, 0, count);
+    }
+
+    template <typename Other>
+    void append_from(Other const& other)
+        requires ml::SupportsApplyArrayPairsWith<ReallocAlignmentData, Other>
+    {
+        ml::append_from(bytes, other.bytes);
+        ml::append_from(odd, other.odd);
+        ml::append_from(aligned32, other.aligned32);
+        ml::append_from(nested, other.nested);
+        ml::append_from(aligned64, other.aligned64);
+        ml::append_from(small, other.small);
+        ml::append_from(aligned256, other.aligned256);
+        ml::append_from(handles, other.handles);
+    }
+
+    void apply_permutation(TArrayView<int32> indices);
+
+    template <typename Compare>
+    void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
+            return compare(*this, lhs, rhs);
+        });
+        apply_permutation(scratch_indices);
+    }
+
+    template <auto Compare>
+    void sort(TArrayView<int32> scratch_indices) {
+        validate_array_sizes();
+        auto const n{num()};
+        check(scratch_indices.Num() == n);
+        ml::fill_indices(scratch_indices);
+        // indices[new_index] is the old row index that belongs at new_index.
+        scratch_indices.Sort(
+            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
+        apply_permutation(scratch_indices);
+    }
+
+    template <typename TFunc>
+    auto apply_arrays(this auto&& self, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         self.odd,
+                                         self.aligned32,
+                                         self.nested,
+                                         self.aligned64,
+                                         self.small,
+                                         self.aligned256,
+                                         self.handles);
+    }
+
+    template <typename Self, typename Other, typename TFunc>
+    auto apply_array_pairs(this Self&& self, Other&& other, TFunc&& func) -> decltype(auto) {
+        return std::forward<TFunc>(func)(self.bytes,
+                                         other.bytes,
+                                         self.odd,
+                                         other.odd,
+                                         self.aligned32,
+                                         other.aligned32,
+                                         self.nested,
+                                         other.nested,
+                                         self.aligned64,
+                                         other.aligned64,
+                                         self.small,
+                                         other.small,
+                                         self.aligned256,
+                                         other.aligned256,
+                                         self.handles,
+                                         other.handles);
+    }
+
+    auto get_view() -> View;
+    auto get_view(int32 const offset, int32 const count) -> View;
+    auto get_view() const -> ConstView;
+    auto get_view(int32 const offset, int32 const count) const -> ConstView;
+    auto get_const_view() const -> ConstView;
+    auto get_const_view(int32 const offset, int32 const count) const -> ConstView;
+    auto num() const noexcept -> int32;
+    auto is_empty() const noexcept -> bool;
+    void validate_array_sizes() const;
+    auto slice(int32 const offset, int32 const count) -> View;
+    auto left(int32 const count) -> View;
+    auto right(int32 const count) -> View;
+    auto slice(int32 const offset, int32 const count) const -> ConstView;
+    auto left(int32 const count) const -> ConstView;
+    auto right(int32 const count) const -> ConstView;
+
+    TArray<uint8, ReallocAllocator> bytes;
+    TArray<OddBytes, ReallocAllocator> odd;
+    TArray<Aligned32, ReallocAllocator> aligned32;
+    ReallocVectors nested;
+    TArray<Aligned64, ReallocAllocator> aligned64;
+    TArray<int8, ReallocAllocator> small;
+    TArray<Aligned256, ReallocAllocator> aligned256;
+    TArray<Handle, ReallocAllocator> handles;
 };
 } // namespace ml::single_allocation_experiment

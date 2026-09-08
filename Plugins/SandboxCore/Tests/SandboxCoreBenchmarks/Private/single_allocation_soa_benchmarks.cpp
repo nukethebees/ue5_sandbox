@@ -1,5 +1,9 @@
 #include <SbxCoreExperiments/soa_types.h>
 
+#include <HAL/UnrealMemory.h>
+
+#include <SbxCoreExperiments/soa_reference_allocators.h>
+#include <SbxCoreExperiments/soa_test_support.h>
 #include "single_allocation_soa_benchmark_counts.h"
 #include "TestHarness.h"
 
@@ -221,6 +225,42 @@ void run_once(Operation const operation, int32 const count, int32 const batch) {
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.BenchmarkCorrectness") {
+    auto check_allocator = []<typename Allocator> {
+        TArray<uint32, Allocator> array;
+        array.Reserve(64);
+        REQUIRE(array.Max() == 64);
+        REQUIRE(reinterpret_cast<UPTRINT>(array.GetData()) % 64 == 0);
+        array.Add(42);
+        array.Reserve(129);
+        REQUIRE(array.Max() == 129);
+        REQUIRE(array.Num() == 1);
+        REQUIRE(array[0] == 42);
+        REQUIRE(reinterpret_cast<UPTRINT>(array.GetData()) % 64 == 0);
+        array.Empty();
+        REQUIRE(array.GetData() == nullptr);
+    };
+    check_allocator.operator()<MallocAllocator>();
+    check_allocator.operator()<ReallocAllocator>();
+    auto check_soa = []<typename Owner> {
+        Owner owner;
+        owner.reserve(129);
+        int32 leaves{};
+        each_leaf(owner, [&](auto const& column) {
+            ++leaves;
+            REQUIRE(column.Max() == 129);
+            REQUIRE(reinterpret_cast<UPTRINT>(column.GetData()) % 64 == 0);
+        });
+        REQUIRE(leaves == 53);
+        owner.add_defaulted(129);
+        owner.healths[128] = 42;
+        owner.locations.xs[128] = 3.f;
+        owner.reserve(4096);
+        REQUIRE(owner.num() == 129);
+        REQUIRE(owner.healths[128] == 42);
+        REQUIRE(owner.locations.xs[128] == 3.f);
+    };
+    check_soa.operator()<MallocEntityData>();
+    check_soa.operator()<ReallocEntityData>();
     for (auto const operation : {Operation::NaturalAppend,
                                  Operation::ReservedAppend,
                                  Operation::DefaultedAppend,
@@ -287,6 +327,27 @@ void benchmark_owner(Operation const operation, int32 const count, int32 const b
 void run_comparison(Operation const operation, int32 const count, int32 const batch = 1) {
     benchmark_owner<EntityData>(operation, count, batch, "TArray");
     benchmark_owner<SingleAllocationEntityData>(operation, count, batch, "Single");
+    if (operation == Operation::Reserve) {
+        auto const capacity{rounded_capacity(count, SingleAllocationEntityData::block_bytes)};
+        auto const byte_count{allocation_bytes(capacity, SingleAllocationEntityData::block_bytes)};
+        auto constexpr alignment{static_cast<uint32>(SingleAllocationEntityData::allocation_alignment)};
+        BENCHMARK("raw malloc") {
+            auto* const allocation{FMemory::Malloc(byte_count, alignment)};
+            FMemory::Free(allocation);
+        };
+        BENCHMARK("raw realloc") {
+            auto* const allocation{FMemory::Realloc(nullptr, byte_count, alignment)};
+            FMemory::Free(allocation);
+        };
+        BENCHMARK("SoA malloc (53 columns)") {
+            MallocEntityData owner;
+            owner.reserve(count);
+        };
+        BENCHMARK("SoA realloc (53 columns)") {
+            ReallocEntityData owner;
+            owner.reserve(count);
+        };
+    }
 }
 void run_comparisons(Operation const operation, int32 const batch = 1) {
     for (int32 const count : counts()) {

@@ -614,15 +614,29 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                         "include_order",
                         "prelude",
                         "structs",
-                        "experimental_stdlib"});
+                        "experimental_stdlib",
+                        "experimental_array_allocators"});
         std::vector<SoaSchema> structs;
         auto const& values{required_array(value, "structs", path)};
         for (std::size_t index{0}; index < values.size(); ++index) {
             structs.push_back(parse_soa(values[index], path + "/structs/" + std::to_string(index)));
         }
+        std::vector<SoaAllocatorVariant> variants;
+        if (auto const* configurations{
+                optional_array(value, "experimental_array_allocators", path)}) {
+            for (auto const& configuration : *configurations) {
+                auto const variant_path{path + "/experimental_array_allocators"};
+                reject_unknown(configuration, variant_path, {"prefix", "allocator"});
+                variants.push_back(
+                    {required<std::string>(configuration, "prefix", variant_path),
+                     parse_type_ref(required_value(configuration, "allocator", variant_path),
+                                    variant_path + "/allocator")});
+            }
+        }
         return SoaModuleSchema{std::move(settings),
                                std::move(structs),
-                               value_or<bool>(value, "experimental_stdlib", false, path)};
+                               value_or<bool>(value, "experimental_stdlib", false, path),
+                               std::move(variants)};
     }
     if (kind == "static_table") {
         reject_unknown(value,

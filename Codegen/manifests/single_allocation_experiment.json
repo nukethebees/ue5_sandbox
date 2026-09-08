@@ -7,6 +7,10 @@
       "source": "Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_types.cpp",
       "header_include": "SbxCoreExperiments/soa_types.h",
       "namespace": "ml::single_allocation_experiment",
+      "experimental_array_allocators": [
+        {"prefix": "Malloc", "allocator": "@soa_experiment_MallocAllocator"},
+        {"prefix": "Realloc", "allocator": "@soa_experiment_ReallocAllocator"}
+      ],
       "structs": [
         {
           "name": "Vectors",
