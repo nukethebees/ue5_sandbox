@@ -27,6 +27,151 @@ The assumption is that there is one wave of fighters total.
 */
 
 namespace ml {
+/* **************************************** */
+// Simultaneous capital deaths
+/* **************************************** */
+FSimultaneousCapitalReassignmentScenario::FSimultaneousCapitalReassignmentScenario(
+    FSimulationTestContext& context)
+    : FSimulationTestScenario{context} {
+    TestCommandBuilder.Do([this] { spawn_fixture(); });
+}
+void FSimultaneousCapitalReassignmentScenario::spawn_fixture() {
+    auto* const config{duplicate_level_config(context_.config, context_.orchestrator)};
+    if (!checks.not_nullptr(config, TEXT("Level config is duplicated"))) {
+        return;
+    }
+    config->capital_ships.spawn_delay = 6000.f;
+    config->capital_ships.max_health = 10000;
+    config->capital_ships.visual_logger_style = nullptr;
+    config->fighters.laser.damage = 0;
+    config->fighters.visual_logger_style = nullptr;
+    context_.orchestrator.set_level_config(*config);
+    TArray<ATestCapitalShipProxy*> proxies;
+    for (int32 i{}; i < 4; ++i) {
+        auto* const proxy{spawn_capital_proxy(
+            context_.world,
+            context_.config,
+            checks,
+            FName{*FString::Printf(TEXT("reassignment_capital_%d"), i)},
+            FTransform{FVector{(i % 2 == 0 ? -1.0 : 1.0) * 250000.0, (i / 2) * 200000.0, 0.0}})};
+        if (!checks.is_valid(proxy, TEXT("Capital proxy is spawned"))) {
+            return;
+        }
+        proxy->set_actor_config(&config->capital_ships);
+        proxy->set_spawn_cooldown(6000.f);
+        proxy->set_team(i % 2 == 0 ? ETestTeam::Green : ETestTeam::Red);
+        proxies.Add(proxy);
+    }
+    for (int32 i{}; i < 4; ++i) {
+        proxies[i]->set_target_ship(proxies[i ^ 1]);
+    }
+}
+void FSimultaneousCapitalReassignmentScenario::sample_values(ATestBatchOrchestrator&) {
+    auto const& capitals{test_driver->get_capital_ships()};
+    auto const& registry{test_driver->get_registry()};
+    FSample sample;
+    auto const count{capitals.get_num_instances()};
+    for (int32 i{}; i < count; ++i) {
+        auto const handle{capitals.get_handle(i)};
+        sample.capitals.Add(handle);
+        sample.capital_teams.Add(registry.get_team(handle));
+        sample.span_starts.Add(capitals.get_capital_fighter_handle_span(i).start());
+        sample.owned_fighters.Emplace(capitals.get_fighter_handles(i));
+        for (auto const fighter : capitals.get_fighter_handles(i)) {
+            sample.fighter_teams.Add(registry.get_team(fighter));
+        }
+    }
+    sample.all_owned_fighters.Append(capitals.get_fighter_handles());
+    sample.fighters.Append(test_driver->get_capital_ship_fighters().get_handles());
+    samples_.add(test_driver->get_time(), MoveTemp(sample));
+    test_driver->advance_timeline();
+}
+void FSimultaneousCapitalReassignmentScenario::check_samples() {
+    auto const& before{samples_.value_at(samples_.nearest_index(0.5))};
+    auto const& after{samples_.values().Last()};
+    checks.are_equal(4, before.capitals.Num(), TEXT("Two capitals per team spawn"));
+    checks.are_equal(2, after.capitals.Num(), TEXT("Both killed capitals are removed"));
+    checks.is_greater_than(before.fighters.Num(), 0, TEXT("One fighter wave spawns"));
+    checks.are_equal(before.fighters.Num(), after.fighters.Num(), TEXT("All fighters survive"));
+    TSet<FRegistryEntityHandle> seen;
+    int32 offset{};
+    auto const count{after.capitals.Num()};
+    for (int32 i{}; i < count; ++i) {
+        checks.is_true(!killed_capitals_.Contains(after.capitals[i]),
+                       TEXT("Owner capital survives"));
+        checks.are_equal(offset, after.span_starts[i], TEXT("Ownership spans are contiguous"));
+        int32 expected_count{};
+        auto const before_count{before.capitals.Num()};
+        for (int32 j{}; j < before_count; ++j) {
+            if (before.capital_teams[j] == after.capital_teams[i]) {
+                expected_count += before.owned_fighters[j].Num();
+            }
+        }
+        checks.are_equal(expected_count,
+                         after.owned_fighters[i].Num(),
+                         TEXT("Survivor owns both original waves on its team"));
+        for (auto const fighter : after.owned_fighters[i]) {
+            checks.is_true(!seen.Contains(fighter), TEXT("Fighter ownership is unique"));
+            seen.Add(fighter);
+            checks.is_true(before.fighters.Contains(fighter),
+                           TEXT("Original fighter is preserved"));
+            checks.is_true(after.fighters.Contains(fighter),
+                           TEXT("Owned fighter is in simulation"));
+            checks.are_equal(after.capital_teams[i],
+                             after.fighter_teams[offset],
+                             TEXT("Fighter belongs to owner's team"));
+            if (checks.is_true(after.all_owned_fighters.IsValidIndex(offset),
+                               TEXT("Span is within flat ownership array"))) {
+                checks.are_equal(fighter,
+                                 after.all_owned_fighters[offset],
+                                 TEXT("Span matches flat ownership array"));
+            }
+            ++offset;
+        }
+    }
+    checks.are_equal(after.fighters.Num(), seen.Num(), TEXT("Every fighter has one owner"));
+    checks.are_equal(offset, after.all_owned_fighters.Num(), TEXT("Spans cover ownership array"));
+}
+void FSimultaneousCapitalReassignmentScenario::run() {
+    run_until_timeline_finished(
+        [this] {
+            initialise_test_driver();
+            test_driver->orchestrator.set_end_tick_test_hook(
+                FOrchestratorEndTickTestHook::CreateRaw(
+                    this, &FSimultaneousCapitalReassignmentScenario::sample_values));
+            test_driver->timeline.at(1.0, [this] {
+                auto const& capitals{test_driver->get_capital_ships()};
+                for (auto const team : {ETestTeam::Green, ETestTeam::Red}) {
+                    FRegistryEntityHandle victim;
+                    auto const count{capitals.get_num_instances()};
+                    for (int32 i{}; i < count; ++i) {
+                        auto const handle{capitals.get_handle(i)};
+                        if (test_driver->get_registry().get_team(handle) == team) {
+                            victim = handle;
+                            if (team == ETestTeam::Red) {
+                                break;
+                            }
+                        }
+                    }
+                    if (checks.is_true(victim.is_valid(), TEXT("Team has a capital to kill"))) {
+                        killed_capitals_.Add(victim);
+                    }
+                }
+                test_driver->queue_kills(killed_capitals_);
+            });
+            test_driver->timeline.finish_at(2.0);
+            test_driver->orchestrator.start_simulation();
+        },
+        FTimespan{0, 0, 10},
+        [this] {
+            check_samples();
+            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+        });
+}
+
+/* **************************************** */
+// Capital fighter handle lifecycle
+/* **************************************** */
 void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
                                            FSoftTestAssertions& checks,
                                            USpaceGameLevelConfig const& config,

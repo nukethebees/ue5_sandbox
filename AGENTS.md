@@ -57,6 +57,15 @@ Unreal Engine 5.8 project.
 * For UObject types in a dedicated plugin and namespace, prefer concise names.
 * Avoid anonymous-namespace constants in `.cpp` files because Unreal unity builds can merge translation units. Prefer `inline static constexpr` members or `inline constexpr` constants in a specific named namespace.
 
+# SandboxCore and SOA Reuse
+
+* Inspect `Plugins/SandboxCore` before writing generic container, array, SOA, math/vector, timer/countdown, buffering, or permutation helpers.
+* Reuse matching helpers in handwritten code when clarity and performance are preserved; short local duplicates are still duplicates.
+* Prefer complete generated SOA operations for row growth, removal, copying, and reordering. Column synchronization is an invariant.
+* Keep generated implementations explicit, simple, and easy to debug. Do not consolidate their per-column operations into variadic calls.
+* For missing reusable utilities, consider tested SandboxCore additions or general-purpose generated member functions for repeated SOA operations.
+* Keep explicit hot algorithms where a shared helper would be less clear or slower.
+
 # Formatting
 
 * Format changed C++ files with `cmake --workflow --preset format-code`.

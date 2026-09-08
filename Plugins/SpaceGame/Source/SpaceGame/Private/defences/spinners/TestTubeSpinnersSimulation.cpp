@@ -78,7 +78,6 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::spawn_instances);
 
     auto const n{new_locations.num()};
-    auto const existing_total{get_num_instances()};
 
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(new_locations),
@@ -86,11 +85,12 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
         SANDBOX_NAMED_NUM(new_fire_point_indices),
     });
 
-    entities.handles.AddDefaulted(n);
-    entities.locations.append_from(new_locations);
-    entities.yaws.Append(new_yaws);
-    entities.laser_cooldowns.add_zeroed(n);
-    entities.next_fire_point_indices.Append(new_fire_point_indices);
+    entities.add_uninitialised(n);
+    auto appended{entities.right(n)};
+    ml::assign_from(appended.locations, new_locations);
+    ml::copy_elements(appended.yaws, 0, new_yaws, 0, n);
+    entities.laser_cooldowns.zero_last(n);
+    ml::copy_elements(appended.next_fire_point_indices, 0, new_fire_point_indices, 0, n);
 
     checkCode(entities.validate_array_sizes());
 
@@ -111,7 +111,7 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
     auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
 
     for (int32 i{0}; i < n; ++i) {
-        entities.handles[i + existing_total] = new_entities.registry_handles[i];
+        appended.handles[i] = new_entities.registry_handles[i];
     }
 
     checkCode(validate_array_sizes());

@@ -80,9 +80,6 @@ auto FDelayedNiagaraSpawns::num() const -> int32 {
 void FDelayedNiagaraSpawns::remove_spawn_at(int32 index) {
     check(systems.IsValidIndex(index));
 
-    systems.RemoveAtSwap(index, EAllowShrinking::No);
-    locations.RemoveAtSwap(index, EAllowShrinking::No);
-    rotations.RemoveAtSwap(index, EAllowShrinking::No);
-    scales.RemoveAtSwap(index, EAllowShrinking::No);
-    times_remaining.RemoveAtSwap(index, EAllowShrinking::No);
+    ml::remove_at_swap(
+        index, 1, EAllowShrinking::No, systems, locations, rotations, scales, times_remaining);
 }

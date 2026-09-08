@@ -348,8 +348,7 @@ void Simulation::refresh_fighter_handles() {
             if (capital_index == new_capital_index) {
                 fighter_handles_scratch.Add(
                     fighter_reassignment_queue.fighter_handles[reassigned_index]);
-                fighter_reassignment_queue.fighter_handles.RemoveAtSwap(reassigned_index,
-                                                                        EAllowShrinking::No);
+                fighter_reassignment_queue.remove_at_swap(reassigned_index, 1, EAllowShrinking::No);
                 ++new_span.count;
             }
         }

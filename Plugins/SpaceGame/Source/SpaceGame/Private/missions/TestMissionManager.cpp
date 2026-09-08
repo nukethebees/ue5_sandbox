@@ -4,6 +4,8 @@
 #include <SpaceGame/levels/LevelDefinitionSoA.h>
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
+#include <SandboxCore/container_ops.h>
+
 namespace {
 auto get_level_entity_handle(TConstArrayView<FRegistryEntityHandle> const level_entity_handles,
                              int32 const entity_index) -> FRegistryEntityHandle {
@@ -166,16 +168,16 @@ void FTestMissionManager::consume_level_events(ml::FLevelMissionEventGroupsConst
 
 void FTestMissionManager::reset_runtime_state() {
     pending_result_.Reset();
-    hero_entity_handles.Reset();
-    hero_entity_ids.Reset();
-    entity_handles_that_must_survive.Reset();
-    entity_ids_that_must_survive.Reset();
-    entity_types_that_must_survive.Reset();
-    entity_health_that_must_survive.Reset();
-    entity_handles_required_to_kill.Reset();
-    entity_ids_required_to_kill.Reset();
-    entity_types_required_to_kill.Reset();
-    entity_health_required_to_kill.Reset();
+    ml::reset(hero_entity_handles,
+              hero_entity_ids,
+              entity_handles_that_must_survive,
+              entity_ids_that_must_survive,
+              entity_types_that_must_survive,
+              entity_health_that_must_survive,
+              entity_handles_required_to_kill,
+              entity_ids_required_to_kill,
+              entity_types_required_to_kill,
+              entity_health_required_to_kill);
     mission_state = ETestMissionState::NotStarted;
     mission_fail_reason = ETestMissionFailReason::None;
     mission_kills = 0;
