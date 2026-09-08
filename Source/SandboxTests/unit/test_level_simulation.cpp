@@ -75,6 +75,7 @@ auto make_scheduled_battle() -> FLevelSimulationInitData {
         .kill_count = 1,
         .hero_entity_ids = {hero},
     });
+    builder.add_mission_event({.time_seconds = 0.0, .kill_target_increase = 2});
     builder.add_mission_event({
         .time_seconds = 0.21,
         .required_kill_entity_ids = {enemy},
@@ -115,8 +116,22 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 auto FWorldlessLevelSimulationTest::RunTest(FString const&) -> bool {
     FLevelSimulation first{make_battle()};
     FLevelSimulation second{make_battle()};
+    TestEqual(TEXT("Construction leaves external setup open"),
+              first.get_state(),
+              EOrchestratorState::Uninitialised);
+    first.advance(1.0);
+    TestEqual(TEXT("Uninitialised simulation ignores elapsed time"),
+              first.get_clock().get_completed_ticks(),
+              uint64{0});
     prepare_mission(first);
     prepare_mission(second);
+    TestEqual(TEXT("Finishing initialization pauses the simulation"),
+              first.get_state(),
+              EOrchestratorState::Paused);
+    TestFalse(TEXT("No run is started without metadata"),
+              first.get_level_telemetry_manager().is_run_recording());
+    first.pause();
+    first.pause();
     TestFalse(TEXT("No presentation resources are needed"), first.has_presentation());
     TestNull(TEXT("No player is needed"), first.get_player_ship_simulation());
     TestEqual(TEXT("Both capitals are registered"),
@@ -195,7 +210,13 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 
 auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
     FLevelSimulation simulation{make_scheduled_battle()};
+    TestEqual(TEXT("Tick-zero entities are available before finishing initialization"),
+              simulation.get_capital_ships()->get_num_instances(),
+              1);
     simulation.finish_initialisation();
+    TestEqual(TEXT("Tick-zero increase survives authored mission configuration"),
+              simulation.get_mission_manager().get_kill_target(),
+              3);
     TestEqual(TEXT("Only tick-zero entities exist initially"),
               simulation.get_capital_ships()->get_num_instances(),
               1);
@@ -206,6 +227,9 @@ auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
     auto const dt{simulation.get_clock().get_tick_period()};
     simulation.advance(dt);
     simulation.advance(dt);
+    TestEqual(TEXT("Tick-zero increase is not dispatched again"),
+              simulation.get_mission_manager().get_kill_target(),
+              3);
     TestEqual(TEXT("A fractional authoring time rounds up to the next tick"),
               simulation.get_capital_ships()->get_num_instances(),
               1);
@@ -219,6 +243,150 @@ auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
               1);
     TestFalse(TEXT("All authored objective events have been dispatched"),
               simulation.get_mission_manager().has_pending_objective_events());
+    return true;
+}
+
+/* **************************************** */
+// Initialization compatibility and spatial queries
+/* **************************************** */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationLegacyInitialisationTest,
+    "Sandbox.UnitTests.LevelSimulation.LegacyTargetsAndTurretRotations",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationLegacyInitialisationTest::RunTest(FString const&) -> bool {
+    for (auto const with_player : {false, true}) {
+        auto data{make_battle()};
+        if (with_player) {
+            data.player.Emplace();
+        }
+        data.capital_target_spawn_indices = {1,
+                                             FLevelSimulationInitData::player_target_spawn_index};
+        data.turret_spawns.add_defaulted(2);
+        data.turret_spawns.teams = {ETestTeam::Green, ETestTeam::White};
+        data.turret_spawns.healths = {20, 30};
+        data.turret_spawns.laser_damages = {5, 7};
+        data.turret_spawns.locations.ys = {-1000.f, 1000.f};
+        data.turret_transforms.Emplace(FRotator{0.0, 90.0, 0.0});
+        FLevelSimulation simulation{MoveTemp(data)};
+        simulation.finish_initialisation();
+        auto const& capitals{*simulation.get_capital_ships()};
+        TestTrue(TEXT("Capital spawn indices map to registered handles"),
+                 capitals.get_target_handle(0) == capitals.get_handle(1));
+        auto const* player{simulation.get_player_ship_simulation()};
+        TestTrue(TEXT("Player target sentinel respects optional player offset"),
+                 capitals.get_target_handle(1) ==
+                     (player ? player->registry_handle : FRegistryEntityHandle{}));
+        TestEqual(TEXT("All legacy entities are registered"),
+                  simulation.get_entity_registry().get_num_alive_active_entities(),
+                  with_player ? 5 : 4);
+        auto const& entities{simulation.get_entity_registry().get_entity_data()};
+        auto const entity_count{entities.entity_types.Num()};
+        int32 turret_count{};
+        for (int32 i{}; i < entity_count; ++i) {
+            if (entities.entity_types[i] == ETestEntityType::Turret) {
+                auto const explicit_rotation{entities.teams[i] == ETestTeam::Green};
+                TestEqual(TEXT("Legacy turret health survives conversion"),
+                          entities.healths[i],
+                          explicit_rotation ? 20 : 30);
+                TestEqual(TEXT("Turret rotation uses the transform or defaults to zero"),
+                          entities.rotations.yaws[i],
+                          explicit_rotation ? 90.f : 0.f);
+                ++turret_count;
+            }
+        }
+        TestEqual(TEXT("Both legacy turrets are registered"), turret_count, 2);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationAuthoredInitialisationTest,
+    "Sandbox.UnitTests.LevelSimulation.AuthoredInitialisationSuppressesLegacyFallback",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationAuthoredInitialisationTest::RunTest(FString const&) -> bool {
+    for (auto const with_mission : {false, true}) {
+        auto data{make_battle()};
+        if (with_mission) {
+            data.level_events.initialisation.mission.Emplace();
+        } else {
+            data.level_events.initialisation.entity_count = 1;
+        }
+        FLevelSimulation simulation{MoveTemp(data)};
+        simulation.finish_initialisation();
+        TestEqual(TEXT("Authored mission or entity count prevents legacy capital spawns"),
+                  simulation.get_capital_ships()->get_num_instances(),
+                  0);
+    }
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationInitialQueriesTest,
+    "Sandbox.UnitTests.LevelSimulation.InitialQueriesIncludeStaticAndDynamicGeometry",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationInitialQueriesTest::RunTest(FString const&) -> bool {
+    auto data{make_battle()};
+    data.static_bounds.mins.add({-10.f, 490.f, -10.f});
+    data.static_bounds.maxes.add({10.f, 510.f, 10.f});
+    FLevelSimulation simulation{MoveTemp(data)};
+    simulation.finish_initialisation();
+    auto const& queries{simulation.get_spatial_query_manager()};
+    TestEqual(TEXT("Initialization rebuilds are excluded from runtime counters"),
+              queries.get_runtime_telemetry().grid_rebuild_count,
+              uint64{0});
+    auto const dynamic_hit{queries.trace_closest({-1100.f, 0.f, 0.f}, {-900.f, 0.f, 0.f})};
+    TestTrue(TEXT("Initial capital is queryable before the first tick"),
+             dynamic_hit.hit &&
+                 dynamic_hit.entity == simulation.get_capital_ships()->get_handle(0));
+    auto const static_hit{queries.trace_closest({-100.f, 500.f, 0.f}, {100.f, 500.f, 0.f})};
+    TestTrue(TEXT("Initial static collision is queryable before the first tick"),
+             static_hit.hit && static_hit.static_geometry_index == 0);
+    simulation.start();
+    simulation.advance(simulation.get_clock().get_tick_period());
+    TestTrue(TEXT("Static collision survives the first dynamic rebuild"),
+             queries.trace_closest({-100.f, 500.f, 0.f}, {100.f, 500.f, 0.f}).hit);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationSpawnQueriesTest,
+    "Sandbox.UnitTests.LevelSimulation.ScheduledSpawnIsQueryableDuringDecisions",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
+    auto data{make_scheduled_battle()};
+    data.turrets.target_refresh_frequency = 10.f;
+    // Keep the muzzle outside the turret's collision bounds so it cannot block its own query.
+    data.turrets.fire_point_offset.SetLocation(FVector{20.f, 0.f, 0.f});
+    auto& initial{data.level_events.initial_spawns.turret_spawns};
+    initial.add_uninitialised(1);
+    initial.set(0,
+                data.level_events.initialisation.entity_count++,
+                FVector3f{-1000.f, 1000.f, 0.f},
+                FRotator3f::ZeroRotator,
+                ETestTeam::Blue,
+                100,
+                0);
+    FLevelSimulation simulation{MoveTemp(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    simulation.advance(dt);
+    simulation.advance(dt);
+    TestTrue(TEXT("Turret has no enemy before the scheduled spawn"),
+             simulation.get_turrets()->get_target_handles()[0].is_null());
+    auto const previous_rebuilds{
+        simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count};
+    simulation.advance(dt);
+    TestEqual(TEXT("Spawn tick rebuilds during setup and at end tick"),
+              simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count,
+              previous_rebuilds + 2);
+    TestTrue(TEXT("Decision phase acquires the enemy spawned in the same tick"),
+             simulation.get_turrets()->get_target_handles()[0] ==
+                 simulation.get_capital_ships()->get_handle(1));
     return true;
 }
 
@@ -257,6 +425,12 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
     resources.config = config;
     FLevelSimulation headless{make_battle()};
     FLevelSimulation visible{make_battle(), &resources};
+    TestEqual(TEXT("Presentation construction preserves initial entity count"),
+              visible.get_capital_ships()->get_num_instances(),
+              headless.get_capital_ships()->get_num_instances());
+    TestEqual(TEXT("Presentation construction leaves initialization open"),
+              visible.get_state(),
+              EOrchestratorState::Uninitialised);
     prepare_mission(headless);
     prepare_mission(visible);
     TestTrue(TEXT("Components enable presentation"), visible.has_presentation());
@@ -430,7 +604,12 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
         .launched_utc = TEXT("2026-09-06T12:00:00Z"),
     };
     FLevelSimulation simulation{MoveTemp(data)};
+    TestFalse(TEXT("Construction does not start telemetry recording"),
+              simulation.get_level_telemetry_manager().is_run_recording());
     simulation.finish_initialisation();
+    TestTrue(TEXT("Finishing starts telemetry while still paused"),
+             simulation.get_level_telemetry_manager().is_run_recording() &&
+                 simulation.get_state() == EOrchestratorState::Paused);
     simulation.start();
 
     auto& telemetry{simulation.get_level_telemetry_manager()};
@@ -442,6 +621,9 @@ auto FLevelTelemetryRunRecordTest::RunTest(FString const&) -> bool {
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(ELevelTelemetryRunEndReason::WorldEnd, TEXT("test"));
+    TestEqual(TEXT("Interrupted telemetry finalization does not pause simulation"),
+              simulation.get_state(),
+              EOrchestratorState::Running);
 
     auto record{telemetry.take_finalized_run()};
     if (!TestTrue(TEXT("Finalized manager yields one run record"), record.IsSet())) {
@@ -653,6 +835,9 @@ auto FLevelTelemetryMissionCompletionTest::RunTest(FString const&) -> bool {
     simulation.advance(dt);
 
     auto const mission_result{simulation.take_mission_result()};
+    TestEqual(TEXT("Taking the mission result does not pause simulation"),
+              simulation.get_state(),
+              EOrchestratorState::Running);
     if (!TestTrue(TEXT("Simulation yields the completed mission"), mission_result.IsSet())) {
         return false;
     }
@@ -670,5 +855,60 @@ auto FLevelTelemetryMissionCompletionTest::RunTest(FString const&) -> bool {
                   record->completion.mission_state.GetValue(),
                   ETestMissionState::Succeeded);
     }
+    return true;
+}
+
+/* **************************************** */
+// Explicit telemetry completion
+/* **************************************** */
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelSimulationTelemetryCompletionTest,
+    "Sandbox.UnitTests.LevelSimulation.TelemetryCompletionStopsCatchUp",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelSimulationTelemetryCompletionTest::RunTest(FString const&) -> bool {
+    auto data{make_battle()};
+    data.telemetry_metadata.Emplace();
+    data.telemetry_metadata->run_id = TEXT("completion-test");
+    FLevelSimulation simulation{MoveTemp(data)};
+    simulation.finish_initialisation();
+    int32 end_tick_calls{};
+    simulation.on_end_tick = [&](FLevelSimulation& level) {
+        ++end_tick_calls;
+        level.complete_telemetry_run(ELevelTelemetryRunEndReason::DurationReached,
+                                     ETestTeam::Green);
+    };
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    simulation.advance(dt * 3.25);
+    TestEqual(TEXT("Completion stops catch-up after the current tick"), end_tick_calls, 1);
+    TestEqual(TEXT("Completed run is paused"), simulation.get_state(), EOrchestratorState::Paused);
+    TestEqual(TEXT("Only one simulation tick completes"),
+              simulation.get_clock().get_completed_ticks(),
+              uint64{1});
+    auto& telemetry{simulation.get_level_telemetry_manager()};
+    auto const record{telemetry.take_finalized_run()};
+    if (TestTrue(TEXT("Completion yields a telemetry record"), record.IsSet())) {
+        TestEqual(TEXT("Completion reason is retained"),
+                  record->completion.reason,
+                  ELevelTelemetryRunEndReason::DurationReached);
+        TestFalse(TEXT("Explicit completion is not interruption"), record->completion.interrupted);
+        TestTrue(TEXT("Winning team is retained"),
+                 record->completion.winning_team == TOptional<ETestTeam>{ETestTeam::Green});
+        TestEqual(TEXT("Completion records the current tick"),
+                  record->completion.completed_ticks,
+                  uint64{1});
+    }
+    TestFalse(TEXT("Completion is consumed once"), telemetry.take_finalized_run().IsSet());
+    simulation.advance(dt * 10.0);
+    TestEqual(TEXT("Completed simulation ignores paused time"),
+              simulation.get_clock().get_completed_ticks(),
+              uint64{1});
+    simulation.on_end_tick = {};
+    simulation.start();
+    simulation.advance(0.0);
+    TestEqual(TEXT("Completion and restart preserve accumulated simulation time"),
+              simulation.get_clock().get_completed_ticks(),
+              uint64{3});
     return true;
 }

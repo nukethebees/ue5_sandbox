@@ -56,6 +56,9 @@ struct SPACEGAME_API FLevelSimulation {
     using tick_type = FSimulationClock::tick_type;
     using time_type = FSimulationClock::time_type;
 
+    /* **************************************** */
+    // Construction and lifecycle
+    /* **************************************** */
     explicit FLevelSimulation(FLevelSimulationInitData data,
                               FLevelPresentationResources const* presentation = nullptr);
     FLevelSimulation(FLevelSimulation const&) = delete;
@@ -63,16 +66,35 @@ struct SPACEGAME_API FLevelSimulation {
     auto operator=(FLevelSimulation const&) -> FLevelSimulation& = delete;
     auto operator=(FLevelSimulation&&) -> FLevelSimulation& = delete;
 
+    // Call after proxy targets, external mission setup, and world collision are installed.
+    // Synchronizes the initial world and telemetry before transitioning to Paused.
     void finish_initialisation();
+    // Requires Paused. Start/pause reset realtime sampling, preserving simulation accumulation.
     void start();
+    // Repeated pauses are valid after finish_initialisation().
     void pause();
+    void set_time_scale(time_type scale);
+
+    /* **************************************** */
+    // Simulation and presentation
+    /* **************************************** */
     void advance(time_type dt);
     void commit_presentation(time_type dt);
-    void set_time_scale(time_type scale);
+
+    /* **************************************** */
+    // Telemetry and mission results
+    /* **************************************** */
+    // Records interruption without changing simulation state.
     void finalize_telemetry_run(ELevelTelemetryRunEndReason reason, FString detail = {});
+    // Pauses without resetting either tick accumulator.
     void complete_telemetry_run(ELevelTelemetryRunEndReason reason,
                                 TOptional<ETestTeam> winning_team = {});
+    // Consumes the result and marks telemetry terminal without pausing.
     auto take_mission_result() -> TOptional<FLevelMissionResult>;
+
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     auto get_state() const noexcept -> EOrchestratorState { return state_; }
     auto get_clock() const noexcept -> FSimulationClock const& { return clock_; }
     auto get_time_scale() const noexcept -> time_type { return clock_.get_time_scale(); }
@@ -128,7 +150,21 @@ struct SPACEGAME_API FLevelSimulation {
     TFunction<void(FString, FString)> on_telemetry_persisted;
   private:
     friend class ATestBatchOrchestrator;
+
+    /* **************************************** */
+    // Subsystem setup
+    /* **************************************** */
+    void configure_subsystems(FLevelSimulationInitData const& data);
+    void configure_player(ml::test_space_ship::FPlayerSpawnData const& spawn);
     void bind_simulation_dependencies();
+    void initialise_spatial_queries(FLevelSimulationInitData const& data);
+    void begin_subsystems(FLevelSimulationInitData const& data);
+    void initialise_events(FLevelSimulationInitData& data);
+
+    /* **************************************** */
+    // Telemetry
+    /* **************************************** */
+    void initialise_telemetry();
     void sample_realtime_telemetry(time_type dt);
     void persist_finalized_telemetry_run();
 
