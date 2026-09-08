@@ -249,7 +249,7 @@ void Simulation::queue_fighter_spawns() {
     auto ships_ready_to_spawn_fighters_indices{ml::collect_indices_less_equal(
         entities.fighter_spawn_timers.get_const_view().remaining_times,
         0.f,
-        data.ships_ready_to_spawn_fighters_buffer)};
+        TArrayView<int32>{data.ships_ready_to_spawn_fighters_buffer})};
     data.ships_ready_to_spawn_fighters_buffer.SetNumUninitialized(
         ships_ready_to_spawn_fighters_indices.Num(), EAllowShrinking::No);
 

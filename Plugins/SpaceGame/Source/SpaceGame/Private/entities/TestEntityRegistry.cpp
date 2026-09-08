@@ -5,6 +5,7 @@
 #include <SpaceGame/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
+#include <SandboxCore/array_math.h>
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -31,12 +32,11 @@ void SpawnedEntityHandles::add_uninitialised(int32 const count) {
 // Lifecycle
 /* **************************************** */
 void FTestEntityRegistry::reset() {
-    entity_data.reset();
-    queued_entity_data.reset();
-    unique_entities.reset();
-    queued_death_infos.reset();
-
-    ml::reset(generations,
+    ml::reset(entity_data,
+              queued_entity_data,
+              unique_entities,
+              queued_death_infos,
+              generations,
               unique_ids,
               queued_entity_update_handles,
               queued_direct_damage_events,
@@ -59,13 +59,8 @@ void FTestEntityRegistry::commit_updates() {
 void FTestEntityRegistry::refresh_free_indices() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::refresh_free_indices);
 
-    free_indices.Reset();
-    auto const n{entity_data.num()};
-    for (int32 i{0}; i < n; ++i) {
-        if (entity_data.alive[i] == 0u) {
-            free_indices.Add(i);
-        }
-    }
+    ml::collect_indices_less_equal(
+        TConstArrayView<uint8>{entity_data.alive}, uint8{0}, free_indices);
 }
 void FTestEntityRegistry::end_tick() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::end_tick);
@@ -103,42 +98,32 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
     new_entities.registry_handles.add_uninitialised(count);
 
     auto const reuse_count{FMath::Min(free_indices.Num(), count)};
-    reuse_slots(view, reuse_count, new_entities);
-    append_slots(view, reuse_count, new_entities);
-
-    validate_array_sizes();
-    validate_unique_ids();
-
-    return new_entities;
-}
-void FTestEntityRegistry::reuse_slots(EntityData::ConstView const& view,
-                                      int32 const count,
-                                      SpawnedEntityHandles& spawned) {
-    for (int32 source_index{}; source_index < count; ++source_index) {
+    for (int32 source_index{}; source_index < reuse_count; ++source_index) {
         auto const slot_index{free_indices.Pop(EAllowShrinking::No)};
         entity_data.copy_element(slot_index, view, source_index);
         ++generations[slot_index];
 
         auto const handle{register_spawned_entity(
-            view, source_index, slot_index, spawned.first_id + source_index)};
-        spawned.registry_handles.set(source_index, handle.index, handle.generation);
+            view, source_index, slot_index, new_entities.first_id + source_index)};
+        new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
-}
-void FTestEntityRegistry::append_slots(EntityData::ConstView const& view,
-                                       int32 const source_offset,
-                                       SpawnedEntityHandles& spawned) {
-    auto const append_count{view.num() - source_offset};
+
+    auto const append_count{count - reuse_count};
     auto const first_slot_index{entity_data.num()};
     generations.AddZeroed(append_count);
     unique_ids.AddDefaulted(append_count);
-    entity_data.append_from(view.get_view(source_offset, append_count));
+    entity_data.append_from(view.get_view(reuse_count, append_count));
 
     for (int32 offset{}; offset < append_count; ++offset) {
-        auto const source_index{source_offset + offset};
+        auto const source_index{reuse_count + offset};
         auto const handle{register_spawned_entity(
-            view, source_index, first_slot_index + offset, spawned.first_id + source_index)};
-        spawned.registry_handles.set(source_index, handle.index, handle.generation);
+            view, source_index, first_slot_index + offset, new_entities.first_id + source_index)};
+        new_entities.registry_handles.set(source_index, handle.index, handle.generation);
     }
+
+    validate_array_sizes();
+    validate_unique_ids();
+    return new_entities;
 }
 FORCEINLINE auto FTestEntityRegistry::register_spawned_entity(EntityData::ConstView const& view,
                                                               int32 const source_index,
@@ -542,9 +527,7 @@ auto FTestEntityRegistry::count_alive_per_team() const noexcept -> TeamCounts {
 
     constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
     for (int32 team_index{}; team_index < team_count; ++team_index) {
-        for (auto const count : alive_counts_[team_index]) {
-            out[team_index] += count;
-        }
+        out[team_index] = ml::sum(TConstArrayView<int32>{alive_counts_[team_index]});
     }
 
     return out;
@@ -553,19 +536,11 @@ auto FTestEntityRegistry::count_alive_per_team_and_type() const noexcept -> Enti
     return alive_counts_;
 }
 auto FTestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const noexcept -> int32 {
-    int32 count{0};
-
-    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-    for (int32 team_index{}; team_index < team_count; ++team_index) {
-        if (team_index == std::to_underlying(team)) {
-            continue;
-        }
-        for (auto const type_count : alive_counts_[team_index]) {
-            count += type_count;
-        }
+    auto const team_index{std::to_underlying(team)};
+    if (team_index >= TEAM_COUNT) {
+        return alive_count_;
     }
-
-    return count;
+    return alive_count_ - ml::sum(TConstArrayView<int32>{alive_counts_[team_index]});
 }
 
 /* **************************************** */

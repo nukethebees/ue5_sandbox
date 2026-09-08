@@ -59,6 +59,22 @@ auto sum(T const* RESTRICT values, int32 const count) noexcept -> T {
 }
 
 namespace ml {
+// Replaces the output with ascending matching indices, retaining its capacity. Input and output
+// must not alias. Unlike the view overload, storage grows only as matches are found.
+template <ml::Numeric T>
+auto collect_indices_less_equal(TConstArrayView<T> const values,
+                                T const threshold,
+                                TArray<int32>& out_indices) -> TConstArrayView<int32> {
+    out_indices.Reset();
+    auto const count{values.Num()};
+    for (int32 index{}; index < count; ++index) {
+        if (values[index] <= threshold) {
+            out_indices.Add(index);
+        }
+    }
+    return out_indices;
+}
+
 template <ml::Numeric T>
 auto collect_indices_less_equal(TConstArrayView<T> const values,
                                 T const threshold,

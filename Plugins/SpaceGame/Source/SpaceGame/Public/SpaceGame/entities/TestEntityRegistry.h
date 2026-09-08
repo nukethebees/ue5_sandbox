@@ -197,10 +197,6 @@ struct SPACEGAME_API FTestEntityRegistry {
     /* **************************************** */
     // Slot allocation and identity registration
     /* **************************************** */
-    void reuse_slots(EntityData::ConstView const& view, int32 count, SpawnedEntityHandles& spawned);
-    void append_slots(EntityData::ConstView const& view,
-                      int32 source_offset,
-                      SpawnedEntityHandles& spawned);
     auto register_spawned_entity(EntityData::ConstView const& view,
                                  int32 source_index,
                                  int32 slot_index,
@@ -246,7 +242,7 @@ struct SPACEGAME_API FTestEntityRegistry {
 
     // Dead entities
     TArray<FRegistryEntityHandle> dead_entities_this_frame;
-    // Ascending dead-slot snapshot from end_tick(), consumed from the tail by reuse_slots().
+    // Ascending dead-slot snapshot from end_tick(), consumed from the tail by add_entities().
     TArray<int32> free_indices;
 
     EntityCounts alive_counts_{};

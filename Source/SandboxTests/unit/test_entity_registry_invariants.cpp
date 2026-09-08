@@ -55,6 +55,12 @@ TEST_CLASS(EntityRegistry, "Sandbox.UnitTests")
             }
         }
         TestRunner->TestEqual(TEXT("Alive total"), registry_.count_alive(), total);
+        TestRunner->TestEqual(TEXT("Sentinel team excludes no entities"),
+                              registry_.count_alive_not_on_team(ETestTeam::COUNT),
+                              total);
+        TestRunner->TestEqual(TEXT("Out-of-range team excludes no entities"),
+                              registry_.count_alive_not_on_team(static_cast<ETestTeam>(255)),
+                              total);
         TestRunner->TestEqual(
             TEXT("Active alive total"), registry_.get_num_alive_active_entities(), total);
         auto const actual{registry_.count_alive_per_team_and_type()};
