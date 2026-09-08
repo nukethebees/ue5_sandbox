@@ -7,6 +7,13 @@
 
 namespace codegen::detail {
 
+auto build_soa_layout(SoaSchema const& schema,
+                      std::map<std::string, SoaSchema const*> const& schemas,
+                      std::map<std::string, CppType> const& types,
+                      bool fixed,
+                      std::vector<std::string> prefix = {},
+                      std::set<std::string> ancestors = {}) -> FixedLayout;
+
 auto build_fixed_layout(SoaSchema const& schema,
                         std::map<std::string, SoaSchema const*> const& schemas,
                         std::map<std::string, CppType> const& types,

@@ -2,6 +2,7 @@
 #include "lowering_utils.h"
 #include "soa_internal.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace codegen::detail {
@@ -14,8 +15,13 @@ auto lower_soa_impl(SoaSchema const& schema,
     auto const view_name{schema.view_name.value_or(schema.name + "View")};
     auto const const_view_name{schema.const_view_name.value_or(schema.name + "ConstView")};
     std::vector<FunctionSpec> custom_source;
-    auto storage{soa_storage_node(
-        schema, members, view_name, const_view_name, types, custom_source, std::move(storage_prelude))};
+    auto storage{soa_storage_node(schema,
+                                  members,
+                                  view_name,
+                                  const_view_name,
+                                  types,
+                                  custom_source,
+                                  std::move(storage_prelude))};
 
     NodeListBuilder header;
     header.append(soa_view_struct_nodes(schema, members, types, view_name, const_view_name))
@@ -54,6 +60,9 @@ auto lower_soa_impl(SoaSchema const& schema,
 
 auto lower_soa_module_impl(SoaModuleSchema const& module,
                            std::map<std::string, CppType> const& types) -> Module {
+    auto const format_generated{std::ranges::any_of(module.structs, [](auto const& schema) {
+        return schema.experimental_single_allocation.has_value();
+    })};
     std::map<std::string, SoaSchema const*> schemas;
     for (auto const& schema : module.structs) {
         schemas.emplace(schema.name, &schema);
@@ -68,6 +77,13 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
             header.append(std::move(lowered.header))
                 .new_lines(2)
                 .append(lower_fixed_nodes(schema, schemas, types));
+            lowered.header = header.build();
+        }
+        if (schema.experimental_single_allocation.has_value()) {
+            NodeListBuilder header;
+            header.append(std::move(lowered.header))
+                .new_lines(2)
+                .add(lower_single_allocation_node(schema, schemas, types));
             lowered.header = header.build();
         }
         lowered_structs.push_back(std::move(lowered));
@@ -93,12 +109,14 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
     }
     Module result{
         .name = module.settings.name,
-        .header = CppFile{
-            .path = module.settings.header,
-            .nodes = header_nodes.build(),
-            .clang_format_off = true,
-            .include_order = module.settings.include_order,
-        },
+        .header =
+            CppFile{
+                .path = module.settings.header,
+                .nodes = header_nodes.build(),
+                .clang_format_off = !format_generated,
+                .include_order = module.settings.include_order,
+                .format_generated = format_generated,
+            },
     };
     if (module.settings.source.has_value()) {
         NodeListBuilder source_definitions;
@@ -121,8 +139,9 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
             .path = *module.settings.source,
             .nodes = source_nodes.build(),
             .pragma_once = false,
-            .clang_format_off = true,
+            .clang_format_off = !format_generated,
             .include_order = module.settings.include_order,
+            .format_generated = format_generated,
         };
     }
     return result;
@@ -136,8 +155,8 @@ auto lower_soa(SoaSchema const& schema,
     return lower_soa_impl(schema, types, std::move(storage_prelude));
 }
 
-auto lower_soa_module(SoaModuleSchema const& module,
-                      std::map<std::string, CppType> const& types) -> Module {
+auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppType> const& types)
+    -> Module {
     return lower_soa_module_impl(module, types);
 }
 

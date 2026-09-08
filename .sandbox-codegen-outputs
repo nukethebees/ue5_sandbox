@@ -20,6 +20,8 @@ Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3d.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3f.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3i32.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3u32.h
+Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_types.cpp
+Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_types.h
 Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.cpp
 Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.h
 Plugins/SandboxCore/Tests/SandboxCoreTests/Private/static_table_test_types.h

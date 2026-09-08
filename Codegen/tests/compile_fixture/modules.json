@@ -182,11 +182,17 @@
         },
         {
           "name": "FParents",
+          "experimental_single_allocation": {"name": "SingleParents"},
           "members": [
             {"name": "keys", "kind": "array", "type": "int32"},
-            {"name": "children", "kind": "nested", "type": "@child"}
+            {"name": "children", "kind": "nested", "type": "@child", "nested_schema": "FChild"}
           ],
           "operations": ["all"]
+        },
+        {
+          "name": "RestrictionRows",
+          "members": [{"name": "restricted", "kind": "array", "type": "@restricted_leaf"}],
+          "experimental_single_allocation": {"name": "SingleRestrictionRows"}
         },
         {
           "name": "FFixedChild",

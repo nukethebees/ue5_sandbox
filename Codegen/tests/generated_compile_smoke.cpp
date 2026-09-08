@@ -238,8 +238,7 @@ void test_enums() {
     check(std::string_view{LexToDisplayString(EPlainFixture::ReadableName)} == "Readable Name");
     check(to_display_string_view(EPlainFixture::ReadableName) == "Readable Name");
     check(to_display_string(EPlainFixture::First) == "First");
-    check(std::string_view{LexToSerializedString(EPlainFixture::ReadableName)} ==
-          "readable_name");
+    check(std::string_view{LexToSerializedString(EPlainFixture::ReadableName)} == "readable_name");
     auto parsed{EPlainFixture::First};
     check(try_parse_serialized(TEXT("readable_name"), parsed));
     check(parsed == EPlainFixture::ReadableName);
@@ -269,15 +268,16 @@ void test_static_tables() {
     check(values.weights[1] == 0.0f && values.weights[2] == 3.0f);
 
     FStaticTableFixture other{};
-    values.apply_array_pairs(other, [](auto const& source_ids,
-                                       auto& destination_ids,
-                                       auto const& source_weights,
-                                       auto& destination_weights) {
-        destination_ids[FStaticTableFixture::third_index] =
-            source_ids[FStaticTableFixture::third_index];
-        destination_weights[FStaticTableFixture::third_index] =
-            source_weights[FStaticTableFixture::third_index];
-    });
+    values.apply_array_pairs(other,
+                             [](auto const& source_ids,
+                                auto& destination_ids,
+                                auto const& source_weights,
+                                auto& destination_weights) {
+                                 destination_ids[FStaticTableFixture::third_index] =
+                                     source_ids[FStaticTableFixture::third_index];
+                                 destination_weights[FStaticTableFixture::third_index] =
+                                     source_weights[FStaticTableFixture::third_index];
+                             });
     check(other.ids[2] == 30 && other.weights[2] == 3.0f);
 
     auto const& const_values{values};
@@ -307,6 +307,23 @@ void test_static_tables() {
 
 auto main() -> int {
     try {
+        using SingleParents = codegen_compile_fixture::SingleParents;
+        static_assert(std::is_same_v<SingleParents::View, codegen_compile_fixture::FParents::View>);
+        static_assert(!std::is_copy_constructible_v<SingleParents>);
+        static_assert(SingleParents::keys_block_offset == 0);
+        static_assert(SingleParents::children_values_block_offset == 64 * sizeof(int32));
+        static_assert(SingleParents::block_bytes == 128 * sizeof(int32));
+        SingleParents parents;
+        check(parents.get_view().keys.GetData() == nullptr);
+        parents.add_defaulted(65);
+        parents.get_view().children.values[64] = 37;
+        parents.reserve(129);
+        check(parents.capacity() == 192);
+        check(parents.get_const_view().children.values[64] == 37);
+        SingleParents moved{std::move(parents)};
+        check(parents.capacity() == 0);
+        moved.remove_at_swap(0, 1);
+        check(moved.get_view().children.values[0] == 37);
         test_homogeneous_storage();
         test_dynamic_soa();
         test_fixed_soa_lifetimes();

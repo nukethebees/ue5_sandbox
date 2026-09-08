@@ -442,8 +442,8 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
     auto const storage_start{files[0].content.find("struct EXAMPLE_API FVectors3f {")};
     ASSERT_NE(mutable_view_start, std::string::npos);
     ASSERT_NE(storage_start, std::string::npos);
-    auto const mutable_view{files[0].content.substr(mutable_view_start,
-                                                    storage_start - mutable_view_start)};
+    auto const mutable_view{
+        files[0].content.substr(mutable_view_start, storage_start - mutable_view_start)};
     EXPECT_NE(mutable_view.find("void set(int32 const i, float const x, float const y, "
                                 "float const z) const"),
               std::string::npos);
@@ -573,7 +573,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_manifest(manifest_path)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 94);
+    EXPECT_EQ(files.size(), 96);
     EXPECT_EQ(files.front().path,
               "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h");
     EXPECT_EQ(files.back().path,
@@ -604,6 +604,45 @@ TEST(Generator, AcceptsCrLfOutputInventory) {
     }
     EXPECT_EQ(generate_files(files, directory, directory, true), 0);
     std::filesystem::remove_all(directory, ignored);
+}
+
+TEST(Generator, FormatsOptedInOutputBeforeWritingAndChecking) {
+    auto const directory{std::filesystem::temp_directory_path() /
+                         "sandbox codegen formatting test"};
+    std::filesystem::create_directories(directory);
+    {
+        std::ofstream style{directory / ".clang-format"};
+        style << "BasedOnStyle: LLVM\nIndentWidth: 4\n";
+    }
+    auto const files{
+        std::vector<GeneratedFile>{{"Generated/Value.h", "struct Value{int number;};\n", true}}};
+    ASSERT_EQ(generate_files(files, directory, directory, false), 0);
+    auto const destination{directory / "Generated/Value.h"};
+    auto read = [&] {
+        std::ifstream input{destination, std::ios::binary};
+        return std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    };
+    EXPECT_NE(read().find("    int number;"), std::string::npos);
+    auto const timestamp{std::filesystem::last_write_time(destination)};
+    EXPECT_EQ(generate_files(files, directory, directory, true), 0);
+    EXPECT_EQ(std::filesystem::last_write_time(destination), timestamp);
+    {
+        std::ofstream output{destination, std::ios::binary};
+        output << files.front().content;
+    }
+    EXPECT_EQ(generate_files(files, directory, directory, true), 1);
+    EXPECT_EQ(read(), files.front().content);
+    {
+        std::ofstream style{directory / ".clang-format"};
+        style << "InvalidFormatterOption: true\n";
+    }
+    EXPECT_THROW(generate_files(files, directory, directory, false), std::runtime_error);
+    EXPECT_EQ(read(), files.front().content);
+    std::filesystem::remove(destination);
+    std::filesystem::remove(directory / "Generated");
+    std::filesystem::remove(directory / ".clang-format");
+    std::filesystem::remove(directory / ".sandbox-codegen-outputs");
+    std::filesystem::remove(directory);
 }
 
 } // namespace

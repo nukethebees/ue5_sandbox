@@ -16,6 +16,11 @@
 	"Installed": false,
 	"Modules": [
 		{
+			"Name": "SbxCoreExperiments",
+			"Type": "DeveloperTool",
+			"LoadingPhase": "None"
+		},
+		{
 			"Name": "SandboxCore",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
