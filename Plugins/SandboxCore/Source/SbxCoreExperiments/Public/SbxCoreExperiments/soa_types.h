@@ -9,8 +9,8 @@
 #include "Containers/ArrayView.h"
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/single_allocation_storage.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SbxCoreExperiments/single_allocation_storage.h"
 #include "SbxCoreExperiments/soa_leaf_types.h"
 #include "SbxCoreExperiments/soa_reference_allocators.h"
 
@@ -1050,30 +1050,30 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
-        ml::append_from(locations, other.locations);
-        ml::append_from(desired_move_locations, other.desired_move_locations);
-        ml::append_from(aim_directions, other.aim_directions);
-        ml::append_from(desired_aiming_directions, other.desired_aiming_directions);
-        ml::append_from(movement_directions, other.movement_directions);
-        ml::append_from(velocities, other.velocities);
+        locations.append_from(other.locations);
+        desired_move_locations.append_from(other.desired_move_locations);
+        aim_directions.append_from(other.aim_directions);
+        desired_aiming_directions.append_from(other.desired_aiming_directions);
+        movement_directions.append_from(other.movement_directions);
+        velocities.append_from(other.velocities);
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
         ml::append_from(parent_handles, other.parent_handles);
-        ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
-        ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
-        ml::append_from(separation_steering, other.separation_steering);
+        awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
+        navigation_update_countdowns.append_from(other.navigation_update_countdowns);
+        separation_steering.append_from(other.separation_steering);
         ml::append_from(navigation_risk_tiers, other.navigation_risk_tiers);
         ml::append_from(navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts);
         ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
-        ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
-        ml::append_from(attack_cooldowns, other.attack_cooldowns);
+        attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
+        attack_cooldowns.append_from(other.attack_cooldowns);
         ml::append_from(target_handles, other.target_handles);
-        ml::append_from(target_locations, other.target_locations);
-        ml::append_from(target_velocities, other.target_velocities);
-        ml::append_from(target_directions, other.target_directions);
+        target_locations.append_from(other.target_locations);
+        target_velocities.append_from(other.target_velocities);
+        target_directions.append_from(other.target_directions);
         ml::append_from(intercept_times, other.intercept_times);
         ml::append_from(target_distance_sq, other.target_distance_sq);
         ml::append_from(target_distances, other.target_distances);
@@ -1261,9 +1261,9 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     TArray<float> target_radii;
 };
 
-struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::StorageOperations {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
+template <bool Const>
+struct EntityDataSingleView;
+struct EntityDataSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
 
@@ -1308,366 +1308,325 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
                   navigation_risk_tiers_alignment})};
 
     inline static constexpr byte_size_type entity_handles_block_offset{
-        ml::single_allocation_experiment::layout_align(0, entity_handles_alignment)};
+        ml::soa_storage::layout_align(0, entity_handles_alignment)};
     inline static constexpr byte_size_type entity_handles_block_end{
         entity_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
     inline static constexpr byte_size_type integral_biases_block_offset{
-        ml::single_allocation_experiment::layout_align(entity_handles_block_end,
-                                                       integral_biases_alignment)};
+        ml::soa_storage::layout_align(entity_handles_block_end, integral_biases_alignment)};
     inline static constexpr byte_size_type integral_biases_block_end{
         integral_biases_block_offset + capacity_granularity * sizeof(uint32)};
 
     inline static constexpr byte_size_type float_biases_block_offset{
-        ml::single_allocation_experiment::layout_align(integral_biases_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(integral_biases_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type float_biases_block_end{
         float_biases_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type tasks_block_offset{
-        ml::single_allocation_experiment::layout_align(float_biases_block_end, tasks_alignment)};
+        ml::soa_storage::layout_align(float_biases_block_end, tasks_alignment)};
     inline static constexpr byte_size_type tasks_block_end{tasks_block_offset +
                                                            capacity_granularity * sizeof(Task)};
 
     inline static constexpr byte_size_type locations_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(tasks_block_end, float_biases_alignment)};
+        ml::soa_storage::layout_align(tasks_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type locations_xs_block_end{
         locations_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type locations_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(locations_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(locations_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type locations_ys_block_end{
         locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type locations_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(locations_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(locations_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type locations_zs_block_end{
         locations_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_move_locations_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(locations_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(locations_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_move_locations_xs_block_end{
         desired_move_locations_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_move_locations_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_move_locations_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(desired_move_locations_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_move_locations_ys_block_end{
         desired_move_locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_move_locations_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_move_locations_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(desired_move_locations_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_move_locations_zs_block_end{
         desired_move_locations_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aim_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_move_locations_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(desired_move_locations_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type aim_directions_xs_block_end{
         aim_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aim_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(aim_directions_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(aim_directions_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type aim_directions_ys_block_end{
         aim_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aim_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(aim_directions_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(aim_directions_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type aim_directions_zs_block_end{
         aim_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_aiming_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(aim_directions_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(aim_directions_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_aiming_directions_xs_block_end{
         desired_aiming_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_aiming_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_aiming_directions_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(desired_aiming_directions_xs_block_end,
+                                      float_biases_alignment)};
     inline static constexpr byte_size_type desired_aiming_directions_ys_block_end{
         desired_aiming_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type desired_aiming_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_aiming_directions_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(desired_aiming_directions_ys_block_end,
+                                      float_biases_alignment)};
     inline static constexpr byte_size_type desired_aiming_directions_zs_block_end{
         desired_aiming_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type movement_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_aiming_directions_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(desired_aiming_directions_zs_block_end,
+                                      float_biases_alignment)};
     inline static constexpr byte_size_type movement_directions_xs_block_end{
         movement_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type movement_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(movement_directions_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(movement_directions_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type movement_directions_ys_block_end{
         movement_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type movement_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(movement_directions_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(movement_directions_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type movement_directions_zs_block_end{
         movement_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type velocities_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(movement_directions_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(movement_directions_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type velocities_xs_block_end{
         velocities_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type velocities_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(velocities_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(velocities_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type velocities_ys_block_end{
         velocities_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type velocities_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(velocities_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(velocities_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type velocities_zs_block_end{
         velocities_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type move_distances_block_offset{
-        ml::single_allocation_experiment::layout_align(velocities_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(velocities_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type move_distances_block_end{
         move_distances_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type speeds_block_offset{
-        ml::single_allocation_experiment::layout_align(move_distances_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(move_distances_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type speeds_block_end{speeds_block_offset +
                                                             capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type teams_block_offset{
-        ml::single_allocation_experiment::layout_align(speeds_block_end, teams_alignment)};
+        ml::soa_storage::layout_align(speeds_block_end, teams_alignment)};
     inline static constexpr byte_size_type teams_block_end{teams_block_offset +
                                                            capacity_granularity * sizeof(Team)};
 
     inline static constexpr byte_size_type healths_block_offset{
-        ml::single_allocation_experiment::layout_align(teams_block_end, healths_alignment)};
+        ml::soa_storage::layout_align(teams_block_end, healths_alignment)};
     inline static constexpr byte_size_type healths_block_end{healths_block_offset +
                                                              capacity_granularity * sizeof(int32)};
 
     inline static constexpr byte_size_type parent_handles_block_offset{
-        ml::single_allocation_experiment::layout_align(healths_block_end,
-                                                       entity_handles_alignment)};
+        ml::soa_storage::layout_align(healths_block_end, entity_handles_alignment)};
     inline static constexpr byte_size_type parent_handles_block_end{
         parent_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
     inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            parent_handles_block_end, awareness_scan_countdowns_counters_alignment)};
+        ml::soa_storage::layout_align(parent_handles_block_end,
+                                      awareness_scan_countdowns_counters_alignment)};
     inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_end{
         awareness_scan_countdowns_counters_block_offset + capacity_granularity * sizeof(int8)};
 
     inline static constexpr byte_size_type
         navigation_update_countdowns_remaining_ticks_block_offset{
-            ml::single_allocation_experiment::layout_align(
-                awareness_scan_countdowns_counters_block_end,
-                navigation_update_countdowns_remaining_ticks_alignment)};
+            ml::soa_storage::layout_align(awareness_scan_countdowns_counters_block_end,
+                                          navigation_update_countdowns_remaining_ticks_alignment)};
     inline static constexpr byte_size_type navigation_update_countdowns_remaining_ticks_block_end{
         navigation_update_countdowns_remaining_ticks_block_offset +
         capacity_granularity * sizeof(int16)};
 
     inline static constexpr byte_size_type navigation_update_countdowns_periods_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            navigation_update_countdowns_remaining_ticks_block_end,
-            navigation_update_countdowns_remaining_ticks_alignment)};
+        ml::soa_storage::layout_align(navigation_update_countdowns_remaining_ticks_block_end,
+                                      navigation_update_countdowns_remaining_ticks_alignment)};
     inline static constexpr byte_size_type navigation_update_countdowns_periods_block_end{
         navigation_update_countdowns_periods_block_offset + capacity_granularity * sizeof(int16)};
 
     inline static constexpr byte_size_type separation_steering_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            navigation_update_countdowns_periods_block_end, float_biases_alignment)};
+        ml::soa_storage::layout_align(navigation_update_countdowns_periods_block_end,
+                                      float_biases_alignment)};
     inline static constexpr byte_size_type separation_steering_xs_block_end{
         separation_steering_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type separation_steering_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(separation_steering_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(separation_steering_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type separation_steering_ys_block_end{
         separation_steering_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type separation_steering_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(separation_steering_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(separation_steering_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type separation_steering_zs_block_end{
         separation_steering_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type navigation_risk_tiers_block_offset{
-        ml::single_allocation_experiment::layout_align(separation_steering_zs_block_end,
-                                                       navigation_risk_tiers_alignment)};
+        ml::soa_storage::layout_align(separation_steering_zs_block_end,
+                                      navigation_risk_tiers_alignment)};
     inline static constexpr byte_size_type navigation_risk_tiers_block_end{
         navigation_risk_tiers_block_offset + capacity_granularity * sizeof(uint8)};
 
     inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_offset{
-        ml::single_allocation_experiment::layout_align(navigation_risk_tiers_block_end,
-                                                       navigation_risk_tiers_alignment)};
+        ml::soa_storage::layout_align(navigation_risk_tiers_block_end,
+                                      navigation_risk_tiers_alignment)};
     inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_end{
         navigation_lower_risk_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
 
     inline static constexpr byte_size_type avoidance_choice_indices_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            navigation_lower_risk_scan_counts_block_end,
-            awareness_scan_countdowns_counters_alignment)};
+        ml::soa_storage::layout_align(navigation_lower_risk_scan_counts_block_end,
+                                      awareness_scan_countdowns_counters_alignment)};
     inline static constexpr byte_size_type avoidance_choice_indices_block_end{
         avoidance_choice_indices_block_offset + capacity_granularity * sizeof(int8)};
 
     inline static constexpr byte_size_type avoidance_clear_scan_counts_block_offset{
-        ml::single_allocation_experiment::layout_align(avoidance_choice_indices_block_end,
-                                                       navigation_risk_tiers_alignment)};
+        ml::soa_storage::layout_align(avoidance_choice_indices_block_end,
+                                      navigation_risk_tiers_alignment)};
     inline static constexpr byte_size_type avoidance_clear_scan_counts_block_end{
         avoidance_clear_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
 
     inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            avoidance_clear_scan_counts_block_end,
-            navigation_update_countdowns_remaining_ticks_alignment)};
+        ml::soa_storage::layout_align(avoidance_clear_scan_counts_block_end,
+                                      navigation_update_countdowns_remaining_ticks_alignment)};
     inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_end{
         attack_reposition_countdowns_counters_block_offset + capacity_granularity * sizeof(int16)};
 
     inline static constexpr byte_size_type attack_cooldowns_counters_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            attack_reposition_countdowns_counters_block_end,
-            navigation_update_countdowns_remaining_ticks_alignment)};
+        ml::soa_storage::layout_align(attack_reposition_countdowns_counters_block_end,
+                                      navigation_update_countdowns_remaining_ticks_alignment)};
     inline static constexpr byte_size_type attack_cooldowns_counters_block_end{
         attack_cooldowns_counters_block_offset + capacity_granularity * sizeof(int16)};
 
     inline static constexpr byte_size_type target_handles_block_offset{
-        ml::single_allocation_experiment::layout_align(attack_cooldowns_counters_block_end,
-                                                       entity_handles_alignment)};
+        ml::soa_storage::layout_align(attack_cooldowns_counters_block_end,
+                                      entity_handles_alignment)};
     inline static constexpr byte_size_type target_handles_block_end{
         target_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
     inline static constexpr byte_size_type target_locations_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_handles_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_handles_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_locations_xs_block_end{
         target_locations_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_locations_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(target_locations_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_locations_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_locations_ys_block_end{
         target_locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_locations_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_locations_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_locations_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_locations_zs_block_end{
         target_locations_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_velocities_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_locations_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_locations_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_velocities_xs_block_end{
         target_velocities_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_velocities_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(target_velocities_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_velocities_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_velocities_ys_block_end{
         target_velocities_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_velocities_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_velocities_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_velocities_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_velocities_zs_block_end{
         target_velocities_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_velocities_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_velocities_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_directions_xs_block_end{
         target_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(target_directions_xs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_directions_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_directions_ys_block_end{
         target_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_directions_ys_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_directions_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_directions_zs_block_end{
         target_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type intercept_times_block_offset{
-        ml::single_allocation_experiment::layout_align(target_directions_zs_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_directions_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type intercept_times_block_end{
         intercept_times_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_distance_sq_block_offset{
-        ml::single_allocation_experiment::layout_align(intercept_times_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(intercept_times_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_distance_sq_block_end{
         target_distance_sq_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_distances_block_offset{
-        ml::single_allocation_experiment::layout_align(target_distance_sq_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_distance_sq_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_distances_block_end{
         target_distances_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type target_radii_block_offset{
-        ml::single_allocation_experiment::layout_align(target_distances_block_end,
-                                                       float_biases_alignment)};
+        ml::soa_storage::layout_align(target_distances_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_radii_block_end{
         target_radii_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type block_bytes{
-        ml::single_allocation_experiment::layout_align(target_radii_block_end,
-                                                       allocation_alignment)};
-    inline static constexpr size_type max_capacity{
-        ml::single_allocation_experiment::maximum_capacity(block_bytes)};
+        ml::soa_storage::layout_align(target_radii_block_end, allocation_alignment)};
+    inline static constexpr size_type max_capacity{ml::soa_storage::maximum_capacity(block_bytes)};
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<Handle>,
+            ml::soa_storage::supported_leaf<Handle>,
             "Single-allocation leaf entity_handles requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<uint32>,
+            ml::soa_storage::supported_leaf<uint32>,
             "Single-allocation leaf integral_biases requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<float>,
+            ml::soa_storage::supported_leaf<float>,
             "Single-allocation leaf float_biases requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<Task>,
+            ml::soa_storage::supported_leaf<Task>,
             "Single-allocation leaf tasks requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<Team>,
+            ml::soa_storage::supported_leaf<Team>,
             "Single-allocation leaf teams requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<int32>,
+            ml::soa_storage::supported_leaf<int32>,
             "Single-allocation leaf healths requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(ml::single_allocation_experiment::supported_leaf<int8>,
+        static_assert(ml::soa_storage::supported_leaf<int8>,
                       "Single-allocation leaf awareness_scan_countdowns.counters requires a "
                       "non-cv, trivially copyable/copy-constructible/destructible, nothrow "
                       "default-constructible object type.");
-        static_assert(ml::single_allocation_experiment::supported_leaf<int16>,
+        static_assert(ml::soa_storage::supported_leaf<int16>,
                       "Single-allocation leaf navigation_update_countdowns.remaining_ticks "
                       "requires a non-cv, trivially copyable/copy-constructible/destructible, "
                       "nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<uint8>,
+            ml::soa_storage::supported_leaf<uint8>,
             "Single-allocation leaf navigation_risk_tiers requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
@@ -1796,25 +1755,30 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         return true;
     };
     static_assert(validate_layout());
-  public:
+};
+
+struct SingleAllocationEntityDataStorage
+    : EntityDataSingleLayout
+    , protected ml::soa_storage::StorageState
+    , ml::soa_storage::StorageOperations {
+    using View = EntityDataSingleView<false>;
+    using ConstView = EntityDataSingleView<true>;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
     SingleAllocationEntityDataStorage() noexcept = default;
-    ~SingleAllocationEntityDataStorage() {
-        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
-    }
+    ~SingleAllocationEntityDataStorage() { ml::soa_storage::MimallocStorageAllocator::free(data_); }
     SingleAllocationEntityDataStorage(SingleAllocationEntityDataStorage const&) = delete;
     auto operator=(SingleAllocationEntityDataStorage const&)
         -> SingleAllocationEntityDataStorage& = delete;
     SingleAllocationEntityDataStorage(SingleAllocationEntityDataStorage&& other) noexcept
-        : data_{std::exchange(other.data_, nullptr)}
-        , num_{std::exchange(other.num_, 0)}
-        , capacity_{std::exchange(other.capacity_, 0)} {}
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
     auto operator=(SingleAllocationEntityDataStorage&& other) noexcept
         -> SingleAllocationEntityDataStorage& {
         if (this != &other) {
-            ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
+            ml::soa_storage::MimallocStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -1897,7 +1861,7 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
     }
   private:
-    friend struct ml::single_allocation_experiment::StorageOperations;
+    friend struct ml::soa_storage::StorageOperations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -2140,7 +2104,12 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks())};
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const entity_handles_bytes{elements_to_move * sizeof(Handle)};
         auto const integral_biases_bytes{elements_to_move * sizeof(uint32)};
@@ -2291,9 +2260,167 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
         FMemory::Memcpy(
             columns.target_radii + index, columns.target_radii + source, float_biases_bytes);
     }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::soa_storage::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source, size_type first, size_type count) {
+        auto const destination{get_data(first)};
+        auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const entity_handles_bytes{elements_to_copy * sizeof(Handle)};
+        auto const integral_biases_bytes{elements_to_copy * sizeof(uint32)};
+        auto const float_biases_bytes{elements_to_copy * sizeof(float)};
+        auto const tasks_bytes{elements_to_copy * sizeof(Task)};
+        auto const teams_bytes{elements_to_copy * sizeof(Team)};
+        auto const healths_bytes{elements_to_copy * sizeof(int32)};
+        auto const awareness_scan_countdowns_counters_bytes{elements_to_copy * sizeof(int8)};
+        auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
+                                                                      sizeof(int16)};
+        auto const navigation_risk_tiers_bytes{elements_to_copy * sizeof(uint8)};
+        FMemory::Memcpy(
+            destination.entity_handles, source.entity_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(
+            destination.integral_biases, source.integral_biases.GetData(), integral_biases_bytes);
+        FMemory::Memcpy(
+            destination.float_biases, source.float_biases.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.tasks, source.tasks.GetData(), tasks_bytes);
+        FMemory::Memcpy(
+            destination.locations_xs, source.locations.xs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.locations_ys, source.locations.ys.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.locations_zs, source.locations.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.desired_move_locations_xs,
+                        source.desired_move_locations.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_move_locations_ys,
+                        source.desired_move_locations.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_move_locations_zs,
+                        source.desired_move_locations.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.aim_directions_xs, source.aim_directions.xs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.aim_directions_ys, source.aim_directions.ys.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.aim_directions_zs, source.aim_directions.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.desired_aiming_directions_xs,
+                        source.desired_aiming_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_aiming_directions_ys,
+                        source.desired_aiming_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_aiming_directions_zs,
+                        source.desired_aiming_directions.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.movement_directions_xs,
+                        source.movement_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.movement_directions_ys,
+                        source.movement_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.movement_directions_zs,
+                        source.movement_directions.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.velocities_xs, source.velocities.xs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.velocities_ys, source.velocities.ys.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.velocities_zs, source.velocities.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.move_distances, source.move_distances.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.speeds, source.speeds.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.teams, source.teams.GetData(), teams_bytes);
+        FMemory::Memcpy(destination.healths, source.healths.GetData(), healths_bytes);
+        FMemory::Memcpy(
+            destination.parent_handles, source.parent_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
+                        source.awareness_scan_countdowns.counters.GetData(),
+                        awareness_scan_countdowns_counters_bytes);
+        FMemory::Memcpy(destination.navigation_update_countdowns_remaining_ticks,
+                        source.navigation_update_countdowns.remaining_ticks.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(destination.navigation_update_countdowns_periods,
+                        source.navigation_update_countdowns.periods.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(destination.separation_steering_xs,
+                        source.separation_steering.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.separation_steering_ys,
+                        source.separation_steering.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.separation_steering_zs,
+                        source.separation_steering.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.navigation_risk_tiers,
+                        source.navigation_risk_tiers.GetData(),
+                        navigation_risk_tiers_bytes);
+        FMemory::Memcpy(destination.navigation_lower_risk_scan_counts,
+                        source.navigation_lower_risk_scan_counts.GetData(),
+                        navigation_risk_tiers_bytes);
+        FMemory::Memcpy(destination.avoidance_choice_indices,
+                        source.avoidance_choice_indices.GetData(),
+                        awareness_scan_countdowns_counters_bytes);
+        FMemory::Memcpy(destination.avoidance_clear_scan_counts,
+                        source.avoidance_clear_scan_counts.GetData(),
+                        navigation_risk_tiers_bytes);
+        FMemory::Memcpy(destination.attack_reposition_countdowns_counters,
+                        source.attack_reposition_countdowns.counters.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(destination.attack_cooldowns_counters,
+                        source.attack_cooldowns.counters.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(
+            destination.target_handles, source.target_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.target_locations_xs,
+                        source.target_locations.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_locations_ys,
+                        source.target_locations.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_locations_zs,
+                        source.target_locations.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_velocities_xs,
+                        source.target_velocities.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_velocities_ys,
+                        source.target_velocities.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_velocities_zs,
+                        source.target_velocities.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_directions_xs,
+                        source.target_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_directions_ys,
+                        source.target_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_directions_zs,
+                        source.target_directions.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.intercept_times, source.intercept_times.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.target_distance_sq,
+                        source.target_distance_sq.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.target_distances, source.target_distances.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.target_radii, source.target_radii.GetData(), float_biases_bytes);
+    }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::single_allocation_experiment::MimallocStorageAllocator::allocate(
-            ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
+        auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(
+            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};
@@ -2427,737 +2554,1284 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
                 destination.target_distances, source.target_distances, float_biases_bytes);
             FMemory::Memcpy(destination.target_radii, source.target_radii, float_biases_bytes);
         }
-        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
+        ml::soa_storage::MimallocStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-    std::byte* data_{};
-    size_type num_{};
-    size_type capacity_{};
 };
 
+template <bool Const>
+struct EntityDataSingleView_locations : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_locations<false>;
+    using ConstView = EntityDataSingleView_locations<true>;
+    EntityDataSingleView_locations() = default;
+    EntityDataSingleView_locations(EntityDataSingleView_locations const&) = default;
+    auto operator=(EntityDataSingleView_locations const&)
+        -> EntityDataSingleView_locations& = default;
+    EntityDataSingleView_locations(EntityDataSingleView_locations<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_locations<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_locations<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::locations_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::locations_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::locations_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::locations_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::locations_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::locations_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_locations<false>) == 16 &&
+              sizeof(EntityDataSingleView_locations<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_locations<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_locations<true>>);
+template <bool Const>
+struct EntityDataSingleView_desired_move_locations : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_desired_move_locations<false>;
+    using ConstView = EntityDataSingleView_desired_move_locations<true>;
+    EntityDataSingleView_desired_move_locations() = default;
+    EntityDataSingleView_desired_move_locations(
+        EntityDataSingleView_desired_move_locations const&) = default;
+    auto operator=(EntityDataSingleView_desired_move_locations const&)
+        -> EntityDataSingleView_desired_move_locations& = default;
+    EntityDataSingleView_desired_move_locations(
+        EntityDataSingleView_desired_move_locations<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_desired_move_locations<true> {
+        return *this;
+    }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_desired_move_locations<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::desired_move_locations_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::desired_move_locations_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::desired_move_locations_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::desired_move_locations_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::desired_move_locations_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::desired_move_locations_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_desired_move_locations<false>) == 16 &&
+              sizeof(EntityDataSingleView_desired_move_locations<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_desired_move_locations<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_desired_move_locations<true>>);
+template <bool Const>
+struct EntityDataSingleView_aim_directions : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_aim_directions<false>;
+    using ConstView = EntityDataSingleView_aim_directions<true>;
+    EntityDataSingleView_aim_directions() = default;
+    EntityDataSingleView_aim_directions(EntityDataSingleView_aim_directions const&) = default;
+    auto operator=(EntityDataSingleView_aim_directions const&)
+        -> EntityDataSingleView_aim_directions& = default;
+    EntityDataSingleView_aim_directions(EntityDataSingleView_aim_directions<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_aim_directions<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_aim_directions<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::aim_directions_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::aim_directions_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::aim_directions_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::aim_directions_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::aim_directions_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::aim_directions_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_aim_directions<false>) == 16 &&
+              sizeof(EntityDataSingleView_aim_directions<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_aim_directions<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_aim_directions<true>>);
+template <bool Const>
+struct EntityDataSingleView_desired_aiming_directions : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_desired_aiming_directions<false>;
+    using ConstView = EntityDataSingleView_desired_aiming_directions<true>;
+    EntityDataSingleView_desired_aiming_directions() = default;
+    EntityDataSingleView_desired_aiming_directions(
+        EntityDataSingleView_desired_aiming_directions const&) = default;
+    auto operator=(EntityDataSingleView_desired_aiming_directions const&)
+        -> EntityDataSingleView_desired_aiming_directions& = default;
+    EntityDataSingleView_desired_aiming_directions(
+        EntityDataSingleView_desired_aiming_directions<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_desired_aiming_directions<true> {
+        return *this;
+    }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_desired_aiming_directions<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::desired_aiming_directions_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::desired_aiming_directions_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::desired_aiming_directions_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::desired_aiming_directions_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::desired_aiming_directions_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::desired_aiming_directions_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_desired_aiming_directions<false>) == 16 &&
+              sizeof(EntityDataSingleView_desired_aiming_directions<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_desired_aiming_directions<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_desired_aiming_directions<true>>);
+template <bool Const>
+struct EntityDataSingleView_movement_directions : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_movement_directions<false>;
+    using ConstView = EntityDataSingleView_movement_directions<true>;
+    EntityDataSingleView_movement_directions() = default;
+    EntityDataSingleView_movement_directions(EntityDataSingleView_movement_directions const&) =
+        default;
+    auto operator=(EntityDataSingleView_movement_directions const&)
+        -> EntityDataSingleView_movement_directions& = default;
+    EntityDataSingleView_movement_directions(
+        EntityDataSingleView_movement_directions<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_movement_directions<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_movement_directions<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::movement_directions_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::movement_directions_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::movement_directions_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::movement_directions_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::movement_directions_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::movement_directions_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_movement_directions<false>) == 16 &&
+              sizeof(EntityDataSingleView_movement_directions<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_movement_directions<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_movement_directions<true>>);
+template <bool Const>
+struct EntityDataSingleView_velocities : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_velocities<false>;
+    using ConstView = EntityDataSingleView_velocities<true>;
+    EntityDataSingleView_velocities() = default;
+    EntityDataSingleView_velocities(EntityDataSingleView_velocities const&) = default;
+    auto operator=(EntityDataSingleView_velocities const&)
+        -> EntityDataSingleView_velocities& = default;
+    EntityDataSingleView_velocities(EntityDataSingleView_velocities<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_velocities<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_velocities<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::velocities_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::velocities_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::velocities_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::velocities_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::velocities_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::velocities_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_velocities<false>) == 16 &&
+              sizeof(EntityDataSingleView_velocities<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_velocities<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_velocities<true>>);
+template <bool Const>
+struct EntityDataSingleView_awareness_scan_countdowns : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_awareness_scan_countdowns<false>;
+    using ConstView = EntityDataSingleView_awareness_scan_countdowns<true>;
+    EntityDataSingleView_awareness_scan_countdowns() = default;
+    EntityDataSingleView_awareness_scan_countdowns(
+        EntityDataSingleView_awareness_scan_countdowns const&) = default;
+    auto operator=(EntityDataSingleView_awareness_scan_countdowns const&)
+        -> EntityDataSingleView_awareness_scan_countdowns& = default;
+    EntityDataSingleView_awareness_scan_countdowns(
+        EntityDataSingleView_awareness_scan_countdowns<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_awareness_scan_countdowns<true> {
+        return *this;
+    }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_awareness_scan_countdowns<true> {
+        return this->slice(offset, count);
+    }
+    auto counters() const {
+        return TArrayView<typename Base::template Element<int8>>{
+            this->template column_data<int8>(
+                EntityDataSingleLayout::awareness_scan_countdowns_counters_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, Countdown8ConstView, Countdown8View> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, Countdown8ConstView, Countdown8View>{
+            {this->template column_data_unchecked<int8>(
+                 EntityDataSingleLayout::awareness_scan_countdowns_counters_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_awareness_scan_countdowns<false>) == 16 &&
+              sizeof(EntityDataSingleView_awareness_scan_countdowns<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_awareness_scan_countdowns<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_awareness_scan_countdowns<true>>);
+template <bool Const>
+struct EntityDataSingleView_navigation_update_countdowns
+    : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_navigation_update_countdowns<false>;
+    using ConstView = EntityDataSingleView_navigation_update_countdowns<true>;
+    EntityDataSingleView_navigation_update_countdowns() = default;
+    EntityDataSingleView_navigation_update_countdowns(
+        EntityDataSingleView_navigation_update_countdowns const&) = default;
+    auto operator=(EntityDataSingleView_navigation_update_countdowns const&)
+        -> EntityDataSingleView_navigation_update_countdowns& = default;
+    EntityDataSingleView_navigation_update_countdowns(
+        EntityDataSingleView_navigation_update_countdowns<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_navigation_update_countdowns<true> {
+        return *this;
+    }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_navigation_update_countdowns<true> {
+        return this->slice(offset, count);
+    }
+    auto remaining_ticks() const {
+        return TArrayView<typename Base::template Element<int16>>{
+            this->template column_data<int16>(
+                EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_block_offset),
+            this->count_};
+    }
+    auto periods() const {
+        return TArrayView<typename Base::template Element<int16>>{
+            this->template column_data<int16>(
+                EntityDataSingleLayout::navigation_update_countdowns_periods_block_offset),
+            this->count_};
+    }
+    auto columns() const
+        -> std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View>{
+            {this->template column_data_unchecked<int16>(
+                 EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_block_offset,
+                 blocks),
+             this->count_},
+            {this->template column_data_unchecked<int16>(
+                 EntityDataSingleLayout::navigation_update_countdowns_periods_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_navigation_update_countdowns<false>) == 16 &&
+              sizeof(EntityDataSingleView_navigation_update_countdowns<true>) == 16);
+static_assert(
+    std::is_trivially_copyable_v<EntityDataSingleView_navigation_update_countdowns<false>> &&
+    std::is_trivially_copyable_v<EntityDataSingleView_navigation_update_countdowns<true>>);
+template <bool Const>
+struct EntityDataSingleView_separation_steering : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_separation_steering<false>;
+    using ConstView = EntityDataSingleView_separation_steering<true>;
+    EntityDataSingleView_separation_steering() = default;
+    EntityDataSingleView_separation_steering(EntityDataSingleView_separation_steering const&) =
+        default;
+    auto operator=(EntityDataSingleView_separation_steering const&)
+        -> EntityDataSingleView_separation_steering& = default;
+    EntityDataSingleView_separation_steering(
+        EntityDataSingleView_separation_steering<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_separation_steering<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_separation_steering<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::separation_steering_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::separation_steering_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::separation_steering_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::separation_steering_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::separation_steering_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::separation_steering_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_separation_steering<false>) == 16 &&
+              sizeof(EntityDataSingleView_separation_steering<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_separation_steering<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_separation_steering<true>>);
+template <bool Const>
+struct EntityDataSingleView_attack_reposition_countdowns
+    : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_attack_reposition_countdowns<false>;
+    using ConstView = EntityDataSingleView_attack_reposition_countdowns<true>;
+    EntityDataSingleView_attack_reposition_countdowns() = default;
+    EntityDataSingleView_attack_reposition_countdowns(
+        EntityDataSingleView_attack_reposition_countdowns const&) = default;
+    auto operator=(EntityDataSingleView_attack_reposition_countdowns const&)
+        -> EntityDataSingleView_attack_reposition_countdowns& = default;
+    EntityDataSingleView_attack_reposition_countdowns(
+        EntityDataSingleView_attack_reposition_countdowns<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_attack_reposition_countdowns<true> {
+        return *this;
+    }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_attack_reposition_countdowns<true> {
+        return this->slice(offset, count);
+    }
+    auto counters() const {
+        return TArrayView<typename Base::template Element<int16>>{
+            this->template column_data<int16>(
+                EntityDataSingleLayout::attack_reposition_countdowns_counters_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, Countdown16ConstView, Countdown16View> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
+            {this->template column_data_unchecked<int16>(
+                 EntityDataSingleLayout::attack_reposition_countdowns_counters_block_offset,
+                 blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_attack_reposition_countdowns<false>) == 16 &&
+              sizeof(EntityDataSingleView_attack_reposition_countdowns<true>) == 16);
+static_assert(
+    std::is_trivially_copyable_v<EntityDataSingleView_attack_reposition_countdowns<false>> &&
+    std::is_trivially_copyable_v<EntityDataSingleView_attack_reposition_countdowns<true>>);
+template <bool Const>
+struct EntityDataSingleView_attack_cooldowns : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_attack_cooldowns<false>;
+    using ConstView = EntityDataSingleView_attack_cooldowns<true>;
+    EntityDataSingleView_attack_cooldowns() = default;
+    EntityDataSingleView_attack_cooldowns(EntityDataSingleView_attack_cooldowns const&) = default;
+    auto operator=(EntityDataSingleView_attack_cooldowns const&)
+        -> EntityDataSingleView_attack_cooldowns& = default;
+    EntityDataSingleView_attack_cooldowns(EntityDataSingleView_attack_cooldowns<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_attack_cooldowns<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_attack_cooldowns<true> {
+        return this->slice(offset, count);
+    }
+    auto counters() const {
+        return TArrayView<typename Base::template Element<int16>>{
+            this->template column_data<int16>(
+                EntityDataSingleLayout::attack_cooldowns_counters_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, Countdown16ConstView, Countdown16View> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
+            {this->template column_data_unchecked<int16>(
+                 EntityDataSingleLayout::attack_cooldowns_counters_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_attack_cooldowns<false>) == 16 &&
+              sizeof(EntityDataSingleView_attack_cooldowns<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_attack_cooldowns<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_attack_cooldowns<true>>);
+template <bool Const>
+struct EntityDataSingleView_target_locations : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_target_locations<false>;
+    using ConstView = EntityDataSingleView_target_locations<true>;
+    EntityDataSingleView_target_locations() = default;
+    EntityDataSingleView_target_locations(EntityDataSingleView_target_locations const&) = default;
+    auto operator=(EntityDataSingleView_target_locations const&)
+        -> EntityDataSingleView_target_locations& = default;
+    EntityDataSingleView_target_locations(EntityDataSingleView_target_locations<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_target_locations<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_target_locations<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_locations_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_locations_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_locations_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_locations_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_locations_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_locations_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_target_locations<false>) == 16 &&
+              sizeof(EntityDataSingleView_target_locations<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_target_locations<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_target_locations<true>>);
+template <bool Const>
+struct EntityDataSingleView_target_velocities : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_target_velocities<false>;
+    using ConstView = EntityDataSingleView_target_velocities<true>;
+    EntityDataSingleView_target_velocities() = default;
+    EntityDataSingleView_target_velocities(EntityDataSingleView_target_velocities const&) = default;
+    auto operator=(EntityDataSingleView_target_velocities const&)
+        -> EntityDataSingleView_target_velocities& = default;
+    EntityDataSingleView_target_velocities(
+        EntityDataSingleView_target_velocities<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_target_velocities<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_target_velocities<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_velocities_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_velocities_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_velocities_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_velocities_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_velocities_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_velocities_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_target_velocities<false>) == 16 &&
+              sizeof(EntityDataSingleView_target_velocities<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_target_velocities<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_target_velocities<true>>);
+template <bool Const>
+struct EntityDataSingleView_target_directions : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView_target_directions<false>;
+    using ConstView = EntityDataSingleView_target_directions<true>;
+    EntityDataSingleView_target_directions() = default;
+    EntityDataSingleView_target_directions(EntityDataSingleView_target_directions const&) = default;
+    auto operator=(EntityDataSingleView_target_directions const&)
+        -> EntityDataSingleView_target_directions& = default;
+    EntityDataSingleView_target_directions(
+        EntityDataSingleView_target_directions<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView_target_directions<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> EntityDataSingleView_target_directions<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_directions_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_directions_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_directions_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_directions_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_directions_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_directions_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView_target_directions<false>) == 16 &&
+              sizeof(EntityDataSingleView_target_directions<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView_target_directions<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView_target_directions<true>>);
+template <bool Const>
+struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = EntityDataSingleView<false>;
+    using ConstView = EntityDataSingleView<true>;
+    EntityDataSingleView() = default;
+    EntityDataSingleView(EntityDataSingleView const&) = default;
+    auto operator=(EntityDataSingleView const&) -> EntityDataSingleView& = default;
+    EntityDataSingleView(EntityDataSingleView<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> EntityDataSingleView<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> EntityDataSingleView<true> {
+        return this->slice(offset, count);
+    }
+    auto entity_handles() const {
+        return TArrayView<typename Base::template Element<Handle>>{
+            this->template column_data<Handle>(EntityDataSingleLayout::entity_handles_block_offset),
+            this->count_};
+    }
+    auto integral_biases() const {
+        return TArrayView<typename Base::template Element<uint32>>{
+            this->template column_data<uint32>(
+                EntityDataSingleLayout::integral_biases_block_offset),
+            this->count_};
+    }
+    auto float_biases() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::float_biases_block_offset),
+            this->count_};
+    }
+    auto tasks() const {
+        return TArrayView<typename Base::template Element<Task>>{
+            this->template column_data<Task>(EntityDataSingleLayout::tasks_block_offset),
+            this->count_};
+    }
+    auto locations() const {
+        return EntityDataSingleView_locations<Const>{this->state_, this->offset_, this->count_};
+    }
+    auto desired_move_locations() const {
+        return EntityDataSingleView_desired_move_locations<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto aim_directions() const {
+        return EntityDataSingleView_aim_directions<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto desired_aiming_directions() const {
+        return EntityDataSingleView_desired_aiming_directions<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto movement_directions() const {
+        return EntityDataSingleView_movement_directions<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto velocities() const {
+        return EntityDataSingleView_velocities<Const>{this->state_, this->offset_, this->count_};
+    }
+    auto move_distances() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::move_distances_block_offset),
+            this->count_};
+    }
+    auto speeds() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::speeds_block_offset),
+            this->count_};
+    }
+    auto teams() const {
+        return TArrayView<typename Base::template Element<Team>>{
+            this->template column_data<Team>(EntityDataSingleLayout::teams_block_offset),
+            this->count_};
+    }
+    auto healths() const {
+        return TArrayView<typename Base::template Element<int32>>{
+            this->template column_data<int32>(EntityDataSingleLayout::healths_block_offset),
+            this->count_};
+    }
+    auto parent_handles() const {
+        return TArrayView<typename Base::template Element<Handle>>{
+            this->template column_data<Handle>(EntityDataSingleLayout::parent_handles_block_offset),
+            this->count_};
+    }
+    auto awareness_scan_countdowns() const {
+        return EntityDataSingleView_awareness_scan_countdowns<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto navigation_update_countdowns() const {
+        return EntityDataSingleView_navigation_update_countdowns<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto separation_steering() const {
+        return EntityDataSingleView_separation_steering<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto navigation_risk_tiers() const {
+        return TArrayView<typename Base::template Element<uint8>>{
+            this->template column_data<uint8>(
+                EntityDataSingleLayout::navigation_risk_tiers_block_offset),
+            this->count_};
+    }
+    auto navigation_lower_risk_scan_counts() const {
+        return TArrayView<typename Base::template Element<uint8>>{
+            this->template column_data<uint8>(
+                EntityDataSingleLayout::navigation_lower_risk_scan_counts_block_offset),
+            this->count_};
+    }
+    auto avoidance_choice_indices() const {
+        return TArrayView<typename Base::template Element<int8>>{
+            this->template column_data<int8>(
+                EntityDataSingleLayout::avoidance_choice_indices_block_offset),
+            this->count_};
+    }
+    auto avoidance_clear_scan_counts() const {
+        return TArrayView<typename Base::template Element<uint8>>{
+            this->template column_data<uint8>(
+                EntityDataSingleLayout::avoidance_clear_scan_counts_block_offset),
+            this->count_};
+    }
+    auto attack_reposition_countdowns() const {
+        return EntityDataSingleView_attack_reposition_countdowns<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto attack_cooldowns() const {
+        return EntityDataSingleView_attack_cooldowns<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto target_handles() const {
+        return TArrayView<typename Base::template Element<Handle>>{
+            this->template column_data<Handle>(EntityDataSingleLayout::target_handles_block_offset),
+            this->count_};
+    }
+    auto target_locations() const {
+        return EntityDataSingleView_target_locations<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto target_velocities() const {
+        return EntityDataSingleView_target_velocities<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto target_directions() const {
+        return EntityDataSingleView_target_directions<Const>{
+            this->state_, this->offset_, this->count_};
+    }
+    auto intercept_times() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::intercept_times_block_offset),
+            this->count_};
+    }
+    auto target_distance_sq() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_distance_sq_block_offset),
+            this->count_};
+    }
+    auto target_distances() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_distances_block_offset),
+            this->count_};
+    }
+    auto target_radii() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(EntityDataSingleLayout::target_radii_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, EntityDataConstView, EntityDataView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, EntityDataConstView, EntityDataView>{
+            {this->template column_data_unchecked<Handle>(
+                 EntityDataSingleLayout::entity_handles_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<uint32>(
+                 EntityDataSingleLayout::integral_biases_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::float_biases_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<Task>(EntityDataSingleLayout::tasks_block_offset,
+                                                        blocks),
+             this->count_},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::locations_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::locations_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::locations_zs_block_offset, blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::desired_move_locations_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::desired_move_locations_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::desired_move_locations_zs_block_offset, blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::aim_directions_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::aim_directions_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::aim_directions_zs_block_offset, blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::desired_aiming_directions_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::desired_aiming_directions_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::desired_aiming_directions_zs_block_offset, blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::movement_directions_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::movement_directions_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::movement_directions_zs_block_offset, blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::velocities_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::velocities_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::velocities_zs_block_offset, blocks),
+                 this->count_}},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::move_distances_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::speeds_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<Team>(EntityDataSingleLayout::teams_block_offset,
+                                                        blocks),
+             this->count_},
+            {this->template column_data_unchecked<int32>(
+                 EntityDataSingleLayout::healths_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<Handle>(
+                 EntityDataSingleLayout::parent_handles_block_offset, blocks),
+             this->count_},
+            std::conditional_t<Const, Countdown8ConstView, Countdown8View>{
+                {this->template column_data_unchecked<int8>(
+                     EntityDataSingleLayout::awareness_scan_countdowns_counters_block_offset,
+                     blocks),
+                 this->count_}},
+            std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View>{
+                {this->template column_data_unchecked<int16>(
+                     EntityDataSingleLayout::
+                         navigation_update_countdowns_remaining_ticks_block_offset,
+                     blocks),
+                 this->count_},
+                {this->template column_data_unchecked<int16>(
+                     EntityDataSingleLayout::navigation_update_countdowns_periods_block_offset,
+                     blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::separation_steering_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::separation_steering_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::separation_steering_zs_block_offset, blocks),
+                 this->count_}},
+            {this->template column_data_unchecked<uint8>(
+                 EntityDataSingleLayout::navigation_risk_tiers_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<uint8>(
+                 EntityDataSingleLayout::navigation_lower_risk_scan_counts_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<int8>(
+                 EntityDataSingleLayout::avoidance_choice_indices_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<uint8>(
+                 EntityDataSingleLayout::avoidance_clear_scan_counts_block_offset, blocks),
+             this->count_},
+            std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
+                {this->template column_data_unchecked<int16>(
+                     EntityDataSingleLayout::attack_reposition_countdowns_counters_block_offset,
+                     blocks),
+                 this->count_}},
+            std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
+                {this->template column_data_unchecked<int16>(
+                     EntityDataSingleLayout::attack_cooldowns_counters_block_offset, blocks),
+                 this->count_}},
+            {this->template column_data_unchecked<Handle>(
+                 EntityDataSingleLayout::target_handles_block_offset, blocks),
+             this->count_},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_locations_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_locations_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_locations_zs_block_offset, blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_velocities_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_velocities_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_velocities_zs_block_offset, blocks),
+                 this->count_}},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_directions_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_directions_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     EntityDataSingleLayout::target_directions_zs_block_offset, blocks),
+                 this->count_}},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::intercept_times_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_distance_sq_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_distances_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_radii_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView<false>) == 16 &&
+              sizeof(EntityDataSingleView<true>) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView<false>> &&
+              std::is_trivially_copyable_v<EntityDataSingleView<true>>);
 struct SingleAllocationEntityData : SingleAllocationEntityDataStorage {
     SingleAllocationEntityData() noexcept = default;
     SingleAllocationEntityData(SingleAllocationEntityData const&) = delete;
     auto operator=(SingleAllocationEntityData const&) -> SingleAllocationEntityData& = delete;
     SingleAllocationEntityData(SingleAllocationEntityData&&) noexcept = default;
     auto operator=(SingleAllocationEntityData&&) noexcept -> SingleAllocationEntityData& = default;
-
-    /* **************************************** */
-    // Views
-    /* **************************************** */
-  private:
-    static auto make_view(DataPointers<std::byte> const& columns, size_type const count) -> View {
-        return EntityDataView{
-            {columns.entity_handles, count},
-            {columns.integral_biases, count},
-            {columns.float_biases, count},
-            {columns.tasks, count},
-            VectorsView{{columns.locations_xs, count},
-                        {columns.locations_ys, count},
-                        {columns.locations_zs, count}},
-            VectorsView{{columns.desired_move_locations_xs, count},
-                        {columns.desired_move_locations_ys, count},
-                        {columns.desired_move_locations_zs, count}},
-            VectorsView{{columns.aim_directions_xs, count},
-                        {columns.aim_directions_ys, count},
-                        {columns.aim_directions_zs, count}},
-            VectorsView{{columns.desired_aiming_directions_xs, count},
-                        {columns.desired_aiming_directions_ys, count},
-                        {columns.desired_aiming_directions_zs, count}},
-            VectorsView{{columns.movement_directions_xs, count},
-                        {columns.movement_directions_ys, count},
-                        {columns.movement_directions_zs, count}},
-            VectorsView{{columns.velocities_xs, count},
-                        {columns.velocities_ys, count},
-                        {columns.velocities_zs, count}},
-            {columns.move_distances, count},
-            {columns.speeds, count},
-            {columns.teams, count},
-            {columns.healths, count},
-            {columns.parent_handles, count},
-            Countdown8View{{columns.awareness_scan_countdowns_counters, count}},
-            PeriodicCountdown16View{{columns.navigation_update_countdowns_remaining_ticks, count},
-                                    {columns.navigation_update_countdowns_periods, count}},
-            VectorsView{{columns.separation_steering_xs, count},
-                        {columns.separation_steering_ys, count},
-                        {columns.separation_steering_zs, count}},
-            {columns.navigation_risk_tiers, count},
-            {columns.navigation_lower_risk_scan_counts, count},
-            {columns.avoidance_choice_indices, count},
-            {columns.avoidance_clear_scan_counts, count},
-            Countdown16View{{columns.attack_reposition_countdowns_counters, count}},
-            Countdown16View{{columns.attack_cooldowns_counters, count}},
-            {columns.target_handles, count},
-            VectorsView{{columns.target_locations_xs, count},
-                        {columns.target_locations_ys, count},
-                        {columns.target_locations_zs, count}},
-            VectorsView{{columns.target_velocities_xs, count},
-                        {columns.target_velocities_ys, count},
-                        {columns.target_velocities_zs, count}},
-            VectorsView{{columns.target_directions_xs, count},
-                        {columns.target_directions_ys, count},
-                        {columns.target_directions_zs, count}},
-            {columns.intercept_times, count},
-            {columns.target_distance_sq, count},
-            {columns.target_distances, count},
-            {columns.target_radii, count}};
+    auto get_view() -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
+    auto left(size_type count) -> View { return get_view().left(count); }
+    auto right(size_type count) -> View { return get_view().right(count); }
+    auto get_view() const -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const -> ConstView {
+        return {this, offset, count};
     }
-    static auto make_view(DataPointers<std::byte const> const& columns, size_type const count)
-        -> ConstView {
-        return EntityDataConstView{
-            {columns.entity_handles, count},
-            {columns.integral_biases, count},
-            {columns.float_biases, count},
-            {columns.tasks, count},
-            VectorsConstView{{columns.locations_xs, count},
-                             {columns.locations_ys, count},
-                             {columns.locations_zs, count}},
-            VectorsConstView{{columns.desired_move_locations_xs, count},
-                             {columns.desired_move_locations_ys, count},
-                             {columns.desired_move_locations_zs, count}},
-            VectorsConstView{{columns.aim_directions_xs, count},
-                             {columns.aim_directions_ys, count},
-                             {columns.aim_directions_zs, count}},
-            VectorsConstView{{columns.desired_aiming_directions_xs, count},
-                             {columns.desired_aiming_directions_ys, count},
-                             {columns.desired_aiming_directions_zs, count}},
-            VectorsConstView{{columns.movement_directions_xs, count},
-                             {columns.movement_directions_ys, count},
-                             {columns.movement_directions_zs, count}},
-            VectorsConstView{{columns.velocities_xs, count},
-                             {columns.velocities_ys, count},
-                             {columns.velocities_zs, count}},
-            {columns.move_distances, count},
-            {columns.speeds, count},
-            {columns.teams, count},
-            {columns.healths, count},
-            {columns.parent_handles, count},
-            Countdown8ConstView{{columns.awareness_scan_countdowns_counters, count}},
-            PeriodicCountdown16ConstView{
-                {columns.navigation_update_countdowns_remaining_ticks, count},
-                {columns.navigation_update_countdowns_periods, count}},
-            VectorsConstView{{columns.separation_steering_xs, count},
-                             {columns.separation_steering_ys, count},
-                             {columns.separation_steering_zs, count}},
-            {columns.navigation_risk_tiers, count},
-            {columns.navigation_lower_risk_scan_counts, count},
-            {columns.avoidance_choice_indices, count},
-            {columns.avoidance_clear_scan_counts, count},
-            Countdown16ConstView{{columns.attack_reposition_countdowns_counters, count}},
-            Countdown16ConstView{{columns.attack_cooldowns_counters, count}},
-            {columns.target_handles, count},
-            VectorsConstView{{columns.target_locations_xs, count},
-                             {columns.target_locations_ys, count},
-                             {columns.target_locations_zs, count}},
-            VectorsConstView{{columns.target_velocities_xs, count},
-                             {columns.target_velocities_ys, count},
-                             {columns.target_velocities_zs, count}},
-            VectorsConstView{{columns.target_directions_xs, count},
-                             {columns.target_directions_ys, count},
-                             {columns.target_directions_zs, count}},
-            {columns.intercept_times, count},
-            {columns.target_distance_sq, count},
-            {columns.target_distances, count},
-            {columns.target_radii, count}};
-    }
-  public:
-    auto get_view() -> View {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
+    auto slice(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type const count) -> View { return get_view(0, count); }
-    auto right(size_type const count) -> View {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
-    auto get_view() const -> ConstView {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type const count) const -> ConstView { return get_view(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
+    auto left(size_type count) const -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const -> ConstView { return get_view().right(count); }
     auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
 };
 
-struct FMemorySingleEntityDataStorage : ml::single_allocation_experiment::StorageOperations {
-    using View = EntityDataView;
-    using ConstView = EntityDataConstView;
-    using size_type = int32;
-    using byte_size_type = SIZE_T;
-
-    inline static constexpr byte_size_type max_allocation_size{
-        std::numeric_limits<byte_size_type>::max()};
-    inline static constexpr size_type capacity_granularity{64};
-
-    inline static constexpr byte_size_type entity_handles_alignment{
-        alignof(Handle) > 64 ? alignof(Handle) : 64};
-
-    inline static constexpr byte_size_type integral_biases_alignment{
-        alignof(uint32) > 64 ? alignof(uint32) : 64};
-
-    inline static constexpr byte_size_type float_biases_alignment{
-        alignof(float) > 64 ? alignof(float) : 64};
-
-    inline static constexpr byte_size_type tasks_alignment{alignof(Task) > 64 ? alignof(Task) : 64};
-
-    inline static constexpr byte_size_type teams_alignment{alignof(Team) > 64 ? alignof(Team) : 64};
-
-    inline static constexpr byte_size_type healths_alignment{alignof(int32) > 64 ? alignof(int32)
-                                                                                 : 64};
-
-    inline static constexpr byte_size_type awareness_scan_countdowns_counters_alignment{
-        alignof(int8) > 64 ? alignof(int8) : 64};
-
-    inline static constexpr byte_size_type navigation_update_countdowns_remaining_ticks_alignment{
-        alignof(int16) > 64 ? alignof(int16) : 64};
-
-    inline static constexpr byte_size_type navigation_risk_tiers_alignment{
-        alignof(uint8) > 64 ? alignof(uint8) : 64};
-
-    inline static constexpr byte_size_type allocation_alignment{
-        std::max({entity_handles_alignment,
-                  integral_biases_alignment,
-                  float_biases_alignment,
-                  tasks_alignment,
-                  teams_alignment,
-                  healths_alignment,
-                  awareness_scan_countdowns_counters_alignment,
-                  navigation_update_countdowns_remaining_ticks_alignment,
-                  navigation_risk_tiers_alignment})};
-
-    inline static constexpr byte_size_type entity_handles_block_offset{
-        ml::single_allocation_experiment::layout_align(0, entity_handles_alignment)};
-    inline static constexpr byte_size_type entity_handles_block_end{
-        entity_handles_block_offset + capacity_granularity * sizeof(Handle)};
-
-    inline static constexpr byte_size_type integral_biases_block_offset{
-        ml::single_allocation_experiment::layout_align(entity_handles_block_end,
-                                                       integral_biases_alignment)};
-    inline static constexpr byte_size_type integral_biases_block_end{
-        integral_biases_block_offset + capacity_granularity * sizeof(uint32)};
-
-    inline static constexpr byte_size_type float_biases_block_offset{
-        ml::single_allocation_experiment::layout_align(integral_biases_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type float_biases_block_end{
-        float_biases_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type tasks_block_offset{
-        ml::single_allocation_experiment::layout_align(float_biases_block_end, tasks_alignment)};
-    inline static constexpr byte_size_type tasks_block_end{tasks_block_offset +
-                                                           capacity_granularity * sizeof(Task)};
-
-    inline static constexpr byte_size_type locations_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(tasks_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type locations_xs_block_end{
-        locations_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type locations_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(locations_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type locations_ys_block_end{
-        locations_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type locations_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(locations_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type locations_zs_block_end{
-        locations_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type desired_move_locations_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(locations_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type desired_move_locations_xs_block_end{
-        desired_move_locations_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type desired_move_locations_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_move_locations_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type desired_move_locations_ys_block_end{
-        desired_move_locations_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type desired_move_locations_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_move_locations_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type desired_move_locations_zs_block_end{
-        desired_move_locations_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type aim_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_move_locations_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type aim_directions_xs_block_end{
-        aim_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type aim_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(aim_directions_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type aim_directions_ys_block_end{
-        aim_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type aim_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(aim_directions_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type aim_directions_zs_block_end{
-        aim_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type desired_aiming_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(aim_directions_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type desired_aiming_directions_xs_block_end{
-        desired_aiming_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type desired_aiming_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_aiming_directions_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type desired_aiming_directions_ys_block_end{
-        desired_aiming_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type desired_aiming_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_aiming_directions_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type desired_aiming_directions_zs_block_end{
-        desired_aiming_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type movement_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(desired_aiming_directions_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type movement_directions_xs_block_end{
-        movement_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type movement_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(movement_directions_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type movement_directions_ys_block_end{
-        movement_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type movement_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(movement_directions_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type movement_directions_zs_block_end{
-        movement_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type velocities_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(movement_directions_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type velocities_xs_block_end{
-        velocities_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type velocities_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(velocities_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type velocities_ys_block_end{
-        velocities_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type velocities_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(velocities_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type velocities_zs_block_end{
-        velocities_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type move_distances_block_offset{
-        ml::single_allocation_experiment::layout_align(velocities_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type move_distances_block_end{
-        move_distances_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type speeds_block_offset{
-        ml::single_allocation_experiment::layout_align(move_distances_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type speeds_block_end{speeds_block_offset +
-                                                            capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type teams_block_offset{
-        ml::single_allocation_experiment::layout_align(speeds_block_end, teams_alignment)};
-    inline static constexpr byte_size_type teams_block_end{teams_block_offset +
-                                                           capacity_granularity * sizeof(Team)};
-
-    inline static constexpr byte_size_type healths_block_offset{
-        ml::single_allocation_experiment::layout_align(teams_block_end, healths_alignment)};
-    inline static constexpr byte_size_type healths_block_end{healths_block_offset +
-                                                             capacity_granularity * sizeof(int32)};
-
-    inline static constexpr byte_size_type parent_handles_block_offset{
-        ml::single_allocation_experiment::layout_align(healths_block_end,
-                                                       entity_handles_alignment)};
-    inline static constexpr byte_size_type parent_handles_block_end{
-        parent_handles_block_offset + capacity_granularity * sizeof(Handle)};
-
-    inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            parent_handles_block_end, awareness_scan_countdowns_counters_alignment)};
-    inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_end{
-        awareness_scan_countdowns_counters_block_offset + capacity_granularity * sizeof(int8)};
-
-    inline static constexpr byte_size_type
-        navigation_update_countdowns_remaining_ticks_block_offset{
-            ml::single_allocation_experiment::layout_align(
-                awareness_scan_countdowns_counters_block_end,
-                navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type navigation_update_countdowns_remaining_ticks_block_end{
-        navigation_update_countdowns_remaining_ticks_block_offset +
-        capacity_granularity * sizeof(int16)};
-
-    inline static constexpr byte_size_type navigation_update_countdowns_periods_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            navigation_update_countdowns_remaining_ticks_block_end,
-            navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type navigation_update_countdowns_periods_block_end{
-        navigation_update_countdowns_periods_block_offset + capacity_granularity * sizeof(int16)};
-
-    inline static constexpr byte_size_type separation_steering_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            navigation_update_countdowns_periods_block_end, float_biases_alignment)};
-    inline static constexpr byte_size_type separation_steering_xs_block_end{
-        separation_steering_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type separation_steering_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(separation_steering_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type separation_steering_ys_block_end{
-        separation_steering_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type separation_steering_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(separation_steering_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type separation_steering_zs_block_end{
-        separation_steering_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type navigation_risk_tiers_block_offset{
-        ml::single_allocation_experiment::layout_align(separation_steering_zs_block_end,
-                                                       navigation_risk_tiers_alignment)};
-    inline static constexpr byte_size_type navigation_risk_tiers_block_end{
-        navigation_risk_tiers_block_offset + capacity_granularity * sizeof(uint8)};
-
-    inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_offset{
-        ml::single_allocation_experiment::layout_align(navigation_risk_tiers_block_end,
-                                                       navigation_risk_tiers_alignment)};
-    inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_end{
-        navigation_lower_risk_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
-
-    inline static constexpr byte_size_type avoidance_choice_indices_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            navigation_lower_risk_scan_counts_block_end,
-            awareness_scan_countdowns_counters_alignment)};
-    inline static constexpr byte_size_type avoidance_choice_indices_block_end{
-        avoidance_choice_indices_block_offset + capacity_granularity * sizeof(int8)};
-
-    inline static constexpr byte_size_type avoidance_clear_scan_counts_block_offset{
-        ml::single_allocation_experiment::layout_align(avoidance_choice_indices_block_end,
-                                                       navigation_risk_tiers_alignment)};
-    inline static constexpr byte_size_type avoidance_clear_scan_counts_block_end{
-        avoidance_clear_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
-
-    inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            avoidance_clear_scan_counts_block_end,
-            navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_end{
-        attack_reposition_countdowns_counters_block_offset + capacity_granularity * sizeof(int16)};
-
-    inline static constexpr byte_size_type attack_cooldowns_counters_block_offset{
-        ml::single_allocation_experiment::layout_align(
-            attack_reposition_countdowns_counters_block_end,
-            navigation_update_countdowns_remaining_ticks_alignment)};
-    inline static constexpr byte_size_type attack_cooldowns_counters_block_end{
-        attack_cooldowns_counters_block_offset + capacity_granularity * sizeof(int16)};
-
-    inline static constexpr byte_size_type target_handles_block_offset{
-        ml::single_allocation_experiment::layout_align(attack_cooldowns_counters_block_end,
-                                                       entity_handles_alignment)};
-    inline static constexpr byte_size_type target_handles_block_end{
-        target_handles_block_offset + capacity_granularity * sizeof(Handle)};
-
-    inline static constexpr byte_size_type target_locations_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_handles_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_locations_xs_block_end{
-        target_locations_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_locations_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(target_locations_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_locations_ys_block_end{
-        target_locations_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_locations_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_locations_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_locations_zs_block_end{
-        target_locations_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_velocities_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_locations_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_velocities_xs_block_end{
-        target_velocities_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_velocities_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(target_velocities_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_velocities_ys_block_end{
-        target_velocities_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_velocities_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_velocities_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_velocities_zs_block_end{
-        target_velocities_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_directions_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_velocities_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_directions_xs_block_end{
-        target_directions_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_directions_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(target_directions_xs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_directions_ys_block_end{
-        target_directions_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_directions_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(target_directions_ys_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_directions_zs_block_end{
-        target_directions_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type intercept_times_block_offset{
-        ml::single_allocation_experiment::layout_align(target_directions_zs_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type intercept_times_block_end{
-        intercept_times_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_distance_sq_block_offset{
-        ml::single_allocation_experiment::layout_align(intercept_times_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_distance_sq_block_end{
-        target_distance_sq_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_distances_block_offset{
-        ml::single_allocation_experiment::layout_align(target_distance_sq_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_distances_block_end{
-        target_distances_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type target_radii_block_offset{
-        ml::single_allocation_experiment::layout_align(target_distances_block_end,
-                                                       float_biases_alignment)};
-    inline static constexpr byte_size_type target_radii_block_end{
-        target_radii_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type block_bytes{
-        ml::single_allocation_experiment::layout_align(target_radii_block_end,
-                                                       allocation_alignment)};
-    inline static constexpr size_type max_capacity{
-        ml::single_allocation_experiment::maximum_capacity(block_bytes)};
-  private:
-    inline static constexpr auto validate_layout = []() consteval -> bool {
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<Handle>,
-            "Single-allocation leaf entity_handles requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<uint32>,
-            "Single-allocation leaf integral_biases requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<float>,
-            "Single-allocation leaf float_biases requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<Task>,
-            "Single-allocation leaf tasks requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<Team>,
-            "Single-allocation leaf teams requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<int32>,
-            "Single-allocation leaf healths requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(ml::single_allocation_experiment::supported_leaf<int8>,
-                      "Single-allocation leaf awareness_scan_countdowns.counters requires a "
-                      "non-cv, trivially copyable/copy-constructible/destructible, nothrow "
-                      "default-constructible object type.");
-        static_assert(ml::single_allocation_experiment::supported_leaf<int16>,
-                      "Single-allocation leaf navigation_update_countdowns.remaining_ticks "
-                      "requires a non-cv, trivially copyable/copy-constructible/destructible, "
-                      "nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<uint8>,
-            "Single-allocation leaf navigation_risk_tiers requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-
-        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
-        static_assert(sizeof(Handle) <=
-                      (max_allocation_size - entity_handles_block_offset) / capacity_granularity);
-        static_assert(sizeof(uint32) <=
-                      (max_allocation_size - integral_biases_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - float_biases_block_offset) / capacity_granularity);
-        static_assert(sizeof(Task) <=
-                      (max_allocation_size - tasks_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - locations_xs_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - locations_ys_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - locations_zs_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_move_locations_xs_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_move_locations_ys_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_move_locations_zs_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_xs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_ys_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - aim_directions_zs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_aiming_directions_xs_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_aiming_directions_ys_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - desired_aiming_directions_zs_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_xs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_ys_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - movement_directions_zs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - velocities_xs_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - velocities_ys_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - velocities_zs_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - move_distances_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - speeds_block_offset) / capacity_granularity);
-        static_assert(sizeof(Team) <=
-                      (max_allocation_size - teams_block_offset) / capacity_granularity);
-        static_assert(sizeof(int32) <=
-                      (max_allocation_size - healths_block_offset) / capacity_granularity);
-        static_assert(sizeof(Handle) <=
-                      (max_allocation_size - parent_handles_block_offset) / capacity_granularity);
-        static_assert(sizeof(int8) <=
-                      (max_allocation_size - awareness_scan_countdowns_counters_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(int16) <= (max_allocation_size -
-                                        navigation_update_countdowns_remaining_ticks_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(int16) <=
-                      (max_allocation_size - navigation_update_countdowns_periods_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_xs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_ys_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - separation_steering_zs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(uint8) <= (max_allocation_size - navigation_risk_tiers_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(uint8) <=
-                      (max_allocation_size - navigation_lower_risk_scan_counts_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(int8) <=
-                      (max_allocation_size - avoidance_choice_indices_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(uint8) <=
-                      (max_allocation_size - avoidance_clear_scan_counts_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(int16) <=
-                      (max_allocation_size - attack_reposition_countdowns_counters_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(int16) <=
-                      (max_allocation_size - attack_cooldowns_counters_block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(Handle) <=
-                      (max_allocation_size - target_handles_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_locations_xs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_locations_ys_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_locations_zs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_xs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_ys_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_velocities_zs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_directions_xs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_directions_ys_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_directions_zs_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - intercept_times_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - target_distance_sq_block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - target_distances_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - target_radii_block_offset) / capacity_granularity);
-        static_assert(max_capacity >= capacity_granularity);
-        return true;
-    };
-    static_assert(validate_layout());
-  public:
+struct FMemorySingleEntityDataStorage
+    : EntityDataSingleLayout
+    , protected ml::soa_storage::StorageState
+    , ml::soa_storage::StorageOperations {
+    using View = EntityDataSingleView<false>;
+    using ConstView = EntityDataSingleView<true>;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
     FMemorySingleEntityDataStorage() noexcept = default;
-    ~FMemorySingleEntityDataStorage() { FMemoryStorageAllocator::free(data_); }
+    ~FMemorySingleEntityDataStorage() { ml::soa_storage::FMemoryStorageAllocator::free(data_); }
     FMemorySingleEntityDataStorage(FMemorySingleEntityDataStorage const&) = delete;
     auto operator=(FMemorySingleEntityDataStorage const&)
         -> FMemorySingleEntityDataStorage& = delete;
     FMemorySingleEntityDataStorage(FMemorySingleEntityDataStorage&& other) noexcept
-        : data_{std::exchange(other.data_, nullptr)}
-        , num_{std::exchange(other.num_, 0)}
-        , capacity_{std::exchange(other.capacity_, 0)} {}
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
     auto operator=(FMemorySingleEntityDataStorage&& other) noexcept
         -> FMemorySingleEntityDataStorage& {
         if (this != &other) {
-            FMemoryStorageAllocator::free(data_);
+            ml::soa_storage::FMemoryStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -3240,7 +3914,7 @@ struct FMemorySingleEntityDataStorage : ml::single_allocation_experiment::Storag
         return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
     }
   private:
-    friend struct ml::single_allocation_experiment::StorageOperations;
+    friend struct ml::soa_storage::StorageOperations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -3483,7 +4157,12 @@ struct FMemorySingleEntityDataStorage : ml::single_allocation_experiment::Storag
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks())};
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const entity_handles_bytes{elements_to_move * sizeof(Handle)};
         auto const integral_biases_bytes{elements_to_move * sizeof(uint32)};
@@ -3634,9 +4313,167 @@ struct FMemorySingleEntityDataStorage : ml::single_allocation_experiment::Storag
         FMemory::Memcpy(
             columns.target_radii + index, columns.target_radii + source, float_biases_bytes);
     }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::soa_storage::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source, size_type first, size_type count) {
+        auto const destination{get_data(first)};
+        auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const entity_handles_bytes{elements_to_copy * sizeof(Handle)};
+        auto const integral_biases_bytes{elements_to_copy * sizeof(uint32)};
+        auto const float_biases_bytes{elements_to_copy * sizeof(float)};
+        auto const tasks_bytes{elements_to_copy * sizeof(Task)};
+        auto const teams_bytes{elements_to_copy * sizeof(Team)};
+        auto const healths_bytes{elements_to_copy * sizeof(int32)};
+        auto const awareness_scan_countdowns_counters_bytes{elements_to_copy * sizeof(int8)};
+        auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
+                                                                      sizeof(int16)};
+        auto const navigation_risk_tiers_bytes{elements_to_copy * sizeof(uint8)};
+        FMemory::Memcpy(
+            destination.entity_handles, source.entity_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(
+            destination.integral_biases, source.integral_biases.GetData(), integral_biases_bytes);
+        FMemory::Memcpy(
+            destination.float_biases, source.float_biases.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.tasks, source.tasks.GetData(), tasks_bytes);
+        FMemory::Memcpy(
+            destination.locations_xs, source.locations.xs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.locations_ys, source.locations.ys.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.locations_zs, source.locations.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.desired_move_locations_xs,
+                        source.desired_move_locations.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_move_locations_ys,
+                        source.desired_move_locations.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_move_locations_zs,
+                        source.desired_move_locations.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.aim_directions_xs, source.aim_directions.xs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.aim_directions_ys, source.aim_directions.ys.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.aim_directions_zs, source.aim_directions.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.desired_aiming_directions_xs,
+                        source.desired_aiming_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_aiming_directions_ys,
+                        source.desired_aiming_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.desired_aiming_directions_zs,
+                        source.desired_aiming_directions.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.movement_directions_xs,
+                        source.movement_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.movement_directions_ys,
+                        source.movement_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.movement_directions_zs,
+                        source.movement_directions.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.velocities_xs, source.velocities.xs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.velocities_ys, source.velocities.ys.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.velocities_zs, source.velocities.zs.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.move_distances, source.move_distances.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.speeds, source.speeds.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.teams, source.teams.GetData(), teams_bytes);
+        FMemory::Memcpy(destination.healths, source.healths.GetData(), healths_bytes);
+        FMemory::Memcpy(
+            destination.parent_handles, source.parent_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
+                        source.awareness_scan_countdowns.counters.GetData(),
+                        awareness_scan_countdowns_counters_bytes);
+        FMemory::Memcpy(destination.navigation_update_countdowns_remaining_ticks,
+                        source.navigation_update_countdowns.remaining_ticks.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(destination.navigation_update_countdowns_periods,
+                        source.navigation_update_countdowns.periods.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(destination.separation_steering_xs,
+                        source.separation_steering.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.separation_steering_ys,
+                        source.separation_steering.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.separation_steering_zs,
+                        source.separation_steering.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.navigation_risk_tiers,
+                        source.navigation_risk_tiers.GetData(),
+                        navigation_risk_tiers_bytes);
+        FMemory::Memcpy(destination.navigation_lower_risk_scan_counts,
+                        source.navigation_lower_risk_scan_counts.GetData(),
+                        navigation_risk_tiers_bytes);
+        FMemory::Memcpy(destination.avoidance_choice_indices,
+                        source.avoidance_choice_indices.GetData(),
+                        awareness_scan_countdowns_counters_bytes);
+        FMemory::Memcpy(destination.avoidance_clear_scan_counts,
+                        source.avoidance_clear_scan_counts.GetData(),
+                        navigation_risk_tiers_bytes);
+        FMemory::Memcpy(destination.attack_reposition_countdowns_counters,
+                        source.attack_reposition_countdowns.counters.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(destination.attack_cooldowns_counters,
+                        source.attack_cooldowns.counters.GetData(),
+                        navigation_update_countdowns_remaining_ticks_bytes);
+        FMemory::Memcpy(
+            destination.target_handles, source.target_handles.GetData(), entity_handles_bytes);
+        FMemory::Memcpy(destination.target_locations_xs,
+                        source.target_locations.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_locations_ys,
+                        source.target_locations.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_locations_zs,
+                        source.target_locations.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_velocities_xs,
+                        source.target_velocities.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_velocities_ys,
+                        source.target_velocities.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_velocities_zs,
+                        source.target_velocities.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_directions_xs,
+                        source.target_directions.xs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_directions_ys,
+                        source.target_directions.ys.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(destination.target_directions_zs,
+                        source.target_directions.zs.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.intercept_times, source.intercept_times.GetData(), float_biases_bytes);
+        FMemory::Memcpy(destination.target_distance_sq,
+                        source.target_distance_sq.GetData(),
+                        float_biases_bytes);
+        FMemory::Memcpy(
+            destination.target_distances, source.target_distances.GetData(), float_biases_bytes);
+        FMemory::Memcpy(
+            destination.target_radii, source.target_radii.GetData(), float_biases_bytes);
+    }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{FMemoryStorageAllocator::allocate(
-            ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
+        auto* const new_data{ml::soa_storage::FMemoryStorageAllocator::allocate(
+            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};
@@ -3770,13 +4607,10 @@ struct FMemorySingleEntityDataStorage : ml::single_allocation_experiment::Storag
                 destination.target_distances, source.target_distances, float_biases_bytes);
             FMemory::Memcpy(destination.target_radii, source.target_radii, float_biases_bytes);
         }
-        FMemoryStorageAllocator::free(data_);
+        ml::soa_storage::FMemoryStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-    std::byte* data_{};
-    size_type num_{};
-    size_type capacity_{};
 };
 
 struct FMemorySingleEntityData : FMemorySingleEntityDataStorage {
@@ -3785,166 +4619,22 @@ struct FMemorySingleEntityData : FMemorySingleEntityDataStorage {
     auto operator=(FMemorySingleEntityData const&) -> FMemorySingleEntityData& = delete;
     FMemorySingleEntityData(FMemorySingleEntityData&&) noexcept = default;
     auto operator=(FMemorySingleEntityData&&) noexcept -> FMemorySingleEntityData& = default;
-
-    /* **************************************** */
-    // Views
-    /* **************************************** */
-  private:
-    static auto make_view(DataPointers<std::byte> const& columns, size_type const count) -> View {
-        return EntityDataView{
-            {columns.entity_handles, count},
-            {columns.integral_biases, count},
-            {columns.float_biases, count},
-            {columns.tasks, count},
-            VectorsView{{columns.locations_xs, count},
-                        {columns.locations_ys, count},
-                        {columns.locations_zs, count}},
-            VectorsView{{columns.desired_move_locations_xs, count},
-                        {columns.desired_move_locations_ys, count},
-                        {columns.desired_move_locations_zs, count}},
-            VectorsView{{columns.aim_directions_xs, count},
-                        {columns.aim_directions_ys, count},
-                        {columns.aim_directions_zs, count}},
-            VectorsView{{columns.desired_aiming_directions_xs, count},
-                        {columns.desired_aiming_directions_ys, count},
-                        {columns.desired_aiming_directions_zs, count}},
-            VectorsView{{columns.movement_directions_xs, count},
-                        {columns.movement_directions_ys, count},
-                        {columns.movement_directions_zs, count}},
-            VectorsView{{columns.velocities_xs, count},
-                        {columns.velocities_ys, count},
-                        {columns.velocities_zs, count}},
-            {columns.move_distances, count},
-            {columns.speeds, count},
-            {columns.teams, count},
-            {columns.healths, count},
-            {columns.parent_handles, count},
-            Countdown8View{{columns.awareness_scan_countdowns_counters, count}},
-            PeriodicCountdown16View{{columns.navigation_update_countdowns_remaining_ticks, count},
-                                    {columns.navigation_update_countdowns_periods, count}},
-            VectorsView{{columns.separation_steering_xs, count},
-                        {columns.separation_steering_ys, count},
-                        {columns.separation_steering_zs, count}},
-            {columns.navigation_risk_tiers, count},
-            {columns.navigation_lower_risk_scan_counts, count},
-            {columns.avoidance_choice_indices, count},
-            {columns.avoidance_clear_scan_counts, count},
-            Countdown16View{{columns.attack_reposition_countdowns_counters, count}},
-            Countdown16View{{columns.attack_cooldowns_counters, count}},
-            {columns.target_handles, count},
-            VectorsView{{columns.target_locations_xs, count},
-                        {columns.target_locations_ys, count},
-                        {columns.target_locations_zs, count}},
-            VectorsView{{columns.target_velocities_xs, count},
-                        {columns.target_velocities_ys, count},
-                        {columns.target_velocities_zs, count}},
-            VectorsView{{columns.target_directions_xs, count},
-                        {columns.target_directions_ys, count},
-                        {columns.target_directions_zs, count}},
-            {columns.intercept_times, count},
-            {columns.target_distance_sq, count},
-            {columns.target_distances, count},
-            {columns.target_radii, count}};
+    auto get_view() -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
+    auto left(size_type count) -> View { return get_view().left(count); }
+    auto right(size_type count) -> View { return get_view().right(count); }
+    auto get_view() const -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const -> ConstView {
+        return {this, offset, count};
     }
-    static auto make_view(DataPointers<std::byte const> const& columns, size_type const count)
-        -> ConstView {
-        return EntityDataConstView{
-            {columns.entity_handles, count},
-            {columns.integral_biases, count},
-            {columns.float_biases, count},
-            {columns.tasks, count},
-            VectorsConstView{{columns.locations_xs, count},
-                             {columns.locations_ys, count},
-                             {columns.locations_zs, count}},
-            VectorsConstView{{columns.desired_move_locations_xs, count},
-                             {columns.desired_move_locations_ys, count},
-                             {columns.desired_move_locations_zs, count}},
-            VectorsConstView{{columns.aim_directions_xs, count},
-                             {columns.aim_directions_ys, count},
-                             {columns.aim_directions_zs, count}},
-            VectorsConstView{{columns.desired_aiming_directions_xs, count},
-                             {columns.desired_aiming_directions_ys, count},
-                             {columns.desired_aiming_directions_zs, count}},
-            VectorsConstView{{columns.movement_directions_xs, count},
-                             {columns.movement_directions_ys, count},
-                             {columns.movement_directions_zs, count}},
-            VectorsConstView{{columns.velocities_xs, count},
-                             {columns.velocities_ys, count},
-                             {columns.velocities_zs, count}},
-            {columns.move_distances, count},
-            {columns.speeds, count},
-            {columns.teams, count},
-            {columns.healths, count},
-            {columns.parent_handles, count},
-            Countdown8ConstView{{columns.awareness_scan_countdowns_counters, count}},
-            PeriodicCountdown16ConstView{
-                {columns.navigation_update_countdowns_remaining_ticks, count},
-                {columns.navigation_update_countdowns_periods, count}},
-            VectorsConstView{{columns.separation_steering_xs, count},
-                             {columns.separation_steering_ys, count},
-                             {columns.separation_steering_zs, count}},
-            {columns.navigation_risk_tiers, count},
-            {columns.navigation_lower_risk_scan_counts, count},
-            {columns.avoidance_choice_indices, count},
-            {columns.avoidance_clear_scan_counts, count},
-            Countdown16ConstView{{columns.attack_reposition_countdowns_counters, count}},
-            Countdown16ConstView{{columns.attack_cooldowns_counters, count}},
-            {columns.target_handles, count},
-            VectorsConstView{{columns.target_locations_xs, count},
-                             {columns.target_locations_ys, count},
-                             {columns.target_locations_zs, count}},
-            VectorsConstView{{columns.target_velocities_xs, count},
-                             {columns.target_velocities_ys, count},
-                             {columns.target_velocities_zs, count}},
-            VectorsConstView{{columns.target_directions_xs, count},
-                             {columns.target_directions_ys, count},
-                             {columns.target_directions_zs, count}},
-            {columns.intercept_times, count},
-            {columns.target_distance_sq, count},
-            {columns.target_distances, count},
-            {columns.target_radii, count}};
-    }
-  public:
-    auto get_view() -> View {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
+    auto slice(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type const count) -> View { return get_view(0, count); }
-    auto right(size_type const count) -> View {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
-    auto get_view() const -> ConstView {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type const count) const -> ConstView { return get_view(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
+    auto left(size_type count) const -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const -> ConstView { return get_view().right(count); }
     auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
 };
@@ -4097,7 +4787,7 @@ struct SBXCOREEXPERIMENTS_API AlignmentData {
         ml::append_from(bytes, other.bytes);
         ml::append_from(odd, other.odd);
         ml::append_from(aligned32, other.aligned32);
-        ml::append_from(nested, other.nested);
+        nested.append_from(other.nested);
         ml::append_from(aligned64, other.aligned64);
         ml::append_from(small, other.small);
         ml::append_from(aligned256, other.aligned256);
@@ -4189,9 +4879,9 @@ struct SBXCOREEXPERIMENTS_API AlignmentData {
     TArray<Handle> handles;
 };
 
-struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::StorageOperations {
-    using View = AlignmentDataView;
-    using ConstView = AlignmentDataConstView;
+template <bool Const>
+struct AlignmentDataSingleView;
+struct AlignmentDataSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
 
@@ -4232,91 +4922,90 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
                                                                           handles_alignment})};
 
     inline static constexpr byte_size_type bytes_block_offset{
-        ml::single_allocation_experiment::layout_align(0, bytes_alignment)};
+        ml::soa_storage::layout_align(0, bytes_alignment)};
     inline static constexpr byte_size_type bytes_block_end{bytes_block_offset +
                                                            capacity_granularity * sizeof(uint8)};
 
     inline static constexpr byte_size_type odd_block_offset{
-        ml::single_allocation_experiment::layout_align(bytes_block_end, odd_alignment)};
+        ml::soa_storage::layout_align(bytes_block_end, odd_alignment)};
     inline static constexpr byte_size_type odd_block_end{odd_block_offset +
                                                          capacity_granularity * sizeof(OddBytes)};
 
     inline static constexpr byte_size_type aligned32_block_offset{
-        ml::single_allocation_experiment::layout_align(odd_block_end, aligned32_alignment)};
+        ml::soa_storage::layout_align(odd_block_end, aligned32_alignment)};
     inline static constexpr byte_size_type aligned32_block_end{
         aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
 
     inline static constexpr byte_size_type nested_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(aligned32_block_end, nested_xs_alignment)};
+        ml::soa_storage::layout_align(aligned32_block_end, nested_xs_alignment)};
     inline static constexpr byte_size_type nested_xs_block_end{
         nested_xs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type nested_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(nested_xs_block_end, nested_xs_alignment)};
+        ml::soa_storage::layout_align(nested_xs_block_end, nested_xs_alignment)};
     inline static constexpr byte_size_type nested_ys_block_end{
         nested_ys_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type nested_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(nested_ys_block_end, nested_xs_alignment)};
+        ml::soa_storage::layout_align(nested_ys_block_end, nested_xs_alignment)};
     inline static constexpr byte_size_type nested_zs_block_end{
         nested_zs_block_offset + capacity_granularity * sizeof(float)};
 
     inline static constexpr byte_size_type aligned64_block_offset{
-        ml::single_allocation_experiment::layout_align(nested_zs_block_end, aligned64_alignment)};
+        ml::soa_storage::layout_align(nested_zs_block_end, aligned64_alignment)};
     inline static constexpr byte_size_type aligned64_block_end{
         aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
 
     inline static constexpr byte_size_type small_block_offset{
-        ml::single_allocation_experiment::layout_align(aligned64_block_end, small_alignment)};
+        ml::soa_storage::layout_align(aligned64_block_end, small_alignment)};
     inline static constexpr byte_size_type small_block_end{small_block_offset +
                                                            capacity_granularity * sizeof(int8)};
 
     inline static constexpr byte_size_type aligned256_block_offset{
-        ml::single_allocation_experiment::layout_align(small_block_end, aligned256_alignment)};
+        ml::soa_storage::layout_align(small_block_end, aligned256_alignment)};
     inline static constexpr byte_size_type aligned256_block_end{
         aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
 
     inline static constexpr byte_size_type handles_block_offset{
-        ml::single_allocation_experiment::layout_align(aligned256_block_end, handles_alignment)};
+        ml::soa_storage::layout_align(aligned256_block_end, handles_alignment)};
     inline static constexpr byte_size_type handles_block_end{handles_block_offset +
                                                              capacity_granularity * sizeof(Handle)};
 
     inline static constexpr byte_size_type block_bytes{
-        ml::single_allocation_experiment::layout_align(handles_block_end, allocation_alignment)};
-    inline static constexpr size_type max_capacity{
-        ml::single_allocation_experiment::maximum_capacity(block_bytes)};
+        ml::soa_storage::layout_align(handles_block_end, allocation_alignment)};
+    inline static constexpr size_type max_capacity{ml::soa_storage::maximum_capacity(block_bytes)};
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<uint8>,
+            ml::soa_storage::supported_leaf<uint8>,
             "Single-allocation leaf bytes requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<OddBytes>,
+            ml::soa_storage::supported_leaf<OddBytes>,
             "Single-allocation leaf odd requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<Aligned32>,
+            ml::soa_storage::supported_leaf<Aligned32>,
             "Single-allocation leaf aligned32 requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<float>,
+            ml::soa_storage::supported_leaf<float>,
             "Single-allocation leaf nested.xs requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<Aligned64>,
+            ml::soa_storage::supported_leaf<Aligned64>,
             "Single-allocation leaf aligned64 requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<int8>,
+            ml::soa_storage::supported_leaf<int8>,
             "Single-allocation leaf small requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<Aligned256>,
+            ml::soa_storage::supported_leaf<Aligned256>,
             "Single-allocation leaf aligned256 requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::single_allocation_experiment::supported_leaf<Handle>,
+            ml::soa_storage::supported_leaf<Handle>,
             "Single-allocation leaf handles requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
@@ -4345,25 +5034,32 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
         return true;
     };
     static_assert(validate_layout());
-  public:
+};
+
+struct SingleAllocationAlignmentDataStorage
+    : AlignmentDataSingleLayout
+    , protected ml::soa_storage::StorageState
+    , ml::soa_storage::StorageOperations {
+    using View = AlignmentDataSingleView<false>;
+    using ConstView = AlignmentDataSingleView<true>;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
     SingleAllocationAlignmentDataStorage() noexcept = default;
     ~SingleAllocationAlignmentDataStorage() {
-        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
+        ml::soa_storage::MimallocStorageAllocator::free(data_);
     }
     SingleAllocationAlignmentDataStorage(SingleAllocationAlignmentDataStorage const&) = delete;
     auto operator=(SingleAllocationAlignmentDataStorage const&)
         -> SingleAllocationAlignmentDataStorage& = delete;
     SingleAllocationAlignmentDataStorage(SingleAllocationAlignmentDataStorage&& other) noexcept
-        : data_{std::exchange(other.data_, nullptr)}
-        , num_{std::exchange(other.num_, 0)}
-        , capacity_{std::exchange(other.capacity_, 0)} {}
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
     auto operator=(SingleAllocationAlignmentDataStorage&& other) noexcept
         -> SingleAllocationAlignmentDataStorage& {
         if (this != &other) {
-            ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
+            ml::soa_storage::MimallocStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -4403,7 +5099,7 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
         return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
     }
   private:
-    friend struct ml::single_allocation_experiment::StorageOperations;
+    friend struct ml::soa_storage::StorageOperations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -4474,7 +5170,12 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks())};
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const bytes_bytes{elements_to_move * sizeof(uint8)};
         auto const odd_bytes{elements_to_move * sizeof(OddBytes)};
@@ -4495,9 +5196,42 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
         FMemory::Memcpy(columns.aligned256 + index, columns.aligned256 + source, aligned256_bytes);
         FMemory::Memcpy(columns.handles + index, columns.handles + source, handles_bytes);
     }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::soa_storage::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source, size_type first, size_type count) {
+        auto const destination{get_data(first)};
+        auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const bytes_bytes{elements_to_copy * sizeof(uint8)};
+        auto const odd_bytes{elements_to_copy * sizeof(OddBytes)};
+        auto const aligned32_bytes{elements_to_copy * sizeof(Aligned32)};
+        auto const nested_xs_bytes{elements_to_copy * sizeof(float)};
+        auto const aligned64_bytes{elements_to_copy * sizeof(Aligned64)};
+        auto const small_bytes{elements_to_copy * sizeof(int8)};
+        auto const aligned256_bytes{elements_to_copy * sizeof(Aligned256)};
+        auto const handles_bytes{elements_to_copy * sizeof(Handle)};
+        FMemory::Memcpy(destination.bytes, source.bytes.GetData(), bytes_bytes);
+        FMemory::Memcpy(destination.odd, source.odd.GetData(), odd_bytes);
+        FMemory::Memcpy(destination.aligned32, source.aligned32.GetData(), aligned32_bytes);
+        FMemory::Memcpy(destination.nested_xs, source.nested.xs.GetData(), nested_xs_bytes);
+        FMemory::Memcpy(destination.nested_ys, source.nested.ys.GetData(), nested_xs_bytes);
+        FMemory::Memcpy(destination.nested_zs, source.nested.zs.GetData(), nested_xs_bytes);
+        FMemory::Memcpy(destination.aligned64, source.aligned64.GetData(), aligned64_bytes);
+        FMemory::Memcpy(destination.small, source.small.GetData(), small_bytes);
+        FMemory::Memcpy(destination.aligned256, source.aligned256.GetData(), aligned256_bytes);
+        FMemory::Memcpy(destination.handles, source.handles.GetData(), handles_bytes);
+    }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::single_allocation_experiment::MimallocStorageAllocator::allocate(
-            ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
+        auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(
+            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};
@@ -4525,15 +5259,180 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
             FMemory::Memcpy(destination.aligned256, source.aligned256, aligned256_bytes);
             FMemory::Memcpy(destination.handles, source.handles, handles_bytes);
         }
-        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
+        ml::soa_storage::MimallocStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-    std::byte* data_{};
-    size_type num_{};
-    size_type capacity_{};
 };
 
+template <bool Const>
+struct AlignmentDataSingleView_nested : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = AlignmentDataSingleView_nested<false>;
+    using ConstView = AlignmentDataSingleView_nested<true>;
+    AlignmentDataSingleView_nested() = default;
+    AlignmentDataSingleView_nested(AlignmentDataSingleView_nested const&) = default;
+    auto operator=(AlignmentDataSingleView_nested const&)
+        -> AlignmentDataSingleView_nested& = default;
+    AlignmentDataSingleView_nested(AlignmentDataSingleView_nested<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> AlignmentDataSingleView_nested<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const
+        -> AlignmentDataSingleView_nested<true> {
+        return this->slice(offset, count);
+    }
+    auto xs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(AlignmentDataSingleLayout::nested_xs_block_offset),
+            this->count_};
+    }
+    auto ys() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(AlignmentDataSingleLayout::nested_ys_block_offset),
+            this->count_};
+    }
+    auto zs() const {
+        return TArrayView<typename Base::template Element<float>>{
+            this->template column_data<float>(AlignmentDataSingleLayout::nested_zs_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, VectorsConstView, VectorsView>{
+            {this->template column_data_unchecked<float>(
+                 AlignmentDataSingleLayout::nested_xs_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 AlignmentDataSingleLayout::nested_ys_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<float>(
+                 AlignmentDataSingleLayout::nested_zs_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(AlignmentDataSingleView_nested<false>) == 16 &&
+              sizeof(AlignmentDataSingleView_nested<true>) == 16);
+static_assert(std::is_trivially_copyable_v<AlignmentDataSingleView_nested<false>> &&
+              std::is_trivially_copyable_v<AlignmentDataSingleView_nested<true>>);
+template <bool Const>
+struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<Const> {
+    using Base = ml::soa_storage::CompactViewState<Const>;
+    using size_type = typename Base::size_type;
+    using Base::Base;
+    using View = AlignmentDataSingleView<false>;
+    using ConstView = AlignmentDataSingleView<true>;
+    AlignmentDataSingleView() = default;
+    AlignmentDataSingleView(AlignmentDataSingleView const&) = default;
+    auto operator=(AlignmentDataSingleView const&) -> AlignmentDataSingleView& = default;
+    AlignmentDataSingleView(AlignmentDataSingleView<false> const& other)
+        requires Const
+        : Base{other} {}
+    auto get_const_view() const -> AlignmentDataSingleView<true> { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> AlignmentDataSingleView<true> {
+        return this->slice(offset, count);
+    }
+    auto bytes() const {
+        return TArrayView<typename Base::template Element<uint8>>{
+            this->template column_data<uint8>(AlignmentDataSingleLayout::bytes_block_offset),
+            this->count_};
+    }
+    auto odd() const {
+        return TArrayView<typename Base::template Element<OddBytes>>{
+            this->template column_data<OddBytes>(AlignmentDataSingleLayout::odd_block_offset),
+            this->count_};
+    }
+    auto aligned32() const {
+        return TArrayView<typename Base::template Element<Aligned32>>{
+            this->template column_data<Aligned32>(
+                AlignmentDataSingleLayout::aligned32_block_offset),
+            this->count_};
+    }
+    auto nested() const {
+        return AlignmentDataSingleView_nested<Const>{this->state_, this->offset_, this->count_};
+    }
+    auto aligned64() const {
+        return TArrayView<typename Base::template Element<Aligned64>>{
+            this->template column_data<Aligned64>(
+                AlignmentDataSingleLayout::aligned64_block_offset),
+            this->count_};
+    }
+    auto small() const {
+        return TArrayView<typename Base::template Element<int8>>{
+            this->template column_data<int8>(AlignmentDataSingleLayout::small_block_offset),
+            this->count_};
+    }
+    auto aligned256() const {
+        return TArrayView<typename Base::template Element<Aligned256>>{
+            this->template column_data<Aligned256>(
+                AlignmentDataSingleLayout::aligned256_block_offset),
+            this->count_};
+    }
+    auto handles() const {
+        return TArrayView<typename Base::template Element<Handle>>{
+            this->template column_data<Handle>(AlignmentDataSingleLayout::handles_block_offset),
+            this->count_};
+    }
+    auto columns() const -> std::conditional_t<Const, AlignmentDataConstView, AlignmentDataView> {
+        this->validate();
+        if (!this->state_ || !this->state_->data_) {
+            return {};
+        }
+        auto const blocks{this->capacity_blocks()};
+        return std::conditional_t<Const, AlignmentDataConstView, AlignmentDataView>{
+            {this->template column_data_unchecked<uint8>(
+                 AlignmentDataSingleLayout::bytes_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<OddBytes>(
+                 AlignmentDataSingleLayout::odd_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<Aligned32>(
+                 AlignmentDataSingleLayout::aligned32_block_offset, blocks),
+             this->count_},
+            std::conditional_t<Const, VectorsConstView, VectorsView>{
+                {this->template column_data_unchecked<float>(
+                     AlignmentDataSingleLayout::nested_xs_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     AlignmentDataSingleLayout::nested_ys_block_offset, blocks),
+                 this->count_},
+                {this->template column_data_unchecked<float>(
+                     AlignmentDataSingleLayout::nested_zs_block_offset, blocks),
+                 this->count_}},
+            {this->template column_data_unchecked<Aligned64>(
+                 AlignmentDataSingleLayout::aligned64_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<int8>(
+                 AlignmentDataSingleLayout::small_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<Aligned256>(
+                 AlignmentDataSingleLayout::aligned256_block_offset, blocks),
+             this->count_},
+            {this->template column_data_unchecked<Handle>(
+                 AlignmentDataSingleLayout::handles_block_offset, blocks),
+             this->count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(AlignmentDataSingleView<false>) == 16 &&
+              sizeof(AlignmentDataSingleView<true>) == 16);
+static_assert(std::is_trivially_copyable_v<AlignmentDataSingleView<false>> &&
+              std::is_trivially_copyable_v<AlignmentDataSingleView<true>>);
 struct SingleAllocationAlignmentData : SingleAllocationAlignmentDataStorage {
     SingleAllocationAlignmentData() noexcept = default;
     SingleAllocationAlignmentData(SingleAllocationAlignmentData const&) = delete;
@@ -4541,254 +5440,48 @@ struct SingleAllocationAlignmentData : SingleAllocationAlignmentDataStorage {
     SingleAllocationAlignmentData(SingleAllocationAlignmentData&&) noexcept = default;
     auto operator=(SingleAllocationAlignmentData&&) noexcept
         -> SingleAllocationAlignmentData& = default;
-
-    /* **************************************** */
-    // Views
-    /* **************************************** */
-  private:
-    static auto make_view(DataPointers<std::byte> const& columns, size_type const count) -> View {
-        return AlignmentDataView{{columns.bytes, count},
-                                 {columns.odd, count},
-                                 {columns.aligned32, count},
-                                 VectorsView{{columns.nested_xs, count},
-                                             {columns.nested_ys, count},
-                                             {columns.nested_zs, count}},
-                                 {columns.aligned64, count},
-                                 {columns.small, count},
-                                 {columns.aligned256, count},
-                                 {columns.handles, count}};
+    auto get_view() -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
+    auto left(size_type count) -> View { return get_view().left(count); }
+    auto right(size_type count) -> View { return get_view().right(count); }
+    auto get_view() const -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const -> ConstView {
+        return {this, offset, count};
     }
-    static auto make_view(DataPointers<std::byte const> const& columns, size_type const count)
-        -> ConstView {
-        return AlignmentDataConstView{{columns.bytes, count},
-                                      {columns.odd, count},
-                                      {columns.aligned32, count},
-                                      VectorsConstView{{columns.nested_xs, count},
-                                                       {columns.nested_ys, count},
-                                                       {columns.nested_zs, count}},
-                                      {columns.aligned64, count},
-                                      {columns.small, count},
-                                      {columns.aligned256, count},
-                                      {columns.handles, count}};
-    }
-  public:
-    auto get_view() -> View {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
+    auto slice(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type const count) -> View { return get_view(0, count); }
-    auto right(size_type const count) -> View {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
-    auto get_view() const -> ConstView {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type const count) const -> ConstView { return get_view(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
+    auto left(size_type count) const -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const -> ConstView { return get_view().right(count); }
     auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
 };
 
-struct FMemorySingleAlignmentDataStorage : ml::single_allocation_experiment::StorageOperations {
-    using View = AlignmentDataView;
-    using ConstView = AlignmentDataConstView;
-    using size_type = int32;
-    using byte_size_type = SIZE_T;
-
-    inline static constexpr byte_size_type max_allocation_size{
-        std::numeric_limits<byte_size_type>::max()};
-    inline static constexpr size_type capacity_granularity{64};
-
-    inline static constexpr byte_size_type bytes_alignment{alignof(uint8) > 64 ? alignof(uint8)
-                                                                               : 64};
-
-    inline static constexpr byte_size_type odd_alignment{alignof(OddBytes) > 64 ? alignof(OddBytes)
-                                                                                : 64};
-
-    inline static constexpr byte_size_type aligned32_alignment{
-        alignof(Aligned32) > 64 ? alignof(Aligned32) : 64};
-
-    inline static constexpr byte_size_type nested_xs_alignment{alignof(float) > 64 ? alignof(float)
-                                                                                   : 64};
-
-    inline static constexpr byte_size_type aligned64_alignment{
-        alignof(Aligned64) > 64 ? alignof(Aligned64) : 64};
-
-    inline static constexpr byte_size_type small_alignment{alignof(int8) > 64 ? alignof(int8) : 64};
-
-    inline static constexpr byte_size_type aligned256_alignment{
-        alignof(Aligned256) > 64 ? alignof(Aligned256) : 64};
-
-    inline static constexpr byte_size_type handles_alignment{alignof(Handle) > 64 ? alignof(Handle)
-                                                                                  : 64};
-
-    inline static constexpr byte_size_type allocation_alignment{std::max({bytes_alignment,
-                                                                          odd_alignment,
-                                                                          aligned32_alignment,
-                                                                          nested_xs_alignment,
-                                                                          aligned64_alignment,
-                                                                          small_alignment,
-                                                                          aligned256_alignment,
-                                                                          handles_alignment})};
-
-    inline static constexpr byte_size_type bytes_block_offset{
-        ml::single_allocation_experiment::layout_align(0, bytes_alignment)};
-    inline static constexpr byte_size_type bytes_block_end{bytes_block_offset +
-                                                           capacity_granularity * sizeof(uint8)};
-
-    inline static constexpr byte_size_type odd_block_offset{
-        ml::single_allocation_experiment::layout_align(bytes_block_end, odd_alignment)};
-    inline static constexpr byte_size_type odd_block_end{odd_block_offset +
-                                                         capacity_granularity * sizeof(OddBytes)};
-
-    inline static constexpr byte_size_type aligned32_block_offset{
-        ml::single_allocation_experiment::layout_align(odd_block_end, aligned32_alignment)};
-    inline static constexpr byte_size_type aligned32_block_end{
-        aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
-
-    inline static constexpr byte_size_type nested_xs_block_offset{
-        ml::single_allocation_experiment::layout_align(aligned32_block_end, nested_xs_alignment)};
-    inline static constexpr byte_size_type nested_xs_block_end{
-        nested_xs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type nested_ys_block_offset{
-        ml::single_allocation_experiment::layout_align(nested_xs_block_end, nested_xs_alignment)};
-    inline static constexpr byte_size_type nested_ys_block_end{
-        nested_ys_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type nested_zs_block_offset{
-        ml::single_allocation_experiment::layout_align(nested_ys_block_end, nested_xs_alignment)};
-    inline static constexpr byte_size_type nested_zs_block_end{
-        nested_zs_block_offset + capacity_granularity * sizeof(float)};
-
-    inline static constexpr byte_size_type aligned64_block_offset{
-        ml::single_allocation_experiment::layout_align(nested_zs_block_end, aligned64_alignment)};
-    inline static constexpr byte_size_type aligned64_block_end{
-        aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
-
-    inline static constexpr byte_size_type small_block_offset{
-        ml::single_allocation_experiment::layout_align(aligned64_block_end, small_alignment)};
-    inline static constexpr byte_size_type small_block_end{small_block_offset +
-                                                           capacity_granularity * sizeof(int8)};
-
-    inline static constexpr byte_size_type aligned256_block_offset{
-        ml::single_allocation_experiment::layout_align(small_block_end, aligned256_alignment)};
-    inline static constexpr byte_size_type aligned256_block_end{
-        aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
-
-    inline static constexpr byte_size_type handles_block_offset{
-        ml::single_allocation_experiment::layout_align(aligned256_block_end, handles_alignment)};
-    inline static constexpr byte_size_type handles_block_end{handles_block_offset +
-                                                             capacity_granularity * sizeof(Handle)};
-
-    inline static constexpr byte_size_type block_bytes{
-        ml::single_allocation_experiment::layout_align(handles_block_end, allocation_alignment)};
-    inline static constexpr size_type max_capacity{
-        ml::single_allocation_experiment::maximum_capacity(block_bytes)};
-  private:
-    inline static constexpr auto validate_layout = []() consteval -> bool {
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<uint8>,
-            "Single-allocation leaf bytes requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<OddBytes>,
-            "Single-allocation leaf odd requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<Aligned32>,
-            "Single-allocation leaf aligned32 requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<float>,
-            "Single-allocation leaf nested.xs requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<Aligned64>,
-            "Single-allocation leaf aligned64 requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<int8>,
-            "Single-allocation leaf small requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<Aligned256>,
-            "Single-allocation leaf aligned256 requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::single_allocation_experiment::supported_leaf<Handle>,
-            "Single-allocation leaf handles requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-
-        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
-        static_assert(sizeof(uint8) <=
-                      (max_allocation_size - bytes_block_offset) / capacity_granularity);
-        static_assert(sizeof(OddBytes) <=
-                      (max_allocation_size - odd_block_offset) / capacity_granularity);
-        static_assert(sizeof(Aligned32) <=
-                      (max_allocation_size - aligned32_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - nested_xs_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - nested_ys_block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - nested_zs_block_offset) / capacity_granularity);
-        static_assert(sizeof(Aligned64) <=
-                      (max_allocation_size - aligned64_block_offset) / capacity_granularity);
-        static_assert(sizeof(int8) <=
-                      (max_allocation_size - small_block_offset) / capacity_granularity);
-        static_assert(sizeof(Aligned256) <=
-                      (max_allocation_size - aligned256_block_offset) / capacity_granularity);
-        static_assert(sizeof(Handle) <=
-                      (max_allocation_size - handles_block_offset) / capacity_granularity);
-        static_assert(max_capacity >= capacity_granularity);
-        return true;
-    };
-    static_assert(validate_layout());
-  public:
+struct FMemorySingleAlignmentDataStorage
+    : AlignmentDataSingleLayout
+    , protected ml::soa_storage::StorageState
+    , ml::soa_storage::StorageOperations {
+    using View = AlignmentDataSingleView<false>;
+    using ConstView = AlignmentDataSingleView<true>;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
     FMemorySingleAlignmentDataStorage() noexcept = default;
-    ~FMemorySingleAlignmentDataStorage() { FMemoryStorageAllocator::free(data_); }
+    ~FMemorySingleAlignmentDataStorage() { ml::soa_storage::FMemoryStorageAllocator::free(data_); }
     FMemorySingleAlignmentDataStorage(FMemorySingleAlignmentDataStorage const&) = delete;
     auto operator=(FMemorySingleAlignmentDataStorage const&)
         -> FMemorySingleAlignmentDataStorage& = delete;
     FMemorySingleAlignmentDataStorage(FMemorySingleAlignmentDataStorage&& other) noexcept
-        : data_{std::exchange(other.data_, nullptr)}
-        , num_{std::exchange(other.num_, 0)}
-        , capacity_{std::exchange(other.capacity_, 0)} {}
+        : StorageState{std::exchange(other.data_, nullptr),
+                       std::exchange(other.num_, 0),
+                       std::exchange(other.capacity_, 0)} {}
     auto operator=(FMemorySingleAlignmentDataStorage&& other) noexcept
         -> FMemorySingleAlignmentDataStorage& {
         if (this != &other) {
-            FMemoryStorageAllocator::free(data_);
+            ml::soa_storage::FMemoryStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -4828,7 +5521,7 @@ struct FMemorySingleAlignmentDataStorage : ml::single_allocation_experiment::Sto
         return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
     }
   private:
-    friend struct ml::single_allocation_experiment::StorageOperations;
+    friend struct ml::soa_storage::StorageOperations;
     /* **************************************** */
     // Column pointers
     /* **************************************** */
@@ -4899,7 +5592,12 @@ struct FMemorySingleAlignmentDataStorage : ml::single_allocation_experiment::Sto
     void swap_remove_columns(size_type const index,
                              size_type const source,
                              size_type const move_count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks())};
+        copy_columns(get_data(), index, source, move_count);
+    }
+    static void copy_columns(DataPointers<std::byte> const& columns,
+                             size_type index,
+                             size_type source,
+                             size_type move_count) {
         auto const elements_to_move{static_cast<byte_size_type>(move_count)};
         auto const bytes_bytes{elements_to_move * sizeof(uint8)};
         auto const odd_bytes{elements_to_move * sizeof(OddBytes)};
@@ -4920,9 +5618,42 @@ struct FMemorySingleAlignmentDataStorage : ml::single_allocation_experiment::Sto
         FMemory::Memcpy(columns.aligned256 + index, columns.aligned256 + source, aligned256_bytes);
         FMemory::Memcpy(columns.handles + index, columns.handles + source, handles_bytes);
     }
+    void swap_remove_indices(std::span<size_type const> indices) {
+        auto const columns{get_data()};
+        ml::soa_storage_detail::for_each_removal_run(
+            num_,
+            indices,
+            ml::soa_storage::require,
+            [&](size_type index, size_type source, size_type count) {
+                copy_columns(columns, index, source, count);
+            });
+    }
+    template <typename Columns>
+    void append_columns(Columns const& source, size_type first, size_type count) {
+        auto const destination{get_data(first)};
+        auto const elements_to_copy{static_cast<byte_size_type>(count)};
+        auto const bytes_bytes{elements_to_copy * sizeof(uint8)};
+        auto const odd_bytes{elements_to_copy * sizeof(OddBytes)};
+        auto const aligned32_bytes{elements_to_copy * sizeof(Aligned32)};
+        auto const nested_xs_bytes{elements_to_copy * sizeof(float)};
+        auto const aligned64_bytes{elements_to_copy * sizeof(Aligned64)};
+        auto const small_bytes{elements_to_copy * sizeof(int8)};
+        auto const aligned256_bytes{elements_to_copy * sizeof(Aligned256)};
+        auto const handles_bytes{elements_to_copy * sizeof(Handle)};
+        FMemory::Memcpy(destination.bytes, source.bytes.GetData(), bytes_bytes);
+        FMemory::Memcpy(destination.odd, source.odd.GetData(), odd_bytes);
+        FMemory::Memcpy(destination.aligned32, source.aligned32.GetData(), aligned32_bytes);
+        FMemory::Memcpy(destination.nested_xs, source.nested.xs.GetData(), nested_xs_bytes);
+        FMemory::Memcpy(destination.nested_ys, source.nested.ys.GetData(), nested_xs_bytes);
+        FMemory::Memcpy(destination.nested_zs, source.nested.zs.GetData(), nested_xs_bytes);
+        FMemory::Memcpy(destination.aligned64, source.aligned64.GetData(), aligned64_bytes);
+        FMemory::Memcpy(destination.small, source.small.GetData(), small_bytes);
+        FMemory::Memcpy(destination.aligned256, source.aligned256.GetData(), aligned256_bytes);
+        FMemory::Memcpy(destination.handles, source.handles.GetData(), handles_bytes);
+    }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{FMemoryStorageAllocator::allocate(
-            ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
+        auto* const new_data{ml::soa_storage::FMemoryStorageAllocator::allocate(
+            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};
@@ -4950,13 +5681,10 @@ struct FMemorySingleAlignmentDataStorage : ml::single_allocation_experiment::Sto
             FMemory::Memcpy(destination.aligned256, source.aligned256, aligned256_bytes);
             FMemory::Memcpy(destination.handles, source.handles, handles_bytes);
         }
-        FMemoryStorageAllocator::free(data_);
+        ml::soa_storage::FMemoryStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-    std::byte* data_{};
-    size_type num_{};
-    size_type capacity_{};
 };
 
 struct FMemorySingleAlignmentData : FMemorySingleAlignmentDataStorage {
@@ -4965,77 +5693,22 @@ struct FMemorySingleAlignmentData : FMemorySingleAlignmentDataStorage {
     auto operator=(FMemorySingleAlignmentData const&) -> FMemorySingleAlignmentData& = delete;
     FMemorySingleAlignmentData(FMemorySingleAlignmentData&&) noexcept = default;
     auto operator=(FMemorySingleAlignmentData&&) noexcept -> FMemorySingleAlignmentData& = default;
-
-    /* **************************************** */
-    // Views
-    /* **************************************** */
-  private:
-    static auto make_view(DataPointers<std::byte> const& columns, size_type const count) -> View {
-        return AlignmentDataView{{columns.bytes, count},
-                                 {columns.odd, count},
-                                 {columns.aligned32, count},
-                                 VectorsView{{columns.nested_xs, count},
-                                             {columns.nested_ys, count},
-                                             {columns.nested_zs, count}},
-                                 {columns.aligned64, count},
-                                 {columns.small, count},
-                                 {columns.aligned256, count},
-                                 {columns.handles, count}};
+    auto get_view() -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
+    auto left(size_type count) -> View { return get_view().left(count); }
+    auto right(size_type count) -> View { return get_view().right(count); }
+    auto get_view() const -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const -> ConstView {
+        return {this, offset, count};
     }
-    static auto make_view(DataPointers<std::byte const> const& columns, size_type const count)
-        -> ConstView {
-        return AlignmentDataConstView{{columns.bytes, count},
-                                      {columns.odd, count},
-                                      {columns.aligned32, count},
-                                      VectorsConstView{{columns.nested_xs, count},
-                                                       {columns.nested_ys, count},
-                                                       {columns.nested_zs, count}},
-                                      {columns.aligned64, count},
-                                      {columns.small, count},
-                                      {columns.aligned256, count},
-                                      {columns.handles, count}};
-    }
-  public:
-    auto get_view() -> View {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) -> View {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) -> View {
+    auto slice(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type const count) -> View { return get_view(0, count); }
-    auto right(size_type const count) -> View {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
-    auto get_view() const -> ConstView {
-        auto const count{num()};
-        auto const columns{get_data()};
-        return make_view(columns, count);
-    }
-    auto get_view(size_type const offset, size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && count >= 0 &&
-                                                  count <= num() - offset);
-        auto const columns{get_data(offset)};
-        return make_view(columns, count);
-    }
-    auto slice(size_type const offset, size_type const count) const -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type const count) const -> ConstView { return get_view(0, count); }
-    auto right(size_type const count) const -> ConstView {
-        ml::single_allocation_experiment::require(count >= 0 && count <= num());
-        return get_view(num() - count, count);
-    }
+    auto left(size_type count) const -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const -> ConstView { return get_view().right(count); }
     auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type const offset, size_type const count) const -> ConstView {
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
         return get_view(offset, count);
     }
 };
@@ -6073,30 +6746,30 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
-        ml::append_from(locations, other.locations);
-        ml::append_from(desired_move_locations, other.desired_move_locations);
-        ml::append_from(aim_directions, other.aim_directions);
-        ml::append_from(desired_aiming_directions, other.desired_aiming_directions);
-        ml::append_from(movement_directions, other.movement_directions);
-        ml::append_from(velocities, other.velocities);
+        locations.append_from(other.locations);
+        desired_move_locations.append_from(other.desired_move_locations);
+        aim_directions.append_from(other.aim_directions);
+        desired_aiming_directions.append_from(other.desired_aiming_directions);
+        movement_directions.append_from(other.movement_directions);
+        velocities.append_from(other.velocities);
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
         ml::append_from(parent_handles, other.parent_handles);
-        ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
-        ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
-        ml::append_from(separation_steering, other.separation_steering);
+        awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
+        navigation_update_countdowns.append_from(other.navigation_update_countdowns);
+        separation_steering.append_from(other.separation_steering);
         ml::append_from(navigation_risk_tiers, other.navigation_risk_tiers);
         ml::append_from(navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts);
         ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
-        ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
-        ml::append_from(attack_cooldowns, other.attack_cooldowns);
+        attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
+        attack_cooldowns.append_from(other.attack_cooldowns);
         ml::append_from(target_handles, other.target_handles);
-        ml::append_from(target_locations, other.target_locations);
-        ml::append_from(target_velocities, other.target_velocities);
-        ml::append_from(target_directions, other.target_directions);
+        target_locations.append_from(other.target_locations);
+        target_velocities.append_from(other.target_velocities);
+        target_directions.append_from(other.target_directions);
         ml::append_from(intercept_times, other.intercept_times);
         ml::append_from(target_distance_sq, other.target_distance_sq);
         ml::append_from(target_distances, other.target_distances);
@@ -6432,7 +7105,7 @@ struct SBXCOREEXPERIMENTS_API MimallocAlignmentData {
         ml::append_from(bytes, other.bytes);
         ml::append_from(odd, other.odd);
         ml::append_from(aligned32, other.aligned32);
-        ml::append_from(nested, other.nested);
+        nested.append_from(other.nested);
         ml::append_from(aligned64, other.aligned64);
         ml::append_from(small, other.small);
         ml::append_from(aligned256, other.aligned256);
@@ -7557,30 +8230,30 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
-        ml::append_from(locations, other.locations);
-        ml::append_from(desired_move_locations, other.desired_move_locations);
-        ml::append_from(aim_directions, other.aim_directions);
-        ml::append_from(desired_aiming_directions, other.desired_aiming_directions);
-        ml::append_from(movement_directions, other.movement_directions);
-        ml::append_from(velocities, other.velocities);
+        locations.append_from(other.locations);
+        desired_move_locations.append_from(other.desired_move_locations);
+        aim_directions.append_from(other.aim_directions);
+        desired_aiming_directions.append_from(other.desired_aiming_directions);
+        movement_directions.append_from(other.movement_directions);
+        velocities.append_from(other.velocities);
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
         ml::append_from(parent_handles, other.parent_handles);
-        ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
-        ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
-        ml::append_from(separation_steering, other.separation_steering);
+        awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
+        navigation_update_countdowns.append_from(other.navigation_update_countdowns);
+        separation_steering.append_from(other.separation_steering);
         ml::append_from(navigation_risk_tiers, other.navigation_risk_tiers);
         ml::append_from(navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts);
         ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
-        ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
-        ml::append_from(attack_cooldowns, other.attack_cooldowns);
+        attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
+        attack_cooldowns.append_from(other.attack_cooldowns);
         ml::append_from(target_handles, other.target_handles);
-        ml::append_from(target_locations, other.target_locations);
-        ml::append_from(target_velocities, other.target_velocities);
-        ml::append_from(target_directions, other.target_directions);
+        target_locations.append_from(other.target_locations);
+        target_velocities.append_from(other.target_velocities);
+        target_directions.append_from(other.target_directions);
         ml::append_from(intercept_times, other.intercept_times);
         ml::append_from(target_distance_sq, other.target_distance_sq);
         ml::append_from(target_distances, other.target_distances);
@@ -7916,7 +8589,7 @@ struct SBXCOREEXPERIMENTS_API MallocAlignmentData {
         ml::append_from(bytes, other.bytes);
         ml::append_from(odd, other.odd);
         ml::append_from(aligned32, other.aligned32);
-        ml::append_from(nested, other.nested);
+        nested.append_from(other.nested);
         ml::append_from(aligned64, other.aligned64);
         ml::append_from(small, other.small);
         ml::append_from(aligned256, other.aligned256);
@@ -9041,30 +9714,30 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::append_from(integral_biases, other.integral_biases);
         ml::append_from(float_biases, other.float_biases);
         ml::append_from(tasks, other.tasks);
-        ml::append_from(locations, other.locations);
-        ml::append_from(desired_move_locations, other.desired_move_locations);
-        ml::append_from(aim_directions, other.aim_directions);
-        ml::append_from(desired_aiming_directions, other.desired_aiming_directions);
-        ml::append_from(movement_directions, other.movement_directions);
-        ml::append_from(velocities, other.velocities);
+        locations.append_from(other.locations);
+        desired_move_locations.append_from(other.desired_move_locations);
+        aim_directions.append_from(other.aim_directions);
+        desired_aiming_directions.append_from(other.desired_aiming_directions);
+        movement_directions.append_from(other.movement_directions);
+        velocities.append_from(other.velocities);
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
         ml::append_from(healths, other.healths);
         ml::append_from(parent_handles, other.parent_handles);
-        ml::append_from(awareness_scan_countdowns, other.awareness_scan_countdowns);
-        ml::append_from(navigation_update_countdowns, other.navigation_update_countdowns);
-        ml::append_from(separation_steering, other.separation_steering);
+        awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
+        navigation_update_countdowns.append_from(other.navigation_update_countdowns);
+        separation_steering.append_from(other.separation_steering);
         ml::append_from(navigation_risk_tiers, other.navigation_risk_tiers);
         ml::append_from(navigation_lower_risk_scan_counts, other.navigation_lower_risk_scan_counts);
         ml::append_from(avoidance_choice_indices, other.avoidance_choice_indices);
         ml::append_from(avoidance_clear_scan_counts, other.avoidance_clear_scan_counts);
-        ml::append_from(attack_reposition_countdowns, other.attack_reposition_countdowns);
-        ml::append_from(attack_cooldowns, other.attack_cooldowns);
+        attack_reposition_countdowns.append_from(other.attack_reposition_countdowns);
+        attack_cooldowns.append_from(other.attack_cooldowns);
         ml::append_from(target_handles, other.target_handles);
-        ml::append_from(target_locations, other.target_locations);
-        ml::append_from(target_velocities, other.target_velocities);
-        ml::append_from(target_directions, other.target_directions);
+        target_locations.append_from(other.target_locations);
+        target_velocities.append_from(other.target_velocities);
+        target_directions.append_from(other.target_directions);
         ml::append_from(intercept_times, other.intercept_times);
         ml::append_from(target_distance_sq, other.target_distance_sq);
         ml::append_from(target_distances, other.target_distances);
@@ -9400,7 +10073,7 @@ struct SBXCOREEXPERIMENTS_API ReallocAlignmentData {
         ml::append_from(bytes, other.bytes);
         ml::append_from(odd, other.odd);
         ml::append_from(aligned32, other.aligned32);
-        ml::append_from(nested, other.nested);
+        nested.append_from(other.nested);
         ml::append_from(aligned64, other.aligned64);
         ml::append_from(small, other.small);
         ml::append_from(aligned256, other.aligned256);

@@ -1,12 +1,12 @@
 #include <HAL/PlatformProcess.h>
 #include <Misc/Paths.h>
-#include <SbxCoreExperiments/mimalloc_storage_allocator.h>
-#include <SbxCoreExperiments/single_allocation_storage.h>
+#include <SandboxCore/mimalloc_storage_allocator.h>
+#include <SandboxCore/single_allocation_storage.h>
 
 #define MI_SHARED_LIB 1
 #include <mimalloc.h>
 
-namespace ml::single_allocation_experiment {
+namespace ml::soa_storage {
 struct MimallocApi {
     decltype(&mi_malloc_aligned) allocate;
     decltype(&mi_realloc_aligned) reallocate;

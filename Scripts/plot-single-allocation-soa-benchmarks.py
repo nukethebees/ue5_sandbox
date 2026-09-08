@@ -39,6 +39,14 @@ LABELS = {
     "iterate": "Narrow iteration (4 passes)",
     "iterate_wide": "Wide iteration (4 passes)",
     "construct_views": "Construct/consume views (4,096 calls)",
+    "append_from_natural_64": "Copy append, natural growth (64 rows)",
+    "append_from_natural_65536": "Copy append, natural growth (whole source)",
+    "append_from_reserved_64": "Copy append, reserved (64 rows)",
+    "append_from_reserved_65536": "Copy append, reserved (whole source)",
+    "remove_indices_clustered": "Bulk removal, clustered indices + refill",
+    "remove_indices_scattered": "Bulk removal, scattered indices + refill",
+    "view_handles": "Construct/consume view handles (4,096 calls)",
+    "materialize_columns": "Materialize/consume columns (4,096 calls)",
 }
 TIMING_FIELDS = [
     "count", "operation", "baseline_mean_ns", "baseline_lower_ns", "baseline_upper_ns",

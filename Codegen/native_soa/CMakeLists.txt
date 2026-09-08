@@ -16,7 +16,7 @@ add_custom_command(
 add_library(native-soa INTERFACE)
 target_compile_features(native-soa INTERFACE cxx_std_23)
 target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
-target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SbxCoreExperiments/Public")
+target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public")
 target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
 
 add_executable(native-soa-tests tests.cpp)
@@ -24,7 +24,7 @@ target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
 add_test(NAME native-soa-tests COMMAND native-soa-tests)
 set_tests_properties(native-soa-tests PROPERTIES LABELS "native-soa")
 
-add_executable(native-soa-benchmarks benchmarks.cpp)
+add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp)
 target_link_libraries(native-soa-benchmarks PRIVATE native-soa benchmark::benchmark_main)
 add_executable(native-soa-reserve-matrix reserve_matrix.cpp)
 target_link_libraries(native-soa-reserve-matrix PRIVATE native-soa benchmark::benchmark_main)

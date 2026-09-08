@@ -308,22 +308,22 @@ void test_static_tables() {
 auto main() -> int {
     try {
         using SingleParents = codegen_compile_fixture::SingleParents;
-        static_assert(std::is_same_v<SingleParents::View, codegen_compile_fixture::FParents::View>);
+        static_assert(sizeof(SingleParents::View) == 16);
         static_assert(!std::is_copy_constructible_v<SingleParents>);
         static_assert(SingleParents::keys_block_offset == 0);
         static_assert(SingleParents::children_values_block_offset == 64 * sizeof(int32));
         static_assert(SingleParents::block_bytes == 128 * sizeof(int32));
         SingleParents parents;
-        check(parents.get_view().keys.GetData() == nullptr);
+        check(parents.get_view().columns().keys.GetData() == nullptr);
         parents.add_defaulted(65);
-        parents.get_view().children.values[64] = 37;
+        parents.get_view().columns().children.values[64] = 37;
         parents.reserve(129);
         check(parents.capacity() == 192);
-        check(parents.get_const_view().children.values[64] == 37);
+        check(parents.get_const_view().children().values()[64] == 37);
         SingleParents moved{std::move(parents)};
         check(parents.capacity() == 0);
         moved.remove_at_swap(0, 1);
-        check(moved.get_view().children.values[0] == 37);
+        check(moved.get_view().columns().children.values[0] == 37);
         test_homogeneous_storage();
         test_dynamic_soa();
         test_fixed_soa_lifetimes();

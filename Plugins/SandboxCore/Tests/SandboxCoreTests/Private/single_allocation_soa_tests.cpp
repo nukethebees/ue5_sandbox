@@ -10,6 +10,7 @@
 
 namespace ml::single_allocation_tests {
 using namespace single_allocation_experiment;
+using namespace soa_storage;
 
 struct NonTrivialCopy {
     NonTrivialCopy() noexcept = default;
@@ -32,18 +33,18 @@ static_assert(!std::is_copy_constructible_v<SingleAllocationEntityData>);
 static_assert(!std::is_copy_assignable_v<SingleAllocationEntityData>);
 static_assert(std::is_nothrow_move_constructible_v<SingleAllocationEntityData>);
 static_assert(std::is_nothrow_move_assignable_v<SingleAllocationEntityData>);
-static_assert(std::is_same_v<EntityData::View, SingleAllocationEntityData::View>);
-static_assert(std::is_same_v<EntityData::ConstView, SingleAllocationEntityData::ConstView>);
+static_assert(sizeof(SingleAllocationEntityData::View) == 16);
+static_assert(sizeof(SingleAllocationEntityData::ConstView) == 16);
 static_assert(sizeof(SingleAllocationEntityData) == sizeof(void*) + 2 * sizeof(int32));
 
 TEST_CASE("SandboxCore.SingleAllocation.Empty and end views preserve column pointers") {
     SingleAllocationAlignmentData rows;
     auto verify_views = [&](int32 const count) {
-        auto full{rows.get_view()};
-        auto const empty{rows.get_view(count, 0)};
+        auto full{array_columns(rows.get_view())};
+        auto const empty{array_columns(rows.get_view(count, 0))};
         auto const& const_rows{rows};
-        auto const const_full{const_rows.get_view()};
-        auto const const_empty{const_rows.get_view(count, 0)};
+        auto const const_full{array_columns(const_rows.get_view())};
+        auto const const_empty{array_columns(const_rows.get_view(count, 0))};
         static_assert(std::is_same_v<decltype(full.nested.xs.GetData()), float*>);
         static_assert(std::is_same_v<decltype(const_full.nested.xs.GetData()), float const*>);
         CHECK(full.num() == count);
@@ -79,7 +80,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Empty boundaries and alignment") {
     CHECK(rows.num() == 0);
     CHECK(rows.capacity() == 0);
     CHECK(rows.allocated_bytes() == 0);
-    each_leaf(rows.get_view(), [](auto column) {
+    each_leaf(array_columns(rows.get_view()), [](auto column) {
         CHECK(column.Num() == 0);
         CHECK(column.GetData() == nullptr);
     });
@@ -97,7 +98,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Empty boundaries and alignment") {
         CHECK(values.capacity() == ((count + 63) / 64) * 64);
         CHECK(values.num() == 0);
         values.set_num(count);
-        auto view{values.get_view()};
+        auto view{array_columns(values.get_view())};
         auto const base{reinterpret_cast<UPTRINT>(view.bytes.GetData())};
         CHECK(base % values.allocation_alignment == 0);
         UPTRINT end{base};
@@ -129,7 +130,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Empty boundaries and alignment") {
             FMemory::Memset(column.GetData(), ++column_index, static_cast<SIZE_T>(count) * sizeof(Element));
         });
         values.reserve(values.capacity() + 1);
-        view = values.get_view();
+        view = array_columns(values.get_view());
         CHECK(reinterpret_cast<UPTRINT>(view.aligned256.GetData()) % 256 == 0);
         column_index = 0;
         each_leaf(view, [&](auto column) {
@@ -146,7 +147,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Empty boundaries and alignment") {
 
 void check_row_patterns(SingleAllocationEntityData const& values) {
     int32 columns{};
-    each_leaf(values.get_const_view(), [&](auto column) {
+    each_leaf(array_columns(values.get_const_view()), [&](auto column) {
         using Element = std::remove_cvref_t<decltype(column[0])>;
         ++columns;
         auto const count{column.Num()};
@@ -164,16 +165,16 @@ TEST_CASE("SandboxCore.SingleAllocation.Every leaf survives repeated coordinated
     int32 growths{};
     for (int32 row{}; row < 20000; ++row) {
         auto const old_capacity{values.capacity()};
-        auto* const old_pointer{values.get_view().entity_handles.GetData()};
+        auto* const old_pointer{array_columns(values.get_view()).entity_handles.GetData()};
         values.add_uninitialised(1);
         CHECK(values.capacity() % 64 == 0);
         if (old_capacity == values.capacity()) {
-            REQUIRE(values.get_view().entity_handles.GetData() == old_pointer);
+            REQUIRE(array_columns(values.get_view()).entity_handles.GetData() == old_pointer);
         } else {
             ++growths;
         }
         int32 columns{};
-        each_leaf(values.get_view(), [&](auto column) {
+        each_leaf(array_columns(values.get_view()), [&](auto column) {
             using Element = std::remove_cvref_t<decltype(column[0])>;
             FMemory::Memset(&column[row], (row + ++columns) % 127 + 1, sizeof(Element));
         });
@@ -194,7 +195,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Default resize reset and shared views") 
     SingleAllocationEntityData values;
     values.reserve(128);
     values.add_defaulted(65);
-    auto view{values.get_view()};
+    auto view{array_columns(values.get_view())};
     for (int32 index{}; index < values.num(); ++index) {
         CHECK(view.healths[index] == 0);
         CHECK(view.entity_handles[index].index == -1);
@@ -202,35 +203,35 @@ TEST_CASE("SandboxCore.SingleAllocation.Default resize reset and shared views") 
     }
     view.locations.xs[2] = 12.f;
     view.healths[2] = 42;
-    values.get_view(2, 3).healths[1] = 43;
+    array_columns(values.get_view(2, 3)).healths[1] = 43;
     SingleAllocationEntityData const& const_values{values};
-    static_assert(std::is_same_v<decltype(const_values.get_view().healths[0]), int32 const&>);
-    CHECK(const_values.get_view().locations.xs[2] == 12.f);
-    CHECK(const_values.get_const_view(2, 3).healths[1] == 43);
-    CHECK(values.slice(2, 1).healths[0] == 42);
-    CHECK(values.left(4).healths[3] == 43);
-    CHECK(values.right(63).healths[0] == 42);
+    static_assert(std::is_same_v<decltype(array_columns(const_values.get_view()).healths[0]), int32 const&>);
+    CHECK(array_columns(const_values.get_view()).locations.xs[2] == 12.f);
+    CHECK(array_columns(const_values.get_const_view(2, 3)).healths[1] == 43);
+    CHECK(values.slice(2, 1).healths()[0] == 42);
+    CHECK(values.left(4).healths()[3] == 43);
+    CHECK(values.right(63).healths()[0] == 42);
     CHECK(values.get_view(values.num(), 0).num() == 0);
 
     auto* const pointer{view.healths.GetData()};
     values.set_num(3, EAllowShrinking::Yes);
     CHECK(values.capacity() == 128);
     values.set_num(65);
-    CHECK(values.get_view().healths.GetData() == pointer);
-    CHECK(values.get_view().healths[2] == 42);
-    CHECK(values.get_view().healths[3] == 0);
+    CHECK(array_columns(values.get_view()).healths.GetData() == pointer);
+    CHECK(array_columns(values.get_view()).healths[2] == 42);
+    CHECK(array_columns(values.get_view()).healths[3] == 0);
     values.set_num(129);
-    CHECK(values.get_view().healths[2] == 42);
-    CHECK(values.get_view().entity_handles[128].index == -1);
+    CHECK(array_columns(values.get_view()).healths[2] == 42);
+    CHECK(array_columns(values.get_view()).entity_handles[128].index == -1);
     auto const capacity{values.capacity()};
     values.reset();
     CHECK(values.is_empty());
     CHECK(values.capacity() == capacity);
     values.add_defaulted(1);
-    CHECK(values.get_view().healths[0] == 0);
-    CHECK(values.get_view().entity_handles[0].index == -1);
-    ml::fill(values.get_view().healths, 123);
-    CHECK(values.get_const_view().healths[0] == 123);
+    CHECK(array_columns(values.get_view()).healths[0] == 0);
+    CHECK(array_columns(values.get_view()).entity_handles[0].index == -1);
+    ml::fill(array_columns(values.get_view()).healths, 123);
+    CHECK(array_columns(values.get_const_view()).healths[0] == 123);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Swap removal matches generated TArray owner") {
@@ -252,17 +253,17 @@ TEST_CASE("SandboxCore.SingleAllocation.Swap removal matches generated TArray ow
                     }
                 });
             };
-            fill(values.get_view());
-            fill(baseline.get_view());
+            fill(array_columns(values.get_view()));
+            fill(array_columns(baseline.get_view()));
             values.remove_at_swap(index, count, EAllowShrinking::Yes);
             baseline.remove_at_swap(index, count, EAllowShrinking::No);
             CHECK(values.capacity() == 64);
             CHECK(values.num() == baseline.num());
             std::array<void const*, 53> expected{};
             int32 leaf{};
-            each_leaf(baseline.get_const_view(), [&](auto column) { expected[leaf++] = column.GetData(); });
+            each_leaf(array_columns(baseline.get_const_view()), [&](auto column) { expected[leaf++] = column.GetData(); });
             leaf = 0;
-            each_leaf(values.get_const_view(), [&](auto column) {
+            each_leaf(array_columns(values.get_const_view()), [&](auto column) {
                 using Element = std::remove_cvref_t<decltype(column[0])>;
                 if (values.num() > 0) {
                     CHECK(FMemory::Memcmp(column.GetData(), expected[leaf], static_cast<SIZE_T>(values.num()) * sizeof(Element)) == 0);
@@ -276,25 +277,25 @@ TEST_CASE("SandboxCore.SingleAllocation.Swap removal matches generated TArray ow
 TEST_CASE("SandboxCore.SingleAllocation.Moves transfer ownership and sources remain reusable") {
     SingleAllocationAlignmentData first;
     first.add_defaulted(65);
-    first.get_view().nested.ys[64] = 19.f;
-    auto* const pointer{first.get_view().bytes.GetData()};
+    array_columns(first.get_view()).nested.ys[64] = 19.f;
+    auto* const pointer{array_columns(first.get_view()).bytes.GetData()};
     auto const capacity{first.capacity()};
     SingleAllocationAlignmentData second{std::move(first)};
     CHECK(first.num() == 0);
     CHECK(first.capacity() == 0);
-    CHECK(first.get_view().bytes.GetData() == nullptr);
-    CHECK(second.get_view().bytes.GetData() == pointer);
+    CHECK(array_columns(first.get_view()).bytes.GetData() == nullptr);
+    CHECK(array_columns(second.get_view()).bytes.GetData() == pointer);
     first.add_defaulted(1);
     first = std::move(second);
     CHECK(first.capacity() == capacity);
-    CHECK(first.get_view().bytes.GetData() == pointer);
-    CHECK(first.get_view().nested.ys[64] == 19.f);
+    CHECK(array_columns(first.get_view()).bytes.GetData() == pointer);
+    CHECK(array_columns(first.get_view()).nested.ys[64] == 19.f);
     CHECK(second.capacity() == 0);
     auto* const self{&first};
     first = std::move(*self);
     CHECK(first.num() == 65);
     second.add_defaulted(1);
-    CHECK(second.get_view().aligned256[0].value == 256);
+    CHECK(array_columns(second.get_view()).aligned256[0].value == 256);
 }
 
 TEST_CASE("SandboxCore.SingleAllocation.Arithmetic rejects overflow before allocation") {
@@ -316,4 +317,104 @@ TEST_CASE("SandboxCore.SingleAllocation.Arithmetic rejects overflow before alloc
     static_assert(maximum_capacity(0) == 0);
 }
 
+TEST_CASE("SandboxCore.SingleAllocation.Compact views follow growth and append self slices") {
+    SingleAllocationEntityData owner;
+    owner.add_defaulted(65);
+    auto view{owner.get_view()};
+    static_assert(sizeof(decltype(view.locations())) == 16);
+    for (int32 row{}; row < 65; ++row) {
+        view.healths()[row] = row;
+        view.locations().xs()[row] = static_cast<float>(row);
+    }
+    auto slice{view.slice(1, 64)};
+    owner.reserve(256);
+    CHECK(slice.locations().xs()[63] == 64.f);
+    SingleAllocationEntityData::ConstView const_view{slice};
+    CHECK(const_view.columns().healths[0] == 1);
+    CHECK(owner.append_from(const_view) == 65);
+    CHECK(owner.get_view().healths()[128] == 64);
+    CHECK(owner.append_from(owner) == 129);
+    CHECK(owner.num() == 258);
+    CHECK(owner.get_view().healths()[257] == 64);
+    CHECK(owner.append_from(owner.left(0)) == 258);
+    FMemorySingleEntityData other;
+    CHECK(other.append_from(owner.slice(65, 64)) == 0);
+    CHECK(other.get_view().healths()[63] == 64);
+    owner.reset();
+    CHECK(other.get_view().healths()[0] == 1);
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Bulk append copies every leaf across growth") {
+    auto verify = []<typename Owner>() {
+        Owner source;
+        source.add_defaulted(129);
+        each_leaf(source.get_view(), [](auto column) {
+            for (int32 row{}; row < column.Num(); ++row) {
+                FMemory::Memset(&column[row], row + 1, sizeof(column[row]));
+            }
+        });
+        Owner destination;
+        REQUIRE(destination.append_from(source) == 0);
+        REQUIRE(destination.append_from(destination.slice(1, 128)) == 129);
+        REQUIRE(destination.num() == 257);
+        each_leaf(destination.get_const_view(), [](auto column) {
+            using Element = std::remove_cvref_t<decltype(column[0])>;
+            CHECK(reinterpret_cast<UPTRINT>(column.GetData()) % std::max(SIZE_T{64}, alignof(Element)) == 0);
+            for (int32 row{}; row < column.Num(); ++row) {
+                auto const expected{static_cast<uint8>(row < 129 ? row + 1 : row - 127)};
+                auto const* bytes{reinterpret_cast<uint8 const*>(&column[row])};
+                for (SIZE_T byte{}; byte < sizeof(Element); ++byte) {
+                    REQUIRE(bytes[byte] == expected);
+                }
+            }
+        });
+    };
+    verify.template operator()<SingleAllocationEntityData>();
+    verify.template operator()<SingleAllocationAlignmentData>();
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Descending removal matches original row indices") {
+    for (int32 count{}; count <= 10; ++count) {
+        for (uint32 mask{}; mask < (1u << count); ++mask) {
+            SingleAllocationEntityData owner;
+            owner.add_defaulted(count);
+            TArray<int32> indices;
+            for (auto row{count - 1}; row >= 0; --row) {
+                owner.get_view().healths()[row] = row;
+                owner.get_view().locations().xs()[row] = static_cast<float>(row);
+                if (mask & (1u << row)) {
+                    indices.Add(row);
+                }
+            }
+            auto const final_count{count - indices.Num()};
+            TArray<int32> survivors;
+            for (int32 row{final_count}; row < count; ++row) {
+                if (!(mask & (1u << row))) {
+                    survivors.Add(row);
+                }
+            }
+            auto const capacity{owner.capacity()};
+            owner.remove_at_swap(TConstArrayView<int32>{indices});
+            REQUIRE(owner.num() == final_count);
+            CHECK(owner.capacity() == capacity);
+            int32 next{};
+            for (int32 row{}; row < final_count; ++row) {
+                auto const expected{mask & (1u << row) ? survivors[next++] : row};
+                CHECK(owner.get_view().healths()[row] == expected);
+                CHECK(owner.get_view().locations().xs()[row] == static_cast<float>(expected));
+            }
+        }
+    }
+    SingleAllocationEntityData rows;
+    rows.add_defaulted(10);
+    for (int32 row{}; row < 10; ++row) {
+        rows.get_view().healths()[row] = row;
+    }
+    int32 const removed[]{4, 3, 2};
+    rows.remove_at_swap(std::span<int32 const>{removed});
+    int32 const expected[]{0, 1, 7, 8, 9, 5, 6};
+    for (int32 row{}; row < 7; ++row) {
+        CHECK(rows.get_view().healths()[row] == expected[row]);
+    }
+}
 }

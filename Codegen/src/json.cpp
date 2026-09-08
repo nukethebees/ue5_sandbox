@@ -267,7 +267,7 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
                     "equivalent_type",
                     "copy_element_memberwise",
                     "fixed",
-                    "experimental_single_allocation"});
+                    "single_allocation"});
     std::vector<SoaMemberSchema> members;
     auto const& member_values{required_array(value, "members", path)};
     for (std::size_t index{0}; index < member_values.size(); ++index) {
@@ -305,14 +305,13 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
     if (value.contains("fixed")) {
         fixed = parse_fixed(value.at("fixed"), path + "/fixed");
     }
-    std::optional<std::string> experimental_single_allocation;
+    std::optional<std::string> single_allocation;
     std::vector<SingleAllocationVariant> single_allocation_variants;
-    if (value.contains("experimental_single_allocation")) {
-        auto const experimental_path{path + "/experimental_single_allocation"};
-        auto const& configuration{value.at("experimental_single_allocation")};
+    if (value.contains("single_allocation")) {
+        auto const experimental_path{path + "/single_allocation"};
+        auto const& configuration{value.at("single_allocation")};
         reject_unknown(configuration, experimental_path, {"name", "variants"});
-        experimental_single_allocation =
-            required<std::string>(configuration, "name", experimental_path);
+        single_allocation = required<std::string>(configuration, "name", experimental_path);
         if (auto const* variants{optional_array(configuration, "variants", experimental_path)}) {
             for (auto const& variant : *variants) {
                 auto const variant_path{experimental_path + "/variants"};
@@ -337,7 +336,7 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
         .equivalent_type = std::move(equivalent_type),
         .copy_element_memberwise = value_or<bool>(value, "copy_element_memberwise", false, path),
         .fixed = std::move(fixed),
-        .experimental_single_allocation = std::move(experimental_single_allocation),
+        .single_allocation = std::move(single_allocation),
         .single_allocation_variants = std::move(single_allocation_variants),
     };
 }

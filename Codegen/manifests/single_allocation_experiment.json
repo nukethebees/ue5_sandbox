@@ -266,7 +266,7 @@
               "type": "float"
             }
           ],
-          "experimental_single_allocation": {
+          "single_allocation": {
             "name": "SingleAllocationEntityData",
             "variants": [{"name": "FMemorySingleEntityData", "allocator": "@soa_experiment_FMemoryStorageAllocator"}]
           }
@@ -320,7 +320,7 @@
               "type": "@soa_experiment_Handle"
             }
           ],
-          "experimental_single_allocation": {
+          "single_allocation": {
             "name": "SingleAllocationAlignmentData",
             "variants": [{"name": "FMemorySingleAlignmentData", "allocator": "@soa_experiment_FMemoryStorageAllocator"}]
           }

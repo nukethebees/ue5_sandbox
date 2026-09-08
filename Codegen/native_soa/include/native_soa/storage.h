@@ -1,6 +1,8 @@
 #pragma once
 
-#include <SbxCoreExperiments/single_allocation_layout.h>
+#include <SandboxCore/single_allocation_view.h>
+
+#include <SandboxCore/single_allocation_layout.h>
 
 #include <algorithm>
 #include <cstddef>
@@ -61,6 +63,10 @@ inline void require(bool const condition) {
         invalid_size();
     }
 }
+
+using soa_storage_detail::StorageState;
+template <bool Const>
+using CompactViewState = soa_storage_detail::CompactViewState<Const, require>;
 
 inline auto rounded_capacity(std::int64_t const required, std::size_t const block_bytes)
     -> std::int32_t {
@@ -146,6 +152,29 @@ struct StorageOperations {
             self.reallocate(growth_capacity(new_num, self.capacity_, Self::block_bytes));
         }
         self.num_ = new_num;
+    }
+    template <typename Self, typename Source>
+    auto append_from(this Self& self, Source const& source) -> std::int32_t {
+        typename Self::ConstView view{source.get_const_view()};
+        view.validate();
+        auto const count{view.num()};
+        auto const first{self.num_};
+        require(count <= Self::max_capacity - first);
+        if (count == 0) {
+            return first;
+        }
+        auto const new_num{first + count};
+        if (new_num > self.capacity_) {
+            self.reallocate(growth_capacity(new_num, self.capacity_, Self::block_bytes));
+        }
+        self.append_columns(view.columns(), first, count);
+        self.num_ = new_num;
+        return first;
+    }
+    template <typename Self>
+    void remove_at_swap(this Self& self, std::span<std::int32_t const> indices) {
+        self.swap_remove_indices(indices);
+        self.num_ -= static_cast<std::int32_t>(indices.size());
     }
     template <typename Self>
     void add_defaulted(this Self& self, std::int32_t const count) {

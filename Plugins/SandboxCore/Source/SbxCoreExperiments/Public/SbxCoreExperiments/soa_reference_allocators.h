@@ -2,7 +2,7 @@
 
 #include <Containers/ContainerAllocationPolicies.h>
 #include <HAL/UnrealMemory.h>
-#include <SbxCoreExperiments/mimalloc_storage_allocator.h>
+#include <SandboxCore/mimalloc_storage_allocator.h>
 
 #include <algorithm>
 
@@ -64,10 +64,12 @@ class MimallocArrayAllocator : public TSizedAllocatorBase<32, MimallocArrayAlloc
                 return nullptr;
             }
             auto const bytes{static_cast<SIZE_T>(capacity) * element_bytes};
-            return MimallocStorageAllocator::reallocate(
+            return soa_storage::MimallocStorageAllocator::reallocate(
                 data, bytes, std::max(uint32{64}, element_alignment));
         }
-        void CallFree(void* data) { MimallocStorageAllocator::free(static_cast<std::byte*>(data)); }
+        void CallFree(void* data) {
+            soa_storage::MimallocStorageAllocator::free(static_cast<std::byte*>(data));
+        }
         auto CalculateSlackReserve(int32 const capacity, SIZE_T, uint32 = DEFAULT_ALIGNMENT) const
             -> int32 {
             return capacity;

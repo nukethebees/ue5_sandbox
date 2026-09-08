@@ -14,6 +14,7 @@
 
 namespace ml::single_allocation_benchmarks {
 using namespace single_allocation_experiment;
+using namespace soa_storage;
 
 enum class Operation {
     NaturalAppend,
@@ -138,7 +139,7 @@ void prepare(Owner& owner, Operation const operation, int32 const count) {
         default:
             owner.reserve(count);
             owner.add_defaulted(count);
-            initialise(owner.get_view());
+            initialise(array_columns(owner.get_view()));
             break;
     }
 }
@@ -181,7 +182,7 @@ FORCENOINLINE auto execute(Owner& owner, Operation const operation, int32 const 
         case Operation::Views: {
             int64 total{};
             for (int32 iteration{}; iteration < 4096; ++iteration) {
-                total += consume_view(owner.get_view());
+                total += consume_view(array_columns(owner.get_view()));
             }
             return total;
         }
@@ -198,7 +199,7 @@ void run_once(Operation const operation, int32 const count, int32 const batch) {
     Owner owner;
     prepare(owner, operation, count);
     bool const iteration{operation == Operation::Iterate || operation == Operation::IterateWide};
-    auto view{owner.get_view()};
+    auto view{array_columns(owner.get_view())};
     int64 observable{};
     if (iteration) {
         iterate(view, operation == Operation::IterateWide);
@@ -207,9 +208,9 @@ void run_once(Operation const operation, int32 const count, int32 const batch) {
     }
     REQUIRE(observable >= 0);
     if (iteration) {
-        REQUIRE(owner.get_view().locations.zs[count - 1] == 1.5f);
+        REQUIRE(array_columns(owner.get_view()).locations.zs[count - 1] == 1.5f);
         if (operation == Operation::IterateWide) {
-            REQUIRE(owner.get_view().target_locations.zs[count - 1] == 3.f);
+            REQUIRE(array_columns(owner.get_view()).target_locations.zs[count - 1] == 3.f);
         }
     } else if (operation == Operation::RemoveSwap) {
         REQUIRE(owner.num() == count - count / 4);
@@ -219,7 +220,7 @@ void run_once(Operation const operation, int32 const count, int32 const batch) {
         REQUIRE(owner.num() == count);
     }
     if (operation == Operation::Growth) {
-        REQUIRE(owner.get_view().healths[count - 1] == count - 1);
+        REQUIRE(array_columns(owner.get_view()).healths[count - 1] == count - 1);
     }
 }
 
@@ -285,19 +286,19 @@ TEST_CASE("SandboxCore.SingleAllocation.BenchmarkCorrectness") {
         for (int32 const count : {1, 63, 64, 65, 127, 128, 129, 4097}) {
             owner.set_num(count);
             REQUIRE(owner.capacity() % 64 == 0);
-            each_leaf(owner.get_view(), [](auto column) {
+            each_leaf(array_columns(owner.get_view()), [](auto column) {
                 using Element = std::remove_reference_t<decltype(column[0])>;
                 REQUIRE(reinterpret_cast<UPTRINT>(column.GetData()) % alignof(Element) == 0);
                 REQUIRE(MimallocStorageAllocator::owns(column.GetData()));
             });
         }
-        owner.get_view().nested.xs[0] = 42.f;
+        array_columns(owner.get_view()).nested.xs[0] = 42.f;
         auto moved{std::move(owner)};
         REQUIRE(owner.num() == 0);
         owner.set_num(64);
         owner = std::move(moved);
         REQUIRE(moved.num() == 0);
-        REQUIRE(owner.get_const_view().nested.xs[0] == 42.f);
+        REQUIRE(array_columns(owner.get_const_view()).nested.xs[0] == 42.f);
         owner.reset();
         REQUIRE(owner.num() == 0);
     }
@@ -358,7 +359,7 @@ void benchmark_owner(Operation const operation, int32 const count, int32 const b
 
         Owner owner;
         prepare(owner, operation, count);
-        auto const view{owner.get_view()};
+        auto const view{array_columns(owner.get_view())};
         meter.measure([&] {
             switch (operation) {
                 case Operation::Iterate:

@@ -30,7 +30,7 @@ struct SoaSchema {
     std::optional<TypeRef> equivalent_type;
     bool copy_element_memberwise{false};
     std::optional<FixedSoaSchema> fixed;
-    std::optional<std::string> experimental_single_allocation;
+    std::optional<std::string> single_allocation;
     std::optional<TypeRef> array_allocator;
     std::vector<SingleAllocationVariant> single_allocation_variants;
     std::optional<TypeRef> single_allocation_allocator;

@@ -267,7 +267,7 @@
       },
       "filter": {
         "include": {
-          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|Timing\\.[A-Za-z0-9_]+)$"
+          "name": "^SandboxCore\\.SingleAllocation\\.(BulkBenchmarkCorrectness|BenchmarkCorrectness|Timing\\.[A-Za-z0-9_]+)$"
         }
       },
       "execution": {

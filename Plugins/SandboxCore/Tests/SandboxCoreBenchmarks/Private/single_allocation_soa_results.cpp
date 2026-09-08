@@ -13,6 +13,7 @@
 
 namespace ml::single_allocation_benchmarks {
 using namespace single_allocation_experiment;
+using namespace soa_storage;
 class BenchmarkCsvListener : public Catch::EventListenerBase {
   public:
     using EventListenerBase::EventListenerBase;
@@ -74,7 +75,7 @@ auto snapshot(FMemorySingleEntityData& owner, bool const query_allocator) -> All
     result.min_capacity = owner.capacity();
     result.max_capacity = owner.capacity();
     SIZE_T row_bytes{};
-    each_leaf(owner.get_view(), [&](auto column) {
+    each_leaf(array_columns(owner.get_view()), [&](auto column) {
         using Element = std::remove_cvref_t<decltype(column[0])>;
         row_bytes += sizeof(Element);
     });
@@ -83,7 +84,7 @@ auto snapshot(FMemorySingleEntityData& owner, bool const query_allocator) -> All
     if (owner.capacity() > 0) {
         result.blocks = 1;
         if (query_allocator) {
-            result.usable = FMemory::GetAllocSize(owner.get_view().entity_handles.GetData());
+            result.usable = FMemory::GetAllocSize(array_columns(owner.get_view()).entity_handles.GetData());
         }
     }
     return result;

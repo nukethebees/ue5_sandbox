@@ -479,11 +479,12 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
         add_generated_type(schema.name);
         add_generated_type(schema.view_name.value_or(schema.name + "View"));
         add_generated_type(schema.const_view_name.value_or(schema.name + "ConstView"));
-        if (schema.experimental_single_allocation.has_value()) {
-            require_identifier(*schema.experimental_single_allocation,
-                               "Experimental single-allocation owner");
-            add_generated_type(*schema.experimental_single_allocation);
-            add_generated_type(*schema.experimental_single_allocation + "Storage");
+        if (schema.single_allocation.has_value()) {
+            require_identifier(*schema.single_allocation, "Single-allocation owner");
+            add_generated_type(*schema.single_allocation);
+            add_generated_type(*schema.single_allocation + "Storage");
+            add_generated_type(schema.name + "SingleLayout");
+            add_generated_type(schema.name + "SingleView");
             for (auto const& variant : schema.single_allocation_variants) {
                 require_identifier(variant.name, "single-allocation allocator variant");
                 add_generated_type(variant.name);
@@ -564,6 +565,38 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                 validate_dependency(dependency, types, context);
             }
         }
+    }
+    for (auto const& root : module.structs) {
+        if (!root.single_allocation) {
+            continue;
+        }
+        std::set<std::string> active;
+        auto visit = [&](auto&& self, SoaSchema const& schema, std::string const& prefix) -> void {
+            if (!active.insert(schema.name).second) {
+                throw std::invalid_argument{"Cyclic single-allocation schema: " + schema.name};
+            }
+            for (auto const& member : schema.members) {
+                if (member.name == "columns" || member.name == "validate" ||
+                    member.name == "column_data" || member.name == "column_data_unchecked" ||
+                    member.name == "capacity_blocks") {
+                    throw std::invalid_argument{"Member collides with compact view API: " +
+                                                member.name};
+                }
+                if (member.kind != SoaMemberKind::nested || !member.nested_schema) {
+                    continue;
+                }
+                auto const child{
+                    std::ranges::find(module.structs, *member.nested_schema, &SoaSchema::name)};
+                if (child == module.structs.end()) {
+                    throw std::invalid_argument{"Unknown nested schema: " + *member.nested_schema};
+                }
+                auto const path{prefix + "_" + member.name};
+                add_generated_type(root.name + "SingleView" + path);
+                self(self, *child, path);
+            }
+            active.erase(schema.name);
+        };
+        visit(visit, root, "");
     }
     for (auto const& schema : module.structs) {
         if (!schema.fixed.has_value()) {

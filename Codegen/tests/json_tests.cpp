@@ -102,17 +102,17 @@ TEST(Json, LoadsExperimentalSingleAllocationConfiguration) {
     files.write("types.json", R"({"types":{}})");
     files.write(
         "modules.json",
-        R"({"modules":[{"kind":"soa","name":"rows","header":"Rows.h","source":"Rows.cpp","structs":[{"name":"Rows","members":[{"name":"child","kind":"nested","type":"Child","nested_schema":"Child"}],"experimental_single_allocation":{"name":"SingleRows"}}]}]})");
+        R"({"modules":[{"kind":"soa","name":"rows","header":"Rows.h","source":"Rows.cpp","structs":[{"name":"Rows","members":[{"name":"child","kind":"nested","type":"Child","nested_schema":"Child"}],"single_allocation":{"name":"SingleRows"}}]}]})");
     files.write("manifest.json",
                 R"({"schema_version":11,"types":"types.json","modules":["modules.json"]})");
     auto const manifest{load_manifest(files.path("manifest.json"))};
     auto const& schema{std::get<SoaModuleSchema>(manifest.modules.front()).structs.front()};
-    EXPECT_EQ(schema.experimental_single_allocation, "SingleRows");
+    EXPECT_EQ(schema.single_allocation, "SingleRows");
     EXPECT_EQ(schema.members.front().nested_schema, "Child");
 
     files.write(
         "modules.json",
-        R"({"modules":[{"kind":"soa","name":"rows","header":"Rows.h","structs":[{"name":"Rows","members":[{"name":"ids","kind":"array","type":"int32"}],"experimental_single_allocation":{"name":"SingleRows","allocator":"large_pages"}}]}]})");
+        R"({"modules":[{"kind":"soa","name":"rows","header":"Rows.h","structs":[{"name":"Rows","members":[{"name":"ids","kind":"array","type":"int32"}],"single_allocation":{"name":"SingleRows","allocator":"large_pages"}}]}]})");
     EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
 }
 

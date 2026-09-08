@@ -5,6 +5,14 @@
 
 namespace ml::native_soa_benchmarks {
 using namespace native_experiment;
+template <typename View>
+auto array_columns(View view) {
+    if constexpr (requires { view.columns(); }) {
+        return view.columns();
+    } else {
+        return view;
+    }
+}
 
 enum class Operation {
     Reserve,
@@ -54,11 +62,11 @@ void run(benchmark::State& state, Operation operation, std::int32_t batch) {
         if (operation == Operation::Growth || operation == Operation::Remove ||
             operation == Operation::Iterate || operation == Operation::Views) {
             owner.set_num(count);
-            initialise(owner.get_view());
+            initialise(array_columns(owner.get_view()));
         }
     };
     prepare();
-    auto view{owner.get_view()};
+    auto view{array_columns(owner.get_view())};
     for (auto _ : state) {
         // Pause/resume once per complete container operation, never once per appended row.
         if (operation != Operation::Iterate && operation != Operation::Views) {
@@ -113,7 +121,7 @@ void run(benchmark::State& state, Operation operation, std::int32_t batch) {
                 break;
             case Operation::Views:
                 for (int i{}; i < 4096; ++i) {
-                    benchmark::DoNotOptimize(owner.get_view());
+                    benchmark::DoNotOptimize(array_columns(owner.get_view()));
                 }
                 break;
         }
@@ -140,8 +148,9 @@ void run(benchmark::State& state, Operation operation, std::int32_t batch) {
     state.counters["retained_bytes"] = static_cast<double>(bytes);
     state.counters["retained_blocks"] = static_cast<double>(blocks);
     std::size_t row_bytes{};
-    owner.get_view().each_column(
-        [&](auto column) { row_bytes += sizeof(typename decltype(column)::value_type); });
+    array_columns(owner.get_view()).each_column([&](auto column) {
+        row_bytes += sizeof(typename decltype(column)::value_type);
+    });
     state.counters["live_bytes"] =
         static_cast<double>(row_bytes * static_cast<std::size_t>(owner.num()));
     state.counters["unused_bytes"] =

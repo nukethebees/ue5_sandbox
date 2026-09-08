@@ -65,7 +65,7 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
                            std::map<std::string, CppType> const& types) -> Module {
     auto const format_generated{module.experimental_stdlib ||
                                 std::ranges::any_of(module.structs, [](auto const& schema) {
-                                    return schema.experimental_single_allocation.has_value();
+                                    return schema.single_allocation.has_value();
                                 })};
     std::map<std::string, SoaSchema const*> schemas;
     for (auto const& schema : module.structs) {
@@ -84,7 +84,7 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
                 .append(lower_fixed_nodes(schema, schemas, types));
             lowered.header = header.build();
         }
-        if (schema.experimental_single_allocation.has_value()) {
+        if (schema.single_allocation.has_value()) {
             NodeListBuilder header;
             header.append(std::move(lowered.header))
                 .new_lines(2)
@@ -92,7 +92,7 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
                     schema, schemas, types, module.experimental_stdlib));
             for (auto const& variant : schema.single_allocation_variants) {
                 auto copy{schema};
-                copy.experimental_single_allocation = variant.name;
+                copy.single_allocation = variant.name;
                 copy.single_allocation_allocator = variant.allocator;
                 header.new_lines(2).add(
                     lower_single_allocation_node(copy, schemas, types, module.experimental_stdlib));
@@ -182,9 +182,9 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
         names.insert(schema.name);
         names.insert(schema.view_name.value_or(schema.name + "View"));
         names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
-        if (schema.experimental_single_allocation) {
-            names.insert(*schema.experimental_single_allocation);
-            names.insert(*schema.experimental_single_allocation + "Storage");
+        if (schema.single_allocation) {
+            names.insert(*schema.single_allocation);
+            names.insert(*schema.single_allocation + "Storage");
         }
         for (auto const& variant : schema.single_allocation_variants) {
             names.insert(variant.name);
@@ -213,7 +213,7 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
                     throw std::invalid_argument{"Duplicate SoA allocator variant type: " + name};
                 }
             }
-            copy.experimental_single_allocation.reset();
+            copy.single_allocation.reset();
             copy.single_allocation_variants.clear();
             copy.array_allocator = variant.allocator;
             for (auto& member : copy.members) {

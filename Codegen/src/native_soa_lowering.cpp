@@ -46,7 +46,20 @@ auto lower_native_soa(SoaSchema const& schema,
         for (auto const& leaf : layout.leaves) {
             out << "fn(" << join(leaf.path, ".") << ");\n";
         }
-        out << "}\n};\n";
+        out << "}\n";
+        auto const view_type{immutable ? const_view : view};
+        out << "auto slice(std::int32_t offset, std::int32_t count) const -> " << view_type
+            << " { ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() && count "
+               "<= num() - offset); return {\n";
+        for (auto const& member : layout.members) {
+            out << member.schema->name
+                << (member.schema->kind == SoaMemberKind::array
+                        ? ".subspan(static_cast<std::size_t>(offset), "
+                          "static_cast<std::size_t>(count))"
+                        : ".slice(offset, count)")
+                << ",\n";
+        }
+        out << "}; }\n};\n";
     }
     out << "struct " << schema.name << " {\nusing View = " << view
         << ";\nusing ConstView = " << const_view << ";\nusing size_type = std::int32_t;\n";
@@ -91,6 +104,25 @@ auto lower_native_soa(SoaSchema const& schema,
             << "[source+i]; }\n";
     }
     out << "set_num(old_num-count); }\n";
+    out << "void append_from(ConstView source) { auto const count{source.num()};\n"
+        << "ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());\n"
+        << "source.each_column([&](auto column) { ml::native_soa::require(column.size() == "
+           "static_cast<std::size_t>(count)); });\n"
+        << "if (count == 0) { return; }\n";
+    for (auto const& leaf : layout.leaves) {
+        auto const column{join(leaf.path, ".")};
+        out << "{ auto const address{reinterpret_cast<std::uintptr_t>(source." << column
+            << ".data())};\n"
+            << "auto const begin{reinterpret_cast<std::uintptr_t>(" << column << ".data())};\n"
+            << "ml::native_soa::require(address < begin || address >= begin + " << column
+            << ".size() * sizeof(" << leaf.type.spelling << ")); }\n";
+    }
+    for (auto const& leaf : layout.leaves) {
+        auto const column{join(leaf.path, ".")};
+        out << column << ".insert(" << column << ".end(), source." << column << ".begin(), source."
+            << column << ".end());\n";
+    }
+    out << "}\n";
     for (bool const immutable : {false, true}) {
         out << "auto get_view()" << (immutable ? " const" : "") << " -> "
             << (immutable ? "ConstView" : "View") << " { return {\n";
