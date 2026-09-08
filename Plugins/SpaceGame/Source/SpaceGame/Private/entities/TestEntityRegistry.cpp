@@ -11,9 +11,9 @@
 
 #include <utility>
 
-/* ------------------------------------------------------------------------------------------ */
-// NewEntities
-/* ------------------------------------------------------------------------------------------ */
+/* **************************************** */
+// Spawned entity handles
+/* **************************************** */
 auto SpawnedEntityHandles::num() const -> int32 {
     return registry_handles.num();
 }
@@ -27,6 +27,9 @@ void SpawnedEntityHandles::add_uninitialised(int32 const count) {
     registry_handles.add_uninitialised(count);
 }
 
+/* **************************************** */
+// Lifecycle
+/* **************************************** */
 void FTestEntityRegistry::reset() {
     entity_data.reset();
     queued_entity_data.reset();
@@ -45,25 +48,6 @@ void FTestEntityRegistry::reset() {
     cumulative_kill_count_ = 0;
     combat_telemetry_ = {};
 }
-
-void FTestEntityRegistry::adjust_alive_count(ETestTeam const team,
-                                             ETestEntityType const type,
-                                             int32 const delta) {
-    auto const team_index{std::to_underlying(team)};
-    auto const type_index{std::to_underlying(type)};
-    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-    constexpr auto type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
-    check(team_index >= 0 && team_index < team_count);
-    check(type_index >= 0 && type_index < type_count);
-
-    auto& count{alive_counts_[team_index][type_index]};
-    count += delta;
-    alive_count_ += delta;
-    check(count >= 0);
-    check(alive_count_ >= 0);
-}
-
-// Lifecycle
 void FTestEntityRegistry::commit_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_updates);
 
@@ -99,7 +83,9 @@ void FTestEntityRegistry::end_tick() {
     validate_unique_entity_data();
 }
 
+/* **************************************** */
 // Entity creation
+/* **************************************** */
 auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> SpawnedEntityHandles {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::add_entities);
 
@@ -112,125 +98,107 @@ auto FTestEntityRegistry::add_entities(EntityData::ConstView const view) -> Spaw
         return new_entities;
     }
 
-    new_entities.first_id = {
-        .id = unique_entities.num(),
-    };
+    new_entities.first_id = {.id = unique_entities.num()};
     unique_entities.add_defaulted(count);
-    auto const first_id{new_entities.first_id};
+    new_entities.registry_handles.add_uninitialised(count);
 
-    auto const n_free_indices{free_indices.Num()};
-    auto const free_to_reserve{FMath::Min(n_free_indices, count)};
-
-    int32 new_entity_index{0};
-
-    auto set_up_unique_data{[&](int32 const view_index, int32 const entity_index) {
-        auto const unique_id{first_id + new_entity_index};
-        unique_ids[entity_index] = unique_id;
-
-        new_entities.registry_handles.add(entity_index, generations[entity_index]);
-
-        auto const i{unique_id.id};
-
-        unique_entities.registry_indices[i] = entity_index;
-        unique_entities.registry_generations[i] = generations[entity_index];
-        unique_entities.alive[i] = view.alive[view_index];
-        unique_entities.entity_types[i] = view.entity_types[view_index];
-        unique_entities.teams[i] = view.teams[view_index];
-
-        ++combat_telemetry_.spawned[std::to_underlying(view.teams[view_index])]
-                                   [std::to_underlying(view.entity_types[view_index])];
-
-        if (view.alive[view_index] != 0) {
-            adjust_alive_count(view.teams[view_index], view.entity_types[view_index], 1);
-        }
-
-        new_entity_index++;
-    }};
-
-    for (int32 i{0}; i < free_to_reserve; ++i) {
-        auto const entity_index{free_indices.Pop(EAllowShrinking::No)};
-
-        ml::assign_from(entity_data.locations, entity_index, view.locations, i);
-        ml::assign_from(entity_data.velocities, entity_index, view.velocities, i);
-        ml::assign(entity_data.rotations, entity_index, ml::get_rotator3d(view.rotations, i));
-
-        entity_data.radii[entity_index] = view.radii[i];
-        entity_data.healths[entity_index] = view.healths[i];
-        entity_data.teams[entity_index] = view.teams[i];
-        entity_data.alive[entity_index] = view.alive[i];
-        entity_data.entity_types[entity_index] = view.entity_types[i];
-
-        ++generations[entity_index];
-
-        set_up_unique_data(i, entity_index);
-    }
-
-    auto const indices_left_to_reserve{count - new_entities.registry_handles.num()};
-    auto start_index{get_num_elements()};
-
-    generations.AddZeroed(indices_left_to_reserve);
-    unique_ids.AddDefaulted(indices_left_to_reserve);
-
-    entity_data.append_from(view.get_view(ml::num(new_entities), indices_left_to_reserve));
-
-    for (int32 i{0}; i < indices_left_to_reserve; ++i) {
-        auto const entity_index{start_index + i};
-        set_up_unique_data(free_to_reserve + i, entity_index);
-    }
+    auto const reuse_count{FMath::Min(free_indices.Num(), count)};
+    reuse_slots(view, reuse_count, new_entities);
+    append_slots(view, reuse_count, new_entities);
 
     validate_array_sizes();
     validate_unique_ids();
 
     return new_entities;
 }
+void FTestEntityRegistry::reuse_slots(EntityData::ConstView const& view,
+                                      int32 const count,
+                                      SpawnedEntityHandles& spawned) {
+    for (int32 source_index{}; source_index < count; ++source_index) {
+        auto const slot_index{free_indices.Pop(EAllowShrinking::No)};
+        entity_data.copy_element(slot_index, view, source_index);
+        ++generations[slot_index];
 
+        auto const handle{register_spawned_entity(
+            view, source_index, slot_index, spawned.first_id + source_index)};
+        spawned.registry_handles.set(source_index, handle.index, handle.generation);
+    }
+}
+void FTestEntityRegistry::append_slots(EntityData::ConstView const& view,
+                                       int32 const source_offset,
+                                       SpawnedEntityHandles& spawned) {
+    auto const append_count{view.num() - source_offset};
+    auto const first_slot_index{entity_data.num()};
+    generations.AddZeroed(append_count);
+    unique_ids.AddDefaulted(append_count);
+    entity_data.append_from(view.get_view(source_offset, append_count));
+
+    for (int32 offset{}; offset < append_count; ++offset) {
+        auto const source_index{source_offset + offset};
+        auto const handle{register_spawned_entity(
+            view, source_index, first_slot_index + offset, spawned.first_id + source_index)};
+        spawned.registry_handles.set(source_index, handle.index, handle.generation);
+    }
+}
+FORCEINLINE auto FTestEntityRegistry::register_spawned_entity(EntityData::ConstView const& view,
+                                                              int32 const source_index,
+                                                              int32 const slot_index,
+                                                              TestEntityUniqueId const unique_id)
+    -> FRegistryEntityHandle {
+    auto const generation{generations[slot_index]};
+    auto const team{view.teams[source_index]};
+    auto const type{view.entity_types[source_index]};
+    auto const alive{view.alive[source_index]};
+    unique_ids[slot_index] = unique_id;
+    unique_entities.registry_indices[unique_id.id] = slot_index;
+    unique_entities.registry_generations[unique_id.id] = generation;
+    unique_entities.alive[unique_id.id] = alive;
+    unique_entities.entity_types[unique_id.id] = type;
+    unique_entities.teams[unique_id.id] = team;
+
+    ++combat_telemetry_.spawned[std::to_underlying(team)][std::to_underlying(type)];
+    if (alive != 0) {
+        adjust_alive_count(team, type, 1);
+    }
+    return {slot_index, generation};
+}
+
+/* **************************************** */
 // Queued updates
+/* **************************************** */
 void FTestEntityRegistry::queue_entity_updates(ConstView const view,
                                                EntityDeathInfo const& death_info) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::queue_entity_updates);
 
+    check(view.indices.Num() == view.data.num());
     queued_entity_data.append_from(view.data);
     queued_entity_update_handles.Append(view.indices);
 
     death_info.validate_array_sizes();
-    queued_death_infos.reasons.Append(death_info.reasons);
-    queued_death_infos.victims.Append(death_info.victims);
-    queued_death_infos.killers.Append(death_info.killers);
+    queued_death_infos.append_from(death_info);
 }
 void FTestEntityRegistry::commit_entity_updates() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::commit_entity_updates);
 
-    auto const n{queued_entity_data.num()};
+    auto const count{queued_entity_data.num()};
+    check(queued_entity_update_handles.Num() == count);
 
-    for (int32 i{0}; i < n; ++i) {
-        auto const entity_handle{queued_entity_update_handles[i]};
-        check(is_valid_handle(entity_handle));
+    for (int32 update_index{}; update_index < count; ++update_index) {
+        auto const handle{queued_entity_update_handles[update_index]};
+        check(is_valid_handle(handle));
+        auto const slot_index{handle.index};
 
-        auto const entity_index{entity_handle.index};
-
-        auto const old_alive{entity_data.alive[entity_index] != 0};
-        auto const new_alive{queued_entity_data.alive[i] != 0};
-        auto const old_team{entity_data.teams[entity_index]};
-        auto const new_team{queued_entity_data.teams[i]};
-        auto const entity_type{entity_data.entity_types[entity_index]};
-        if (old_alive && (!new_alive || old_team != new_team)) {
-            adjust_alive_count(old_team, entity_type, -1);
-        }
-        if (new_alive && (!old_alive || old_team != new_team)) {
-            adjust_alive_count(new_team, entity_type, 1);
-        }
-
-        ml::assign_from(entity_data.locations, entity_index, queued_entity_data.locations, i);
-        ml::assign_from(entity_data.velocities, entity_index, queued_entity_data.velocities, i);
+        apply_live_state_transition(slot_index,
+                                    queued_entity_data.teams[update_index],
+                                    queued_entity_data.alive[update_index]);
+        ml::assign_from(
+            entity_data.locations, slot_index, queued_entity_data.locations, update_index);
+        ml::assign_from(
+            entity_data.velocities, slot_index, queued_entity_data.velocities, update_index);
         ml::assign(entity_data.rotations,
-                   entity_index,
-                   ml::get_rotator3d(queued_entity_data.rotations, i));
-        entity_data.healths[entity_index] = queued_entity_data.healths[i];
-        entity_data.teams[entity_index] = queued_entity_data.teams[i];
-        entity_data.alive[entity_index] = queued_entity_data.alive[i];
-
-        auto const unique_id{unique_ids[entity_index]};
-        unique_entities.alive[unique_id.id] = queued_entity_data.alive[i];
+                   slot_index,
+                   ml::get_rotator3d(queued_entity_data.rotations, update_index));
+        entity_data.healths[slot_index] = queued_entity_data.healths[update_index];
     }
 }
 void FTestEntityRegistry::commit_death_updates() {
@@ -246,33 +214,82 @@ void FTestEntityRegistry::commit_death_updates() {
 
         dead_entities_this_frame.Add(victim_handle);
 
-        unique_entities.alive[victim_id.id] = 0;
-        unique_entities.death_reason[victim_id.id] = queued_death_infos.reasons[i];
-        auto const victim_team{unique_entities.teams[victim_id.id]};
-        auto const victim_type{unique_entities.entity_types[victim_id.id]};
-        ++combat_telemetry_
-              .destroyed[std::to_underlying(victim_team)][std::to_underlying(victim_type)];
-        ++combat_telemetry_
-              .losses[std::to_underlying(victim_team)][std::to_underlying(victim_type)];
+        record_entity_death(victim_id, queued_death_infos.reasons[i]);
 
         auto const killer_handle{queued_death_infos.killers[i]};
 
         if (killer_handle.is_valid()) {
             auto const killer_id{find_unique_id(killer_handle)};
-            unique_entities.killed_by[victim_id.id] = killer_id;
-            unique_entities.kills[killer_id.id] += 1;
-            ++cumulative_kill_count_;
-            auto const killer_team{unique_entities.teams[killer_id.id]};
-            auto const killer_type{unique_entities.entity_types[killer_id.id]};
-            ++combat_telemetry_
-                  .kills[std::to_underlying(killer_team)][std::to_underlying(killer_type)];
-            ++combat_telemetry_
-                  .kill_matrix[std::to_underlying(killer_team)][std::to_underlying(victim_team)];
+            credit_entity_kill(killer_id, victim_id);
         }
     }
 }
+FORCEINLINE void FTestEntityRegistry::record_entity_death(TestEntityUniqueId const victim_id,
+                                                          ETestDeathReason const reason) {
+    unique_entities.alive[victim_id.id] = 0;
+    unique_entities.death_reason[victim_id.id] = reason;
+    auto const team_index{std::to_underlying(unique_entities.teams[victim_id.id])};
+    auto const type_index{std::to_underlying(unique_entities.entity_types[victim_id.id])};
+    ++combat_telemetry_.destroyed[team_index][type_index];
+    ++combat_telemetry_.losses[team_index][type_index];
+}
+FORCEINLINE void FTestEntityRegistry::credit_entity_kill(TestEntityUniqueId const killer_id,
+                                                         TestEntityUniqueId const victim_id) {
+    unique_entities.killed_by[victim_id.id] = killer_id;
+    ++unique_entities.kills[killer_id.id];
+    ++cumulative_kill_count_;
+    auto const killer_team{std::to_underlying(unique_entities.teams[killer_id.id])};
+    auto const killer_type{std::to_underlying(unique_entities.entity_types[killer_id.id])};
+    auto const victim_team{std::to_underlying(unique_entities.teams[victim_id.id])};
+    ++combat_telemetry_.kills[killer_team][killer_type];
+    ++combat_telemetry_.kill_matrix[killer_team][victim_team];
+}
 
+/* **************************************** */
+// Live state and alive counts
+/* **************************************** */
+void FTestEntityRegistry::adjust_alive_count(ETestTeam const team,
+                                             ETestEntityType const type,
+                                             int32 const delta) {
+    auto const team_index{std::to_underlying(team)};
+    auto const type_index{std::to_underlying(type)};
+    constexpr auto team_count{ml::EnumCountTrait<ETestTeam>::count_value};
+    constexpr auto type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
+    check(team_index >= 0 && team_index < team_count);
+    check(type_index >= 0 && type_index < type_count);
+
+    auto& count{alive_counts_[team_index][type_index]};
+    count += delta;
+    alive_count_ += delta;
+    check(count >= 0);
+    check(alive_count_ >= 0);
+}
+FORCEINLINE void FTestEntityRegistry::apply_live_state_transition(int32 const slot_index,
+                                                                  ETestTeam const team,
+                                                                  uint8 const alive) {
+    auto const old_alive{entity_data.alive[slot_index] != 0};
+    auto const new_alive{alive != 0};
+    auto const old_team{entity_data.teams[slot_index]};
+    auto const type{entity_data.entity_types[slot_index]};
+    if (old_alive && (!new_alive || old_team != team)) {
+        adjust_alive_count(old_team, type, -1);
+    }
+    if (new_alive && (!old_alive || old_team != team)) {
+        adjust_alive_count(team, type, 1);
+    }
+
+    entity_data.teams[slot_index] = team;
+    entity_data.alive[slot_index] = alive;
+    auto const unique_id{unique_ids[slot_index]};
+    unique_entities.alive[unique_id.id] = alive;
+    if (old_team != team) {
+        unique_entities.teams[unique_id.id] = team;
+    }
+}
+
+/* **************************************** */
 // Damage events
+/* **************************************** */
 void FTestEntityRegistry::queue_direct_damage_events(DirectDamageEvents const& damage_events) {
     damage_events.validate_array_sizes();
 
@@ -315,7 +332,9 @@ auto FTestEntityRegistry::get_direct_damage_queue_view() const -> DirectDamageEv
     return queued_direct_damage_events;
 }
 
+/* **************************************** */
 // Handle queries
+/* **************************************** */
 auto FTestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) const
     -> ERegistryHandleState {
     if (handle.is_null()) {
@@ -334,11 +353,14 @@ auto FTestEntityRegistry::analyse_handle(FRegistryEntityHandle const handle) con
 
     return ERegistryHandleState::Invalid;
 }
-auto FTestEntityRegistry::is_stale(FRegistryEntityHandle const index) const -> bool {
-    return generations.IsValidIndex(index.index) && (generations[index.index] > index.generation);
+auto FTestEntityRegistry::is_stale(FRegistryEntityHandle const handle) const -> bool {
+    return generations.IsValidIndex(handle.index) &&
+           (generations[handle.index] > handle.generation);
 }
 
+/* **************************************** */
 // Entity data updates
+/* **************************************** */
 void FTestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> const handles) const {
     for (auto& handle : handles) {
         auto const handle_state{analyse_handle(handle)};
@@ -364,7 +386,6 @@ void FTestEntityRegistry::refresh_handles(TArrayView<FRegistryEntityHandle> cons
         }
     }
 }
-
 void FTestEntityRegistry::refresh_locations(TConstArrayView<FRegistryEntityHandle> handles,
                                             FVectors3f::View const& locations) {
     auto const n{handles.Num()};
@@ -433,34 +454,38 @@ void FTestEntityRegistry::refresh_entity_data(TArrayView<FRegistryEntityHandle> 
     }
 }
 
+/* **************************************** */
 // Entity data queries
-auto FTestEntityRegistry::get_location(FRegistryEntityHandle const index) const -> FVector3f {
-    check(is_valid_handle(index));
-    return ml::get_vector3f(entity_data.locations, index.index);
+/* **************************************** */
+auto FTestEntityRegistry::get_location(FRegistryEntityHandle const handle) const -> FVector3f {
+    check(is_valid_handle(handle));
+    return ml::get_vector3f(entity_data.locations, handle.index);
 }
-auto FTestEntityRegistry::get_velocity(FRegistryEntityHandle const index) const -> FVector3f {
-    check(is_valid_handle(index));
-    return ml::get_vector3f(entity_data.velocities, index.index);
+auto FTestEntityRegistry::get_velocity(FRegistryEntityHandle const handle) const -> FVector3f {
+    check(is_valid_handle(handle));
+    return ml::get_vector3f(entity_data.velocities, handle.index);
 }
-auto FTestEntityRegistry::get_health(FRegistryEntityHandle const index) const -> int32 {
-    check(is_valid_handle(index));
-    return entity_data.healths[index.index];
+auto FTestEntityRegistry::get_health(FRegistryEntityHandle const handle) const -> int32 {
+    check(is_valid_handle(handle));
+    return entity_data.healths[handle.index];
 }
-auto FTestEntityRegistry::get_team(FRegistryEntityHandle const index) const -> ETestTeam {
-    check(is_valid_handle(index));
-    return entity_data.teams[index.index];
+auto FTestEntityRegistry::get_team(FRegistryEntityHandle const handle) const -> ETestTeam {
+    check(is_valid_handle(handle));
+    return entity_data.teams[handle.index];
 }
-auto FTestEntityRegistry::get_entity_type(FRegistryEntityHandle const index) const
+auto FTestEntityRegistry::get_entity_type(FRegistryEntityHandle const handle) const
     -> ETestEntityType {
-    check(is_valid_handle(index));
-    return entity_data.entity_types[index.index];
+    check(is_valid_handle(handle));
+    return entity_data.entity_types[handle.index];
 }
-auto FTestEntityRegistry::get_alive(FRegistryEntityHandle const index) const -> bool {
-    check(is_valid_handle(index));
-    return static_cast<bool>(entity_data.alive[index.index]);
+auto FTestEntityRegistry::get_alive(FRegistryEntityHandle const handle) const -> bool {
+    check(is_valid_handle(handle));
+    return static_cast<bool>(entity_data.alive[handle.index]);
 }
 
+/* **************************************** */
 // Entity collection queries
+/* **************************************** */
 auto FTestEntityRegistry::get_dead_entities_this_frame() const
     -> TConstArrayView<FRegistryEntityHandle> {
     return dead_entities_this_frame;
@@ -488,14 +513,15 @@ void FTestEntityRegistry::get_handles_not_in_team(ETestTeam const team,
     }
 }
 
+/* **************************************** */
 // Aggregate queries
+/* **************************************** */
 auto FTestEntityRegistry::get_num_elements() const noexcept -> int32 {
     return entity_data.num();
 }
 auto FTestEntityRegistry::get_num_alive_active_entities() const noexcept -> int32 {
     return alive_count_;
 }
-
 auto FTestEntityRegistry::count_kills() const noexcept -> int32 {
     return cumulative_kill_count_;
 }
@@ -541,9 +567,12 @@ auto FTestEntityRegistry::count_alive_not_on_team(ETestTeam const team) const no
 
     return count;
 }
+
+/* **************************************** */
 // Unique entity queries
+/* **************************************** */
 auto FTestEntityRegistry::is_valid_unique_id(TestEntityUniqueId const id) const -> bool {
-    return id.is_valid() && (id.id < get_num_unique_ids_issued());
+    return id.id >= 0 && id.id < get_num_unique_ids_issued();
 }
 auto FTestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) const
     -> TestEntityUniqueId {
@@ -580,14 +609,15 @@ auto FTestEntityRegistry::find_unique_id(FRegistryEntityHandle const handle) con
     checkf(false, TEXT("A missing unique ID should be impossible here."));
     return {};
 }
-
 auto FTestEntityRegistry::get_kills(TestEntityUniqueId const id) const
     -> TestEntityUniqueEntityData::kills_type {
     check(is_valid_unique_id(id));
     return unique_entities.kills[id.id];
 }
 
+/* **************************************** */
 // Spatial queries
+/* **************************************** */
 auto FTestEntityRegistry::collect_entities_in_range(
     FVector3f const& origin,
     float const radius,
@@ -618,7 +648,10 @@ auto FTestEntityRegistry::collect_entities_in_range(
 
     return count;
 }
+
+/* **************************************** */
 // Validation
+/* **************************************** */
 void FTestEntityRegistry::validate_array_sizes() const {
     ml::fatal_if_nums_not_equal({
         SANDBOX_NAMED_NUM(entity_data),
@@ -629,14 +662,11 @@ void FTestEntityRegistry::validate_array_sizes() const {
     entity_data.validate_array_sizes();
     queued_direct_damage_events.validate_array_sizes();
 
-    auto const num_ids_issued{static_cast<int32>(get_num_unique_ids_issued())};
-    if (unique_entities.num() != num_ids_issued) {
-        UE_LOG(LogSandbox,
-               Fatal,
-               TEXT("%d unique ids != %d ids issued"),
-               unique_entities.num(),
-               num_ids_issued);
-    }
+#if DO_CHECK
+    queued_entity_data.validate_array_sizes();
+    unique_entities.validate_array_sizes();
+    check(queued_entity_data.num() == queued_entity_update_handles.Num());
+#endif
 }
 void FTestEntityRegistry::validate_unique_ids() const {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_unique_ids);
@@ -648,14 +678,16 @@ void FTestEntityRegistry::validate_unique_ids() const {
         if (!is_valid_unique_id(unique_ids[i])) {
             UE_LOG(LogSandbox,
                    Fatal,
-                   TEXT("Invalid unique id detected: (id[%d] = %u)"),
+                   TEXT("Invalid unique id detected: (id[%d] = %d)"),
                    i,
                    unique_ids[i].id);
         }
+        check(unique_entities.registry_indices[unique_ids[i].id] == i);
+        check(unique_entities.registry_generations[unique_ids[i].id] == generations[i]);
     }
 }
 void FTestEntityRegistry::validate_unique_entity_data() const {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_death_reasons);
+    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FTestEntityRegistry::validate_unique_entity_data);
 
     auto const n{unique_entities.num()};
 
