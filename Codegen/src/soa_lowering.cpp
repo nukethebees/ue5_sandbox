@@ -60,9 +60,10 @@ auto lower_soa_impl(SoaSchema const& schema,
 
 auto lower_soa_module_impl(SoaModuleSchema const& module,
                            std::map<std::string, CppType> const& types) -> Module {
-    auto const format_generated{std::ranges::any_of(module.structs, [](auto const& schema) {
-        return schema.experimental_single_allocation.has_value();
-    })};
+    auto const format_generated{module.experimental_stdlib ||
+                                std::ranges::any_of(module.structs, [](auto const& schema) {
+                                    return schema.experimental_single_allocation.has_value();
+                                })};
     std::map<std::string, SoaSchema const*> schemas;
     for (auto const& schema : module.structs) {
         schemas.emplace(schema.name, &schema);
@@ -71,7 +72,8 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
     std::vector<LoweredSoa> lowered_structs;
     lowered_structs.reserve(module.structs.size());
     for (auto const& schema : module.structs) {
-        auto lowered{lower_soa_impl(schema, types, {})};
+        auto lowered{module.experimental_stdlib ? lower_native_soa(schema, schemas, types)
+                                                : lower_soa_impl(schema, types, {})};
         if (schema.fixed.has_value()) {
             NodeListBuilder header;
             header.append(std::move(lowered.header))
@@ -83,7 +85,8 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
             NodeListBuilder header;
             header.append(std::move(lowered.header))
                 .new_lines(2)
-                .add(lower_single_allocation_node(schema, schemas, types));
+                .add(lower_single_allocation_node(
+                    schema, schemas, types, module.experimental_stdlib));
             lowered.header = header.build();
         }
         lowered_structs.push_back(std::move(lowered));

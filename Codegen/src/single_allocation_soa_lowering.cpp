@@ -11,7 +11,8 @@ static auto
     single_allocation_view_expression(SoaSchema const& schema,
                                       std::map<std::string, SoaSchema const*> const& schemas,
                                       std::vector<std::string> const& prefix,
-                                      bool const is_const) -> std::string {
+                                      bool const is_const,
+                                      bool const native) -> std::string {
     auto const view_name{is_const ? schema.const_view_name.value_or(schema.name + "ConstView")
                                   : schema.view_name.value_or(schema.name + "View")};
     std::vector<std::string> values;
@@ -20,9 +21,10 @@ static auto
         path.push_back(member.name);
         if (member.kind == SoaMemberKind::nested) {
             values.push_back(single_allocation_view_expression(
-                *schemas.at(*member.nested_schema), schemas, path, is_const));
+                *schemas.at(*member.nested_schema), schemas, path, is_const, native));
         } else {
-            values.push_back("{columns." + join(path, "_") + ", count}");
+            values.push_back("{columns." + join(path, "_") +
+                             (native ? ", static_cast<std::size_t>(count)}" : ", count}"));
         }
     }
     return view_name + "{" + join(values, ", ") + "}";
@@ -30,12 +32,19 @@ static auto
 
 auto lower_single_allocation_node(SoaSchema const& schema,
                                   std::map<std::string, SoaSchema const*> const& schemas,
-                                  std::map<std::string, CppType> const& types) -> Node {
+                                  std::map<std::string, CppType> const& types,
+                                  bool const native) -> Node {
+    auto const* runtime{native ? "ml::native_soa::" : "ml::single_allocation_experiment::"};
+    auto const* free_data{native ? "ml::native_soa::free(data_, allocation_alignment)"
+                                 : "FMemory::Free(data_)"};
+    auto const* copy{native ? "std::memcpy" : "FMemory::Memcpy"};
     auto const layout{build_soa_layout(schema, schemas, types, false)};
     auto const& name{*schema.experimental_single_allocation};
     auto const storage_name{name + "Storage"};
     std::vector<TypeDependency> dependencies{
-        {"single_allocation_storage", "SbxCoreExperiments/single_allocation_storage.h", {}}};
+        {"single_allocation_storage",
+         native ? "native_soa/storage.h" : "SbxCoreExperiments/single_allocation_storage.h",
+         {}}};
     std::set<std::string> names;
     std::map<std::string, std::string> type_ids;
     std::vector<FixedLeaf const*> unique_types;
@@ -52,11 +61,12 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     };
     std::ostringstream assertions;
     std::ostringstream out;
-    out << "struct " << storage_name << " : ml::single_allocation_experiment::StorageOperations {\n"
+    out << "struct " << storage_name << " : " << runtime << "StorageOperations {\n"
         << "using View = " << schema.view_name.value_or(schema.name + "View") << ";\n"
         << "using ConstView = " << schema.const_view_name.value_or(schema.name + "ConstView")
         << ";\n"
-        << "using size_type = int32;\nusing byte_size_type = SIZE_T;\n\n"
+        << "using size_type = " << (native ? "std::int32_t" : "int32")
+        << ";\nusing byte_size_type = " << (native ? "std::size_t" : "SIZE_T") << ";\n\n"
         << "inline static constexpr byte_size_type "
            "max_allocation_size{std::numeric_limits<byte_size_type>::max()};\n"
         << "inline static constexpr size_type capacity_granularity{64};\n\n";
@@ -65,7 +75,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         auto const id{fixed_leaf_argument(*leaf)};
         auto const& type{leaf->type.spelling};
         assertions
-            << "static_assert(ml::single_allocation_experiment::supported_leaf<" << type
+            << "static_assert(" << runtime << "supported_leaf<" << type
             << ">, \"Single-allocation leaf " << join(leaf->path, ".")
             << " requires a non-cv, trivially copyable/copy-constructible/destructible, nothrow "
                "default-constructible object type.\");\n";
@@ -75,7 +85,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     }
     out << "inline static constexpr byte_size_type allocation_alignment{std::max({"
         << join(alignments, ", ") << "})};\n\n";
-    assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<uint32>::max());\n";
+    assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<"
+               << (native ? "std::uint32_t" : "uint32") << ">::max());\n";
     std::string previous{"0"};
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
@@ -89,9 +100,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         auto const& type{leaf.type.spelling};
         dependencies.insert(
             dependencies.end(), leaf.type.dependencies.begin(), leaf.type.dependencies.end());
-        out << "inline static constexpr byte_size_type " << id
-            << "_block_offset{ml::single_allocation_experiment::layout_align(" << previous << ", "
-            << type_ids.at(type) << "_alignment)};\n"
+        out << "inline static constexpr byte_size_type " << id << "_block_offset{" << runtime
+            << "layout_align(" << previous << ", " << type_ids.at(type) << "_alignment)};\n"
             << "inline static constexpr byte_size_type " << id << "_block_end{" << id
             << "_block_offset + capacity_granularity * sizeof(" << type << ")};\n\n";
         assertions << "static_assert(sizeof(" << type << ") <= (max_allocation_size - " << id
@@ -99,10 +109,11 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         previous = id + "_block_end";
     }
     out << "inline static constexpr byte_size_type "
-           "block_bytes{ml::single_allocation_experiment::layout_align("
-        << previous << ", allocation_alignment)};\n"
+           "block_bytes{"
+        << runtime << "layout_align(" << previous << ", allocation_alignment)};\n"
         << "inline static constexpr size_type "
-           "max_capacity{ml::single_allocation_experiment::maximum_capacity(block_bytes)};\n"
+           "max_capacity{"
+        << runtime << "maximum_capacity(block_bytes)};\n"
         << "\nprivate:\ninline static constexpr auto validate_layout = []() consteval -> bool {\n"
         << assertions.str()
         << "static_assert(max_capacity >= capacity_granularity);\nreturn true;\n};\n"
@@ -110,14 +121,15 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "/* **************************************** */\n// Lifetime\n/* "
            "**************************************** */\n"
         << storage_name << "() noexcept = default;\n"
-        << "~" << storage_name << "() { FMemory::Free(data_); }\n"
+        << "~" << storage_name << "() { " << free_data << "; }\n"
         << storage_name << "(" << storage_name << " const&) = delete;\n"
         << "auto operator=(" << storage_name << " const&) -> " << storage_name << "& = delete;\n"
         << storage_name << "(" << storage_name << "&& other) noexcept\n"
         << "    : data_{std::exchange(other.data_, nullptr)}, num_{std::exchange(other.num_, 0)}, "
            "capacity_{std::exchange(other.capacity_, 0)} {}\n"
         << "auto operator=(" << storage_name << "&& other) noexcept -> " << storage_name << "& {\n"
-        << "    if (this != &other) {\n        FMemory::Free(data_);\n        data_ = "
+        << "    if (this != &other) {\n        " << free_data
+        << ";\n        data_ = "
            "std::exchange(other.data_, nullptr);\n        num_ = std::exchange(other.num_, 0);\n   "
            "     capacity_ = std::exchange(other.capacity_, 0);\n    }\n    return *this;\n}\n\n"
         << "protected:\n"
@@ -142,7 +154,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "    if (self.data_ == nullptr) { return DataPointers<Byte>{}; }\n"
         << "    return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), "
            "offset);\n}\n\n"
-        << "private:\nfriend struct ml::single_allocation_experiment::StorageOperations;\n"
+        << "private:\nfriend struct " << runtime << "StorageOperations;\n"
         << "/* **************************************** */\n// Column pointers\n/* "
            "**************************************** */\n"
         << "template <typename Byte> static auto make_data_unchecked(Byte* const data, "
@@ -168,7 +180,9 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "void default_construct_columns(size_type const first, size_type const count) {\n"
         << "    auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};\n";
     for (auto const& leaf : layout.leaves) {
-        out << "    DefaultConstructItems<" << leaf.type.spelling << ">(columns."
+        out << "    "
+            << (native ? "std::uninitialized_value_construct_n<" : "DefaultConstructItems<")
+            << leaf.type.spelling << (native ? "*>" : ">") << "(columns."
             << fixed_leaf_argument(leaf) << ", count);\n";
     }
     out << "}\n"
@@ -179,15 +193,18 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     emit_copy_sizes(out, "elements_to_move");
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
-        out << "    FMemory::Memcpy(columns." << id << " + index, columns." << id << " + source, "
+        out << "    " << copy << "(columns." << id << " + index, columns." << id << " + source, "
             << type_ids.at(leaf.type.spelling) << "_bytes);\n";
     }
     out << "}\n"
         << "void reallocate(size_type const new_capacity) {\n"
         << "    auto* const "
-           "new_data{ml::single_allocation_experiment::allocate(ml::single_allocation_experiment::"
+           "new_data{"
+        << runtime << "allocate(" << runtime
+        << ""
            "allocation_bytes(new_capacity, block_bytes), "
-           "static_cast<uint32>(allocation_alignment))};\n"
+           "static_cast<"
+        << (native ? "std::uint32_t" : "uint32") << ">(allocation_alignment))};\n"
         << "    if (num_ > 0) {\n"
         << "        auto const old_blocks{capacity_blocks()};\n"
         << "        auto const new_blocks{static_cast<byte_size_type>(new_capacity / "
@@ -199,10 +216,11 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     emit_copy_sizes(out, "live_count");
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
-        out << "        FMemory::Memcpy(destination." << id << ", source." << id << ", "
+        out << "        " << copy << "(destination." << id << ", source." << id << ", "
             << type_ids.at(leaf.type.spelling) << "_bytes);\n";
     }
-    out << "    }\n    FMemory::Free(data_);\n    data_ = new_data;\n    capacity_ = "
+    out << "    }\n    " << free_data
+        << ";\n    data_ = new_data;\n    capacity_ = "
            "new_capacity;\n}\n"
         << "std::byte* data_{};\nsize_type num_{};\nsize_type capacity_{};\n};\n\n"
         << "struct " << name << " : " << storage_name << " {\n"
@@ -219,8 +237,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         auto const byte{is_const ? "std::byte const" : "std::byte"};
         out << "static auto make_view(DataPointers<" << byte
             << "> const& columns, size_type const count) -> " << view << " {\n"
-            << "    return " << single_allocation_view_expression(schema, schemas, {}, is_const)
-            << ";\n}\n";
+            << "    return "
+            << single_allocation_view_expression(schema, schemas, {}, is_const, native) << ";\n}\n";
     }
     out << "public:\n";
     for (bool const is_const : {false, true}) {
@@ -231,7 +249,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
             << "    return make_view(columns, count);\n}\n"
             << "auto get_view(size_type const offset, size_type const count)" << qualifier << " -> "
             << view << " {\n"
-            << "    ml::single_allocation_experiment::require(offset >= 0 && offset <= num() && "
+            << "    " << runtime
+            << "require(offset >= 0 && offset <= num() && "
                "count >= 0 && count <= num() - offset);\n"
             << "    auto const columns{get_data(offset)};\n"
             << "    return make_view(columns, count);\n}\n"
@@ -239,8 +258,9 @@ auto lower_single_allocation_node(SoaSchema const& schema,
             << view << " { return get_view(offset, count); }\n"
             << "auto left(size_type const count)" << qualifier << " -> " << view
             << " { return get_view(0, count); }\n"
-            << "auto right(size_type const count)" << qualifier << " -> " << view
-            << " { ml::single_allocation_experiment::require(count >= 0 && count <= num()); return "
+            << "auto right(size_type const count)" << qualifier << " -> " << view << " { "
+            << runtime
+            << "require(count >= 0 && count <= num()); return "
                "get_view(num() - count, count); }\n";
     }
     out << "auto get_const_view() const -> ConstView { return get_view(); }\n"

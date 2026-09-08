@@ -10,6 +10,29 @@
 
 namespace codegen::single_allocation_tests {
 
+TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
+    std::vector<SoaSchema> structs{
+        {.name = "Child", .members = {{"xs", SoaMemberKind::array, TypeRef{"float"}}}},
+        {.name = "Rows",
+         .members = {{"ids", SoaMemberKind::array, TypeRef{"std::int32_t"}},
+                     {"nested", SoaMemberKind::nested, TypeRef{"Child"}, {}, "Child"}},
+         .experimental_single_allocation = "SingleRows"}};
+    auto const files{render_modules(lower_modules(
+        Manifest{.schema_version = manifest_schema_version,
+                 .modules = {SoaModuleSchema{.settings = {.name = "native", .header = "Native.h"},
+                                             .structs = std::move(structs),
+                                             .experimental_stdlib = true}}}))};
+    auto const& output{files.front().content};
+    EXPECT_NE(output.find("std::vector<std::int32_t> ids"), std::string::npos);
+    EXPECT_NE(output.find("std::span<std::int32_t const> ids"), std::string::npos);
+    EXPECT_NE(output.find("std::span<float> xs"), std::string::npos);
+    EXPECT_NE(output.find("layout_align(ids_block_end, nested_xs_alignment)"), std::string::npos);
+    EXPECT_NE(output.find("std::memcpy(destination.nested_xs"), std::string::npos);
+    EXPECT_EQ(output.find("TArray"), std::string::npos);
+    EXPECT_EQ(output.find("FMemory"), std::string::npos);
+    EXPECT_EQ(output.find("CoreMinimal"), std::string::npos);
+}
+
 auto schemas() -> std::vector<SoaSchema> {
     return {
         SoaSchema{.name = "Child",

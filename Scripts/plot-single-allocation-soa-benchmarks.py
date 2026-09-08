@@ -29,8 +29,8 @@ LABELS = {
     "reserved_append_64": "Reserved append (64 rows)",
     "defaulted_append_1": "Reserved defaulted append (1 row)",
     "defaulted_append_64": "Reserved defaulted append (64 rows)",
-    "reserve": "Reserve empty owner",
-    "populated_growth": "Grow populated owner",
+    "reserve": "Reserve + destroy empty owner",
+    "populated_growth": "Prepare + grow + destroy owner",
     "set_num_grow": "Reserved set_num grow",
     "set_num_shrink_reuse": "Shrink/refill (4,096 cycles)",
     "reset_reuse": "Reset/refill (4,096 cycles)",
@@ -40,8 +40,8 @@ LABELS = {
     "construct_views": "Construct/consume views (4,096 calls)",
 }
 TIMING_FIELDS = [
-    "count", "operation", "baseline_median_ns", "baseline_p10_ns", "baseline_p90_ns",
-    "single_median_ns", "single_p10_ns", "single_p90_ns", "baseline_over_single",
+    "count", "operation", "baseline_mean_ns", "baseline_lower_ns", "baseline_upper_ns",
+    "single_mean_ns", "single_lower_ns", "single_upper_ns", "baseline_over_single",
 ]
 ALLOCATION_FIELDS = [
     "owner", "count", "reserved", "allocation_requests", "retained_blocks",
@@ -53,10 +53,33 @@ Record = dict[str, str]
 
 def read_results(paths: list[Path]) -> tuple[list[Record], list[Record]]:
     groups: dict[str, dict[tuple[str, ...], Record]] = {"SOA_TIMING": {}, "SOA_ALLOCATION": {}}
+    catch_rows: dict[tuple[str, str], dict[str, Record]] = {}
     for path in paths:
         csv_kind = ""
         for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
+            catch_match = re.match(r"^s*(?:d+:s*)?SOA_CATCH,(.*)$", line)
+            if catch_match:
+                values = next(csv.reader([catch_match.group(1)]))
+                fields = ["count", "operation", "owner", "mean", "lower", "upper", "confidence", "iterations", "samples"]
+                if len(values) != len(fields):
+                    raise ValueError(f"{path}:{number}: malformed Catch2 benchmark record")
+                row = dict(zip(fields, values, strict=True))
+                if row["owner"] not in {"TArray", "Single"}:
+                    raise ValueError(f"{path}:{number}: unknown owner")
+                for field in ("count", "mean", "lower", "upper", "confidence", "iterations", "samples"):
+                    value = float(row[field])
+                    if not math.isfinite(value) or value <= 0:
+                        raise ValueError(f"{path}:{number}: invalid {field}")
+                if not float(row["lower"]) <= float(row["mean"]) <= float(row["upper"]):
+                    raise ValueError(f"{path}:{number}: invalid confidence bounds")
+                owners = catch_rows.setdefault((row["count"], row["operation"]), {})
+                if row["owner"] in owners and owners[row["owner"]] != row:
+                    raise ValueError(f"{path}:{number}: conflicting benchmark results")
+                owners[row["owner"]] = row
+                continue
             match = re.match(r"^\s*(?:\d+:\s*)?(SOA_TIMING|SOA_ALLOCATION),(.*)$", line)
+            if 'baseline_median_ns' in line:
+                raise ValueError('Legacy manual timings use different measurement boundaries; supply a new Catch2 run.')
             if match:
                 kind, payload = match.groups()
             elif line.startswith("count,operation,"):
@@ -87,9 +110,9 @@ def read_results(paths: list[Path]) -> tuple[list[Record], list[Record]]:
                 raise ValueError(f"{context}: count must be positive")
             if kind == "SOA_TIMING":
                 for owner in ("baseline", "single"):
-                    low, median, high = (float(row[f"{owner}_{stat}_ns"]) for stat in ("p10", "median", "p90"))
-                    if not 0 < low <= median <= high:
-                        raise ValueError(f"{context}: invalid timing percentiles for {owner}")
+                    low, mean, high = (float(row[f"{owner}_{stat}_ns"]) for stat in ("lower", "mean", "upper"))
+                    if not 0 < low <= mean <= high:
+                        raise ValueError(f"{context}: invalid confidence bounds for {owner}")
                 key = (row["count"], row["operation"])
             else:
                 if row["owner"] not in {"TArray", "Single"} or row["reserved"] not in {"0", "1"}:
@@ -99,10 +122,22 @@ def read_results(paths: list[Path]) -> tuple[list[Record], list[Record]]:
             if previous is not None and previous != row:
                 raise ValueError(f"{context}: conflicting results for {key}; use one benchmark run")
             groups[kind][key] = row
+    for (count, operation), owners in catch_rows.items():
+        if set(owners) != {"TArray", "Single"}:
+            raise ValueError(f"Incomplete Catch2 comparison: {count}, {operation}")
+        row = {"count": count, "operation": operation}
+        for owner, prefix in (("TArray", "baseline"), ("Single", "single")):
+            for stat in ("mean", "lower", "upper"):
+                row[f"{prefix}_{stat}_ns"] = owners[owner][stat]
+        row["baseline_over_single"] = str(float(owners["TArray"]["mean"]) / float(owners["Single"]["mean"]))
+        key = (count, operation)
+        if key in groups["SOA_TIMING"] and groups["SOA_TIMING"][key] != row:
+            raise ValueError(f"Conflicting timing results: {key}")
+        groups["SOA_TIMING"][key] = row
     timings = list(groups["SOA_TIMING"].values())
     allocations = list(groups["SOA_ALLOCATION"].values())
     if not timings:
-        raise ValueError("No SOA_TIMING records found. Run the full benchmark workflow or pass --input with a saved timing log/CSV.")
+        raise ValueError("No Catch2 timing records found. Run the full benchmark workflow or pass --input with a saved timing log/CSV.")
     return timings, allocations
 
 
@@ -131,18 +166,18 @@ def plot_timings(plt: Any, rows: list[Record], output: Path) -> None:
         points = sorted((row for row in rows if row["operation"] == operation), key=lambda row: int(row["count"]))
         counts = [int(row["count"]) for row in points]
         for owner, label, color in zip(("baseline", "single"), ("TArray", "Single allocation"), COLORS):
-            median = [float(row[f"{owner}_median_ns"]) / 1e6 for row in points]
-            lower = [m - float(row[f"{owner}_p10_ns"]) / 1e6 for m, row in zip(median, points)]
-            upper = [float(row[f"{owner}_p90_ns"]) / 1e6 - m for m, row in zip(median, points)]
-            axis.errorbar(counts, median, yerr=[lower, upper], marker="o", capsize=3, label=label, color=color)
+            mean = [float(row[f"{owner}_mean_ns"]) / 1e6 for row in points]
+            lower = [m - float(row[f"{owner}_lower_ns"]) / 1e6 for m, row in zip(mean, points)]
+            upper = [float(row[f"{owner}_upper_ns"]) / 1e6 - m for m, row in zip(mean, points)]
+            axis.errorbar(counts, mean, yerr=[lower, upper], marker="o", capsize=3, label=label, color=color)
         axis.set(title=LABELS.get(operation, operation), xlabel="Rows", ylabel="Milliseconds (log scale)", xscale="log", yscale="log")
         axis.set_xticks(counts, [f"{count:,}" for count in counts])
         axis.grid(alpha=0.2)
     for axis in list(axes.flat)[len(operations):]:
         axis.set_visible(False)
     axes.flat[0].legend()
-    figure.suptitle("SoA operation times — medians with p10–p90 sample variability", fontsize=16)
-    figure.text(0.5, 0.005, "Reserved cases exclude reserve cost. Uninitialised append does not write row contents. Percentiles are not confidence intervals.", ha="center")
+    figure.suptitle("SoA operation times — Catch2 means with confidence intervals", fontsize=16)
+    figure.text(0.5, 0.005, "Allocation lifecycles include cleanup; populated growth includes setup. Reused cases include reset/refill where needed.", ha="center")
     figure.tight_layout(rect=(0, 0.03, 1, 0.97))
     save_figure(plt, figure, output, "timings")
 
@@ -150,7 +185,7 @@ def plot_timings(plt: Any, rows: list[Record], output: Path) -> None:
 def plot_speedups(plt: Any, rows: list[Record], output: Path) -> None:
     operations = list(dict.fromkeys(row["operation"] for row in rows))
     counts = sorted({int(row["count"]) for row in rows})
-    lookup = {(row["operation"], int(row["count"])): float(row["baseline_median_ns"]) / float(row["single_median_ns"]) for row in rows}
+    lookup = {(row["operation"], int(row["count"])): float(row["baseline_mean_ns"]) / float(row["single_mean_ns"]) for row in rows}
     values = [[math.log2(lookup[(op, count)]) if (op, count) in lookup else math.nan for count in counts] for op in operations]
     limit = max(1.0, max(abs(value) for row in values for value in row if math.isfinite(value)))
     figure, axis = plt.subplots(figsize=(10, max(4, len(operations) * 0.43)))
@@ -190,9 +225,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, nargs="+", default=[DEFAULT_INPUT], help="CTest logs, captured console output, or exported CSV files (default: latest benchmark CTest log)")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--operation", action="append", choices=sorted(LABELS), help="Plot/export only this timing operation; repeat to select multiple operations")
     args = parser.parse_args()
     try:
         timings, allocations = read_results(args.input)
+        if args.operation:
+            timings = [row for row in timings if row["operation"] in args.operation]
+            if not timings:
+                raise ValueError("No timing records match the selected operations.")
         matplotlib = cast(Any, importlib.import_module("matplotlib"))
         matplotlib.use("Agg")
         plt = cast(Any, importlib.import_module("matplotlib.pyplot"))

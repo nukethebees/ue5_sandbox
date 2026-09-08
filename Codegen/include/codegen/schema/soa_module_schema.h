@@ -10,6 +10,7 @@ namespace codegen {
 struct SoaModuleSchema {
     ModuleSettings settings;
     std::vector<SoaSchema> structs;
+    bool experimental_stdlib{false};
 };
 
 } // namespace codegen

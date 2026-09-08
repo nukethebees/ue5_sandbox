@@ -613,13 +613,16 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                         "namespace",
                         "include_order",
                         "prelude",
-                        "structs"});
+                        "structs",
+                        "experimental_stdlib"});
         std::vector<SoaSchema> structs;
         auto const& values{required_array(value, "structs", path)};
         for (std::size_t index{0}; index < values.size(); ++index) {
             structs.push_back(parse_soa(values[index], path + "/structs/" + std::to_string(index)));
         }
-        return SoaModuleSchema{std::move(settings), std::move(structs)};
+        return SoaModuleSchema{std::move(settings),
+                               std::move(structs),
+                               value_or<bool>(value, "experimental_stdlib", false, path)};
     }
     if (kind == "static_table") {
         reject_unknown(value,

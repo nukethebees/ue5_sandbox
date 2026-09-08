@@ -580,7 +580,7 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             }
         }
     }
-    if (!module.settings.source.has_value()) {
+    if (!module.settings.source.has_value() && !module.experimental_stdlib) {
         throw std::invalid_argument{"SOA module '" + module.settings.name +
                                     "' must have a source output"};
     }

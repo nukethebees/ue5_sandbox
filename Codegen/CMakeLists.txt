@@ -48,6 +48,7 @@ add_library(codegen-lib
   src/soa_member_resolution.cpp
   src/soa_storage_lowering.cpp
   src/single_allocation_soa_lowering.cpp
+  src/native_soa_lowering.cpp
   src/soa_view_lowering.cpp
   src/static_table_lowering.cpp
   src/validation.cpp
@@ -236,3 +237,6 @@ add_custom_target(check-generated-code
 
 add_subdirectory(slate)
 add_subdirectory(kernel)
+if(SANDBOX_NATIVE_SOA_BENCHMARKS)
+  add_subdirectory(native_soa)
+endif()

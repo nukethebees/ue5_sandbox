@@ -4,7 +4,9 @@
 #include "benchmark_cli_args.h"
 #include "TestHarness.h"
 
-#include <HAL/PlatformTime.h>
+#include <catch2/benchmark/catch_benchmark.hpp>
+#include <catch2/reporters/catch_reporter_event_listener.hpp>
+#include <catch2/reporters/catch_reporter_registrars.hpp>
 
 #include <algorithm>
 #include <array>
@@ -189,19 +191,17 @@ FORCENOINLINE auto execute(Owner& owner, Scenario const scenario, int32 const co
 }
 
 template <typename Owner>
-auto run_once(Scenario const scenario, int32 const count, bool const timed) -> double {
+void run_once(Scenario const scenario, int32 const count) {
     Owner owner;
     prepare(owner, scenario.operation, count);
     bool const iteration{scenario.operation == Operation::Iterate || scenario.operation == Operation::IterateWide};
     auto view{owner.get_view()};
-    auto const begin{timed ? FPlatformTime::Cycles64() : 0};
     int64 observable{};
     if (iteration) {
         iterate(view, scenario.operation == Operation::IterateWide);
     } else {
         observable = execute(owner, scenario, count);
     }
-    auto const end{timed ? FPlatformTime::Cycles64() : 0};
     REQUIRE(observable >= 0);
     if (iteration) {
         REQUIRE(owner.get_view().locations.zs[count - 1] == 1.5f);
@@ -218,7 +218,6 @@ auto run_once(Scenario const scenario, int32 const count, bool const timed) -> d
     if (scenario.operation == Operation::Growth) {
         REQUIRE(owner.get_view().healths[count - 1] == count - 1);
     }
-    return FPlatformTime::ToSeconds64(end - begin) * 1.e9;
 }
 
 auto counts() -> TArray<int32> {
@@ -231,60 +230,143 @@ auto counts() -> TArray<int32> {
     return {4096, 65536, 1048576};
 }
 
-struct Distribution {
-    double median;
-    double lower;
-    double upper;
-};
-
-auto distribution(std::array<double, 31> samples) -> Distribution {
-    std::ranges::sort(samples);
-    return {samples[15], samples[3], samples[27]};
-}
-
 TEST_CASE("SandboxCore.SingleAllocation.BenchmarkCorrectness") {
     for (auto const scenario : scenarios) {
         CAPTURE(scenario.name);
-        run_once<EntityData>(scenario, 129, false);
-        run_once<SingleAllocationEntityData>(scenario, 129, false);
+        run_once<EntityData>(scenario, 129);
+        run_once<SingleAllocationEntityData>(scenario, 129);
     }
 }
 
-TEST_CASE("SandboxCore.SingleAllocation.TimedComparison", "[benchmark]") {
-    std::printf("SOA_TIMING,count,operation,baseline_median_ns,baseline_p10_ns,baseline_p90_ns,single_median_ns,single_p10_ns,single_p90_"
-                "ns,baseline_over_single\n");
-    for (int32 const count : counts()) {
-        for (auto const scenario : scenarios) {
-            for (int32 warmup{}; warmup < 3; ++warmup) {
-                run_once<EntityData>(scenario, count, false);
-                run_once<SingleAllocationEntityData>(scenario, count, false);
-            }
-            std::array<double, 31> baseline{};
-            std::array<double, 31> single{};
-            for (int32 sample{}; sample < 31; ++sample) {
-                if (sample % 2 == 0) {
-                    baseline[sample] = run_once<EntityData>(scenario, count, true);
-                    single[sample] = run_once<SingleAllocationEntityData>(scenario, count, true);
-                } else {
-                    single[sample] = run_once<SingleAllocationEntityData>(scenario, count, true);
-                    baseline[sample] = run_once<EntityData>(scenario, count, true);
-                }
-            }
-            auto const a{distribution(baseline)};
-            auto const b{distribution(single)};
-            std::printf("SOA_TIMING,%d,%s,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.5f\n",
-                        count,
-                        scenario.name,
-                        a.median,
-                        a.lower,
-                        a.upper,
-                        b.median,
-                        b.lower,
-                        b.upper,
-                        a.median / b.median);
-            std::fflush(stdout);
+class BenchmarkCsvListener : public Catch::EventListenerBase {
+  public:
+    using EventListenerBase::EventListenerBase;
+
+    void benchmarkEnded(Catch::BenchmarkStats<> const& stats) override {
+        if (!stats.info.name.starts_with("SOA,")) {
+            return;
         }
+        std::printf("\nSOA_CATCH,%s,%.9g,%.9g,%.9g,%.9g,%d,%u\n",
+                    stats.info.name.c_str() + 4,
+                    stats.mean.point.count(),
+                    stats.mean.lower_bound.count(),
+                    stats.mean.upper_bound.count(),
+                    stats.mean.confidence_interval,
+                    stats.info.iterations,
+                    stats.info.samples);
+        std::fflush(stdout);
     }
+};
+
+CATCH_REGISTER_LISTENER(BenchmarkCsvListener)
+
+template <typename Owner>
+void benchmark_owner(Scenario const scenario, int32 const count, char const* const label) {
+    auto const name{std::string{"SOA,"} + std::to_string(count) + "," + scenario.name + "," + label};
+    BENCHMARK_ADVANCED(std::string{name})(Catch::Benchmark::Chronometer meter) {
+        // Fresh allocation lifecycles keep memory bounded independently of Catch2's calibrated run count.
+        if (scenario.operation == Operation::NaturalAppend || scenario.operation == Operation::Reserve ||
+            scenario.operation == Operation::Growth) {
+            meter.measure([&] {
+                Owner owner;
+                prepare(owner, scenario.operation, count);
+                return execute(owner, scenario, count);
+            });
+            return;
+        }
+
+        Owner owner;
+        prepare(owner, scenario.operation, count);
+        auto const view{owner.get_view()};
+        meter.measure([&] {
+            switch (scenario.operation) {
+                case Operation::Iterate:
+                case Operation::IterateWide:
+                    iterate(view, scenario.operation == Operation::IterateWide);
+                    return int64{view.num()};
+                case Operation::ReservedAppend:
+                case Operation::DefaultedAppend:
+                case Operation::SetNum:
+                    owner.reset();
+                    break;
+                case Operation::RemoveSwap:
+                    owner.set_num(count, EAllowShrinking::No);
+                    break;
+                default:
+                    break;
+            }
+            return execute(owner, scenario, count);
+        });
+    };
+}
+
+void run_comparison(char const* const operation_name) {
+    auto const found{std::ranges::find_if(
+        scenarios, [operation_name](Scenario const& candidate) { return std::string{candidate.name} == operation_name; })};
+    REQUIRE(found != scenarios.end());
+    for (int32 const count : counts()) {
+        benchmark_owner<EntityData>(*found, count, "TArray");
+        benchmark_owner<SingleAllocationEntityData>(*found, count, "Single");
+    }
+}
+TEST_CASE("SandboxCore.SingleAllocation.Timing.natural_append_1", "[benchmark]") {
+    run_comparison("natural_append_1");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.natural_append_64", "[benchmark]") {
+    run_comparison("natural_append_64");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.reserved_append_1", "[benchmark]") {
+    run_comparison("reserved_append_1");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.reserved_append_64", "[benchmark]") {
+    run_comparison("reserved_append_64");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.defaulted_append_1", "[benchmark]") {
+    run_comparison("defaulted_append_1");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.defaulted_append_64", "[benchmark]") {
+    run_comparison("defaulted_append_64");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve", "[benchmark]") {
+    run_comparison("reserve");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.populated_growth", "[benchmark]") {
+    run_comparison("populated_growth");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.set_num_grow", "[benchmark]") {
+    run_comparison("set_num_grow");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.set_num_shrink_reuse", "[benchmark]") {
+    run_comparison("set_num_shrink_reuse");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.reset_reuse", "[benchmark]") {
+    run_comparison("reset_reuse");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.remove_swap", "[benchmark]") {
+    run_comparison("remove_swap");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.iterate", "[benchmark]") {
+    run_comparison("iterate");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.iterate_wide", "[benchmark]") {
+    run_comparison("iterate_wide");
+}
+
+TEST_CASE("SandboxCore.SingleAllocation.Timing.construct_views", "[benchmark]") {
+    run_comparison("construct_views");
 }
 
 struct AllocationSnapshot {

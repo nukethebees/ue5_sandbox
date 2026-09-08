@@ -117,6 +117,16 @@
       "cacheVariables": {
         "UE_CONFIGURATION": "Test"
       }
+    },
+    {
+      "name": "native-soa",
+      "inherits": "base",
+      "cacheVariables": {
+        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
+        "SANDBOX_CODEGEN_ONLY": true,
+        "CMAKE_BUILD_TYPE": "Release",
+        "SANDBOX_NATIVE_SOA_BENCHMARKS": true
+      }
     }
   ],
   "buildPresets": [
@@ -219,9 +229,29 @@
       "name": "spark-benchmark",
       "configurePreset": "spark-benchmark",
       "targets": ["editor"]
+    },
+    {
+      "name": "native-soa",
+      "configurePreset": "native-soa",
+      "targets": ["native-soa-tests", "native-soa-benchmarks", "codegen-tests"]
+    },
+    {
+      "name": "native-soa-reserve",
+      "configurePreset": "native-soa",
+      "targets": ["native-soa-reserve-report"]
     }
   ],
   "testPresets": [
+    {
+      "name": "single-allocation-soa-reserve",
+      "displayName": "Single-allocation SoA reserve only",
+      "inherits": "single-allocation-soa-benchmark",
+      "filter": {
+        "include": {
+          "name": "^SandboxCore\\.SingleAllocation\\.Timing\\.reserve$"
+        }
+      }
+    },
     {
       "name": "single-allocation-soa-benchmark",
       "displayName": "Single-allocation SoA comparison",
@@ -231,7 +261,7 @@
       },
       "filter": {
         "include": {
-          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|AllocationDiagnostics|TimedComparison)$"
+          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|AllocationDiagnostics|Timing\\.[a-z0-9_]+)$"
         }
       },
       "execution": {
@@ -417,9 +447,31 @@
       "execution": {
         "noTestsAction": "error"
       }
+    },
+    {
+      "name": "native-soa",
+      "configurePreset": "native-soa",
+      "output": {
+        "outputOnFailure": true
+      },
+      "filter": {
+        "include": {
+          "name": "^(native-soa|SingleAllocationSoa\\.|Json\\.LoadsExperimentalStdlibSoa)"
+        }
+      }
     }
   ],
   "workflowPresets": [
+    {
+      "name": "single-allocation-soa-reserve",
+      "displayName": "Build and profile the SoA reserve comparison",
+      "steps": [
+        { "type": "configure", "name": "benchmark" },
+        { "type": "build", "name": "benchmark" },
+        { "type": "test", "name": "single-allocation-soa-reserve" },
+        { "type": "build", "name": "single-allocation-soa-plots" }
+      ]
+    },
     {
       "name": "single-allocation-soa-benchmark",
       "displayName": "Build and run the single-allocation SoA comparison",
@@ -594,6 +646,23 @@
         { "type": "configure", "name": "debug-game" },
         { "type": "build", "name": "debug-game" },
         { "type": "test", "name": "debug-game-unit-tests" }
+      ]
+    },
+    {
+      "name": "native-soa",
+      "steps": [
+        { "type": "configure", "name": "native-soa" },
+        { "type": "build", "name": "native-soa" },
+        { "type": "test", "name": "native-soa" }
+      ]
+    },
+    {
+      "name": "native-soa-reserve",
+      "steps": [
+        { "type": "configure", "name": "native-soa" },
+        { "type": "build", "name": "native-soa" },
+        { "type": "test", "name": "native-soa" },
+        { "type": "build", "name": "native-soa-reserve" }
       ]
     }
   ]

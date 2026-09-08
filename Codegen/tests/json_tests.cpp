@@ -34,6 +34,18 @@ class TemporaryManifest {
     std::filesystem::path directory_;
 };
 
+TEST(Json, LoadsExperimentalStdlibSoa) {
+    TemporaryManifest files;
+    files.write("types.json", R"({"types":{}})");
+    files.write("manifest.json",
+                R"({"schema_version":11,"types":"types.json","modules":["modules.json"]})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"soa","name":"native","header":"Native.h","experimental_stdlib":true,"structs":[{"name":"Rows","members":[{"name":"xs","kind":"array","type":"float"}]}]}]})");
+    auto const manifest{load_manifest(files.path("manifest.json"))};
+    EXPECT_TRUE(std::get<SoaModuleSchema>(manifest.modules.front()).experimental_stdlib);
+}
+
 TEST(Json, LoadsTypedSoaManifest) {
     TemporaryManifest files;
     files.write(
