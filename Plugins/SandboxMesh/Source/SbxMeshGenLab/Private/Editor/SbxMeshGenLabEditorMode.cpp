@@ -345,8 +345,8 @@ auto USbxMeshGenLabEditorMode::InputDelta(FEditorViewportClient* const viewport_
             new_scale.Z = FMath::Max(new_scale.Z, 0.001);
             transform.SetScale3D(new_scale);
             set_part_world_transform(part_index, transform);
-            refresh_preview_instance(part_index, false);
         }
+        rebuild_resolved_parts();
         get_settings()->load_transform(
             session_state_->parts[selected_part_index_].to_part(NAME_None).transform);
     }
@@ -851,6 +851,53 @@ void USbxMeshGenLabEditorMode::remove_part() {
     for (int32 const part_index : selected_part_indices_) {
         ids_to_remove.Add(part_ids_[part_index]);
     }
+    TSet<FGuid> node_ids_to_remove{ids_to_remove};
+    if (selected_group_index_ != INDEX_NONE) {
+        for (int32 const group_index :
+             get_descendant_group_indices(session_state_->groups[selected_group_index_].id)) {
+            node_ids_to_remove.Add(session_state_->groups[group_index].id);
+        }
+    }
+    TArray<int32> group_indices_to_remove;
+    auto const group_count{session_state_->groups.Num()};
+    for (int32 group_index{}; group_index < group_count; ++group_index) {
+        if (node_ids_to_remove.Contains(session_state_->groups[group_index].id)) {
+            group_indices_to_remove.Add(group_index);
+        }
+    }
+    group_indices_to_remove.Sort([](int32 const left, int32 const right) { return left > right; });
+
+    auto const find_surviving_parent = [this, &node_ids_to_remove](FGuid parent_id) {
+        while (parent_id.IsValid() && node_ids_to_remove.Contains(parent_id)) {
+            parent_id = get_node_parent_id(parent_id);
+        }
+        return parent_id;
+    };
+    for (auto& group : session_state_->groups) {
+        if (node_ids_to_remove.Contains(group.id) ||
+            !node_ids_to_remove.Contains(group.parent_id)) {
+            continue;
+        }
+        auto const world_transform{get_node_world_transform(group.id)};
+        group.parent_id = find_surviving_parent(group.parent_id);
+        group.set_transform(
+            world_transform.GetRelativeTransform(get_parent_world_transform(group.parent_id)));
+    }
+    auto const recipe_part_count{session_state_->parts.Num()};
+    for (int32 part_index{}; part_index < recipe_part_count; ++part_index) {
+        auto& part{session_state_->parts[part_index]};
+        if (node_ids_to_remove.Contains(part.id) || !node_ids_to_remove.Contains(part.parent_id)) {
+            continue;
+        }
+        auto const world_transform{get_node_world_transform(part.id)};
+        part.parent_id = find_surviving_parent(part.parent_id);
+        auto const local_transform{
+            world_transform.GetRelativeTransform(get_parent_world_transform(part.parent_id))};
+        part.translation = local_transform.GetLocation();
+        part.rotation = local_transform.Rotator();
+        part.scale = local_transform.GetScale3D();
+    }
+
     for (FGuid const part_id : ids_to_remove) {
         remove_preview_instance(part_id);
     }
@@ -864,13 +911,9 @@ void USbxMeshGenLabEditorMode::remove_part() {
         part_ids_.RemoveAt(part_index);
         session_state_->parts.RemoveAt(part_index);
     }
-    if (selected_group_index_ != INDEX_NONE) {
-        auto group_indices{
-            get_descendant_group_indices(session_state_->groups[selected_group_index_].id)};
-        group_indices.Sort([](int32 const left, int32 const right) { return left > right; });
-        for (int32 const group_index : group_indices) {
-            session_state_->groups.RemoveAt(group_index);
-        }
+    rebuild_part_index_map();
+    for (int32 const group_index : group_indices_to_remove) {
+        session_state_->groups.RemoveAt(group_index);
     }
 
     for (int32 group_index{session_state_->groups.Num() - 1}; group_index >= 0; --group_index) {
@@ -878,8 +921,6 @@ void USbxMeshGenLabEditorMode::remove_part() {
             session_state_->groups.RemoveAt(group_index);
         }
     }
-    rebuild_part_index_map();
-
     selected_group_index_ = INDEX_NONE;
     mark_recipe_dirty();
     select_part(next_selection);
@@ -1101,57 +1142,78 @@ auto USbxMeshGenLabEditorMode::rename_group(FGuid const id, FName const name) ->
     return true;
 }
 
-auto USbxMeshGenLabEditorMode::reparent_node(FGuid const id, FGuid const parent_id) -> bool {
-    auto const parent_index{session_state_->groups.IndexOfByPredicate(
-        [parent_id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == parent_id; })};
-    if (parent_id.IsValid() && !session_state_->groups.IsValidIndex(parent_index)) {
+auto USbxMeshGenLabEditorMode::can_reparent_nodes(TArray<FGuid> const& ids,
+                                                  FGuid const parent_id) const -> bool {
+    if (ids.IsEmpty()) {
+        return false;
+    }
+    if (parent_id.IsValid() && !part_index_by_id_.Contains(parent_id) &&
+        !session_state_->groups.ContainsByPredicate(
+            [parent_id](FSbxMeshAssemblyRecipeGroup const& group) {
+                return group.id == parent_id;
+            })) {
         return false;
     }
 
-    auto const group_index{session_state_->groups.IndexOfByPredicate(
-        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
-    auto const* const part_index_ptr{part_index_by_id_.Find(id)};
-    if (group_index == INDEX_NONE && part_index_ptr == nullptr) {
-        return false;
-    }
-    if (group_index != INDEX_NONE) {
-        auto const& group{session_state_->groups[group_index]};
-        if (group.parent_id == parent_id) {
-            return true;
-        }
-        if (id == parent_id) {
+    for (FGuid const id : ids) {
+        auto const node_exists{
+            part_index_by_id_.Contains(id) ||
+            session_state_->groups.ContainsByPredicate(
+                [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+        if (!node_exists || id == parent_id || is_node_descendant(parent_id, id)) {
             return false;
         }
-        for (int32 const descendant_index : get_descendant_group_indices(id)) {
-            if (session_state_->groups[descendant_index].id == parent_id) {
-                status_ = LOCTEXT("CyclicGroupRejected",
-                                  "A group cannot be moved beneath one of its descendants.");
-                notify_session_changed(false);
-                return false;
-            }
+    }
+    return true;
+}
+
+auto USbxMeshGenLabEditorMode::reparent_node(FGuid const id, FGuid const parent_id) -> bool {
+    return reparent_nodes({id}, parent_id);
+}
+
+auto USbxMeshGenLabEditorMode::reparent_nodes(TArray<FGuid> const& ids, FGuid const parent_id)
+    -> bool {
+    if (!can_reparent_nodes(ids, parent_id)) {
+        status_ = LOCTEXT("CyclicHierarchyRejected",
+                          "That move would create an invalid hierarchy or parenting cycle.");
+        notify_session_changed(false);
+        return false;
+    }
+
+    TArray<FGuid> root_ids;
+    for (FGuid const id : ids) {
+        auto const has_selected_ancestor{ids.ContainsByPredicate([this, id](FGuid const candidate) {
+            return candidate != id && is_node_descendant(id, candidate);
+        })};
+        if (!has_selected_ancestor) {
+            root_ids.AddUnique(id);
         }
-    } else if (session_state_->parts[*part_index_ptr].parent_id == parent_id) {
-        return true;
     }
 
     auto const parent_world{get_parent_world_transform(parent_id)};
+    TMap<FGuid, FTransform> world_transforms;
+    for (FGuid const id : root_ids) {
+        world_transforms.Add(id, get_node_world_transform(id));
+    }
+
     FScopedTransaction const transaction{
-        LOCTEXT("ReparentAssemblyNodeTransaction", "Move Mesh Hierarchy Node")};
+        LOCTEXT("ReparentAssemblyNodesTransaction", "Move Mesh Hierarchy Nodes")};
     session_state_->Modify();
 
-    if (group_index != INDEX_NONE) {
-        auto const world_transform{get_group_world_transform(group_index)};
-        auto& group{session_state_->groups[group_index]};
-        group.parent_id = parent_id;
-        group.set_transform(world_transform.GetRelativeTransform(parent_world));
-    } else {
-        auto const part_index{*part_index_ptr};
-        FTransform const world_transform{FRotator{parts_[part_index].transform.rotation},
-                                         FVector{parts_[part_index].transform.translation},
-                                         FVector{parts_[part_index].transform.scale}};
-        auto& part{session_state_->parts[part_index]};
+    for (FGuid const id : root_ids) {
+        auto const local_transform{
+            world_transforms.FindChecked(id).GetRelativeTransform(parent_world)};
+        auto const group_index{session_state_->groups.IndexOfByPredicate(
+            [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+        if (session_state_->groups.IsValidIndex(group_index)) {
+            auto& group{session_state_->groups[group_index]};
+            group.parent_id = parent_id;
+            group.set_transform(local_transform);
+            continue;
+        }
+
+        auto& part{session_state_->parts[part_index_by_id_.FindChecked(id)]};
         part.parent_id = parent_id;
-        auto const local_transform{world_transform.GetRelativeTransform(parent_world)};
         part.translation = local_transform.GetLocation();
         part.rotation = local_transform.Rotator();
         part.scale = local_transform.GetScale3D();
@@ -1159,10 +1221,10 @@ auto USbxMeshGenLabEditorMode::reparent_node(FGuid const id, FGuid const parent_
 
     rebuild_resolved_parts();
     mark_recipe_dirty();
-    select_node(id);
-    status_ = LOCTEXT("HierarchyNodeMoved",
-                      "Moved the hierarchy node without changing its world transform.");
-    notify_session_changed(false);
+    status_ = FText::Format(
+        LOCTEXT("HierarchyNodesMoved", "Parented {0} node(s) without changing world transforms."),
+        FText::AsNumber(root_ids.Num()));
+    notify_session_changed();
     return true;
 }
 
@@ -1837,6 +1899,9 @@ void USbxMeshGenLabEditorMode::duplicate_selected_group() {
         for (int32 const group_index : source_group_indices) {
             duplicated_ids.Add(session_state_->groups[group_index].id, FGuid::NewGuid());
         }
+        for (int32 const part_index : source_part_indices) {
+            duplicated_ids.Add(session_state_->parts[part_index].id, FGuid::NewGuid());
+        }
 
         auto const rotation_delta{FRotator{settings->duplicate_rotation_step.Pitch * repeat_index,
                                            settings->duplicate_rotation_step.Yaw * repeat_index,
@@ -1874,8 +1939,12 @@ void USbxMeshGenLabEditorMode::duplicate_selected_group() {
 
         for (int32 const part_index : source_part_indices) {
             auto part{session_state_->parts[part_index]};
-            part.id = FGuid::NewGuid();
-            part.parent_id = duplicated_ids.FindChecked(part.parent_id);
+            auto const source_id{part.id};
+            part.id = duplicated_ids.FindChecked(source_id);
+            if (auto const* const duplicated_parent_id{duplicated_ids.Find(part.parent_id)};
+                duplicated_parent_id != nullptr) {
+                part.parent_id = *duplicated_parent_id;
+            }
             session_state_->parts.Add(MoveTemp(part));
         }
     }
@@ -1904,18 +1973,64 @@ void USbxMeshGenLabEditorMode::restore_session_after_undo() {
 auto USbxMeshGenLabEditorMode::get_group_world_transform(int32 const group_index) const
     -> FTransform {
     check(session_state_->groups.IsValidIndex(group_index));
-    auto transform{session_state_->groups[group_index].to_transform()};
-    auto parent_id{session_state_->groups[group_index].parent_id};
-    while (parent_id.IsValid()) {
-        auto const parent_index{session_state_->groups.IndexOfByPredicate(
-            [parent_id](FSbxMeshAssemblyRecipeGroup const& group) {
-                return group.id == parent_id;
-            })};
-        check(session_state_->groups.IsValidIndex(parent_index));
-        transform *= session_state_->groups[parent_index].to_transform();
-        parent_id = session_state_->groups[parent_index].parent_id;
+    return get_node_world_transform(session_state_->groups[group_index].id);
+}
+
+auto USbxMeshGenLabEditorMode::get_node_world_transform(FGuid const id) const -> FTransform {
+    FTransform transform{FTransform::Identity};
+    auto node_id{id};
+    TSet<FGuid> visited_ids;
+    while (node_id.IsValid()) {
+        check(!visited_ids.Contains(node_id));
+        visited_ids.Add(node_id);
+
+        auto const group_index{session_state_->groups.IndexOfByPredicate(
+            [node_id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == node_id; })};
+        if (session_state_->groups.IsValidIndex(group_index)) {
+            transform *= session_state_->groups[group_index].to_transform();
+            node_id = session_state_->groups[group_index].parent_id;
+            continue;
+        }
+
+        auto const* const part_index{part_index_by_id_.Find(node_id)};
+        check(part_index != nullptr);
+        auto const part{session_state_->parts[*part_index].to_part(NAME_None)};
+        transform *= FTransform{FRotator{part.transform.rotation},
+                                FVector{part.transform.translation},
+                                FVector{part.transform.scale}};
+        node_id = session_state_->parts[*part_index].parent_id;
     }
     return transform;
+}
+
+auto USbxMeshGenLabEditorMode::get_node_parent_id(FGuid const id) const -> FGuid {
+    auto const group_index{session_state_->groups.IndexOfByPredicate(
+        [id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == id; })};
+    if (session_state_->groups.IsValidIndex(group_index)) {
+        return session_state_->groups[group_index].parent_id;
+    }
+    if (auto const* const part_index{part_index_by_id_.Find(id)}; part_index != nullptr) {
+        return session_state_->parts[*part_index].parent_id;
+    }
+    return {};
+}
+
+auto USbxMeshGenLabEditorMode::is_node_descendant(FGuid const id, FGuid const ancestor_id) const
+    -> bool {
+    if (!id.IsValid() || !ancestor_id.IsValid()) {
+        return false;
+    }
+
+    auto node_id{id};
+    TSet<FGuid> visited_ids;
+    while (node_id.IsValid() && !visited_ids.Contains(node_id)) {
+        if (node_id == ancestor_id) {
+            return true;
+        }
+        visited_ids.Add(node_id);
+        node_id = get_node_parent_id(node_id);
+    }
+    return false;
 }
 
 auto USbxMeshGenLabEditorMode::get_connector_world_transform(int32 const group_index,
@@ -1932,10 +2047,7 @@ auto USbxMeshGenLabEditorMode::get_parent_world_transform(FGuid const parent_id)
     if (!parent_id.IsValid()) {
         return FTransform::Identity;
     }
-    auto const parent_index{session_state_->groups.IndexOfByPredicate(
-        [parent_id](FSbxMeshAssemblyRecipeGroup const& group) { return group.id == parent_id; })};
-    check(session_state_->groups.IsValidIndex(parent_index));
-    return get_group_world_transform(parent_index);
+    return get_node_world_transform(parent_id);
 }
 
 void USbxMeshGenLabEditorMode::set_part_world_transform(int32 const part_index,
@@ -1967,20 +2079,8 @@ auto USbxMeshGenLabEditorMode::get_descendant_group_indices(FGuid const group_id
     TArray<int32> indices;
     auto const group_count{session_state_->groups.Num()};
     for (int32 group_index{}; group_index < group_count; ++group_index) {
-        auto ancestor_id{session_state_->groups[group_index].id};
-        while (ancestor_id.IsValid()) {
-            if (ancestor_id == group_id) {
-                indices.Add(group_index);
-                break;
-            }
-            auto const ancestor_index{session_state_->groups.IndexOfByPredicate(
-                [ancestor_id](FSbxMeshAssemblyRecipeGroup const& group) {
-                    return group.id == ancestor_id;
-                })};
-            if (!session_state_->groups.IsValidIndex(ancestor_index)) {
-                break;
-            }
-            ancestor_id = session_state_->groups[ancestor_index].parent_id;
+        if (is_node_descendant(session_state_->groups[group_index].id, group_id)) {
+            indices.Add(group_index);
         }
     }
     return indices;
@@ -1991,20 +2091,8 @@ auto USbxMeshGenLabEditorMode::get_descendant_part_indices(FGuid const group_id)
     TArray<int32> indices;
     auto const part_count{session_state_->parts.Num()};
     for (int32 part_index{}; part_index < part_count; ++part_index) {
-        auto ancestor_id{session_state_->parts[part_index].parent_id};
-        while (ancestor_id.IsValid()) {
-            if (ancestor_id == group_id) {
-                indices.Add(part_index);
-                break;
-            }
-            auto const ancestor_index{session_state_->groups.IndexOfByPredicate(
-                [ancestor_id](FSbxMeshAssemblyRecipeGroup const& group) {
-                    return group.id == ancestor_id;
-                })};
-            if (!session_state_->groups.IsValidIndex(ancestor_index)) {
-                break;
-            }
-            ancestor_id = session_state_->groups[ancestor_index].parent_id;
+        if (is_node_descendant(session_state_->parts[part_index].id, group_id)) {
+            indices.Add(part_index);
         }
     }
     return indices;

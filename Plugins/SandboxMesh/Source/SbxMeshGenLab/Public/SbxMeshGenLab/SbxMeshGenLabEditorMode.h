@@ -125,7 +125,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void create_group();
     void ungroup();
     auto rename_group(FGuid id, FName name) -> bool;
+    [[nodiscard]] auto can_reparent_nodes(TArray<FGuid> const& ids, FGuid parent_id) const -> bool;
     auto reparent_node(FGuid id, FGuid parent_id) -> bool;
+    auto reparent_nodes(TArray<FGuid> const& ids, FGuid parent_id) -> bool;
     void set_snap_target();
     void align_connectors();
     void snap_and_parent();
@@ -152,6 +154,9 @@ class SBXMESHGENLAB_API USbxMeshGenLabEditorMode final
     void apply_connector_snap(bool parent_to_target);
     void restore_session_after_undo();
     [[nodiscard]] auto get_group_world_transform(int32 group_index) const -> FTransform;
+    [[nodiscard]] auto get_node_world_transform(FGuid id) const -> FTransform;
+    [[nodiscard]] auto get_node_parent_id(FGuid id) const -> FGuid;
+    [[nodiscard]] auto is_node_descendant(FGuid id, FGuid ancestor_id) const -> bool;
     [[nodiscard]] auto get_connector_world_transform(int32 group_index, int32 connector_index) const
         -> FTransform;
     [[nodiscard]] auto get_parent_world_transform(FGuid parent_id) const -> FTransform;

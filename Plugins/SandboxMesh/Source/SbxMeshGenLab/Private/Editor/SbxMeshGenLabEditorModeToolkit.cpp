@@ -6,6 +6,7 @@
 #include "DragAndDrop/DecoratedDragDropOp.h"
 #include "IDetailsView.h"
 #include "InputCoreTypes.h"
+#include "Misc/MessageDialog.h"
 #include "Styling/AppStyle.h"
 #include "Widgets/Input/SButton.h"
 #include "Widgets/Layout/SBorder.h"
@@ -20,16 +21,16 @@ class FSbxMeshTreeDragDropOp final : public FDecoratedDragDropOp {
   public:
     DRAG_DROP_OPERATOR_TYPE(FSbxMeshTreeDragDropOp, FDecoratedDragDropOp)
 
-    static auto create(FGuid const item_id, FText const& text)
+    static auto create(TArray<FGuid> item_ids, FText const& text)
         -> TSharedRef<FSbxMeshTreeDragDropOp> {
         auto operation{MakeShared<FSbxMeshTreeDragDropOp>()};
-        operation->item_id = item_id;
+        operation->item_ids = MoveTemp(item_ids);
         operation->DefaultHoverText = text;
         operation->Construct();
         return operation;
     }
 
-    FGuid item_id;
+    TArray<FGuid> item_ids;
 };
 
 void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_host,
@@ -55,12 +56,18 @@ void FSbxMeshGenLabEditorModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolk
                               "Select hierarchy nodes here or Ctrl/Shift-click parts in the "
                               "viewport. "
                               "Ctrl+Alt+left-drag box-selects parts. Select a group to "
-                              "transform all its descendants. Drag nodes onto a group (or "
-                              "Assembly) to reparent them. Double-click a group name to rename "
+                              "transform all its descendants. Drag nodes onto any node (or "
+                              "Assembly) to reparent without moving them. Double-click a group "
+                              "name to rename "
                               "it. Group connectors are edited below: set a stationary target, "
                               "then select another group and snap its active connector. Use "
                               "W/E/R for transforms and F to frame the selection."))
                           .AutoWrapText(true)] +
+                 SVerticalBox::Slot().AutoHeight().Padding(0.0f, 0.0f, 0.0f, 6.0f)
+                     [SNew(SButton)
+                          .Text(LOCTEXT("Help", "How to Use Sandbox Mesh"))
+                          .ToolTipText(LOCTEXT("HelpTooltip", "Open the Sandbox Mesh quick guide."))
+                          .OnClicked(this, &FSbxMeshGenLabEditorModeToolkit::show_help)] +
                  SVerticalBox::Slot().AutoHeight().Padding(
                      0.0f, 0.0f, 0.0f, 4.0f)[SNew(STextBlock)
                                                  .Text_Lambda([this]() {
@@ -342,7 +349,7 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_tree_items() {
     for (auto const& group : groups) {
         auto const item{tree_item_by_id_.FindChecked(group.id)};
         auto const* const parent{tree_item_by_id_.Find(group.parent_id)};
-        if (parent != nullptr && (*parent)->kind == ESbxMeshTreeItemKind::Group) {
+        if (parent != nullptr) {
             (*parent)->children.Add(item);
         } else {
             root->children.Add(item);
@@ -351,7 +358,7 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_tree_items() {
     for (auto const& part : recipe_parts) {
         auto const item{tree_item_by_id_.FindChecked(part.id)};
         auto const* const parent{tree_item_by_id_.Find(part.parent_id)};
-        if (parent != nullptr && (*parent)->kind == ESbxMeshTreeItemKind::Group) {
+        if (parent != nullptr) {
             (*parent)->children.Add(item);
         } else {
             root->children.Add(item);
@@ -367,7 +374,7 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_tree_items() {
     }
 
     hierarchy_tree_->ClearSelection();
-    auto const expand_ancestors = [this, &groups](FGuid parent_id) {
+    auto const expand_ancestors = [this, &groups, &recipe_parts](FGuid parent_id) {
         while (parent_id.IsValid()) {
             auto const* const parent_item{tree_item_by_id_.Find(parent_id)};
             if (parent_item == nullptr) {
@@ -375,14 +382,25 @@ void FSbxMeshGenLabEditorModeToolkit::refresh_tree_items() {
             }
             expanded_ids_.Add(parent_id);
             hierarchy_tree_->SetItemExpansion(*parent_item, true);
-            auto const parent_index{
-                groups.IndexOfByPredicate([parent_id](FSbxMeshAssemblyRecipeGroup const& group) {
-                    return group.id == parent_id;
-                })};
-            if (!groups.IsValidIndex(parent_index)) {
-                break;
+            if ((*parent_item)->kind == ESbxMeshTreeItemKind::Group) {
+                auto const parent_index{groups.IndexOfByPredicate(
+                    [parent_id](FSbxMeshAssemblyRecipeGroup const& group) {
+                        return group.id == parent_id;
+                    })};
+                if (!groups.IsValidIndex(parent_index)) {
+                    break;
+                }
+                parent_id = groups[parent_index].parent_id;
+            } else {
+                auto const parent_index{recipe_parts.IndexOfByPredicate(
+                    [parent_id](FSbxMeshAssemblyRecipePart const& part) {
+                        return part.id == parent_id;
+                    })};
+                if (!recipe_parts.IsValidIndex(parent_index)) {
+                    break;
+                }
+                parent_id = recipe_parts[parent_index].parent_id;
             }
-            parent_id = groups[parent_index].parent_id;
         }
     };
     auto const selected_group_index{mode_->get_selected_group_index()};
@@ -465,8 +483,27 @@ auto FSbxMeshGenLabEditorModeToolkit::begin_tree_drag(FGeometry const&,
         !event.IsMouseButtonDown(EKeys::LeftMouseButton)) {
         return FReply::Unhandled();
     }
-    return FReply::Handled().BeginDragDrop(FSbxMeshTreeDragDropOp::create(
-        item->id, FText::Format(LOCTEXT("MoveHierarchyNode", "Move {0}"), tree_item_text(item))));
+
+    TArray<FGuid> item_ids;
+    if (hierarchy_tree_->IsItemSelected(item)) {
+        for (auto const& selected_item : hierarchy_tree_->GetSelectedItems()) {
+            if (selected_item.IsValid() && selected_item->kind != ESbxMeshTreeItemKind::Root) {
+                item_ids.Add(selected_item->id);
+            }
+        }
+    }
+    if (item_ids.IsEmpty()) {
+        item_ids.Add(item->id);
+    }
+    auto const drag_text{
+        item_ids.Num() == 1
+            ? FText::Format(LOCTEXT("MoveHierarchyNode", "Parent {0} (preserve world transform)"),
+                            tree_item_text(item))
+            : FText::Format(LOCTEXT("MoveHierarchyNodes",
+                                    "Parent {0} selected nodes (preserve world transforms)"),
+                            FText::AsNumber(item_ids.Num()))};
+    return FReply::Handled().BeginDragDrop(
+        FSbxMeshTreeDragDropOp::create(MoveTemp(item_ids), drag_text));
 }
 
 auto FSbxMeshGenLabEditorModeToolkit::can_accept_tree_drop(FDragDropEvent const& event,
@@ -474,8 +511,11 @@ auto FSbxMeshGenLabEditorModeToolkit::can_accept_tree_drop(FDragDropEvent const&
                                                            FTreeItem const target) const
     -> TOptional<EItemDropZone> {
     auto const operation{event.GetOperationAs<FSbxMeshTreeDragDropOp>()};
-    if (!operation.IsValid() || !target.IsValid() || target->kind == ESbxMeshTreeItemKind::Part ||
-        operation->item_id == target->id) {
+    if (!mode_.IsValid() || !operation.IsValid() || !target.IsValid()) {
+        return {};
+    }
+    auto const parent_id{target->kind == ESbxMeshTreeItemKind::Root ? FGuid{} : target->id};
+    if (!mode_->can_reparent_nodes(operation->item_ids, parent_id)) {
         return {};
     }
     return EItemDropZone::OntoItem;
@@ -489,8 +529,8 @@ auto FSbxMeshGenLabEditorModeToolkit::accept_tree_drop(FDragDropEvent const& eve
         return FReply::Unhandled();
     }
     auto const parent_id{target->kind == ESbxMeshTreeItemKind::Root ? FGuid{} : target->id};
-    return mode_->reparent_node(operation->item_id, parent_id) ? FReply::Handled()
-                                                               : FReply::Unhandled();
+    return mode_->reparent_nodes(operation->item_ids, parent_id) ? FReply::Handled()
+                                                                 : FReply::Unhandled();
 }
 
 void FSbxMeshGenLabEditorModeToolkit::rename_tree_item(FText const& text,
@@ -605,6 +645,37 @@ auto FSbxMeshGenLabEditorModeToolkit::export_recipe_json() -> FReply {
 
 auto FSbxMeshGenLabEditorModeToolkit::save_generated_mesh() -> FReply {
     mode_->save_generated_mesh();
+    return FReply::Handled();
+}
+
+auto FSbxMeshGenLabEditorModeToolkit::show_help() -> FReply {
+    FMessageDialog::Open(
+        EAppMsgType::Ok,
+        LOCTEXT(
+            "HelpBody",
+            "BUILDING\n"
+            "Add creates a new primitive. Select a part to edit its shape, dimensions, material "
+            "role, and local transform in the details panel. W, E, and R switch the viewport "
+            "transform tool; F frames the selection.\n\n"
+            "SELECTION\n"
+            "Click a part in the viewport or hierarchy. Ctrl/Shift-click adds or removes parts "
+            "from the selection. Ctrl+Alt+left-drag box-selects in the viewport.\n\n"
+            "HIERARCHY\n"
+            "Drag selected parts or groups onto any hierarchy node to parent them. Their world "
+            "transforms are preserved, so parenting does not move or snap geometry. Drag onto "
+            "Assembly to unparent. A parent part or group carries its descendants when moved. "
+            "Invalid cyclic drops are rejected.\n\n"
+            "GROUPS\n"
+            "Create Group adds an explicit transform/pivot node around the selection. Groups are "
+            "useful when several parts should be manipulated as one assembly.\n\n"
+            "CONNECTORS\n"
+            "Connector snapping is separate from hierarchy parenting. Set a connector on one "
+            "group as the target, then select another group. Align Connectors moves it without "
+            "changing its parent; Snap and Parent aligns it and parents it to the target group.\n\n"
+            "OUTPUT\n"
+            "Save stores the editable recipe. Save Generated Mesh merges the visible parts into "
+            "a static mesh asset using the assigned material roles."),
+        LOCTEXT("HelpTitle", "Sandbox Mesh Quick Guide"));
     return FReply::Handled();
 }
 

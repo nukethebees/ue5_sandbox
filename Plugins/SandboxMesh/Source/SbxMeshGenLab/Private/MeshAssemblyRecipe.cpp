@@ -84,31 +84,65 @@ void FSbxMeshAssemblyRecipeGroup::set_transform(FTransform const& transform) {
 
 namespace SandboxMesh {
 namespace {
-auto resolve_group_transform(int32 const group_index,
-                             TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
-                             TMap<FGuid, int32> const& group_indices,
-                             TArray<uint8>& states,
-                             TArray<FTransform>& transforms) -> bool {
-    if (states[group_index] == 2) {
+auto get_node_local_transform(FGuid const id,
+                              TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                              TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
+                              TMap<FGuid, int32> const& part_indices,
+                              TMap<FGuid, int32> const& group_indices,
+                              FTransform& transform,
+                              FGuid& parent_id) -> bool {
+    if (auto const* const group_index{group_indices.Find(id)}; group_index != nullptr) {
+        auto const& group{groups[*group_index]};
+        transform = group.to_transform();
+        parent_id = group.parent_id;
         return true;
     }
-    if (states[group_index] == 1) {
+
+    auto const* const part_index{part_indices.Find(id)};
+    if (part_index == nullptr) {
         return false;
     }
 
-    states[group_index] = 1;
-    auto const& group{groups[group_index]};
-    auto transform{group.to_transform()};
-    if (group.parent_id.IsValid()) {
-        auto const* const parent_index{group_indices.Find(group.parent_id)};
-        if (parent_index == nullptr ||
-            !resolve_group_transform(*parent_index, groups, group_indices, states, transforms)) {
+    auto const part{parts[*part_index].to_part(NAME_None)};
+    transform = FTransform{FRotator{part.transform.rotation},
+                           FVector{part.transform.translation},
+                           FVector{part.transform.scale}};
+    parent_id = parts[*part_index].parent_id;
+    return true;
+}
+
+auto resolve_node_transform(FGuid const id,
+                            TArray<FSbxMeshAssemblyRecipePart> const& parts,
+                            TArray<FSbxMeshAssemblyRecipeGroup> const& groups,
+                            TMap<FGuid, int32> const& part_indices,
+                            TMap<FGuid, int32> const& group_indices,
+                            TMap<FGuid, uint8>& states,
+                            TMap<FGuid, FTransform>& transforms) -> bool {
+    auto& state{states.FindOrAdd(id)};
+    if (state == 2) {
+        return true;
+    }
+    if (state == 1) {
+        return false;
+    }
+
+    state = 1;
+    FTransform transform;
+    FGuid parent_id;
+    if (!get_node_local_transform(
+            id, parts, groups, part_indices, group_indices, transform, parent_id)) {
+        return false;
+    }
+
+    if (parent_id.IsValid()) {
+        if (!resolve_node_transform(
+                parent_id, parts, groups, part_indices, group_indices, states, transforms)) {
             return false;
         }
-        transform *= transforms[*parent_index];
+        transform *= transforms.FindChecked(parent_id);
     }
-    transforms[group_index] = transform;
-    states[group_index] = 2;
+    transforms.Add(id, transform);
+    state = 2;
     return true;
 }
 }
@@ -131,6 +165,7 @@ auto validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& 
     -> FString {
     TSet<FGuid> node_ids;
     TMap<FGuid, int32> group_indices;
+    TMap<FGuid, int32> part_indices;
     auto const group_count{groups.Num()};
     for (int32 group_index{}; group_index < group_count; ++group_index) {
         auto const& group{groups[group_index]};
@@ -164,23 +199,6 @@ auto validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& 
         group_indices.Add(group.id, group_index);
     }
 
-    for (auto const& group : groups) {
-        if (group.parent_id.IsValid() && !group_indices.Contains(group.parent_id)) {
-            return FString::Printf(TEXT("Group '%s' has a missing parent."),
-                                   *group.name.ToString());
-        }
-    }
-
-    TArray<uint8> states;
-    states.SetNumZeroed(group_count);
-    TArray<FTransform> transforms;
-    transforms.SetNum(group_count);
-    for (int32 group_index{}; group_index < group_count; ++group_index) {
-        if (!resolve_group_transform(group_index, groups, group_indices, states, transforms)) {
-            return TEXT("Assembly group hierarchy contains a parenting cycle.");
-        }
-    }
-
     auto const part_count{parts.Num()};
     for (int32 part_index{}; part_index < part_count; ++part_index) {
         auto const& part{parts[part_index]};
@@ -190,10 +208,30 @@ auto validate_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& 
         if (node_ids.Contains(part.id)) {
             return TEXT("Assembly node IDs must be unique.");
         }
-        if (part.parent_id.IsValid() && !group_indices.Contains(part.parent_id)) {
+        node_ids.Add(part.id);
+        part_indices.Add(part.id, part_index);
+    }
+
+    for (auto const& group : groups) {
+        if (group.parent_id.IsValid() && !node_ids.Contains(group.parent_id)) {
+            return FString::Printf(TEXT("Group '%s' has a missing parent."),
+                                   *group.name.ToString());
+        }
+    }
+    for (int32 part_index{}; part_index < part_count; ++part_index) {
+        auto const& part{parts[part_index]};
+        if (part.parent_id.IsValid() && !node_ids.Contains(part.parent_id)) {
             return FString::Printf(TEXT("Part %d has a missing parent."), part_index + 1);
         }
-        node_ids.Add(part.id);
+    }
+
+    TMap<FGuid, uint8> states;
+    TMap<FGuid, FTransform> transforms;
+    for (FGuid const id : node_ids) {
+        if (!resolve_node_transform(
+                id, parts, groups, part_indices, group_indices, states, transforms)) {
+            return TEXT("Assembly hierarchy contains a parenting cycle.");
+        }
     }
     return {};
 }
@@ -205,29 +243,31 @@ auto resolve_mesh_assembly_hierarchy(TArray<FSbxMeshAssemblyRecipePart> const& p
     check(validate_mesh_assembly_hierarchy(parts, groups).IsEmpty());
 
     TMap<FGuid, int32> group_indices;
+    TMap<FGuid, int32> part_indices;
     auto const group_count{groups.Num()};
     for (int32 group_index{}; group_index < group_count; ++group_index) {
         group_indices.Add(groups[group_index].id, group_index);
     }
-    TArray<uint8> states;
-    states.SetNumZeroed(group_count);
-    TArray<FTransform> group_transforms;
-    group_transforms.SetNum(group_count);
-    for (int32 group_index{}; group_index < group_count; ++group_index) {
-        check(
-            resolve_group_transform(group_index, groups, group_indices, states, group_transforms));
+    auto const part_count{parts.Num()};
+    for (int32 part_index{}; part_index < part_count; ++part_index) {
+        part_indices.Add(parts[part_index].id, part_index);
+    }
+    TMap<FGuid, uint8> states;
+    TMap<FGuid, FTransform> transforms;
+    for (auto const& group : groups) {
+        check(resolve_node_transform(
+            group.id, parts, groups, part_indices, group_indices, states, transforms));
+    }
+    for (auto const& part : parts) {
+        check(resolve_node_transform(
+            part.id, parts, groups, part_indices, group_indices, states, transforms));
     }
 
     TArray<FSbxMeshAssemblyPart> resolved_parts;
     resolved_parts.Reserve(parts.Num());
     for (auto const& recipe_part : parts) {
         auto part{recipe_part.to_part(output_asset_name)};
-        FTransform transform{FRotator{part.transform.rotation},
-                             FVector{part.transform.translation},
-                             FVector{part.transform.scale}};
-        if (recipe_part.parent_id.IsValid()) {
-            transform *= group_transforms[group_indices.FindChecked(recipe_part.parent_id)];
-        }
+        auto const& transform{transforms.FindChecked(recipe_part.id)};
         part.transform = {FVector3f{transform.GetLocation()},
                           FRotator3f{transform.Rotator()},
                           FVector3f{transform.GetScale3D()}};
