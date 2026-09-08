@@ -268,7 +268,7 @@
           ],
           "experimental_single_allocation": {
             "name": "SingleAllocationEntityData",
-            "variants": [{"name": "MimallocEntityDataSingle", "allocator": "@soa_experiment_MimallocStorageAllocator"}]
+            "variants": [{"name": "FMemorySingleEntityData", "allocator": "@soa_experiment_FMemoryStorageAllocator"}]
           }
         },
         {
@@ -322,7 +322,7 @@
           ],
           "experimental_single_allocation": {
             "name": "SingleAllocationAlignmentData",
-            "variants": [{"name": "MimallocAlignmentDataSingle", "allocator": "@soa_experiment_MimallocStorageAllocator"}]
+            "variants": [{"name": "FMemorySingleAlignmentData", "allocator": "@soa_experiment_FMemoryStorageAllocator"}]
           }
         }
       ]

@@ -254,7 +254,7 @@
       "inherits": "single-allocation-soa-benchmark",
       "filter": {
         "include": {
-          "name": "^SandboxCore\\.SingleAllocation\\.Timing\\.reserve_[0-9]+_owners_[0-9]+_[A-Za-z]+$"
+          "name": "^SandboxCore\\.SingleAllocation\\.Timing\\.reserve_(TArray|SingleMimalloc)$"
         }
       }
     },
@@ -267,7 +267,7 @@
       },
       "filter": {
         "include": {
-          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|AllocationDiagnostics|Timing\\.[A-Za-z0-9_]+)$"
+          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|Timing\\.[A-Za-z0-9_]+)$"
         }
       },
       "execution": {

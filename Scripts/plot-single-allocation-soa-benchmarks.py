@@ -126,18 +126,21 @@ def read_results(paths: list[Path]) -> tuple[list[Record], list[Record], list[Re
             groups[kind][key] = row
     reserve_rows: list[Record] = []
     for (count, operation), owners in catch_rows.items():
-        if re.fullmatch(r"reserve_[1-9][0-9]*", operation):
+        single_owner = "SingleMimalloc" if "SingleMimalloc" in owners else "Single"
+        reserve_operation = re.fullmatch(r"reserve_[1-9][0-9]*", operation)
+        if not reserve_operation and {"Single", "SingleMimalloc"} <= set(owners):
+            raise ValueError(f"Mixed FMemory and mimalloc comparisons: {count}, {operation}; use one benchmark run")
+        if reserve_operation:
             for owner in owners.values():
                 reserve_rows.append({**owner, "owners": operation.removeprefix("reserve_")})
-            if {"TArray", "Single"} - set(owners):
-                continue
-        elif {"TArray", "Single"} - set(owners):
+            continue
+        elif {"TArray", single_owner} - set(owners):
             raise ValueError(f"Incomplete Catch2 comparison: {count}, {operation}")
         row = {"count": count, "operation": operation}
-        for owner, prefix in (("TArray", "baseline"), ("Single", "single")):
+        for owner, prefix in (("TArray", "baseline"), (single_owner, "single")):
             for stat in ("mean", "lower", "upper"):
                 row[f"{prefix}_{stat}_ns"] = owners[owner][stat]
-        row["baseline_over_single"] = str(float(owners["TArray"]["mean"]) / float(owners["Single"]["mean"]))
+        row["baseline_over_single"] = str(float(owners["TArray"]["mean"]) / float(owners[single_owner]["mean"]))
         key = (count, operation)
         if key in groups["SOA_TIMING"] and groups["SOA_TIMING"][key] != row:
             raise ValueError(f"Conflicting timing results: {key}")
@@ -153,6 +156,9 @@ def plot_reserve_matrix(plt: Any, rows: list[Record], output: Path) -> None:
     for count in sorted({int(row["count"]) for row in rows}):
         points = [row for row in rows if int(row["count"]) == count]
         batches = sorted({int(row["owners"]) for row in points})
+        if batches == [1]:
+            plot_reserve_comparison(plt, points, output, count)
+            continue
         lookup = {(int(row["owners"]), row["owner"]): row for row in points}
         matrix: list[Record] = []
         figure, axes = plt.subplots(1, 2, figsize=(15, 6))
@@ -178,6 +184,21 @@ def plot_reserve_matrix(plt: Any, rows: list[Record], output: Path) -> None:
         figure.suptitle(f"Reserve {count:,} rows per owner — allocation and cleanup, Catch2 mean and confidence interval")
         figure.tight_layout()
         save_figure(plt, figure, output, f"reserve-matrix-{count}")
+
+
+def plot_reserve_comparison(plt: Any, rows: list[Record], output: Path, count: int) -> None:
+    points = sorted(rows, key=lambda row: RESERVE_OWNERS.index(row["owner"]))
+    means = [float(row["mean"]) / 1000 for row in points]
+    errors = [[abs(float(row[bound]) - float(row["mean"])) / 1000 for row in points] for bound in ("lower", "upper")]
+    figure, axis = plt.subplots(figsize=(8, 5))
+    bars = axis.bar([row["owner"] for row in points], means, yerr=errors, capsize=5, color=COLORS)
+    axis.bar_label(bars, labels=[f"{mean:.3f} µs" for mean in means], padding=8)
+    axis.set(yscale="log", ylabel="Microseconds (log scale)", title=f"One owner: reserve {count:,} rows and destroy")
+    axis.margins(y=0.3)
+    axis.grid(axis="y", alpha=0.2)
+    figure.text(0.5, 0.01, "Catch2 means and confidence intervals; no explicit row writes", ha="center")
+    figure.tight_layout(rect=(0, 0.04, 1, 1))
+    save_figure(plt, figure, output, f"reserve-comparison-{count}")
 
 
 def save_figure(plt: Any, figure: Any, output: Path, name: str) -> None:

@@ -10,7 +10,6 @@
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/soa_concepts.h"
-#include "SbxCoreExperiments/mimalloc_storage_allocator.h"
 #include "SbxCoreExperiments/single_allocation_storage.h"
 #include "SbxCoreExperiments/soa_leaf_types.h"
 #include "SbxCoreExperiments/soa_reference_allocators.h"
@@ -1802,7 +1801,9 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
     // Lifetime
     /* **************************************** */
     SingleAllocationEntityDataStorage() noexcept = default;
-    ~SingleAllocationEntityDataStorage() { FMemory::Free(data_); }
+    ~SingleAllocationEntityDataStorage() {
+        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
+    }
     SingleAllocationEntityDataStorage(SingleAllocationEntityDataStorage const&) = delete;
     auto operator=(SingleAllocationEntityDataStorage const&)
         -> SingleAllocationEntityDataStorage& = delete;
@@ -1813,7 +1814,7 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
     auto operator=(SingleAllocationEntityDataStorage&& other) noexcept
         -> SingleAllocationEntityDataStorage& {
         if (this != &other) {
-            FMemory::Free(data_);
+            ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -2291,7 +2292,7 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
             columns.target_radii + index, columns.target_radii + source, float_biases_bytes);
     }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::single_allocation_experiment::allocate(
+        auto* const new_data{ml::single_allocation_experiment::MimallocStorageAllocator::allocate(
             ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
@@ -2426,7 +2427,7 @@ struct SingleAllocationEntityDataStorage : ml::single_allocation_experiment::Sto
                 destination.target_distances, source.target_distances, float_biases_bytes);
             FMemory::Memcpy(destination.target_radii, source.target_radii, float_biases_bytes);
         }
-        FMemory::Free(data_);
+        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
@@ -2605,7 +2606,7 @@ struct SingleAllocationEntityData : SingleAllocationEntityDataStorage {
     }
 };
 
-struct MimallocEntityDataSingleStorage : ml::single_allocation_experiment::StorageOperations {
+struct FMemorySingleEntityDataStorage : ml::single_allocation_experiment::StorageOperations {
     using View = EntityDataView;
     using ConstView = EntityDataConstView;
     using size_type = int32;
@@ -3144,19 +3145,19 @@ struct MimallocEntityDataSingleStorage : ml::single_allocation_experiment::Stora
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    MimallocEntityDataSingleStorage() noexcept = default;
-    ~MimallocEntityDataSingleStorage() { MimallocStorageAllocator::free(data_); }
-    MimallocEntityDataSingleStorage(MimallocEntityDataSingleStorage const&) = delete;
-    auto operator=(MimallocEntityDataSingleStorage const&)
-        -> MimallocEntityDataSingleStorage& = delete;
-    MimallocEntityDataSingleStorage(MimallocEntityDataSingleStorage&& other) noexcept
+    FMemorySingleEntityDataStorage() noexcept = default;
+    ~FMemorySingleEntityDataStorage() { FMemoryStorageAllocator::free(data_); }
+    FMemorySingleEntityDataStorage(FMemorySingleEntityDataStorage const&) = delete;
+    auto operator=(FMemorySingleEntityDataStorage const&)
+        -> FMemorySingleEntityDataStorage& = delete;
+    FMemorySingleEntityDataStorage(FMemorySingleEntityDataStorage&& other) noexcept
         : data_{std::exchange(other.data_, nullptr)}
         , num_{std::exchange(other.num_, 0)}
         , capacity_{std::exchange(other.capacity_, 0)} {}
-    auto operator=(MimallocEntityDataSingleStorage&& other) noexcept
-        -> MimallocEntityDataSingleStorage& {
+    auto operator=(FMemorySingleEntityDataStorage&& other) noexcept
+        -> FMemorySingleEntityDataStorage& {
         if (this != &other) {
-            MimallocStorageAllocator::free(data_);
+            FMemoryStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -3634,7 +3635,7 @@ struct MimallocEntityDataSingleStorage : ml::single_allocation_experiment::Stora
             columns.target_radii + index, columns.target_radii + source, float_biases_bytes);
     }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{MimallocStorageAllocator::allocate(
+        auto* const new_data{FMemoryStorageAllocator::allocate(
             ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
@@ -3769,7 +3770,7 @@ struct MimallocEntityDataSingleStorage : ml::single_allocation_experiment::Stora
                 destination.target_distances, source.target_distances, float_biases_bytes);
             FMemory::Memcpy(destination.target_radii, source.target_radii, float_biases_bytes);
         }
-        MimallocStorageAllocator::free(data_);
+        FMemoryStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
@@ -3778,12 +3779,12 @@ struct MimallocEntityDataSingleStorage : ml::single_allocation_experiment::Stora
     size_type capacity_{};
 };
 
-struct MimallocEntityDataSingle : MimallocEntityDataSingleStorage {
-    MimallocEntityDataSingle() noexcept = default;
-    MimallocEntityDataSingle(MimallocEntityDataSingle const&) = delete;
-    auto operator=(MimallocEntityDataSingle const&) -> MimallocEntityDataSingle& = delete;
-    MimallocEntityDataSingle(MimallocEntityDataSingle&&) noexcept = default;
-    auto operator=(MimallocEntityDataSingle&&) noexcept -> MimallocEntityDataSingle& = default;
+struct FMemorySingleEntityData : FMemorySingleEntityDataStorage {
+    FMemorySingleEntityData() noexcept = default;
+    FMemorySingleEntityData(FMemorySingleEntityData const&) = delete;
+    auto operator=(FMemorySingleEntityData const&) -> FMemorySingleEntityData& = delete;
+    FMemorySingleEntityData(FMemorySingleEntityData&&) noexcept = default;
+    auto operator=(FMemorySingleEntityData&&) noexcept -> FMemorySingleEntityData& = default;
 
     /* **************************************** */
     // Views
@@ -4349,7 +4350,9 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
     // Lifetime
     /* **************************************** */
     SingleAllocationAlignmentDataStorage() noexcept = default;
-    ~SingleAllocationAlignmentDataStorage() { FMemory::Free(data_); }
+    ~SingleAllocationAlignmentDataStorage() {
+        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
+    }
     SingleAllocationAlignmentDataStorage(SingleAllocationAlignmentDataStorage const&) = delete;
     auto operator=(SingleAllocationAlignmentDataStorage const&)
         -> SingleAllocationAlignmentDataStorage& = delete;
@@ -4360,7 +4363,7 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
     auto operator=(SingleAllocationAlignmentDataStorage&& other) noexcept
         -> SingleAllocationAlignmentDataStorage& {
         if (this != &other) {
-            FMemory::Free(data_);
+            ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -4493,7 +4496,7 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
         FMemory::Memcpy(columns.handles + index, columns.handles + source, handles_bytes);
     }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{ml::single_allocation_experiment::allocate(
+        auto* const new_data{ml::single_allocation_experiment::MimallocStorageAllocator::allocate(
             ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
@@ -4522,7 +4525,7 @@ struct SingleAllocationAlignmentDataStorage : ml::single_allocation_experiment::
             FMemory::Memcpy(destination.aligned256, source.aligned256, aligned256_bytes);
             FMemory::Memcpy(destination.handles, source.handles, handles_bytes);
         }
-        FMemory::Free(data_);
+        ml::single_allocation_experiment::MimallocStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
@@ -4613,7 +4616,7 @@ struct SingleAllocationAlignmentData : SingleAllocationAlignmentDataStorage {
     }
 };
 
-struct MimallocAlignmentDataSingleStorage : ml::single_allocation_experiment::StorageOperations {
+struct FMemorySingleAlignmentDataStorage : ml::single_allocation_experiment::StorageOperations {
     using View = AlignmentDataView;
     using ConstView = AlignmentDataConstView;
     using size_type = int32;
@@ -4773,19 +4776,19 @@ struct MimallocAlignmentDataSingleStorage : ml::single_allocation_experiment::St
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    MimallocAlignmentDataSingleStorage() noexcept = default;
-    ~MimallocAlignmentDataSingleStorage() { MimallocStorageAllocator::free(data_); }
-    MimallocAlignmentDataSingleStorage(MimallocAlignmentDataSingleStorage const&) = delete;
-    auto operator=(MimallocAlignmentDataSingleStorage const&)
-        -> MimallocAlignmentDataSingleStorage& = delete;
-    MimallocAlignmentDataSingleStorage(MimallocAlignmentDataSingleStorage&& other) noexcept
+    FMemorySingleAlignmentDataStorage() noexcept = default;
+    ~FMemorySingleAlignmentDataStorage() { FMemoryStorageAllocator::free(data_); }
+    FMemorySingleAlignmentDataStorage(FMemorySingleAlignmentDataStorage const&) = delete;
+    auto operator=(FMemorySingleAlignmentDataStorage const&)
+        -> FMemorySingleAlignmentDataStorage& = delete;
+    FMemorySingleAlignmentDataStorage(FMemorySingleAlignmentDataStorage&& other) noexcept
         : data_{std::exchange(other.data_, nullptr)}
         , num_{std::exchange(other.num_, 0)}
         , capacity_{std::exchange(other.capacity_, 0)} {}
-    auto operator=(MimallocAlignmentDataSingleStorage&& other) noexcept
-        -> MimallocAlignmentDataSingleStorage& {
+    auto operator=(FMemorySingleAlignmentDataStorage&& other) noexcept
+        -> FMemorySingleAlignmentDataStorage& {
         if (this != &other) {
-            MimallocStorageAllocator::free(data_);
+            FMemoryStorageAllocator::free(data_);
             data_ = std::exchange(other.data_, nullptr);
             num_ = std::exchange(other.num_, 0);
             capacity_ = std::exchange(other.capacity_, 0);
@@ -4918,7 +4921,7 @@ struct MimallocAlignmentDataSingleStorage : ml::single_allocation_experiment::St
         FMemory::Memcpy(columns.handles + index, columns.handles + source, handles_bytes);
     }
     void reallocate(size_type const new_capacity) {
-        auto* const new_data{MimallocStorageAllocator::allocate(
+        auto* const new_data{FMemoryStorageAllocator::allocate(
             ml::single_allocation_experiment::allocation_bytes(new_capacity, block_bytes),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
@@ -4947,7 +4950,7 @@ struct MimallocAlignmentDataSingleStorage : ml::single_allocation_experiment::St
             FMemory::Memcpy(destination.aligned256, source.aligned256, aligned256_bytes);
             FMemory::Memcpy(destination.handles, source.handles, handles_bytes);
         }
-        MimallocStorageAllocator::free(data_);
+        FMemoryStorageAllocator::free(data_);
         data_ = new_data;
         capacity_ = new_capacity;
     }
@@ -4956,13 +4959,12 @@ struct MimallocAlignmentDataSingleStorage : ml::single_allocation_experiment::St
     size_type capacity_{};
 };
 
-struct MimallocAlignmentDataSingle : MimallocAlignmentDataSingleStorage {
-    MimallocAlignmentDataSingle() noexcept = default;
-    MimallocAlignmentDataSingle(MimallocAlignmentDataSingle const&) = delete;
-    auto operator=(MimallocAlignmentDataSingle const&) -> MimallocAlignmentDataSingle& = delete;
-    MimallocAlignmentDataSingle(MimallocAlignmentDataSingle&&) noexcept = default;
-    auto operator=(MimallocAlignmentDataSingle&&) noexcept
-        -> MimallocAlignmentDataSingle& = default;
+struct FMemorySingleAlignmentData : FMemorySingleAlignmentDataStorage {
+    FMemorySingleAlignmentData() noexcept = default;
+    FMemorySingleAlignmentData(FMemorySingleAlignmentData const&) = delete;
+    auto operator=(FMemorySingleAlignmentData const&) -> FMemorySingleAlignmentData& = delete;
+    FMemorySingleAlignmentData(FMemorySingleAlignmentData&&) noexcept = default;
+    auto operator=(FMemorySingleAlignmentData&&) noexcept -> FMemorySingleAlignmentData& = default;
 
     /* **************************************** */
     // Views

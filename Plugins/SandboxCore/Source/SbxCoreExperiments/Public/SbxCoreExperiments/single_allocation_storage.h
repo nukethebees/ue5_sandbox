@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SbxCoreExperiments/mimalloc_storage_allocator.h>
 #include <SbxCoreExperiments/single_allocation_layout.h>
 
 #include <Containers/AllowShrinking.h>
@@ -59,13 +60,16 @@ inline auto allocation_bytes(int32 const capacity, SIZE_T const block_bytes) -> 
     return result;
 }
 
-inline auto allocate(SIZE_T const bytes, uint32 const alignment) -> std::byte* {
-    auto* const allocation{FMemory::Realloc(nullptr, bytes, alignment)};
-    require(allocation != nullptr);
-    // The byte array provides storage and starts implicit-lifetime leaf arrays without
-    // initialization.
-    return ::new (allocation) std::byte[bytes];
-}
+struct FMemoryStorageAllocator {
+    static auto allocate(SIZE_T const bytes, uint32 const alignment) -> std::byte* {
+        auto* const allocation{FMemory::Realloc(nullptr, bytes, alignment)};
+        require(allocation != nullptr);
+        // The byte array provides storage and starts implicit-lifetime leaf arrays without
+        // initialization.
+        return ::new (allocation) std::byte[bytes];
+    }
+    static void free(std::byte* data) noexcept { FMemory::Free(data); }
+};
 
 // Generated storage supplies the state and typed column operations.
 struct StorageOperations {

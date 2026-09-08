@@ -35,8 +35,9 @@ auto lower_single_allocation_node(SoaSchema const& schema,
                                   std::map<std::string, CppType> const& types,
                                   bool const native) -> Node {
     auto const* runtime{native ? "ml::native_soa::" : "ml::single_allocation_experiment::"};
-    std::string free_data{native ? "ml::native_soa::free(data_, allocation_alignment)"
-                                 : "FMemory::Free(data_)"};
+    std::string free_data{
+        native ? "ml::native_soa::free(data_, allocation_alignment)"
+               : "ml::single_allocation_experiment::MimallocStorageAllocator::free(data_)"};
     auto const* copy{native ? "std::memcpy" : "FMemory::Memcpy"};
     auto const layout{build_soa_layout(schema, schemas, types, false)};
     auto const& name{*schema.experimental_single_allocation};
@@ -45,7 +46,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         {"single_allocation_storage",
          native ? "native_soa/storage.h" : "SbxCoreExperiments/single_allocation_storage.h",
          {}}};
-    std::string allocate{std::string{runtime} + "allocate"};
+    std::string allocate{std::string{runtime} +
+                         (native ? "allocate" : "MimallocStorageAllocator::allocate")};
     if (schema.single_allocation_allocator) {
         auto const allocator{resolve_type(*schema.single_allocation_allocator, types)};
         dependencies.insert(

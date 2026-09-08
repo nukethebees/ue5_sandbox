@@ -83,7 +83,7 @@ TEST(SingleAllocationSoa, SingleAllocatorVariantPreservesViewsAndRoutesOwnership
     EXPECT_NE(output.find("struct CustomSingleStorage"), std::string::npos);
     EXPECT_NE(output.find("CustomAllocator::allocate("), std::string::npos);
     EXPECT_NE(output.find("CustomAllocator::free(data_)"), std::string::npos);
-    EXPECT_NE(output.find("FMemory::Free(data_)"), std::string::npos);
+    EXPECT_NE(output.find("MimallocStorageAllocator::free(data_)"), std::string::npos);
     input.back().single_allocation_variants.front().name = input.back().name;
     EXPECT_THROW(render(input), std::invalid_argument);
 }

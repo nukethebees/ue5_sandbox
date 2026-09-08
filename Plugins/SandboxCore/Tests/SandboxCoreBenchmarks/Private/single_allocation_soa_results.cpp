@@ -67,7 +67,7 @@ auto snapshot(EntityData& owner, bool const query_allocator) -> AllocationSnapsh
     return result;
 }
 
-auto snapshot(SingleAllocationEntityData& owner, bool const query_allocator) -> AllocationSnapshot {
+auto snapshot(FMemorySingleEntityData& owner, bool const query_allocator) -> AllocationSnapshot {
     AllocationSnapshot result;
     result.requested = owner.allocated_bytes();
     result.column_bytes[0] = result.requested;
@@ -143,7 +143,7 @@ TEST_CASE("SandboxCore.SingleAllocation.AllocationDiagnostics") {
     for (int32 const count : counts()) {
         for (bool const reserve_first : {false, true}) {
             allocation_diagnostics<EntityData>("TArray", count, reserve_first);
-            allocation_diagnostics<SingleAllocationEntityData>("Single", count, reserve_first);
+            allocation_diagnostics<FMemorySingleEntityData>("Single", count, reserve_first);
         }
     }
 }
