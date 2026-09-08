@@ -238,6 +238,9 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
         return FReply::Handled();
     }
     if (captured_binding_.IsSet() && captured_chord_.IsSet() && !chord_capture_.is_complete()) {
+        if (key_event.IsRepeat()) {
+            return FReply::Handled();
+        }
         return accept_chord_key(key, true);
     }
     if (captured_binding_.IsSet() && !captured_chord_.IsSet() && captured_key_ == EKeys::Invalid) {
@@ -855,7 +858,12 @@ auto SGameOptionsView::accept_binding_key(FKey const key) -> FReply {
         conflict_replace_button_->focus();
         return FReply::Handled();
     }
-    settings->set_control_binding(captured_binding_.GetValue(), key, false);
+    if (!settings->set_control_binding(captured_binding_.GetValue(), key, false)) {
+        capture_error_ = NSLOCTEXT(
+            "OptionsMenu", "BindingApplyFailed", "Could not apply the binding. Please try again.");
+        capture_prompt_->SetVisibility(EVisibility::Visible);
+        return FReply::Handled();
+    }
     close_binding_prompt();
     rebuild_controls_page();
     refresh();
@@ -889,6 +897,7 @@ auto SGameOptionsView::release_chord_key(FKey const key) -> FReply {
 
 void SGameOptionsView::clear_chord_capture() {
     chord_capture_.clear();
+    capture_error_ = FText::GetEmpty();
 }
 
 auto SGameOptionsView::confirm_chord_capture() -> FReply {
@@ -905,10 +914,15 @@ auto SGameOptionsView::confirm_chord_capture() -> FReply {
         conflict_replace_button_->focus();
         return FReply::Handled();
     }
-    settings->set_control_chord(captured_binding_.GetValue(),
-                                chord_capture_.activator_key(),
-                                chord_capture_.action_key(),
-                                false);
+    if (!settings->set_control_chord(captured_binding_.GetValue(),
+                                     chord_capture_.activator_key(),
+                                     chord_capture_.action_key(),
+                                     false)) {
+        capture_error_ = NSLOCTEXT(
+            "OptionsMenu", "BindingApplyFailed", "Could not apply the binding. Please try again.");
+        capture_prompt_->SetVisibility(EVisibility::Visible);
+        return FReply::Handled();
+    }
     close_binding_prompt();
     rebuild_controls_page();
     refresh();
@@ -1265,6 +1279,9 @@ auto SGameOptionsView::build_capture_prompt() -> TSharedRef<SWidget> {
                         return FReply::Handled();
                     })};
     auto title{TAttribute<FText>::CreateLambda([this] {
+        if (!capture_error_.IsEmpty()) {
+            return capture_error_;
+        }
         if (!captured_chord_.IsSet()) {
             return NSLOCTEXT("OptionsMenu",
                              "CaptureBindingPrompt",
@@ -1306,17 +1323,26 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                      .Style(&style_->button(EGameButtonStyle::Primary))
                      .Text(NSLOCTEXT("OptionsMenu", "ReplaceBinding", "Replace"))
                      .OnClicked_Lambda([this] {
+                         auto applied{false};
                          if (auto* const settings{settings_.Get()};
                              captured_binding_.IsSet() && settings != nullptr) {
                              if (captured_chord_.IsSet()) {
-                                 settings->set_control_chord(captured_binding_.GetValue(),
-                                                             chord_capture_.activator_key(),
-                                                             chord_capture_.action_key(),
-                                                             true);
+                                 applied =
+                                     settings->set_control_chord(captured_binding_.GetValue(),
+                                                                 chord_capture_.activator_key(),
+                                                                 chord_capture_.action_key(),
+                                                                 true);
                              } else {
-                                 settings->set_control_binding(
+                                 applied = settings->set_control_binding(
                                      captured_binding_.GetValue(), captured_key_, true);
                              }
+                         }
+                         if (!applied) {
+                             capture_error_ =
+                                 NSLOCTEXT("OptionsMenu",
+                                           "BindingApplyFailed",
+                                           "Could not apply the binding. Please try again.");
+                             return FReply::Handled();
                          }
                          close_binding_prompt();
                          rebuild_controls_page();
@@ -1331,6 +1357,9 @@ auto SGameOptionsView::build_conflict_prompt() -> TSharedRef<SWidget> {
                         return FReply::Handled();
                     })};
     auto title{TAttribute<FText>::CreateLambda([this] {
+        if (!capture_error_.IsEmpty()) {
+            return capture_error_;
+        }
         auto const captured_input{
             captured_chord_.IsSet() && chord_capture_.is_complete()
                 ? FText::Format(NSLOCTEXT("OptionsMenu", "ChordConflictValue", "{0} + {1}"),

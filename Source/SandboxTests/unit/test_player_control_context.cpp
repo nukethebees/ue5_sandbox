@@ -483,6 +483,20 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         capture.clear();
         TestRunner->TestFalse(TEXT("Clear removes the candidate"), capture.is_complete());
         TestRunner->TestFalse(TEXT("Clear removes the held input"), capture.held_key().IsValid());
+
+        TestRunner->TestFalse(TEXT("Wheel cannot be held even if the caller permits it"),
+                              capture.accept(EKeys::MouseScrollUp, true));
+        TestRunner->TestFalse(TEXT("Axis cannot be a held activator"),
+                              capture.accept(EKeys::Gamepad_LeftX, true));
+        TestRunner->TestFalse(TEXT("Invalid activators leave capture empty"),
+                              capture.held_key().IsValid());
+        capture.accept(EKeys::ThumbMouseButton, true);
+        TestRunner->TestFalse(TEXT("Repeated activator does not complete a chord"),
+                              capture.accept(EKeys::ThumbMouseButton, true));
+        TestRunner->TestFalse(TEXT("Mixed device chord is rejected"),
+                              capture.accept(EKeys::Gamepad_FaceButton_Bottom, true));
+        TestRunner->TestTrue(TEXT("Wheel can be the action input after retry"),
+                             capture.accept(EKeys::MouseScrollDown, false));
     }
 
     TEST_METHOD(NewSamplingSessionStartsWithNeutralControl)

@@ -5,6 +5,11 @@
 
 namespace ml::ioj {
 
+inline auto can_hold_chord_key(FKey const key) -> bool {
+    return key.IsValid() && !key.IsAxis1D() && !key.IsAxis2D() && !key.IsAxis3D() &&
+           key != EKeys::MouseScrollUp && key != EKeys::MouseScrollDown;
+}
+
 struct FControlProfileView {
     FString id;
     FString mapping_profile_id;

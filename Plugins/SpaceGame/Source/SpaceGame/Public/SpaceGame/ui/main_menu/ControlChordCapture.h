@@ -1,6 +1,6 @@
 #pragma once
 
-#include "InputCoreTypes.h"
+#include "SpaceGame/settings/ControlSettingsTypes.h"
 
 namespace ml::ioj {
 
@@ -11,9 +11,12 @@ class FControlChordCapture {
             return false;
         }
         if (!held_key_.IsValid()) {
-            if (can_be_held) {
+            if (can_be_held && can_hold_chord_key(key)) {
                 held_key_ = key;
             }
+            return false;
+        }
+        if (key.IsGamepadKey() != held_key_.IsGamepadKey()) {
             return false;
         }
         activator_key_ = held_key_;

@@ -136,6 +136,7 @@ class SGameOptionsView final : public SCompoundWidget {
     TOptional<FControlChordBindingView> captured_chord_{};
     FControlChordCapture chord_capture_{};
     FKey captured_key_{};
+    FText capture_error_{};
     int32 captured_chord_dependent_count_{};
     FText control_profile_error_{};
     TWeakPtr<SWidget> previous_focus_{};

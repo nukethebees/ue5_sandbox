@@ -719,8 +719,9 @@ auto UGameSettingsSubsystem::set_control_chord(FControlBindingAddress const& add
                                                FKey const action_key,
                                                bool const replace_conflicts) -> bool {
     auto* const settings{input_user_settings()};
-    if (!editing_ || settings == nullptr || !activator_key.IsValid() || !action_key.IsValid() ||
-        activator_key == action_key || address.profile_id != settings->GetActiveKeyProfileId()) {
+    if (!editing_ || settings == nullptr || !can_hold_chord_key(activator_key) ||
+        !action_key.IsValid() || activator_key == action_key ||
+        address.profile_id != settings->GetActiveKeyProfileId()) {
         return false;
     }
 
