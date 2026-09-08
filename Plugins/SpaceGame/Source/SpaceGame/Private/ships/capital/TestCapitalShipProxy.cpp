@@ -20,6 +20,7 @@
 #include <EngineUtils.h>
 
 #if WITH_EDITOR
+#include <ScopedTransaction.h>
 #include <SpaceGame/simulation/EntityWorldBounds.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/support/mesh.h>
@@ -100,17 +101,43 @@ void ATestCapitalShipProxy::PostRegisterAllComponents() {
 void ATestCapitalShipProxy::Tick(float const delta_seconds) {
     Super::Tick(delta_seconds);
     auto const* const world{GetWorld()};
-    if (IsValid(world) && world->WorldType == EWorldType::Editor && IsSelected() &&
-        show_fighter_spawn_preview) {
-        draw_fighter_spawn_preview();
+    if (IsValid(world) && world->WorldType == EWorldType::Editor && IsSelected()) {
+        update_spawn_configuration_status();
+        if (show_fighter_spawn_preview) {
+            draw_fighter_spawn_preview();
+        }
     }
+}
+
+auto ATestCapitalShipProxy::resolve_editor_configuration() const -> USpaceGameLevelConfig* {
+    return ml::resolve_proxy_level_config(*this);
+}
+
+void ATestCapitalShipProxy::update_spawn_configuration_status() {
+    auto* const config{resolve_editor_configuration()};
+    set_level_config_asset(config);
+    if (!IsValid(config)) {
+        spawn_configuration_status = TEXT("Requires exactly one orchestrator with a level config.");
+        return;
+    }
+    auto const& slots{config->capital_ships.fighter_spawn_slots_relative_transforms};
+    bool matches{slots.Num() == fighter_spawn_slots.Num()};
+    FTransform const frame{GetActorRotation(), GetActorLocation(), FVector::OneVector};
+    auto const count{fighter_spawn_slots.Num()};
+    for (int32 i{}; matches && i < count; ++i) {
+        auto const* const arrow{fighter_spawn_slots[i].Get()};
+        matches = IsValid(arrow) &&
+                  arrow->GetComponentTransform().GetRelativeTransform(frame).Equals(slots[i], 0.01);
+    }
+    spawn_configuration_status =
+        matches ? TEXT("Live arrows match the shared runtime layout (not a clearance check).")
+                : TEXT("UNSAVED DIFFERENCE: Save these arrows, or Apply to use the shared runtime "
+                       "layout.");
 }
 
 void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     auto* const world{GetWorld()};
-    auto const* const orchestrator{ml::get_first_actor<ATestBatchOrchestrator>(*world)};
-    auto const* const config{IsValid(orchestrator) ? orchestrator->get_level_config()
-                                                   : level_config_asset.Get()};
+    auto const* const config{resolve_editor_configuration()};
     auto const report_error{[this](FString const& message) {
         if (spawn_preview_error != message) {
             UE_LOG(LogSandbox,
@@ -188,10 +215,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
 
 void ATestCapitalShipProxy::diagnose_fighter_spawn_points() {
     auto* const world{GetWorld()};
-    auto* const orchestrator{IsValid(world) ? ml::get_first_actor<ATestBatchOrchestrator>(*world)
-                                            : nullptr};
-    auto const* const runtime_config{IsValid(orchestrator) ? orchestrator->get_level_config()
-                                                           : nullptr};
+    auto const* const runtime_config{resolve_editor_configuration()};
     if (!IsValid(runtime_config)) {
         UE_LOG(LogSandbox,
                Warning,
@@ -243,14 +267,8 @@ void ATestCapitalShipProxy::diagnose_fighter_spawn_points() {
 }
 
 void ATestCapitalShipProxy::save_configuration_to_asset() {
-    if (!IsValid(level_config_asset)) {
-        auto* const world{GetWorld()};
-        auto* const orchestrator{
-            IsValid(world) ? ml::get_first_actor<ATestBatchOrchestrator>(*world) : nullptr};
-        if (IsValid(orchestrator)) {
-            set_level_config_asset(orchestrator->get_level_config());
-        }
-    }
+    auto* const config{resolve_editor_configuration()};
+    set_level_config_asset(config);
     if (!IsValid(level_config_asset) || actor_config != &level_config_asset->capital_ships) {
         UE_LOG(LogSandboxLearning,
                Warning,
@@ -280,6 +298,8 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
         }
     }
 
+    FScopedTransaction const transaction{
+        NSLOCTEXT("CapitalShipProxy", "SaveSpawnSlots", "Save capital spawn layout")};
     level_config_asset->Modify();
     auto& capital_config{level_config_asset->capital_ships};
     capital_config.fighter_spawn_slots_relative_transforms.Reset(slot_count);
@@ -291,19 +311,28 @@ void ATestCapitalShipProxy::save_configuration_to_asset() {
         capital_config.proxy_arrow_size = slot->ArrowSize;
     }
     level_config_asset->MarkPackageDirty();
+    update_spawn_configuration_status();
 }
 
 void ATestCapitalShipProxy::apply_asset_configuration() {
-    if (!actor_config) {
+    auto* const config{resolve_editor_configuration()};
+    if (!IsValid(config)) {
         UE_LOG(LogSandboxLearning,
                Warning,
-               TEXT("ATestCapitalShipProxy::apply_asset_configuration: actor_config is nullptr."));
+               TEXT("Cannot apply capital configuration: requires exactly one orchestrator with a "
+                    "level config."));
         return;
     }
+    FScopedTransaction const transaction{
+        NSLOCTEXT("CapitalShipProxy", "ApplySpawnSlots", "Apply capital spawn layout")};
+    apply_spawn_configuration(*config);
+}
 
-    if (actor_config->fighter_spawn_slots < 0 ||
-        actor_config->fighter_spawn_slots_relative_transforms.Num() !=
-            actor_config->fighter_spawn_slots) {
+void ATestCapitalShipProxy::apply_spawn_configuration(USpaceGameLevelConfig& config) {
+    auto const& capital_config{config.capital_ships};
+    if (capital_config.fighter_spawn_slots < 0 ||
+        capital_config.fighter_spawn_slots_relative_transforms.Num() !=
+            capital_config.fighter_spawn_slots) {
         UE_LOG(LogSandboxLearning,
                Warning,
                TEXT("ATestCapitalShipProxy::apply_asset_configuration: saved spawn slot count "
@@ -311,26 +340,55 @@ void ATestCapitalShipProxy::apply_asset_configuration() {
         return;
     }
 
-    ml::destroy_components_array(fighter_spawn_slots);
-    fighter_spawn_slots.Reserve(actor_config->fighter_spawn_slots);
+    Modify();
+    set_level_config_asset(&config);
+    auto const slot_count{capital_config.fighter_spawn_slots};
+    auto const old_count{fighter_spawn_slots.Num()};
+    for (int32 i{slot_count}; i < old_count; ++i) {
+        auto const slot{fighter_spawn_slots[i]};
+        if (IsValid(slot)) {
+            slot->Modify();
+            RemoveInstanceComponent(slot);
+            slot->DestroyComponent();
+        }
+    }
+    fighter_spawn_slots.SetNum(slot_count);
 
     FTransform const spawn_frame{GetActorRotation(), GetActorLocation(), FVector::OneVector};
-    for (int32 i{0}; i < actor_config->fighter_spawn_slots; ++i) {
-        auto const name{
-            MakeUniqueObjectName(this, UArrowComponent::StaticClass(), TEXT("SpawnPoint"))};
-        auto* spawn_point{NewObject<UArrowComponent>(this, name)};
-
-        spawn_point->SetupAttachment(RootComponent);
-        spawn_point->RegisterComponent();
-        AddInstanceComponent(spawn_point);
-        fighter_spawn_slots.Add(spawn_point);
+    for (int32 i{}; i < slot_count; ++i) {
+        auto* spawn_point{fighter_spawn_slots[i].Get()};
+        // Preserve authored Blueprint components and their references when the slot exists.
+        if (!IsValid(spawn_point)) {
+            auto const name{
+                MakeUniqueObjectName(this, UArrowComponent::StaticClass(), TEXT("SpawnPoint"))};
+            spawn_point = NewObject<UArrowComponent>(this, name, RF_Transactional);
+            spawn_point->SetupAttachment(RootComponent);
+            AddInstanceComponent(spawn_point);
+            spawn_point->RegisterComponent();
+            fighter_spawn_slots[i] = spawn_point;
+        }
+        spawn_point->SetFlags(RF_Transactional);
+        spawn_point->Modify();
 
         spawn_point->SetWorldTransform(actor_config->fighter_spawn_slots_relative_transforms[i] *
                                        spawn_frame);
         spawn_point->SetArrowSize(actor_config->proxy_arrow_size);
     }
+    MarkPackageDirty();
+    update_spawn_configuration_status();
 }
 void ATestCapitalShipProxy::apply_asset_configuration_to_all_instances() {
-    ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
+    auto* const config{resolve_editor_configuration()};
+    if (!IsValid(config)) {
+        UE_LOG(LogSandboxLearning,
+               Warning,
+               TEXT("Cannot apply capital configuration: requires exactly one orchestrator with a "
+                    "level config."));
+        return;
+    }
+    FScopedTransaction const transaction{
+        NSLOCTEXT("CapitalShipProxy", "ApplyAllSpawnSlots", "Apply spawn layout to all capitals")};
+    ml::for_each_instance(*this,
+                          [config](ThisClass& proxy) { proxy.apply_spawn_configuration(*config); });
 }
 #endif

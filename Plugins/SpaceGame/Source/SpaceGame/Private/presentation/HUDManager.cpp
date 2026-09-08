@@ -290,6 +290,10 @@ void FHUDManager::register_hud(USimulationHudWidget& hud) {
     }
     if (state == EHUDManagerState::Active) {
         synchronise_hud(hud);
+        // Registration can precede the first HUD tick, or follow new simulation spawns.
+        if (entity_overlay_settings_.enabled || radar_settings_.enabled) {
+            update_entity_overlay_objective_roles();
+        }
         if (entity_overlay_settings_.enabled) {
             update_entity_overlay(registration, 0.0f);
         }

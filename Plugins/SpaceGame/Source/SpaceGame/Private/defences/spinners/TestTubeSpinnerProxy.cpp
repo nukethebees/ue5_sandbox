@@ -1,5 +1,6 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinnerProxy.h"
 
+#include "SpaceGame/entities/TestProxyActorFunctions.h"
 #include "SpaceGame/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_components.h>
@@ -11,6 +12,9 @@
 #include <Components/SphereComponent.h>
 #include <Components/StaticMeshComponent.h>
 #include <EngineUtils.h>
+#if WITH_EDITOR
+#include <ScopedTransaction.h>
+#endif
 
 ATestTubeSpinnerProxy::ATestTubeSpinnerProxy()
     : mesh{CreateDefaultSubobject<UStaticMeshComponent>(TEXT("mesh"))} {
@@ -81,24 +85,52 @@ void ATestTubeSpinnerProxy::set_random_active_fire_point_to_all_instances() {
 }
 
 void ATestTubeSpinnerProxy::apply_asset_configuration() {
-    if (!actor_config) {
+    auto const* const config{ml::resolve_proxy_level_config(*this)};
+    if (!IsValid(config)) {
         UE_LOG(LogSandboxLearning,
                Warning,
-               TEXT("ATestTubeSpinnerProxy::apply_asset_configuration: actor_config is nullptr."));
+               TEXT("Cannot apply spinner configuration: requires exactly one orchestrator with a "
+                    "level config."));
         return;
     }
+    FScopedTransaction const transaction{
+        NSLOCTEXT("SpinnerProxy", "Apply", "Apply spinner configuration")};
+    Modify();
+    actor_config = &config->tube_spinners;
+    mesh->Modify();
 
     mesh->SetStaticMesh(actor_config->mesh);
-    remove_all_fire_points();
-
     auto const n_fire_points{actor_config->fire_point_offsets.Num()};
-    add_fire_points(n_fire_points);
+    auto const old_count{fire_points.Num()};
+    for (int32 i{n_fire_points}; i < old_count; ++i) {
+        if (auto* const point{fire_points[i].Get()}; IsValid(point)) {
+            point->SetFlags(RF_Transactional);
+            point->Modify();
+            RemoveInstanceComponent(point);
+            point->DestroyComponent();
+        }
+    }
+    fire_points.SetNum(n_fire_points);
 
     for (int32 i{0}; i < n_fire_points; ++i) {
+        if (!IsValid(fire_points[i])) {
+            auto const name{
+                MakeUniqueObjectName(this, UArrowComponent::StaticClass(), TEXT("FirePoint"))};
+            auto* const point{NewObject<UArrowComponent>(this, name, RF_Transactional)};
+            point->SetupAttachment(mesh);
+            AddInstanceComponent(point);
+            point->RegisterComponent();
+            fire_points[i] = point;
+        }
+        fire_points[i]->SetFlags(RF_Transactional);
+        fire_points[i]->Modify();
         fire_points[i]->SetRelativeTransform(actor_config->fire_point_offsets[i]);
     }
+    MarkPackageDirty();
 }
 void ATestTubeSpinnerProxy::apply_asset_configuration_to_all_instances() {
+    FScopedTransaction const transaction{
+        NSLOCTEXT("SpinnerProxy", "ApplyAll", "Apply configuration to all spinners")};
     ml::for_each_instance(*this, [](ThisClass& x) { x.apply_asset_configuration(); });
 }
 

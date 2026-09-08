@@ -89,8 +89,10 @@ components must remain static afterward; moving one requires rebuilding the harv
 3. In the capital's Details panel, leave **Ship > Spawn Preview > Show Fighter Spawn Preview**
    enabled. It is enabled by default and only draws for selected capitals in the level editor.
 4. Move the spawn arrows until their preview markers are cyan and outside the amber box.
-5. Click **Save Configuration to Asset** on the capital, then save the level-config asset and
-   the level. Moving an arrow alone does not update the runtime spawn configuration.
+5. Click **Save Configuration to Asset** on the capital to update the shared runtime layout.
+6. Click **Apply Asset Configuration to All Instances** to synchronize the other capitals,
+   then save the level-config asset and the level. Apply discards unsaved arrow edits on those
+   capitals. Check clearance at each capital's rotation after applying.
 
 | Editor preview colour | Meaning |
 |---|---|
@@ -108,9 +110,21 @@ replaces the arrows from the saved asset. Do not use Apply to preserve unsaved a
 The spawn-slot configuration is shared by capitals using that level-config asset, so check the
 other capital orientations after saving it.
 
-The preview uses the orchestrator's level configuration, falling back to the capital's assigned
-level-config asset when no orchestrator is available. Missing configuration, meshes or arrow
-references are reported in the Output Log.
+Under **Ship > Configuration**, **Level Config Asset** shows the resolved shared asset read-only.
+**Spawn Configuration Status** reports whether live arrows match its runtime layout; matching
+does not mean the layout has sufficient clearance. These fields refresh for selected capitals
+with viewport Realtime enabled, even with drawing disabled.
+
+Save, Apply, Apply All and the preview require exactly one orchestrator with a level configuration
+in the editor world. They do not use a stale per-proxy asset binding. Apply All resolves that
+asset once for every capital; applying is undoable as one operation and marks the level modified.
+Save is also undoable but intentionally does not replace other capitals' live arrows.
+Missing configuration, meshes or arrow references are reported in the Output Log.
+
+Turret and tube-spinner proxies also resolve their Apply/Apply All configuration from the
+editor world's orchestrator. These operations support undo and mark the level modified.
+They retain their existing editing actions; only capitals have Save Configuration to Asset.
+Automated proxy regression coverage lives in `Source/SandboxTests/unit/test_proxy_configuration.cpp`.
 
 ### During Play: inspect actual grid collision
 

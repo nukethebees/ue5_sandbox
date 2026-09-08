@@ -494,6 +494,14 @@ void FTestHUDManagerScenario::player_kill_process_samples() {
 // Registration
 /* ------------------------------------------------------------------------------------------ */
 void FTestHUDManagerScenario::registration_process_samples() {
+    auto* const player{ml::spawn_player_ship(
+        context_.world, context_.config.classes.player_ship_class, &context_.config.player_ship)};
+    if (!checks.is_valid(player, TEXT("Player exists for overlay and radar collection"))) {
+        return;
+    }
+    initialise_test_driver();
+    context_.orchestrator.set_player_ship(*player);
+    context_.orchestrator.start_simulation();
     if (!initialise_headless_hud_manager()) {
         return;
     }
@@ -502,7 +510,9 @@ void FTestHUDManagerScenario::registration_process_samples() {
     if (!checks.not_nullptr(orchestrator, TEXT("Orchestrator is available"))) {
         return;
     }
-    auto& hud_manager{orchestrator->get_hud_manager()};
+    // This manager has never had a widget or an overlay tick. The orchestrator's manager
+    // may already have been sampled, which masked the late-registration startup bug.
+    auto& hud_manager{get_headless_hud_manager()};
     checks.are_equal(orchestrator->get_entity_registry().get_num_alive_active_entities(),
                      count_cached_entities(hud_manager),
                      TEXT("Cache exists before HUD registration"));
@@ -535,11 +545,15 @@ void FTestHUDManagerScenario::registration_process_samples() {
 
     hud_manager.unregister_hud(*hud);
     checks.are_equal(0, hud_manager.get_registered_hud_count(), TEXT("HUD unregisters cleanly"));
+    hud_manager.register_hud(*hud);
+    checks.are_equal(
+        1, hud_manager.get_registered_hud_count(), TEXT("HUD can register again without a tick"));
+    hud_manager.unregister_hud(*hud);
     hud->RemoveFromParent();
 
     hud_manager.set_selected_mapping_context(FString{TEXT("after_unregister")});
-    hud_manager.tick(1);
-    get_headless_hud_manager().set_selected_mapping_context(FString{TEXT("after_unregister")});
+    orchestrator->get_hud_manager().set_selected_mapping_context(FString{TEXT("after_unregister")});
+    orchestrator->get_hud_manager().tick(1);
     tick_headless_hud_manager();
     checks.are_equal(0,
                      hud_manager.get_registered_hud_count(),

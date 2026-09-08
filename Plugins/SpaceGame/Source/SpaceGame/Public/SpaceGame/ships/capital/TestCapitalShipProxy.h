@@ -27,7 +27,7 @@ class ATestCapitalShipProxy
         actor_config = new_config;
         level_config_asset = nullptr;
     }
-    void set_level_config_asset(USpaceGameLevelConfig* new_config) noexcept;
+    SPACEGAME_API void set_level_config_asset(USpaceGameLevelConfig* new_config) noexcept;
 
     auto get_team() const noexcept { return team; }
     auto get_target_ship() const noexcept { return target_ship; }
@@ -73,7 +73,7 @@ class ATestCapitalShipProxy
 
     FCapitalShipConfig const* actor_config{nullptr};
 
-    UPROPERTY()
+    UPROPERTY(VisibleInstanceOnly, Category = "Ship|Configuration")
     TObjectPtr<USpaceGameLevelConfig> level_config_asset{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Ship")
@@ -98,6 +98,9 @@ class ATestCapitalShipProxy
     TOptional<float> spawn_cooldown{NullOpt};
 
 #if WITH_EDITORONLY_DATA
+    UPROPERTY(VisibleInstanceOnly, Transient, Category = "Ship|Configuration")
+    FString spawn_configuration_status;
+
     UPROPERTY(EditAnywhere, Category = "Ship|Spawn Preview")
     bool show_fighter_spawn_preview{true};
 
@@ -106,6 +109,9 @@ class ATestCapitalShipProxy
 #endif
 
 #if WITH_EDITOR
+    auto resolve_editor_configuration() const -> USpaceGameLevelConfig*;
+    void apply_spawn_configuration(USpaceGameLevelConfig& config);
+    void update_spawn_configuration_status();
     void draw_fighter_spawn_preview();
     FString spawn_preview_error;
 #endif
