@@ -43,19 +43,6 @@ struct SPACEGAME_API FObserverControlInputs {
     }
 };
 
-USTRUCT(BlueprintType)
-struct SPACEGAME_API FBenchmarkControlInputs {
-    GENERATED_BODY()
-
-    UPROPERTY(EditAnywhere, Category = "Benchmark")
-    TObjectPtr<UInputMappingContext> mapping_context{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Benchmark")
-    TObjectPtr<UInputAction> exit{nullptr};
-
-    [[nodiscard]] auto is_valid() const -> bool { return mapping_context && exit; }
-};
-
 struct SPACEGAME_API FObserverControlContext {
     FObserverControlContext() = default;
     FObserverControlContext(FObserverControlContext const&) = delete;
@@ -101,6 +88,7 @@ struct SPACEGAME_API FObserverControlContext {
     IEnhancedInputSubsystemInterface* input_subsystem_{nullptr};
     FObserverControlInputs const* input_{nullptr};
     TArray<uint32> binding_handles_;
+    TWeakObjectPtr<UInputMappingContext> registered_mapping_;
     int32 speed_index_{initial_speed_index_};
     bool initialised_{false};
     bool bound_{false};

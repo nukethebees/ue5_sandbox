@@ -11,6 +11,19 @@ class USpaceGameLevelConfig;
 
 namespace ml {
 class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
+    struct FModalSample {
+        bool pause_open{false};
+        bool pause_suspended{false};
+        bool pause_rejects_activation{false};
+        bool hud_hidden{false};
+        bool pause_resumed{false};
+        bool completion_open{false};
+        bool completion_suspended{false};
+        bool completion_rejects_activation{false};
+        bool completion_resumed{false};
+        bool hud_restored{false};
+        bool input_restored{false};
+    };
     inline static FTimespan const timeout{0, 0, 2};
   public:
     explicit FLevelLoaderCameraScenario(FSimulationTestContext& context);
@@ -19,15 +32,25 @@ class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
     void load_fixture();
     void load_headless_fixture();
     void sample_runtime(ATestBatchOrchestrator& orchestrator);
+    void sample_modal_transitions();
     void check_runtime();
     void on_tear_down() override;
 
     TimeSeriesData<int32> entity_counts_;
+    TimeSeriesData<FModalSample> modal_samples_;
     TWeakObjectPtr<AActor> camera_;
     TStrongObjectPtr<USpaceGameLevelConfig> original_config_;
 };
 
 class FLevelLoaderScenario final : public FSimulationTestScenario {
+    struct FControlLifecycleSample {
+        bool unpossessed_while_paused{false};
+        bool resumed_without_ship{false};
+        bool possession_enabled_ship{false};
+        bool possession_stayed_suspended{false};
+        bool resumed_with_ship{false};
+        bool bindings_restored{false};
+    };
     struct FSample {
         int32 authored_entities{0};
         int32 blue_players{0};
@@ -55,8 +78,10 @@ class FLevelLoaderScenario final : public FSimulationTestScenario {
   private:
     void load_fixture();
     void sample_runtime(ATestBatchOrchestrator& orchestrator);
+    void sample_controller_lifecycle();
     void check_runtime();
 
     TimeSeriesData<FSample> samples;
+    TimeSeriesData<FControlLifecycleSample> control_samples_;
 };
 }

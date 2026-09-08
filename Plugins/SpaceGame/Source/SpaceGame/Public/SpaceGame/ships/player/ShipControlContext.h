@@ -8,6 +8,7 @@ class ATestSpaceShip;
 class ASpaceGamePlayerController;
 class UEnhancedInputComponent;
 class UInputAction;
+class UInputMappingContext;
 class IEnhancedInputSubsystemInterface;
 struct FInputActionValue;
 
@@ -78,6 +79,7 @@ struct SPACEGAME_API FShipControlContext {
     IEnhancedInputSubsystemInterface* input_subsystem_{nullptr};
     FSpaceShipControllerInputs const* input_{nullptr};
     TArray<uint32> binding_handles_;
+    TWeakObjectPtr<UInputMappingContext> registered_mapping_;
     bool initialised_{false};
     bool bound_{false};
 };

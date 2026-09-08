@@ -1,5 +1,6 @@
 #include "test_level_loader_scenario.h"
 
+#include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -24,6 +25,7 @@
 #include <Camera/PlayerCameraManager.h>
 #include <Engine/GameViewportClient.h>
 #include <EngineUtils.h>
+#include <EnhancedInputComponent.h>
 #include <GameFramework/PlayerController.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Paths.h>
@@ -114,6 +116,15 @@ void FLevelLoaderCameraScenario::load_fixture() {
         checks.is_true(player_controller->get_active_control_context() ==
                            EPlayerControlContext::Benchmark,
                        TEXT("Benchmark context becomes active"));
+        auto* const input_component{
+            CastChecked<UEnhancedInputComponent>(player_controller->InputComponent)};
+        auto const benchmark_binding_count{input_component->GetActionEventBindings().Num()};
+        checks.is_true(player_controller->activate_playerless_camera(
+                           *camera, EPlayerControlContext::Benchmark),
+                       TEXT("Already-active benchmark can be requested again"));
+        checks.are_equal(benchmark_binding_count,
+                         input_component->GetActionEventBindings().Num(),
+                         TEXT("Repeated benchmark activation does not duplicate exit bindings"));
         checks.is_true(!player_controller->is_observer_movement_enabled(),
                        TEXT("Benchmark context disables observer movement"));
         checks.is_true(player_controller->get_active_hud() == nullptr,
@@ -153,6 +164,9 @@ void FLevelLoaderCameraScenario::load_fixture() {
 }
 
 void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) {
+    if (modal_samples_.num() == 0 && test_driver->get_time() > 0.0) {
+        sample_modal_transitions();
+    }
     auto const counts{orchestrator.get_entity_registry().count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
@@ -162,6 +176,67 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
                        counts[blue][capital] + counts[blue][turret] + counts[red][capital] +
                            counts[red][turret]);
     test_driver->advance_timeline();
+}
+
+void FLevelLoaderCameraScenario::sample_modal_transitions() {
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    if (!checks.is_valid(controller, TEXT("Modal test has a player controller"))) {
+        return;
+    }
+    auto* const component{CastChecked<UEnhancedInputComponent>(controller->InputComponent)};
+    auto const binding_count{component->GetActionEventBindings().Num()};
+    auto const* const hud{controller->get_active_hud()};
+    if (!checks.is_true(IsValid(hud), TEXT("Modal test has a HUD"))) {
+        return;
+    }
+    auto const visibility{hud->GetVisibility()};
+    auto* const camera{CastChecked<ACameraActor>(camera_.Get())};
+    auto const rejects_activation = [&] {
+        auto const modal_binding_count{component->GetActionEventBindings().Num()};
+        auto* const view_target{controller->GetViewTarget()};
+        bool rejected{true};
+        for (auto const requested :
+             {EPlayerControlContext::Observer, EPlayerControlContext::Benchmark}) {
+            rejected &= !controller->activate_playerless_camera(*camera, requested);
+            rejected &= controller->get_active_control_context() == EPlayerControlContext::None;
+            rejected &= component->GetActionEventBindings().Num() == modal_binding_count;
+            rejected &= controller->GetViewTarget() == view_target;
+            rejected &= FPlayerControllerTestAccess::has_modal(*controller);
+        }
+        return rejected;
+    };
+    FModalSample sample;
+    auto& orchestrator{context_.orchestrator};
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    sample.pause_open = FPlayerControllerTestAccess::has_modal(*controller);
+    sample.pause_rejects_activation = rejects_activation();
+    sample.pause_suspended =
+        orchestrator.get_state() == EOrchestratorState::Paused &&
+        controller->get_active_control_context() == EPlayerControlContext::None;
+    sample.hud_hidden = hud->GetVisibility() == ESlateVisibility::Collapsed;
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    sample.pause_resumed = orchestrator.get_state() == EOrchestratorState::Running &&
+                           !FPlayerControllerTestAccess::has_modal(*controller) &&
+                           controller->is_observer_movement_enabled();
+
+    FTestMissionCompletion completion;
+    completion.persisted = true;
+    completion.state = ETestMissionState::Succeeded;
+    completion.level_display_name = TEXT("Controller modal test");
+    FPlayerControllerTestAccess::complete(*controller, completion);
+    sample.completion_open = FPlayerControllerTestAccess::has_modal(*controller);
+    sample.completion_rejects_activation = rejects_activation();
+    sample.completion_suspended =
+        orchestrator.get_state() == EOrchestratorState::Paused &&
+        controller->get_active_control_context() == EPlayerControlContext::None;
+    FPlayerControllerTestAccess::close_completion(*controller);
+    sample.completion_resumed = orchestrator.get_state() == EOrchestratorState::Running &&
+                                !FPlayerControllerTestAccess::has_modal(*controller) &&
+                                controller->is_observer_movement_enabled();
+    sample.hud_restored = hud->GetVisibility() == visibility;
+    sample.input_restored = component->GetActionEventBindings().Num() == binding_count;
+    modal_samples_.add(test_driver->get_time(), sample);
 }
 
 void FLevelLoaderCameraScenario::load_headless_fixture() {
@@ -219,6 +294,25 @@ void FLevelLoaderCameraScenario::check_runtime() {
     checks.are_equal(4,
                      entity_counts_.last_value(),
                      TEXT("All playerless authored entities reach the registry"));
+    checks.is_true(!modal_samples_.is_empty(), TEXT("Modal transitions were sampled"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    auto const& modal{modal_samples_.last_value()};
+    checks.is_true(modal.pause_open, TEXT("Pause opens a modal"));
+    checks.is_true(modal.pause_rejects_activation,
+                   TEXT("Pause rejects camera contexts without changing input or UI"));
+    checks.is_true(modal.pause_suspended, TEXT("Pause suspends simulation and gameplay input"));
+    checks.is_true(modal.hud_hidden, TEXT("Pause hides the HUD"));
+    checks.is_true(modal.pause_resumed, TEXT("Closing pause restores Observer and simulation"));
+    checks.is_true(modal.completion_open, TEXT("Completion opens a modal"));
+    checks.is_true(modal.completion_rejects_activation,
+                   TEXT("Completion rejects camera contexts without changing input or UI"));
+    checks.is_true(modal.completion_suspended,
+                   TEXT("Completion suspends simulation and gameplay input"));
+    checks.is_true(modal.completion_resumed,
+                   TEXT("Closing completion restores Observer and simulation"));
+    checks.is_true(modal.hud_restored, TEXT("Modal close restores prior HUD visibility"));
+    checks.is_true(modal.input_restored,
+                   TEXT("Modal transitions do not duplicate global or gameplay bindings"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 }
 
@@ -329,6 +423,9 @@ void FLevelLoaderScenario::load_fixture() {
 }
 
 void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) {
+    if (control_samples_.is_empty() && test_driver->get_time() > 0.0) {
+        sample_controller_lifecycle();
+    }
     auto const& registry{orchestrator.get_entity_registry()};
     auto const& mission{orchestrator.get_mission_manager()};
     auto const counts{registry.count_alive_per_team_and_type()};
@@ -380,6 +477,20 @@ void FLevelLoaderScenario::check_runtime() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& sample{samples.last_value()};
+    checks.is_true(!control_samples_.is_empty(), TEXT("Controller lifecycle was sampled"));
+    SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+    auto const& control{control_samples_.last_value()};
+    checks.is_true(control.unpossessed_while_paused,
+                   TEXT("Unpossession during pause keeps gameplay suspended"));
+    checks.is_true(control.resumed_without_ship,
+                   TEXT("Closing pause without a ship resumes simulation with None"));
+    checks.is_true(control.possession_enabled_ship, TEXT("Possession enables ship control"));
+    checks.is_true(control.possession_stayed_suspended,
+                   TEXT("Possession during pause does not enable input"));
+    checks.is_true(control.resumed_with_ship,
+                   TEXT("Closing pause restores the newly possessed ship"));
+    checks.is_true(control.bindings_restored,
+                   TEXT("Possession and modal transitions retain exactly one set of bindings"));
     checks.are_equal(4, sample.authored_entities, TEXT("All authored entities reach the registry"));
     checks.are_equal(1, sample.blue_players, TEXT("Registry contains the blue player"));
     checks.are_equal(1, sample.blue_capitals, TEXT("Registry contains the blue capital"));
@@ -428,5 +539,46 @@ void FLevelLoaderScenario::run() {
             },
             timeout)
         .Then([this] { check_runtime(); });
+}
+
+void FLevelLoaderScenario::sample_controller_lifecycle() {
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(context_.world.GetFirstPlayerController())};
+    if (!checks.is_valid(controller, TEXT("Possession test has a player controller"))) {
+        return;
+    }
+    auto* const ship{Cast<ATestSpaceShip>(controller->GetPawn())};
+    if (!checks.is_valid(ship, TEXT("Possession test starts with a possessed ship"))) {
+        return;
+    }
+    auto* const component{CastChecked<UEnhancedInputComponent>(controller->InputComponent)};
+    auto const binding_count{component->GetActionEventBindings().Num()};
+    auto& orchestrator{context_.orchestrator};
+    FControlLifecycleSample sample;
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    controller->UnPossess();
+    sample.unpossessed_while_paused =
+        orchestrator.get_state() == EOrchestratorState::Paused && !IsValid(controller->GetPawn()) &&
+        controller->get_active_control_context() == EPlayerControlContext::None;
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    sample.resumed_without_ship =
+        orchestrator.get_state() == EOrchestratorState::Running &&
+        controller->get_active_control_context() == EPlayerControlContext::None;
+    controller->Possess(ship);
+    sample.possession_enabled_ship =
+        controller->get_active_control_context() == EPlayerControlContext::Player;
+
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    controller->UnPossess();
+    controller->Possess(ship);
+    sample.possession_stayed_suspended =
+        orchestrator.get_state() == EOrchestratorState::Paused &&
+        controller->get_active_control_context() == EPlayerControlContext::None;
+    FPlayerControllerTestAccess::toggle_pause(*controller);
+    sample.resumed_with_ship =
+        orchestrator.get_state() == EOrchestratorState::Running &&
+        controller->get_active_control_context() == EPlayerControlContext::Player;
+    sample.bindings_restored = component->GetActionEventBindings().Num() == binding_count;
+    control_samples_.add(test_driver->get_time(), sample);
 }
 }

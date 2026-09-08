@@ -15,6 +15,8 @@ class FTestPlayerShipDeathScenario final : public FSimulationTestScenario {
         bool player_handle_is_dead{false};
         bool player_actor_is_valid{false};
         bool player_unique_entity_is_alive{false};
+        bool controller_has_pawn{false};
+        bool ship_control_active{false};
     };
 
     inline static FTimespan const timeout{0, 0, 2};

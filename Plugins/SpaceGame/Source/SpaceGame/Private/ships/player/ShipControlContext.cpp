@@ -207,7 +207,8 @@ void FShipControlContext::add_mapping_context() {
 
     FModifyContextOptions options{};
     options.bNotifyUserSettings = true;
-    input_subsystem_->AddMappingContext(input_->get_mapping_context(), 0, options);
+    registered_mapping_ = input_->get_mapping_context();
+    input_subsystem_->AddMappingContext(registered_mapping_.Get(), 0, options);
 
     if (auto* const owner{owner_.Get()}) {
         auto const* const settings{input_subsystem_->GetUserSettings()};
@@ -218,12 +219,10 @@ void FShipControlContext::add_mapping_context() {
 }
 
 void FShipControlContext::remove_mapping_context() {
-    if (!input_subsystem_object_.IsValid() || !input_subsystem_ || !input_ ||
-        !IsValid(input_->get_mapping_context())) {
-        return;
+    if (input_subsystem_object_.IsValid() && input_subsystem_ && registered_mapping_.IsValid()) {
+        input_subsystem_->RemoveMappingContext(registered_mapping_.Get());
     }
-
-    input_subsystem_->RemoveMappingContext(input_->get_mapping_context());
+    registered_mapping_.Reset();
 }
 
 void FShipControlContext::neutralise_ship_input() {
