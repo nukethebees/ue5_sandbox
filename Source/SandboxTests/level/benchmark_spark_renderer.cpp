@@ -79,7 +79,7 @@ void append_summary(FString& csv,
 }
 } // namespace SparkBenchmark
 
-TEST_CLASS(SparkRendererBenchmark, "Sandbox.SparkBenchmark")
+TEST_CLASS(SparkRendererBenchmark, "SandboxBenchmarks.SparkBenchmark")
 {
     TUniquePtr<FMapTestSpawner> spawner_{nullptr};
     USparkRendererComponent* renderer_{nullptr};

@@ -394,9 +394,9 @@ set_tests_properties(Sandbox.SparkRenderTests PROPERTIES
 )
 
 add_test(
-  NAME Sandbox.SparkBenchmark
+  NAME SandboxBenchmarks.SparkBenchmark
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    "-ExecCmds=Automation RunTests StartsWith:Sandbox.SparkBenchmark; Quit"
+    "-ExecCmds=Automation RunTests StartsWith:SandboxBenchmarks.SparkBenchmark; Quit"
     "-SandboxSparkBenchmarkSeconds=${SANDBOX_SPARK_BENCHMARK_SECONDS}"
     "-SandboxSparkBenchmarkCapacity=${SANDBOX_SPARK_BENCHMARK_CAPACITY}"
     "-SandboxSparkBenchmarkSparksPerHit=${SANDBOX_SPARK_BENCHMARK_SPARKS_PER_HIT}"
@@ -412,7 +412,7 @@ add_test(
     -ddc=NoZenLocalFallback
     "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
 )
-set_tests_properties(Sandbox.SparkBenchmark PROPERTIES
+set_tests_properties(SandboxBenchmarks.SparkBenchmark PROPERTIES
   LABELS spark-benchmark
   TIMEOUT 1200
   WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"

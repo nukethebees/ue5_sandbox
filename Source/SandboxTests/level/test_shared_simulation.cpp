@@ -482,7 +482,7 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
 
 #undef SHARED_SIMULATION_TEST
 
-TEST_CLASS(TelemetryBenchmark, "Sandbox.TelemetryBenchmark")
+TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
 {
     inline static ml::FTestBatchOrchestratorLevelSetup level_setup{};
 

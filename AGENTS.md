@@ -75,6 +75,7 @@ Unreal Engine 5.8 project.
 * Only create tests when explicitly asked.
 * Prefer Catch2 for code without Unreal Engine/editor dependencies. Catch2 targets must not depend on engine/editor modules such as `CoreUObject`, `Engine`, `Slate`, `UMG`, or `UnrealEd`.
 * Use CQTest/Unreal automation tests for code with engine/editor dependencies.
+* Register Unreal Automation benchmarks under the top-level `SandboxBenchmarks` category.
 * Run builds and tests through the repository CMake workflows. Do not launch Unreal or run automation tests outside that flow unless explicitly asked.
 * Python scripts may be run when needed; run Pyright on changed Python files.
 * For level tests:
