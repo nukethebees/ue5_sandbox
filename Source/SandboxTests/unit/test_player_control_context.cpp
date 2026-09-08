@@ -10,6 +10,7 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/ui/main_menu/ControlChordCapture.h>
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 
 #include <CQTest.h>
@@ -446,6 +447,42 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Move dead zone leaves usable axis range"),
                               settings->gamepad_move_dead_zone(),
                               0.95f);
+    }
+
+    TEST_METHOD(ControlChordCapturePreservesOrderedCandidate)
+    {
+        ml::ioj::FControlChordCapture capture;
+        TestRunner->TestFalse(TEXT("Non-holdable input cannot start a chord"),
+                              capture.accept(EKeys::MouseScrollUp, false));
+        TestRunner->TestFalse(TEXT("Chord remains empty"), capture.held_key().IsValid());
+
+        TestRunner->TestFalse(TEXT("First held input starts capture"),
+                              capture.accept(EKeys::ThumbMouseButton, true));
+        TestRunner->TestEqual(
+            TEXT("First input is held"), capture.held_key(), EKeys::ThumbMouseButton);
+        capture.release(EKeys::ThumbMouseButton);
+        TestRunner->TestFalse(TEXT("Released activator cancels partial capture"),
+                              capture.held_key().IsValid());
+
+        capture.accept(EKeys::ThumbMouseButton, true);
+        TestRunner->TestTrue(TEXT("Second input completes capture"),
+                             capture.accept(EKeys::W, true));
+        TestRunner->TestEqual(TEXT("Earlier input is the activator"),
+                              capture.activator_key(),
+                              EKeys::ThumbMouseButton);
+        TestRunner->TestEqual(TEXT("Last input is the action"), capture.action_key(), EKeys::W);
+
+        capture.release(EKeys::W);
+        capture.release(EKeys::ThumbMouseButton);
+        TestRunner->TestTrue(TEXT("Completed candidate survives releases"), capture.is_complete());
+        TestRunner->TestFalse(TEXT("Completed candidate is frozen"),
+                              capture.accept(EKeys::D, true));
+        TestRunner->TestEqual(
+            TEXT("Frozen action remains unchanged"), capture.action_key(), EKeys::W);
+
+        capture.clear();
+        TestRunner->TestFalse(TEXT("Clear removes the candidate"), capture.is_complete());
+        TestRunner->TestFalse(TEXT("Clear removes the held input"), capture.held_key().IsValid());
     }
 
     TEST_METHOD(NewSamplingSessionStartsWithNeutralControl)

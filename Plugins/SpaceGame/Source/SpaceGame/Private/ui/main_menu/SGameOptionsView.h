@@ -2,6 +2,7 @@
 
 #include "SpaceGame/settings/ControlSettingsTypes.h"
 #include "SpaceGame/settings/GameSettings.generated.h"
+#include "SpaceGame/ui/main_menu/ControlChordCapture.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/style/GameUiStyle.h"
 
@@ -133,8 +134,7 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SVerticalBox> controls_content_{};
     TOptional<FControlBindingAddress> captured_binding_{};
     TOptional<FControlChordBindingView> captured_chord_{};
-    TArray<FKey> held_chord_keys_{};
-    FKey captured_chord_activator_{};
+    FControlChordCapture chord_capture_{};
     FKey captured_key_{};
     int32 captured_chord_dependent_count_{};
     FText control_profile_error_{};
