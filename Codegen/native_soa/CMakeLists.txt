@@ -1,4 +1,5 @@
 find_package(benchmark CONFIG REQUIRED)
+find_package(mimalloc CONFIG REQUIRED)
 find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 
 add_executable(native-soa-generate generate.cpp)
@@ -25,6 +26,32 @@ set_tests_properties(native-soa-tests PROPERTIES LABELS "native-soa")
 
 add_executable(native-soa-benchmarks benchmarks.cpp)
 target_link_libraries(native-soa-benchmarks PRIVATE native-soa benchmark::benchmark_main)
+add_executable(native-soa-reserve-matrix reserve_matrix.cpp)
+target_link_libraries(native-soa-reserve-matrix PRIVATE native-soa benchmark::benchmark_main)
+target_compile_definitions(native-soa-reserve-matrix PRIVATE NATIVE_SOA_MIMALLOC=0)
+add_executable(native-soa-reserve-matrix-mimalloc reserve_matrix.cpp)
+target_compile_definitions(native-soa-reserve-matrix-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
+target_link_libraries(native-soa-reserve-matrix-mimalloc PRIVATE native-soa benchmark::benchmark_main
+  $<IF:$<TARGET_EXISTS:mimalloc-static>,mimalloc-static,mimalloc>)
+add_executable(native-soa-tests-mimalloc tests.cpp)
+target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
+target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main
+  $<IF:$<TARGET_EXISTS:mimalloc-static>,mimalloc-static,mimalloc>)
+add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
+set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "native-soa")
+
+foreach(matrix_target IN ITEMS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc native-soa-tests-mimalloc)
+  if(MSVC)
+    target_compile_options(${matrix_target} PRIVATE /W4 /WX /fp:precise /arch:AVX2 /Zi)
+    target_link_options(${matrix_target} PRIVATE /DEBUG)
+  else()
+    target_compile_options(${matrix_target} PRIVATE -Wall -Wextra -Werror -mavx2 -ffp-contract=off -g)
+    if(WIN32)
+      target_compile_options(${matrix_target} PRIVATE -gcodeview)
+      target_link_options(${matrix_target} PRIVATE -Xlinker /DEBUG)
+    endif()
+  endif()
+endforeach()
 if(MSVC)
   target_compile_options(native-soa-tests PRIVATE /W4 /WX)
   target_compile_options(native-soa-benchmarks PRIVATE /W4 /WX /fp:precise /arch:AVX2 /Zi)
@@ -53,3 +80,17 @@ add_custom_target(native-soa-reserve-report
   COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-benchmarks.py"
     --input "${NATIVE_SOA_RESULTS}" --output-dir "${CMAKE_BINARY_DIR}/native-soa-plots"
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
+
+add_custom_target(native-soa-reserve-matrix-report
+  COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/run-native-soa-reserve-matrix.py"
+    --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
+    --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
+    --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"
+  DEPENDS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc USES_TERMINAL VERBATIM)
+add_test(NAME native-soa-reserve-matrix-smoke
+  COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/run-native-soa-reserve-matrix.py"
+    --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
+    --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
+    --rows 4096 --owners 1 4 --dry-run
+    --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix-smoke")
+set_tests_properties(native-soa-reserve-matrix-smoke PROPERTIES LABELS "native-soa")

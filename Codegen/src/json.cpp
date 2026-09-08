@@ -306,12 +306,23 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
         fixed = parse_fixed(value.at("fixed"), path + "/fixed");
     }
     std::optional<std::string> experimental_single_allocation;
+    std::vector<SingleAllocationVariant> single_allocation_variants;
     if (value.contains("experimental_single_allocation")) {
         auto const experimental_path{path + "/experimental_single_allocation"};
         auto const& configuration{value.at("experimental_single_allocation")};
-        reject_unknown(configuration, experimental_path, {"name"});
+        reject_unknown(configuration, experimental_path, {"name", "variants"});
         experimental_single_allocation =
             required<std::string>(configuration, "name", experimental_path);
+        if (auto const* variants{optional_array(configuration, "variants", experimental_path)}) {
+            for (auto const& variant : *variants) {
+                auto const variant_path{experimental_path + "/variants"};
+                reject_unknown(variant, variant_path, {"name", "allocator"});
+                single_allocation_variants.push_back(
+                    {required<std::string>(variant, "name", variant_path),
+                     parse_type_ref(required_value(variant, "allocator", variant_path),
+                                    variant_path + "/allocator")});
+            }
+        }
     }
     return SoaSchema{
         .name = required<std::string>(value, "name", path),
@@ -327,6 +338,7 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
         .copy_element_memberwise = value_or<bool>(value, "copy_element_memberwise", false, path),
         .fixed = std::move(fixed),
         .experimental_single_allocation = std::move(experimental_single_allocation),
+        .single_allocation_variants = std::move(single_allocation_variants),
     };
 }
 

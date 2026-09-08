@@ -90,6 +90,13 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
                 .new_lines(2)
                 .add(lower_single_allocation_node(
                     schema, schemas, types, module.experimental_stdlib));
+            for (auto const& variant : schema.single_allocation_variants) {
+                auto copy{schema};
+                copy.experimental_single_allocation = variant.name;
+                copy.single_allocation_allocator = variant.allocator;
+                header.new_lines(2).add(
+                    lower_single_allocation_node(copy, schemas, types, module.experimental_stdlib));
+            }
             lowered.header = header.build();
         }
         lowered_structs.push_back(std::move(lowered));
@@ -179,6 +186,10 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
             names.insert(*schema.experimental_single_allocation);
             names.insert(*schema.experimental_single_allocation + "Storage");
         }
+        for (auto const& variant : schema.single_allocation_variants) {
+            names.insert(variant.name);
+            names.insert(variant.name + "Storage");
+        }
     }
     for (auto const& variant : module.experimental_array_allocators) {
         if (variant.prefix.empty() ||
@@ -203,6 +214,7 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
                 }
             }
             copy.experimental_single_allocation.reset();
+            copy.single_allocation_variants.clear();
             copy.array_allocator = variant.allocator;
             for (auto& member : copy.members) {
                 if (member.kind == SoaMemberKind::nested) {

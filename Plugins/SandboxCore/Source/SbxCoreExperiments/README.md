@@ -103,7 +103,7 @@ Select another operation, or combine operations with a regex:
 
 ```powershell
 ctest --preset single-allocation-soa-benchmark -R '^SandboxCore\.SingleAllocation\.Timing\.populated_growth$'
-ctest --preset single-allocation-soa-benchmark -R '^SandboxCore\.SingleAllocation\.Timing\.(reserve_[0-9]+|populated_growth)$'
+ctest --preset single-allocation-soa-benchmark -R '^SandboxCore\.SingleAllocation\.Timing\.(reserve_[0-9]+_owners_[0-9]+_[A-Za-z]+|populated_growth)$'
 ctest --preset single-allocation-soa-benchmark --show-only
 ```
 
@@ -254,10 +254,85 @@ After changing the Unreal helper to `FMemory::Realloc(nullptr, bytes, alignment)
 Build, generated compile smoke, and all 64 benchmark-correctness assertions passed. The current Catch2 measurement includes `Free`, which still poisons allocated storage; it is not the isolated-reserve measurement used by the original manual timer or native Google Benchmark. Thus this run does not quantify the isolated benefit of skipping Malloc poisoning. The remaining 65,536-row lifecycle regression requires separating allocation from poisoned cleanup before attributing it to reserve. The captured log is `.local/benchmarks/single-allocation/unreal-realloc-reserve.log`, and current PNG plots are under `out/build/benchmark/single-allocation-soa-plots/`.
 
 
-Unreal reserve cases are individually selectable as `SandboxCore.SingleAllocation.Timing.reserve_4096`, `reserve_65536`, and `reserve_1048576` (each has the same full prefix). The reserve preset selects all three; use `ctest --preset single-allocation-soa-reserve -R reserve_65536` for just that size. These cases use their named row count rather than the CLI count override. CSV operation labels remain `reserve`. Timing and allocation CSV output lives in `single_allocation_soa_results.cpp`; benchmark dispatch takes the operation enum, row count, and append batch size directly.
+Unreal reserve cases are individually selectable as `SandboxCore.SingleAllocation.Timing.reserve_<rows>_owners_<owners>_<implementation>`, for example `SandboxCore.SingleAllocation.Timing.reserve_65536_owners_200_TArray`. There are 264 tests: three row counts times eleven owner counts times eight implementations. The reserve preset selects all 264; use `ctest --preset single-allocation-soa-reserve -R reserve_65536` for just that size. These cases use their named row count rather than the CLI count override. CSV operation labels are now `reserve_<owners>`, keeping the batch measurements separate from historical single-owner `reserve` results. Timing and allocation CSV output lives in `single_allocation_soa_results.cpp`; benchmark dispatch takes the operation enum, row count, and append batch size directly.
 
-Each Unreal reserve case also reports `raw malloc`, `raw realloc`, `SoA malloc (53 columns)`, and `SoA realloc (53 columns)` in Catch2 console output. The SoA references are generated `MallocEntityData` and `ReallocEntityData` owners: every leaf TArray, including the vector/countdown children, uses the selected dumb allocator. They use the same schema, field order, and generated operations as the ordinary owner. The earlier single-byte-array references have been removed.
+Separate Unreal reserve tests measure **1, 2, 4, 8, 16, 32, 64, 128, 200, 256, and 512 owners**, stored in a dynamically sized `std::vector`. The matrix script and CTest launch each row-count/owner-count/implementation test in a fresh process. TArray, Single, SingleMimalloc, SoAMimalloc, RawMalloc, RawRealloc, SoAMalloc, and SoARealloc therefore run separately, with no process-local allocator state carried between them. Catch2 calibration and samples still share state within each individual benchmark. Selecting multiple tests directly with an executable wildcard runs them in one process; use the script or CTest for the isolated sweep. The outer vector allocation and destruction are included. The loop reserves the named row count in every owner before any owner is destroyed, retaining `owners * 53` column allocations for each TArray-based representation versus `owners` for Single. Each Catch2 invocation includes the complete allocation loop and subsequent destruction; reported times are for the whole batch. Divide by the owner count for amortized time per owner. For 200 owners, at 65,536 rows this retains about 2.38 GiB of requested payload; at 1,048,576 rows it retains about 38.1 GiB, before allocator overhead. These measurements test allocation under a larger retained workload; they do not by themselves establish whether allocator pools caused the earlier difference.
+
+Each Unreal reserve case also reports `RawMalloc`, `RawRealloc`, `SoAMalloc`, and `SoARealloc` in Catch2 console output. The raw cases allocate all blocks in the batch before freeing any of them. The SoA references are generated `MallocEntityData` and `ReallocEntityData` owners: every leaf TArray, including the vector/countdown children, uses the selected dumb allocator. They use the same schema, field order, and generated operations as the ordinary owner. The earlier single-byte-array references have been removed.
 
 The experimental manifest's `experimental_array_allocators` entries specify a type prefix and allocator type reference. The generator clones dynamic schemas and their nested references, then emits ordinary TArray-backed owners through the existing generator with an explicit allocator template argument. This is opt-in; production schemas are unchanged, and the native stdlib projection excludes the Unreal allocator variants.
 
-Both reference allocators reuse Unreal's sized allocator base, reserve exact requested element capacities without allocator quantization, and enforce at least 64-byte alignment (higher for over-aligned leaves). The Malloc allocator handles resizing with Malloc/copy/Free; the Realloc allocator uses Realloc. Each SoA reserve allocates 53 column blocks. Raw references allocate one block of the full single-owner byte count at its required alignment. All these timings include Free/destruction and any active poisoning. The extra references appear in Catch2 output, not the existing two-owner CSV plots.
+Both reference allocators reuse Unreal's sized allocator base, reserve exact requested element capacities without allocator quantization, and enforce at least 64-byte alignment (higher for over-aligned leaves). The Malloc allocator handles resizing with Malloc/copy/Free; the Realloc allocator uses Realloc. Each SoA reserve allocates 53 column blocks. Raw references allocate one block of the full single-owner byte count at its required alignment. All these timings include Free/destruction and any active poisoning. All six implementations are exported in `reserve-records.csv` (including confidence bounds), `reserve-matrix-<rows>.csv` (batch means in milliseconds), and `reserve-matrix-<rows>.png` (batch and amortized times). Existing two-owner plots remain available. The CMake plot workflow generates these matrix artifacts automatically when the input log includes reserve batches.
+Build with `cmake --build --preset benchmark`, then run and plot the 65,536-row matrix with:
+
+```powershell
+./Scripts/run-soa-reserve-matrix.ps1 -Rows 65536 -Samples 10
+```
+
+The script saves the log and plots under `.local/benchmarks/single-allocation/reserve-matrix-per-implementation/`. The 512-owner batch holds about 6.09 GiB at 65,536 rows (97.5 GiB at 1,048,576 rows); choose the row count with available memory in mind.
+
+The native reserve matrix is an additional Google Benchmark flow:
+
+```powershell
+cmake --workflow --preset native-soa-reserve-matrix
+```
+
+It builds and tests both allocator configurations, runs 65,536 rows at all eleven owner counts, then writes JSON, CSV and PNG under `out/build/native-soa/native-soa-reserve-matrix/`. To rerun only measurements and plots after building, use `cmake --build --preset native-soa-reserve-matrix`.
+
+Every matrix entry starts a fresh process: four implementations (Vector, Single, RawMalloc, RawRealloc) times two allocator configurations times eleven owner counts = 88 processes. Each process runs ten Google Benchmark repetitions with a 0.1-second minimum calibration target. Each measured iteration allocates a dynamically sized outer vector, reserves all owners/blocks, retains the complete batch, and destroys it. No rows are explicitly written. Plots show batch and amortized means with min–max repetition ranges, not confidence intervals. CSV cells are mean milliseconds per batch. JSON preserves each process's full Google Benchmark results and context. Calibration and repetitions still reuse allocator state within that process; process isolation does not make every allocation cold or reset OS page state. Random interleaving is unnecessary within a process containing one benchmark; the runner uses a fixed process order.
+
+The standard configuration uses normal `std::vector` allocation and aligned C++ new/delete for Single; the Windows CRT `_aligned_malloc` and `_aligned_realloc(nullptr, ...)` provide raw references. The mimalloc configuration uses vcpkg mimalloc 3.5.0 through explicit allocators: generated vectors use an alignment-aware allocator calling `mi_new_aligned`/`mi_free`, Single uses `mi_new_aligned`/`mi_free_aligned`, and raw references use `mi_malloc_aligned` or `mi_realloc_aligned(nullptr, ...)` with `mi_free`. These follow mimalloc's [aligned allocation API](https://microsoft.github.io/mimalloc/group__aligned.html) and [C++ allocation API](https://microsoft.github.io/mimalloc/group__cpp.html). The native generator emits a `native_soa::Vector<T>` alias that remains `std::vector<T>` by default. The mimalloc target defines `NATIVE_SOA_MIMALLOC=1`; compile each executable consistently because this changes generated member types. Nested columns use the same alias. The harness and outer owner/pointer vector retain their standard allocator in both configurations; no global allocator override is installed.
+
+This standalone mimalloc build has no Unreal poison proxy, does not intentionally fill reserved bytes, and is not equivalent to Unreal's mimalloc version/configuration. The experiment compares allocation and cleanup behavior, not page-write throughput. The existing native reserve benchmark and its measurement boundaries are unchanged.
+
+To select a smaller native matrix or replot:
+
+```powershell
+uv run Scripts/run-native-soa-reserve-matrix.py --standard out/build/native-soa/Codegen/native_soa/native-soa-reserve-matrix.exe --mimalloc out/build/native-soa/Codegen/native_soa/native-soa-reserve-matrix-mimalloc.exe --rows 65536 --owners 1 200 512 --output-dir .local/benchmarks/native-soa-matrix
+uv run Scripts/run-native-soa-reserve-matrix.py --plot-only --output-dir out/build/native-soa/native-soa-reserve-matrix
+```
+
+The native CTest preset exercises both allocator variants with the existing runtime tests, verifies alignment (including 256-byte leaves) and mimalloc pointer provenance, and runs a 16-process dry-run/JSON/CSV/plot smoke check. Dry-run plots are labelled and must not be used as timing results.
+The 2026-09-08 run with a fresh process for every implementation/owner-count pair used 65,536 rows, all eleven owner counts, ten Catch2 samples per Unreal case and ten Google Benchmark repetitions per native case. Selected **512-owner batch means, including cleanup**, were:
+
+| Configuration | TArray / Vector | Single | Raw Malloc | Raw Realloc |
+|---|---:|---:|---:|---:|
+| Unreal | 371.107 ms | 878.585 ms | 1,126.828 ms | 858.076 ms |
+| Native standard allocator | 484.963 ms | 4.463 ms | 4.567 ms | 4.526 ms |
+| Native mimalloc 3.5.0 | 7.094 ms | 0.528 ms | 0.515 ms | 0.529 ms |
+
+Unreal's explicit Malloc/Realloc SoA variants measured 683.259/360.977 ms at 512 owners. Single continues to track the corresponding raw single-block allocation closely. Isolating implementations did not remove the Unreal regression. Native mimalloc Single was about 13.4 times faster than its Vector counterpart; the regression therefore does not reproduce in this standalone mimalloc configuration. These results do not isolate the poison proxy from other Unreal allocator/version/build differences. Allocator calibration remains warm within each process and the native standard Vector repetitions show substantial variation; consult the plotted ranges and raw JSON rather than treating these means as universal costs.
+
+Unreal artifacts are under `.local/benchmarks/single-allocation/reserve-matrix-per-implementation/`; native artifacts are under `out/build/native-soa/native-soa-reserve-matrix/`. Both include all owner counts in CSV and PNG. The existing owner-count-only isolated results remain in their separate earlier directory for comparison.
+Unreal also has a direct mimalloc single-allocation variant, `MimallocEntityDataSingle` (benchmark label `SingleMimalloc`), and `MimallocAlignmentDataSingle` for runtime validation. It shares the original owner's views, flattened layout, capacity policy and lifetime operations. The schema's `experimental_single_allocation.variants` array adds named owners with an allocator type implementing `allocate(bytes, alignment)` and `free(data)`; all allocation/free sites, including growth and move assignment, use that allocator. The native projection omits these Unreal-specific variants.
+
+`MimallocStorageAllocator` calls the vcpkg 3.5.0 DLL directly through `mi_malloc_aligned`/`mi_free`. Unreal already defines mimalloc symbols, so the experiment stages this DLL as `sbx-mimalloc.dll` and loads its exports explicitly from the executable directory, avoiding import-library symbol collisions. It retains the DLL for process lifetime. The engine's global allocator is unchanged; only this owner's backing block bypasses FMemory and its poison proxy. Outer benchmark vectors still use Unreal's normal C++ allocation. The standard `Single` case remains FMemory-backed. CMake's Unreal presets provision the shared `soa-mimalloc` vcpkg feature, and UBT stages the DLLs through `SbxCoreExperiments.Build.cs`.
+
+Run a focused 200-owner comparison and generate its plots with:
+
+```powershell
+./Scripts/run-soa-reserve-matrix.ps1 -Rows 65536 -Owners 200 -Samples 10
+```
+
+Or select the new benchmark directly: `SandboxCore.SingleAllocation.Timing.reserve_65536_owners_200_SingleMimalloc`. The runtime correctness suite exercises its growth, defaulting, views and operations, plus 32/64/256-byte alignment, pointer provenance, reset and move ownership.
+The focused Unreal comparison on 2026-09-08 (200 owners, 65,536 rows, ten samples, one process per implementation, cleanup included) measured TArray **126.973 ms**, FMemory Single **318.656 ms**, and direct SingleMimalloc **0.115195 ms** per batch. SingleMimalloc's 95% confidence interval was 0.105175–0.153625 ms; its mean is close to the native mimalloc batch mean of 0.107765 ms. This strongly points toward costs in the Unreal allocation/free path rather than the generated layout. It bypasses the poison proxy but also changes mimalloc version/configuration, so it is not a controlled poisoning-only comparison. Runtime validation passed 503 assertions, including mimalloc pointer provenance.
+The final allocator comparison adds `MimallocArrayAllocator` and generated `MimallocEntityData` (benchmark label `SoAMimalloc`). All 53 TArrays use the same vcpkg mimalloc DLL as `SingleMimalloc`. `CallRealloc` calls `mi_realloc_aligned` with at least 64-byte alignment; `CallFree` calls `mi_free`, and resizing to zero also uses `CallFree`. Reserve requests exact capacities, matching the existing reference allocators. Unreal's sized allocator base still handles TArray's ownership and growth interface. The owner and its nested arrays are generated by the existing allocator-variant path.
+
+To compare only the two mimalloc-backed layouts in fresh processes across every owner count:
+
+```powershell
+./Scripts/run-soa-reserve-matrix.ps1 -Rows 65536 -Samples 100 -Implementations SingleMimalloc,SoAMimalloc -OutputDirectory .local/benchmarks/single-allocation/mimalloc-layout-comparison
+```
+
+The plot script accepts reserve subsets without requiring the original TArray/Single pair. Both layouts retain the complete batch before cleanup. This isolates the layout comparison from the Unreal FMemory poison proxy, although TArray and Single retain their different allocation APIs (Realloc versus Malloc) and column-address alignment. The correctness suite covers default construction, preserved values through reserve/reallocation, aligned nested columns, allocator provenance, move assignment over existing allocations, reset and emptying.
+The final same-mimalloc Unreal sweep on 2026-09-08 used 65,536 rows, all eleven owner counts, 100 Catch2 samples and a fresh process per case. Mean reserve-plus-destruction batch times were:
+
+| Owners | SingleMimalloc | SoAMimalloc (53 TArrays) | Single speedup |
+|---:|---:|---:|---:|
+| 1 | 0.000250 ms | 0.002987 ms | 12.0x |
+| 200 | 0.111353 ms | 1.179429 ms | 10.6x |
+| 512 | 0.525274 ms | 5.896735 ms | 11.2x |
+
+Single was 10.6–13.9 times faster across the full sweep. Both implementations allocate and free through the same DLL; neither passes backing-block cleanup through FMemory. At 200 owners the comparison retains 200 blocks versus 10,600 column blocks before destruction. The matrix PNG, CSV, confidence bounds and per-process logs are in `.local/benchmarks/single-allocation/mimalloc-layout-comparison/`.
+
+This closes the allocator comparison: the single-allocation representation has a substantial reserve/lifecycle advantage when both layouts use standalone mimalloc. The earlier FMemory regression is not evidence against the layout itself. Keep the implementation experimental; these empty-reserve measurements include allocator reuse during calibration, do not explicitly write rows, and do not establish production simulation performance or isolate the poison proxy from every Unreal allocator difference. Production adoption should depend on end-to-end measurements in the intended build configuration. The final build, 642 Unreal correctness assertions, all 16 native/codegen CTest entries, formatting and Pyright passed.

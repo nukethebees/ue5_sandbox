@@ -23,7 +23,7 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
                                              .structs = std::move(structs),
                                              .experimental_stdlib = true}}}))};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("std::vector<std::int32_t> ids"), std::string::npos);
+    EXPECT_NE(output.find("ml::native_soa::Vector<std::int32_t> ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<std::int32_t const> ids"), std::string::npos);
     EXPECT_NE(output.find("std::span<float> xs"), std::string::npos);
     EXPECT_NE(output.find("layout_align(ids_block_end, nested_xs_alignment)"), std::string::npos);
@@ -74,6 +74,18 @@ TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
     EXPECT_THROW(
         lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}),
         std::invalid_argument);
+}
+
+TEST(SingleAllocationSoa, SingleAllocatorVariantPreservesViewsAndRoutesOwnership) {
+    auto input{schemas()};
+    input.back().single_allocation_variants = {{"CustomSingle", TypeRef{"CustomAllocator"}}};
+    auto const output{render(input)};
+    EXPECT_NE(output.find("struct CustomSingleStorage"), std::string::npos);
+    EXPECT_NE(output.find("CustomAllocator::allocate("), std::string::npos);
+    EXPECT_NE(output.find("CustomAllocator::free(data_)"), std::string::npos);
+    EXPECT_NE(output.find("FMemory::Free(data_)"), std::string::npos);
+    input.back().single_allocation_variants.front().name = input.back().name;
+    EXPECT_THROW(render(input), std::invalid_argument);
 }
 
 TEST(SingleAllocationSoa, EmitsSiblingWithSharedViewsAndOneOwnerState) {

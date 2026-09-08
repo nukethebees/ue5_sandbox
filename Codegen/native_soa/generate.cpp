@@ -27,6 +27,7 @@ auto main(int argc, char** argv) -> int {
                            .header = "native_soa_types.h",
                            .namespace_name = "ml::native_experiment"};
         for (auto& schema : native.structs) {
+            schema.single_allocation_variants.clear();
             schema.export_specifier.reset();
             for (auto& member : schema.members) {
                 auto& name{member.type.name};

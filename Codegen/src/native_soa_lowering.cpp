@@ -53,8 +53,9 @@ auto lower_native_soa(SoaSchema const& schema,
     for (auto const& member : layout.members) {
         auto const& type{member.member.element_type};
         dependencies.insert(dependencies.end(), type.dependencies.begin(), type.dependencies.end());
-        out << (member.schema->kind == SoaMemberKind::array ? "std::vector<" + type.spelling + ">"
-                                                            : type.spelling)
+        out << (member.schema->kind == SoaMemberKind::array
+                    ? "ml::native_soa::Vector<" + type.spelling + ">"
+                    : type.spelling)
             << " " << member.schema->name << ";\n";
     }
     out << "auto num() const noexcept -> size_type { return static_cast<size_type>("

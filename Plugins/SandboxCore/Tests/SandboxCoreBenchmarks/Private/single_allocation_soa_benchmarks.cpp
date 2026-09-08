@@ -10,6 +10,7 @@
 #include <catch2/benchmark/catch_benchmark.hpp>
 
 #include <algorithm>
+#include <vector>
 
 #include <string>
 
@@ -241,6 +242,7 @@ TEST_CASE("SandboxCore.SingleAllocation.BenchmarkCorrectness") {
     };
     check_allocator.operator()<MallocAllocator>();
     check_allocator.operator()<ReallocAllocator>();
+    check_allocator.operator()<MimallocArrayAllocator>();
     auto check_soa = []<typename Owner> {
         Owner owner;
         owner.reserve(129);
@@ -261,6 +263,46 @@ TEST_CASE("SandboxCore.SingleAllocation.BenchmarkCorrectness") {
     };
     check_soa.operator()<MallocEntityData>();
     check_soa.operator()<ReallocEntityData>();
+    check_soa.operator()<MimallocEntityData>();
+    {
+        MimallocAlignmentData owner;
+        owner.add_defaulted(129);
+        owner.nested.xs[128] = 42.f;
+        owner.reserve(4097);
+        each_leaf(owner, [](auto const& column) {
+            using Element = std::remove_cvref_t<decltype(column[0])>;
+            REQUIRE(reinterpret_cast<UPTRINT>(column.GetData()) % std::max(SIZE_T{64}, alignof(Element)) == 0);
+            REQUIRE(MimallocStorageAllocator::owns(column.GetData()));
+        });
+        auto moved{std::move(owner)};
+        owner.add_defaulted(1);
+        owner = std::move(moved);
+        REQUIRE(owner.nested.xs[128] == 42.f);
+        owner.reset();
+        REQUIRE(owner.num() == 0);
+    }
+    {
+        MimallocAlignmentDataSingle owner;
+        REQUIRE(owner.num() == 0);
+        for (int32 const count : {1, 63, 64, 65, 127, 128, 129, 4097}) {
+            owner.set_num(count);
+            REQUIRE(owner.capacity() % 64 == 0);
+            each_leaf(owner.get_view(), [](auto column) {
+                using Element = std::remove_reference_t<decltype(column[0])>;
+                REQUIRE(reinterpret_cast<UPTRINT>(column.GetData()) % alignof(Element) == 0);
+                REQUIRE(MimallocStorageAllocator::owns(column.GetData()));
+            });
+        }
+        owner.get_view().nested.xs[0] = 42.f;
+        auto moved{std::move(owner)};
+        REQUIRE(owner.num() == 0);
+        owner.set_num(64);
+        owner = std::move(moved);
+        REQUIRE(moved.num() == 0);
+        REQUIRE(owner.get_const_view().nested.xs[0] == 42.f);
+        owner.reset();
+        REQUIRE(owner.num() == 0);
+    }
     for (auto const operation : {Operation::NaturalAppend,
                                  Operation::ReservedAppend,
                                  Operation::DefaultedAppend,
@@ -282,6 +324,7 @@ TEST_CASE("SandboxCore.SingleAllocation.BenchmarkCorrectness") {
             CAPTURE(operation_name(operation, batch));
             run_once<EntityData>(operation, 129, batch);
             run_once<SingleAllocationEntityData>(operation, 129, batch);
+            run_once<MimallocEntityDataSingle>(operation, 129, batch);
         }
     }
 }
@@ -324,30 +367,38 @@ void benchmark_owner(Operation const operation, int32 const count, int32 const b
     };
 }
 
+template <typename Owner>
+void benchmark_reserve(int32 const count, std::size_t const owner_count, std::string const& name) {
+    BENCHMARK(std::string{name}) {
+        std::vector<Owner> owners(owner_count);
+        for (auto& owner : owners) {
+            owner.reserve(count);
+        }
+    };
+}
+
+template <bool UseRealloc>
+void benchmark_raw_reserve(int32 const count, std::size_t const owner_count, std::string const& name) {
+    auto const capacity{rounded_capacity(count, SingleAllocationEntityData::block_bytes)};
+    auto const byte_count{allocation_bytes(capacity, SingleAllocationEntityData::block_bytes)};
+    auto constexpr alignment{static_cast<uint32>(SingleAllocationEntityData::allocation_alignment)};
+    BENCHMARK(std::string{name}) {
+        std::vector<void*> allocations(owner_count);
+        for (auto& allocation : allocations) {
+            if constexpr (UseRealloc) {
+                allocation = FMemory::Realloc(nullptr, byte_count, alignment);
+            } else {
+                allocation = FMemory::Malloc(byte_count, alignment);
+            }
+        }
+        for (auto* const allocation : allocations) {
+            FMemory::Free(allocation);
+        }
+    };
+}
 void run_comparison(Operation const operation, int32 const count, int32 const batch = 1) {
     benchmark_owner<EntityData>(operation, count, batch, "TArray");
     benchmark_owner<SingleAllocationEntityData>(operation, count, batch, "Single");
-    if (operation == Operation::Reserve) {
-        auto const capacity{rounded_capacity(count, SingleAllocationEntityData::block_bytes)};
-        auto const byte_count{allocation_bytes(capacity, SingleAllocationEntityData::block_bytes)};
-        auto constexpr alignment{static_cast<uint32>(SingleAllocationEntityData::allocation_alignment)};
-        BENCHMARK("raw malloc") {
-            auto* const allocation{FMemory::Malloc(byte_count, alignment)};
-            FMemory::Free(allocation);
-        };
-        BENCHMARK("raw realloc") {
-            auto* const allocation{FMemory::Realloc(nullptr, byte_count, alignment)};
-            FMemory::Free(allocation);
-        };
-        BENCHMARK("SoA malloc (53 columns)") {
-            MallocEntityData owner;
-            owner.reserve(count);
-        };
-        BENCHMARK("SoA realloc (53 columns)") {
-            ReallocEntityData owner;
-            owner.reserve(count);
-        };
-    }
 }
 void run_comparisons(Operation const operation, int32 const batch = 1) {
     for (int32 const count : counts()) {
@@ -378,17 +429,57 @@ TEST_CASE("SandboxCore.SingleAllocation.Timing.defaulted_append_64", "[benchmark
     run_comparisons(Operation::DefaultedAppend, 64);
 }
 
-TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_4096", "[benchmark]") {
-    run_comparison(Operation::Reserve, 4096);
-}
+#define SANDBOX_RESERVE_CASE(rows, owners, label, function)                                                        \
+    TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_" #rows "_owners_" #owners "_" #label, "[benchmark]") { \
+        function(rows, owners, "SOA," #rows ",reserve_" #owners "," #label);                                       \
+    }
 
-TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_65536", "[benchmark]") {
-    run_comparison(Operation::Reserve, 65536);
-}
+#define SANDBOX_RESERVE_CASES(rows, owners)                                                         \
+    SANDBOX_RESERVE_CASE(rows, owners, TArray, benchmark_reserve<EntityData>)                       \
+    SANDBOX_RESERVE_CASE(rows, owners, Single, benchmark_reserve<SingleAllocationEntityData>)       \
+    SANDBOX_RESERVE_CASE(rows, owners, SingleMimalloc, benchmark_reserve<MimallocEntityDataSingle>) \
+    SANDBOX_RESERVE_CASE(rows, owners, SoAMimalloc, benchmark_reserve<MimallocEntityData>)          \
+    SANDBOX_RESERVE_CASE(rows, owners, RawMalloc, benchmark_raw_reserve<false>)                     \
+    SANDBOX_RESERVE_CASE(rows, owners, RawRealloc, benchmark_raw_reserve<true>)                     \
+    SANDBOX_RESERVE_CASE(rows, owners, SoAMalloc, benchmark_reserve<MallocEntityData>)              \
+    SANDBOX_RESERVE_CASE(rows, owners, SoARealloc, benchmark_reserve<ReallocEntityData>)
 
-TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_1048576", "[benchmark]") {
-    run_comparison(Operation::Reserve, 1048576);
-}
+SANDBOX_RESERVE_CASES(4096, 1)
+SANDBOX_RESERVE_CASES(4096, 2)
+SANDBOX_RESERVE_CASES(4096, 4)
+SANDBOX_RESERVE_CASES(4096, 8)
+SANDBOX_RESERVE_CASES(4096, 16)
+SANDBOX_RESERVE_CASES(4096, 32)
+SANDBOX_RESERVE_CASES(4096, 64)
+SANDBOX_RESERVE_CASES(4096, 128)
+SANDBOX_RESERVE_CASES(4096, 200)
+SANDBOX_RESERVE_CASES(4096, 256)
+SANDBOX_RESERVE_CASES(4096, 512)
+SANDBOX_RESERVE_CASES(65536, 1)
+SANDBOX_RESERVE_CASES(65536, 2)
+SANDBOX_RESERVE_CASES(65536, 4)
+SANDBOX_RESERVE_CASES(65536, 8)
+SANDBOX_RESERVE_CASES(65536, 16)
+SANDBOX_RESERVE_CASES(65536, 32)
+SANDBOX_RESERVE_CASES(65536, 64)
+SANDBOX_RESERVE_CASES(65536, 128)
+SANDBOX_RESERVE_CASES(65536, 200)
+SANDBOX_RESERVE_CASES(65536, 256)
+SANDBOX_RESERVE_CASES(65536, 512)
+SANDBOX_RESERVE_CASES(1048576, 1)
+SANDBOX_RESERVE_CASES(1048576, 2)
+SANDBOX_RESERVE_CASES(1048576, 4)
+SANDBOX_RESERVE_CASES(1048576, 8)
+SANDBOX_RESERVE_CASES(1048576, 16)
+SANDBOX_RESERVE_CASES(1048576, 32)
+SANDBOX_RESERVE_CASES(1048576, 64)
+SANDBOX_RESERVE_CASES(1048576, 128)
+SANDBOX_RESERVE_CASES(1048576, 200)
+SANDBOX_RESERVE_CASES(1048576, 256)
+SANDBOX_RESERVE_CASES(1048576, 512)
+
+#undef SANDBOX_RESERVE_CASES
+#undef SANDBOX_RESERVE_CASE
 
 TEST_CASE("SandboxCore.SingleAllocation.Timing.populated_growth", "[benchmark]") {
     run_comparisons(Operation::Growth);
@@ -421,5 +512,4 @@ TEST_CASE("SandboxCore.SingleAllocation.Timing.iterate_wide", "[benchmark]") {
 TEST_CASE("SandboxCore.SingleAllocation.Timing.construct_views", "[benchmark]") {
     run_comparisons(Operation::Views);
 }
-
 }

@@ -11,6 +11,15 @@ static_assert(
                    std::span<std::int32_t const>>);
 
 TEST(NativeSoa, LayoutGrowthAndMoves) {
+    AlignmentData vectors;
+    vectors.set_num(129);
+    vectors.each_column([](auto const& column) {
+        using Element = typename std::remove_cvref_t<decltype(column)>::value_type;
+        EXPECT_EQ(reinterpret_cast<std::uintptr_t>(column.data()) % alignof(Element), 0u);
+#if NATIVE_SOA_MIMALLOC
+        EXPECT_TRUE(mi_is_in_heap_region(column.data()));
+#endif
+    });
     SingleAllocationAlignmentData owner;
     EXPECT_EQ(owner.num(), 0);
     EXPECT_EQ(owner.capacity(), 0);
@@ -22,6 +31,9 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
         EXPECT_GE(owner.capacity(), count);
         EXPECT_EQ(owner.capacity() % 64, 0);
         auto const view{owner.get_view()};
+#if NATIVE_SOA_MIMALLOC
+        EXPECT_TRUE(mi_is_in_heap_region(view.bytes.data()));
+#endif
         EXPECT_EQ(view.aligned32.back().value, 32);
         EXPECT_EQ(view.aligned64.back().value, 64);
         EXPECT_EQ(view.aligned256.back().value, 256);

@@ -35,7 +35,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
                                   std::map<std::string, CppType> const& types,
                                   bool const native) -> Node {
     auto const* runtime{native ? "ml::native_soa::" : "ml::single_allocation_experiment::"};
-    auto const* free_data{native ? "ml::native_soa::free(data_, allocation_alignment)"
+    std::string free_data{native ? "ml::native_soa::free(data_, allocation_alignment)"
                                  : "FMemory::Free(data_)"};
     auto const* copy{native ? "std::memcpy" : "FMemory::Memcpy"};
     auto const layout{build_soa_layout(schema, schemas, types, false)};
@@ -45,6 +45,14 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         {"single_allocation_storage",
          native ? "native_soa/storage.h" : "SbxCoreExperiments/single_allocation_storage.h",
          {}}};
+    std::string allocate{std::string{runtime} + "allocate"};
+    if (schema.single_allocation_allocator) {
+        auto const allocator{resolve_type(*schema.single_allocation_allocator, types)};
+        dependencies.insert(
+            dependencies.end(), allocator.dependencies.begin(), allocator.dependencies.end());
+        allocate = allocator.spelling + "::allocate";
+        free_data = allocator.spelling + "::free(data_)";
+    }
     std::set<std::string> names;
     std::map<std::string, std::string> type_ids;
     std::vector<FixedLeaf const*> unique_types;
@@ -200,7 +208,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "void reallocate(size_type const new_capacity) {\n"
         << "    auto* const "
            "new_data{"
-        << runtime << "allocate(" << runtime
+        << allocate << "(" << runtime
         << ""
            "allocation_bytes(new_capacity, block_bytes), "
            "static_cast<"

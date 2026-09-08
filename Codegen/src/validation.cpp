@@ -484,6 +484,12 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                                "Experimental single-allocation owner");
             add_generated_type(*schema.experimental_single_allocation);
             add_generated_type(*schema.experimental_single_allocation + "Storage");
+            for (auto const& variant : schema.single_allocation_variants) {
+                require_identifier(variant.name, "single-allocation allocator variant");
+                add_generated_type(variant.name);
+                add_generated_type(variant.name + "Storage");
+                validate_type(variant.allocator, types, "single-allocation allocator variant");
+            }
         }
         if (schema.members.empty()) {
             throw std::invalid_argument{"SOA '" + schema.name + "' must have members"};

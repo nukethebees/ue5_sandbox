@@ -18,7 +18,8 @@
       "hidden": true,
       "inherits": "base",
       "cacheVariables": {
-        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed"
+        "VCPKG_INSTALLED_DIR": "${sourceDir}/vcpkg_installed",
+        "VCPKG_MANIFEST_FEATURES": "soa-mimalloc"
       }
     },
     {
@@ -122,7 +123,7 @@
       "name": "native-soa",
       "inherits": "base",
       "cacheVariables": {
-        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks",
+        "VCPKG_MANIFEST_FEATURES": "kernel-benchmarks;soa-mimalloc",
         "SANDBOX_CODEGEN_ONLY": true,
         "CMAKE_BUILD_TYPE": "Release",
         "SANDBOX_NATIVE_SOA_BENCHMARKS": true
@@ -233,12 +234,17 @@
     {
       "name": "native-soa",
       "configurePreset": "native-soa",
-      "targets": ["native-soa-tests", "native-soa-benchmarks", "codegen-tests"]
+      "targets": ["native-soa-tests", "native-soa-tests-mimalloc", "native-soa-benchmarks", "native-soa-reserve-matrix", "native-soa-reserve-matrix-mimalloc", "codegen-tests"]
     },
     {
       "name": "native-soa-reserve",
       "configurePreset": "native-soa",
       "targets": ["native-soa-reserve-report"]
+    },
+    {
+      "name": "native-soa-reserve-matrix",
+      "configurePreset": "native-soa",
+      "targets": ["native-soa-reserve-matrix-report"]
     }
   ],
   "testPresets": [
@@ -248,7 +254,7 @@
       "inherits": "single-allocation-soa-benchmark",
       "filter": {
         "include": {
-          "name": "^SandboxCore\\.SingleAllocation\\.Timing\\.reserve_[0-9]+$"
+          "name": "^SandboxCore\\.SingleAllocation\\.Timing\\.reserve_[0-9]+_owners_[0-9]+_[A-Za-z]+$"
         }
       }
     },
@@ -261,7 +267,7 @@
       },
       "filter": {
         "include": {
-          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|AllocationDiagnostics|Timing\\.[a-z0-9_]+)$"
+          "name": "^SandboxCore\\.SingleAllocation\\.(BenchmarkCorrectness|AllocationDiagnostics|Timing\\.[A-Za-z0-9_]+)$"
         }
       },
       "execution": {
@@ -663,6 +669,15 @@
         { "type": "build", "name": "native-soa" },
         { "type": "test", "name": "native-soa" },
         { "type": "build", "name": "native-soa-reserve" }
+      ]
+    },
+    {
+      "name": "native-soa-reserve-matrix",
+      "steps": [
+        { "type": "configure", "name": "native-soa" },
+        { "type": "build", "name": "native-soa" },
+        { "type": "test", "name": "native-soa" },
+        { "type": "build", "name": "native-soa-reserve-matrix" }
       ]
     }
   ]

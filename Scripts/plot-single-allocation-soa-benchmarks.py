@@ -30,6 +30,7 @@ LABELS = {
     "defaulted_append_1": "Reserved defaulted append (1 row)",
     "defaulted_append_64": "Reserved defaulted append (64 rows)",
     "reserve": "Reserve + destroy empty owner",
+    "reserve_200": "Reserve + destroy 200 empty owners (whole batch)",
     "populated_growth": "Prepare + grow + destroy owner",
     "set_num_grow": "Reserved set_num grow",
     "set_num_shrink_reuse": "Shrink/refill (4,096 cycles)",
@@ -49,22 +50,23 @@ ALLOCATION_FIELDS = [
     "peak_requested_bound", "min_capacity", "max_capacity", "owner_bytes",
 ]
 Record = dict[str, str]
+RESERVE_OWNERS = ("TArray", "Single", "SingleMimalloc", "SoAMimalloc", "RawMalloc", "RawRealloc", "SoAMalloc", "SoARealloc")
 
 
-def read_results(paths: list[Path]) -> tuple[list[Record], list[Record]]:
+def read_results(paths: list[Path]) -> tuple[list[Record], list[Record], list[Record]]:
     groups: dict[str, dict[tuple[str, ...], Record]] = {"SOA_TIMING": {}, "SOA_ALLOCATION": {}}
     catch_rows: dict[tuple[str, str], dict[str, Record]] = {}
     for path in paths:
         csv_kind = ""
         for number, line in enumerate(path.read_text(encoding="utf-8-sig").splitlines(), 1):
-            catch_match = re.match(r"^s*(?:d+:s*)?SOA_CATCH,(.*)$", line)
+            catch_match = re.match(r"^\s*(?:\d+:\s*)?SOA_CATCH,(.*)$", line)
             if catch_match:
                 values = next(csv.reader([catch_match.group(1)]))
                 fields = ["count", "operation", "owner", "mean", "lower", "upper", "confidence", "iterations", "samples"]
                 if len(values) != len(fields):
                     raise ValueError(f"{path}:{number}: malformed Catch2 benchmark record")
                 row = dict(zip(fields, values, strict=True))
-                if row["owner"] not in {"TArray", "Single"}:
+                if row["owner"] not in RESERVE_OWNERS:
                     raise ValueError(f"{path}:{number}: unknown owner")
                 for field in ("count", "mean", "lower", "upper", "confidence", "iterations", "samples"):
                     value = float(row[field])
@@ -122,8 +124,14 @@ def read_results(paths: list[Path]) -> tuple[list[Record], list[Record]]:
             if previous is not None and previous != row:
                 raise ValueError(f"{context}: conflicting results for {key}; use one benchmark run")
             groups[kind][key] = row
+    reserve_rows: list[Record] = []
     for (count, operation), owners in catch_rows.items():
-        if set(owners) != {"TArray", "Single"}:
+        if re.fullmatch(r"reserve_[1-9][0-9]*", operation):
+            for owner in owners.values():
+                reserve_rows.append({**owner, "owners": operation.removeprefix("reserve_")})
+            if {"TArray", "Single"} - set(owners):
+                continue
+        elif {"TArray", "Single"} - set(owners):
             raise ValueError(f"Incomplete Catch2 comparison: {count}, {operation}")
         row = {"count": count, "operation": operation}
         for owner, prefix in (("TArray", "baseline"), ("Single", "single")):
@@ -136,9 +144,40 @@ def read_results(paths: list[Path]) -> tuple[list[Record], list[Record]]:
         groups["SOA_TIMING"][key] = row
     timings = list(groups["SOA_TIMING"].values())
     allocations = list(groups["SOA_ALLOCATION"].values())
-    if not timings:
+    if not timings and not reserve_rows:
         raise ValueError("No Catch2 timing records found. Run the full benchmark workflow or pass --input with a saved timing log/CSV.")
-    return timings, allocations
+    return timings, allocations, reserve_rows
+
+
+def plot_reserve_matrix(plt: Any, rows: list[Record], output: Path) -> None:
+    for count in sorted({int(row["count"]) for row in rows}):
+        points = [row for row in rows if int(row["count"]) == count]
+        batches = sorted({int(row["owners"]) for row in points})
+        lookup = {(int(row["owners"]), row["owner"]): row for row in points}
+        matrix: list[Record] = []
+        figure, axes = plt.subplots(1, 2, figsize=(15, 6))
+        for owner in RESERVE_OWNERS:
+            selected = sorted((row for row in points if row["owner"] == owner), key=lambda row: int(row["owners"]))
+            if not selected:
+                continue
+            xs = [int(row["owners"]) for row in selected]
+            for axis, amortized in zip(axes, (False, True)):
+                divisors = [1e6 * (batch if amortized else 1) for batch in xs]
+                means = [float(row["mean"]) / divisor for row, divisor in zip(selected, divisors)]
+                errors = [[abs(float(row[bound]) - float(row["mean"])) / divisor for row, divisor in zip(selected, divisors)] for bound in ("lower", "upper")]
+                axis.errorbar(xs, means, yerr=errors, marker="o", capsize=2, label=owner)
+                axis.set(xscale="log", yscale="log", xlabel="Simultaneously retained owners / blocks", ylabel="Milliseconds per owner" if amortized else "Milliseconds per batch")
+                axis.grid(alpha=0.2)
+        for batch in batches:
+            matrix.append({"owners": str(batch), **{owner: str(float(lookup[batch, owner]["mean"]) / 1e6) if (batch, owner) in lookup else "" for owner in RESERVE_OWNERS}})
+        with (output / f"reserve-matrix-{count}.csv").open("w", newline="", encoding="utf-8") as stream:
+            writer = csv.DictWriter(stream, fieldnames=["owners", *RESERVE_OWNERS])
+            writer.writeheader()
+            writer.writerows(matrix)
+        axes[0].legend()
+        figure.suptitle(f"Reserve {count:,} rows per owner — allocation and cleanup, Catch2 mean and confidence interval")
+        figure.tight_layout()
+        save_figure(plt, figure, output, f"reserve-matrix-{count}")
 
 
 def save_figure(plt: Any, figure: Any, output: Path, name: str) -> None:
@@ -225,25 +264,33 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, nargs="+", default=[DEFAULT_INPUT], help="CTest logs, captured console output, or exported CSV files (default: latest benchmark CTest log)")
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_OUTPUT)
-    parser.add_argument("--operation", action="append", choices=sorted(LABELS), help="Plot/export only this timing operation; repeat to select multiple operations")
+    parser.add_argument("--operation", action="append", help="Plot/export only this timing operation (e.g. reserve_512); repeat to select multiple operations")
     args = parser.parse_args()
     try:
-        timings, allocations = read_results(args.input)
+        timings, allocations, reserve_rows = read_results(args.input)
         if args.operation:
             timings = [row for row in timings if row["operation"] in args.operation]
-            if not timings:
+            reserve_rows = [row for row in reserve_rows if row["operation"] in args.operation]
+            if not timings and not reserve_rows:
                 raise ValueError("No timing records match the selected operations.")
         matplotlib = cast(Any, importlib.import_module("matplotlib"))
         matplotlib.use("Agg")
         plt = cast(Any, importlib.import_module("matplotlib.pyplot"))
         args.output_dir.mkdir(parents=True, exist_ok=True)
+        if reserve_rows:
+            plot_reserve_matrix(plt, reserve_rows, args.output_dir)
+            with (args.output_dir / "reserve-records.csv").open("w", newline="", encoding="utf-8") as stream:
+                writer = csv.DictWriter(stream, fieldnames=list(reserve_rows[0]))
+                writer.writeheader()
+                writer.writerows(reserve_rows)
         for name, fields, rows in (("timings", TIMING_FIELDS, timings), ("allocations", ALLOCATION_FIELDS, allocations)):
             with (args.output_dir / f"{name}.csv").open("w", newline="", encoding="utf-8") as stream:
                 writer = csv.DictWriter(stream, fieldnames=fields)
                 writer.writeheader()
                 writer.writerows(rows)
-        plot_timings(plt, timings, args.output_dir)
-        plot_speedups(plt, timings, args.output_dir)
+        if timings:
+            plot_timings(plt, timings, args.output_dir)
+            plot_speedups(plt, timings, args.output_dir)
         if allocations:
             plot_allocations(plt, allocations, args.output_dir)
         else:

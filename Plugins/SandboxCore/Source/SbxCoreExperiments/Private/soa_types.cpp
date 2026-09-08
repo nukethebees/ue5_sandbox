@@ -1961,6 +1961,1975 @@ auto AlignmentData::right(int32 const count) const -> ConstView {
     return slice(num() - count, count);
 }
 
+auto MimallocVectorsConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocVectorsConstView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<float>{xs}.Slice(offset, count),
+        TConstArrayView<float>{ys}.Slice(offset, count),
+        TConstArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectorsConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocVectorsConstView::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<float>{xs}.Slice(offset, count),
+        TConstArrayView<float>{ys}.Slice(offset, count),
+        TConstArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectorsConstView::num() const noexcept -> int32 {
+    return ml::num(xs);
+}
+
+auto MimallocVectorsConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocVectorsConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(xs),
+        ml::num(ys),
+        ml::num(zs),
+    });
+}
+
+auto MimallocVectorsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocVectorsConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocVectorsConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocVectorsView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocVectorsView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<float>{xs}.Slice(offset, count),
+        TArrayView<float>{ys}.Slice(offset, count),
+        TArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectorsView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocVectorsView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<float>{xs}.Slice(offset, count),
+        TConstArrayView<float>{ys}.Slice(offset, count),
+        TConstArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectorsView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocVectorsView::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<float>{xs}.Slice(offset, count),
+        TConstArrayView<float>{ys}.Slice(offset, count),
+        TConstArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectorsView::num() const noexcept -> int32 {
+    return ml::num(xs);
+}
+
+auto MimallocVectorsView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocVectorsView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(xs),
+        ml::num(ys),
+        ml::num(zs),
+    });
+}
+
+auto MimallocVectorsView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocVectorsView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocVectorsView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocVectorsView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocVectorsView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocVectorsView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void MimallocVectors::reset() {
+    ml::reset(xs);
+    ml::reset(ys);
+    ml::reset(zs);
+}
+
+void MimallocVectors::reserve(int32 const count) {
+    ml::reserve(xs, count);
+    ml::reserve(ys, count);
+    ml::reserve(zs, count);
+}
+
+void MimallocVectors::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(xs, count);
+    ml::add_uninitialised(ys, count);
+    ml::add_uninitialised(zs, count);
+}
+
+void MimallocVectors::add_defaulted(int32 const count) {
+    ml::add_defaulted(xs, count);
+    ml::add_defaulted(ys, count);
+    ml::add_defaulted(zs, count);
+}
+
+void MimallocVectors::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(xs, count, allow_shrinking);
+    ml::set_num(ys, count, allow_shrinking);
+    ml::set_num(zs, count, allow_shrinking);
+}
+
+void MimallocVectors::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(xs, indices);
+    ml::apply_permutation(ys, indices);
+    ml::apply_permutation(zs, indices);
+}
+
+auto MimallocVectors::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocVectors::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<float>{xs}.Slice(offset, count),
+        TArrayView<float>{ys}.Slice(offset, count),
+        TArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectors::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocVectors::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<float>{xs}.Slice(offset, count),
+        TConstArrayView<float>{ys}.Slice(offset, count),
+        TConstArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectors::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocVectors::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<float>{xs}.Slice(offset, count),
+        TConstArrayView<float>{ys}.Slice(offset, count),
+        TConstArrayView<float>{zs}.Slice(offset, count),
+    };
+}
+
+auto MimallocVectors::num() const noexcept -> int32 {
+    return ml::num(xs);
+}
+
+auto MimallocVectors::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocVectors::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(xs),
+        ml::num(ys),
+        ml::num(zs),
+    });
+}
+
+auto MimallocVectors::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocVectors::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocVectors::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocVectors::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocVectors::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocVectors::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown8ConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown8ConstView::get_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8ConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocCountdown8ConstView::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8ConstView::num() const noexcept -> int32 {
+    return ml::num(counters);
+}
+
+auto MimallocCountdown8ConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocCountdown8ConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(counters),
+    });
+}
+
+auto MimallocCountdown8ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown8ConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocCountdown8ConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown8View::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown8View::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8View::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown8View::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8View::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocCountdown8View::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8View::num() const noexcept -> int32 {
+    return ml::num(counters);
+}
+
+auto MimallocCountdown8View::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocCountdown8View::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(counters),
+    });
+}
+
+auto MimallocCountdown8View::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown8View::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocCountdown8View::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown8View::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown8View::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocCountdown8View::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void MimallocCountdown8::reset() {
+    ml::reset(counters);
+}
+
+void MimallocCountdown8::reserve(int32 const count) {
+    ml::reserve(counters, count);
+}
+
+void MimallocCountdown8::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(counters, count);
+}
+
+void MimallocCountdown8::add_defaulted(int32 const count) {
+    ml::add_defaulted(counters, count);
+}
+
+void MimallocCountdown8::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(counters, count, allow_shrinking);
+}
+
+void MimallocCountdown8::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(counters, indices);
+}
+
+auto MimallocCountdown8::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown8::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown8::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocCountdown8::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int8>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown8::num() const noexcept -> int32 {
+    return ml::num(counters);
+}
+
+auto MimallocCountdown8::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocCountdown8::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(counters),
+    });
+}
+
+auto MimallocCountdown8::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown8::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocCountdown8::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown8::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown8::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocCountdown8::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown16ConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown16ConstView::get_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16ConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocCountdown16ConstView::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16ConstView::num() const noexcept -> int32 {
+    return ml::num(counters);
+}
+
+auto MimallocCountdown16ConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocCountdown16ConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(counters),
+    });
+}
+
+auto MimallocCountdown16ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown16ConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocCountdown16ConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown16View::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown16View::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16View::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown16View::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16View::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocCountdown16View::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16View::num() const noexcept -> int32 {
+    return ml::num(counters);
+}
+
+auto MimallocCountdown16View::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocCountdown16View::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(counters),
+    });
+}
+
+auto MimallocCountdown16View::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown16View::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocCountdown16View::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown16View::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown16View::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocCountdown16View::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void MimallocCountdown16::reset() {
+    ml::reset(counters);
+}
+
+void MimallocCountdown16::reserve(int32 const count) {
+    ml::reserve(counters, count);
+}
+
+void MimallocCountdown16::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(counters, count);
+}
+
+void MimallocCountdown16::add_defaulted(int32 const count) {
+    ml::add_defaulted(counters, count);
+}
+
+void MimallocCountdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(counters, count, allow_shrinking);
+}
+
+void MimallocCountdown16::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(counters, indices);
+}
+
+auto MimallocCountdown16::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown16::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocCountdown16::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocCountdown16::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{counters}.Slice(offset, count),
+    };
+}
+
+auto MimallocCountdown16::num() const noexcept -> int32 {
+    return ml::num(counters);
+}
+
+auto MimallocCountdown16::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocCountdown16::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(counters),
+    });
+}
+
+auto MimallocCountdown16::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown16::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocCountdown16::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocCountdown16::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocCountdown16::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocCountdown16::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocPeriodicCountdown16ConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16ConstView::get_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TConstArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16ConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16ConstView::get_const_view(int32 const offset,
+                                                          int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TConstArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16ConstView::num() const noexcept -> int32 {
+    return ml::num(remaining_ticks);
+}
+
+auto MimallocPeriodicCountdown16ConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocPeriodicCountdown16ConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(remaining_ticks),
+        ml::num(periods),
+    });
+}
+
+auto MimallocPeriodicCountdown16ConstView::slice(int32 const offset, int32 const count) const
+    -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocPeriodicCountdown16ConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocPeriodicCountdown16ConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocPeriodicCountdown16View::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16View::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16View::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16View::get_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TConstArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16View::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16View::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TConstArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16View::num() const noexcept -> int32 {
+    return ml::num(remaining_ticks);
+}
+
+auto MimallocPeriodicCountdown16View::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocPeriodicCountdown16View::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(remaining_ticks),
+        ml::num(periods),
+    });
+}
+
+auto MimallocPeriodicCountdown16View::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocPeriodicCountdown16View::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocPeriodicCountdown16View::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocPeriodicCountdown16View::slice(int32 const offset, int32 const count) const
+    -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocPeriodicCountdown16View::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocPeriodicCountdown16View::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void MimallocPeriodicCountdown16::reset() {
+    ml::reset(remaining_ticks);
+    ml::reset(periods);
+}
+
+void MimallocPeriodicCountdown16::reserve(int32 const count) {
+    ml::reserve(remaining_ticks, count);
+    ml::reserve(periods, count);
+}
+
+void MimallocPeriodicCountdown16::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(remaining_ticks, count);
+    ml::add_uninitialised(periods, count);
+}
+
+void MimallocPeriodicCountdown16::add_defaulted(int32 const count) {
+    ml::add_defaulted(remaining_ticks, count);
+    ml::add_defaulted(periods, count);
+}
+
+void MimallocPeriodicCountdown16::set_num(int32 const count,
+                                          EAllowShrinking const allow_shrinking) {
+    ml::set_num(remaining_ticks, count, allow_shrinking);
+    ml::set_num(periods, count, allow_shrinking);
+}
+
+void MimallocPeriodicCountdown16::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(remaining_ticks, indices);
+    ml::apply_permutation(periods, indices);
+}
+
+auto MimallocPeriodicCountdown16::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16::get_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TConstArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocPeriodicCountdown16::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<int16>{remaining_ticks}.Slice(offset, count),
+        TConstArrayView<int16>{periods}.Slice(offset, count),
+    };
+}
+
+auto MimallocPeriodicCountdown16::num() const noexcept -> int32 {
+    return ml::num(remaining_ticks);
+}
+
+auto MimallocPeriodicCountdown16::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocPeriodicCountdown16::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(remaining_ticks),
+        ml::num(periods),
+    });
+}
+
+auto MimallocPeriodicCountdown16::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocPeriodicCountdown16::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocPeriodicCountdown16::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocPeriodicCountdown16::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocPeriodicCountdown16::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocPeriodicCountdown16::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocEntityDataConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocEntityDataConstView::get_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<Team>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityDataConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocEntityDataConstView::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<Team>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityDataConstView::num() const noexcept -> int32 {
+    return ml::num(entity_handles);
+}
+
+auto MimallocEntityDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocEntityDataConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_handles),
+        ml::num(integral_biases),
+        ml::num(float_biases),
+        ml::num(tasks),
+        ml::num(locations),
+        ml::num(desired_move_locations),
+        ml::num(aim_directions),
+        ml::num(desired_aiming_directions),
+        ml::num(movement_directions),
+        ml::num(velocities),
+        ml::num(move_distances),
+        ml::num(speeds),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(parent_handles),
+        ml::num(awareness_scan_countdowns),
+        ml::num(navigation_update_countdowns),
+        ml::num(separation_steering),
+        ml::num(navigation_risk_tiers),
+        ml::num(navigation_lower_risk_scan_counts),
+        ml::num(avoidance_choice_indices),
+        ml::num(avoidance_clear_scan_counts),
+        ml::num(attack_reposition_countdowns),
+        ml::num(attack_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(target_directions),
+        ml::num(intercept_times),
+        ml::num(target_distance_sq),
+        ml::num(target_distances),
+        ml::num(target_radii),
+    });
+}
+
+auto MimallocEntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocEntityDataConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocEntityDataConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocEntityDataView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TArrayView<float>{float_biases}.Slice(offset, count),
+        TArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_view(offset, count),
+        desired_move_locations.get_view(offset, count),
+        aim_directions.get_view(offset, count),
+        desired_aiming_directions.get_view(offset, count),
+        movement_directions.get_view(offset, count),
+        velocities.get_view(offset, count),
+        TArrayView<float>{move_distances}.Slice(offset, count),
+        TArrayView<float>{speeds}.Slice(offset, count),
+        TArrayView<Team>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_view(offset, count),
+        navigation_update_countdowns.get_view(offset, count),
+        separation_steering.get_view(offset, count),
+        TArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_view(offset, count),
+        attack_cooldowns.get_view(offset, count),
+        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_view(offset, count),
+        target_velocities.get_view(offset, count),
+        target_directions.get_view(offset, count),
+        TArrayView<float>{intercept_times}.Slice(offset, count),
+        TArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TArrayView<float>{target_distances}.Slice(offset, count),
+        TArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityDataView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<Team>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityDataView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocEntityDataView::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<Team>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityDataView::num() const noexcept -> int32 {
+    return ml::num(entity_handles);
+}
+
+auto MimallocEntityDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocEntityDataView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_handles),
+        ml::num(integral_biases),
+        ml::num(float_biases),
+        ml::num(tasks),
+        ml::num(locations),
+        ml::num(desired_move_locations),
+        ml::num(aim_directions),
+        ml::num(desired_aiming_directions),
+        ml::num(movement_directions),
+        ml::num(velocities),
+        ml::num(move_distances),
+        ml::num(speeds),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(parent_handles),
+        ml::num(awareness_scan_countdowns),
+        ml::num(navigation_update_countdowns),
+        ml::num(separation_steering),
+        ml::num(navigation_risk_tiers),
+        ml::num(navigation_lower_risk_scan_counts),
+        ml::num(avoidance_choice_indices),
+        ml::num(avoidance_clear_scan_counts),
+        ml::num(attack_reposition_countdowns),
+        ml::num(attack_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(target_directions),
+        ml::num(intercept_times),
+        ml::num(target_distance_sq),
+        ml::num(target_distances),
+        ml::num(target_radii),
+    });
+}
+
+auto MimallocEntityDataView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocEntityDataView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocEntityDataView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocEntityDataView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocEntityDataView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocEntityDataView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void MimallocEntityData::reset() {
+    ml::reset(entity_handles);
+    ml::reset(integral_biases);
+    ml::reset(float_biases);
+    ml::reset(tasks);
+    ml::reset(locations);
+    ml::reset(desired_move_locations);
+    ml::reset(aim_directions);
+    ml::reset(desired_aiming_directions);
+    ml::reset(movement_directions);
+    ml::reset(velocities);
+    ml::reset(move_distances);
+    ml::reset(speeds);
+    ml::reset(teams);
+    ml::reset(healths);
+    ml::reset(parent_handles);
+    ml::reset(awareness_scan_countdowns);
+    ml::reset(navigation_update_countdowns);
+    ml::reset(separation_steering);
+    ml::reset(navigation_risk_tiers);
+    ml::reset(navigation_lower_risk_scan_counts);
+    ml::reset(avoidance_choice_indices);
+    ml::reset(avoidance_clear_scan_counts);
+    ml::reset(attack_reposition_countdowns);
+    ml::reset(attack_cooldowns);
+    ml::reset(target_handles);
+    ml::reset(target_locations);
+    ml::reset(target_velocities);
+    ml::reset(target_directions);
+    ml::reset(intercept_times);
+    ml::reset(target_distance_sq);
+    ml::reset(target_distances);
+    ml::reset(target_radii);
+}
+
+void MimallocEntityData::reserve(int32 const count) {
+    ml::reserve(entity_handles, count);
+    ml::reserve(integral_biases, count);
+    ml::reserve(float_biases, count);
+    ml::reserve(tasks, count);
+    ml::reserve(locations, count);
+    ml::reserve(desired_move_locations, count);
+    ml::reserve(aim_directions, count);
+    ml::reserve(desired_aiming_directions, count);
+    ml::reserve(movement_directions, count);
+    ml::reserve(velocities, count);
+    ml::reserve(move_distances, count);
+    ml::reserve(speeds, count);
+    ml::reserve(teams, count);
+    ml::reserve(healths, count);
+    ml::reserve(parent_handles, count);
+    ml::reserve(awareness_scan_countdowns, count);
+    ml::reserve(navigation_update_countdowns, count);
+    ml::reserve(separation_steering, count);
+    ml::reserve(navigation_risk_tiers, count);
+    ml::reserve(navigation_lower_risk_scan_counts, count);
+    ml::reserve(avoidance_choice_indices, count);
+    ml::reserve(avoidance_clear_scan_counts, count);
+    ml::reserve(attack_reposition_countdowns, count);
+    ml::reserve(attack_cooldowns, count);
+    ml::reserve(target_handles, count);
+    ml::reserve(target_locations, count);
+    ml::reserve(target_velocities, count);
+    ml::reserve(target_directions, count);
+    ml::reserve(intercept_times, count);
+    ml::reserve(target_distance_sq, count);
+    ml::reserve(target_distances, count);
+    ml::reserve(target_radii, count);
+}
+
+void MimallocEntityData::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(entity_handles, count);
+    ml::add_uninitialised(integral_biases, count);
+    ml::add_uninitialised(float_biases, count);
+    ml::add_uninitialised(tasks, count);
+    ml::add_uninitialised(locations, count);
+    ml::add_uninitialised(desired_move_locations, count);
+    ml::add_uninitialised(aim_directions, count);
+    ml::add_uninitialised(desired_aiming_directions, count);
+    ml::add_uninitialised(movement_directions, count);
+    ml::add_uninitialised(velocities, count);
+    ml::add_uninitialised(move_distances, count);
+    ml::add_uninitialised(speeds, count);
+    ml::add_uninitialised(teams, count);
+    ml::add_uninitialised(healths, count);
+    ml::add_uninitialised(parent_handles, count);
+    ml::add_uninitialised(awareness_scan_countdowns, count);
+    ml::add_uninitialised(navigation_update_countdowns, count);
+    ml::add_uninitialised(separation_steering, count);
+    ml::add_uninitialised(navigation_risk_tiers, count);
+    ml::add_uninitialised(navigation_lower_risk_scan_counts, count);
+    ml::add_uninitialised(avoidance_choice_indices, count);
+    ml::add_uninitialised(avoidance_clear_scan_counts, count);
+    ml::add_uninitialised(attack_reposition_countdowns, count);
+    ml::add_uninitialised(attack_cooldowns, count);
+    ml::add_uninitialised(target_handles, count);
+    ml::add_uninitialised(target_locations, count);
+    ml::add_uninitialised(target_velocities, count);
+    ml::add_uninitialised(target_directions, count);
+    ml::add_uninitialised(intercept_times, count);
+    ml::add_uninitialised(target_distance_sq, count);
+    ml::add_uninitialised(target_distances, count);
+    ml::add_uninitialised(target_radii, count);
+}
+
+void MimallocEntityData::add_defaulted(int32 const count) {
+    ml::add_defaulted(entity_handles, count);
+    ml::add_defaulted(integral_biases, count);
+    ml::add_defaulted(float_biases, count);
+    ml::add_defaulted(tasks, count);
+    ml::add_defaulted(locations, count);
+    ml::add_defaulted(desired_move_locations, count);
+    ml::add_defaulted(aim_directions, count);
+    ml::add_defaulted(desired_aiming_directions, count);
+    ml::add_defaulted(movement_directions, count);
+    ml::add_defaulted(velocities, count);
+    ml::add_defaulted(move_distances, count);
+    ml::add_defaulted(speeds, count);
+    ml::add_defaulted(teams, count);
+    ml::add_defaulted(healths, count);
+    ml::add_defaulted(parent_handles, count);
+    ml::add_defaulted(awareness_scan_countdowns, count);
+    ml::add_defaulted(navigation_update_countdowns, count);
+    ml::add_defaulted(separation_steering, count);
+    ml::add_defaulted(navigation_risk_tiers, count);
+    ml::add_defaulted(navigation_lower_risk_scan_counts, count);
+    ml::add_defaulted(avoidance_choice_indices, count);
+    ml::add_defaulted(avoidance_clear_scan_counts, count);
+    ml::add_defaulted(attack_reposition_countdowns, count);
+    ml::add_defaulted(attack_cooldowns, count);
+    ml::add_defaulted(target_handles, count);
+    ml::add_defaulted(target_locations, count);
+    ml::add_defaulted(target_velocities, count);
+    ml::add_defaulted(target_directions, count);
+    ml::add_defaulted(intercept_times, count);
+    ml::add_defaulted(target_distance_sq, count);
+    ml::add_defaulted(target_distances, count);
+    ml::add_defaulted(target_radii, count);
+}
+
+void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(entity_handles, count, allow_shrinking);
+    ml::set_num(integral_biases, count, allow_shrinking);
+    ml::set_num(float_biases, count, allow_shrinking);
+    ml::set_num(tasks, count, allow_shrinking);
+    ml::set_num(locations, count, allow_shrinking);
+    ml::set_num(desired_move_locations, count, allow_shrinking);
+    ml::set_num(aim_directions, count, allow_shrinking);
+    ml::set_num(desired_aiming_directions, count, allow_shrinking);
+    ml::set_num(movement_directions, count, allow_shrinking);
+    ml::set_num(velocities, count, allow_shrinking);
+    ml::set_num(move_distances, count, allow_shrinking);
+    ml::set_num(speeds, count, allow_shrinking);
+    ml::set_num(teams, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
+    ml::set_num(parent_handles, count, allow_shrinking);
+    ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
+    ml::set_num(navigation_update_countdowns, count, allow_shrinking);
+    ml::set_num(separation_steering, count, allow_shrinking);
+    ml::set_num(navigation_risk_tiers, count, allow_shrinking);
+    ml::set_num(navigation_lower_risk_scan_counts, count, allow_shrinking);
+    ml::set_num(avoidance_choice_indices, count, allow_shrinking);
+    ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
+    ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
+    ml::set_num(attack_cooldowns, count, allow_shrinking);
+    ml::set_num(target_handles, count, allow_shrinking);
+    ml::set_num(target_locations, count, allow_shrinking);
+    ml::set_num(target_velocities, count, allow_shrinking);
+    ml::set_num(target_directions, count, allow_shrinking);
+    ml::set_num(intercept_times, count, allow_shrinking);
+    ml::set_num(target_distance_sq, count, allow_shrinking);
+    ml::set_num(target_distances, count, allow_shrinking);
+    ml::set_num(target_radii, count, allow_shrinking);
+}
+
+void MimallocEntityData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(entity_handles, indices);
+    ml::apply_permutation(integral_biases, indices);
+    ml::apply_permutation(float_biases, indices);
+    ml::apply_permutation(tasks, indices);
+    ml::apply_permutation(locations, indices);
+    ml::apply_permutation(desired_move_locations, indices);
+    ml::apply_permutation(aim_directions, indices);
+    ml::apply_permutation(desired_aiming_directions, indices);
+    ml::apply_permutation(movement_directions, indices);
+    ml::apply_permutation(velocities, indices);
+    ml::apply_permutation(move_distances, indices);
+    ml::apply_permutation(speeds, indices);
+    ml::apply_permutation(teams, indices);
+    ml::apply_permutation(healths, indices);
+    ml::apply_permutation(parent_handles, indices);
+    ml::apply_permutation(awareness_scan_countdowns, indices);
+    ml::apply_permutation(navigation_update_countdowns, indices);
+    ml::apply_permutation(separation_steering, indices);
+    ml::apply_permutation(navigation_risk_tiers, indices);
+    ml::apply_permutation(navigation_lower_risk_scan_counts, indices);
+    ml::apply_permutation(avoidance_choice_indices, indices);
+    ml::apply_permutation(avoidance_clear_scan_counts, indices);
+    ml::apply_permutation(attack_reposition_countdowns, indices);
+    ml::apply_permutation(attack_cooldowns, indices);
+    ml::apply_permutation(target_handles, indices);
+    ml::apply_permutation(target_locations, indices);
+    ml::apply_permutation(target_velocities, indices);
+    ml::apply_permutation(target_directions, indices);
+    ml::apply_permutation(intercept_times, indices);
+    ml::apply_permutation(target_distance_sq, indices);
+    ml::apply_permutation(target_distances, indices);
+    ml::apply_permutation(target_radii, indices);
+}
+
+auto MimallocEntityData::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocEntityData::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TArrayView<float>{float_biases}.Slice(offset, count),
+        TArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_view(offset, count),
+        desired_move_locations.get_view(offset, count),
+        aim_directions.get_view(offset, count),
+        desired_aiming_directions.get_view(offset, count),
+        movement_directions.get_view(offset, count),
+        velocities.get_view(offset, count),
+        TArrayView<float>{move_distances}.Slice(offset, count),
+        TArrayView<float>{speeds}.Slice(offset, count),
+        TArrayView<Team>{teams}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
+        TArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_view(offset, count),
+        navigation_update_countdowns.get_view(offset, count),
+        separation_steering.get_view(offset, count),
+        TArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_view(offset, count),
+        attack_cooldowns.get_view(offset, count),
+        TArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_view(offset, count),
+        target_velocities.get_view(offset, count),
+        target_directions.get_view(offset, count),
+        TArrayView<float>{intercept_times}.Slice(offset, count),
+        TArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TArrayView<float>{target_distances}.Slice(offset, count),
+        TArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityData::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocEntityData::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<Team>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityData::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocEntityData::get_const_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<Handle>{entity_handles}.Slice(offset, count),
+        TConstArrayView<uint32>{integral_biases}.Slice(offset, count),
+        TConstArrayView<float>{float_biases}.Slice(offset, count),
+        TConstArrayView<Task>{tasks}.Slice(offset, count),
+        locations.get_const_view(offset, count),
+        desired_move_locations.get_const_view(offset, count),
+        aim_directions.get_const_view(offset, count),
+        desired_aiming_directions.get_const_view(offset, count),
+        movement_directions.get_const_view(offset, count),
+        velocities.get_const_view(offset, count),
+        TConstArrayView<float>{move_distances}.Slice(offset, count),
+        TConstArrayView<float>{speeds}.Slice(offset, count),
+        TConstArrayView<Team>{teams}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
+        TConstArrayView<Handle>{parent_handles}.Slice(offset, count),
+        awareness_scan_countdowns.get_const_view(offset, count),
+        navigation_update_countdowns.get_const_view(offset, count),
+        separation_steering.get_const_view(offset, count),
+        TConstArrayView<uint8>{navigation_risk_tiers}.Slice(offset, count),
+        TConstArrayView<uint8>{navigation_lower_risk_scan_counts}.Slice(offset, count),
+        TConstArrayView<int8>{avoidance_choice_indices}.Slice(offset, count),
+        TConstArrayView<uint8>{avoidance_clear_scan_counts}.Slice(offset, count),
+        attack_reposition_countdowns.get_const_view(offset, count),
+        attack_cooldowns.get_const_view(offset, count),
+        TConstArrayView<Handle>{target_handles}.Slice(offset, count),
+        target_locations.get_const_view(offset, count),
+        target_velocities.get_const_view(offset, count),
+        target_directions.get_const_view(offset, count),
+        TConstArrayView<float>{intercept_times}.Slice(offset, count),
+        TConstArrayView<float>{target_distance_sq}.Slice(offset, count),
+        TConstArrayView<float>{target_distances}.Slice(offset, count),
+        TConstArrayView<float>{target_radii}.Slice(offset, count),
+    };
+}
+
+auto MimallocEntityData::num() const noexcept -> int32 {
+    return ml::num(entity_handles);
+}
+
+auto MimallocEntityData::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocEntityData::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(entity_handles),
+        ml::num(integral_biases),
+        ml::num(float_biases),
+        ml::num(tasks),
+        ml::num(locations),
+        ml::num(desired_move_locations),
+        ml::num(aim_directions),
+        ml::num(desired_aiming_directions),
+        ml::num(movement_directions),
+        ml::num(velocities),
+        ml::num(move_distances),
+        ml::num(speeds),
+        ml::num(teams),
+        ml::num(healths),
+        ml::num(parent_handles),
+        ml::num(awareness_scan_countdowns),
+        ml::num(navigation_update_countdowns),
+        ml::num(separation_steering),
+        ml::num(navigation_risk_tiers),
+        ml::num(navigation_lower_risk_scan_counts),
+        ml::num(avoidance_choice_indices),
+        ml::num(avoidance_clear_scan_counts),
+        ml::num(attack_reposition_countdowns),
+        ml::num(attack_cooldowns),
+        ml::num(target_handles),
+        ml::num(target_locations),
+        ml::num(target_velocities),
+        ml::num(target_directions),
+        ml::num(intercept_times),
+        ml::num(target_distance_sq),
+        ml::num(target_distances),
+        ml::num(target_radii),
+    });
+}
+
+auto MimallocEntityData::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocEntityData::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocEntityData::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocEntityData::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocEntityData::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocEntityData::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocAlignmentDataConstView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocAlignmentDataConstView::get_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<uint8>{bytes}.Slice(offset, count),
+        TConstArrayView<OddBytes>{odd}.Slice(offset, count),
+        TConstArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_const_view(offset, count),
+        TConstArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TConstArrayView<int8>{small}.Slice(offset, count),
+        TConstArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TConstArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentDataConstView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocAlignmentDataConstView::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<uint8>{bytes}.Slice(offset, count),
+        TConstArrayView<OddBytes>{odd}.Slice(offset, count),
+        TConstArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_const_view(offset, count),
+        TConstArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TConstArrayView<int8>{small}.Slice(offset, count),
+        TConstArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TConstArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentDataConstView::num() const noexcept -> int32 {
+    return ml::num(bytes);
+}
+
+auto MimallocAlignmentDataConstView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocAlignmentDataConstView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(bytes),
+        ml::num(odd),
+        ml::num(aligned32),
+        ml::num(nested),
+        ml::num(aligned64),
+        ml::num(small),
+        ml::num(aligned256),
+        ml::num(handles),
+    });
+}
+
+auto MimallocAlignmentDataConstView::slice(int32 const offset, int32 const count) const
+    -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocAlignmentDataConstView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocAlignmentDataConstView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+auto MimallocAlignmentDataView::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocAlignmentDataView::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<uint8>{bytes}.Slice(offset, count),
+        TArrayView<OddBytes>{odd}.Slice(offset, count),
+        TArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_view(offset, count),
+        TArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TArrayView<int8>{small}.Slice(offset, count),
+        TArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentDataView::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocAlignmentDataView::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<uint8>{bytes}.Slice(offset, count),
+        TConstArrayView<OddBytes>{odd}.Slice(offset, count),
+        TConstArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_const_view(offset, count),
+        TConstArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TConstArrayView<int8>{small}.Slice(offset, count),
+        TConstArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TConstArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentDataView::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocAlignmentDataView::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<uint8>{bytes}.Slice(offset, count),
+        TConstArrayView<OddBytes>{odd}.Slice(offset, count),
+        TConstArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_const_view(offset, count),
+        TConstArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TConstArrayView<int8>{small}.Slice(offset, count),
+        TConstArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TConstArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentDataView::num() const noexcept -> int32 {
+    return ml::num(bytes);
+}
+
+auto MimallocAlignmentDataView::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocAlignmentDataView::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(bytes),
+        ml::num(odd),
+        ml::num(aligned32),
+        ml::num(nested),
+        ml::num(aligned64),
+        ml::num(small),
+        ml::num(aligned256),
+        ml::num(handles),
+    });
+}
+
+auto MimallocAlignmentDataView::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocAlignmentDataView::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocAlignmentDataView::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocAlignmentDataView::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocAlignmentDataView::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocAlignmentDataView::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
+void MimallocAlignmentData::reset() {
+    ml::reset(bytes);
+    ml::reset(odd);
+    ml::reset(aligned32);
+    ml::reset(nested);
+    ml::reset(aligned64);
+    ml::reset(small);
+    ml::reset(aligned256);
+    ml::reset(handles);
+}
+
+void MimallocAlignmentData::reserve(int32 const count) {
+    ml::reserve(bytes, count);
+    ml::reserve(odd, count);
+    ml::reserve(aligned32, count);
+    ml::reserve(nested, count);
+    ml::reserve(aligned64, count);
+    ml::reserve(small, count);
+    ml::reserve(aligned256, count);
+    ml::reserve(handles, count);
+}
+
+void MimallocAlignmentData::add_uninitialised(int32 const count) {
+    ml::add_uninitialised(bytes, count);
+    ml::add_uninitialised(odd, count);
+    ml::add_uninitialised(aligned32, count);
+    ml::add_uninitialised(nested, count);
+    ml::add_uninitialised(aligned64, count);
+    ml::add_uninitialised(small, count);
+    ml::add_uninitialised(aligned256, count);
+    ml::add_uninitialised(handles, count);
+}
+
+void MimallocAlignmentData::add_defaulted(int32 const count) {
+    ml::add_defaulted(bytes, count);
+    ml::add_defaulted(odd, count);
+    ml::add_defaulted(aligned32, count);
+    ml::add_defaulted(nested, count);
+    ml::add_defaulted(aligned64, count);
+    ml::add_defaulted(small, count);
+    ml::add_defaulted(aligned256, count);
+    ml::add_defaulted(handles, count);
+}
+
+void MimallocAlignmentData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
+    ml::set_num(bytes, count, allow_shrinking);
+    ml::set_num(odd, count, allow_shrinking);
+    ml::set_num(aligned32, count, allow_shrinking);
+    ml::set_num(nested, count, allow_shrinking);
+    ml::set_num(aligned64, count, allow_shrinking);
+    ml::set_num(small, count, allow_shrinking);
+    ml::set_num(aligned256, count, allow_shrinking);
+    ml::set_num(handles, count, allow_shrinking);
+}
+
+void MimallocAlignmentData::apply_permutation(TArrayView<int32> indices) {
+    validate_array_sizes();
+    check(indices.Num() == num());
+    ml::apply_permutation(bytes, indices);
+    ml::apply_permutation(odd, indices);
+    ml::apply_permutation(aligned32, indices);
+    ml::apply_permutation(nested, indices);
+    ml::apply_permutation(aligned64, indices);
+    ml::apply_permutation(small, indices);
+    ml::apply_permutation(aligned256, indices);
+    ml::apply_permutation(handles, indices);
+}
+
+auto MimallocAlignmentData::get_view() -> View {
+    return get_view(0, num());
+}
+
+auto MimallocAlignmentData::get_view(int32 const offset, int32 const count) -> View {
+    return View{
+        TArrayView<uint8>{bytes}.Slice(offset, count),
+        TArrayView<OddBytes>{odd}.Slice(offset, count),
+        TArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_view(offset, count),
+        TArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TArrayView<int8>{small}.Slice(offset, count),
+        TArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentData::get_view() const -> ConstView {
+    return get_view(0, num());
+}
+
+auto MimallocAlignmentData::get_view(int32 const offset, int32 const count) const -> ConstView {
+    return ConstView{
+        TConstArrayView<uint8>{bytes}.Slice(offset, count),
+        TConstArrayView<OddBytes>{odd}.Slice(offset, count),
+        TConstArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_const_view(offset, count),
+        TConstArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TConstArrayView<int8>{small}.Slice(offset, count),
+        TConstArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TConstArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentData::get_const_view() const -> ConstView {
+    return get_const_view(0, num());
+}
+
+auto MimallocAlignmentData::get_const_view(int32 const offset, int32 const count) const
+    -> ConstView {
+    return ConstView{
+        TConstArrayView<uint8>{bytes}.Slice(offset, count),
+        TConstArrayView<OddBytes>{odd}.Slice(offset, count),
+        TConstArrayView<Aligned32>{aligned32}.Slice(offset, count),
+        nested.get_const_view(offset, count),
+        TConstArrayView<Aligned64>{aligned64}.Slice(offset, count),
+        TConstArrayView<int8>{small}.Slice(offset, count),
+        TConstArrayView<Aligned256>{aligned256}.Slice(offset, count),
+        TConstArrayView<Handle>{handles}.Slice(offset, count),
+    };
+}
+
+auto MimallocAlignmentData::num() const noexcept -> int32 {
+    return ml::num(bytes);
+}
+
+auto MimallocAlignmentData::is_empty() const noexcept -> bool {
+    return num() == 0;
+}
+
+void MimallocAlignmentData::validate_array_sizes() const {
+    ml::fatal_if_nums_not_equal({
+        ml::num(bytes),
+        ml::num(odd),
+        ml::num(aligned32),
+        ml::num(nested),
+        ml::num(aligned64),
+        ml::num(small),
+        ml::num(aligned256),
+        ml::num(handles),
+    });
+}
+
+auto MimallocAlignmentData::slice(int32 const offset, int32 const count) -> View {
+    return get_view(offset, count);
+}
+
+auto MimallocAlignmentData::left(int32 const count) -> View {
+    return slice(0, count);
+}
+
+auto MimallocAlignmentData::right(int32 const count) -> View {
+    return slice(num() - count, count);
+}
+
+auto MimallocAlignmentData::slice(int32 const offset, int32 const count) const -> ConstView {
+    return get_view(offset, count);
+}
+
+auto MimallocAlignmentData::left(int32 const count) const -> ConstView {
+    return slice(0, count);
+}
+
+auto MimallocAlignmentData::right(int32 const count) const -> ConstView {
+    return slice(num() - count, count);
+}
+
 auto MallocVectorsConstView::get_view() const -> ConstView {
     return get_view(0, num());
 }

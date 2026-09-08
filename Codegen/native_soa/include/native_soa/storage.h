@@ -16,7 +16,34 @@
 #include <utility>
 #include <vector>
 
+#if NATIVE_SOA_MIMALLOC
+#include <mimalloc.h>
+#endif
+
 namespace ml::native_soa {
+
+#if NATIVE_SOA_MIMALLOC
+template <typename T>
+struct MimallocAllocator {
+    using value_type = T;
+    MimallocAllocator() = default;
+    template <typename U>
+    MimallocAllocator(MimallocAllocator<U> const&) noexcept {}
+    auto allocate(std::size_t count) -> T* {
+        if (count > std::numeric_limits<std::size_t>::max() / sizeof(T)) {
+            throw std::bad_array_new_length{};
+        }
+        return static_cast<T*>(mi_new_aligned(count * sizeof(T), alignof(T)));
+    }
+    void deallocate(T* data, std::size_t) noexcept { mi_free(data); }
+    friend auto operator==(MimallocAllocator const&, MimallocAllocator const&) -> bool = default;
+};
+template <typename T>
+using Vector = std::vector<T, MimallocAllocator<T>>;
+#else
+template <typename T>
+using Vector = std::vector<T>;
+#endif
 
 using single_allocation_layout::capacity_granularity;
 using single_allocation_layout::layout_align;
@@ -64,14 +91,22 @@ inline auto allocation_bytes(std::int32_t const capacity, std::size_t const bloc
 }
 
 inline auto allocate(std::size_t const bytes, std::uint32_t const alignment) -> std::byte* {
+#if NATIVE_SOA_MIMALLOC
+    auto* const allocation{mi_new_aligned(bytes, alignment)};
+#else
     auto* const allocation{::operator new(bytes, std::align_val_t{alignment})};
+#endif
     // The byte array provides storage and starts implicit-lifetime leaf arrays without
     // initialization.
     return ::new (allocation) std::byte[bytes];
 }
 
 inline void free(std::byte* data, std::size_t alignment) noexcept {
+#if NATIVE_SOA_MIMALLOC
+    mi_free_aligned(data, alignment);
+#else
     ::operator delete(data, std::align_val_t{alignment});
+#endif
 }
 
 // Generated storage supplies the state and typed column operations.
