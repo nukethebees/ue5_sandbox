@@ -2,6 +2,8 @@
 
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
+#include <SandboxCore/container_ops.h>
+
 #include <Algo/Sort.h>
 #include <Dom/JsonObject.h>
 #include <HAL/FileManager.h>
@@ -241,9 +243,10 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
     auto const count{realtime.num()};
     constexpr int32 first_measured_sample_index{2};
     auto const measured_interval_count{FMath::Max(0, count - first_measured_sample_index)};
-    result.throughput_real_elapsed_seconds.Reserve(measured_interval_count);
-    result.observed_time_scale.Reserve(measured_interval_count);
-    result.requested_time_scale.Reserve(measured_interval_count);
+    ml::reserve(measured_interval_count,
+                result.throughput_real_elapsed_seconds,
+                result.observed_time_scale,
+                result.requested_time_scale);
     for (int32 index{first_measured_sample_index}; index < count; ++index) {
         auto const begin_time{realtime.time_at(index - 1)};
         auto const end_time{realtime.time_at(index)};
@@ -372,12 +375,13 @@ auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTel
         }
         return static_cast<float>(total);
     };
-    result.battle_simulated_seconds.Reserve(record.battle_samples.Num());
-    result.battle_alive_entities.Reserve(record.battle_samples.Num());
-    result.battle_shots.Reserve(record.battle_samples.Num());
-    result.battle_hits.Reserve(record.battle_samples.Num());
-    result.battle_damage_dealt.Reserve(record.battle_samples.Num());
-    result.battle_kills.Reserve(record.battle_samples.Num());
+    ml::reserve(record.battle_samples.Num(),
+                result.battle_simulated_seconds,
+                result.battle_alive_entities,
+                result.battle_shots,
+                result.battle_hits,
+                result.battle_damage_dealt,
+                result.battle_kills);
     for (auto const& sample : record.battle_samples) {
         result.battle_simulated_seconds.Add(static_cast<float>(sample.simulated_elapsed_seconds));
         result.battle_alive_entities.Add(sum_counts(sample.alive));

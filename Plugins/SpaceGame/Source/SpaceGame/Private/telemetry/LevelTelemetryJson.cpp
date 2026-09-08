@@ -1,5 +1,7 @@
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
+#include <SandboxCore/container_ops.h>
+
 #include <Dom/JsonObject.h>
 #include <HAL/FileManager.h>
 #include <Misc/FileHelper.h>
@@ -22,8 +24,7 @@ auto make_series(Series const& series) -> TSharedRef<FJsonObject> {
     TArray<TSharedPtr<FJsonValue>> ticks;
     TArray<TSharedPtr<FJsonValue>> values;
     auto const count{series.num()};
-    ticks.Reserve(count);
-    values.Reserve(count);
+    ml::reserve(count, ticks, values);
     for (int32 index{}; index < count; ++index) {
         ticks.Add(MakeShared<FJsonValueNumber>(static_cast<double>(series.time_at(index))));
         values.Add(MakeShared<FJsonValueNumber>(static_cast<double>(series.value_at(index))));
@@ -39,8 +40,7 @@ auto make_realtime_series(ml::TimeSeriesData<uint64> const& series) -> TSharedRe
     TArray<TSharedPtr<FJsonValue>> elapsed_seconds;
     TArray<TSharedPtr<FJsonValue>> completed_ticks;
     auto const count{series.num()};
-    elapsed_seconds.Reserve(count);
-    completed_ticks.Reserve(count);
+    ml::reserve(count, elapsed_seconds, completed_ticks);
     for (int32 index{}; index < count; ++index) {
         elapsed_seconds.Add(MakeShared<FJsonValueNumber>(series.time_at(index)));
         completed_ticks.Add(
@@ -182,8 +182,7 @@ auto make_performance_windows(TArray<FLevelTelemetryPerformanceWindow> const& so
         object->SetArrayField(TEXT("systems"), MoveTemp(systems));
         TArray<TSharedPtr<FJsonValue>> phases;
         TArray<TSharedPtr<FJsonValue>> phase_cpu_share;
-        phases.Reserve(FLevelTelemetryPerformanceWindow::phase_count);
-        phase_cpu_share.Reserve(FLevelTelemetryPerformanceWindow::phase_count);
+        ml::reserve(FLevelTelemetryPerformanceWindow::phase_count, phases, phase_cpu_share);
         for (int32 index{}; index < FLevelTelemetryPerformanceWindow::phase_count; ++index) {
             phases.Add(MakeShared<FJsonValueObject>(make_timing(window.phases[index])));
             phase_cpu_share.Add(MakeShared<FJsonValueNumber>(window.phase_cpu_share[index]));

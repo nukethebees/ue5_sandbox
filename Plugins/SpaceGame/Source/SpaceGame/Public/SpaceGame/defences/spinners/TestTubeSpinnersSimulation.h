@@ -74,6 +74,9 @@ struct SPACEGAME_API Simulation {
     friend class ::ATestBatchOrchestrator;
     friend struct ::FLevelSimulation;
     friend struct ::FSpinnerPresentation;
+#if WITH_DEV_AUTOMATION_TESTS
+    friend struct FSpinnerSpawnTestAccess;
+#endif
 
     FSpinnerSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;

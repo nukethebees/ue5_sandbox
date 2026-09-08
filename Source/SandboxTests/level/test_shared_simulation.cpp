@@ -156,6 +156,9 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     TEST_METHOD(CapitalFighterHandles_All)
     { run_capital_fighter_handles(ml::ECapitalFighterHandlesScenario::All); }
 
+    SHARED_SIMULATION_TEST(Capitals_SimultaneousReassignment,
+                           ml::FSimultaneousCapitalReassignmentScenario)
+
     TEST_METHOD(Fighters_LineOfSightFailureHandling)
     {
         TestCommandBuilder.Do([this] {

@@ -11,6 +11,28 @@
 #include <SandboxNative/RegistryEntityHandle.h>
 
 namespace ml {
+class FSimultaneousCapitalReassignmentScenario final : public FSimulationTestScenario {
+    struct FSample {
+        TArray<FRegistryEntityHandle> capitals;
+        TArray<TArray<FRegistryEntityHandle>> owned_fighters;
+        TArray<ETestTeam> capital_teams;
+        TArray<ETestTeam> fighter_teams;
+        TArray<int32> span_starts;
+        TArray<FRegistryEntityHandle> all_owned_fighters;
+        TArray<FRegistryEntityHandle> fighters;
+    };
+  public:
+    explicit FSimultaneousCapitalReassignmentScenario(FSimulationTestContext& context);
+    void run() override;
+  private:
+    void spawn_fixture();
+    void sample_values(ATestBatchOrchestrator& orchestrator);
+    void check_samples();
+
+    TimeSeriesData<FSample> samples_;
+    TArray<FRegistryEntityHandle> killed_capitals_;
+};
+
 enum class ECapitalFighterHandlesScenario : uint8 { KillFightersOnly, KillCapital, All };
 
 void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
