@@ -485,6 +485,7 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             add_generated_type(*schema.single_allocation + "Storage");
             add_generated_type(schema.name + "SingleLayout");
             add_generated_type(schema.name + "SingleView");
+            add_generated_type(schema.name + "SingleConstView");
             for (auto const& variant : schema.single_allocation_variants) {
                 require_identifier(variant.name, "single-allocation allocator variant");
                 add_generated_type(variant.name);
@@ -571,11 +572,17 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             continue;
         }
         std::set<std::string> active;
-        auto visit = [&](auto&& self, SoaSchema const& schema, std::string const& prefix) -> void {
+        auto visit = [&](auto&& self, SoaSchema const& schema) -> void {
             if (!active.insert(schema.name).second) {
                 throw std::invalid_argument{"Cyclic single-allocation schema: " + schema.name};
             }
+            std::set<std::string> accessors;
             for (auto const& member : schema.members) {
+                auto const accessor{member.kind == SoaMemberKind::nested ? "view_" + member.name
+                                                                         : member.name};
+                if (!accessors.insert(accessor).second) {
+                    throw std::invalid_argument{"Duplicate compact view accessor: " + accessor};
+                }
                 if (member.name == "columns" || member.name == "validate" ||
                     member.name == "column_data" || member.name == "column_data_unchecked" ||
                     member.name == "capacity_blocks") {
@@ -590,13 +597,11 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                 if (child == module.structs.end()) {
                     throw std::invalid_argument{"Unknown nested schema: " + *member.nested_schema};
                 }
-                auto const path{prefix + "_" + member.name};
-                add_generated_type(root.name + "SingleView" + path);
-                self(self, *child, path);
+                self(self, *child);
             }
             active.erase(schema.name);
         };
-        visit(visit, root, "");
+        visit(visit, root);
     }
     for (auto const& schema : module.structs) {
         if (!schema.fixed.has_value()) {

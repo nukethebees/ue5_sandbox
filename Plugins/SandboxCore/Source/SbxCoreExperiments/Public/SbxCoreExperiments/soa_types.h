@@ -1261,8 +1261,8 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     TArray<float> target_radii;
 };
 
-template <bool Const>
 struct EntityDataSingleView;
+struct EntityDataSingleConstView;
 struct EntityDataSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -2177,8 +2177,8 @@ struct SingleAllocationEntityDataStorage
     : EntityDataSingleLayout
     , protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
-    using View = EntityDataSingleView<false>;
-    using ConstView = EntityDataSingleView<true>;
+    using View = EntityDataSingleView;
+    using ConstView = EntityDataSingleConstView;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -2976,1240 +2976,399 @@ struct SingleAllocationEntityDataStorage
     }
 };
 
-template <bool Const>
-struct EntityDataSingleView_locations : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
+struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
+    using Base = ml::soa_storage::CompactViewState<true>;
     using Base::Base;
-    using View = EntityDataSingleView_locations<false>;
-    using ConstView = EntityDataSingleView_locations<true>;
-    EntityDataSingleView_locations() = default;
-    EntityDataSingleView_locations(EntityDataSingleView_locations const&) = default;
-    auto operator=(EntityDataSingleView_locations const&)
-        -> EntityDataSingleView_locations& = default;
-    EntityDataSingleView_locations(EntityDataSingleView_locations<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_locations<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_locations<true> {
-        return this->slice(offset, count);
+    using View = EntityDataSingleView;
+    using ConstView = EntityDataSingleConstView;
+    EntityDataSingleConstView() = default;
+    EntityDataSingleConstView(EntityDataSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
     }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::locations_xs_offset(this->capacity_blocks())),
-            this->count_};
+    auto entity_handles() const -> TArrayView<Handle const> {
+        return {
+            column_data<Handle>(EntityDataSingleLayout::entity_handles_offset(capacity_blocks())),
+            count_};
     }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::locations_ys_offset(this->capacity_blocks())),
-            this->count_};
+    auto integral_biases() const -> TArrayView<uint32 const> {
+        return {
+            column_data<uint32>(EntityDataSingleLayout::integral_biases_offset(capacity_blocks())),
+            count_};
     }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::locations_zs_offset(this->capacity_blocks())),
-            this->count_};
+    auto float_biases() const -> TArrayView<float const> {
+        return {column_data<float>(EntityDataSingleLayout::float_biases_offset(capacity_blocks())),
+                count_};
     }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto tasks() const -> TArrayView<Task const> {
+        return {column_data<Task>(EntityDataSingleLayout::tasks_offset(capacity_blocks())), count_};
+    }
+    auto view_locations() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::locations_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::locations_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::locations_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::locations_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::locations_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_locations<false>) == 16 &&
-              sizeof(EntityDataSingleView_locations<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_locations<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_locations<true>>);
-template <bool Const>
-struct EntityDataSingleView_desired_move_locations : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_desired_move_locations<false>;
-    using ConstView = EntityDataSingleView_desired_move_locations<true>;
-    EntityDataSingleView_desired_move_locations() = default;
-    EntityDataSingleView_desired_move_locations(
-        EntityDataSingleView_desired_move_locations const&) = default;
-    auto operator=(EntityDataSingleView_desired_move_locations const&)
-        -> EntityDataSingleView_desired_move_locations& = default;
-    EntityDataSingleView_desired_move_locations(
-        EntityDataSingleView_desired_move_locations<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_desired_move_locations<true> {
-        return *this;
-    }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_desired_move_locations<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::desired_move_locations_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::desired_move_locations_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::desired_move_locations_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_desired_move_locations() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::desired_move_locations_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_desired_move_locations<false>) == 16 &&
-              sizeof(EntityDataSingleView_desired_move_locations<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_desired_move_locations<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_desired_move_locations<true>>);
-template <bool Const>
-struct EntityDataSingleView_aim_directions : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_aim_directions<false>;
-    using ConstView = EntityDataSingleView_aim_directions<true>;
-    EntityDataSingleView_aim_directions() = default;
-    EntityDataSingleView_aim_directions(EntityDataSingleView_aim_directions const&) = default;
-    auto operator=(EntityDataSingleView_aim_directions const&)
-        -> EntityDataSingleView_aim_directions& = default;
-    EntityDataSingleView_aim_directions(EntityDataSingleView_aim_directions<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_aim_directions<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_aim_directions<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::aim_directions_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::aim_directions_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::aim_directions_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_aim_directions() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::aim_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::aim_directions_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_aim_directions<false>) == 16 &&
-              sizeof(EntityDataSingleView_aim_directions<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_aim_directions<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_aim_directions<true>>);
-template <bool Const>
-struct EntityDataSingleView_desired_aiming_directions : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_desired_aiming_directions<false>;
-    using ConstView = EntityDataSingleView_desired_aiming_directions<true>;
-    EntityDataSingleView_desired_aiming_directions() = default;
-    EntityDataSingleView_desired_aiming_directions(
-        EntityDataSingleView_desired_aiming_directions const&) = default;
-    auto operator=(EntityDataSingleView_desired_aiming_directions const&)
-        -> EntityDataSingleView_desired_aiming_directions& = default;
-    EntityDataSingleView_desired_aiming_directions(
-        EntityDataSingleView_desired_aiming_directions<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_desired_aiming_directions<true> {
-        return *this;
-    }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_desired_aiming_directions<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::desired_aiming_directions_xs_offset(
-                    this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::desired_aiming_directions_ys_offset(
-                    this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::desired_aiming_directions_zs_offset(
-                    this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_desired_aiming_directions() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_aiming_directions_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_desired_aiming_directions<false>) == 16 &&
-              sizeof(EntityDataSingleView_desired_aiming_directions<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_desired_aiming_directions<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_desired_aiming_directions<true>>);
-template <bool Const>
-struct EntityDataSingleView_movement_directions : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_movement_directions<false>;
-    using ConstView = EntityDataSingleView_movement_directions<true>;
-    EntityDataSingleView_movement_directions() = default;
-    EntityDataSingleView_movement_directions(EntityDataSingleView_movement_directions const&) =
-        default;
-    auto operator=(EntityDataSingleView_movement_directions const&)
-        -> EntityDataSingleView_movement_directions& = default;
-    EntityDataSingleView_movement_directions(
-        EntityDataSingleView_movement_directions<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_movement_directions<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_movement_directions<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::movement_directions_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::movement_directions_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::movement_directions_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_movement_directions() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::movement_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::movement_directions_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_movement_directions<false>) == 16 &&
-              sizeof(EntityDataSingleView_movement_directions<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_movement_directions<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_movement_directions<true>>);
-template <bool Const>
-struct EntityDataSingleView_velocities : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_velocities<false>;
-    using ConstView = EntityDataSingleView_velocities<true>;
-    EntityDataSingleView_velocities() = default;
-    EntityDataSingleView_velocities(EntityDataSingleView_velocities const&) = default;
-    auto operator=(EntityDataSingleView_velocities const&)
-        -> EntityDataSingleView_velocities& = default;
-    EntityDataSingleView_velocities(EntityDataSingleView_velocities<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_velocities<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_velocities<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::velocities_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::velocities_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::velocities_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_velocities() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::velocities_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::velocities_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::velocities_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::velocities_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::velocities_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
+    auto move_distances() const -> TArrayView<float const> {
+        return {
+            column_data<float>(EntityDataSingleLayout::move_distances_offset(capacity_blocks())),
+            count_};
     }
-};
-static_assert(sizeof(EntityDataSingleView_velocities<false>) == 16 &&
-              sizeof(EntityDataSingleView_velocities<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_velocities<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_velocities<true>>);
-template <bool Const>
-struct EntityDataSingleView_awareness_scan_countdowns : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_awareness_scan_countdowns<false>;
-    using ConstView = EntityDataSingleView_awareness_scan_countdowns<true>;
-    EntityDataSingleView_awareness_scan_countdowns() = default;
-    EntityDataSingleView_awareness_scan_countdowns(
-        EntityDataSingleView_awareness_scan_countdowns const&) = default;
-    auto operator=(EntityDataSingleView_awareness_scan_countdowns const&)
-        -> EntityDataSingleView_awareness_scan_countdowns& = default;
-    EntityDataSingleView_awareness_scan_countdowns(
-        EntityDataSingleView_awareness_scan_countdowns<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_awareness_scan_countdowns<true> {
-        return *this;
+    auto speeds() const -> TArrayView<float const> {
+        return {column_data<float>(EntityDataSingleLayout::speeds_offset(capacity_blocks())),
+                count_};
     }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_awareness_scan_countdowns<true> {
-        return this->slice(offset, count);
+    auto teams() const -> TArrayView<Team const> {
+        return {column_data<Team>(EntityDataSingleLayout::teams_offset(capacity_blocks())), count_};
     }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<int8>>{
-            this->template column_data<int8>(
-                EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(
-                    this->capacity_blocks())),
-            this->count_};
+    auto healths() const -> TArrayView<int32 const> {
+        return {column_data<int32>(EntityDataSingleLayout::healths_offset(capacity_blocks())),
+                count_};
     }
-    auto columns() const -> std::conditional_t<Const, Countdown8ConstView, Countdown8View> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto parent_handles() const -> TArrayView<Handle const> {
+        return {
+            column_data<Handle>(EntityDataSingleLayout::parent_handles_offset(capacity_blocks())),
+            count_};
+    }
+    auto view_awareness_scan_countdowns() const -> Countdown8ConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, Countdown8ConstView, Countdown8View>{
-            {this->template column_data_unchecked<int8>(
+        auto const blocks{capacity_blocks()};
+        return Countdown8ConstView{
+            {column_data_unchecked<int8>(
                  EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_awareness_scan_countdowns<false>) == 16 &&
-              sizeof(EntityDataSingleView_awareness_scan_countdowns<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_awareness_scan_countdowns<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_awareness_scan_countdowns<true>>);
-template <bool Const>
-struct EntityDataSingleView_navigation_update_countdowns
-    : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_navigation_update_countdowns<false>;
-    using ConstView = EntityDataSingleView_navigation_update_countdowns<true>;
-    EntityDataSingleView_navigation_update_countdowns() = default;
-    EntityDataSingleView_navigation_update_countdowns(
-        EntityDataSingleView_navigation_update_countdowns const&) = default;
-    auto operator=(EntityDataSingleView_navigation_update_countdowns const&)
-        -> EntityDataSingleView_navigation_update_countdowns& = default;
-    EntityDataSingleView_navigation_update_countdowns(
-        EntityDataSingleView_navigation_update_countdowns<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_navigation_update_countdowns<true> {
-        return *this;
-    }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_navigation_update_countdowns<true> {
-        return this->slice(offset, count);
-    }
-    auto remaining_ticks() const {
-        return TArrayView<typename Base::template Element<int16>>{
-            this->template column_data<int16>(
-                EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
-                    this->capacity_blocks())),
-            this->count_};
-    }
-    auto periods() const {
-        return TArrayView<typename Base::template Element<int16>>{
-            this->template column_data<int16>(
-                EntityDataSingleLayout::navigation_update_countdowns_periods_offset(
-                    this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_navigation_update_countdowns() const -> PeriodicCountdown16ConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View>{
-            {this->template column_data_unchecked<int16>(
+        auto const blocks{capacity_blocks()};
+        return PeriodicCountdown16ConstView{
+            {column_data_unchecked<int16>(
                  EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
                      blocks)),
-             this->count_},
-            {this->template column_data_unchecked<int16>(
+             count_},
+            {column_data_unchecked<int16>(
                  EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_navigation_update_countdowns<false>) == 16 &&
-              sizeof(EntityDataSingleView_navigation_update_countdowns<true>) == 16);
-static_assert(
-    std::is_trivially_copyable_v<EntityDataSingleView_navigation_update_countdowns<false>> &&
-    std::is_trivially_copyable_v<EntityDataSingleView_navigation_update_countdowns<true>>);
-template <bool Const>
-struct EntityDataSingleView_separation_steering : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_separation_steering<false>;
-    using ConstView = EntityDataSingleView_separation_steering<true>;
-    EntityDataSingleView_separation_steering() = default;
-    EntityDataSingleView_separation_steering(EntityDataSingleView_separation_steering const&) =
-        default;
-    auto operator=(EntityDataSingleView_separation_steering const&)
-        -> EntityDataSingleView_separation_steering& = default;
-    EntityDataSingleView_separation_steering(
-        EntityDataSingleView_separation_steering<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_separation_steering<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_separation_steering<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::separation_steering_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::separation_steering_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::separation_steering_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_separation_steering() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::separation_steering_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::separation_steering_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
+    auto navigation_risk_tiers() const -> TArrayView<uint8 const> {
+        return {column_data<uint8>(
+                    EntityDataSingleLayout::navigation_risk_tiers_offset(capacity_blocks())),
+                count_};
     }
-};
-static_assert(sizeof(EntityDataSingleView_separation_steering<false>) == 16 &&
-              sizeof(EntityDataSingleView_separation_steering<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_separation_steering<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_separation_steering<true>>);
-template <bool Const>
-struct EntityDataSingleView_attack_reposition_countdowns
-    : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_attack_reposition_countdowns<false>;
-    using ConstView = EntityDataSingleView_attack_reposition_countdowns<true>;
-    EntityDataSingleView_attack_reposition_countdowns() = default;
-    EntityDataSingleView_attack_reposition_countdowns(
-        EntityDataSingleView_attack_reposition_countdowns const&) = default;
-    auto operator=(EntityDataSingleView_attack_reposition_countdowns const&)
-        -> EntityDataSingleView_attack_reposition_countdowns& = default;
-    EntityDataSingleView_attack_reposition_countdowns(
-        EntityDataSingleView_attack_reposition_countdowns<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_attack_reposition_countdowns<true> {
-        return *this;
+    auto navigation_lower_risk_scan_counts() const -> TArrayView<uint8 const> {
+        return {column_data<uint8>(EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(
+                    capacity_blocks())),
+                count_};
     }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_attack_reposition_countdowns<true> {
-        return this->slice(offset, count);
+    auto avoidance_choice_indices() const -> TArrayView<int8 const> {
+        return {column_data<int8>(
+                    EntityDataSingleLayout::avoidance_choice_indices_offset(capacity_blocks())),
+                count_};
     }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<int16>>{
-            this->template column_data<int16>(
-                EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(
-                    this->capacity_blocks())),
-            this->count_};
+    auto avoidance_clear_scan_counts() const -> TArrayView<uint8 const> {
+        return {column_data<uint8>(
+                    EntityDataSingleLayout::avoidance_clear_scan_counts_offset(capacity_blocks())),
+                count_};
     }
-    auto columns() const -> std::conditional_t<Const, Countdown16ConstView, Countdown16View> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_attack_reposition_countdowns() const -> Countdown16ConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
-            {this->template column_data_unchecked<int16>(
+        auto const blocks{capacity_blocks()};
+        return Countdown16ConstView{
+            {column_data_unchecked<int16>(
                  EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_attack_reposition_countdowns<false>) == 16 &&
-              sizeof(EntityDataSingleView_attack_reposition_countdowns<true>) == 16);
-static_assert(
-    std::is_trivially_copyable_v<EntityDataSingleView_attack_reposition_countdowns<false>> &&
-    std::is_trivially_copyable_v<EntityDataSingleView_attack_reposition_countdowns<true>>);
-template <bool Const>
-struct EntityDataSingleView_attack_cooldowns : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_attack_cooldowns<false>;
-    using ConstView = EntityDataSingleView_attack_cooldowns<true>;
-    EntityDataSingleView_attack_cooldowns() = default;
-    EntityDataSingleView_attack_cooldowns(EntityDataSingleView_attack_cooldowns const&) = default;
-    auto operator=(EntityDataSingleView_attack_cooldowns const&)
-        -> EntityDataSingleView_attack_cooldowns& = default;
-    EntityDataSingleView_attack_cooldowns(EntityDataSingleView_attack_cooldowns<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_attack_cooldowns<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_attack_cooldowns<true> {
-        return this->slice(offset, count);
-    }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<int16>>{
-            this->template column_data<int16>(
-                EntityDataSingleLayout::attack_cooldowns_counters_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, Countdown16ConstView, Countdown16View> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_attack_cooldowns() const -> Countdown16ConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
-            {this->template column_data_unchecked<int16>(
+        auto const blocks{capacity_blocks()};
+        return Countdown16ConstView{
+            {column_data_unchecked<int16>(
                  EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
+    auto target_handles() const -> TArrayView<Handle const> {
+        return {
+            column_data<Handle>(EntityDataSingleLayout::target_handles_offset(capacity_blocks())),
+            count_};
     }
-};
-static_assert(sizeof(EntityDataSingleView_attack_cooldowns<false>) == 16 &&
-              sizeof(EntityDataSingleView_attack_cooldowns<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_attack_cooldowns<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_attack_cooldowns<true>>);
-template <bool Const>
-struct EntityDataSingleView_target_locations : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_target_locations<false>;
-    using ConstView = EntityDataSingleView_target_locations<true>;
-    EntityDataSingleView_target_locations() = default;
-    EntityDataSingleView_target_locations(EntityDataSingleView_target_locations const&) = default;
-    auto operator=(EntityDataSingleView_target_locations const&)
-        -> EntityDataSingleView_target_locations& = default;
-    EntityDataSingleView_target_locations(EntityDataSingleView_target_locations<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_target_locations<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_target_locations<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_locations_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_locations_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_locations_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_target_locations() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_locations_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_locations_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_locations_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::target_locations_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::target_locations_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_target_locations<false>) == 16 &&
-              sizeof(EntityDataSingleView_target_locations<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_target_locations<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_target_locations<true>>);
-template <bool Const>
-struct EntityDataSingleView_target_velocities : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_target_velocities<false>;
-    using ConstView = EntityDataSingleView_target_velocities<true>;
-    EntityDataSingleView_target_velocities() = default;
-    EntityDataSingleView_target_velocities(EntityDataSingleView_target_velocities const&) = default;
-    auto operator=(EntityDataSingleView_target_velocities const&)
-        -> EntityDataSingleView_target_velocities& = default;
-    EntityDataSingleView_target_velocities(
-        EntityDataSingleView_target_velocities<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_target_velocities<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_target_velocities<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_velocities_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_velocities_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_velocities_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_target_velocities() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::target_velocities_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::target_velocities_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntityDataSingleView_target_velocities<false>) == 16 &&
-              sizeof(EntityDataSingleView_target_velocities<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_target_velocities<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_target_velocities<true>>);
-template <bool Const>
-struct EntityDataSingleView_target_directions : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView_target_directions<false>;
-    using ConstView = EntityDataSingleView_target_directions<true>;
-    EntityDataSingleView_target_directions() = default;
-    EntityDataSingleView_target_directions(EntityDataSingleView_target_directions const&) = default;
-    auto operator=(EntityDataSingleView_target_directions const&)
-        -> EntityDataSingleView_target_directions& = default;
-    EntityDataSingleView_target_directions(
-        EntityDataSingleView_target_directions<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView_target_directions<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> EntityDataSingleView_target_directions<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_directions_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_directions_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_directions_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_target_directions() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_directions_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_directions_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_directions_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::target_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::target_directions_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
+    auto intercept_times() const -> TArrayView<float const> {
+        return {
+            column_data<float>(EntityDataSingleLayout::intercept_times_offset(capacity_blocks())),
+            count_};
     }
-};
-static_assert(sizeof(EntityDataSingleView_target_directions<false>) == 16 &&
-              sizeof(EntityDataSingleView_target_directions<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView_target_directions<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView_target_directions<true>>);
-template <bool Const>
-struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = EntityDataSingleView<false>;
-    using ConstView = EntityDataSingleView<true>;
-    EntityDataSingleView() = default;
-    EntityDataSingleView(EntityDataSingleView const&) = default;
-    auto operator=(EntityDataSingleView const&) -> EntityDataSingleView& = default;
-    EntityDataSingleView(EntityDataSingleView<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> EntityDataSingleView<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> EntityDataSingleView<true> {
-        return this->slice(offset, count);
+    auto target_distance_sq() const -> TArrayView<float const> {
+        return {column_data<float>(
+                    EntityDataSingleLayout::target_distance_sq_offset(capacity_blocks())),
+                count_};
     }
-    auto entity_handles() const {
-        return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(
-                EntityDataSingleLayout::entity_handles_offset(this->capacity_blocks())),
-            this->count_};
+    auto target_distances() const -> TArrayView<float const> {
+        return {
+            column_data<float>(EntityDataSingleLayout::target_distances_offset(capacity_blocks())),
+            count_};
     }
-    auto integral_biases() const {
-        return TArrayView<typename Base::template Element<uint32>>{
-            this->template column_data<uint32>(
-                EntityDataSingleLayout::integral_biases_offset(this->capacity_blocks())),
-            this->count_};
+    auto target_radii() const -> TArrayView<float const> {
+        return {column_data<float>(EntityDataSingleLayout::target_radii_offset(capacity_blocks())),
+                count_};
     }
-    auto float_biases() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::float_biases_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto tasks() const {
-        return TArrayView<typename Base::template Element<Task>>{
-            this->template column_data<Task>(
-                EntityDataSingleLayout::tasks_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto locations() const {
-        return EntityDataSingleView_locations<Const>{this->state_, this->offset_, this->count_};
-    }
-    auto desired_move_locations() const {
-        return EntityDataSingleView_desired_move_locations<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto aim_directions() const {
-        return EntityDataSingleView_aim_directions<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto desired_aiming_directions() const {
-        return EntityDataSingleView_desired_aiming_directions<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto movement_directions() const {
-        return EntityDataSingleView_movement_directions<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto velocities() const {
-        return EntityDataSingleView_velocities<Const>{this->state_, this->offset_, this->count_};
-    }
-    auto move_distances() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::move_distances_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto speeds() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::speeds_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto teams() const {
-        return TArrayView<typename Base::template Element<Team>>{
-            this->template column_data<Team>(
-                EntityDataSingleLayout::teams_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto healths() const {
-        return TArrayView<typename Base::template Element<int32>>{
-            this->template column_data<int32>(
-                EntityDataSingleLayout::healths_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto parent_handles() const {
-        return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(
-                EntityDataSingleLayout::parent_handles_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto awareness_scan_countdowns() const {
-        return EntityDataSingleView_awareness_scan_countdowns<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto navigation_update_countdowns() const {
-        return EntityDataSingleView_navigation_update_countdowns<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto separation_steering() const {
-        return EntityDataSingleView_separation_steering<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto navigation_risk_tiers() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                EntityDataSingleLayout::navigation_risk_tiers_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto navigation_lower_risk_scan_counts() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(
-                    this->capacity_blocks())),
-            this->count_};
-    }
-    auto avoidance_choice_indices() const {
-        return TArrayView<typename Base::template Element<int8>>{
-            this->template column_data<int8>(
-                EntityDataSingleLayout::avoidance_choice_indices_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto avoidance_clear_scan_counts() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                EntityDataSingleLayout::avoidance_clear_scan_counts_offset(
-                    this->capacity_blocks())),
-            this->count_};
-    }
-    auto attack_reposition_countdowns() const {
-        return EntityDataSingleView_attack_reposition_countdowns<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto attack_cooldowns() const {
-        return EntityDataSingleView_attack_cooldowns<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto target_handles() const {
-        return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(
-                EntityDataSingleLayout::target_handles_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto target_locations() const {
-        return EntityDataSingleView_target_locations<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto target_velocities() const {
-        return EntityDataSingleView_target_velocities<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto target_directions() const {
-        return EntityDataSingleView_target_directions<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto intercept_times() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::intercept_times_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto target_distance_sq() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_distance_sq_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto target_distances() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_distances_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto target_radii() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                EntityDataSingleLayout::target_radii_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, EntityDataConstView, EntityDataView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto columns() const -> EntityDataConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, EntityDataConstView, EntityDataView>{
-            {this->template column_data_unchecked<Handle>(
-                 EntityDataSingleLayout::entity_handles_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint32>(
-                 EntityDataSingleLayout::integral_biases_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::float_biases_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Task>(
-                 EntityDataSingleLayout::tasks_offset(blocks)),
-             this->count_},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::locations_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::locations_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::locations_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
+        auto const blocks{capacity_blocks()};
+        return EntityDataConstView{
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::entity_handles_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(EntityDataSingleLayout::integral_biases_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::float_biases_offset(blocks)),
+             count_},
+            {column_data_unchecked<Task>(EntityDataSingleLayout::tasks_offset(blocks)), count_},
+            VectorsConstView{
+                {column_data_unchecked<float>(EntityDataSingleLayout::locations_xs_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::locations_ys_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::locations_zs_offset(blocks)),
+                 count_}},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
+                              count_}},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
+                              count_}},
+            VectorsConstView{
+                {column_data_unchecked<float>(
                      EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      EntityDataSingleLayout::desired_aiming_directions_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::velocities_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::velocities_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::velocities_zs_offset(blocks)),
-                 this->count_}},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::move_distances_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::speeds_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Team>(
-                 EntityDataSingleLayout::teams_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<int32>(
-                 EntityDataSingleLayout::healths_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Handle>(
-                 EntityDataSingleLayout::parent_handles_offset(blocks)),
-             this->count_},
-            std::conditional_t<Const, Countdown8ConstView, Countdown8View>{
-                {this->template column_data_unchecked<int8>(
+                 count_}},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
+                              count_}},
+            VectorsConstView{
+                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_xs_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_ys_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_zs_offset(blocks)),
+                 count_}},
+            {column_data_unchecked<float>(EntityDataSingleLayout::move_distances_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::speeds_offset(blocks)), count_},
+            {column_data_unchecked<Team>(EntityDataSingleLayout::teams_offset(blocks)), count_},
+            {column_data_unchecked<int32>(EntityDataSingleLayout::healths_offset(blocks)), count_},
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::parent_handles_offset(blocks)),
+             count_},
+            Countdown8ConstView{
+                {column_data_unchecked<int8>(
                      EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View>{
-                {this->template column_data_unchecked<int16>(
+                 count_}},
+            PeriodicCountdown16ConstView{
+                {column_data_unchecked<int16>(
                      EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
                          blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<int16>(
+                 count_},
+                {column_data_unchecked<int16>(
                      EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
-                 this->count_}},
-            {this->template column_data_unchecked<uint8>(
+                 count_}},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
+                              count_}},
+            {column_data_unchecked<uint8>(
                  EntityDataSingleLayout::navigation_risk_tiers_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint8>(
+             count_},
+            {column_data_unchecked<uint8>(
                  EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<int8>(
+             count_},
+            {column_data_unchecked<int8>(
                  EntityDataSingleLayout::avoidance_choice_indices_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint8>(
+             count_},
+            {column_data_unchecked<uint8>(
                  EntityDataSingleLayout::avoidance_clear_scan_counts_offset(blocks)),
-             this->count_},
-            std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
-                {this->template column_data_unchecked<int16>(
+             count_},
+            Countdown16ConstView{
+                {column_data_unchecked<int16>(
                      EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
-                {this->template column_data_unchecked<int16>(
+                 count_}},
+            Countdown16ConstView{
+                {column_data_unchecked<int16>(
                      EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
-                 this->count_}},
-            {this->template column_data_unchecked<Handle>(
-                 EntityDataSingleLayout::target_handles_offset(blocks)),
-             this->count_},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_locations_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_locations_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_locations_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_directions_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_directions_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_directions_zs_offset(blocks)),
-                 this->count_}},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::intercept_times_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+                 count_}},
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::target_handles_offset(blocks)),
+             count_},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_locations_xs_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_locations_ys_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_locations_zs_offset(blocks)),
+                              count_}},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
+                              count_}},
+            VectorsConstView{{column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_directions_xs_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_directions_ys_offset(blocks)),
+                              count_},
+                             {column_data_unchecked<float>(
+                                  EntityDataSingleLayout::target_directions_zs_offset(blocks)),
+                              count_}},
+            {column_data_unchecked<float>(EntityDataSingleLayout::intercept_times_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
                  EntityDataSingleLayout::target_distance_sq_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_distances_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_radii_offset(blocks)),
-             this->count_}};
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::target_distances_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::target_radii_offset(blocks)),
+             count_}};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -4217,10 +3376,409 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
         return arrays.apply_arrays(std::forward<Func>(func));
     }
 };
-static_assert(sizeof(EntityDataSingleView<false>) == 16 &&
-              sizeof(EntityDataSingleView<true>) == 16);
-static_assert(std::is_trivially_copyable_v<EntityDataSingleView<false>> &&
-              std::is_trivially_copyable_v<EntityDataSingleView<true>>);
+static_assert(sizeof(EntityDataSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleConstView>);
+struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
+    using Base = ml::soa_storage::CompactViewState<false>;
+    using Base::Base;
+    using View = EntityDataSingleView;
+    using ConstView = EntityDataSingleConstView;
+    EntityDataSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto entity_handles() const -> TArrayView<Handle> {
+        return {
+            column_data<Handle>(EntityDataSingleLayout::entity_handles_offset(capacity_blocks())),
+            count_};
+    }
+    auto integral_biases() const -> TArrayView<uint32> {
+        return {
+            column_data<uint32>(EntityDataSingleLayout::integral_biases_offset(capacity_blocks())),
+            count_};
+    }
+    auto float_biases() const -> TArrayView<float> {
+        return {column_data<float>(EntityDataSingleLayout::float_biases_offset(capacity_blocks())),
+                count_};
+    }
+    auto tasks() const -> TArrayView<Task> {
+        return {column_data<Task>(EntityDataSingleLayout::tasks_offset(capacity_blocks())), count_};
+    }
+    auto view_locations() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::locations_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::locations_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_desired_move_locations() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::desired_move_locations_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_aim_directions() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::aim_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::aim_directions_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_desired_aiming_directions() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks) -
+                          first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_movement_directions() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::movement_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::movement_directions_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_velocities() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::velocities_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::velocities_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto move_distances() const -> TArrayView<float> {
+        return {
+            column_data<float>(EntityDataSingleLayout::move_distances_offset(capacity_blocks())),
+            count_};
+    }
+    auto speeds() const -> TArrayView<float> {
+        return {column_data<float>(EntityDataSingleLayout::speeds_offset(capacity_blocks())),
+                count_};
+    }
+    auto teams() const -> TArrayView<Team> {
+        return {column_data<Team>(EntityDataSingleLayout::teams_offset(capacity_blocks())), count_};
+    }
+    auto healths() const -> TArrayView<int32> {
+        return {column_data<int32>(EntityDataSingleLayout::healths_offset(capacity_blocks())),
+                count_};
+    }
+    auto parent_handles() const -> TArrayView<Handle> {
+        return {
+            column_data<Handle>(EntityDataSingleLayout::parent_handles_offset(capacity_blocks())),
+            count_};
+    }
+    auto view_awareness_scan_countdowns() const -> Countdown8View {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return Countdown8View{
+            {column_data_unchecked<int8>(
+                 EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
+             count_}};
+    }
+    auto view_navigation_update_countdowns() const -> PeriodicCountdown16View {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return PeriodicCountdown16View{
+            {column_data_unchecked<int16>(
+                 EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
+                     blocks)),
+             count_},
+            {column_data_unchecked<int16>(
+                 EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
+             count_}};
+    }
+    auto view_separation_steering() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::separation_steering_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::separation_steering_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto navigation_risk_tiers() const -> TArrayView<uint8> {
+        return {column_data<uint8>(
+                    EntityDataSingleLayout::navigation_risk_tiers_offset(capacity_blocks())),
+                count_};
+    }
+    auto navigation_lower_risk_scan_counts() const -> TArrayView<uint8> {
+        return {column_data<uint8>(EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(
+                    capacity_blocks())),
+                count_};
+    }
+    auto avoidance_choice_indices() const -> TArrayView<int8> {
+        return {column_data<int8>(
+                    EntityDataSingleLayout::avoidance_choice_indices_offset(capacity_blocks())),
+                count_};
+    }
+    auto avoidance_clear_scan_counts() const -> TArrayView<uint8> {
+        return {column_data<uint8>(
+                    EntityDataSingleLayout::avoidance_clear_scan_counts_offset(capacity_blocks())),
+                count_};
+    }
+    auto view_attack_reposition_countdowns() const -> Countdown16View {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return Countdown16View{
+            {column_data_unchecked<int16>(
+                 EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
+             count_}};
+    }
+    auto view_attack_cooldowns() const -> Countdown16View {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return Countdown16View{
+            {column_data_unchecked<int16>(
+                 EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
+             count_}};
+    }
+    auto target_handles() const -> TArrayView<Handle> {
+        return {
+            column_data<Handle>(EntityDataSingleLayout::target_handles_offset(capacity_blocks())),
+            count_};
+    }
+    auto view_target_locations() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::target_locations_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::target_locations_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_target_velocities() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::target_velocities_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::target_velocities_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_target_directions() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntityDataSingleLayout::target_directions_xs_offset(blocks)};
+        auto const stride{EntityDataSingleLayout::target_directions_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto intercept_times() const -> TArrayView<float> {
+        return {
+            column_data<float>(EntityDataSingleLayout::intercept_times_offset(capacity_blocks())),
+            count_};
+    }
+    auto target_distance_sq() const -> TArrayView<float> {
+        return {column_data<float>(
+                    EntityDataSingleLayout::target_distance_sq_offset(capacity_blocks())),
+                count_};
+    }
+    auto target_distances() const -> TArrayView<float> {
+        return {
+            column_data<float>(EntityDataSingleLayout::target_distances_offset(capacity_blocks())),
+            count_};
+    }
+    auto target_radii() const -> TArrayView<float> {
+        return {column_data<float>(EntityDataSingleLayout::target_radii_offset(capacity_blocks())),
+                count_};
+    }
+    auto columns() const -> EntityDataView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return EntityDataView{
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::entity_handles_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(EntityDataSingleLayout::integral_biases_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::float_biases_offset(blocks)),
+             count_},
+            {column_data_unchecked<Task>(EntityDataSingleLayout::tasks_offset(blocks)), count_},
+            VectorsView{
+                {column_data_unchecked<float>(EntityDataSingleLayout::locations_xs_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::locations_ys_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::locations_zs_offset(blocks)),
+                 count_}},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
+                         count_}},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
+                         count_}},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::desired_aiming_directions_zs_offset(blocks)),
+                         count_}},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
+                         count_}},
+            VectorsView{
+                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_xs_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_ys_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(EntityDataSingleLayout::velocities_zs_offset(blocks)),
+                 count_}},
+            {column_data_unchecked<float>(EntityDataSingleLayout::move_distances_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::speeds_offset(blocks)), count_},
+            {column_data_unchecked<Team>(EntityDataSingleLayout::teams_offset(blocks)), count_},
+            {column_data_unchecked<int32>(EntityDataSingleLayout::healths_offset(blocks)), count_},
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::parent_handles_offset(blocks)),
+             count_},
+            Countdown8View{
+                {column_data_unchecked<int8>(
+                     EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
+                 count_}},
+            PeriodicCountdown16View{
+                {column_data_unchecked<int16>(
+                     EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
+                         blocks)),
+                 count_},
+                {column_data_unchecked<int16>(
+                     EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
+                 count_}},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
+                         count_}},
+            {column_data_unchecked<uint8>(
+                 EntityDataSingleLayout::navigation_risk_tiers_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint8>(
+                 EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(blocks)),
+             count_},
+            {column_data_unchecked<int8>(
+                 EntityDataSingleLayout::avoidance_choice_indices_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint8>(
+                 EntityDataSingleLayout::avoidance_clear_scan_counts_offset(blocks)),
+             count_},
+            Countdown16View{
+                {column_data_unchecked<int16>(
+                     EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
+                 count_}},
+            Countdown16View{{column_data_unchecked<int16>(
+                                 EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
+                             count_}},
+            {column_data_unchecked<Handle>(EntityDataSingleLayout::target_handles_offset(blocks)),
+             count_},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_locations_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_locations_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_locations_zs_offset(blocks)),
+                         count_}},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
+                         count_}},
+            VectorsView{{column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_directions_xs_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_directions_ys_offset(blocks)),
+                         count_},
+                        {column_data_unchecked<float>(
+                             EntityDataSingleLayout::target_directions_zs_offset(blocks)),
+                         count_}},
+            {column_data_unchecked<float>(EntityDataSingleLayout::intercept_times_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 EntityDataSingleLayout::target_distance_sq_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::target_distances_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(EntityDataSingleLayout::target_radii_offset(blocks)),
+             count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(EntityDataSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<EntityDataSingleView>);
+inline EntityDataSingleConstView::EntityDataSingleConstView(EntityDataSingleView const& other)
+    : Base{other} {}
 struct SingleAllocationEntityData : SingleAllocationEntityDataStorage {
     SingleAllocationEntityData() noexcept = default;
     SingleAllocationEntityData(SingleAllocationEntityData const&) = delete;
@@ -4251,8 +3809,8 @@ struct FMemorySingleEntityDataStorage
     : EntityDataSingleLayout
     , protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
-    using View = EntityDataSingleView<false>;
-    using ConstView = EntityDataSingleView<true>;
+    using View = EntityDataSingleView;
+    using ConstView = EntityDataSingleConstView;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -5316,8 +4874,8 @@ struct SBXCOREEXPERIMENTS_API AlignmentData {
     TArray<Handle> handles;
 };
 
-template <bool Const>
 struct AlignmentDataSingleView;
+struct AlignmentDataSingleConstView;
 struct AlignmentDataSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -5551,8 +5109,8 @@ struct SingleAllocationAlignmentDataStorage
     : AlignmentDataSingleLayout
     , protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
-    using View = AlignmentDataSingleView<false>;
-    using ConstView = AlignmentDataSingleView<true>;
+    using View = AlignmentDataSingleView;
+    using ConstView = AlignmentDataSingleConstView;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -5776,170 +5334,85 @@ struct SingleAllocationAlignmentDataStorage
     }
 };
 
-template <bool Const>
-struct AlignmentDataSingleView_nested : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
+struct AlignmentDataSingleConstView : ml::soa_storage::CompactViewState<true> {
+    using Base = ml::soa_storage::CompactViewState<true>;
     using Base::Base;
-    using View = AlignmentDataSingleView_nested<false>;
-    using ConstView = AlignmentDataSingleView_nested<true>;
-    AlignmentDataSingleView_nested() = default;
-    AlignmentDataSingleView_nested(AlignmentDataSingleView_nested const&) = default;
-    auto operator=(AlignmentDataSingleView_nested const&)
-        -> AlignmentDataSingleView_nested& = default;
-    AlignmentDataSingleView_nested(AlignmentDataSingleView_nested<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> AlignmentDataSingleView_nested<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> AlignmentDataSingleView_nested<true> {
-        return this->slice(offset, count);
+    using View = AlignmentDataSingleView;
+    using ConstView = AlignmentDataSingleConstView;
+    AlignmentDataSingleConstView() = default;
+    AlignmentDataSingleConstView(AlignmentDataSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
     }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                AlignmentDataSingleLayout::nested_xs_offset(this->capacity_blocks())),
-            this->count_};
+    auto bytes() const -> TArrayView<uint8 const> {
+        return {column_data<uint8>(AlignmentDataSingleLayout::bytes_offset(capacity_blocks())),
+                count_};
     }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                AlignmentDataSingleLayout::nested_ys_offset(this->capacity_blocks())),
-            this->count_};
+    auto odd() const -> TArrayView<OddBytes const> {
+        return {column_data<OddBytes>(AlignmentDataSingleLayout::odd_offset(capacity_blocks())),
+                count_};
     }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                AlignmentDataSingleLayout::nested_zs_offset(this->capacity_blocks())),
-            this->count_};
+    auto aligned32() const -> TArrayView<Aligned32 const> {
+        return {
+            column_data<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(capacity_blocks())),
+            count_};
     }
-    auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_nested() const -> ml::soa::Vector3ConstView<float> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, VectorsConstView, VectorsView>{
-            {this->template column_data_unchecked<float>(
-                 AlignmentDataSingleLayout::nested_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 AlignmentDataSingleLayout::nested_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
-                 AlignmentDataSingleLayout::nested_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{AlignmentDataSingleLayout::nested_xs_offset(blocks)};
+        auto const stride{AlignmentDataSingleLayout::nested_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
+    auto aligned64() const -> TArrayView<Aligned64 const> {
+        return {
+            column_data<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(capacity_blocks())),
+            count_};
     }
-};
-static_assert(sizeof(AlignmentDataSingleView_nested<false>) == 16 &&
-              sizeof(AlignmentDataSingleView_nested<true>) == 16);
-static_assert(std::is_trivially_copyable_v<AlignmentDataSingleView_nested<false>> &&
-              std::is_trivially_copyable_v<AlignmentDataSingleView_nested<true>>);
-template <bool Const>
-struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = AlignmentDataSingleView<false>;
-    using ConstView = AlignmentDataSingleView<true>;
-    AlignmentDataSingleView() = default;
-    AlignmentDataSingleView(AlignmentDataSingleView const&) = default;
-    auto operator=(AlignmentDataSingleView const&) -> AlignmentDataSingleView& = default;
-    AlignmentDataSingleView(AlignmentDataSingleView<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> AlignmentDataSingleView<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> AlignmentDataSingleView<true> {
-        return this->slice(offset, count);
+    auto small() const -> TArrayView<int8 const> {
+        return {column_data<int8>(AlignmentDataSingleLayout::small_offset(capacity_blocks())),
+                count_};
     }
-    auto bytes() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                AlignmentDataSingleLayout::bytes_offset(this->capacity_blocks())),
-            this->count_};
+    auto aligned256() const -> TArrayView<Aligned256 const> {
+        return {column_data<Aligned256>(
+                    AlignmentDataSingleLayout::aligned256_offset(capacity_blocks())),
+                count_};
     }
-    auto odd() const {
-        return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(
-                AlignmentDataSingleLayout::odd_offset(this->capacity_blocks())),
-            this->count_};
+    auto handles() const -> TArrayView<Handle const> {
+        return {column_data<Handle>(AlignmentDataSingleLayout::handles_offset(capacity_blocks())),
+                count_};
     }
-    auto aligned32() const {
-        return TArrayView<typename Base::template Element<Aligned32>>{
-            this->template column_data<Aligned32>(
-                AlignmentDataSingleLayout::aligned32_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto nested() const {
-        return AlignmentDataSingleView_nested<Const>{this->state_, this->offset_, this->count_};
-    }
-    auto aligned64() const {
-        return TArrayView<typename Base::template Element<Aligned64>>{
-            this->template column_data<Aligned64>(
-                AlignmentDataSingleLayout::aligned64_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto small() const {
-        return TArrayView<typename Base::template Element<int8>>{
-            this->template column_data<int8>(
-                AlignmentDataSingleLayout::small_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned256() const {
-        return TArrayView<typename Base::template Element<Aligned256>>{
-            this->template column_data<Aligned256>(
-                AlignmentDataSingleLayout::aligned256_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto handles() const {
-        return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(
-                AlignmentDataSingleLayout::handles_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, AlignmentDataConstView, AlignmentDataView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto columns() const -> AlignmentDataConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, AlignmentDataConstView, AlignmentDataView>{
-            {this->template column_data_unchecked<uint8>(
-                 AlignmentDataSingleLayout::bytes_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<OddBytes>(
-                 AlignmentDataSingleLayout::odd_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned32>(
-                 AlignmentDataSingleLayout::aligned32_offset(blocks)),
-             this->count_},
-            std::conditional_t<Const, VectorsConstView, VectorsView>{
-                {this->template column_data_unchecked<float>(
-                     AlignmentDataSingleLayout::nested_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     AlignmentDataSingleLayout::nested_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
-                     AlignmentDataSingleLayout::nested_zs_offset(blocks)),
-                 this->count_}},
-            {this->template column_data_unchecked<Aligned64>(
-                 AlignmentDataSingleLayout::aligned64_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<int8>(
-                 AlignmentDataSingleLayout::small_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned256>(
+        auto const blocks{capacity_blocks()};
+        return AlignmentDataConstView{
+            {column_data_unchecked<uint8>(AlignmentDataSingleLayout::bytes_offset(blocks)), count_},
+            {column_data_unchecked<OddBytes>(AlignmentDataSingleLayout::odd_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(blocks)),
+             count_},
+            VectorsConstView{
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_xs_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_ys_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_zs_offset(blocks)),
+                 count_}},
+            {column_data_unchecked<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(blocks)),
+             count_},
+            {column_data_unchecked<int8>(AlignmentDataSingleLayout::small_offset(blocks)), count_},
+            {column_data_unchecked<Aligned256>(
                  AlignmentDataSingleLayout::aligned256_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Handle>(
-                 AlignmentDataSingleLayout::handles_offset(blocks)),
-             this->count_}};
+             count_},
+            {column_data_unchecked<Handle>(AlignmentDataSingleLayout::handles_offset(blocks)),
+             count_}};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -5947,10 +5420,98 @@ struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<Const> {
         return arrays.apply_arrays(std::forward<Func>(func));
     }
 };
-static_assert(sizeof(AlignmentDataSingleView<false>) == 16 &&
-              sizeof(AlignmentDataSingleView<true>) == 16);
-static_assert(std::is_trivially_copyable_v<AlignmentDataSingleView<false>> &&
-              std::is_trivially_copyable_v<AlignmentDataSingleView<true>>);
+static_assert(sizeof(AlignmentDataSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<AlignmentDataSingleConstView>);
+struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<false> {
+    using Base = ml::soa_storage::CompactViewState<false>;
+    using Base::Base;
+    using View = AlignmentDataSingleView;
+    using ConstView = AlignmentDataSingleConstView;
+    AlignmentDataSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto bytes() const -> TArrayView<uint8> {
+        return {column_data<uint8>(AlignmentDataSingleLayout::bytes_offset(capacity_blocks())),
+                count_};
+    }
+    auto odd() const -> TArrayView<OddBytes> {
+        return {column_data<OddBytes>(AlignmentDataSingleLayout::odd_offset(capacity_blocks())),
+                count_};
+    }
+    auto aligned32() const -> TArrayView<Aligned32> {
+        return {
+            column_data<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(capacity_blocks())),
+            count_};
+    }
+    auto view_nested() const -> ml::soa::Vector3View<float> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{AlignmentDataSingleLayout::nested_xs_offset(blocks)};
+        auto const stride{AlignmentDataSingleLayout::nested_ys_offset(blocks) - first};
+        return {column_data_unchecked<float>(first), stride, count_};
+    }
+    auto aligned64() const -> TArrayView<Aligned64> {
+        return {
+            column_data<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(capacity_blocks())),
+            count_};
+    }
+    auto small() const -> TArrayView<int8> {
+        return {column_data<int8>(AlignmentDataSingleLayout::small_offset(capacity_blocks())),
+                count_};
+    }
+    auto aligned256() const -> TArrayView<Aligned256> {
+        return {column_data<Aligned256>(
+                    AlignmentDataSingleLayout::aligned256_offset(capacity_blocks())),
+                count_};
+    }
+    auto handles() const -> TArrayView<Handle> {
+        return {column_data<Handle>(AlignmentDataSingleLayout::handles_offset(capacity_blocks())),
+                count_};
+    }
+    auto columns() const -> AlignmentDataView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return AlignmentDataView{
+            {column_data_unchecked<uint8>(AlignmentDataSingleLayout::bytes_offset(blocks)), count_},
+            {column_data_unchecked<OddBytes>(AlignmentDataSingleLayout::odd_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned32>(AlignmentDataSingleLayout::aligned32_offset(blocks)),
+             count_},
+            VectorsView{
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_xs_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_ys_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(AlignmentDataSingleLayout::nested_zs_offset(blocks)),
+                 count_}},
+            {column_data_unchecked<Aligned64>(AlignmentDataSingleLayout::aligned64_offset(blocks)),
+             count_},
+            {column_data_unchecked<int8>(AlignmentDataSingleLayout::small_offset(blocks)), count_},
+            {column_data_unchecked<Aligned256>(
+                 AlignmentDataSingleLayout::aligned256_offset(blocks)),
+             count_},
+            {column_data_unchecked<Handle>(AlignmentDataSingleLayout::handles_offset(blocks)),
+             count_}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(AlignmentDataSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<AlignmentDataSingleView>);
+inline AlignmentDataSingleConstView::AlignmentDataSingleConstView(
+    AlignmentDataSingleView const& other)
+    : Base{other} {}
 struct SingleAllocationAlignmentData : SingleAllocationAlignmentDataStorage {
     SingleAllocationAlignmentData() noexcept = default;
     SingleAllocationAlignmentData(SingleAllocationAlignmentData const&) = delete;
@@ -5982,8 +5543,8 @@ struct FMemorySingleAlignmentDataStorage
     : AlignmentDataSingleLayout
     , protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
-    using View = AlignmentDataSingleView<false>;
-    using ConstView = AlignmentDataSingleView<true>;
+    using View = AlignmentDataSingleView;
+    using ConstView = AlignmentDataSingleConstView;
     /* **************************************** */
     // Lifetime
     /* **************************************** */

@@ -448,8 +448,8 @@ struct SBXCOREEXPERIMENTS_API SpacingDoubles {
     SpacingDoubleVector velocities3;
 };
 
-template <bool Const>
 struct SpacingDoublesSingleView;
+struct SpacingDoublesSingleConstView;
 struct SpacingDoublesSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -832,8 +832,8 @@ struct SingleSpacingDoublesStorage
     : SpacingDoublesSingleLayout
     , protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
-    using View = SpacingDoublesSingleView<false>;
-    using ConstView = SpacingDoublesSingleView<true>;
+    using View = SpacingDoublesSingleView;
+    using ConstView = SpacingDoublesSingleConstView;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -1192,662 +1192,184 @@ struct SingleSpacingDoublesStorage
     }
 };
 
-template <bool Const>
-struct SpacingDoublesSingleView_positions0 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
+struct SpacingDoublesSingleConstView : ml::soa_storage::CompactViewState<true> {
+    using Base = ml::soa_storage::CompactViewState<true>;
     using Base::Base;
-    using View = SpacingDoublesSingleView_positions0<false>;
-    using ConstView = SpacingDoublesSingleView_positions0<true>;
-    SpacingDoublesSingleView_positions0() = default;
-    SpacingDoublesSingleView_positions0(SpacingDoublesSingleView_positions0 const&) = default;
-    auto operator=(SpacingDoublesSingleView_positions0 const&)
-        -> SpacingDoublesSingleView_positions0& = default;
-    SpacingDoublesSingleView_positions0(SpacingDoublesSingleView_positions0<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_positions0<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_positions0<true> {
-        return this->slice(offset, count);
+    using View = SpacingDoublesSingleView;
+    using ConstView = SpacingDoublesSingleConstView;
+    SpacingDoublesSingleConstView() = default;
+    SpacingDoublesSingleConstView(SpacingDoublesSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
     }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions0_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions0_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions0_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_positions0() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions0_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions0_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions0_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions0_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions0_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_positions0<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_positions0<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_positions0<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_positions0<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView_velocities0 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView_velocities0<false>;
-    using ConstView = SpacingDoublesSingleView_velocities0<true>;
-    SpacingDoublesSingleView_velocities0() = default;
-    SpacingDoublesSingleView_velocities0(SpacingDoublesSingleView_velocities0 const&) = default;
-    auto operator=(SpacingDoublesSingleView_velocities0 const&)
-        -> SpacingDoublesSingleView_velocities0& = default;
-    SpacingDoublesSingleView_velocities0(SpacingDoublesSingleView_velocities0<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_velocities0<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_velocities0<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities0_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities0_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities0_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_velocities0() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities0_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities0_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities0_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_velocities0<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_velocities0<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities0<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities0<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView_positions1 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView_positions1<false>;
-    using ConstView = SpacingDoublesSingleView_positions1<true>;
-    SpacingDoublesSingleView_positions1() = default;
-    SpacingDoublesSingleView_positions1(SpacingDoublesSingleView_positions1 const&) = default;
-    auto operator=(SpacingDoublesSingleView_positions1 const&)
-        -> SpacingDoublesSingleView_positions1& = default;
-    SpacingDoublesSingleView_positions1(SpacingDoublesSingleView_positions1<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_positions1<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_positions1<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions1_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions1_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions1_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_positions1() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions1_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions1_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions1_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions1_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions1_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_positions1<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_positions1<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_positions1<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_positions1<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView_velocities1 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView_velocities1<false>;
-    using ConstView = SpacingDoublesSingleView_velocities1<true>;
-    SpacingDoublesSingleView_velocities1() = default;
-    SpacingDoublesSingleView_velocities1(SpacingDoublesSingleView_velocities1 const&) = default;
-    auto operator=(SpacingDoublesSingleView_velocities1 const&)
-        -> SpacingDoublesSingleView_velocities1& = default;
-    SpacingDoublesSingleView_velocities1(SpacingDoublesSingleView_velocities1<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_velocities1<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_velocities1<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities1_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities1_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities1_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_velocities1() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities1_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities1_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities1_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_velocities1<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_velocities1<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities1<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities1<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView_positions2 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView_positions2<false>;
-    using ConstView = SpacingDoublesSingleView_positions2<true>;
-    SpacingDoublesSingleView_positions2() = default;
-    SpacingDoublesSingleView_positions2(SpacingDoublesSingleView_positions2 const&) = default;
-    auto operator=(SpacingDoublesSingleView_positions2 const&)
-        -> SpacingDoublesSingleView_positions2& = default;
-    SpacingDoublesSingleView_positions2(SpacingDoublesSingleView_positions2<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_positions2<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_positions2<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions2_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions2_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions2_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_positions2() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions2_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions2_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions2_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions2_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions2_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_positions2<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_positions2<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_positions2<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_positions2<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView_velocities2 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView_velocities2<false>;
-    using ConstView = SpacingDoublesSingleView_velocities2<true>;
-    SpacingDoublesSingleView_velocities2() = default;
-    SpacingDoublesSingleView_velocities2(SpacingDoublesSingleView_velocities2 const&) = default;
-    auto operator=(SpacingDoublesSingleView_velocities2 const&)
-        -> SpacingDoublesSingleView_velocities2& = default;
-    SpacingDoublesSingleView_velocities2(SpacingDoublesSingleView_velocities2<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_velocities2<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_velocities2<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities2_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities2_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities2_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_velocities2() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities2_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities2_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities2_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_velocities2<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_velocities2<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities2<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities2<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView_positions3 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView_positions3<false>;
-    using ConstView = SpacingDoublesSingleView_positions3<true>;
-    SpacingDoublesSingleView_positions3() = default;
-    SpacingDoublesSingleView_positions3(SpacingDoublesSingleView_positions3 const&) = default;
-    auto operator=(SpacingDoublesSingleView_positions3 const&)
-        -> SpacingDoublesSingleView_positions3& = default;
-    SpacingDoublesSingleView_positions3(SpacingDoublesSingleView_positions3<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_positions3<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_positions3<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions3_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions3_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::positions3_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_positions3() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions3_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions3_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::positions3_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions3_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions3_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_positions3<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_positions3<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_positions3<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_positions3<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView_velocities3 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView_velocities3<false>;
-    using ConstView = SpacingDoublesSingleView_velocities3<true>;
-    SpacingDoublesSingleView_velocities3() = default;
-    SpacingDoublesSingleView_velocities3(SpacingDoublesSingleView_velocities3 const&) = default;
-    auto operator=(SpacingDoublesSingleView_velocities3 const&)
-        -> SpacingDoublesSingleView_velocities3& = default;
-    SpacingDoublesSingleView_velocities3(SpacingDoublesSingleView_velocities3<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView_velocities3<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingDoublesSingleView_velocities3<true> {
-        return this->slice(offset, count);
-    }
-    auto xs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities3_xs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto ys() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities3_ys_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto zs() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingDoublesSingleLayout::velocities3_zs_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_velocities3() const -> ml::soa::Vector3ConstView<double> {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities3_ys_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
-                 SpacingDoublesSingleLayout::velocities3_zs_offset(blocks)),
-             this->count_}};
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities3_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingDoublesSingleView_velocities3<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView_velocities3<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities3<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView_velocities3<true>>);
-template <bool Const>
-struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingDoublesSingleView<false>;
-    using ConstView = SpacingDoublesSingleView<true>;
-    SpacingDoublesSingleView() = default;
-    SpacingDoublesSingleView(SpacingDoublesSingleView const&) = default;
-    auto operator=(SpacingDoublesSingleView const&) -> SpacingDoublesSingleView& = default;
-    SpacingDoublesSingleView(SpacingDoublesSingleView<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingDoublesSingleView<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> SpacingDoublesSingleView<true> {
-        return this->slice(offset, count);
-    }
-    auto positions0() const {
-        return SpacingDoublesSingleView_positions0<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto velocities0() const {
-        return SpacingDoublesSingleView_velocities0<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto positions1() const {
-        return SpacingDoublesSingleView_positions1<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto velocities1() const {
-        return SpacingDoublesSingleView_velocities1<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto positions2() const {
-        return SpacingDoublesSingleView_positions2<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto velocities2() const {
-        return SpacingDoublesSingleView_velocities2<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto positions3() const {
-        return SpacingDoublesSingleView_positions3<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto velocities3() const {
-        return SpacingDoublesSingleView_velocities3<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, SpacingDoublesConstView, SpacingDoublesView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto columns() const -> SpacingDoublesConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingDoublesConstView, SpacingDoublesView>{
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+        auto const blocks{capacity_blocks()};
+        return SpacingDoublesConstView{
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions0_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions0_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions0_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+                 count_}},
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities0_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities0_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+                 count_}},
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions1_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions1_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions1_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+                 count_}},
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities1_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities1_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+                 count_}},
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions2_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions2_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions2_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+                 count_}},
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities2_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities2_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+                 count_}},
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions3_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions3_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::positions3_zs_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingDoubleVectorConstView, SpacingDoubleVectorView>{
-                {this->template column_data_unchecked<double>(
+                 count_}},
+            SpacingDoubleVectorConstView{
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities3_ys_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingDoublesSingleLayout::velocities3_zs_offset(blocks)),
-                 this->count_}}};
+                 count_}}};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -1855,10 +1377,189 @@ struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<Const> {
         return arrays.apply_arrays(std::forward<Func>(func));
     }
 };
-static_assert(sizeof(SpacingDoublesSingleView<false>) == 16 &&
-              sizeof(SpacingDoublesSingleView<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView<false>> &&
-              std::is_trivially_copyable_v<SpacingDoublesSingleView<true>>);
+static_assert(sizeof(SpacingDoublesSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleConstView>);
+struct SpacingDoublesSingleView : ml::soa_storage::CompactViewState<false> {
+    using Base = ml::soa_storage::CompactViewState<false>;
+    using Base::Base;
+    using View = SpacingDoublesSingleView;
+    using ConstView = SpacingDoublesSingleConstView;
+    SpacingDoublesSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto view_positions0() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions0_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions0_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto view_velocities0() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities0_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto view_positions1() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions1_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions1_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto view_velocities1() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities1_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto view_positions2() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions2_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions2_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto view_velocities2() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities2_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto view_positions3() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::positions3_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::positions3_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto view_velocities3() const -> ml::soa::Vector3View<double> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)};
+        auto const stride{SpacingDoublesSingleLayout::velocities3_ys_offset(blocks) - first};
+        return {column_data_unchecked<double>(first), stride, count_};
+    }
+    auto columns() const -> SpacingDoublesView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingDoublesView{
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions0_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions0_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions0_zs_offset(blocks)),
+                                     count_}},
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities0_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities0_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities0_zs_offset(blocks)),
+                                     count_}},
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions1_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions1_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions1_zs_offset(blocks)),
+                                     count_}},
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities1_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities1_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities1_zs_offset(blocks)),
+                                     count_}},
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions2_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions2_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions2_zs_offset(blocks)),
+                                     count_}},
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities2_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities2_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities2_zs_offset(blocks)),
+                                     count_}},
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions3_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions3_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::positions3_zs_offset(blocks)),
+                                     count_}},
+            SpacingDoubleVectorView{{column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities3_xs_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities3_ys_offset(blocks)),
+                                     count_},
+                                    {column_data_unchecked<double>(
+                                         SpacingDoublesSingleLayout::velocities3_zs_offset(blocks)),
+                                     count_}}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(SpacingDoublesSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<SpacingDoublesSingleView>);
+inline SpacingDoublesSingleConstView::SpacingDoublesSingleConstView(
+    SpacingDoublesSingleView const& other)
+    : Base{other} {}
 struct SingleSpacingDoubles : SingleSpacingDoublesStorage {
     SingleSpacingDoubles() noexcept = default;
     SingleSpacingDoubles(SingleSpacingDoubles const&) = delete;
@@ -2369,8 +2070,8 @@ struct SBXCOREEXPERIMENTS_API SpacingMixedWidths {
     SpacingMixedBundle bundle5;
 };
 
-template <bool Const>
 struct SpacingMixedWidthsSingleView;
+struct SpacingMixedWidthsSingleConstView;
 struct SpacingMixedWidthsSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -3065,8 +2766,8 @@ struct SingleSpacingMixedWidthsStorage
     : SpacingMixedWidthsSingleLayout
     , protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
-    using View = SpacingMixedWidthsSingleView<false>;
-    using ConstView = SpacingMixedWidthsSingleView<true>;
+    using View = SpacingMixedWidthsSingleView;
+    using ConstView = SpacingMixedWidthsSingleConstView;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -3679,794 +3380,330 @@ struct SingleSpacingMixedWidthsStorage
     }
 };
 
-template <bool Const>
-struct SpacingMixedWidthsSingleView_bundle0 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
+struct SpacingMixedWidthsSingleConstView : ml::soa_storage::CompactViewState<true> {
+    using Base = ml::soa_storage::CompactViewState<true>;
     using Base::Base;
-    using View = SpacingMixedWidthsSingleView_bundle0<false>;
-    using ConstView = SpacingMixedWidthsSingleView_bundle0<true>;
-    SpacingMixedWidthsSingleView_bundle0() = default;
-    SpacingMixedWidthsSingleView_bundle0(SpacingMixedWidthsSingleView_bundle0 const&) = default;
-    auto operator=(SpacingMixedWidthsSingleView_bundle0 const&)
-        -> SpacingMixedWidthsSingleView_bundle0& = default;
-    SpacingMixedWidthsSingleView_bundle0(SpacingMixedWidthsSingleView_bundle0<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingMixedWidthsSingleView_bundle0<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingMixedWidthsSingleView_bundle0<true> {
-        return this->slice(offset, count);
+    using View = SpacingMixedWidthsSingleView;
+    using ConstView = SpacingMixedWidthsSingleConstView;
+    SpacingMixedWidthsSingleConstView() = default;
+    SpacingMixedWidthsSingleConstView(SpacingMixedWidthsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
     }
-    auto flags() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                SpacingMixedWidthsSingleLayout::bundle0_flags_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<uint16>>{
-            this->template column_data<uint16>(
-                SpacingMixedWidthsSingleLayout::bundle0_counters_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counts() const {
-        return TArrayView<typename Base::template Element<uint32>>{
-            this->template column_data<uint32>(
-                SpacingMixedWidthsSingleLayout::bundle0_counts_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto totals() const {
-        return TArrayView<typename Base::template Element<uint64>>{
-            this->template column_data<uint64>(
-                SpacingMixedWidthsSingleLayout::bundle0_totals_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto payloads() const {
-        return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(
-                SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto values() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingMixedWidthsSingleLayout::bundle0_values_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto rates() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingMixedWidthsSingleLayout::bundle0_rates_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle0() const -> SpacingMixedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-            {this->template column_data_unchecked<uint8>(
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleConstView{
+            {column_data_unchecked<uint8>(
                  SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint16>(
+             count_},
+            {column_data_unchecked<uint16>(
                  SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint32>(
+             count_},
+            {column_data_unchecked<uint32>(
                  SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint64>(
+             count_},
+            {column_data_unchecked<uint64>(
                  SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<OddBytes>(
+             count_},
+            {column_data_unchecked<OddBytes>(
                  SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
+             count_},
+            {column_data_unchecked<double>(
                  SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingMixedWidthsSingleView_bundle0<false>) == 16 &&
-              sizeof(SpacingMixedWidthsSingleView_bundle0<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle0<false>> &&
-              std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle0<true>>);
-template <bool Const>
-struct SpacingMixedWidthsSingleView_bundle1 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingMixedWidthsSingleView_bundle1<false>;
-    using ConstView = SpacingMixedWidthsSingleView_bundle1<true>;
-    SpacingMixedWidthsSingleView_bundle1() = default;
-    SpacingMixedWidthsSingleView_bundle1(SpacingMixedWidthsSingleView_bundle1 const&) = default;
-    auto operator=(SpacingMixedWidthsSingleView_bundle1 const&)
-        -> SpacingMixedWidthsSingleView_bundle1& = default;
-    SpacingMixedWidthsSingleView_bundle1(SpacingMixedWidthsSingleView_bundle1<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingMixedWidthsSingleView_bundle1<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingMixedWidthsSingleView_bundle1<true> {
-        return this->slice(offset, count);
-    }
-    auto flags() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                SpacingMixedWidthsSingleLayout::bundle1_flags_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<uint16>>{
-            this->template column_data<uint16>(
-                SpacingMixedWidthsSingleLayout::bundle1_counters_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counts() const {
-        return TArrayView<typename Base::template Element<uint32>>{
-            this->template column_data<uint32>(
-                SpacingMixedWidthsSingleLayout::bundle1_counts_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto totals() const {
-        return TArrayView<typename Base::template Element<uint64>>{
-            this->template column_data<uint64>(
-                SpacingMixedWidthsSingleLayout::bundle1_totals_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto payloads() const {
-        return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(
-                SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto values() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingMixedWidthsSingleLayout::bundle1_values_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto rates() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingMixedWidthsSingleLayout::bundle1_rates_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle1() const -> SpacingMixedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-            {this->template column_data_unchecked<uint8>(
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleConstView{
+            {column_data_unchecked<uint8>(
                  SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint16>(
+             count_},
+            {column_data_unchecked<uint16>(
                  SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint32>(
+             count_},
+            {column_data_unchecked<uint32>(
                  SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint64>(
+             count_},
+            {column_data_unchecked<uint64>(
                  SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<OddBytes>(
+             count_},
+            {column_data_unchecked<OddBytes>(
                  SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
+             count_},
+            {column_data_unchecked<double>(
                  SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingMixedWidthsSingleView_bundle1<false>) == 16 &&
-              sizeof(SpacingMixedWidthsSingleView_bundle1<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle1<false>> &&
-              std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle1<true>>);
-template <bool Const>
-struct SpacingMixedWidthsSingleView_bundle2 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingMixedWidthsSingleView_bundle2<false>;
-    using ConstView = SpacingMixedWidthsSingleView_bundle2<true>;
-    SpacingMixedWidthsSingleView_bundle2() = default;
-    SpacingMixedWidthsSingleView_bundle2(SpacingMixedWidthsSingleView_bundle2 const&) = default;
-    auto operator=(SpacingMixedWidthsSingleView_bundle2 const&)
-        -> SpacingMixedWidthsSingleView_bundle2& = default;
-    SpacingMixedWidthsSingleView_bundle2(SpacingMixedWidthsSingleView_bundle2<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingMixedWidthsSingleView_bundle2<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingMixedWidthsSingleView_bundle2<true> {
-        return this->slice(offset, count);
-    }
-    auto flags() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                SpacingMixedWidthsSingleLayout::bundle2_flags_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<uint16>>{
-            this->template column_data<uint16>(
-                SpacingMixedWidthsSingleLayout::bundle2_counters_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counts() const {
-        return TArrayView<typename Base::template Element<uint32>>{
-            this->template column_data<uint32>(
-                SpacingMixedWidthsSingleLayout::bundle2_counts_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto totals() const {
-        return TArrayView<typename Base::template Element<uint64>>{
-            this->template column_data<uint64>(
-                SpacingMixedWidthsSingleLayout::bundle2_totals_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto payloads() const {
-        return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(
-                SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto values() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingMixedWidthsSingleLayout::bundle2_values_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto rates() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingMixedWidthsSingleLayout::bundle2_rates_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle2() const -> SpacingMixedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-            {this->template column_data_unchecked<uint8>(
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleConstView{
+            {column_data_unchecked<uint8>(
                  SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint16>(
+             count_},
+            {column_data_unchecked<uint16>(
                  SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint32>(
+             count_},
+            {column_data_unchecked<uint32>(
                  SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint64>(
+             count_},
+            {column_data_unchecked<uint64>(
                  SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<OddBytes>(
+             count_},
+            {column_data_unchecked<OddBytes>(
                  SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
+             count_},
+            {column_data_unchecked<double>(
                  SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingMixedWidthsSingleView_bundle2<false>) == 16 &&
-              sizeof(SpacingMixedWidthsSingleView_bundle2<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle2<false>> &&
-              std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle2<true>>);
-template <bool Const>
-struct SpacingMixedWidthsSingleView_bundle3 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingMixedWidthsSingleView_bundle3<false>;
-    using ConstView = SpacingMixedWidthsSingleView_bundle3<true>;
-    SpacingMixedWidthsSingleView_bundle3() = default;
-    SpacingMixedWidthsSingleView_bundle3(SpacingMixedWidthsSingleView_bundle3 const&) = default;
-    auto operator=(SpacingMixedWidthsSingleView_bundle3 const&)
-        -> SpacingMixedWidthsSingleView_bundle3& = default;
-    SpacingMixedWidthsSingleView_bundle3(SpacingMixedWidthsSingleView_bundle3<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingMixedWidthsSingleView_bundle3<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingMixedWidthsSingleView_bundle3<true> {
-        return this->slice(offset, count);
-    }
-    auto flags() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                SpacingMixedWidthsSingleLayout::bundle3_flags_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<uint16>>{
-            this->template column_data<uint16>(
-                SpacingMixedWidthsSingleLayout::bundle3_counters_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counts() const {
-        return TArrayView<typename Base::template Element<uint32>>{
-            this->template column_data<uint32>(
-                SpacingMixedWidthsSingleLayout::bundle3_counts_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto totals() const {
-        return TArrayView<typename Base::template Element<uint64>>{
-            this->template column_data<uint64>(
-                SpacingMixedWidthsSingleLayout::bundle3_totals_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto payloads() const {
-        return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(
-                SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto values() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingMixedWidthsSingleLayout::bundle3_values_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto rates() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingMixedWidthsSingleLayout::bundle3_rates_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle3() const -> SpacingMixedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-            {this->template column_data_unchecked<uint8>(
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleConstView{
+            {column_data_unchecked<uint8>(
                  SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint16>(
+             count_},
+            {column_data_unchecked<uint16>(
                  SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint32>(
+             count_},
+            {column_data_unchecked<uint32>(
                  SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint64>(
+             count_},
+            {column_data_unchecked<uint64>(
                  SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<OddBytes>(
+             count_},
+            {column_data_unchecked<OddBytes>(
                  SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
+             count_},
+            {column_data_unchecked<double>(
                  SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingMixedWidthsSingleView_bundle3<false>) == 16 &&
-              sizeof(SpacingMixedWidthsSingleView_bundle3<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle3<false>> &&
-              std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle3<true>>);
-template <bool Const>
-struct SpacingMixedWidthsSingleView_bundle4 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingMixedWidthsSingleView_bundle4<false>;
-    using ConstView = SpacingMixedWidthsSingleView_bundle4<true>;
-    SpacingMixedWidthsSingleView_bundle4() = default;
-    SpacingMixedWidthsSingleView_bundle4(SpacingMixedWidthsSingleView_bundle4 const&) = default;
-    auto operator=(SpacingMixedWidthsSingleView_bundle4 const&)
-        -> SpacingMixedWidthsSingleView_bundle4& = default;
-    SpacingMixedWidthsSingleView_bundle4(SpacingMixedWidthsSingleView_bundle4<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingMixedWidthsSingleView_bundle4<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingMixedWidthsSingleView_bundle4<true> {
-        return this->slice(offset, count);
-    }
-    auto flags() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                SpacingMixedWidthsSingleLayout::bundle4_flags_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<uint16>>{
-            this->template column_data<uint16>(
-                SpacingMixedWidthsSingleLayout::bundle4_counters_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counts() const {
-        return TArrayView<typename Base::template Element<uint32>>{
-            this->template column_data<uint32>(
-                SpacingMixedWidthsSingleLayout::bundle4_counts_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto totals() const {
-        return TArrayView<typename Base::template Element<uint64>>{
-            this->template column_data<uint64>(
-                SpacingMixedWidthsSingleLayout::bundle4_totals_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto payloads() const {
-        return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(
-                SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto values() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingMixedWidthsSingleLayout::bundle4_values_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto rates() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingMixedWidthsSingleLayout::bundle4_rates_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle4() const -> SpacingMixedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-            {this->template column_data_unchecked<uint8>(
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleConstView{
+            {column_data_unchecked<uint8>(
                  SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint16>(
+             count_},
+            {column_data_unchecked<uint16>(
                  SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint32>(
+             count_},
+            {column_data_unchecked<uint32>(
                  SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint64>(
+             count_},
+            {column_data_unchecked<uint64>(
                  SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<OddBytes>(
+             count_},
+            {column_data_unchecked<OddBytes>(
                  SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
+             count_},
+            {column_data_unchecked<double>(
                  SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingMixedWidthsSingleView_bundle4<false>) == 16 &&
-              sizeof(SpacingMixedWidthsSingleView_bundle4<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle4<false>> &&
-              std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle4<true>>);
-template <bool Const>
-struct SpacingMixedWidthsSingleView_bundle5 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingMixedWidthsSingleView_bundle5<false>;
-    using ConstView = SpacingMixedWidthsSingleView_bundle5<true>;
-    SpacingMixedWidthsSingleView_bundle5() = default;
-    SpacingMixedWidthsSingleView_bundle5(SpacingMixedWidthsSingleView_bundle5 const&) = default;
-    auto operator=(SpacingMixedWidthsSingleView_bundle5 const&)
-        -> SpacingMixedWidthsSingleView_bundle5& = default;
-    SpacingMixedWidthsSingleView_bundle5(SpacingMixedWidthsSingleView_bundle5<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingMixedWidthsSingleView_bundle5<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingMixedWidthsSingleView_bundle5<true> {
-        return this->slice(offset, count);
-    }
-    auto flags() const {
-        return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(
-                SpacingMixedWidthsSingleLayout::bundle5_flags_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counters() const {
-        return TArrayView<typename Base::template Element<uint16>>{
-            this->template column_data<uint16>(
-                SpacingMixedWidthsSingleLayout::bundle5_counters_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto counts() const {
-        return TArrayView<typename Base::template Element<uint32>>{
-            this->template column_data<uint32>(
-                SpacingMixedWidthsSingleLayout::bundle5_counts_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto totals() const {
-        return TArrayView<typename Base::template Element<uint64>>{
-            this->template column_data<uint64>(
-                SpacingMixedWidthsSingleLayout::bundle5_totals_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto payloads() const {
-        return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(
-                SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto values() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingMixedWidthsSingleLayout::bundle5_values_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto rates() const {
-        return TArrayView<typename Base::template Element<double>>{
-            this->template column_data<double>(
-                SpacingMixedWidthsSingleLayout::bundle5_rates_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle5() const -> SpacingMixedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-            {this->template column_data_unchecked<uint8>(
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleConstView{
+            {column_data_unchecked<uint8>(
                  SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint16>(
+             count_},
+            {column_data_unchecked<uint16>(
                  SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint32>(
+             count_},
+            {column_data_unchecked<uint32>(
                  SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<uint64>(
+             count_},
+            {column_data_unchecked<uint64>(
                  SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<OddBytes>(
+             count_},
+            {column_data_unchecked<OddBytes>(
                  SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<double>(
+             count_},
+            {column_data_unchecked<double>(
                  SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingMixedWidthsSingleView_bundle5<false>) == 16 &&
-              sizeof(SpacingMixedWidthsSingleView_bundle5<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle5<false>> &&
-              std::is_trivially_copyable_v<SpacingMixedWidthsSingleView_bundle5<true>>);
-template <bool Const>
-struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingMixedWidthsSingleView<false>;
-    using ConstView = SpacingMixedWidthsSingleView<true>;
-    SpacingMixedWidthsSingleView() = default;
-    SpacingMixedWidthsSingleView(SpacingMixedWidthsSingleView const&) = default;
-    auto operator=(SpacingMixedWidthsSingleView const&) -> SpacingMixedWidthsSingleView& = default;
-    SpacingMixedWidthsSingleView(SpacingMixedWidthsSingleView<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingMixedWidthsSingleView<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingMixedWidthsSingleView<true> {
-        return this->slice(offset, count);
-    }
-    auto bundle0() const {
-        return SpacingMixedWidthsSingleView_bundle0<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto bundle1() const {
-        return SpacingMixedWidthsSingleView_bundle1<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto bundle2() const {
-        return SpacingMixedWidthsSingleView_bundle2<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto bundle3() const {
-        return SpacingMixedWidthsSingleView_bundle3<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto bundle4() const {
-        return SpacingMixedWidthsSingleView_bundle4<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto bundle5() const {
-        return SpacingMixedWidthsSingleView_bundle5<Const>{
-            this->state_, this->offset_, this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingMixedWidthsConstView, SpacingMixedWidthsView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto columns() const -> SpacingMixedWidthsConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingMixedWidthsConstView, SpacingMixedWidthsView>{
-            std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-                {this->template column_data_unchecked<uint8>(
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedWidthsConstView{
+            SpacingMixedBundleConstView{
+                {column_data_unchecked<uint8>(
                      SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint16>(
+                 count_},
+                {column_data_unchecked<uint16>(
                      SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint32>(
+                 count_},
+                {column_data_unchecked<uint32>(
                      SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint64>(
+                 count_},
+                {column_data_unchecked<uint64>(
                      SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<OddBytes>(
+                 count_},
+                {column_data_unchecked<OddBytes>(
                      SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-                {this->template column_data_unchecked<uint8>(
+                 count_}},
+            SpacingMixedBundleConstView{
+                {column_data_unchecked<uint8>(
                      SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint16>(
+                 count_},
+                {column_data_unchecked<uint16>(
                      SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint32>(
+                 count_},
+                {column_data_unchecked<uint32>(
                      SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint64>(
+                 count_},
+                {column_data_unchecked<uint64>(
                      SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<OddBytes>(
+                 count_},
+                {column_data_unchecked<OddBytes>(
                      SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-                {this->template column_data_unchecked<uint8>(
+                 count_}},
+            SpacingMixedBundleConstView{
+                {column_data_unchecked<uint8>(
                      SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint16>(
+                 count_},
+                {column_data_unchecked<uint16>(
                      SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint32>(
+                 count_},
+                {column_data_unchecked<uint32>(
                      SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint64>(
+                 count_},
+                {column_data_unchecked<uint64>(
                      SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<OddBytes>(
+                 count_},
+                {column_data_unchecked<OddBytes>(
                      SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-                {this->template column_data_unchecked<uint8>(
+                 count_}},
+            SpacingMixedBundleConstView{
+                {column_data_unchecked<uint8>(
                      SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint16>(
+                 count_},
+                {column_data_unchecked<uint16>(
                      SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint32>(
+                 count_},
+                {column_data_unchecked<uint32>(
                      SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint64>(
+                 count_},
+                {column_data_unchecked<uint64>(
                      SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<OddBytes>(
+                 count_},
+                {column_data_unchecked<OddBytes>(
                      SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-                {this->template column_data_unchecked<uint8>(
+                 count_}},
+            SpacingMixedBundleConstView{
+                {column_data_unchecked<uint8>(
                      SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint16>(
+                 count_},
+                {column_data_unchecked<uint16>(
                      SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint32>(
+                 count_},
+                {column_data_unchecked<uint32>(
                      SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint64>(
+                 count_},
+                {column_data_unchecked<uint64>(
                      SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<OddBytes>(
+                 count_},
+                {column_data_unchecked<OddBytes>(
                      SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingMixedBundleConstView, SpacingMixedBundleView>{
-                {this->template column_data_unchecked<uint8>(
+                 count_}},
+            SpacingMixedBundleConstView{
+                {column_data_unchecked<uint8>(
                      SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint16>(
+                 count_},
+                {column_data_unchecked<uint16>(
                      SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint32>(
+                 count_},
+                {column_data_unchecked<uint32>(
                      SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<uint64>(
+                 count_},
+                {column_data_unchecked<uint64>(
                      SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<OddBytes>(
+                 count_},
+                {column_data_unchecked<OddBytes>(
                      SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<double>(
+                 count_},
+                {column_data_unchecked<double>(
                      SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
-                 this->count_}}};
+                 count_}}};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -4474,10 +3711,343 @@ struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<Const> {
         return arrays.apply_arrays(std::forward<Func>(func));
     }
 };
-static_assert(sizeof(SpacingMixedWidthsSingleView<false>) == 16 &&
-              sizeof(SpacingMixedWidthsSingleView<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView<false>> &&
-              std::is_trivially_copyable_v<SpacingMixedWidthsSingleView<true>>);
+static_assert(sizeof(SpacingMixedWidthsSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleConstView>);
+struct SpacingMixedWidthsSingleView : ml::soa_storage::CompactViewState<false> {
+    using Base = ml::soa_storage::CompactViewState<false>;
+    using Base::Base;
+    using View = SpacingMixedWidthsSingleView;
+    using ConstView = SpacingMixedWidthsSingleConstView;
+    SpacingMixedWidthsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto view_bundle0() const -> SpacingMixedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleView{
+            {column_data_unchecked<uint8>(
+                 SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint16>(
+                 SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(
+                 SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(
+                 SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
+             count_},
+            {column_data_unchecked<OddBytes>(
+                 SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
+             count_},
+            {column_data_unchecked<double>(
+                 SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
+             count_}};
+    }
+    auto view_bundle1() const -> SpacingMixedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleView{
+            {column_data_unchecked<uint8>(
+                 SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint16>(
+                 SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(
+                 SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(
+                 SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
+             count_},
+            {column_data_unchecked<OddBytes>(
+                 SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
+             count_},
+            {column_data_unchecked<double>(
+                 SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
+             count_}};
+    }
+    auto view_bundle2() const -> SpacingMixedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleView{
+            {column_data_unchecked<uint8>(
+                 SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint16>(
+                 SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(
+                 SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(
+                 SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
+             count_},
+            {column_data_unchecked<OddBytes>(
+                 SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
+             count_},
+            {column_data_unchecked<double>(
+                 SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
+             count_}};
+    }
+    auto view_bundle3() const -> SpacingMixedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleView{
+            {column_data_unchecked<uint8>(
+                 SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint16>(
+                 SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(
+                 SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(
+                 SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
+             count_},
+            {column_data_unchecked<OddBytes>(
+                 SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
+             count_},
+            {column_data_unchecked<double>(
+                 SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
+             count_}};
+    }
+    auto view_bundle4() const -> SpacingMixedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleView{
+            {column_data_unchecked<uint8>(
+                 SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint16>(
+                 SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(
+                 SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(
+                 SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
+             count_},
+            {column_data_unchecked<OddBytes>(
+                 SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
+             count_},
+            {column_data_unchecked<double>(
+                 SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
+             count_}};
+    }
+    auto view_bundle5() const -> SpacingMixedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedBundleView{
+            {column_data_unchecked<uint8>(
+                 SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint16>(
+                 SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint32>(
+                 SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
+             count_},
+            {column_data_unchecked<uint64>(
+                 SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
+             count_},
+            {column_data_unchecked<OddBytes>(
+                 SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
+             count_},
+            {column_data_unchecked<double>(
+                 SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
+             count_}};
+    }
+    auto columns() const -> SpacingMixedWidthsView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingMixedWidthsView{
+            SpacingMixedBundleView{
+                {column_data_unchecked<uint8>(
+                     SpacingMixedWidthsSingleLayout::bundle0_flags_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint16>(
+                     SpacingMixedWidthsSingleLayout::bundle0_counters_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint32>(
+                     SpacingMixedWidthsSingleLayout::bundle0_counts_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint64>(
+                     SpacingMixedWidthsSingleLayout::bundle0_totals_offset(blocks)),
+                 count_},
+                {column_data_unchecked<OddBytes>(
+                     SpacingMixedWidthsSingleLayout::bundle0_payloads_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingMixedWidthsSingleLayout::bundle0_values_offset(blocks)),
+                 count_},
+                {column_data_unchecked<double>(
+                     SpacingMixedWidthsSingleLayout::bundle0_rates_offset(blocks)),
+                 count_}},
+            SpacingMixedBundleView{
+                {column_data_unchecked<uint8>(
+                     SpacingMixedWidthsSingleLayout::bundle1_flags_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint16>(
+                     SpacingMixedWidthsSingleLayout::bundle1_counters_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint32>(
+                     SpacingMixedWidthsSingleLayout::bundle1_counts_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint64>(
+                     SpacingMixedWidthsSingleLayout::bundle1_totals_offset(blocks)),
+                 count_},
+                {column_data_unchecked<OddBytes>(
+                     SpacingMixedWidthsSingleLayout::bundle1_payloads_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingMixedWidthsSingleLayout::bundle1_values_offset(blocks)),
+                 count_},
+                {column_data_unchecked<double>(
+                     SpacingMixedWidthsSingleLayout::bundle1_rates_offset(blocks)),
+                 count_}},
+            SpacingMixedBundleView{
+                {column_data_unchecked<uint8>(
+                     SpacingMixedWidthsSingleLayout::bundle2_flags_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint16>(
+                     SpacingMixedWidthsSingleLayout::bundle2_counters_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint32>(
+                     SpacingMixedWidthsSingleLayout::bundle2_counts_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint64>(
+                     SpacingMixedWidthsSingleLayout::bundle2_totals_offset(blocks)),
+                 count_},
+                {column_data_unchecked<OddBytes>(
+                     SpacingMixedWidthsSingleLayout::bundle2_payloads_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingMixedWidthsSingleLayout::bundle2_values_offset(blocks)),
+                 count_},
+                {column_data_unchecked<double>(
+                     SpacingMixedWidthsSingleLayout::bundle2_rates_offset(blocks)),
+                 count_}},
+            SpacingMixedBundleView{
+                {column_data_unchecked<uint8>(
+                     SpacingMixedWidthsSingleLayout::bundle3_flags_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint16>(
+                     SpacingMixedWidthsSingleLayout::bundle3_counters_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint32>(
+                     SpacingMixedWidthsSingleLayout::bundle3_counts_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint64>(
+                     SpacingMixedWidthsSingleLayout::bundle3_totals_offset(blocks)),
+                 count_},
+                {column_data_unchecked<OddBytes>(
+                     SpacingMixedWidthsSingleLayout::bundle3_payloads_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingMixedWidthsSingleLayout::bundle3_values_offset(blocks)),
+                 count_},
+                {column_data_unchecked<double>(
+                     SpacingMixedWidthsSingleLayout::bundle3_rates_offset(blocks)),
+                 count_}},
+            SpacingMixedBundleView{
+                {column_data_unchecked<uint8>(
+                     SpacingMixedWidthsSingleLayout::bundle4_flags_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint16>(
+                     SpacingMixedWidthsSingleLayout::bundle4_counters_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint32>(
+                     SpacingMixedWidthsSingleLayout::bundle4_counts_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint64>(
+                     SpacingMixedWidthsSingleLayout::bundle4_totals_offset(blocks)),
+                 count_},
+                {column_data_unchecked<OddBytes>(
+                     SpacingMixedWidthsSingleLayout::bundle4_payloads_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingMixedWidthsSingleLayout::bundle4_values_offset(blocks)),
+                 count_},
+                {column_data_unchecked<double>(
+                     SpacingMixedWidthsSingleLayout::bundle4_rates_offset(blocks)),
+                 count_}},
+            SpacingMixedBundleView{
+                {column_data_unchecked<uint8>(
+                     SpacingMixedWidthsSingleLayout::bundle5_flags_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint16>(
+                     SpacingMixedWidthsSingleLayout::bundle5_counters_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint32>(
+                     SpacingMixedWidthsSingleLayout::bundle5_counts_offset(blocks)),
+                 count_},
+                {column_data_unchecked<uint64>(
+                     SpacingMixedWidthsSingleLayout::bundle5_totals_offset(blocks)),
+                 count_},
+                {column_data_unchecked<OddBytes>(
+                     SpacingMixedWidthsSingleLayout::bundle5_payloads_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingMixedWidthsSingleLayout::bundle5_values_offset(blocks)),
+                 count_},
+                {column_data_unchecked<double>(
+                     SpacingMixedWidthsSingleLayout::bundle5_rates_offset(blocks)),
+                 count_}}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(SpacingMixedWidthsSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<SpacingMixedWidthsSingleView>);
+inline SpacingMixedWidthsSingleConstView::SpacingMixedWidthsSingleConstView(
+    SpacingMixedWidthsSingleView const& other)
+    : Base{other} {}
 struct SingleSpacingMixedWidths : SingleSpacingMixedWidthsStorage {
     SingleSpacingMixedWidths() noexcept = default;
     SingleSpacingMixedWidths(SingleSpacingMixedWidths const&) = delete;
@@ -4909,8 +4479,8 @@ struct SBXCOREEXPERIMENTS_API SpacingAligned {
     SpacingAlignedBundle bundle2;
 };
 
-template <bool Const>
 struct SpacingAlignedSingleView;
+struct SpacingAlignedSingleConstView;
 struct SpacingAlignedSingleLayout {
     using size_type = int32;
     using byte_size_type = SIZE_T;
@@ -5208,8 +4778,8 @@ struct SingleSpacingAlignedStorage
     : SpacingAlignedSingleLayout
     , protected ml::soa_storage::StorageState
     , ml::soa_storage::StorageOperations {
-    using View = SpacingAlignedSingleView<false>;
-    using ConstView = SpacingAlignedSingleView<true>;
+    using View = SpacingAlignedSingleView;
+    using ConstView = SpacingAlignedSingleConstView;
     /* **************************************** */
     // Lifetime
     /* **************************************** */
@@ -5535,336 +5105,141 @@ struct SingleSpacingAlignedStorage
     }
 };
 
-template <bool Const>
-struct SpacingAlignedSingleView_bundle0 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
+struct SpacingAlignedSingleConstView : ml::soa_storage::CompactViewState<true> {
+    using Base = ml::soa_storage::CompactViewState<true>;
     using Base::Base;
-    using View = SpacingAlignedSingleView_bundle0<false>;
-    using ConstView = SpacingAlignedSingleView_bundle0<true>;
-    SpacingAlignedSingleView_bundle0() = default;
-    SpacingAlignedSingleView_bundle0(SpacingAlignedSingleView_bundle0 const&) = default;
-    auto operator=(SpacingAlignedSingleView_bundle0 const&)
-        -> SpacingAlignedSingleView_bundle0& = default;
-    SpacingAlignedSingleView_bundle0(SpacingAlignedSingleView_bundle0<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingAlignedSingleView_bundle0<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingAlignedSingleView_bundle0<true> {
-        return this->slice(offset, count);
+    using View = SpacingAlignedSingleView;
+    using ConstView = SpacingAlignedSingleConstView;
+    SpacingAlignedSingleConstView() = default;
+    SpacingAlignedSingleConstView(SpacingAlignedSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
     }
-    auto positions() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingAlignedSingleLayout::bundle0_positions_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto velocities() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingAlignedSingleLayout::bundle0_velocities_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned32() const {
-        return TArrayView<typename Base::template Element<Aligned32>>{
-            this->template column_data<Aligned32>(
-                SpacingAlignedSingleLayout::bundle0_aligned32_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned64() const {
-        return TArrayView<typename Base::template Element<Aligned64>>{
-            this->template column_data<Aligned64>(
-                SpacingAlignedSingleLayout::bundle0_aligned64_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned256() const {
-        return TArrayView<typename Base::template Element<Aligned256>>{
-            this->template column_data<Aligned256>(
-                SpacingAlignedSingleLayout::bundle0_aligned256_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle0() const -> SpacingAlignedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView>{
-            {this->template column_data_unchecked<float>(
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedBundleConstView{
+            {column_data_unchecked<float>(
                  SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned32>(
+             count_},
+            {column_data_unchecked<Aligned32>(
                  SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned64>(
+             count_},
+            {column_data_unchecked<Aligned64>(
                  SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned256>(
+             count_},
+            {column_data_unchecked<Aligned256>(
                  SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingAlignedSingleView_bundle0<false>) == 16 &&
-              sizeof(SpacingAlignedSingleView_bundle0<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingAlignedSingleView_bundle0<false>> &&
-              std::is_trivially_copyable_v<SpacingAlignedSingleView_bundle0<true>>);
-template <bool Const>
-struct SpacingAlignedSingleView_bundle1 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingAlignedSingleView_bundle1<false>;
-    using ConstView = SpacingAlignedSingleView_bundle1<true>;
-    SpacingAlignedSingleView_bundle1() = default;
-    SpacingAlignedSingleView_bundle1(SpacingAlignedSingleView_bundle1 const&) = default;
-    auto operator=(SpacingAlignedSingleView_bundle1 const&)
-        -> SpacingAlignedSingleView_bundle1& = default;
-    SpacingAlignedSingleView_bundle1(SpacingAlignedSingleView_bundle1<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingAlignedSingleView_bundle1<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingAlignedSingleView_bundle1<true> {
-        return this->slice(offset, count);
-    }
-    auto positions() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingAlignedSingleLayout::bundle1_positions_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto velocities() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingAlignedSingleLayout::bundle1_velocities_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned32() const {
-        return TArrayView<typename Base::template Element<Aligned32>>{
-            this->template column_data<Aligned32>(
-                SpacingAlignedSingleLayout::bundle1_aligned32_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned64() const {
-        return TArrayView<typename Base::template Element<Aligned64>>{
-            this->template column_data<Aligned64>(
-                SpacingAlignedSingleLayout::bundle1_aligned64_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned256() const {
-        return TArrayView<typename Base::template Element<Aligned256>>{
-            this->template column_data<Aligned256>(
-                SpacingAlignedSingleLayout::bundle1_aligned256_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle1() const -> SpacingAlignedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView>{
-            {this->template column_data_unchecked<float>(
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedBundleConstView{
+            {column_data_unchecked<float>(
                  SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned32>(
+             count_},
+            {column_data_unchecked<Aligned32>(
                  SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned64>(
+             count_},
+            {column_data_unchecked<Aligned64>(
                  SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned256>(
+             count_},
+            {column_data_unchecked<Aligned256>(
                  SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingAlignedSingleView_bundle1<false>) == 16 &&
-              sizeof(SpacingAlignedSingleView_bundle1<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingAlignedSingleView_bundle1<false>> &&
-              std::is_trivially_copyable_v<SpacingAlignedSingleView_bundle1<true>>);
-template <bool Const>
-struct SpacingAlignedSingleView_bundle2 : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingAlignedSingleView_bundle2<false>;
-    using ConstView = SpacingAlignedSingleView_bundle2<true>;
-    SpacingAlignedSingleView_bundle2() = default;
-    SpacingAlignedSingleView_bundle2(SpacingAlignedSingleView_bundle2 const&) = default;
-    auto operator=(SpacingAlignedSingleView_bundle2 const&)
-        -> SpacingAlignedSingleView_bundle2& = default;
-    SpacingAlignedSingleView_bundle2(SpacingAlignedSingleView_bundle2<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingAlignedSingleView_bundle2<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const
-        -> SpacingAlignedSingleView_bundle2<true> {
-        return this->slice(offset, count);
-    }
-    auto positions() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingAlignedSingleLayout::bundle2_positions_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto velocities() const {
-        return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(
-                SpacingAlignedSingleLayout::bundle2_velocities_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned32() const {
-        return TArrayView<typename Base::template Element<Aligned32>>{
-            this->template column_data<Aligned32>(
-                SpacingAlignedSingleLayout::bundle2_aligned32_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned64() const {
-        return TArrayView<typename Base::template Element<Aligned64>>{
-            this->template column_data<Aligned64>(
-                SpacingAlignedSingleLayout::bundle2_aligned64_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto aligned256() const {
-        return TArrayView<typename Base::template Element<Aligned256>>{
-            this->template column_data<Aligned256>(
-                SpacingAlignedSingleLayout::bundle2_aligned256_offset(this->capacity_blocks())),
-            this->count_};
-    }
-    auto columns() const
-        -> std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto view_bundle2() const -> SpacingAlignedBundleConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView>{
-            {this->template column_data_unchecked<float>(
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedBundleConstView{
+            {column_data_unchecked<float>(
                  SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<float>(
+             count_},
+            {column_data_unchecked<float>(
                  SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned32>(
+             count_},
+            {column_data_unchecked<Aligned32>(
                  SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned64>(
+             count_},
+            {column_data_unchecked<Aligned64>(
                  SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
-             this->count_},
-            {this->template column_data_unchecked<Aligned256>(
+             count_},
+            {column_data_unchecked<Aligned256>(
                  SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
-             this->count_}};
+             count_}};
     }
-    template <typename Func>
-    auto apply_arrays(Func&& func) const -> decltype(auto) {
-        auto arrays{columns()};
-        return arrays.apply_arrays(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpacingAlignedSingleView_bundle2<false>) == 16 &&
-              sizeof(SpacingAlignedSingleView_bundle2<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingAlignedSingleView_bundle2<false>> &&
-              std::is_trivially_copyable_v<SpacingAlignedSingleView_bundle2<true>>);
-template <bool Const>
-struct SpacingAlignedSingleView : ml::soa_storage::CompactViewState<Const> {
-    using Base = ml::soa_storage::CompactViewState<Const>;
-    using size_type = typename Base::size_type;
-    using Base::Base;
-    using View = SpacingAlignedSingleView<false>;
-    using ConstView = SpacingAlignedSingleView<true>;
-    SpacingAlignedSingleView() = default;
-    SpacingAlignedSingleView(SpacingAlignedSingleView const&) = default;
-    auto operator=(SpacingAlignedSingleView const&) -> SpacingAlignedSingleView& = default;
-    SpacingAlignedSingleView(SpacingAlignedSingleView<false> const& other)
-        requires Const
-        : Base{other} {}
-    auto get_const_view() const -> SpacingAlignedSingleView<true> { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> SpacingAlignedSingleView<true> {
-        return this->slice(offset, count);
-    }
-    auto bundle0() const {
-        return SpacingAlignedSingleView_bundle0<Const>{this->state_, this->offset_, this->count_};
-    }
-    auto bundle1() const {
-        return SpacingAlignedSingleView_bundle1<Const>{this->state_, this->offset_, this->count_};
-    }
-    auto bundle2() const {
-        return SpacingAlignedSingleView_bundle2<Const>{this->state_, this->offset_, this->count_};
-    }
-    auto columns() const -> std::conditional_t<Const, SpacingAlignedConstView, SpacingAlignedView> {
-        this->validate();
-        if (!this->state_ || !this->state_->data_) {
+    auto columns() const -> SpacingAlignedConstView {
+        validate();
+        if (!state_ || !state_->data_) {
             return {};
         }
-        auto const blocks{this->capacity_blocks()};
-        return std::conditional_t<Const, SpacingAlignedConstView, SpacingAlignedView>{
-            std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView>{
-                {this->template column_data_unchecked<float>(
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedConstView{
+            SpacingAlignedBundleConstView{
+                {column_data_unchecked<float>(
                      SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned32>(
+                 count_},
+                {column_data_unchecked<Aligned32>(
                      SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned64>(
+                 count_},
+                {column_data_unchecked<Aligned64>(
                      SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned256>(
+                 count_},
+                {column_data_unchecked<Aligned256>(
                      SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView>{
-                {this->template column_data_unchecked<float>(
+                 count_}},
+            SpacingAlignedBundleConstView{
+                {column_data_unchecked<float>(
                      SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned32>(
+                 count_},
+                {column_data_unchecked<Aligned32>(
                      SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned64>(
+                 count_},
+                {column_data_unchecked<Aligned64>(
                      SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned256>(
+                 count_},
+                {column_data_unchecked<Aligned256>(
                      SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
-                 this->count_}},
-            std::conditional_t<Const, SpacingAlignedBundleConstView, SpacingAlignedBundleView>{
-                {this->template column_data_unchecked<float>(
+                 count_}},
+            SpacingAlignedBundleConstView{
+                {column_data_unchecked<float>(
                      SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<float>(
+                 count_},
+                {column_data_unchecked<float>(
                      SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned32>(
+                 count_},
+                {column_data_unchecked<Aligned32>(
                      SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned64>(
+                 count_},
+                {column_data_unchecked<Aligned64>(
                      SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
-                 this->count_},
-                {this->template column_data_unchecked<Aligned256>(
+                 count_},
+                {column_data_unchecked<Aligned256>(
                      SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
-                 this->count_}}};
+                 count_}}};
     }
     template <typename Func>
     auto apply_arrays(Func&& func) const -> decltype(auto) {
@@ -5872,10 +5247,154 @@ struct SpacingAlignedSingleView : ml::soa_storage::CompactViewState<Const> {
         return arrays.apply_arrays(std::forward<Func>(func));
     }
 };
-static_assert(sizeof(SpacingAlignedSingleView<false>) == 16 &&
-              sizeof(SpacingAlignedSingleView<true>) == 16);
-static_assert(std::is_trivially_copyable_v<SpacingAlignedSingleView<false>> &&
-              std::is_trivially_copyable_v<SpacingAlignedSingleView<true>>);
+static_assert(sizeof(SpacingAlignedSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<SpacingAlignedSingleConstView>);
+struct SpacingAlignedSingleView : ml::soa_storage::CompactViewState<false> {
+    using Base = ml::soa_storage::CompactViewState<false>;
+    using Base::Base;
+    using View = SpacingAlignedSingleView;
+    using ConstView = SpacingAlignedSingleConstView;
+    SpacingAlignedSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+    auto view_bundle0() const -> SpacingAlignedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedBundleView{
+            {column_data_unchecked<float>(
+                 SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned32>(
+                 SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned64>(
+                 SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned256>(
+                 SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
+             count_}};
+    }
+    auto view_bundle1() const -> SpacingAlignedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedBundleView{
+            {column_data_unchecked<float>(
+                 SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned32>(
+                 SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned64>(
+                 SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned256>(
+                 SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
+             count_}};
+    }
+    auto view_bundle2() const -> SpacingAlignedBundleView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedBundleView{
+            {column_data_unchecked<float>(
+                 SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
+             count_},
+            {column_data_unchecked<float>(
+                 SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned32>(
+                 SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned64>(
+                 SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
+             count_},
+            {column_data_unchecked<Aligned256>(
+                 SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
+             count_}};
+    }
+    auto columns() const -> SpacingAlignedView {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return SpacingAlignedView{
+            SpacingAlignedBundleView{
+                {column_data_unchecked<float>(
+                     SpacingAlignedSingleLayout::bundle0_positions_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingAlignedSingleLayout::bundle0_velocities_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned32>(
+                     SpacingAlignedSingleLayout::bundle0_aligned32_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned64>(
+                     SpacingAlignedSingleLayout::bundle0_aligned64_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned256>(
+                     SpacingAlignedSingleLayout::bundle0_aligned256_offset(blocks)),
+                 count_}},
+            SpacingAlignedBundleView{
+                {column_data_unchecked<float>(
+                     SpacingAlignedSingleLayout::bundle1_positions_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingAlignedSingleLayout::bundle1_velocities_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned32>(
+                     SpacingAlignedSingleLayout::bundle1_aligned32_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned64>(
+                     SpacingAlignedSingleLayout::bundle1_aligned64_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned256>(
+                     SpacingAlignedSingleLayout::bundle1_aligned256_offset(blocks)),
+                 count_}},
+            SpacingAlignedBundleView{
+                {column_data_unchecked<float>(
+                     SpacingAlignedSingleLayout::bundle2_positions_offset(blocks)),
+                 count_},
+                {column_data_unchecked<float>(
+                     SpacingAlignedSingleLayout::bundle2_velocities_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned32>(
+                     SpacingAlignedSingleLayout::bundle2_aligned32_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned64>(
+                     SpacingAlignedSingleLayout::bundle2_aligned64_offset(blocks)),
+                 count_},
+                {column_data_unchecked<Aligned256>(
+                     SpacingAlignedSingleLayout::bundle2_aligned256_offset(blocks)),
+                 count_}}};
+    }
+    template <typename Func>
+    auto apply_arrays(Func&& func) const -> decltype(auto) {
+        auto arrays{columns()};
+        return arrays.apply_arrays(std::forward<Func>(func));
+    }
+};
+static_assert(sizeof(SpacingAlignedSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<SpacingAlignedSingleView>);
+inline SpacingAlignedSingleConstView::SpacingAlignedSingleConstView(
+    SpacingAlignedSingleView const& other)
+    : Base{other} {}
 struct SingleSpacingAligned : SingleSpacingAlignedStorage {
     SingleSpacingAligned() noexcept = default;
     SingleSpacingAligned(SingleSpacingAligned const&) = delete;

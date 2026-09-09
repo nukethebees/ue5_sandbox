@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SandboxCore/compact_vector_view.h>
 #include <SandboxCore/single_allocation_view.h>
 
 #include <SandboxCore/single_allocation_layout.h>
@@ -206,4 +207,15 @@ struct StorageOperations {
     }
 };
 
+}
+
+namespace ml::native_soa {
+template <typename T>
+using Vector2View = soa_storage_detail::VectorView<T, 2, std::span, require>;
+template <typename T>
+using Vector2ConstView = Vector2View<T const>;
+template <typename T>
+using Vector3View = soa_storage_detail::VectorView<T, 3, std::span, require>;
+template <typename T>
+using Vector3ConstView = Vector3View<T const>;
 }

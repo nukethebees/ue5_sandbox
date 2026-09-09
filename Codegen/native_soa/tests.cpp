@@ -138,21 +138,38 @@ TEST(NativeSoa, CheckedCapacityArithmetic) {
     EXPECT_LE(Storage::layout_bytes(2), 2 * Storage::capacity_block_bound);
 }
 TEST(NativeSoa, CompactViewsAndBulkAppend) {
+    static_assert(sizeof(native_soa::Vector2View<double>) == 16);
+    static_assert(sizeof(native_soa::Vector2ConstView<float>) == 16);
+    static_assert(sizeof(native_soa::Vector3View<float>) == 16);
+    static_assert(sizeof(native_soa::Vector3ConstView<double>) == 16);
+    double components[96]{};
+    native_soa::Vector3View<double> vectors{components, 256, 4};
+    vectors.slice(1, 2).ys()[0] = 17.;
+    EXPECT_EQ(components[33], 17.);
+    EXPECT_EQ(vectors.right(0).zs().data(), components + 68);
+    native_soa::Vector3ConstView<double> readonly{vectors.slice(1, 2)};
+    EXPECT_EQ(readonly.ys()[0], 17.);
+    EXPECT_EQ(readonly.columns().zs.data(), components + 65);
+    native_soa::Vector2View<double> xy{components, 256, 4};
+    EXPECT_EQ(xy.slice(1, 2).ys()[0], 17.);
+    EXPECT_EQ(xy.slice(1, 2).byte_stride(), 256);
     using Owner = SingleAllocationEntityData;
     static_assert(sizeof(Owner::View) == 16 && sizeof(Owner::ConstView) == 16);
-    static_assert(sizeof(decltype(std::declval<Owner::View>().locations())) == 16);
+    static_assert(std::is_same_v<decltype(std::declval<Owner::View>().view_locations()),
+                                 native_soa::Vector3View<float>>);
     Owner source;
     source.set_num(129);
     auto view{source.get_view()};
     for (std::int32_t row{}; row < source.num(); ++row) {
         view.healths()[row] = row;
-        view.locations().xs()[row] = static_cast<float>(row);
+        view.view_locations().xs()[row] = static_cast<float>(row);
     }
     auto slice{view.slice(1, 64)};
     source.reserve(1024);
+    slice = source.slice(1, 64);
     EXPECT_EQ(slice.healths()[63], 64);
     Owner::ConstView const_view{slice};
-    EXPECT_EQ(const_view.locations().xs()[0], 1.f);
+    EXPECT_EQ(const_view.view_locations().xs()[0], 1.f);
     Owner destination;
     EXPECT_EQ(destination.append_from(source), 0);
     EXPECT_EQ(destination.append_from(const_view), 129);
@@ -201,7 +218,7 @@ TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
             std::vector<std::int32_t> indices;
             for (auto row{count - 1}; row >= 0; --row) {
                 view.healths()[row] = row;
-                view.locations().xs()[row] = static_cast<float>(row);
+                view.view_locations().xs()[row] = static_cast<float>(row);
                 if (mask & (1u << row)) {
                     indices.push_back(row);
                 }
@@ -223,7 +240,7 @@ TEST(NativeSoa, DescendingRemovalExhaustiveSubsets) {
             EXPECT_EQ(owner.capacity(), capacity);
             EXPECT_TRUE(std::ranges::equal(owner.get_view().healths(), expected));
             for (std::int32_t row{}; row < final_count; ++row) {
-                EXPECT_EQ(owner.get_view().locations().xs()[row],
+                EXPECT_EQ(owner.get_view().view_locations().xs()[row],
                           static_cast<float>(expected[row]));
             }
         }

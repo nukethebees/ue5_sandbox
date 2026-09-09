@@ -52,6 +52,9 @@ TEST_CASE("SandboxCore.SingleAllocation.Empty and end views preserve column poin
         CHECK(const_full.num() == count);
         CHECK(const_empty.num() == 0);
         CHECK(full.nested.xs.GetData() == const_full.nested.xs.GetData());
+        CHECK(rows.get_view().view_nested().xs().GetData() == full.nested.xs.GetData());
+        CHECK(rows.get_view(count, 0).view_nested().xs().GetData() == empty.nested.xs.GetData());
+        CHECK(const_rows.get_view().view_nested().xs().GetData() == const_full.nested.xs.GetData());
         CHECK(empty.nested.xs.GetData() == const_empty.nested.xs.GetData());
         if (rows.capacity() == 0) {
             each_leaf(empty, [](auto column) { CHECK(column.GetData() == nullptr); });
@@ -319,19 +322,53 @@ TEST_CASE("SandboxCore.SingleAllocation.Arithmetic rejects overflow before alloc
     static_assert(maximum_capacity(0) == 0);
 }
 
-TEST_CASE("SandboxCore.SingleAllocation.Compact views follow growth and append self slices") {
+TEST_CASE("SandboxCore.SingleAllocation.Compact views slice and append self slices") {
     SingleAllocationEntityData owner;
     owner.add_defaulted(65);
     auto view{owner.get_view()};
-    static_assert(sizeof(decltype(view.locations())) == 16);
+    static_assert(std::is_same_v<decltype(view.view_locations()), soa::Vector3View<float>>);
+    static_assert(sizeof(soa::Vector2View<float>) == 16);
+    static_assert(sizeof(soa::Vector2ConstView<double>) == 16);
+    static_assert(sizeof(soa::Vector3View<double>) == 16);
+    static_assert(sizeof(soa::Vector3ConstView<float>) == 16);
+    static_assert(std::is_trivially_copyable_v<soa::Vector3View<float>>);
+    static_assert(std::is_convertible_v<soa::Vector3View<float>, soa::Vector3ConstView<float>>);
+    static_assert(!std::is_convertible_v<soa::Vector3ConstView<float>, soa::Vector3View<float>>);
+    auto vectors{view.view_locations()};
+    auto const stride{vectors.byte_stride()};
+    CHECK(stride == static_cast<SIZE_T>(owner.capacity()) * sizeof(float) + 192);
+    soa::Vector2View<float> xy{vectors.xs().GetData(), stride, vectors.num()};
+    xy.slice(2, 3).ys()[0] = 7.f;
+    CHECK(vectors.ys()[2] == 7.f);
+    CHECK(xy.right(0).xs().GetData() == vectors.xs().GetData() + vectors.num());
+    CHECK(xy.right(0).ys().GetData() == vectors.ys().GetData() + vectors.num());
+    auto tail{vectors.slice(1, 64).slice(2, 3)};
+    CHECK(tail.byte_stride() == stride);
+    CHECK(tail.zs().GetData() == vectors.zs().GetData() + 3);
+    auto columns{tail.columns()};
+    columns.zs[0] = 9.f;
+    CHECK(vectors.zs()[3] == 9.f);
+    soa::Vector3ConstView<float> readonly{tail};
+    CHECK(readonly.zs()[0] == 9.f);
+    soa::Vector3View<double> empty;
+    CHECK(empty.slice(0, 0).zs().GetData() == nullptr);
+    static_assert(std::is_same_v<decltype(view.view_velocities()), soa::Vector3View<float>>);
+    static_assert(std::is_convertible_v<SingleAllocationEntityData::View, SingleAllocationEntityData::ConstView>);
+    static_assert(!std::is_convertible_v<SingleAllocationEntityData::ConstView, SingleAllocationEntityData::View>);
     for (int32 row{}; row < 65; ++row) {
         view.healths()[row] = row;
-        view.locations().xs()[row] = static_cast<float>(row);
+        view.view_locations().xs()[row] = static_cast<float>(row);
     }
     auto slice{view.slice(1, 64)};
     owner.reserve(256);
-    CHECK(slice.locations().xs()[63] == 64.f);
+    slice = owner.slice(1, 64);
+    CHECK(slice.view_locations().xs()[63] == 64.f);
     SingleAllocationEntityData::ConstView const_view{slice};
+    static_assert(std::is_same_v<decltype(const_view.view_locations()), soa::Vector3ConstView<float>>);
+    CHECK(const_view.view_locations().xs()[63] == 64.f);
+    auto nested{slice.view_locations()};
+    nested.xs()[0] = 123.f;
+    CHECK(owner.get_view().view_locations().xs()[1] == 123.f);
     CHECK(const_view.columns().healths[0] == 1);
     CHECK(owner.append_from(const_view) == 65);
     CHECK(owner.get_view().healths()[128] == 64);
@@ -383,7 +420,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Descending removal matches original row 
             TArray<int32> indices;
             for (auto row{count - 1}; row >= 0; --row) {
                 owner.get_view().healths()[row] = row;
-                owner.get_view().locations().xs()[row] = static_cast<float>(row);
+                owner.get_view().view_locations().xs()[row] = static_cast<float>(row);
                 if (mask & (1u << row)) {
                     indices.Add(row);
                 }
@@ -403,7 +440,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Descending removal matches original row 
             for (int32 row{}; row < final_count; ++row) {
                 auto const expected{mask & (1u << row) ? survivors[next++] : row};
                 CHECK(owner.get_view().healths()[row] == expected);
-                CHECK(owner.get_view().locations().xs()[row] == static_cast<float>(expected));
+                CHECK(owner.get_view().view_locations().xs()[row] == static_cast<float>(expected));
             }
         }
     }

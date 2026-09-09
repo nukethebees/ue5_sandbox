@@ -22,19 +22,26 @@ Leaves must be non-cv, non-array object types that are trivially copyable, trivi
 
 ## Compact views
 
-`View` and `ConstView` each store an owner-state pointer, row offset and row count. Both are 16 bytes and trivially copyable; generated nested views have the same guarantees. Allocator variants share view types for the same schema.
+`View` and `ConstView` are separate named structs, each storing an owner-state pointer, row offset and row count. Both are 16 bytes and trivially copyable. Mutable handles implicitly convert to const handles, but not the reverse. Allocator variants share view types for the same schema.
 
 ```cpp
 auto rows = data.get_view();
 auto healths = rows.healths();
-auto xs = rows.locations().xs();
+auto locations = rows.view_locations();
+auto xs = locations.xs();
 auto selected = rows.slice(32, 64);
 auto readonly = selected.get_const_view();
 ```
 
-Views capture a range, not a growing count. They follow their owner across reserve/growth by resolving columns on access. Moving or destroying the owner invalidates views. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references. Access checks validate the range against the current owner size.
+Views capture a range, not a growing count. Growth, moving or destroying the owner invalidates borrowed views and extracted spans. Reacquire them after those operations; the top-level handle's internal owner-state pointer is not a promise of growth-following behavior. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references.
 
-Returned column spans are ordinary borrowed pointers: growth invalidates them. Acquire spans outside hot loops and reacquire after growth. Mutable views remain writable when the view object itself is const, like an ordinary span; `ConstView` exposes const elements.
+Nested schemas consisting of matching scalar `xs`/`ys` or `xs`/`ys`/`zs` columns use shared compact vector views. Their Unreal names are `ml::soa::Vector2View<T>`, `Vector2ConstView<T>`, `Vector3View<T>` and `Vector3ConstView<T>` (available through `SandboxCore/single_allocation_storage.h`). The native backend exposes the corresponding names in `ml::native_soa`. Both use the same implementation; Unreal component accessors return TArrayViews and native accessors return standard spans.
+
+Each vector view is 16 bytes: a first-component pointer, a 32-bit byte stride, and a 32-bit row count. The generated layout guarantees equally spaced component columns. `slice`, `left` and `right` advance the first pointer while retaining the component stride, including for empty end slices. Mutable views convert to const views, but not the reverse. The vector view has no owner pointer or field-specific layout type.
+
+For example, `view_locations()` and `view_velocities()` both return `ml::soa::Vector3View<float>`. Resolve `xs()`, `ys()` and `zs()` outside hot loops. `columns()` returns an aggregate with those component spans as fields; the top-level `rows.columns()` still materializes the original schema-level aggregate for existing algorithms. Other nested shapes retain their existing schema-level views.
+
+Mutable vector views remain writable when the view object itself is const, like an ordinary span; const-view aliases expose only const elements. Constructor and slice range checks use the backend's normal failure mechanism. Direct construction requires sufficiently large, equally spaced component arrays and a byte stride that preserves element alignment and fits in uint32.
 
 `view.columns()` explicitly materializes the existing larger aggregate of TArrayViews or native spans, including nested structure. This supports existing view-taking algorithms and pointer traversal. It does not change the compact view's size. Materialize outside entity loops; the aggregate has the same pointer invalidation rules as individual spans.
 
@@ -75,6 +82,6 @@ Allocator variants select a type providing `allocate(bytes, alignment)` and `fre
 
 ## Validation and measurement
 
-The test suites cover compact view sizes, slicing and growth-following behavior, aligned bulk copies, self-append, empty inputs, overflow, descending removal subsets and invalid indices. Use the repository CMake workflows for codegen, native tests and Unreal core tests.
+The test suites cover compact view sizes, mutable/const conversion, vector strides and slicing, aligned bulk copies, self-append, empty inputs, overflow, descending removal subsets and invalid indices. Use the repository CMake workflows for codegen, native tests and Unreal core tests.
 
 The [comparison README](../SbxCoreExperiments/README.md) documents benchmark commands; the [investigation report](../SbxCoreExperiments/INVESTIGATION.md) preserves earlier allocator measurements. Those historical numbers predate the compact-view and bulk-operation changes. Production gameplay adoption should follow populated-workload measurements, not empty reserve alone.

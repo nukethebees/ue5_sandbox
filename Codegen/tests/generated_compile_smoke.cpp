@@ -319,7 +319,7 @@ auto main() -> int {
         parents.get_view().columns().children.values[64] = 37;
         parents.reserve(129);
         check(parents.capacity() == 192);
-        check(parents.get_const_view().children().values()[64] == 37);
+        check(parents.get_const_view().view_children().values[64] == 37);
         SingleParents moved{std::move(parents)};
         check(parents.capacity() == 0);
         moved.remove_at_swap(0, 1);

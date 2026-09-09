@@ -7,12 +7,55 @@
 
 namespace codegen::detail {
 
+static auto vector_element(SoaSchema const& schema,
+                           std::map<std::string, CppType> const& leaves,
+                           std::string const& prefix) -> std::string {
+    auto const dimensions{schema.members.size()};
+    if (dimensions != 2 && dimensions != 3) {
+        return {};
+    }
+    std::string type;
+    for (std::size_t index{}; index < dimensions; ++index) {
+        auto const& member{schema.members[index]};
+        if (member.kind != SoaMemberKind::array ||
+            member.name != std::string(1, "xyz"[index]) + "s") {
+            return {};
+        }
+        auto const& element{leaves.at(prefix + "_" + member.name).spelling};
+        if (index == 0) {
+            type = element;
+        } else if (element != type) {
+            return {};
+        }
+    }
+    static std::set<std::string> const scalars{"float",
+                                               "double",
+                                               "int8",
+                                               "uint8",
+                                               "int16",
+                                               "uint16",
+                                               "int32",
+                                               "uint32",
+                                               "int64",
+                                               "uint64",
+                                               "std::int8_t",
+                                               "std::uint8_t",
+                                               "std::int16_t",
+                                               "std::uint16_t",
+                                               "std::int32_t",
+                                               "std::uint32_t",
+                                               "std::int64_t",
+                                               "std::uint64_t"};
+    return scalars.contains(type) ? type : std::string{};
+}
+
 static auto compact_columns_expression(SoaSchema const& schema,
                                        std::map<std::string, SoaSchema const*> const& schemas,
                                        std::map<std::string, CppType> const& leaves,
                                        std::vector<std::string> const& prefix,
                                        std::string const& layout,
-                                       bool native) -> std::string {
+                                       bool native,
+                                       bool is_const) -> std::string {
     auto const mutable_view{schema.view_name.value_or(schema.name + "View")};
     auto const const_view{schema.const_view_name.value_or(schema.name + "ConstView")};
     std::vector<std::string> values;
@@ -20,92 +63,99 @@ static auto compact_columns_expression(SoaSchema const& schema,
         auto path{prefix};
         path.push_back(member.name);
         if (member.kind == SoaMemberKind::nested) {
-            values.push_back(compact_columns_expression(
-                *schemas.at(*member.nested_schema), schemas, leaves, path, layout, native));
+            values.push_back(compact_columns_expression(*schemas.at(*member.nested_schema),
+                                                        schemas,
+                                                        leaves,
+                                                        path,
+                                                        layout,
+                                                        native,
+                                                        is_const));
         } else {
             auto const id{join(path, "_")};
-            values.push_back("{this->template column_data_unchecked<" + leaves.at(id).spelling +
-                             ">(" + layout + "::" + id + "_offset(blocks)), " +
-                             (native ? "static_cast<std::size_t>(this->count_)" : "this->count_") +
-                             "}");
+            values.push_back("{column_data_unchecked<" + leaves.at(id).spelling + ">(" + layout +
+                             "::" + id + "_offset(blocks)), " +
+                             (native ? "static_cast<std::size_t>(count_)" : "count_") + "}");
         }
     }
-    return "std::conditional_t<Const, " + const_view + ", " + mutable_view + ">{" +
-           join(values, ", ") + "}";
+    return (is_const ? const_view : mutable_view) + "{" + join(values, ", ") + "}";
 }
 
-static void emit_compact_view(std::ostringstream& out,
-                              SoaSchema const& schema,
-                              std::map<std::string, SoaSchema const*> const& schemas,
-                              std::map<std::string, CppType> const& leaves,
-                              std::vector<std::string> const& prefix,
-                              std::string const& root,
-                              std::string const& layout,
-                              std::string const& runtime,
-                              bool native) {
-    auto const name{root + (prefix.empty() ? "" : "_" + join(prefix, "_"))};
-    for (auto const& member : schema.members) {
-        if (member.kind == SoaMemberKind::nested) {
-            auto path{prefix};
-            path.push_back(member.name);
-            emit_compact_view(out,
-                              *schemas.at(*member.nested_schema),
-                              schemas,
-                              leaves,
-                              path,
-                              root,
-                              layout,
-                              runtime,
-                              native);
+static void emit_compact_views(std::ostringstream& out,
+                               SoaSchema const& schema,
+                               std::map<std::string, SoaSchema const*> const& schemas,
+                               std::map<std::string, CppType> const& leaves,
+                               std::string const& layout,
+                               std::string const& runtime,
+                               bool native) {
+    auto const view{schema.name + "SingleView"};
+    auto const const_view{schema.name + "SingleConstView"};
+    for (bool const is_const : {true, false}) {
+        auto const name{is_const ? const_view : view};
+        auto const base{runtime + "CompactViewState<" + (is_const ? "true" : "false") + ">"};
+        out << "struct " << name << " : " << base << " {\n"
+            << "using Base = " << base << ";\nusing Base::Base;\n"
+            << "using View = " << view << ";\nusing ConstView = " << const_view << ";\n"
+            << name << "() = default;\n";
+        if (is_const) {
+            out << name << "(" << view << " const& other);\n";
         }
-    }
-    out << "template <bool Const> struct " << name << " : " << runtime
-        << "CompactViewState<Const> {\n"
-        << "using Base = " << runtime
-        << "CompactViewState<Const>;\nusing size_type = typename Base::size_type;\nusing "
-           "Base::Base;\n"
-        << "using View = " << name << "<false>;\nusing ConstView = " << name << "<true>;\n"
-        << name << "() = default;\n"
-        << name << "(" << name << " const&) = default;\n"
-        << "auto operator=(" << name << " const&) -> " << name << "& = default;\n"
-        << name << "(" << name << "<false> const& other) requires Const : Base{other} {}\n"
-        << "auto get_const_view() const -> " << name << "<true> { return *this; }\n"
-        << "auto get_const_view(size_type offset, size_type count) const -> " << name
-        << "<true> { return this->slice(offset, count); }\n";
-    for (auto const& member : schema.members) {
-        auto path{prefix};
-        path.push_back(member.name);
-        auto const id{join(path, "_")};
-        if (member.kind == SoaMemberKind::nested) {
-            out << "auto " << member.name << "() const { return " << root << "_" << id
-                << "<Const>{this->state_, this->offset_, this->count_}; }\n";
-        } else {
-            auto const type{leaves.at(id).spelling};
-            out << "auto " << member.name << "() const { return "
-                << (native ? "std::span" : "TArrayView") << "<typename Base::template Element<"
-                << type << ">>{this->template column_data<" << type << ">(" << layout << "::" << id
-                << "_offset(this->capacity_blocks())), "
-                << (native ? "static_cast<std::size_t>(this->count_)" : "this->count_") << "}; }\n";
+        out << "auto get_const_view() const -> ConstView { return *this; }\n"
+            << "auto get_const_view(size_type offset, size_type count) const -> ConstView { return "
+               "slice(offset, count); }\n";
+        auto emit_columns = [&](SoaSchema const& target,
+                                std::vector<std::string> const& prefix,
+                                std::string const& function) {
+            auto const type{is_const ? target.const_view_name.value_or(target.name + "ConstView")
+                                     : target.view_name.value_or(target.name + "View")};
+            out << "auto " << function << "() const -> " << type << " {\nvalidate();\n"
+                << "if (!state_ || !state_->data_) { return {}; }\n"
+                << "auto const blocks{capacity_blocks()};\nreturn "
+                << compact_columns_expression(
+                       target, schemas, leaves, prefix, layout, native, is_const)
+                << ";\n}\n";
+        };
+        for (auto const& member : schema.members) {
+            if (member.kind == SoaMemberKind::nested) {
+                auto const& nested{*schemas.at(*member.nested_schema)};
+                auto const element{vector_element(nested, leaves, member.name)};
+                if (element.empty()) {
+                    emit_columns(nested, {member.name}, "view_" + member.name);
+                    continue;
+                }
+                auto const vector_type{std::string{native ? "ml::native_soa::" : "ml::soa::"} +
+                                       "Vector" + std::to_string(nested.members.size()) +
+                                       (is_const ? "ConstView<" : "View<") + element + ">"};
+                out << "auto view_" << member.name << "() const -> " << vector_type
+                    << " {\nvalidate();\n"
+                    << "if (!state_ || !state_->data_) { return {}; }\n"
+                    << "auto const blocks{capacity_blocks()};\n"
+                    << "auto const first{" << layout << "::" << member.name
+                    << "_xs_offset(blocks)};\n"
+                    << "auto const stride{" << layout << "::" << member.name
+                    << "_ys_offset(blocks) - first};\n"
+                    << "return {column_data_unchecked<" << element
+                    << ">(first), stride, count_};\n}\n";
+            } else {
+                auto const type{leaves.at(member.name).spelling};
+                out << "auto " << member.name << "() const -> "
+                    << (native ? "std::span<" : "TArrayView<") << type << (is_const ? " const" : "")
+                    << "> { return {column_data<" << type << ">(" << layout << "::" << member.name
+                    << "_offset(capacity_blocks())), "
+                    << (native ? "static_cast<std::size_t>(count_)" : "count_") << "}; }\n";
+            }
         }
+        emit_columns(schema, {}, "columns");
+        out << (native ? "template <typename Func> void each_column(Func&& func) const { "
+                         "columns().each_column(std::forward<Func>(func)); }\n"
+                       : "template <typename Func> auto apply_arrays(Func&& func) const -> "
+                         "decltype(auto) { auto arrays{columns()}; return "
+                         "arrays.apply_arrays(std::forward<Func>(func)); }\n")
+            << "};\nstatic_assert(sizeof(" << name << ") == 16);\n"
+            << "static_assert(std::is_trivially_copyable_v<" << name << ">);\n";
     }
-    auto const array_view{"std::conditional_t<Const, " +
-                          schema.const_view_name.value_or(schema.name + "ConstView") + ", " +
-                          schema.view_name.value_or(schema.name + "View") + ">"};
-    out << "auto columns() const -> " << array_view << " {\nthis->validate();\n"
-        << "if (!this->state_ || !this->state_->data_) { return {}; }\n"
-        << "auto const blocks{this->capacity_blocks()};\nreturn "
-        << compact_columns_expression(schema, schemas, leaves, prefix, layout, native) << ";\n}\n"
-        << (native ? "template <typename Func> void each_column(Func&& func) const { "
-                     "columns().each_column(std::forward<Func>(func)); }\n"
-                   : "template <typename Func> auto apply_arrays(Func&& func) const -> "
-                     "decltype(auto) { auto arrays{columns()}; return "
-                     "arrays.apply_arrays(std::forward<Func>(func)); }\n")
-        << "};\nstatic_assert(sizeof(" << name << "<false>) == 16 && sizeof(" << name
-        << "<true>) == 16);\n"
-        << "static_assert(std::is_trivially_copyable_v<" << name
-        << "<false>> && std::is_trivially_copyable_v<" << name << "<true>>);\n";
+    out << "inline " << const_view << "::" << const_view << "(" << view
+        << " const& other) : Base{other} {}\n";
 }
-
 auto lower_single_allocation_node(SoaSchema const& schema,
                                   std::map<std::string, SoaSchema const*> const& schemas,
                                   std::map<std::string, CppType> const& types,
@@ -227,12 +277,13 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     layout_output << out.str();
     out.str({});
     if (!schema.single_allocation_allocator) {
-        out << "template <bool Const> struct " << compact_view << ";\n" << layout_output.str();
+        out << "struct " << compact_view << ";\nstruct " << schema.name << "SingleConstView;\n"
+            << layout_output.str();
     }
     out << "struct " << storage_name << " : " << layout_name << ", protected " << runtime
         << "StorageState, " << runtime << "StorageOperations {\n"
-        << "using View = " << compact_view << "<false>;\n"
-        << "using ConstView = " << compact_view << "<true>;\n"
+        << "using View = " << compact_view << ";\n"
+        << "using ConstView = " << schema.name << "SingleConstView;\n"
         << "/* **************************************** */\n// Lifetime\n/* "
            "**************************************** */\n"
         << storage_name << "() noexcept = default;\n"
@@ -360,8 +411,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         for (auto const& leaf : layout.leaves) {
             leaf_types.emplace(fixed_leaf_argument(leaf), leaf.type);
         }
-        emit_compact_view(
-            out, schema, schemas, leaf_types, {}, compact_view, layout_name, runtime, native);
+        emit_compact_views(out, schema, schemas, leaf_types, layout_name, runtime, native);
     }
     out << "struct " << name << " : " << storage_name << " {\n"
         << name << "() noexcept = default;\n"

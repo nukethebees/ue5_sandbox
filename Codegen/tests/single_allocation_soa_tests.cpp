@@ -98,17 +98,30 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
         output.find(
             "struct SingleRowsStorage : RowsSingleLayout, protected ml::soa_storage::StorageState"),
         std::string::npos);
-    EXPECT_NE(output.find("using View = RowsSingleView<false>"), std::string::npos);
-    EXPECT_NE(output.find("using ConstView = RowsSingleView<true>"), std::string::npos);
-    EXPECT_NE(output.find("struct RowsSingleView_nested"), std::string::npos);
-    EXPECT_NE(output.find("sizeof(RowsSingleView<false>) == 16"), std::string::npos);
-    EXPECT_NE(output.find("sizeof(RowsSingleView_nested<false>) == 16"), std::string::npos);
+    EXPECT_NE(output.find("using View = RowsSingleView;"), std::string::npos);
+    EXPECT_NE(output.find("using ConstView = RowsSingleConstView;"), std::string::npos);
+    EXPECT_EQ(output.find("struct RowsSingleView_nested"), std::string::npos);
+    EXPECT_NE(output.find("sizeof(RowsSingleView) == 16"), std::string::npos);
+    EXPECT_NE(output.find("sizeof(RowsSingleConstView) == 16"), std::string::npos);
     EXPECT_NE(output.find("column_data_unchecked<Aligned256>"), std::string::npos);
     EXPECT_NE(output.find("auto columns() const"), std::string::npos);
     EXPECT_NE(output.find("for_each_removal_run(num_, indices"), std::string::npos);
     EXPECT_NE(output.find("source.nested.wide.GetData()"), std::string::npos);
     EXPECT_NE(output.find("SingleRows(SingleRows const&) = delete"), std::string::npos);
     EXPECT_NE(output.find("nested.append_from(other.nested)"), std::string::npos);
+    input.front().members = {{"xs", SoaMemberKind::array, TypeRef{"double"}},
+                             {"ys", SoaMemberKind::array, TypeRef{"double"}}};
+    auto vectors{render(input)};
+    EXPECT_NE(vectors.find("auto view_nested() const -> ml::soa::Vector2View<double>"),
+              std::string::npos);
+    EXPECT_NE(vectors.find("auto view_nested() const -> ml::soa::Vector2ConstView<double>"),
+              std::string::npos);
+    input.front().members.push_back({"zs", SoaMemberKind::array, TypeRef{"double"}});
+    vectors = render(input);
+    EXPECT_NE(vectors.find("ml::soa::Vector3View<double>"), std::string::npos);
+    input.front().members.back().type = TypeRef{"float"};
+    vectors = render(input);
+    EXPECT_NE(vectors.find("auto view_nested() const -> ChildView"), std::string::npos);
 }
 
 TEST(SingleAllocationSoa, RejectsCompactViewNameCollisions) {
@@ -119,7 +132,10 @@ TEST(SingleAllocationSoa, RejectsCompactViewNameCollisions) {
     input.back().single_allocation = "RowsSingleLayout";
     EXPECT_THROW(render(input), std::invalid_argument);
     input = schemas();
-    input.back().single_allocation = "RowsSingleView_nested";
+    input.back().single_allocation = "RowsSingleConstView";
+    EXPECT_THROW(render(input), std::invalid_argument);
+    input = schemas();
+    input.back().members.push_back({"view_nested", SoaMemberKind::array, TypeRef{"float"}});
     EXPECT_THROW(render(input), std::invalid_argument);
 }
 TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
@@ -237,8 +253,8 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
     auto const output{render(input)};
     EXPECT_NE(output.find("layout_align(first_nested_wide_block_end, first_ids_alignment)"),
               std::string::npos);
-    EXPECT_NE(output.find("GrandparentSingleView_first_nested"), std::string::npos);
-    EXPECT_NE(output.find("GrandparentSingleView_second_nested"), std::string::npos);
+    EXPECT_NE(output.find("auto view_first() const -> RowsView"), std::string::npos);
+    EXPECT_NE(output.find("auto view_second() const -> RowsConstView"), std::string::npos);
     EXPECT_NE(output.find("GrandparentSingleLayout::second_nested_wide_offset(blocks)"),
               std::string::npos);
 }
