@@ -4,13 +4,16 @@
 #include "SandboxEditor/slate/BoxSizeCustomisation.h"
 #include "SandboxEditor/slate/StrongTypedefPreview.h"
 #include "SandboxEditor/slate/TestVolumeDetailsCustomisation.h"
+#include "SandboxEditor/slate/UiGlowLab.h"
 
+#include "Framework/Docking/TabManager.h"
 #include "Framework/MultiBox/MultiBoxBuilder.h"
 #include "LevelEditor.h"
 #include "Misc/CoreDelegates.h"
 #include "Modules/ModuleManager.h"
 #include "PropertyEditorModule.h"
 #include "ToolMenus.h"
+#include "Widgets/Docking/SDockTab.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
@@ -37,8 +40,20 @@ void FSandboxEditorModule::StartupModule() {
     }
     register_custom_properties();
     create_sandbox_editor_menus();
+    if (!IsRunningCommandlet()) {
+        FGlobalTabmanager::Get()
+            ->RegisterNomadTabSpawner(TEXT("UiGlowLab"),
+                                      FOnSpawnTab::CreateLambda([](FSpawnTabArgs const&) {
+                                          return SNew(SDockTab).TabRole(
+                                              ETabRole::NomadTab)[ml::ui::glow_lab::make_widget()];
+                                      }))
+            .SetDisplayName(FText::FromString(TEXT("UI Glow Lab")));
+    }
 }
 void FSandboxEditorModule::ShutdownModule() {
+    if (!IsRunningCommandlet()) {
+        FGlobalTabmanager::Get()->UnregisterNomadTabSpawner(TEXT("UiGlowLab"));
+    }
     unregister_custom_properties();
 
     if (FModuleManager::Get().IsModuleLoaded("LevelEditor")) {
@@ -78,6 +93,12 @@ void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_pulldown(
             this, &FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items));
 }
 void FSandboxEditorModule::create_sandbox_editor_toolbar_menu_items(FMenuBuilder& menu_builder) {
+    menu_builder.AddMenuEntry(FText::FromString(TEXT("UI Glow Lab")),
+                              FText::FromString(TEXT("Tune the production targeting glow")),
+                              FSlateIcon(),
+                              FUIAction(FExecuteAction::CreateLambda([] {
+                                  FGlobalTabmanager::Get()->TryInvokeTab(FTabId{TEXT("UiGlowLab")});
+                              })));
     menu_builder.AddSubMenu(FText::FromName(TEXT("Example Submenu")),
                             FText::FromName(TEXT("Example Submenu Tooltip")),
                             FNewMenuDelegate::CreateLambda([](FMenuBuilder& submenu_builder) {

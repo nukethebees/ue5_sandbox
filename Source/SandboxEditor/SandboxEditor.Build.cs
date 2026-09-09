@@ -46,7 +46,9 @@ public class SandboxEditor : ModuleRules
             "SpaceGameS7",
             "Slate",
             "SlateCore",
+            "SlateRHIRenderer",
             "InputCore", // For SNumericVectorInputBox 
+            "ImageCore",
             "ToolWidgets",
             "ToolMenus", // For editor toolbar buttons
             "USFLoaderEditor" // USF Loader plugin dependency            

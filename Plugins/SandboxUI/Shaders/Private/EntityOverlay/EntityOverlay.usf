@@ -43,6 +43,11 @@ float4 DefendObjectiveColor;
 float4 DestroyObjectiveColor;
 float4 SoftTargetNeutralColor;
 float4 SoftTargetInRangeColor;
+float GlowPaddingPixels;
+float4 GlowFalloff;
+float GlowIntensity;
+float PreserveCorePixels;
+Texture2D<float4> GlowCoreTexture;
 
 static uint const ObjectiveRoleMask = 0x3;
 static uint const HasFillColorMask = 1 << 2;
@@ -218,7 +223,8 @@ EntityOverlayVertexOutput entity_overlay_vs(uint const vertex_id : SV_VertexID,
     float2 const soft_target_center = -ScreenOffsetPixels + float2(0.0, 0.5 * normal_bar_size.y);
     if (is_soft_target) {
         float const soft_target_extent =
-            instance_soft_target_radius * SoftTargetBracketStartRadiusMultiplier + 18.0;
+            instance_soft_target_radius * SoftTargetBracketStartRadiusMultiplier + 18.0 +
+            GlowPaddingPixels;
         draw_min = min(draw_min, soft_target_center - soft_target_extent);
         draw_max = max(draw_max, soft_target_center + soft_target_extent);
     }
@@ -611,17 +617,9 @@ float label_text_coverage(float2 const position,
                             distance_pixels);
 }
 
-bool soft_target_pixel(EntityOverlayVertexOutput input,
-                       float2 const local_position,
-                       out float4 output_color) {
-    if ((input.display_data & SoftTargetRoleMask) == 0 || input.edge != EdgeNone) {
-        output_color = 0.0;
-        return false;
-    }
-
+float soft_target_distance(EntityOverlayVertexOutput input, float2 const local_position) {
     float2 const target_position = local_position - input.soft_target_center_pixels;
     float const range_progress = saturate(input.soft_target_range_progress);
-    bool const in_range = input.soft_target_in_range > 0.5;
     float const radius = max(input.soft_target_radius_pixels, 1.0);
     float const start_bracket_anchor =
         radius * max(SoftTargetBracketStartRadiusMultiplier, 1.0) * 0.70710678;
@@ -658,8 +656,44 @@ bool soft_target_pixel(EntityOverlayVertexOutput input,
                             float2(bracket_anchor, bracket_anchor),
                             float2(bracket_anchor, bracket_anchor + bracket_length)) -
         thickness * 0.5;
-    float const shape_distance =
-        min(hex_distance, min(horizontal_bracket_distance, vertical_bracket_distance));
+    return min(hex_distance, min(horizontal_bracket_distance, vertical_bracket_distance));
+}
+
+float entity_overlay_glow_ps(EntityOverlayVertexOutput input)
+    : SV_Target0 {
+    clip(input.visible - 0.5);
+    if ((input.display_data & SoftTargetRoleMask) == 0 || input.edge != EdgeNone ||
+        input.soft_target_in_range < 0.5 || any(input.position.xy < float2(ViewRect.xy)) ||
+        any(input.position.xy >= float2(ViewRect.zw))) {
+        discard;
+    }
+    float2 const local_position = input.draw_min_pixels + input.local_uv * input.draw_size_pixels;
+    float const shape_distance = soft_target_distance(input, local_position);
+    float const antialias_width = max(fwidth(shape_distance), 0.7);
+    float const distance_pixels = max(shape_distance, 0.0);
+    float2 const scaled_distance = distance_pixels / GlowFalloff.xy;
+    float2 const falloff = exp(-0.5 * scaled_distance * scaled_distance);
+    float const outer_fade =
+        1.0 - smoothstep(GlowPaddingPixels - 2.0, GlowPaddingPixels, distance_pixels);
+    float const core_exclusion =
+        smoothstep(antialias_width, antialias_width + 0.75, shape_distance);
+    // Protect every existing overlay pixel, including antialiasing and overlapping health bars.
+    float const core_alpha = GlowCoreTexture.Load(int3(int2(input.position.xy), 0)).a;
+    float const protection =
+        PreserveCorePixels > 0.5 ? (core_alpha > 0.0 ? 0.0 : core_exclusion) : 1.0;
+    return dot(falloff, GlowFalloff.zw) * outer_fade * protection * GlowIntensity *
+           saturate(input.soft_target_visibility);
+}
+
+bool soft_target_pixel(EntityOverlayVertexOutput input,
+                       float2 const local_position,
+                       out float4 output_color) {
+    if ((input.display_data & SoftTargetRoleMask) == 0 || input.edge != EdgeNone) {
+        output_color = 0.0;
+        return false;
+    }
+    bool const in_range = input.soft_target_in_range > 0.5;
+    float const shape_distance = soft_target_distance(input, local_position);
     float const antialias_width = max(fwidth(shape_distance), 0.7);
     float const core_coverage = 1.0 - smoothstep(-antialias_width, antialias_width, shape_distance);
 

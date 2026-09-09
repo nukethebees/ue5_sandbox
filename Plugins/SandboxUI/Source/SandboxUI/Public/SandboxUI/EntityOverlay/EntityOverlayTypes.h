@@ -61,6 +61,15 @@ struct SANDBOXUI_API FEntityOverlaySourceView {
     }
 };
 
+struct SANDBOXUI_API FUiGlowStyle {
+    float intensity{1.0f};
+    float near_sigma_pixels{2.0f};
+    float halo_sigma_pixels{8.0f};
+    float near_weight{0.18f};
+    float halo_weight{0.025f};
+    bool preserve_core_pixels{false};
+};
+
 struct SANDBOXUI_API FEntityOverlayStyle {
     FVector2f bar_size_pixels{64.0f, 8.0f};
     FVector2f screen_offset_pixels{0.0f, -24.0f};
@@ -83,6 +92,7 @@ struct SANDBOXUI_API FEntityOverlayStyle {
     FLinearColor destroy_objective_color{0.75f, 0.15f, 0.08f, 1.0f};
     FLinearColor soft_target_neutral_color{0.72f, 0.70f, 0.65f, 1.0f};
     FLinearColor soft_target_in_range_color{0.84f, 0.65f, 0.23f, 1.0f};
+    FUiGlowStyle soft_target_glow{};
 };
 
 struct SANDBOXUI_API FEntityOverlayView {
