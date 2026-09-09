@@ -620,6 +620,21 @@ void ASpaceGamePlayerController::quit_game() {
 /* **************************************** */
 // Diagnostics
 /* **************************************** */
+auto ASpaceGamePlayerController::get_input_snapshot() const -> FPlayerInputSnapshot {
+    FPlayerInputSnapshot snapshot{
+        .control_context = get_active_control_context(),
+        .pause_menu_active = modal_ui_.is_pause_active(),
+    };
+    auto const* const ship{Cast<Pawn>(GetPawn())};
+    if (IsValid(ship) && ship->has_simulation()) {
+        snapshot.movement = ship->get_move_input();
+        snapshot.turn = ship->get_turn_input();
+        snapshot.sampled_movement = ship->get_target_local_planar_velocity_scale();
+        snapshot.fire_active = ship->get_laser_firing_mode() != ELaserFiringState::idle;
+        snapshot.sampling_active = ship->is_sampling();
+    }
+    return snapshot;
+}
 void ASpaceGamePlayerController::Tick(float const dt) {
     Super::Tick(dt);
 

@@ -348,6 +348,11 @@ add_unreal_automation_test(
   LABELS level
 )
 add_unreal_automation_test(
+  Sandbox.InputSmokeTests
+  FILTERS Sandbox.LevelTests.PlayerInputSmoke
+  LABELS input-smoke
+)
+add_unreal_automation_test(
   Sandbox.AllAutomationTests
   FILTERS
     ${SANDBOX_UNIT_AUTOMATION_FILTERS}

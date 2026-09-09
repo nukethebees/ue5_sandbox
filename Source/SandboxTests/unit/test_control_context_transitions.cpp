@@ -33,6 +33,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FBenchmarkControlInputs benchmark_input_;
     FGlobalControlInputs global_input_;
     FPlayerControlContexts contexts_;
+    ml::test_space_ship::Simulation ship_simulation_;
 
     BEFORE_EACH()
     {
@@ -46,6 +47,9 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         controller_ = world.SpawnActor<ASpaceGamePlayerController>();
         ship_ =
             ml::spawn_player_ship(world, config->classes.player_ship_class, &config->player_ship);
+        if (IsValid(ship_)) {
+            ship_->bind_simulation(ship_simulation_);
+        }
         camera_ = world.SpawnActor<ACameraActor>();
         component_ = NewObject<UEnhancedInputComponent>(controller_);
         subsystem_ = NewObject<USandboxTestEnhancedInputSubsystem>(controller_);

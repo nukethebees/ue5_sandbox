@@ -42,8 +42,10 @@ auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
 }
 
 auto FShipControlContext::can_bind() const -> bool {
+    auto* const ship{ship_.Get()};
     if (!initialised_ || !owner_.IsValid() || !input_component_.IsValid() ||
-        !input_subsystem_object_.IsValid() || !input_subsystem_ || !ship_.IsValid() || !input_) {
+        !input_subsystem_object_.IsValid() || !input_subsystem_ || !IsValid(ship) ||
+        !ship->has_simulation() || !input_) {
         return false;
     }
 

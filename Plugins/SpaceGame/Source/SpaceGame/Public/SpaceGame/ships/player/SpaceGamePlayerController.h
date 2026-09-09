@@ -14,6 +14,16 @@ class ACameraActor;
 struct FTestMissionCompletion;
 class UTestBatchGameUiData;
 
+struct SPACEGAME_API FPlayerInputSnapshot {
+    FVector2D movement{FVector2D::ZeroVector};
+    FVector2D turn{FVector2D::ZeroVector};
+    FVector2D sampled_movement{FVector2D::ZeroVector};
+    EPlayerControlContext control_context{EPlayerControlContext::None};
+    bool fire_active{false};
+    bool pause_menu_active{false};
+    bool sampling_active{false};
+};
+
 UCLASS()
 class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     GENERATED_BODY()
@@ -25,6 +35,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     friend struct FPlayerHudLifecycle;
     friend struct FPlayerModalUi;
     friend struct FPlayerControllerTestAccess;
+    friend class ATestBatchOrchestrator;
   public:
     using Pawn = ATestSpaceShip;
     ASpaceGamePlayerController();
@@ -32,6 +43,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void Tick(float dt) override;
     void show_main_menu();
     auto activate_playerless_camera(ACameraActor& camera, EPlayerControlContext context) -> bool;
+    [[nodiscard]] auto get_input_snapshot() const -> FPlayerInputSnapshot;
     [[nodiscard]] auto get_active_control_context() const noexcept -> EPlayerControlContext {
         return control_contexts_.get_active_context();
     }

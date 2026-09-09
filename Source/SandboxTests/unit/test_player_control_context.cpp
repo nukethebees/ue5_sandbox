@@ -67,6 +67,128 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              main_menu_mode->PlayerControllerClass == controller_class);
     }
 
+    TEST_METHOD(RuntimeControllerInputsMatchAuthoredController)
+    {
+        auto* const runtime_config{
+            LoadObject<USpaceGameLevelConfig>(nullptr,
+                                              TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
+                                                   "DA_GameRuntimeLevelConfig"))};
+        auto* const source_controller_class{LoadClass<ASpaceGamePlayerController>(
+            nullptr,
+            TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/BP_TestSpaceShipController."
+                 "BP_TestSpaceShipController_C"))};
+        auto const* const source_controller{IsValid(source_controller_class)
+                                                ? source_controller_class->GetDefaultObject()
+                                                : nullptr};
+        auto const* const runtime_controller{
+            IsValid(runtime_config) && IsValid(runtime_config->classes.player_controller_class)
+                ? runtime_config->classes.player_controller_class.GetDefaultObject()
+                : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Authored controller loads"), IsValid(source_controller)) ||
+            !TestRunner->TestTrue(TEXT("Runtime controller loads"), IsValid(runtime_controller))) {
+            return;
+        }
+
+        auto const* const source_input_property{
+            FindFProperty<FStructProperty>(source_controller->GetClass(), TEXT("input"))};
+        auto const* const runtime_input_property{
+            FindFProperty<FStructProperty>(runtime_controller->GetClass(), TEXT("input"))};
+        auto const* const source_global_property{
+            FindFProperty<FStructProperty>(source_controller->GetClass(), TEXT("global_input"))};
+        auto const* const runtime_global_property{
+            FindFProperty<FStructProperty>(runtime_controller->GetClass(), TEXT("global_input"))};
+        if (!TestRunner->TestTrue(TEXT("Authored input properties are available"),
+                                  source_input_property && source_global_property) ||
+            !TestRunner->TestTrue(TEXT("Runtime input properties are available"),
+                                  runtime_input_property && runtime_global_property)) {
+            return;
+        }
+
+        auto const* const source_input{
+            source_input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(
+                source_controller)};
+        auto const* const runtime_input{
+            runtime_input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(
+                runtime_controller)};
+        auto const* const source_global{
+            source_global_property->ContainerPtrToValuePtr<FGlobalControlInputs>(
+                source_controller)};
+        auto const* const runtime_global{
+            runtime_global_property->ContainerPtrToValuePtr<FGlobalControlInputs>(
+                runtime_controller)};
+        auto const matches = [this](TCHAR const* const name,
+                                    UObject const* const runtime_value,
+                                    UObject const* const source_value) {
+            TestRunner->TestTrue(name, runtime_value == source_value);
+        };
+        matches(TEXT("Runtime move action matches the authored controller"),
+                runtime_input->move,
+                source_input->move);
+        matches(TEXT("Runtime turn action matches the authored controller"),
+                runtime_input->turn,
+                source_input->turn);
+        matches(TEXT("Runtime fire action matches the authored controller"),
+                runtime_input->fire_laser,
+                source_input->fire_laser);
+        matches(TEXT("Runtime boost action matches the authored controller"),
+                runtime_input->boost,
+                source_input->boost);
+        matches(TEXT("Runtime brake action matches the authored controller"),
+                runtime_input->brake,
+                source_input->brake);
+        matches(TEXT("Runtime roll action matches the authored controller"),
+                runtime_input->roll,
+                source_input->roll);
+        matches(TEXT("Runtime barrel-roll action matches the authored controller"),
+                runtime_input->barrel_roll,
+                source_input->barrel_roll);
+        matches(TEXT("Runtime next fire-rate action matches the authored controller"),
+                runtime_input->cycle_next_fire_rate,
+                source_input->cycle_next_fire_rate);
+        matches(TEXT("Runtime previous fire-rate action matches the authored controller"),
+                runtime_input->cycle_prev_fire_rate,
+                source_input->cycle_prev_fire_rate);
+        matches(TEXT("Runtime profile action matches the authored controller"),
+                runtime_input->cycle_input_mapping_context,
+                source_input->cycle_input_mapping_context);
+        matches(TEXT("Runtime lateral action matches the authored controller"),
+                runtime_input->lateral_move,
+                source_input->lateral_move);
+        matches(TEXT("Runtime vertical action matches the authored controller"),
+                runtime_input->vertical_move,
+                source_input->vertical_move);
+        matches(TEXT("Runtime sample-and-hold action matches the authored controller"),
+                runtime_input->sample_and_hold,
+                source_input->sample_and_hold);
+        matches(TEXT("Runtime 2D sample action matches the authored controller"),
+                runtime_input->ship_2d_control,
+                source_input->ship_2d_control);
+        matches(TEXT("Runtime X sample action matches the authored controller"),
+                runtime_input->ship_1d_control_x,
+                source_input->ship_1d_control_x);
+        matches(TEXT("Runtime Y sample action matches the authored controller"),
+                runtime_input->ship_1d_control_y,
+                source_input->ship_1d_control_y);
+        matches(TEXT("Runtime next control-mode action matches the authored controller"),
+                runtime_input->cycle_next_control_mode,
+                source_input->cycle_next_control_mode);
+        matches(TEXT("Runtime previous control-mode action matches the authored controller"),
+                runtime_input->cycle_previous_control_mode,
+                source_input->cycle_previous_control_mode);
+        matches(TEXT("Runtime global mapping matches the authored controller"),
+                runtime_global->mapping_context,
+                source_global->mapping_context);
+        matches(TEXT("Runtime pause action matches the authored controller"),
+                runtime_global->toggle_menu,
+                source_global->toggle_menu);
+
+        auto* const canonical_mapping{LoadObject<UInputMappingContext>(
+            nullptr, TEXT("/SpaceGame/Input/SpaceShip/IMC_SpaceShip_Base.IMC_SpaceShip_Base"))};
+        TestRunner->TestTrue(TEXT("Runtime controller uses the canonical ship mapping"),
+                             IsValid(canonical_mapping) &&
+                                 runtime_input->mapping_context == canonical_mapping);
+    }
+
     TEST_METHOD(ConfiguredShipMappingsAreCompleteAndPluginOwned)
     {
         auto const* const config{ml::load_default_level_config()};
@@ -114,6 +236,53 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             TestRunner->TestTrue(TEXT("Mapping contains a valid action"), IsValid(mapping.Action));
             TestRunner->TestTrue(TEXT("Mapping is player mappable"), mapping.IsPlayerMappable());
         });
+    }
+
+    TEST_METHOD(DefaultProfileContainsFlightAndSamplingControls)
+    {
+        auto const* const config{ml::load_default_level_config()};
+        auto const* const controller_default{
+            IsValid(config) && IsValid(config->classes.player_controller_class)
+                ? config->classes.player_controller_class.GetDefaultObject()
+                : nullptr};
+        auto const* const input_property{
+            IsValid(controller_default)
+                ? FindFProperty<FStructProperty>(controller_default->GetClass(), TEXT("input"))
+                : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Controller input property is available"),
+                                  input_property != nullptr)) {
+            return;
+        }
+
+        auto const* const input{
+            input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller_default)};
+        auto const* const mapping_context{input->get_mapping_context()};
+        if (!TestRunner->TestTrue(TEXT("Default mapping context is available"),
+                                  IsValid(mapping_context))) {
+            return;
+        }
+        auto const has_mapping = [mapping_context](UInputAction const* const action,
+                                                   FKey const key) {
+            return mapping_context->GetMappings().ContainsByPredicate(
+                [action, key](FEnhancedActionKeyMapping const& mapping) {
+                    return mapping.Action == action && mapping.Key == key;
+                });
+        };
+        TestRunner->TestTrue(TEXT("W has vertical movement"),
+                             has_mapping(input->vertical_move, EKeys::W));
+        TestRunner->TestTrue(TEXT("S has vertical movement"),
+                             has_mapping(input->vertical_move, EKeys::S));
+        TestRunner->TestTrue(TEXT("A has sampled lateral control"),
+                             has_mapping(input->ship_1d_control_x, EKeys::A));
+        TestRunner->TestTrue(TEXT("D has sampled lateral control"),
+                             has_mapping(input->ship_1d_control_x, EKeys::D));
+        TestRunner->TestTrue(TEXT("W has sampled forward control"),
+                             has_mapping(input->ship_1d_control_y, EKeys::W));
+        TestRunner->TestTrue(TEXT("S has sampled backward control"),
+                             has_mapping(input->ship_1d_control_y, EKeys::S));
+        TestRunner->TestTrue(TEXT("Mouse thumb 2 has sample-and-hold"),
+                             has_mapping(input->sample_and_hold, EKeys::ThumbMouseButton2));
+        TestRunner->TestTrue(TEXT("Mouse2D has turn"), has_mapping(input->turn, EKeys::Mouse2D));
     }
 
     TEST_METHOD(ControlProfilesRegisterAndCycle)
@@ -684,9 +853,6 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             return;
         }
 
-        ml::test_space_ship::Simulation simulation;
-        ship->bind_simulation(simulation);
-
         auto* const input_component{NewObject<UEnhancedInputComponent>(controller)};
         auto* const input_subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         auto* const mapping_context{NewObject<UInputMappingContext>(controller)};
@@ -723,6 +889,10 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             TEXT("Ship context initializes"),
             context.initialise(*controller, *input_component, *input_subsystem, input));
         context.set_ship(ship);
+        TestRunner->TestFalse(TEXT("Ship context cannot bind before simulation initialization"),
+                              context.can_bind());
+        ml::test_space_ship::Simulation simulation;
+        ship->bind_simulation(simulation);
         TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());
         TestRunner->TestTrue(TEXT("Ship context reports bound"), context.is_bound());
         TestRunner->TestTrue(TEXT("Ship mapping is active"),

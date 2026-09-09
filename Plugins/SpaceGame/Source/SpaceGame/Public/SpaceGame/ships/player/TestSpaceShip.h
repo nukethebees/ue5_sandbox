@@ -71,6 +71,7 @@ class SPACEGAME_API ATestSpaceShip
     auto get_flight_mode() const -> ETestSpaceShipFlightMode;
     void set_flight_mode(ETestSpaceShipFlightMode new_flight_mode) noexcept;
     auto get_target_local_planar_velocity_scale() const -> FVector2D;
+    auto is_sampling() const -> bool;
     auto get_target_local_planar_velocity() const -> FVector;
     auto get_turn_input() const -> FVector2D;
 

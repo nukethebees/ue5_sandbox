@@ -11,6 +11,7 @@
 #include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/HUDManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
+#include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/CollisionGridVisualizationComponent.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
@@ -704,6 +705,13 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                *level_config,
                                level_config->entity_overlay,
                                level_config->radar);
+        if (IsValid(player_ship)) {
+            if (auto* const controller{
+                    Cast<ASpaceGamePlayerController>(player_ship->GetController())};
+                IsValid(controller)) {
+                controller->activate_ship_control();
+            }
+        }
     }
     bool const automatic{
         start_mode == EOrchestratorStartMode::Automatic ||

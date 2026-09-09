@@ -919,6 +919,10 @@ auto generate_gameplay_input_assets() -> bool {
 
     base->Modify();
     auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
+    default_mappings = z_roll_aim->GetMappings();
+    for (auto& mapping : default_mappings) {
+        duplicate_instanced_mapping_data(mapping, *base);
+    }
     configure_mappings(default_mappings, *base);
 
     auto const profiles{ml::ioj::control_profile_definitions()};
@@ -1007,16 +1011,55 @@ auto configure_control_context_inputs(UBlueprint& blueprint,
     return true;
 }
 
+auto configure_gameplay_inputs(UBlueprint& blueprint,
+                               UBlueprint const& source,
+                               UInputMappingContext& mapping_context) -> bool {
+    auto* const controller{
+        Cast<ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
+    auto const* const source_controller{
+        Cast<ASpaceGamePlayerController>(source.GeneratedClass->GetDefaultObject())};
+    auto* const input_property{
+        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("input"))};
+    auto const* const source_input_property{
+        FindFProperty<FStructProperty>(source.GeneratedClass, TEXT("input"))};
+    auto* const global_input_property{
+        FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("global_input"))};
+    auto const* const source_global_input_property{
+        FindFProperty<FStructProperty>(source.GeneratedClass, TEXT("global_input"))};
+    if (!IsValid(controller) || !IsValid(source_controller) || !input_property ||
+        !source_input_property || !global_input_property || !source_global_input_property) {
+        UE_LOG(LogTemp, Error, TEXT("Could not configure player controller gameplay inputs"));
+        return false;
+    }
+
+    controller->Modify();
+    input_property->CopyCompleteValue(
+        input_property->ContainerPtrToValuePtr<void>(controller),
+        source_input_property->ContainerPtrToValuePtr<void>(source_controller));
+    global_input_property->CopyCompleteValue(
+        global_input_property->ContainerPtrToValuePtr<void>(controller),
+        source_global_input_property->ContainerPtrToValuePtr<void>(source_controller));
+    input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller)
+        ->mapping_context = &mapping_context;
+    FPropertyChangedEvent property_changed{input_property, EPropertyChangeType::ValueSet};
+    controller->PostEditChangeProperty(property_changed);
+    blueprint.Modify();
+    FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
+    return true;
+}
+
 auto load_or_create_player_controller(FObserverControlInputs const& observer,
                                       FBenchmarkControlInputs const& benchmark) -> UBlueprint* {
+    auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
+    auto* const mapping_context{
+        LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
+    if (!IsValid(source) || !IsValid(source->GeneratedClass) || !IsValid(mapping_context)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load source player controller inputs"));
+        return nullptr;
+    }
+
     auto* blueprint{LoadObject<UBlueprint>(nullptr, player_controller_object_path)};
     if (!IsValid(blueprint)) {
-        auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
-        if (!IsValid(source)) {
-            UE_LOG(LogTemp, Error, TEXT("Could not load source player controller Blueprint"));
-            return nullptr;
-        }
-
         auto* const package{CreatePackage(player_controller_package_name)};
         blueprint = Cast<UBlueprint>(StaticDuplicateObject(
             source, package, player_controller_asset_name, RF_Public | RF_Standalone));
@@ -1036,32 +1079,20 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         UE_LOG(LogTemp, Error, TEXT("BP_SpaceGamePlayerController failed to compile"));
         return nullptr;
     }
-    if (!configure_control_context_inputs(*blueprint, observer, benchmark)) {
+    if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
+        !configure_gameplay_inputs(*blueprint, *source, *mapping_context)) {
         return nullptr;
     }
-
-    auto* const controller{
-        blueprint->GeneratedClass->GetDefaultObject<ASpaceGamePlayerController>()};
-    auto* const input_property{
-        FindFProperty<FStructProperty>(blueprint->GeneratedClass, TEXT("input"))};
-    auto* const mapping_context{
-        LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
-    if (!IsValid(controller) || input_property == nullptr || !IsValid(mapping_context)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not configure player controller input context"));
-        return nullptr;
-    }
-    controller->Modify();
-    auto* const input{
-        input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller)};
-    input->mapping_context = mapping_context;
-    blueprint->Modify();
-    FBlueprintEditorUtils::MarkBlueprintAsModified(blueprint);
 
     FKismetEditorUtilities::CompileBlueprint(blueprint);
     if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
         UE_LOG(LogTemp,
                Error,
                TEXT("BP_SpaceGamePlayerController failed to compile after input migration"));
+        return nullptr;
+    }
+    if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
+        !configure_gameplay_inputs(*blueprint, *source, *mapping_context)) {
         return nullptr;
     }
     auto* const compiled_controller{
@@ -1085,9 +1116,6 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         UE_LOG(LogTemp, Error, TEXT("Player controller context inputs did not compile"));
         return nullptr;
     }
-    compiled_controller->Modify();
-    input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(compiled_controller)
-        ->mapping_context = mapping_context;
     return save_asset(*blueprint) ? blueprint : nullptr;
 }
 
@@ -1112,14 +1140,14 @@ auto configure_runtime_game_mode(UClass& player_controller_class) -> bool {
 auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGameLevelConfig* {
     auto const object_path{
         FString::Printf(TEXT("%s.%s"), runtime_config_package_name, runtime_config_asset_name)};
+    auto* const source{LoadObject<USpaceGameLevelConfig>(nullptr, source_config_object_path)};
+    if (!IsValid(source)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load source level config"));
+        return nullptr;
+    }
+
     auto* config{LoadObject<USpaceGameLevelConfig>(nullptr, *object_path)};
     if (!IsValid(config)) {
-        auto* const source{LoadObject<USpaceGameLevelConfig>(nullptr, source_config_object_path)};
-        if (!IsValid(source)) {
-            UE_LOG(LogTemp, Error, TEXT("Could not load source level config"));
-            return nullptr;
-        }
-
         auto* const package{CreatePackage(runtime_config_package_name)};
         config = Cast<USpaceGameLevelConfig>(StaticDuplicateObject(
             source, package, runtime_config_asset_name, RF_Public | RF_Standalone));
@@ -1131,6 +1159,12 @@ auto load_or_create_runtime_config(UClass& player_controller_class) -> USpaceGam
     }
 
     config->Modify();
+    for (TFieldIterator<FProperty> property{USpaceGameLevelConfig::StaticClass(),
+                                            EFieldIteratorFlags::ExcludeSuper};
+         property;
+         ++property) {
+        property->CopyCompleteValue_InContainer(config, source);
+    }
     config->classes.player_controller_class = &player_controller_class;
     return save_asset(*config) ? config : nullptr;
 }

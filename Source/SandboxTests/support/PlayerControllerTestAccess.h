@@ -36,6 +36,15 @@ struct FPlayerControllerTestAccess {
         controller.control_contexts_.shutdown();
     }
 
+    static auto ship_input(ASpaceGamePlayerController const& controller)
+        -> FSpaceShipControllerInputs const& {
+        return controller.input;
+    }
+    static auto global_input(ASpaceGamePlayerController const& controller)
+        -> FGlobalControlInputs const& {
+        return controller.global_input;
+    }
+
     static void toggle_pause(ASpaceGamePlayerController& controller) {
         controller.toggle_pause_game();
     }

@@ -12,11 +12,13 @@
 #include <SpaceGame/simulation/SimulationConfig.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
+#include <SpaceGameS7/LevelDefinitionReader.h>
 
 #include <CQTest.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshActor.h>
 #include <GameFramework/Actor.h>
+#include <Misc/Paths.h>
 #include <UObject/Package.h>
 #include <UObject/SoftObjectPtr.h>
 
@@ -245,6 +247,46 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         auto const result{ml::make_level_simulation_init_data(*config)};
         TestRunner->TestTrue(TEXT("Authored fighter spawn slots pass level-start validation"),
                              result.has_value());
+    }
+
+    TEST_METHOD(RuntimeConfigStartsTurretTrialZero)
+    {
+        auto const* const source{ml::load_default_level_config()};
+        auto const* const runtime{
+            LoadObject<USpaceGameLevelConfig>(nullptr,
+                                              TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig."
+                                                   "DA_GameRuntimeLevelConfig"))};
+        if (!TestRunner->TestNotNull(TEXT("Source level config loads"), source) ||
+            !TestRunner->TestNotNull(TEXT("Runtime level config loads"), runtime)) {
+            return;
+        }
+
+        TestRunner->TestEqual(TEXT("Runtime fighter spawn count matches its source"),
+                              runtime->capital_ships.fighter_spawn_slots,
+                              source->capital_ships.fighter_spawn_slots);
+        auto const& runtime_transforms{
+            runtime->capital_ships.fighter_spawn_slots_relative_transforms};
+        auto const& source_transforms{
+            source->capital_ships.fighter_spawn_slots_relative_transforms};
+        auto transforms_match{runtime_transforms.Num() == source_transforms.Num()};
+        for (int32 i{}; transforms_match && i < runtime_transforms.Num(); ++i) {
+            transforms_match = runtime_transforms[i].Equals(source_transforms[i]);
+        }
+        TestRunner->TestTrue(TEXT("Runtime fighter spawn transforms match their source"),
+                             transforms_match);
+
+        ml::s7::FLevelDefinitionReader reader;
+        auto const script_path{
+            FPaths::Combine(FPaths::ProjectDir(), TEXT("LevelScripts"), TEXT("TurretTrial_0.scm"))};
+        auto const scripted_definition{reader.read_file(script_path)};
+        if (!TestRunner->TestTrue(TEXT("Turret Trial 0 produces a valid native definition"),
+                                  static_cast<bool>(scripted_definition))) {
+            return;
+        }
+
+        auto const result{ml::make_level_simulation_init_data(
+            *runtime, {}, scripted_definition.definition.GetValue())};
+        TestRunner->TestTrue(TEXT("Runtime config starts Turret Trial 0"), result.has_value());
     }
 
     TEST_METHOD(FighterSpawnSlotValidationRejectsInvalidLevelGeometry)

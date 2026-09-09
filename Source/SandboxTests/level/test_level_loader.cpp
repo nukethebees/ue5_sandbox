@@ -402,10 +402,10 @@ void FLevelLoaderScenario::load_fixture() {
             checks.is_true(player_controller->GetPawn() == player,
                            TEXT("Player controller possesses the authored player ship"));
             checks.is_true(player_controller->get_active_control_context() ==
-                               EPlayerControlContext::Player,
-                           TEXT("Playable level enters player context"));
-            checks.is_true(Cast<UShipHudWidget>(player_controller->get_active_hud()) != nullptr,
-                           TEXT("Player context creates the normal player HUD"));
+                               EPlayerControlContext::None,
+                           TEXT("Loader defers player input until simulation initialization"));
+            checks.is_true(player_controller->get_active_hud() == nullptr,
+                           TEXT("Loader defers the player HUD until simulation initialization"));
         }
         checks.are_equal(
             ETestTeam::Blue, player->get_team(), TEXT("Loader resolves the player team"));
@@ -480,6 +480,10 @@ void FLevelLoaderScenario::check_runtime() {
     checks.is_true(!control_samples_.is_empty(), TEXT("Controller lifecycle was sampled"));
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     auto const& control{control_samples_.last_value()};
+    checks.is_true(control.input_activated_after_initialisation,
+                   TEXT("Simulation initialization activates player input"));
+    checks.is_true(control.hud_created_after_initialisation,
+                   TEXT("Simulation initialization creates the player HUD"));
     checks.is_true(control.unpossessed_while_paused,
                    TEXT("Unpossession during pause keeps gameplay suspended"));
     checks.is_true(control.resumed_without_ship,
@@ -555,6 +559,10 @@ void FLevelLoaderScenario::sample_controller_lifecycle() {
     auto const binding_count{component->GetActionEventBindings().Num()};
     auto& orchestrator{context_.orchestrator};
     FControlLifecycleSample sample;
+    sample.input_activated_after_initialisation =
+        controller->get_active_control_context() == EPlayerControlContext::Player;
+    sample.hud_created_after_initialisation =
+        Cast<UShipHudWidget>(controller->get_active_hud()) != nullptr;
     FPlayerControllerTestAccess::toggle_pause(*controller);
     controller->UnPossess();
     sample.unpossessed_while_paused =

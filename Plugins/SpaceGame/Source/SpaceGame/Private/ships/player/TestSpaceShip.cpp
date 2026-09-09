@@ -323,6 +323,10 @@ auto ATestSpaceShip::get_target_local_planar_velocity_scale() const -> FVector2D
     return simulation().target_local_planar_velocity_scale;
 }
 
+auto ATestSpaceShip::is_sampling() const -> bool {
+    return simulation().sampling;
+}
+
 auto ATestSpaceShip::get_target_local_planar_velocity() const -> FVector {
     return simulation().target_local_planar_velocity;
 }

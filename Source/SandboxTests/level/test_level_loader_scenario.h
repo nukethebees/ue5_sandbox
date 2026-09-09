@@ -44,6 +44,8 @@ class FLevelLoaderCameraScenario final : public FSimulationTestScenario {
 
 class FLevelLoaderScenario final : public FSimulationTestScenario {
     struct FControlLifecycleSample {
+        bool input_activated_after_initialisation{false};
+        bool hud_created_after_initialisation{false};
         bool unpossessed_while_paused{false};
         bool resumed_without_ship{false};
         bool possession_enabled_ship{false};
