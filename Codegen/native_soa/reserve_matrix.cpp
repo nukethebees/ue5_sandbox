@@ -37,9 +37,9 @@ void reserve(benchmark::State& state) {
 
 template <bool Realloc>
 void raw_reserve(benchmark::State& state) {
-    auto const rows{
-        native_soa::rounded_capacity(state.range(0), SingleAllocationEntityData::block_bytes)};
-    auto const bytes{native_soa::allocation_bytes(rows, SingleAllocationEntityData::block_bytes)};
+    auto const rows{native_soa::rounded_capacity(state.range(0),
+                                                 SingleAllocationEntityData::capacity_block_bound)};
+    auto const bytes{SingleAllocationEntityData::layout_bytes(static_cast<std::size_t>(rows / 64))};
     auto constexpr alignment{SingleAllocationEntityData::allocation_alignment};
     auto const count{static_cast<std::size_t>(state.range(1))};
     for (auto _ : state) {

@@ -344,7 +344,8 @@ TEST_CASE("SandboxCore.SingleAllocation.Timing.reserve_SingleMimalloc", "[benchm
     benchmark_reserve<SingleAllocationEntityData>("SOA,65536,reserve_1,SingleMimalloc");
 }
 template <typename Owner>
-void benchmark_owner(Operation const operation, int32 const count, int32 const batch, char const* const label) {
+void benchmark_owner(
+    Operation const operation, int32 const count, int32 const batch, char const* const label, int32 const extra_capacity = 0) {
     auto const name{std::string{"SOA,"} + std::to_string(count) + "," + operation_name(operation, batch) + "," + label};
     BENCHMARK_ADVANCED(std::string{name})(Catch::Benchmark::Chronometer meter) {
         // Fresh allocation lifecycles keep memory bounded independently of Catch2's calibrated run count.
@@ -358,6 +359,9 @@ void benchmark_owner(Operation const operation, int32 const count, int32 const b
         }
 
         Owner owner;
+        if (extra_capacity > 0) {
+            owner.reserve(count + extra_capacity);
+        }
         prepare(owner, operation, count);
         auto const view{array_columns(owner.get_view())};
         meter.measure([&] {
@@ -386,6 +390,19 @@ void run_comparisons(Operation const operation, int32 const batch = 1) {
     benchmark_owner<EntityData>(operation, 65536, batch, "TArray");
     benchmark_owner<SingleAllocationEntityData>(operation, 65536, batch, "SingleMimalloc");
 }
+
+#define SOA_ITERATION_DIAGNOSTIC(name, owner, extra)                                                 \
+    TEST_CASE("SandboxCore.SingleAllocation.IterationInvestigation." #name, "[benchmark]") {         \
+        benchmark_owner<owner>(Operation::Iterate, 65536, 1, #name, extra);                          \
+    }                                                                                                \
+    TEST_CASE("SandboxCore.SingleAllocation.IterationInvestigation." #name "_wide", "[benchmark]") { \
+        benchmark_owner<owner>(Operation::IterateWide, 65536, 1, #name, extra);                      \
+    }
+SOA_ITERATION_DIAGNOSTIC(TArray, EntityData, 0)
+SOA_ITERATION_DIAGNOSTIC(SingleMimalloc, SingleAllocationEntityData, 0)
+SOA_ITERATION_DIAGNOSTIC(SingleMimallocExtra64, SingleAllocationEntityData, 64)
+#undef SOA_ITERATION_DIAGNOSTIC
+
 TEST_CASE("SandboxCore.SingleAllocation.Timing.natural_append_1", "[benchmark]") {
     run_comparisons(Operation::NaturalAppend, 1);
 }

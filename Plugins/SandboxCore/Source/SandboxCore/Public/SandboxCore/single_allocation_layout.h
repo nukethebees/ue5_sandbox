@@ -16,7 +16,7 @@ inline constexpr bool supported_leaf =
     std::is_trivially_copyable_v<T> && std::is_trivially_copy_constructible_v<T> &&
     std::is_trivially_destructible_v<T> && std::is_nothrow_default_constructible_v<T>;
 
-consteval auto layout_align(std::size_t const bytes, std::size_t const alignment) -> std::size_t {
+constexpr auto layout_align(std::size_t const bytes, std::size_t const alignment) -> std::size_t {
     if (alignment == 0 || (alignment & (alignment - 1)) != 0 ||
         bytes > std::numeric_limits<std::size_t>::max() - (alignment - 1)) {
         std::abort();

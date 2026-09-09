@@ -1,0 +1,21 @@
+{
+  "seed": 20260908,
+  "smoke": false,
+  "suite": "confirmation",
+  "selected_cpu": "0:2",
+  "started": "2026-09-08T22:53:59.618163+00:00",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "processor": "AMD64 Family 26 Model 68 Stepping 0, AuthenticAMD",
+  "cpu": "{\n    \"Name\":  \"AMD Ryzen 9 9950X3D 16-Core Processor          \",\n    \"NumberOfCores\":  16,\n    \"NumberOfLogicalProcessors\":  32\n}\n",
+  "commit": "a99402ec6f64c7b53db736cbc3862713a6f95d19\n",
+  "status": " M .sandbox-codegen-outputs\n M CMakeLists.txt\n M CMakePresets.json\n M Codegen/manifests/manifest.json\n M Plugins/SandboxCore/Source/SbxCoreExperiments/README.md\n M Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_benchmarks.cpp\n M Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_results.cpp\n?? Codegen/manifests/soa_spacing_shapes.json\n?? Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_spacing_shapes.cpp\n?? Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h\n?? Plugins/SandboxCore/Source/SbxCoreExperiments/results/spacing-2026-09-08/\n?? Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_confirmation.cpp\n?? Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_spacing.cpp\n?? Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_spacing_support.h\n?? Scripts/run-soa-spacing-experiment.py\n?? Scripts/soa_spacing_confirmation.py\n?? Scripts/test_soa_spacing_confirmation.py\n",
+  "reserve_requests": [
+    65535,
+    65536,
+    65537,
+    75000,
+    100000,
+    131072
+  ],
+  "configuration": "Unreal Development; MimallocStorageAllocator; benchmark target toolchain"
+}

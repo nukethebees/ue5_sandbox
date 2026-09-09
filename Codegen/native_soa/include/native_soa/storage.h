@@ -131,11 +131,12 @@ struct StorageOperations {
     }
     template <typename Self>
     auto allocated_bytes(this Self const& self) -> std::size_t {
-        return allocation_bytes(self.capacity_, Self::block_bytes);
+        return Self::layout_bytes(
+            static_cast<std::size_t>(self.capacity_ / Self::capacity_granularity));
     }
     template <typename Self>
     void reserve(this Self& self, std::int32_t const count) {
-        auto const requested{rounded_capacity(count, Self::block_bytes)};
+        auto const requested{rounded_capacity(count, Self::capacity_block_bound)};
         if (requested > self.capacity_) {
             self.reallocate(requested);
         }
@@ -149,7 +150,7 @@ struct StorageOperations {
         require(count >= 0 && count <= Self::max_capacity - self.num_);
         auto const new_num{self.num_ + count};
         if (new_num > self.capacity_) {
-            self.reallocate(growth_capacity(new_num, self.capacity_, Self::block_bytes));
+            self.reallocate(growth_capacity(new_num, self.capacity_, Self::capacity_block_bound));
         }
         self.num_ = new_num;
     }
@@ -165,7 +166,7 @@ struct StorageOperations {
         }
         auto const new_num{first + count};
         if (new_num > self.capacity_) {
-            self.reallocate(growth_capacity(new_num, self.capacity_, Self::block_bytes));
+            self.reallocate(growth_capacity(new_num, self.capacity_, Self::capacity_block_bound));
         }
         self.append_columns(view.columns(), first, count);
         self.num_ = new_num;

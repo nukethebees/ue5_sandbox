@@ -1270,6 +1270,7 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type max_allocation_size{
         std::numeric_limits<byte_size_type>::max()};
     inline static constexpr size_type capacity_granularity{64};
+    inline static constexpr byte_size_type column_gap{192};
 
     inline static constexpr byte_size_type entity_handles_alignment{
         alignof(Handle) > 64 ? alignof(Handle) : 64};
@@ -1312,70 +1313,171 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type entity_handles_block_end{
         entity_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
+    static constexpr auto entity_handles_offset(byte_size_type) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(0, entity_handles_alignment);
+    }
+
     inline static constexpr byte_size_type integral_biases_block_offset{
         ml::soa_storage::layout_align(entity_handles_block_end, integral_biases_alignment)};
     inline static constexpr byte_size_type integral_biases_block_end{
         integral_biases_block_offset + capacity_granularity * sizeof(uint32)};
+
+    static constexpr auto integral_biases_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(entity_handles_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(Handle) +
+                                                 column_gap,
+                                             integral_biases_alignment);
+    }
 
     inline static constexpr byte_size_type float_biases_block_offset{
         ml::soa_storage::layout_align(integral_biases_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type float_biases_block_end{
         float_biases_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto float_biases_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(integral_biases_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(uint32) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type tasks_block_offset{
         ml::soa_storage::layout_align(float_biases_block_end, tasks_alignment)};
     inline static constexpr byte_size_type tasks_block_end{tasks_block_offset +
                                                            capacity_granularity * sizeof(Task)};
+
+    static constexpr auto tasks_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(float_biases_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             tasks_alignment);
+    }
 
     inline static constexpr byte_size_type locations_xs_block_offset{
         ml::soa_storage::layout_align(tasks_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type locations_xs_block_end{
         locations_xs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto locations_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            tasks_offset(blocks) + blocks * capacity_granularity * sizeof(Task) + column_gap,
+            float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type locations_ys_block_offset{
         ml::soa_storage::layout_align(locations_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type locations_ys_block_end{
         locations_ys_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto locations_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(locations_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type locations_zs_block_offset{
         ml::soa_storage::layout_align(locations_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type locations_zs_block_end{
         locations_zs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto locations_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(locations_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type desired_move_locations_xs_block_offset{
         ml::soa_storage::layout_align(locations_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_move_locations_xs_block_end{
         desired_move_locations_xs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto desired_move_locations_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(locations_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type desired_move_locations_ys_block_offset{
         ml::soa_storage::layout_align(desired_move_locations_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_move_locations_ys_block_end{
         desired_move_locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto desired_move_locations_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(desired_move_locations_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type desired_move_locations_zs_block_offset{
         ml::soa_storage::layout_align(desired_move_locations_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_move_locations_zs_block_end{
         desired_move_locations_zs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto desired_move_locations_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(desired_move_locations_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type aim_directions_xs_block_offset{
         ml::soa_storage::layout_align(desired_move_locations_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type aim_directions_xs_block_end{
         aim_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto aim_directions_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(desired_move_locations_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type aim_directions_ys_block_offset{
         ml::soa_storage::layout_align(aim_directions_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type aim_directions_ys_block_end{
         aim_directions_ys_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto aim_directions_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(aim_directions_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type aim_directions_zs_block_offset{
         ml::soa_storage::layout_align(aim_directions_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type aim_directions_zs_block_end{
         aim_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto aim_directions_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(aim_directions_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type desired_aiming_directions_xs_block_offset{
         ml::soa_storage::layout_align(aim_directions_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type desired_aiming_directions_xs_block_end{
         desired_aiming_directions_xs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto desired_aiming_directions_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(aim_directions_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type desired_aiming_directions_ys_block_offset{
         ml::soa_storage::layout_align(desired_aiming_directions_xs_block_end,
@@ -1383,11 +1485,27 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type desired_aiming_directions_ys_block_end{
         desired_aiming_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto desired_aiming_directions_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(desired_aiming_directions_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type desired_aiming_directions_zs_block_offset{
         ml::soa_storage::layout_align(desired_aiming_directions_ys_block_end,
                                       float_biases_alignment)};
     inline static constexpr byte_size_type desired_aiming_directions_zs_block_end{
         desired_aiming_directions_zs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto desired_aiming_directions_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(desired_aiming_directions_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type movement_directions_xs_block_offset{
         ml::soa_storage::layout_align(desired_aiming_directions_zs_block_end,
@@ -1395,61 +1513,146 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type movement_directions_xs_block_end{
         movement_directions_xs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto movement_directions_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(desired_aiming_directions_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type movement_directions_ys_block_offset{
         ml::soa_storage::layout_align(movement_directions_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type movement_directions_ys_block_end{
         movement_directions_ys_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto movement_directions_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(movement_directions_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type movement_directions_zs_block_offset{
         ml::soa_storage::layout_align(movement_directions_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type movement_directions_zs_block_end{
         movement_directions_zs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto movement_directions_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(movement_directions_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type velocities_xs_block_offset{
         ml::soa_storage::layout_align(movement_directions_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type velocities_xs_block_end{
         velocities_xs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto velocities_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(movement_directions_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type velocities_ys_block_offset{
         ml::soa_storage::layout_align(velocities_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type velocities_ys_block_end{
         velocities_ys_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto velocities_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(velocities_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type velocities_zs_block_offset{
         ml::soa_storage::layout_align(velocities_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type velocities_zs_block_end{
         velocities_zs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto velocities_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(velocities_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type move_distances_block_offset{
         ml::soa_storage::layout_align(velocities_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type move_distances_block_end{
         move_distances_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto move_distances_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(velocities_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type speeds_block_offset{
         ml::soa_storage::layout_align(move_distances_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type speeds_block_end{speeds_block_offset +
                                                             capacity_granularity * sizeof(float)};
+
+    static constexpr auto speeds_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(move_distances_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type teams_block_offset{
         ml::soa_storage::layout_align(speeds_block_end, teams_alignment)};
     inline static constexpr byte_size_type teams_block_end{teams_block_offset +
                                                            capacity_granularity * sizeof(Team)};
 
+    static constexpr auto teams_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            speeds_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
+            teams_alignment);
+    }
+
     inline static constexpr byte_size_type healths_block_offset{
         ml::soa_storage::layout_align(teams_block_end, healths_alignment)};
     inline static constexpr byte_size_type healths_block_end{healths_block_offset +
                                                              capacity_granularity * sizeof(int32)};
+
+    static constexpr auto healths_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            teams_offset(blocks) + blocks * capacity_granularity * sizeof(Team) + column_gap,
+            healths_alignment);
+    }
 
     inline static constexpr byte_size_type parent_handles_block_offset{
         ml::soa_storage::layout_align(healths_block_end, entity_handles_alignment)};
     inline static constexpr byte_size_type parent_handles_block_end{
         parent_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
+    static constexpr auto parent_handles_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            healths_offset(blocks) + blocks * capacity_granularity * sizeof(int32) + column_gap,
+            entity_handles_alignment);
+    }
+
     inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_offset{
         ml::soa_storage::layout_align(parent_handles_block_end,
                                       awareness_scan_countdowns_counters_alignment)};
     inline static constexpr byte_size_type awareness_scan_countdowns_counters_block_end{
         awareness_scan_countdowns_counters_block_offset + capacity_granularity * sizeof(int8)};
+
+    static constexpr auto awareness_scan_countdowns_counters_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(parent_handles_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(Handle) +
+                                                 column_gap,
+                                             awareness_scan_countdowns_counters_alignment);
+    }
 
     inline static constexpr byte_size_type
         navigation_update_countdowns_remaining_ticks_block_offset{
@@ -1459,11 +1662,29 @@ struct EntityDataSingleLayout {
         navigation_update_countdowns_remaining_ticks_block_offset +
         capacity_granularity * sizeof(int16)};
 
+    static constexpr auto
+        navigation_update_countdowns_remaining_ticks_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            awareness_scan_countdowns_counters_offset(blocks) +
+                blocks * capacity_granularity * sizeof(int8) + column_gap,
+            navigation_update_countdowns_remaining_ticks_alignment);
+    }
+
     inline static constexpr byte_size_type navigation_update_countdowns_periods_block_offset{
         ml::soa_storage::layout_align(navigation_update_countdowns_remaining_ticks_block_end,
                                       navigation_update_countdowns_remaining_ticks_alignment)};
     inline static constexpr byte_size_type navigation_update_countdowns_periods_block_end{
         navigation_update_countdowns_periods_block_offset + capacity_granularity * sizeof(int16)};
+
+    static constexpr auto
+        navigation_update_countdowns_periods_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            navigation_update_countdowns_remaining_ticks_offset(blocks) +
+                blocks * capacity_granularity * sizeof(int16) + column_gap,
+            navigation_update_countdowns_remaining_ticks_alignment);
+    }
 
     inline static constexpr byte_size_type separation_steering_xs_block_offset{
         ml::soa_storage::layout_align(navigation_update_countdowns_periods_block_end,
@@ -1471,15 +1692,39 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type separation_steering_xs_block_end{
         separation_steering_xs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto separation_steering_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(navigation_update_countdowns_periods_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(int16) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type separation_steering_ys_block_offset{
         ml::soa_storage::layout_align(separation_steering_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type separation_steering_ys_block_end{
         separation_steering_ys_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto separation_steering_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(separation_steering_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type separation_steering_zs_block_offset{
         ml::soa_storage::layout_align(separation_steering_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type separation_steering_zs_block_end{
         separation_steering_zs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto separation_steering_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(separation_steering_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type navigation_risk_tiers_block_offset{
         ml::soa_storage::layout_align(separation_steering_zs_block_end,
@@ -1487,11 +1732,27 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type navigation_risk_tiers_block_end{
         navigation_risk_tiers_block_offset + capacity_granularity * sizeof(uint8)};
 
+    static constexpr auto navigation_risk_tiers_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(separation_steering_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             navigation_risk_tiers_alignment);
+    }
+
     inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_offset{
         ml::soa_storage::layout_align(navigation_risk_tiers_block_end,
                                       navigation_risk_tiers_alignment)};
     inline static constexpr byte_size_type navigation_lower_risk_scan_counts_block_end{
         navigation_lower_risk_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
+
+    static constexpr auto navigation_lower_risk_scan_counts_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(navigation_risk_tiers_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(uint8) +
+                                                 column_gap,
+                                             navigation_risk_tiers_alignment);
+    }
 
     inline static constexpr byte_size_type avoidance_choice_indices_block_offset{
         ml::soa_storage::layout_align(navigation_lower_risk_scan_counts_block_end,
@@ -1499,11 +1760,27 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type avoidance_choice_indices_block_end{
         avoidance_choice_indices_block_offset + capacity_granularity * sizeof(int8)};
 
+    static constexpr auto avoidance_choice_indices_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(navigation_lower_risk_scan_counts_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(uint8) +
+                                                 column_gap,
+                                             awareness_scan_countdowns_counters_alignment);
+    }
+
     inline static constexpr byte_size_type avoidance_clear_scan_counts_block_offset{
         ml::soa_storage::layout_align(avoidance_choice_indices_block_end,
                                       navigation_risk_tiers_alignment)};
     inline static constexpr byte_size_type avoidance_clear_scan_counts_block_end{
         avoidance_clear_scan_counts_block_offset + capacity_granularity * sizeof(uint8)};
+
+    static constexpr auto avoidance_clear_scan_counts_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(avoidance_choice_indices_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(int8) +
+                                                 column_gap,
+                                             navigation_risk_tiers_alignment);
+    }
 
     inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_offset{
         ml::soa_storage::layout_align(avoidance_clear_scan_counts_block_end,
@@ -1511,11 +1788,28 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type attack_reposition_countdowns_counters_block_end{
         attack_reposition_countdowns_counters_block_offset + capacity_granularity * sizeof(int16)};
 
+    static constexpr auto
+        attack_reposition_countdowns_counters_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            avoidance_clear_scan_counts_offset(blocks) +
+                blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            navigation_update_countdowns_remaining_ticks_alignment);
+    }
+
     inline static constexpr byte_size_type attack_cooldowns_counters_block_offset{
         ml::soa_storage::layout_align(attack_reposition_countdowns_counters_block_end,
                                       navigation_update_countdowns_remaining_ticks_alignment)};
     inline static constexpr byte_size_type attack_cooldowns_counters_block_end{
         attack_cooldowns_counters_block_offset + capacity_granularity * sizeof(int16)};
+
+    static constexpr auto attack_cooldowns_counters_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            attack_reposition_countdowns_counters_offset(blocks) +
+                blocks * capacity_granularity * sizeof(int16) + column_gap,
+            navigation_update_countdowns_remaining_ticks_alignment);
+    }
 
     inline static constexpr byte_size_type target_handles_block_offset{
         ml::soa_storage::layout_align(attack_cooldowns_counters_block_end,
@@ -1523,74 +1817,192 @@ struct EntityDataSingleLayout {
     inline static constexpr byte_size_type target_handles_block_end{
         target_handles_block_offset + capacity_granularity * sizeof(Handle)};
 
+    static constexpr auto target_handles_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(attack_cooldowns_counters_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(int16) +
+                                                 column_gap,
+                                             entity_handles_alignment);
+    }
+
     inline static constexpr byte_size_type target_locations_xs_block_offset{
         ml::soa_storage::layout_align(target_handles_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_locations_xs_block_end{
         target_locations_xs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto target_locations_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_handles_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(Handle) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type target_locations_ys_block_offset{
         ml::soa_storage::layout_align(target_locations_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_locations_ys_block_end{
         target_locations_ys_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto target_locations_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_locations_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type target_locations_zs_block_offset{
         ml::soa_storage::layout_align(target_locations_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_locations_zs_block_end{
         target_locations_zs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto target_locations_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_locations_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type target_velocities_xs_block_offset{
         ml::soa_storage::layout_align(target_locations_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_velocities_xs_block_end{
         target_velocities_xs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto target_velocities_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_locations_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type target_velocities_ys_block_offset{
         ml::soa_storage::layout_align(target_velocities_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_velocities_ys_block_end{
         target_velocities_ys_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto target_velocities_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_velocities_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type target_velocities_zs_block_offset{
         ml::soa_storage::layout_align(target_velocities_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_velocities_zs_block_end{
         target_velocities_zs_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto target_velocities_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_velocities_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type target_directions_xs_block_offset{
         ml::soa_storage::layout_align(target_velocities_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_directions_xs_block_end{
         target_directions_xs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto target_directions_xs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_velocities_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type target_directions_ys_block_offset{
         ml::soa_storage::layout_align(target_directions_xs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_directions_ys_block_end{
         target_directions_ys_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto target_directions_ys_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_directions_xs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type target_directions_zs_block_offset{
         ml::soa_storage::layout_align(target_directions_ys_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_directions_zs_block_end{
         target_directions_zs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto target_directions_zs_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_directions_ys_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type intercept_times_block_offset{
         ml::soa_storage::layout_align(target_directions_zs_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type intercept_times_block_end{
         intercept_times_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto intercept_times_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(target_directions_zs_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type target_distance_sq_block_offset{
         ml::soa_storage::layout_align(intercept_times_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_distance_sq_block_end{
         target_distance_sq_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto target_distance_sq_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(intercept_times_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
 
     inline static constexpr byte_size_type target_distances_block_offset{
         ml::soa_storage::layout_align(target_distance_sq_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_distances_block_end{
         target_distances_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto target_distances_offset(byte_size_type blocks) noexcept
+        -> byte_size_type {
+        return ml::soa_storage::layout_align(target_distance_sq_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
     inline static constexpr byte_size_type target_radii_block_offset{
         ml::soa_storage::layout_align(target_distances_block_end, float_biases_alignment)};
     inline static constexpr byte_size_type target_radii_block_end{
         target_radii_block_offset + capacity_granularity * sizeof(float)};
 
-    inline static constexpr byte_size_type block_bytes{
-        ml::soa_storage::layout_align(target_radii_block_end, allocation_alignment)};
-    inline static constexpr size_type max_capacity{ml::soa_storage::maximum_capacity(block_bytes)};
+    static constexpr auto target_radii_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(target_distances_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(float) +
+                                                 column_gap,
+                                             float_biases_alignment);
+    }
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::soa_storage::layout_align(target_radii_block_end, allocation_alignment) +
+        52 * (column_gap + allocation_alignment - 1)};
+    inline static constexpr size_type max_capacity{
+        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0
+                 ? 0
+                 : target_radii_offset(blocks) + blocks * capacity_granularity * sizeof(float);
+    }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
@@ -1751,6 +2163,10 @@ struct EntityDataSingleLayout {
                       (max_allocation_size - target_distances_block_offset) / capacity_granularity);
         static_assert(sizeof(float) <=
                       (max_allocation_size - target_radii_block_offset) / capacity_granularity);
+        static_assert(52 <=
+                      (max_allocation_size - ml::soa_storage::layout_align(target_radii_block_end,
+                                                                           allocation_alignment)) /
+                          (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
     };
@@ -1871,111 +2287,111 @@ struct SingleAllocationEntityDataStorage
         using Pointers = DataPointers<Byte>;
         return {
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * entity_handles_block_offset)),
+                data + entity_handles_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + blocks * integral_biases_block_offset)),
+                data + integral_biases_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * float_biases_block_offset)),
+                data + float_biases_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Task>*>(
-                data + blocks * tasks_block_offset)),
+                data + tasks_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * locations_xs_block_offset)),
+                data + locations_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * locations_ys_block_offset)),
+                data + locations_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * locations_zs_block_offset)),
+                data + locations_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_move_locations_xs_block_offset)),
+                data + desired_move_locations_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_move_locations_ys_block_offset)),
+                data + desired_move_locations_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_move_locations_zs_block_offset)),
+                data + desired_move_locations_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * aim_directions_xs_block_offset)),
+                data + aim_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * aim_directions_ys_block_offset)),
+                data + aim_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * aim_directions_zs_block_offset)),
+                data + aim_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_aiming_directions_xs_block_offset)),
+                data + desired_aiming_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_aiming_directions_ys_block_offset)),
+                data + desired_aiming_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_aiming_directions_zs_block_offset)),
+                data + desired_aiming_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * movement_directions_xs_block_offset)),
+                data + movement_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * movement_directions_ys_block_offset)),
+                data + movement_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * movement_directions_zs_block_offset)),
+                data + movement_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * velocities_xs_block_offset)),
+                data + velocities_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * velocities_ys_block_offset)),
+                data + velocities_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * velocities_zs_block_offset)),
+                data + velocities_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * move_distances_block_offset)),
+                data + move_distances_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * speeds_block_offset)),
+                data + speeds_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Team>*>(
-                data + blocks * teams_block_offset)),
+                data + teams_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + blocks * healths_block_offset)),
+                data + healths_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * parent_handles_block_offset)),
+                data + parent_handles_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + blocks * awareness_scan_countdowns_counters_block_offset)),
+                data + awareness_scan_countdowns_counters_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * navigation_update_countdowns_remaining_ticks_block_offset)),
+                data + navigation_update_countdowns_remaining_ticks_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * navigation_update_countdowns_periods_block_offset)),
+                data + navigation_update_countdowns_periods_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * separation_steering_xs_block_offset)),
+                data + separation_steering_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * separation_steering_ys_block_offset)),
+                data + separation_steering_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * separation_steering_zs_block_offset)),
+                data + separation_steering_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * navigation_risk_tiers_block_offset)),
+                data + navigation_risk_tiers_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * navigation_lower_risk_scan_counts_block_offset)),
+                data + navigation_lower_risk_scan_counts_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + blocks * avoidance_choice_indices_block_offset)),
+                data + avoidance_choice_indices_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * avoidance_clear_scan_counts_block_offset)),
+                data + avoidance_clear_scan_counts_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * attack_reposition_countdowns_counters_block_offset)),
+                data + attack_reposition_countdowns_counters_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * attack_cooldowns_counters_block_offset)),
+                data + attack_cooldowns_counters_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * target_handles_block_offset)),
+                data + target_handles_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_locations_xs_block_offset)),
+                data + target_locations_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_locations_ys_block_offset)),
+                data + target_locations_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_locations_zs_block_offset)),
+                data + target_locations_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_velocities_xs_block_offset)),
+                data + target_velocities_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_velocities_ys_block_offset)),
+                data + target_velocities_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_velocities_zs_block_offset)),
+                data + target_velocities_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_directions_xs_block_offset)),
+                data + target_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_directions_ys_block_offset)),
+                data + target_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_directions_zs_block_offset)),
+                data + target_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * intercept_times_block_offset)),
+                data + intercept_times_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_distance_sq_block_offset)),
+                data + target_distance_sq_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_distances_block_offset)),
+                data + target_distances_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_radii_block_offset)),
+                data + target_radii_offset(blocks))),
         };
     }
     template <typename Byte>
@@ -2420,7 +2836,7 @@ struct SingleAllocationEntityDataStorage
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(
-            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};
@@ -2581,17 +2997,20 @@ struct EntityDataSingleView_locations : ml::soa_storage::CompactViewState<Const>
     }
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::locations_xs_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::locations_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::locations_ys_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::locations_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::locations_zs_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::locations_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -2602,13 +3021,13 @@ struct EntityDataSingleView_locations : ml::soa_storage::CompactViewState<Const>
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::locations_xs_block_offset, blocks),
+                 EntityDataSingleLayout::locations_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::locations_ys_block_offset, blocks),
+                 EntityDataSingleLayout::locations_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::locations_zs_block_offset, blocks),
+                 EntityDataSingleLayout::locations_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -2647,19 +3066,19 @@ struct EntityDataSingleView_desired_move_locations : ml::soa_storage::CompactVie
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::desired_move_locations_xs_block_offset),
+                EntityDataSingleLayout::desired_move_locations_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::desired_move_locations_ys_block_offset),
+                EntityDataSingleLayout::desired_move_locations_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::desired_move_locations_zs_block_offset),
+                EntityDataSingleLayout::desired_move_locations_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -2670,13 +3089,13 @@ struct EntityDataSingleView_desired_move_locations : ml::soa_storage::CompactVie
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_move_locations_xs_block_offset, blocks),
+                 EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_move_locations_ys_block_offset, blocks),
+                 EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_move_locations_zs_block_offset, blocks),
+                 EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -2711,19 +3130,19 @@ struct EntityDataSingleView_aim_directions : ml::soa_storage::CompactViewState<C
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::aim_directions_xs_block_offset),
+                EntityDataSingleLayout::aim_directions_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::aim_directions_ys_block_offset),
+                EntityDataSingleLayout::aim_directions_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::aim_directions_zs_block_offset),
+                EntityDataSingleLayout::aim_directions_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -2734,13 +3153,13 @@ struct EntityDataSingleView_aim_directions : ml::soa_storage::CompactViewState<C
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::aim_directions_xs_block_offset, blocks),
+                 EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::aim_directions_ys_block_offset, blocks),
+                 EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::aim_directions_zs_block_offset, blocks),
+                 EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -2779,19 +3198,22 @@ struct EntityDataSingleView_desired_aiming_directions : ml::soa_storage::Compact
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::desired_aiming_directions_xs_block_offset),
+                EntityDataSingleLayout::desired_aiming_directions_xs_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::desired_aiming_directions_ys_block_offset),
+                EntityDataSingleLayout::desired_aiming_directions_ys_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::desired_aiming_directions_zs_block_offset),
+                EntityDataSingleLayout::desired_aiming_directions_zs_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -2802,13 +3224,13 @@ struct EntityDataSingleView_desired_aiming_directions : ml::soa_storage::Compact
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_aiming_directions_xs_block_offset, blocks),
+                 EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_aiming_directions_ys_block_offset, blocks),
+                 EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::desired_aiming_directions_zs_block_offset, blocks),
+                 EntityDataSingleLayout::desired_aiming_directions_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -2845,19 +3267,19 @@ struct EntityDataSingleView_movement_directions : ml::soa_storage::CompactViewSt
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::movement_directions_xs_block_offset),
+                EntityDataSingleLayout::movement_directions_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::movement_directions_ys_block_offset),
+                EntityDataSingleLayout::movement_directions_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::movement_directions_zs_block_offset),
+                EntityDataSingleLayout::movement_directions_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -2868,13 +3290,13 @@ struct EntityDataSingleView_movement_directions : ml::soa_storage::CompactViewSt
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::movement_directions_xs_block_offset, blocks),
+                 EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::movement_directions_ys_block_offset, blocks),
+                 EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::movement_directions_zs_block_offset, blocks),
+                 EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -2908,17 +3330,20 @@ struct EntityDataSingleView_velocities : ml::soa_storage::CompactViewState<Const
     }
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::velocities_xs_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::velocities_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::velocities_ys_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::velocities_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::velocities_zs_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::velocities_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -2929,13 +3354,13 @@ struct EntityDataSingleView_velocities : ml::soa_storage::CompactViewState<Const
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::velocities_xs_block_offset, blocks),
+                 EntityDataSingleLayout::velocities_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::velocities_ys_block_offset, blocks),
+                 EntityDataSingleLayout::velocities_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::velocities_zs_block_offset, blocks),
+                 EntityDataSingleLayout::velocities_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -2974,7 +3399,8 @@ struct EntityDataSingleView_awareness_scan_countdowns : ml::soa_storage::Compact
     auto counters() const {
         return TArrayView<typename Base::template Element<int8>>{
             this->template column_data<int8>(
-                EntityDataSingleLayout::awareness_scan_countdowns_counters_block_offset),
+                EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, Countdown8ConstView, Countdown8View> {
@@ -2985,7 +3411,7 @@ struct EntityDataSingleView_awareness_scan_countdowns : ml::soa_storage::Compact
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, Countdown8ConstView, Countdown8View>{
             {this->template column_data_unchecked<int8>(
-                 EntityDataSingleLayout::awareness_scan_countdowns_counters_block_offset, blocks),
+                 EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3025,13 +3451,15 @@ struct EntityDataSingleView_navigation_update_countdowns
     auto remaining_ticks() const {
         return TArrayView<typename Base::template Element<int16>>{
             this->template column_data<int16>(
-                EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_block_offset),
+                EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto periods() const {
         return TArrayView<typename Base::template Element<int16>>{
             this->template column_data<int16>(
-                EntityDataSingleLayout::navigation_update_countdowns_periods_block_offset),
+                EntityDataSingleLayout::navigation_update_countdowns_periods_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto columns() const
@@ -3043,11 +3471,11 @@ struct EntityDataSingleView_navigation_update_countdowns
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View>{
             {this->template column_data_unchecked<int16>(
-                 EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_block_offset,
-                 blocks),
+                 EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
+                     blocks)),
              this->count_},
             {this->template column_data_unchecked<int16>(
-                 EntityDataSingleLayout::navigation_update_countdowns_periods_block_offset, blocks),
+                 EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3085,19 +3513,19 @@ struct EntityDataSingleView_separation_steering : ml::soa_storage::CompactViewSt
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::separation_steering_xs_block_offset),
+                EntityDataSingleLayout::separation_steering_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::separation_steering_ys_block_offset),
+                EntityDataSingleLayout::separation_steering_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::separation_steering_zs_block_offset),
+                EntityDataSingleLayout::separation_steering_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -3108,13 +3536,13 @@ struct EntityDataSingleView_separation_steering : ml::soa_storage::CompactViewSt
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::separation_steering_xs_block_offset, blocks),
+                 EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::separation_steering_ys_block_offset, blocks),
+                 EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::separation_steering_zs_block_offset, blocks),
+                 EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3154,7 +3582,8 @@ struct EntityDataSingleView_attack_reposition_countdowns
     auto counters() const {
         return TArrayView<typename Base::template Element<int16>>{
             this->template column_data<int16>(
-                EntityDataSingleLayout::attack_reposition_countdowns_counters_block_offset),
+                EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, Countdown16ConstView, Countdown16View> {
@@ -3165,8 +3594,7 @@ struct EntityDataSingleView_attack_reposition_countdowns
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
             {this->template column_data_unchecked<int16>(
-                 EntityDataSingleLayout::attack_reposition_countdowns_counters_block_offset,
-                 blocks),
+                 EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3202,7 +3630,7 @@ struct EntityDataSingleView_attack_cooldowns : ml::soa_storage::CompactViewState
     auto counters() const {
         return TArrayView<typename Base::template Element<int16>>{
             this->template column_data<int16>(
-                EntityDataSingleLayout::attack_cooldowns_counters_block_offset),
+                EntityDataSingleLayout::attack_cooldowns_counters_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, Countdown16ConstView, Countdown16View> {
@@ -3213,7 +3641,7 @@ struct EntityDataSingleView_attack_cooldowns : ml::soa_storage::CompactViewState
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
             {this->template column_data_unchecked<int16>(
-                 EntityDataSingleLayout::attack_cooldowns_counters_block_offset, blocks),
+                 EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3248,19 +3676,19 @@ struct EntityDataSingleView_target_locations : ml::soa_storage::CompactViewState
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_locations_xs_block_offset),
+                EntityDataSingleLayout::target_locations_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_locations_ys_block_offset),
+                EntityDataSingleLayout::target_locations_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_locations_zs_block_offset),
+                EntityDataSingleLayout::target_locations_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -3271,13 +3699,13 @@ struct EntityDataSingleView_target_locations : ml::soa_storage::CompactViewState
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_locations_xs_block_offset, blocks),
+                 EntityDataSingleLayout::target_locations_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_locations_ys_block_offset, blocks),
+                 EntityDataSingleLayout::target_locations_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_locations_zs_block_offset, blocks),
+                 EntityDataSingleLayout::target_locations_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3313,19 +3741,19 @@ struct EntityDataSingleView_target_velocities : ml::soa_storage::CompactViewStat
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_velocities_xs_block_offset),
+                EntityDataSingleLayout::target_velocities_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_velocities_ys_block_offset),
+                EntityDataSingleLayout::target_velocities_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_velocities_zs_block_offset),
+                EntityDataSingleLayout::target_velocities_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -3336,13 +3764,13 @@ struct EntityDataSingleView_target_velocities : ml::soa_storage::CompactViewStat
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_velocities_xs_block_offset, blocks),
+                 EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_velocities_ys_block_offset, blocks),
+                 EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_velocities_zs_block_offset, blocks),
+                 EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3378,19 +3806,19 @@ struct EntityDataSingleView_target_directions : ml::soa_storage::CompactViewStat
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_directions_xs_block_offset),
+                EntityDataSingleLayout::target_directions_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_directions_ys_block_offset),
+                EntityDataSingleLayout::target_directions_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_directions_zs_block_offset),
+                EntityDataSingleLayout::target_directions_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -3401,13 +3829,13 @@ struct EntityDataSingleView_target_directions : ml::soa_storage::CompactViewStat
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_directions_xs_block_offset, blocks),
+                 EntityDataSingleLayout::target_directions_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_directions_ys_block_offset, blocks),
+                 EntityDataSingleLayout::target_directions_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_directions_zs_block_offset, blocks),
+                 EntityDataSingleLayout::target_directions_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3439,23 +3867,26 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
     }
     auto entity_handles() const {
         return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(EntityDataSingleLayout::entity_handles_block_offset),
+            this->template column_data<Handle>(
+                EntityDataSingleLayout::entity_handles_offset(this->capacity_blocks())),
             this->count_};
     }
     auto integral_biases() const {
         return TArrayView<typename Base::template Element<uint32>>{
             this->template column_data<uint32>(
-                EntityDataSingleLayout::integral_biases_block_offset),
+                EntityDataSingleLayout::integral_biases_offset(this->capacity_blocks())),
             this->count_};
     }
     auto float_biases() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::float_biases_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::float_biases_offset(this->capacity_blocks())),
             this->count_};
     }
     auto tasks() const {
         return TArrayView<typename Base::template Element<Task>>{
-            this->template column_data<Task>(EntityDataSingleLayout::tasks_block_offset),
+            this->template column_data<Task>(
+                EntityDataSingleLayout::tasks_offset(this->capacity_blocks())),
             this->count_};
     }
     auto locations() const {
@@ -3482,27 +3913,32 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
     }
     auto move_distances() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::move_distances_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::move_distances_offset(this->capacity_blocks())),
             this->count_};
     }
     auto speeds() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::speeds_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::speeds_offset(this->capacity_blocks())),
             this->count_};
     }
     auto teams() const {
         return TArrayView<typename Base::template Element<Team>>{
-            this->template column_data<Team>(EntityDataSingleLayout::teams_block_offset),
+            this->template column_data<Team>(
+                EntityDataSingleLayout::teams_offset(this->capacity_blocks())),
             this->count_};
     }
     auto healths() const {
         return TArrayView<typename Base::template Element<int32>>{
-            this->template column_data<int32>(EntityDataSingleLayout::healths_block_offset),
+            this->template column_data<int32>(
+                EntityDataSingleLayout::healths_offset(this->capacity_blocks())),
             this->count_};
     }
     auto parent_handles() const {
         return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(EntityDataSingleLayout::parent_handles_block_offset),
+            this->template column_data<Handle>(
+                EntityDataSingleLayout::parent_handles_offset(this->capacity_blocks())),
             this->count_};
     }
     auto awareness_scan_countdowns() const {
@@ -3520,25 +3956,27 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
     auto navigation_risk_tiers() const {
         return TArrayView<typename Base::template Element<uint8>>{
             this->template column_data<uint8>(
-                EntityDataSingleLayout::navigation_risk_tiers_block_offset),
+                EntityDataSingleLayout::navigation_risk_tiers_offset(this->capacity_blocks())),
             this->count_};
     }
     auto navigation_lower_risk_scan_counts() const {
         return TArrayView<typename Base::template Element<uint8>>{
             this->template column_data<uint8>(
-                EntityDataSingleLayout::navigation_lower_risk_scan_counts_block_offset),
+                EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto avoidance_choice_indices() const {
         return TArrayView<typename Base::template Element<int8>>{
             this->template column_data<int8>(
-                EntityDataSingleLayout::avoidance_choice_indices_block_offset),
+                EntityDataSingleLayout::avoidance_choice_indices_offset(this->capacity_blocks())),
             this->count_};
     }
     auto avoidance_clear_scan_counts() const {
         return TArrayView<typename Base::template Element<uint8>>{
             this->template column_data<uint8>(
-                EntityDataSingleLayout::avoidance_clear_scan_counts_block_offset),
+                EntityDataSingleLayout::avoidance_clear_scan_counts_offset(
+                    this->capacity_blocks())),
             this->count_};
     }
     auto attack_reposition_countdowns() const {
@@ -3551,7 +3989,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
     }
     auto target_handles() const {
         return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(EntityDataSingleLayout::target_handles_block_offset),
+            this->template column_data<Handle>(
+                EntityDataSingleLayout::target_handles_offset(this->capacity_blocks())),
             this->count_};
     }
     auto target_locations() const {
@@ -3568,24 +4007,26 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
     }
     auto intercept_times() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::intercept_times_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::intercept_times_offset(this->capacity_blocks())),
             this->count_};
     }
     auto target_distance_sq() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_distance_sq_block_offset),
+                EntityDataSingleLayout::target_distance_sq_offset(this->capacity_blocks())),
             this->count_};
     }
     auto target_distances() const {
         return TArrayView<typename Base::template Element<float>>{
             this->template column_data<float>(
-                EntityDataSingleLayout::target_distances_block_offset),
+                EntityDataSingleLayout::target_distances_offset(this->capacity_blocks())),
             this->count_};
     }
     auto target_radii() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(EntityDataSingleLayout::target_radii_block_offset),
+            this->template column_data<float>(
+                EntityDataSingleLayout::target_radii_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, EntityDataConstView, EntityDataView> {
@@ -3596,182 +4037,178 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<Const> {
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, EntityDataConstView, EntityDataView>{
             {this->template column_data_unchecked<Handle>(
-                 EntityDataSingleLayout::entity_handles_block_offset, blocks),
+                 EntityDataSingleLayout::entity_handles_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<uint32>(
-                 EntityDataSingleLayout::integral_biases_block_offset, blocks),
+                 EntityDataSingleLayout::integral_biases_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::float_biases_block_offset, blocks),
+                 EntityDataSingleLayout::float_biases_offset(blocks)),
              this->count_},
-            {this->template column_data_unchecked<Task>(EntityDataSingleLayout::tasks_block_offset,
-                                                        blocks),
+            {this->template column_data_unchecked<Task>(
+                 EntityDataSingleLayout::tasks_offset(blocks)),
              this->count_},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::locations_xs_block_offset, blocks),
+                     EntityDataSingleLayout::locations_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::locations_ys_block_offset, blocks),
+                     EntityDataSingleLayout::locations_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::locations_zs_block_offset, blocks),
+                     EntityDataSingleLayout::locations_zs_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_move_locations_xs_block_offset, blocks),
+                     EntityDataSingleLayout::desired_move_locations_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_move_locations_ys_block_offset, blocks),
+                     EntityDataSingleLayout::desired_move_locations_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_move_locations_zs_block_offset, blocks),
+                     EntityDataSingleLayout::desired_move_locations_zs_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::aim_directions_xs_block_offset, blocks),
+                     EntityDataSingleLayout::aim_directions_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::aim_directions_ys_block_offset, blocks),
+                     EntityDataSingleLayout::aim_directions_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::aim_directions_zs_block_offset, blocks),
+                     EntityDataSingleLayout::aim_directions_zs_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_aiming_directions_xs_block_offset, blocks),
+                     EntityDataSingleLayout::desired_aiming_directions_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_aiming_directions_ys_block_offset, blocks),
+                     EntityDataSingleLayout::desired_aiming_directions_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::desired_aiming_directions_zs_block_offset, blocks),
+                     EntityDataSingleLayout::desired_aiming_directions_zs_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::movement_directions_xs_block_offset, blocks),
+                     EntityDataSingleLayout::movement_directions_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::movement_directions_ys_block_offset, blocks),
+                     EntityDataSingleLayout::movement_directions_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::movement_directions_zs_block_offset, blocks),
+                     EntityDataSingleLayout::movement_directions_zs_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::velocities_xs_block_offset, blocks),
+                     EntityDataSingleLayout::velocities_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::velocities_ys_block_offset, blocks),
+                     EntityDataSingleLayout::velocities_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::velocities_zs_block_offset, blocks),
+                     EntityDataSingleLayout::velocities_zs_offset(blocks)),
                  this->count_}},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::move_distances_block_offset, blocks),
+                 EntityDataSingleLayout::move_distances_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::speeds_block_offset, blocks),
+                 EntityDataSingleLayout::speeds_offset(blocks)),
              this->count_},
-            {this->template column_data_unchecked<Team>(EntityDataSingleLayout::teams_block_offset,
-                                                        blocks),
+            {this->template column_data_unchecked<Team>(
+                 EntityDataSingleLayout::teams_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<int32>(
-                 EntityDataSingleLayout::healths_block_offset, blocks),
+                 EntityDataSingleLayout::healths_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<Handle>(
-                 EntityDataSingleLayout::parent_handles_block_offset, blocks),
+                 EntityDataSingleLayout::parent_handles_offset(blocks)),
              this->count_},
             std::conditional_t<Const, Countdown8ConstView, Countdown8View>{
                 {this->template column_data_unchecked<int8>(
-                     EntityDataSingleLayout::awareness_scan_countdowns_counters_block_offset,
-                     blocks),
+                     EntityDataSingleLayout::awareness_scan_countdowns_counters_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, PeriodicCountdown16ConstView, PeriodicCountdown16View>{
                 {this->template column_data_unchecked<int16>(
-                     EntityDataSingleLayout::
-                         navigation_update_countdowns_remaining_ticks_block_offset,
-                     blocks),
+                     EntityDataSingleLayout::navigation_update_countdowns_remaining_ticks_offset(
+                         blocks)),
                  this->count_},
                 {this->template column_data_unchecked<int16>(
-                     EntityDataSingleLayout::navigation_update_countdowns_periods_block_offset,
-                     blocks),
+                     EntityDataSingleLayout::navigation_update_countdowns_periods_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::separation_steering_xs_block_offset, blocks),
+                     EntityDataSingleLayout::separation_steering_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::separation_steering_ys_block_offset, blocks),
+                     EntityDataSingleLayout::separation_steering_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::separation_steering_zs_block_offset, blocks),
+                     EntityDataSingleLayout::separation_steering_zs_offset(blocks)),
                  this->count_}},
             {this->template column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::navigation_risk_tiers_block_offset, blocks),
+                 EntityDataSingleLayout::navigation_risk_tiers_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::navigation_lower_risk_scan_counts_block_offset, blocks),
+                 EntityDataSingleLayout::navigation_lower_risk_scan_counts_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<int8>(
-                 EntityDataSingleLayout::avoidance_choice_indices_block_offset, blocks),
+                 EntityDataSingleLayout::avoidance_choice_indices_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<uint8>(
-                 EntityDataSingleLayout::avoidance_clear_scan_counts_block_offset, blocks),
+                 EntityDataSingleLayout::avoidance_clear_scan_counts_offset(blocks)),
              this->count_},
             std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
                 {this->template column_data_unchecked<int16>(
-                     EntityDataSingleLayout::attack_reposition_countdowns_counters_block_offset,
-                     blocks),
+                     EntityDataSingleLayout::attack_reposition_countdowns_counters_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, Countdown16ConstView, Countdown16View>{
                 {this->template column_data_unchecked<int16>(
-                     EntityDataSingleLayout::attack_cooldowns_counters_block_offset, blocks),
+                     EntityDataSingleLayout::attack_cooldowns_counters_offset(blocks)),
                  this->count_}},
             {this->template column_data_unchecked<Handle>(
-                 EntityDataSingleLayout::target_handles_block_offset, blocks),
+                 EntityDataSingleLayout::target_handles_offset(blocks)),
              this->count_},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_locations_xs_block_offset, blocks),
+                     EntityDataSingleLayout::target_locations_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_locations_ys_block_offset, blocks),
+                     EntityDataSingleLayout::target_locations_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_locations_zs_block_offset, blocks),
+                     EntityDataSingleLayout::target_locations_zs_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_velocities_xs_block_offset, blocks),
+                     EntityDataSingleLayout::target_velocities_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_velocities_ys_block_offset, blocks),
+                     EntityDataSingleLayout::target_velocities_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_velocities_zs_block_offset, blocks),
+                     EntityDataSingleLayout::target_velocities_zs_offset(blocks)),
                  this->count_}},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_directions_xs_block_offset, blocks),
+                     EntityDataSingleLayout::target_directions_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_directions_ys_block_offset, blocks),
+                     EntityDataSingleLayout::target_directions_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     EntityDataSingleLayout::target_directions_zs_block_offset, blocks),
+                     EntityDataSingleLayout::target_directions_zs_offset(blocks)),
                  this->count_}},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::intercept_times_block_offset, blocks),
+                 EntityDataSingleLayout::intercept_times_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_distance_sq_block_offset, blocks),
+                 EntityDataSingleLayout::target_distance_sq_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_distances_block_offset, blocks),
+                 EntityDataSingleLayout::target_distances_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 EntityDataSingleLayout::target_radii_block_offset, blocks),
+                 EntityDataSingleLayout::target_radii_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -3924,111 +4361,111 @@ struct FMemorySingleEntityDataStorage
         using Pointers = DataPointers<Byte>;
         return {
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * entity_handles_block_offset)),
+                data + entity_handles_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + blocks * integral_biases_block_offset)),
+                data + integral_biases_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * float_biases_block_offset)),
+                data + float_biases_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Task>*>(
-                data + blocks * tasks_block_offset)),
+                data + tasks_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * locations_xs_block_offset)),
+                data + locations_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * locations_ys_block_offset)),
+                data + locations_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * locations_zs_block_offset)),
+                data + locations_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_move_locations_xs_block_offset)),
+                data + desired_move_locations_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_move_locations_ys_block_offset)),
+                data + desired_move_locations_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_move_locations_zs_block_offset)),
+                data + desired_move_locations_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * aim_directions_xs_block_offset)),
+                data + aim_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * aim_directions_ys_block_offset)),
+                data + aim_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * aim_directions_zs_block_offset)),
+                data + aim_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_aiming_directions_xs_block_offset)),
+                data + desired_aiming_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_aiming_directions_ys_block_offset)),
+                data + desired_aiming_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * desired_aiming_directions_zs_block_offset)),
+                data + desired_aiming_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * movement_directions_xs_block_offset)),
+                data + movement_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * movement_directions_ys_block_offset)),
+                data + movement_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * movement_directions_zs_block_offset)),
+                data + movement_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * velocities_xs_block_offset)),
+                data + velocities_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * velocities_ys_block_offset)),
+                data + velocities_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * velocities_zs_block_offset)),
+                data + velocities_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * move_distances_block_offset)),
+                data + move_distances_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * speeds_block_offset)),
+                data + speeds_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Team>*>(
-                data + blocks * teams_block_offset)),
+                data + teams_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + blocks * healths_block_offset)),
+                data + healths_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * parent_handles_block_offset)),
+                data + parent_handles_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + blocks * awareness_scan_countdowns_counters_block_offset)),
+                data + awareness_scan_countdowns_counters_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * navigation_update_countdowns_remaining_ticks_block_offset)),
+                data + navigation_update_countdowns_remaining_ticks_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * navigation_update_countdowns_periods_block_offset)),
+                data + navigation_update_countdowns_periods_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * separation_steering_xs_block_offset)),
+                data + separation_steering_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * separation_steering_ys_block_offset)),
+                data + separation_steering_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * separation_steering_zs_block_offset)),
+                data + separation_steering_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * navigation_risk_tiers_block_offset)),
+                data + navigation_risk_tiers_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * navigation_lower_risk_scan_counts_block_offset)),
+                data + navigation_lower_risk_scan_counts_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + blocks * avoidance_choice_indices_block_offset)),
+                data + avoidance_choice_indices_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * avoidance_clear_scan_counts_block_offset)),
+                data + avoidance_clear_scan_counts_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * attack_reposition_countdowns_counters_block_offset)),
+                data + attack_reposition_countdowns_counters_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + blocks * attack_cooldowns_counters_block_offset)),
+                data + attack_cooldowns_counters_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * target_handles_block_offset)),
+                data + target_handles_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_locations_xs_block_offset)),
+                data + target_locations_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_locations_ys_block_offset)),
+                data + target_locations_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_locations_zs_block_offset)),
+                data + target_locations_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_velocities_xs_block_offset)),
+                data + target_velocities_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_velocities_ys_block_offset)),
+                data + target_velocities_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_velocities_zs_block_offset)),
+                data + target_velocities_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_directions_xs_block_offset)),
+                data + target_directions_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_directions_ys_block_offset)),
+                data + target_directions_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_directions_zs_block_offset)),
+                data + target_directions_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * intercept_times_block_offset)),
+                data + intercept_times_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_distance_sq_block_offset)),
+                data + target_distance_sq_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_distances_block_offset)),
+                data + target_distances_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * target_radii_block_offset)),
+                data + target_radii_offset(blocks))),
         };
     }
     template <typename Byte>
@@ -4473,7 +4910,7 @@ struct FMemorySingleEntityDataStorage
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::soa_storage::FMemoryStorageAllocator::allocate(
-            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};
@@ -4888,6 +5325,7 @@ struct AlignmentDataSingleLayout {
     inline static constexpr byte_size_type max_allocation_size{
         std::numeric_limits<byte_size_type>::max()};
     inline static constexpr size_type capacity_granularity{64};
+    inline static constexpr byte_size_type column_gap{192};
 
     inline static constexpr byte_size_type bytes_alignment{alignof(uint8) > 64 ? alignof(uint8)
                                                                                : 64};
@@ -4926,54 +5364,124 @@ struct AlignmentDataSingleLayout {
     inline static constexpr byte_size_type bytes_block_end{bytes_block_offset +
                                                            capacity_granularity * sizeof(uint8)};
 
+    static constexpr auto bytes_offset(byte_size_type) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(0, bytes_alignment);
+    }
+
     inline static constexpr byte_size_type odd_block_offset{
         ml::soa_storage::layout_align(bytes_block_end, odd_alignment)};
     inline static constexpr byte_size_type odd_block_end{odd_block_offset +
                                                          capacity_granularity * sizeof(OddBytes)};
+
+    static constexpr auto odd_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            bytes_offset(blocks) + blocks * capacity_granularity * sizeof(uint8) + column_gap,
+            odd_alignment);
+    }
 
     inline static constexpr byte_size_type aligned32_block_offset{
         ml::soa_storage::layout_align(odd_block_end, aligned32_alignment)};
     inline static constexpr byte_size_type aligned32_block_end{
         aligned32_block_offset + capacity_granularity * sizeof(Aligned32)};
 
+    static constexpr auto aligned32_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            odd_offset(blocks) + blocks * capacity_granularity * sizeof(OddBytes) + column_gap,
+            aligned32_alignment);
+    }
+
     inline static constexpr byte_size_type nested_xs_block_offset{
         ml::soa_storage::layout_align(aligned32_block_end, nested_xs_alignment)};
     inline static constexpr byte_size_type nested_xs_block_end{
         nested_xs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto nested_xs_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(aligned32_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(Aligned32) +
+                                                 column_gap,
+                                             nested_xs_alignment);
+    }
 
     inline static constexpr byte_size_type nested_ys_block_offset{
         ml::soa_storage::layout_align(nested_xs_block_end, nested_xs_alignment)};
     inline static constexpr byte_size_type nested_ys_block_end{
         nested_ys_block_offset + capacity_granularity * sizeof(float)};
 
+    static constexpr auto nested_ys_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            nested_xs_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
+            nested_xs_alignment);
+    }
+
     inline static constexpr byte_size_type nested_zs_block_offset{
         ml::soa_storage::layout_align(nested_ys_block_end, nested_xs_alignment)};
     inline static constexpr byte_size_type nested_zs_block_end{
         nested_zs_block_offset + capacity_granularity * sizeof(float)};
+
+    static constexpr auto nested_zs_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            nested_ys_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
+            nested_xs_alignment);
+    }
 
     inline static constexpr byte_size_type aligned64_block_offset{
         ml::soa_storage::layout_align(nested_zs_block_end, aligned64_alignment)};
     inline static constexpr byte_size_type aligned64_block_end{
         aligned64_block_offset + capacity_granularity * sizeof(Aligned64)};
 
+    static constexpr auto aligned64_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            nested_zs_offset(blocks) + blocks * capacity_granularity * sizeof(float) + column_gap,
+            aligned64_alignment);
+    }
+
     inline static constexpr byte_size_type small_block_offset{
         ml::soa_storage::layout_align(aligned64_block_end, small_alignment)};
     inline static constexpr byte_size_type small_block_end{small_block_offset +
                                                            capacity_granularity * sizeof(int8)};
+
+    static constexpr auto small_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(aligned64_offset(blocks) +
+                                                 blocks * capacity_granularity * sizeof(Aligned64) +
+                                                 column_gap,
+                                             small_alignment);
+    }
 
     inline static constexpr byte_size_type aligned256_block_offset{
         ml::soa_storage::layout_align(small_block_end, aligned256_alignment)};
     inline static constexpr byte_size_type aligned256_block_end{
         aligned256_block_offset + capacity_granularity * sizeof(Aligned256)};
 
+    static constexpr auto aligned256_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            small_offset(blocks) + blocks * capacity_granularity * sizeof(int8) + column_gap,
+            aligned256_alignment);
+    }
+
     inline static constexpr byte_size_type handles_block_offset{
         ml::soa_storage::layout_align(aligned256_block_end, handles_alignment)};
     inline static constexpr byte_size_type handles_block_end{handles_block_offset +
                                                              capacity_granularity * sizeof(Handle)};
 
-    inline static constexpr byte_size_type block_bytes{
-        ml::soa_storage::layout_align(handles_block_end, allocation_alignment)};
-    inline static constexpr size_type max_capacity{ml::soa_storage::maximum_capacity(block_bytes)};
+    static constexpr auto handles_offset(byte_size_type blocks) noexcept -> byte_size_type {
+        return ml::soa_storage::layout_align(
+            aligned256_offset(blocks) + blocks * capacity_granularity * sizeof(Aligned256) +
+                column_gap,
+            handles_alignment);
+    }
+
+    // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
+    // capacity.
+    inline static constexpr byte_size_type capacity_block_bound{
+        ml::soa_storage::layout_align(handles_block_end, allocation_alignment) +
+        9 * (column_gap + allocation_alignment - 1)};
+    inline static constexpr size_type max_capacity{
+        ml::soa_storage::maximum_capacity(capacity_block_bound)};
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return blocks == 0
+                 ? 0
+                 : handles_offset(blocks) + blocks * capacity_granularity * sizeof(Handle);
+    }
   private:
     inline static constexpr auto validate_layout = []() consteval -> bool {
         static_assert(
@@ -5030,6 +5538,9 @@ struct AlignmentDataSingleLayout {
                       (max_allocation_size - aligned256_block_offset) / capacity_granularity);
         static_assert(sizeof(Handle) <=
                       (max_allocation_size - handles_block_offset) / capacity_granularity);
+        static_assert(9 <= (max_allocation_size - ml::soa_storage::layout_align(
+                                                      handles_block_end, allocation_alignment)) /
+                               (column_gap + allocation_alignment - 1));
         static_assert(max_capacity >= capacity_granularity);
         return true;
     };
@@ -5109,25 +5620,25 @@ struct SingleAllocationAlignmentDataStorage
         using Pointers = DataPointers<Byte>;
         return {
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * bytes_block_offset)),
+                data + bytes_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + blocks * odd_block_offset)),
+                data + odd_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Aligned32>*>(
-                data + blocks * aligned32_block_offset)),
+                data + aligned32_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * nested_xs_block_offset)),
+                data + nested_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * nested_ys_block_offset)),
+                data + nested_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * nested_zs_block_offset)),
+                data + nested_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Aligned64>*>(
-                data + blocks * aligned64_block_offset)),
+                data + aligned64_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + blocks * small_block_offset)),
+                data + small_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Aligned256>*>(
-                data + blocks * aligned256_block_offset)),
+                data + aligned256_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * handles_block_offset)),
+                data + handles_offset(blocks))),
         };
     }
     template <typename Byte>
@@ -5231,7 +5742,7 @@ struct SingleAllocationAlignmentDataStorage
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::soa_storage::MimallocStorageAllocator::allocate(
-            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};
@@ -5286,17 +5797,20 @@ struct AlignmentDataSingleView_nested : ml::soa_storage::CompactViewState<Const>
     }
     auto xs() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(AlignmentDataSingleLayout::nested_xs_block_offset),
+            this->template column_data<float>(
+                AlignmentDataSingleLayout::nested_xs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto ys() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(AlignmentDataSingleLayout::nested_ys_block_offset),
+            this->template column_data<float>(
+                AlignmentDataSingleLayout::nested_ys_offset(this->capacity_blocks())),
             this->count_};
     }
     auto zs() const {
         return TArrayView<typename Base::template Element<float>>{
-            this->template column_data<float>(AlignmentDataSingleLayout::nested_zs_block_offset),
+            this->template column_data<float>(
+                AlignmentDataSingleLayout::nested_zs_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, VectorsConstView, VectorsView> {
@@ -5307,13 +5821,13 @@ struct AlignmentDataSingleView_nested : ml::soa_storage::CompactViewState<Const>
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, VectorsConstView, VectorsView>{
             {this->template column_data_unchecked<float>(
-                 AlignmentDataSingleLayout::nested_xs_block_offset, blocks),
+                 AlignmentDataSingleLayout::nested_xs_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 AlignmentDataSingleLayout::nested_ys_block_offset, blocks),
+                 AlignmentDataSingleLayout::nested_ys_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<float>(
-                 AlignmentDataSingleLayout::nested_zs_block_offset, blocks),
+                 AlignmentDataSingleLayout::nested_zs_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -5345,18 +5859,20 @@ struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<Const> {
     }
     auto bytes() const {
         return TArrayView<typename Base::template Element<uint8>>{
-            this->template column_data<uint8>(AlignmentDataSingleLayout::bytes_block_offset),
+            this->template column_data<uint8>(
+                AlignmentDataSingleLayout::bytes_offset(this->capacity_blocks())),
             this->count_};
     }
     auto odd() const {
         return TArrayView<typename Base::template Element<OddBytes>>{
-            this->template column_data<OddBytes>(AlignmentDataSingleLayout::odd_block_offset),
+            this->template column_data<OddBytes>(
+                AlignmentDataSingleLayout::odd_offset(this->capacity_blocks())),
             this->count_};
     }
     auto aligned32() const {
         return TArrayView<typename Base::template Element<Aligned32>>{
             this->template column_data<Aligned32>(
-                AlignmentDataSingleLayout::aligned32_block_offset),
+                AlignmentDataSingleLayout::aligned32_offset(this->capacity_blocks())),
             this->count_};
     }
     auto nested() const {
@@ -5365,23 +5881,25 @@ struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<Const> {
     auto aligned64() const {
         return TArrayView<typename Base::template Element<Aligned64>>{
             this->template column_data<Aligned64>(
-                AlignmentDataSingleLayout::aligned64_block_offset),
+                AlignmentDataSingleLayout::aligned64_offset(this->capacity_blocks())),
             this->count_};
     }
     auto small() const {
         return TArrayView<typename Base::template Element<int8>>{
-            this->template column_data<int8>(AlignmentDataSingleLayout::small_block_offset),
+            this->template column_data<int8>(
+                AlignmentDataSingleLayout::small_offset(this->capacity_blocks())),
             this->count_};
     }
     auto aligned256() const {
         return TArrayView<typename Base::template Element<Aligned256>>{
             this->template column_data<Aligned256>(
-                AlignmentDataSingleLayout::aligned256_block_offset),
+                AlignmentDataSingleLayout::aligned256_offset(this->capacity_blocks())),
             this->count_};
     }
     auto handles() const {
         return TArrayView<typename Base::template Element<Handle>>{
-            this->template column_data<Handle>(AlignmentDataSingleLayout::handles_block_offset),
+            this->template column_data<Handle>(
+                AlignmentDataSingleLayout::handles_offset(this->capacity_blocks())),
             this->count_};
     }
     auto columns() const -> std::conditional_t<Const, AlignmentDataConstView, AlignmentDataView> {
@@ -5392,35 +5910,35 @@ struct AlignmentDataSingleView : ml::soa_storage::CompactViewState<Const> {
         auto const blocks{this->capacity_blocks()};
         return std::conditional_t<Const, AlignmentDataConstView, AlignmentDataView>{
             {this->template column_data_unchecked<uint8>(
-                 AlignmentDataSingleLayout::bytes_block_offset, blocks),
+                 AlignmentDataSingleLayout::bytes_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<OddBytes>(
-                 AlignmentDataSingleLayout::odd_block_offset, blocks),
+                 AlignmentDataSingleLayout::odd_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<Aligned32>(
-                 AlignmentDataSingleLayout::aligned32_block_offset, blocks),
+                 AlignmentDataSingleLayout::aligned32_offset(blocks)),
              this->count_},
             std::conditional_t<Const, VectorsConstView, VectorsView>{
                 {this->template column_data_unchecked<float>(
-                     AlignmentDataSingleLayout::nested_xs_block_offset, blocks),
+                     AlignmentDataSingleLayout::nested_xs_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     AlignmentDataSingleLayout::nested_ys_block_offset, blocks),
+                     AlignmentDataSingleLayout::nested_ys_offset(blocks)),
                  this->count_},
                 {this->template column_data_unchecked<float>(
-                     AlignmentDataSingleLayout::nested_zs_block_offset, blocks),
+                     AlignmentDataSingleLayout::nested_zs_offset(blocks)),
                  this->count_}},
             {this->template column_data_unchecked<Aligned64>(
-                 AlignmentDataSingleLayout::aligned64_block_offset, blocks),
+                 AlignmentDataSingleLayout::aligned64_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<int8>(
-                 AlignmentDataSingleLayout::small_block_offset, blocks),
+                 AlignmentDataSingleLayout::small_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<Aligned256>(
-                 AlignmentDataSingleLayout::aligned256_block_offset, blocks),
+                 AlignmentDataSingleLayout::aligned256_offset(blocks)),
              this->count_},
             {this->template column_data_unchecked<Handle>(
-                 AlignmentDataSingleLayout::handles_block_offset, blocks),
+                 AlignmentDataSingleLayout::handles_offset(blocks)),
              this->count_}};
     }
     template <typename Func>
@@ -5531,25 +6049,25 @@ struct FMemorySingleAlignmentDataStorage
         using Pointers = DataPointers<Byte>;
         return {
             std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + blocks * bytes_block_offset)),
+                data + bytes_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + blocks * odd_block_offset)),
+                data + odd_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Aligned32>*>(
-                data + blocks * aligned32_block_offset)),
+                data + aligned32_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * nested_xs_block_offset)),
+                data + nested_xs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * nested_ys_block_offset)),
+                data + nested_ys_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + blocks * nested_zs_block_offset)),
+                data + nested_zs_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Aligned64>*>(
-                data + blocks * aligned64_block_offset)),
+                data + aligned64_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + blocks * small_block_offset)),
+                data + small_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Aligned256>*>(
-                data + blocks * aligned256_block_offset)),
+                data + aligned256_offset(blocks))),
             std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + blocks * handles_block_offset)),
+                data + handles_offset(blocks))),
         };
     }
     template <typename Byte>
@@ -5653,7 +6171,7 @@ struct FMemorySingleAlignmentDataStorage
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::soa_storage::FMemoryStorageAllocator::allocate(
-            ml::soa_storage::allocation_bytes(new_capacity, block_bytes),
+            layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)),
             static_cast<uint32>(allocation_alignment))};
         if (num_ > 0) {
             auto const old_blocks{capacity_blocks()};

@@ -19,6 +19,16 @@ class BenchmarkCsvListener : public Catch::EventListenerBase {
     using EventListenerBase::EventListenerBase;
 
     void benchmarkEnded(Catch::BenchmarkStats<> const& stats) override {
+        if (stats.info.name.starts_with("SOA_SPACING,")) {
+            std::printf("\nSPACING_TIMING,%.9g,%.9g,%.9g,%d,%u\n",
+                        stats.mean.point.count(),
+                        stats.mean.lower_bound.count(),
+                        stats.mean.upper_bound.count(),
+                        stats.info.iterations,
+                        stats.info.samples);
+            std::fflush(stdout);
+            return;
+        }
         if (!stats.info.name.starts_with("SOA,")) {
             return;
         }

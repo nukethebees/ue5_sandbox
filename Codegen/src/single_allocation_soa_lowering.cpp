@@ -25,7 +25,7 @@ static auto compact_columns_expression(SoaSchema const& schema,
         } else {
             auto const id{join(path, "_")};
             values.push_back("{this->template column_data_unchecked<" + leaves.at(id).spelling +
-                             ">(" + layout + "::" + id + "_block_offset, blocks), " +
+                             ">(" + layout + "::" + id + "_offset(blocks)), " +
                              (native ? "static_cast<std::size_t>(this->count_)" : "this->count_") +
                              "}");
         }
@@ -84,7 +84,7 @@ static void emit_compact_view(std::ostringstream& out,
             out << "auto " << member.name << "() const { return "
                 << (native ? "std::span" : "TArrayView") << "<typename Base::template Element<"
                 << type << ">>{this->template column_data<" << type << ">(" << layout << "::" << id
-                << "_block_offset), "
+                << "_offset(this->capacity_blocks())), "
                 << (native ? "static_cast<std::size_t>(this->count_)" : "this->count_") << "}; }\n";
         }
     }
@@ -154,7 +154,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << ";\nusing byte_size_type = " << (native ? "std::size_t" : "SIZE_T") << ";\n\n"
         << "inline static constexpr byte_size_type "
            "max_allocation_size{std::numeric_limits<byte_size_type>::max()};\n"
-        << "inline static constexpr size_type capacity_granularity{64};\n\n";
+        << "inline static constexpr size_type capacity_granularity{64};\n"
+        << "inline static constexpr byte_size_type column_gap{192};\n\n";
     std::vector<std::string> alignments;
     for (auto const* leaf : unique_types) {
         auto const id{fixed_leaf_argument(*leaf)};
@@ -173,6 +174,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<"
                << (native ? "std::uint32_t" : "uint32") << ">::max());\n";
     std::string previous{"0"};
+    std::string previous_end{"0"};
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
         if (id.find("__") != std::string::npos || id.back() == '_') {
@@ -192,13 +194,32 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         assertions << "static_assert(sizeof(" << type << ") <= (max_allocation_size - " << id
                    << "_block_offset) / capacity_granularity);\n";
         previous = id + "_block_end";
+        out << "static constexpr auto " << id << "_offset(byte_size_type"
+            << (previous_end == "0" ? "" : " blocks") << ") noexcept -> byte_size_type { return "
+            << runtime << "layout_align(" << previous_end << ", " << type_ids.at(type)
+            << "_alignment); }\n\n";
+        previous_end = id + "_offset(blocks) + blocks * capacity_granularity * sizeof(" + type +
+                       ") + column_gap";
     }
+    auto const& last{layout.leaves.back()};
+    auto const last_id{fixed_leaf_argument(last)};
+    assertions << "static_assert(" << (layout.leaves.size() - 1) << " <= (max_allocation_size - "
+               << runtime << "layout_align(" << previous
+               << ", allocation_alignment)) / (column_gap + allocation_alignment - 1));\n";
+    out << "// Conservative per-block bound for checked capacity arithmetic; gaps do not scale "
+           "with capacity.\n";
     out << "inline static constexpr byte_size_type "
-           "block_bytes{"
-        << runtime << "layout_align(" << previous << ", allocation_alignment)};\n"
+           "capacity_block_bound{"
+        << runtime << "layout_align(" << previous << ", allocation_alignment) + "
+        << (layout.leaves.size() - 1) << " * (column_gap + allocation_alignment - 1)};\n"
         << "inline static constexpr size_type "
            "max_capacity{"
-        << runtime << "maximum_capacity(block_bytes)};\n"
+        << runtime << "maximum_capacity(capacity_block_bound)};\n"
+        << "static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type "
+           "{\n"
+        << "return blocks == 0 ? 0 : " << last_id
+        << "_offset(blocks) + blocks * capacity_granularity * sizeof(" << last.type.spelling
+        << ");\n}\n"
         << "\nprivate:\ninline static constexpr auto validate_layout = []() consteval -> bool {\n"
         << assertions.str()
         << "static_assert(max_capacity >= capacity_granularity);\nreturn true;\n};\n"
@@ -257,7 +278,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
         out << "        std::launder(reinterpret_cast<typename Pointers::template Element<"
-            << leaf.type.spelling << ">*>(data + blocks * " << id << "_block_offset)),\n";
+            << leaf.type.spelling << ">*>(data + " << id << "_offset(blocks))),\n";
     }
     out << "    };\n}\n"
         << "template <typename Byte> static auto make_data_unchecked(Byte* const data, "
@@ -312,9 +333,8 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << "void reallocate(size_type const new_capacity) {\n"
         << "    auto* const "
            "new_data{"
-        << allocate << "(" << runtime
-        << ""
-           "allocation_bytes(new_capacity, block_bytes), "
+        << allocate
+        << "(layout_bytes(static_cast<byte_size_type>(new_capacity / capacity_granularity)), "
            "static_cast<"
         << (native ? "std::uint32_t" : "uint32") << ">(allocation_alignment))};\n"
         << "    if (num_ > 0) {\n"

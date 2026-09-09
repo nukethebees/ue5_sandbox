@@ -1,0 +1,78 @@
+{
+  "complete": true,
+  "selected_gap": 192,
+  "candidates": [
+    {
+      "gap": 64,
+      "worst_over_best": 1.3867356160517068,
+      "worst_over_zero": 1.3867356160517068,
+      "passes": false
+    },
+    {
+      "gap": 192,
+      "worst_over_best": 1.0547754554309718,
+      "worst_over_zero": 1.0516571290983348,
+      "passes": true
+    }
+  ],
+  "equivalent_layouts": [],
+  "variable_groups": [
+    {
+      "schema": "SpacingDoubles",
+      "capacity": 131072,
+      "wide": 0,
+      "owner": 0,
+      "gap": 0,
+      "maximum_over_minimum": 1.7154684711855035
+    },
+    {
+      "schema": "SpacingDoubles",
+      "capacity": 131072,
+      "wide": 0,
+      "owner": 0,
+      "gap": 64,
+      "maximum_over_minimum": 1.5854980129048246
+    },
+    {
+      "schema": "SpacingDoubles",
+      "capacity": 131072,
+      "wide": 1,
+      "owner": 0,
+      "gap": 192,
+      "maximum_over_minimum": 1.1761750001699602
+    },
+    {
+      "schema": "SpacingAligned",
+      "capacity": 65536,
+      "wide": 1,
+      "owner": 0,
+      "gap": 0,
+      "maximum_over_minimum": 1.1578256489757712
+    },
+    {
+      "schema": "SpacingAligned",
+      "capacity": 75008,
+      "wide": 0,
+      "owner": 0,
+      "gap": 0,
+      "maximum_over_minimum": 1.1011956226442963
+    },
+    {
+      "schema": "SpacingAligned",
+      "capacity": 131072,
+      "wide": 0,
+      "owner": 0,
+      "gap": 64,
+      "maximum_over_minimum": 1.6832854919951268
+    },
+    {
+      "schema": "SpacingAligned",
+      "capacity": 131072,
+      "wide": 1,
+      "owner": 0,
+      "gap": 0,
+      "maximum_over_minimum": 1.1862585386247526
+    }
+  ],
+  "interpretation": "Candidate for review, not a production change. Inspect process variability before accepting."
+}

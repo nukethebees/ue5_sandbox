@@ -125,6 +125,11 @@ TEST(SingleAllocationSoa, RejectsCompactViewNameCollisions) {
 TEST(SingleAllocationSoa, EmitsOrderedAlignedBlocksAndExplicitBulkRelocation) {
     auto const output{render(schemas())};
     EXPECT_NE(output.find("capacity_granularity{64}"), std::string::npos);
+    EXPECT_NE(output.find("column_gap{192}"), std::string::npos);
+    EXPECT_NE(output.find("layout_align(ids_offset(blocks) + blocks * capacity_granularity * "
+                          "sizeof(int32) + column_gap, nested_small_alignment)"),
+              std::string::npos);
+    EXPECT_NE(output.find("layout_bytes(byte_size_type blocks)"), std::string::npos);
     EXPECT_NE(output.find("layout_align(ids_block_end, nested_small_alignment)"),
               std::string::npos);
     EXPECT_NE(output.find("layout_align(nested_small_block_end, nested_wide_alignment)"),
@@ -234,7 +239,7 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
               std::string::npos);
     EXPECT_NE(output.find("GrandparentSingleView_first_nested"), std::string::npos);
     EXPECT_NE(output.find("GrandparentSingleView_second_nested"), std::string::npos);
-    EXPECT_NE(output.find("GrandparentSingleLayout::second_nested_wide_block_offset"),
+    EXPECT_NE(output.find("GrandparentSingleLayout::second_nested_wide_offset(blocks)"),
               std::string::npos);
 }
 

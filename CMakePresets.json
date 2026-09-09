@@ -132,6 +132,16 @@
   ],
   "buildPresets": [
     {
+      "name": "single-allocation-soa-spacing-confirmation",
+      "configurePreset": "benchmark",
+      "targets": ["single-allocation-soa-spacing-confirmation"]
+    },
+    {
+      "name": "single-allocation-soa-spacing",
+      "configurePreset": "benchmark",
+      "targets": ["single-allocation-soa-spacing"]
+    },
+    {
       "name": "single-allocation-soa-plots",
       "configurePreset": "benchmark",
       "targets": ["single-allocation-soa-plots"]
@@ -248,6 +258,30 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "single-allocation-soa-spacing-confirmation-correctness",
+      "configurePreset": "benchmark",
+      "output": { "verbosity": "verbose" },
+      "execution": { "jobs": 1, "noTestsAction": "error" },
+      "filter": { "include": { "name": "^SandboxCore\\.SingleAllocation\\.Spacing\\.(Correctness|ShapeCorrectness|AffinityCorrectness|ConfirmationSmoke|ConfirmationReportTests)$" } }
+    },
+    {
+      "name": "single-allocation-soa-spacing-correctness",
+      "configurePreset": "benchmark",
+      "output": { "verbosity": "verbose" },
+      "execution": { "jobs": 1, "noTestsAction": "error" },
+      "filter": { "include": { "name": "^SandboxCore\\.SingleAllocation\\.Spacing\\.(Correctness|PipelineSmoke)$" } }
+    },
+    {
+      "name": "single-allocation-soa-iteration-investigation",
+      "displayName": "Isolated SoA iteration column-spacing comparison",
+      "inherits": "single-allocation-soa-benchmark",
+      "filter": {
+        "include": {
+          "name": "^SandboxCore\\.SingleAllocation\\.IterationInvestigation\\."
+        }
+      }
+    },
     {
       "name": "single-allocation-soa-reserve",
       "displayName": "Single-allocation SoA reserve only",
@@ -468,6 +502,24 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "single-allocation-soa-spacing-confirmation",
+      "steps": [
+        { "type": "configure", "name": "benchmark" },
+        { "type": "build", "name": "benchmark" },
+        { "type": "test", "name": "single-allocation-soa-spacing-confirmation-correctness" },
+        { "type": "build", "name": "single-allocation-soa-spacing-confirmation" }
+      ]
+    },
+    {
+      "name": "single-allocation-soa-spacing",
+      "steps": [
+        { "type": "configure", "name": "benchmark" },
+        { "type": "build", "name": "benchmark" },
+        { "type": "test", "name": "single-allocation-soa-spacing-correctness" },
+        { "type": "build", "name": "single-allocation-soa-spacing" }
+      ]
+    },
     {
       "name": "single-allocation-soa-reserve",
       "displayName": "Build and profile the SoA reserve comparison",

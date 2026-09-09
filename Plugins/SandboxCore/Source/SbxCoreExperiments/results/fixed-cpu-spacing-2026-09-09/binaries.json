@@ -1,0 +1,10 @@
+{
+  "SandboxCoreBenchmarks.exe": {
+    "sha256": "639b276981d2143aca1eccf0300219418e3e28ed47a1b87a593debe042f7287a",
+    "bytes": 10408960
+  },
+  "sbx-mimalloc.dll": {
+    "sha256": "f72570d38783a53161f4162600ac3c378ba9a3663ef1956e2947022f06d9d669",
+    "bytes": 177152
+  }
+}

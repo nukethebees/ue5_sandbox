@@ -1,5 +1,17 @@
 # Single-allocation SoA investigation report — 8 September 2026
 
+**9 September update:** single-allocation generation now defaults to fixed
+192-byte inter-column gaps, with further padding for stronger alignment. The
+[iteration confirmation report](README.md#fixed-cpu-results-9-september-2026)
+preserves the original TArray comparison and the fixed-CPU results. In the
+fixed-CPU session, TArray wide iteration took 6.889 ms versus 1.409 ms for the
+192-byte experimental layout: **4.89x faster, or 79.5% less time**, with 9,984
+extra bytes. Narrow iteration improved by approximately 4%. The original
+TArray measurements were 0.419 ms narrow and 6.938 ms wide; the original
+extra-capacity workaround measured 0.396 ms and 1.324 ms respectively.
+These are separate sessions; see the linked report for live counts, variability
+and limitations. The historical allocator investigation below is unchanged.
+
 ## Outcome and scope
 
 Keep the implementation experimental, with mimalloc as the default for the experimental Unreal single owner. The normal production generator and fighter storage are unchanged. With the same standalone mimalloc DLL on both sides, single-allocation reserve plus destruction was **10.6–13.9 times faster** than 53 TArrays across the owner sweep. The much slower FMemory single-block results tracked raw allocations and did not reproduce with direct mimalloc. This supports the representation, but does not establish a production simulation speedup.

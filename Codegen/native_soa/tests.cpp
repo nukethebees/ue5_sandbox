@@ -59,10 +59,13 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
             using T = typename decltype(column)::value_type;
             auto const address{reinterpret_cast<std::uintptr_t>(column.data())};
             EXPECT_EQ(address % std::max(std::size_t{64}, alignof(T)), 0);
-            EXPECT_GE(address, previous_end);
+            auto const cursor{previous_end == 0 ? base : previous_end + 192};
+            auto const alignment{std::max(std::size_t{64}, alignof(T))};
+            EXPECT_EQ(address - base, ((cursor - base + alignment - 1) / alignment) * alignment);
             previous_end = address + static_cast<std::size_t>(owner.capacity()) * sizeof(T);
             EXPECT_LE(previous_end, base + owner.allocated_bytes());
         });
+        EXPECT_EQ(previous_end - base, owner.allocated_bytes());
     }
     auto const capacity{owner.capacity()};
     owner.reserve(capacity);
@@ -132,7 +135,7 @@ TEST(NativeSoa, CheckedCapacityArithmetic) {
         std::int64_t{Storage::max_capacity} + 1, Storage::max_capacity, result));
     EXPECT_TRUE(native_soa::try_round_capacity(65, Storage::max_capacity, result));
     EXPECT_EQ(result, 128);
-    EXPECT_EQ(native_soa::allocation_bytes(128, Storage::block_bytes), 2 * Storage::block_bytes);
+    EXPECT_LE(Storage::layout_bytes(2), 2 * Storage::capacity_block_bound);
 }
 TEST(NativeSoa, CompactViewsAndBulkAppend) {
     using Owner = SingleAllocationEntityData;

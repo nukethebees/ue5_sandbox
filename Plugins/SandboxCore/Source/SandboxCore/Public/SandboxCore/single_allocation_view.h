@@ -67,17 +67,16 @@ struct CompactViewState {
         return state_ ? static_cast<std::size_t>(state_->capacity_ / 64) : 0;
     }
     template <typename T>
-    auto column_data(std::size_t block_offset) const -> Element<T>* {
+    auto column_data(std::size_t byte_offset) const -> Element<T>* {
         validate();
         if (!state_ || !state_->data_) {
             return nullptr;
         }
-        return column_data_unchecked<T>(block_offset, capacity_blocks());
+        return column_data_unchecked<T>(byte_offset);
     }
     template <typename T>
-    auto column_data_unchecked(std::size_t block_offset, std::size_t blocks) const -> Element<T>* {
-        return std::launder(reinterpret_cast<Element<T>*>(state_->data_ + blocks * block_offset)) +
-               offset_;
+    auto column_data_unchecked(std::size_t byte_offset) const -> Element<T>* {
+        return std::launder(reinterpret_cast<Element<T>*>(state_->data_ + byte_offset)) + offset_;
     }
     State* state_{};
     size_type offset_{};

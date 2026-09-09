@@ -12,7 +12,9 @@ The runtime is part of SandboxCore. Comparison types remain in SbxCoreExperiment
 
 An owner stores one allocation pointer, one `int32` size and one `int32` capacity: 16 bytes on Win64. Each flattened leaf occupies a contiguous column in the allocation. Nested schemas flatten in depth-first declaration order using the fixed-SoA traversal.
 
-Capacity is a multiple of 64. Compile-time offsets describe a 64-element block for each column; actual column offsets scale by `capacity / 64`. This remains column-major storage, not interleaved blocks of rows. The allocation and each column are aligned to at least 64 bytes, raised for over-aligned leaves. Padding is allowed and scales with capacity blocks. Existing checks and tests cover alignment through 256 bytes.
+Capacity is a multiple of 64. Each column is aligned to `max(64, alignof(T))`, followed by its capacity elements and a **fixed 192-byte gap** before aligning the next column. There is no trailing gap. Stronger alignment can increase the effective gap. The allocation uses the maximum leaf alignment. This policy applies to both backends and every single-owner allocator variant, with no capacity-dependent exceptions.
+
+Generated constexpr offset functions apply this sequential layout using `capacity / 64`; the gap never scales with that count. `layout_bytes(blocks)` returns the exact extent, including zero for empty storage. `capacity_block_bound` is a conservative arithmetic bound used to reject overflowing capacities, not the actual allocation size. Column pointers are resolved when accessing/materializing views, outside entity loops. Tests compare the generated offsets against an independent sequential reference through 256-byte alignment.
 
 Reserve rounds to the granularity. Append growth uses geometric slack before rounding. Growth allocates one new block, bulk-copies each live column, then releases the old block. Allocation-size and row-count arithmetic are checked. Owners remain move-only; reset and removal retain capacity.
 
