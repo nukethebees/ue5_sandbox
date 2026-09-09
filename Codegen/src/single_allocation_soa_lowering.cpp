@@ -222,7 +222,9 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     out << "inline static constexpr byte_size_type allocation_alignment{std::max({"
         << join(alignments, ", ") << "})};\n\n";
     assertions << "\nstatic_assert(allocation_alignment <= std::numeric_limits<"
-               << (native ? "std::uint32_t" : "uint32") << ">::max());\n";
+               << (native ? "std::uint32_t" : "uint32")
+               << ">::max(), \"Single-allocation alignment must fit the allocator's 32-bit "
+                  "alignment argument.\");\n";
     std::string previous{"0"};
     std::string previous_end{"0"};
     for (auto const& leaf : layout.leaves) {
@@ -420,7 +422,7 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         << name << "(" << name << "&&) noexcept = default;\n"
         << "auto operator=(" << name << "&&) noexcept -> " << name << "& = default;\n";
     for (bool const is_const : {false, true}) {
-        auto const qualifier{is_const ? " const" : ""};
+        auto const qualifier{is_const ? " const &" : " &"};
         auto const view{is_const ? "ConstView" : "View"};
         out << "auto get_view()" << qualifier << " -> " << view << " { return {this, 0, num()}; }\n"
             << "auto get_view(size_type offset, size_type count)" << qualifier << " -> " << view
@@ -431,10 +433,18 @@ auto lower_single_allocation_node(SoaSchema const& schema,
             << " { return get_view().left(count); }\n"
             << "auto right(size_type count)" << qualifier << " -> " << view
             << " { return get_view().right(count); }\n";
+        auto const rvalue{is_const ? " const &&" : " &&"};
+        out << "auto get_view()" << rvalue << " -> " << view << " = delete;\n"
+            << "auto get_view(size_type, size_type)" << rvalue << " -> " << view << " = delete;\n"
+            << "auto slice(size_type, size_type)" << rvalue << " -> " << view << " = delete;\n"
+            << "auto left(size_type)" << rvalue << " -> " << view << " = delete;\n"
+            << "auto right(size_type)" << rvalue << " -> " << view << " = delete;\n";
     }
-    out << "auto get_const_view() const -> ConstView { return get_view(); }\n"
-        << "auto get_const_view(size_type offset, size_type count) const -> ConstView { return "
-           "get_view(offset, count); }\n};";
+    out << "auto get_const_view() const & -> ConstView { return get_view(); }\n"
+        << "auto get_const_view(size_type offset, size_type count) const & -> ConstView { return "
+           "get_view(offset, count); }\n"
+        << "auto get_const_view() const && -> ConstView = delete;\n"
+        << "auto get_const_view(size_type, size_type) const && -> ConstView = delete;\n};";
     return raw(out.str(), std::move(dependencies));
 }
 

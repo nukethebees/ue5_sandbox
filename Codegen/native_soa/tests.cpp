@@ -13,6 +13,11 @@ auto array_columns(View view) {
 }
 
 static_assert(!native_soa::supported_leaf<std::string>);
+static_assert(!native_soa::supported_leaf<float const>);
+static_assert(!native_soa::supported_leaf<float volatile>);
+static_assert(!native_soa::supported_leaf<float&>);
+static_assert(!native_soa::supported_leaf<float[3]>);
+static_assert(!native_soa::supported_leaf<void>);
 static_assert(!std::is_copy_constructible_v<SingleAllocationEntityData>);
 static_assert(
     std::is_same_v<decltype(std::declval<SingleAllocationEntityData const&>().get_view().healths()),
@@ -32,7 +37,7 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
     EXPECT_EQ(owner.num(), 0);
     EXPECT_EQ(owner.capacity(), 0);
     EXPECT_EQ(array_columns(owner.get_view()).bytes.data(), nullptr);
-    for (std::int32_t const count : {1, 63, 64, 65, 127, 128, 129, 4097, 65537}) {
+    for (std::int32_t const count : {1, 3, 17, 63, 64, 65, 127, 128, 129, 4097, 65537}) {
         auto const previous{owner.num()};
         owner.set_num(count);
         EXPECT_EQ(owner.num(), count);
@@ -137,6 +142,90 @@ TEST(NativeSoa, CheckedCapacityArithmetic) {
     EXPECT_EQ(result, 128);
     EXPECT_LE(Storage::layout_bytes(2), 2 * Storage::capacity_block_bound);
 }
+
+template <typename Owner>
+void check_layout_limits() {
+    using namespace single_allocation_layout;
+    auto const maximum{Owner::max_capacity};
+    EXPECT_EQ(maximum % capacity_granularity, 0);
+    std::int32_t rounded{};
+    EXPECT_TRUE(try_round_capacity(maximum, maximum, rounded));
+    EXPECT_EQ(rounded, maximum);
+    EXPECT_FALSE(try_round_capacity(std::int64_t{maximum} + 1, maximum, rounded));
+    EXPECT_FALSE(try_round_capacity(std::numeric_limits<std::int64_t>::max(), maximum, rounded));
+    for (auto const capacity : {0, 64, 128, maximum - 64, maximum}) {
+        std::size_t expected{};
+        typename Owner::ConstView{}.columns().each_column([&](auto column) {
+            using T = typename decltype(column)::value_type;
+            if (expected != 0) {
+                expected += 192;
+            }
+            auto const alignment{std::max(std::size_t{64}, alignof(T))};
+            expected = ((expected + alignment - 1) / alignment) * alignment;
+            expected += static_cast<std::size_t>(capacity) * sizeof(T);
+        });
+        auto const blocks{static_cast<std::size_t>(capacity / capacity_granularity)};
+        EXPECT_EQ(Owner::layout_bytes(blocks), expected);
+        EXPECT_LE(expected, static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()));
+        EXPECT_LE(expected, blocks * Owner::capacity_block_bound);
+    }
+    Owner owner;
+    EXPECT_DEATH(owner.reserve(-1), "invalid");
+    EXPECT_DEATH(owner.reserve(maximum + 1), "invalid");
+    EXPECT_DEATH(owner.add_uninitialised(maximum + 1), "invalid");
+    EXPECT_EQ(owner.capacity(), 0);
+}
+
+TEST(NativeSoa, GeneratedLayoutLimits) {
+    check_layout_limits<SingleAllocationEntityData>();
+    check_layout_limits<SingleAllocationAlignmentData>();
+    std::size_t bytes{17};
+    EXPECT_FALSE(
+        native_soa::try_allocation_bytes(64, std::numeric_limits<std::size_t>::max(), bytes));
+    EXPECT_EQ(bytes, 17);
+    EXPECT_FALSE(native_soa::try_allocation_bytes(65, 256, bytes));
+    EXPECT_DEATH(native_soa::layout_align(std::numeric_limits<std::size_t>::max(), 64), "");
+    EXPECT_DEATH(native_soa::layout_align(64, 3), "");
+    EXPECT_DEATH(native_soa::layout_align(64, 0), "");
+}
+
+TEST(NativeSoa, VectorViewContracts) {
+    using View = native_soa::Vector3View<double>;
+    using ConstView = native_soa::Vector3ConstView<double>;
+    static_assert(sizeof(View) == 16 && sizeof(ConstView) == 16);
+    static_assert(std::is_trivially_copyable_v<View> && std::is_trivially_copyable_v<ConstView>);
+    static_assert(std::is_convertible_v<View, ConstView>);
+    static_assert(!std::is_convertible_v<ConstView, View>);
+    static_assert(!std::is_constructible_v<View, std::vector<double>&&>);
+    View empty;
+    EXPECT_TRUE(empty.is_empty());
+    EXPECT_EQ(empty.num(), 0);
+    empty.each_column([](auto column) {
+        EXPECT_TRUE(column.empty());
+        EXPECT_EQ(column.size(), 0);
+        EXPECT_EQ(column.data(), nullptr);
+        EXPECT_EQ(column.begin(), column.end());
+    });
+    EXPECT_EQ(empty.slice(0, 0).zs().data(), nullptr);
+    double values[96]{};
+    View view{values, 256, 4};
+    EXPECT_EQ(view.xs().begin() + 4, view.xs().end());
+    EXPECT_EQ(view.right(0).zs().data(), values + 68);
+    EXPECT_TRUE(view.right(0).zs().empty());
+    EXPECT_DEATH((View{nullptr, 256, 1}), "invalid");
+    EXPECT_DEATH((View{values, 256, -1}), "invalid");
+    EXPECT_DEATH((View{values, 257, 4}), "invalid");
+    EXPECT_DEATH((View{values, 24, 4}), "invalid");
+    EXPECT_DEATH((View{values, std::size_t{1} << 32, 0}), "invalid");
+    EXPECT_DEATH(view.slice(-1, 1), "invalid");
+    EXPECT_DEATH(view.slice(0, -1), "invalid");
+    EXPECT_DEATH(view.slice(4, 1), "invalid");
+    EXPECT_DEATH(view.slice(5, 0), "invalid");
+    EXPECT_DEATH(view.left(5), "invalid");
+    EXPECT_DEATH(view.right(-1), "invalid");
+    EXPECT_DEATH(view.right(5), "invalid");
+}
+
 TEST(NativeSoa, CompactViewsAndBulkAppend) {
     static_assert(sizeof(native_soa::Vector2View<double>) == 16);
     static_assert(sizeof(native_soa::Vector2ConstView<float>) == 16);

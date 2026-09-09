@@ -368,13 +368,14 @@ TEST(Generator, LowersFacadeWithReferenceTarget) {
         .types = {{"target", CppType{"FTarget", "Project/Target.h"}}},
         .modules = {FacadeModuleSchema{
             .settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
-            .facade = FacadeSchema{
-                .name = "FFacade",
-                .target_type = TypeRef{"@target"},
-                .target_member_name = "target",
-                .methods = {FacadeMethodSchema{.name = "get", .return_type = TypeRef{"int32"}}},
-                .reference_target = true,
-            },
+            .facade =
+                FacadeSchema{
+                    .name = "FFacade",
+                    .target_type = TypeRef{"@target"},
+                    .target_member_name = "target",
+                    .methods = {FacadeMethodSchema{.name = "get", .return_type = TypeRef{"int32"}}},
+                    .reference_target = true,
+                },
         }},
     };
 
@@ -573,7 +574,7 @@ TEST(Generator, RendersCompleteProductionManifest) {
     auto const manifest{load_manifest(manifest_path)};
     auto const files{render_modules(lower_modules(manifest))};
 
-    EXPECT_EQ(files.size(), 96);
+    EXPECT_EQ(files.size(), 98);
     EXPECT_EQ(files.front().path,
               "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/countdown_timers.h");
     EXPECT_EQ(files.back().path,

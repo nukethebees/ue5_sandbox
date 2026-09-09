@@ -94,7 +94,7 @@ TEST_CASE("SandboxCore.SingleAllocation.Empty boundaries and alignment") {
     rows.remove_at_swap(0, 0);
     CHECK(rows.capacity() == 0);
 
-    for (int32 const count : {1, 63, 64, 65, 127, 128, 129}) {
+    for (int32 const count : {1, 3, 17, 63, 64, 65, 127, 128, 129}) {
         CAPTURE(count);
         SingleAllocationAlignmentData values;
         values.reserve(count);

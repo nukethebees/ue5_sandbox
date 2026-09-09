@@ -18,6 +18,10 @@ Generated constexpr offset functions apply this sequential layout using `capacit
 
 Reserve rounds to the granularity. Append growth uses geometric slack before rounding. Growth allocates one new block, bulk-copies each live column, then releases the old block. Allocation-size and row-count arithmetic are checked. Owners remain move-only; reset and removal retain capacity.
 
+`max_capacity` is a schema-specific, conservative limit bounded by `int32` row counts and `PTRDIFF_MAX` allocation bytes, rounded down to 64 rows. Requests beyond it fail before allocation. Public generated layout functions accept a validated capacity-block count; callers must not pass arbitrary byte-sized integers. Column types may repeat: columns are identified by their declaration position and field path, not by type. Empty schemas are rejected by the generator. Over-alignment is supported provided the alignment fits the allocator's 32-bit argument.
+
+Moving transfers the allocation without allocating and leaves the source with zero size and capacity. Move assignment first releases the destination's previous block. Reset only clears the logical size; destruction releases the retained block.
+
 Leaves must be non-cv, non-array object types that are trivially copyable, trivially copy constructible, trivially destructible and nothrow default constructible. Location-dependent invariants requiring relocation fixups are unsupported. Byte-array placement construction establishes the supported implicit lifetimes without initializing the allocation. Defaulted additions use the backend's normal default/value construction policy.
 
 ## Compact views
@@ -34,6 +38,8 @@ auto readonly = selected.get_const_view();
 ```
 
 Views capture a range, not a growing count. Growth, moving or destroying the owner invalidates borrowed views and extracted spans. Reacquire them after those operations; the top-level handle's internal owner-state pointer is not a promise of growth-following behavior. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references.
+
+Owner borrowing functions require an lvalue, preventing accidental views from temporary owners. Temporary non-owning views can still be sliced. Explicit pointer-based view construction remains the caller's responsibility: the owner and backing storage must outlive every use.
 
 Nested schemas consisting of matching scalar `xs`/`ys` or `xs`/`ys`/`zs` columns use shared compact vector views. Their Unreal names are `ml::soa::Vector2View<T>`, `Vector2ConstView<T>`, `Vector3View<T>` and `Vector3ConstView<T>` (available through `SandboxCore/single_allocation_storage.h`). The native backend exposes the corresponding names in `ml::native_soa`. Both use the same implementation; Unreal component accessors return TArrayViews and native accessors return standard spans.
 
@@ -82,6 +88,20 @@ Allocator variants select a type providing `allocate(bytes, alignment)` and `fre
 
 ## Validation and measurement
 
-The test suites cover compact view sizes, mutable/const conversion, vector strides and slicing, aligned bulk copies, self-append, empty inputs, overflow, descending removal subsets and invalid indices. Use the repository CMake workflows for codegen, native tests and Unreal core tests.
+The test suites cover compact view sizes and trivial copyability, mutable/const conversion, rejection of temporary-owner borrowing, vector strides and invalid slices, aligned bulk copies, self-append, empty inputs, generated layout limits, overflow, descending removal subsets and invalid indices. A generated owner with a counting allocator checks single-block allocation, growth, reset, move assignment over an owning destination, and balanced destruction without allocating at the arithmetic limit.
+
+Run correctness validation from the repository root:
+
+```powershell
+cmake --workflow --preset codegen
+cmake --workflow --preset native-soa
+cmake --workflow --preset debug-game
+cmake --build --preset debug-game --target core-tests
+ctest --preset debug-game-unit-tests -R '^SandboxCore\.'
+```
+
+The native workflow includes benchmark pipeline smoke checks, not a timed comparison. The benchmark commands and reports remain separate. Allocation counting uses the compile fixture's allocator adapter; actual mimalloc storage and alignment are exercised separately by the native and Unreal suites.
+
+The native standard-allocation suite also passes Clang 21 AddressSanitizer on Win64. For a separate local build, configure the `native-soa` preset with a different `-B` directory, `-DCMAKE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer"` and `-DCMAKE_CXX_SCAN_FOR_MODULES=OFF`. Build only `native-soa-tests`, then run CTest with `-R '^native-soa-tests$'`. Make LLVM's `clang_rt.asan_dynamic-x86_64.dll` available beside the generated tools and test executable in `Codegen/native_soa` before building; the instrumented generator runs during the build. This checks the standard allocation path, not mimalloc internals. UBSan has not been run.
 
 The [comparison README](../SbxCoreExperiments/README.md) documents benchmark commands; the [investigation report](../SbxCoreExperiments/INVESTIGATION.md) preserves earlier allocator measurements. Those historical numbers predate the compact-view and bulk-operation changes. Production gameplay adoption should follow populated-workload measurements, not empty reserve alone.

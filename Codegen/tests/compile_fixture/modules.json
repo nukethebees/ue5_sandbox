@@ -182,7 +182,10 @@
         },
         {
           "name": "FParents",
-          "single_allocation": {"name": "SingleParents"},
+          "single_allocation": {
+            "name": "SingleParents",
+            "variants": [{"name": "CountedParents", "allocator": "@counting_allocator"}]
+          },
           "members": [
             {"name": "keys", "kind": "array", "type": "int32"},
             {"name": "children", "kind": "nested", "type": "@child", "nested_schema": "FChild"}

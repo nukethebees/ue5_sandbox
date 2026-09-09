@@ -124,6 +124,27 @@ TEST(SingleAllocationSoa, EmitsCompactViewsAndSharedOwnerState) {
     EXPECT_NE(vectors.find("auto view_nested() const -> ChildView"), std::string::npos);
 }
 
+TEST(SingleAllocationSoa, OwnerBorrowingRequiresLvalues) {
+    auto const output{render(schemas())};
+    EXPECT_NE(output.find("auto get_view() & -> View"), std::string::npos);
+    EXPECT_NE(output.find("auto get_view() const & -> ConstView"), std::string::npos);
+    EXPECT_NE(output.find("auto get_view() && -> View = delete"), std::string::npos);
+    EXPECT_NE(output.find("auto get_view() const && -> ConstView = delete"), std::string::npos);
+    EXPECT_NE(output.find("auto get_const_view() const && -> ConstView = delete"),
+              std::string::npos);
+    EXPECT_NE(output.find("auto slice(size_type, size_type) && -> View = delete"),
+              std::string::npos);
+    EXPECT_NE(output.find("auto left(size_type) const && -> ConstView = delete"),
+              std::string::npos);
+    EXPECT_NE(output.find("auto right(size_type) && -> View = delete"), std::string::npos);
+}
+
+TEST(SingleAllocationSoa, RejectsEmptySchema) {
+    auto input{schemas()};
+    input.back().members.clear();
+    EXPECT_THROW(render(input), std::invalid_argument);
+}
+
 TEST(SingleAllocationSoa, RejectsCompactViewNameCollisions) {
     auto input{schemas()};
     input.front().members.front().name = "columns";

@@ -15,6 +15,74 @@ namespace {
 
 using namespace codegen_compile_fixture;
 
+template <typename T>
+concept BorrowsOwner = requires(T&& owner) { std::forward<T>(owner).get_view(); };
+
+template <typename T>
+concept BorrowsConstOwner = requires(T&& owner) { std::forward<T>(owner).get_const_view(); };
+
+template <typename T>
+concept SlicesOwner = requires(T&& owner) { std::forward<T>(owner).slice(0, 0); };
+
+void test_single_allocation_ownership() {
+    using Owner = CountedParents;
+    static_assert(BorrowsOwner<Owner&> && BorrowsOwner<Owner const&>);
+    static_assert(!BorrowsOwner<Owner> && !BorrowsOwner<Owner const>);
+    static_assert(!BorrowsConstOwner<Owner> && !BorrowsConstOwner<Owner const>);
+    static_assert(!SlicesOwner<Owner> && !SlicesOwner<Owner const>);
+    static_assert(SlicesOwner<Owner::View> && SlicesOwner<Owner::ConstView>);
+    static_assert(std::is_nothrow_move_constructible_v<Owner>);
+    static_assert(std::is_nothrow_move_assignable_v<Owner>);
+    static_assert(!std::is_copy_assignable_v<Owner>);
+    {
+        Owner source;
+        source.reserve(0);
+        source.add_defaulted(0);
+        check(CountingAllocator::allocations == 0);
+        source.reserve(3);
+        check(CountingAllocator::allocations == 1 && CountingAllocator::frees == 0);
+        check(CountingAllocator::last_bytes == source.allocated_bytes());
+        check(CountingAllocator::last_alignment == Owner::allocation_alignment);
+        source.add_defaulted(source.capacity());
+        source.get_view().keys()[0] = 42;
+        check(CountingAllocator::allocations == 1);
+        source.add_defaulted(1);
+        check(CountingAllocator::allocations == 2 && CountingAllocator::frees == 1);
+        check(source.get_view().keys()[0] == 42);
+        auto* const pointer{source.get_view().keys().GetData()};
+        Owner moved{std::move(source)};
+        check(source.num() == 0 && source.capacity() == 0 && source.allocated_bytes() == 0);
+        check(CountingAllocator::allocations == 2 && CountingAllocator::frees == 1);
+        Owner destination;
+        destination.reserve(17);
+        check(CountingAllocator::allocations == 3);
+        destination = std::move(moved);
+        check(CountingAllocator::frees == 2);
+        check(moved.num() == 0 && moved.capacity() == 0);
+        auto& alias{destination};
+        destination = std::move(alias);
+        check(CountingAllocator::frees == 2);
+        check(destination.get_view().keys().GetData() == pointer);
+        auto const capacity{destination.capacity()};
+        destination.reset();
+        check(destination.num() == 0 && destination.capacity() == capacity);
+        check(CountingAllocator::frees == 2);
+        CountingAllocator::reject_allocation = true;
+        bool rejected{};
+        try {
+            destination.reserve(Owner::max_capacity);
+        } catch (std::bad_alloc const&) {
+            rejected = true;
+        }
+        CountingAllocator::reject_allocation = false;
+        check(rejected && destination.capacity() == capacity);
+        check(CountingAllocator::last_bytes ==
+              Owner::layout_bytes(Owner::max_capacity / Owner::capacity_granularity));
+        check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 2);
+    }
+    check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 3);
+}
+
 void test_homogeneous_storage() {
     FValuesf values;
     values.add(3.0f, 30.0f);
@@ -307,6 +375,7 @@ void test_static_tables() {
 
 auto main() -> int {
     try {
+        test_single_allocation_ownership();
         using SingleParents = codegen_compile_fixture::SingleParents;
         static_assert(sizeof(SingleParents::View) == 16);
         static_assert(!std::is_copy_constructible_v<SingleParents>);

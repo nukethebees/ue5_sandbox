@@ -769,7 +769,9 @@ struct SpacingDoublesSingleLayout {
             "Single-allocation leaf positions0.xs requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
-        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
+        static_assert(
+            allocation_alignment <= std::numeric_limits<uint32>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(double) <=
                       (max_allocation_size - positions0_xs_block_offset) / capacity_granularity);
         static_assert(sizeof(double) <=
@@ -1566,24 +1568,36 @@ struct SingleSpacingDoubles : SingleSpacingDoublesStorage {
     auto operator=(SingleSpacingDoubles const&) -> SingleSpacingDoubles& = delete;
     SingleSpacingDoubles(SingleSpacingDoubles&&) noexcept = default;
     auto operator=(SingleSpacingDoubles&&) noexcept -> SingleSpacingDoubles& = default;
-    auto get_view() -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
-    auto left(size_type count) -> View { return get_view().left(count); }
-    auto right(size_type count) -> View { return get_view().right(count); }
-    auto get_view() const -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const -> ConstView {
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
         return {this, offset, count};
     }
-    auto slice(size_type offset, size_type count) const -> ConstView {
+    auto slice(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type count) const -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const -> ConstView { return get_view().right(count); }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 
 struct SpacingMixedBundleView;
@@ -2667,7 +2681,9 @@ struct SpacingMixedWidthsSingleLayout {
             "Single-allocation leaf bundle0.rates requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
-        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
+        static_assert(
+            allocation_alignment <= std::numeric_limits<uint32>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(uint8) <=
                       (max_allocation_size - bundle0_flags_block_offset) / capacity_granularity);
         static_assert(sizeof(uint16) <=
@@ -4054,24 +4070,36 @@ struct SingleSpacingMixedWidths : SingleSpacingMixedWidthsStorage {
     auto operator=(SingleSpacingMixedWidths const&) -> SingleSpacingMixedWidths& = delete;
     SingleSpacingMixedWidths(SingleSpacingMixedWidths&&) noexcept = default;
     auto operator=(SingleSpacingMixedWidths&&) noexcept -> SingleSpacingMixedWidths& = default;
-    auto get_view() -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
-    auto left(size_type count) -> View { return get_view().left(count); }
-    auto right(size_type count) -> View { return get_view().right(count); }
-    auto get_view() const -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const -> ConstView {
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
         return {this, offset, count};
     }
-    auto slice(size_type offset, size_type count) const -> ConstView {
+    auto slice(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type count) const -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const -> ConstView { return get_view().right(count); }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 
 struct SpacingAlignedBundleView;
@@ -4730,7 +4758,9 @@ struct SpacingAlignedSingleLayout {
             "Single-allocation leaf bundle0.aligned256 requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
-        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
+        static_assert(
+            allocation_alignment <= std::numeric_limits<uint32>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(float) <= (max_allocation_size - bundle0_positions_block_offset) /
                                            capacity_granularity);
         static_assert(sizeof(float) <= (max_allocation_size - bundle0_velocities_block_offset) /
@@ -5401,23 +5431,35 @@ struct SingleSpacingAligned : SingleSpacingAlignedStorage {
     auto operator=(SingleSpacingAligned const&) -> SingleSpacingAligned& = delete;
     SingleSpacingAligned(SingleSpacingAligned&&) noexcept = default;
     auto operator=(SingleSpacingAligned&&) noexcept -> SingleSpacingAligned& = default;
-    auto get_view() -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
-    auto left(size_type count) -> View { return get_view().left(count); }
-    auto right(size_type count) -> View { return get_view().right(count); }
-    auto get_view() const -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const -> ConstView {
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
         return {this, offset, count};
     }
-    auto slice(size_type offset, size_type count) const -> ConstView {
+    auto slice(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type count) const -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const -> ConstView { return get_view().right(count); }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 } // namespace ml::single_allocation_experiment

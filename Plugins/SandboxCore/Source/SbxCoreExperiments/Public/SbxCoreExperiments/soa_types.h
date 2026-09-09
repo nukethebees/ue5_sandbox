@@ -2042,7 +2042,9 @@ struct EntityDataSingleLayout {
             "Single-allocation leaf navigation_risk_tiers requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
-        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
+        static_assert(
+            allocation_alignment <= std::numeric_limits<uint32>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(Handle) <=
                       (max_allocation_size - entity_handles_block_offset) / capacity_granularity);
         static_assert(sizeof(uint32) <=
@@ -3785,24 +3787,36 @@ struct SingleAllocationEntityData : SingleAllocationEntityDataStorage {
     auto operator=(SingleAllocationEntityData const&) -> SingleAllocationEntityData& = delete;
     SingleAllocationEntityData(SingleAllocationEntityData&&) noexcept = default;
     auto operator=(SingleAllocationEntityData&&) noexcept -> SingleAllocationEntityData& = default;
-    auto get_view() -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
-    auto left(size_type count) -> View { return get_view().left(count); }
-    auto right(size_type count) -> View { return get_view().right(count); }
-    auto get_view() const -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const -> ConstView {
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
         return {this, offset, count};
     }
-    auto slice(size_type offset, size_type count) const -> ConstView {
+    auto slice(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type count) const -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const -> ConstView { return get_view().right(count); }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 
 struct FMemorySingleEntityDataStorage
@@ -4614,24 +4628,36 @@ struct FMemorySingleEntityData : FMemorySingleEntityDataStorage {
     auto operator=(FMemorySingleEntityData const&) -> FMemorySingleEntityData& = delete;
     FMemorySingleEntityData(FMemorySingleEntityData&&) noexcept = default;
     auto operator=(FMemorySingleEntityData&&) noexcept -> FMemorySingleEntityData& = default;
-    auto get_view() -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
-    auto left(size_type count) -> View { return get_view().left(count); }
-    auto right(size_type count) -> View { return get_view().right(count); }
-    auto get_view() const -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const -> ConstView {
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
         return {this, offset, count};
     }
-    auto slice(size_type offset, size_type count) const -> ConstView {
+    auto slice(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type count) const -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const -> ConstView { return get_view().right(count); }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 
 struct AlignmentDataView;
@@ -5075,7 +5101,9 @@ struct AlignmentDataSingleLayout {
             "Single-allocation leaf handles requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
 
-        static_assert(allocation_alignment <= std::numeric_limits<uint32>::max());
+        static_assert(
+            allocation_alignment <= std::numeric_limits<uint32>::max(),
+            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
         static_assert(sizeof(uint8) <=
                       (max_allocation_size - bytes_block_offset) / capacity_granularity);
         static_assert(sizeof(OddBytes) <=
@@ -5519,24 +5547,36 @@ struct SingleAllocationAlignmentData : SingleAllocationAlignmentDataStorage {
     SingleAllocationAlignmentData(SingleAllocationAlignmentData&&) noexcept = default;
     auto operator=(SingleAllocationAlignmentData&&) noexcept
         -> SingleAllocationAlignmentData& = default;
-    auto get_view() -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
-    auto left(size_type count) -> View { return get_view().left(count); }
-    auto right(size_type count) -> View { return get_view().right(count); }
-    auto get_view() const -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const -> ConstView {
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
         return {this, offset, count};
     }
-    auto slice(size_type offset, size_type count) const -> ConstView {
+    auto slice(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type count) const -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const -> ConstView { return get_view().right(count); }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 
 struct FMemorySingleAlignmentDataStorage
@@ -5772,24 +5812,36 @@ struct FMemorySingleAlignmentData : FMemorySingleAlignmentDataStorage {
     auto operator=(FMemorySingleAlignmentData const&) -> FMemorySingleAlignmentData& = delete;
     FMemorySingleAlignmentData(FMemorySingleAlignmentData&&) noexcept = default;
     auto operator=(FMemorySingleAlignmentData&&) noexcept -> FMemorySingleAlignmentData& = default;
-    auto get_view() -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) -> View { return get_view(offset, count); }
-    auto left(size_type count) -> View { return get_view().left(count); }
-    auto right(size_type count) -> View { return get_view().right(count); }
-    auto get_view() const -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const -> ConstView {
+    auto get_view() & -> View { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
+    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
+    auto left(size_type count) & -> View { return get_view().left(count); }
+    auto right(size_type count) & -> View { return get_view().right(count); }
+    auto get_view() && -> View = delete;
+    auto get_view(size_type, size_type) && -> View = delete;
+    auto slice(size_type, size_type) && -> View = delete;
+    auto left(size_type) && -> View = delete;
+    auto right(size_type) && -> View = delete;
+    auto get_view() const& -> ConstView { return {this, 0, num()}; }
+    auto get_view(size_type offset, size_type count) const& -> ConstView {
         return {this, offset, count};
     }
-    auto slice(size_type offset, size_type count) const -> ConstView {
+    auto slice(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
-    auto left(size_type count) const -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const -> ConstView { return get_view().right(count); }
-    auto get_const_view() const -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
+    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
+    auto get_view() const&& -> ConstView = delete;
+    auto get_view(size_type, size_type) const&& -> ConstView = delete;
+    auto slice(size_type, size_type) const&& -> ConstView = delete;
+    auto left(size_type) const&& -> ConstView = delete;
+    auto right(size_type) const&& -> ConstView = delete;
+    auto get_const_view() const& -> ConstView { return get_view(); }
+    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
         return get_view(offset, count);
     }
+    auto get_const_view() const&& -> ConstView = delete;
+    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 
 struct MimallocVectorsView;
