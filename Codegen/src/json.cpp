@@ -143,6 +143,16 @@ auto parse_parameter_passing(std::string const& value, std::string const& path)
     throw ManifestError{path + ": expected 'const_ref' or 'value'; got '" + value + "'"};
 }
 
+auto parse_facade_target_storage(std::string const& value, std::string const& path) -> bool {
+    if (value == "pointer") {
+        return false;
+    }
+    if (value == "reference") {
+        return true;
+    }
+    throw ManifestError{path + ": expected 'pointer' or 'reference'; got '" + value + "'"};
+}
+
 auto parse_parameter(Json const& value, std::string const& path) -> ParameterSchema {
     reject_unknown(value, path, {"type", "name", "default"});
     return ParameterSchema{
@@ -677,9 +687,9 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                 .friend_kind = value_or<std::string>(facade_value, "friend_kind", "class", facade_path),
                 .definitions_in_source =
                     value_or<bool>(facade_value, "definitions_in_source", false, facade_path),
-                .reference_target =
-                    value_or<std::string>(facade_value, "target_storage", "pointer", facade_path) ==
-                    "reference",
+                .reference_target = parse_facade_target_storage(
+                    value_or<std::string>(facade_value, "target_storage", "pointer", facade_path),
+                    facade_path + "/target_storage"),
             },
         };
     }
