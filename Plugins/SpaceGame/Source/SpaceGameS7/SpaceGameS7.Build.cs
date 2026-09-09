@@ -14,6 +14,8 @@ public class SpaceGameS7 : ModuleRules
             "Core",
             "CoreUObject",
             "SpaceGame",
+            "SpaceGameSimulation",
+            "SpaceGamePresentation",
             "UMG",
         });
 

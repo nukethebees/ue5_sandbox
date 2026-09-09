@@ -2,10 +2,10 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxCore/time_series_data.h>
 #include <SandboxNative/RegistryEntityHandle.h>

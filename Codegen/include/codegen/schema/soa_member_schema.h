@@ -13,6 +13,7 @@ struct SoaMemberSchema {
     SoaMemberKind kind;
     TypeRef type;
     std::optional<std::string> fixed_schema;
+    std::optional<std::string> nested_schema;
 };
 
 } // namespace codegen

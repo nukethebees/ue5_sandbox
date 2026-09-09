@@ -4,7 +4,7 @@
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SGLegacy/combat/DamageableShip.h"
 #include "SGLegacy/combat/weapons/ShipLaserConfig.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"

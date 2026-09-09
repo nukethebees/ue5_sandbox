@@ -4,10 +4,10 @@
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 namespace ml {
 namespace {

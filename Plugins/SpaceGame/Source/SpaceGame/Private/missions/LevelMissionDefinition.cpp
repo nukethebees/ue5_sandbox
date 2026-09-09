@@ -1,6 +1,6 @@
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 
 void FTestMissionStartupData::prune_invalid_actors() {
     hero_entities.RemoveAll([](TObjectPtr<AActor> const& actor) { return !IsValid(actor); });

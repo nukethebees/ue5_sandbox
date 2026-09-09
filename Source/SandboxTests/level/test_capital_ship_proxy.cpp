@@ -5,9 +5,9 @@
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 

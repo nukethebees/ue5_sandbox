@@ -1,6 +1,6 @@
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
 
-#include "SpaceGame/entities/TestTeam.h"
+#include "SpaceGameSimulation/entities/TestTeam.h"
 
 #include <GameFramework/Actor.h>
 #if WITH_EDITOR

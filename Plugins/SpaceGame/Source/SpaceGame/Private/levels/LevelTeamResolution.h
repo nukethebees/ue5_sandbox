@@ -1,7 +1,7 @@
 #pragma once
 
-#include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/levels/LevelTypes.h>
+#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <Misc/Optional.h>
 

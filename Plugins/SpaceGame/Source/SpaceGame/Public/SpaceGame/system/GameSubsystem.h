@@ -3,7 +3,7 @@
 #include "SpaceGame/levels/LevelDefinition.h"
 #include "SpaceGame/persistence/SaveGameBrowser.h"
 #include "SpaceGame/ships/player/PlayerControlContext.h"
-#include "SpaceGame/ui/style/GameUiStyle.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include "Subsystems/GameInstanceSubsystem.h"
 
@@ -146,17 +146,11 @@ class SPACEGAME_API UGameSubsystem : public UGameInstanceSubsystem {
     auto has_level_launch_error() const noexcept -> bool;
     auto take_level_launch_error() -> FString;
   private:
-    void initialize_ui_style();
-
     FGameCapabilities platform_capabilities_;
     FSaveGameBrowser save_game_browser_;
     TOptional<FPendingLevelDefinition> pending_level_{NullOpt};
     TOptional<FLevelSelectRequest> level_select_request_{NullOpt};
     FString level_launch_error_{};
     bool level_transition_in_progress_{false};
-
-    UPROPERTY(Transient)
-    TObjectPtr<USpaceGameUiTheme> ui_theme_{nullptr};
-    FGameUiStyle ui_style_{};
 };
 }

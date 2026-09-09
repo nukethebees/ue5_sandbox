@@ -1,4 +1,5 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
+#include <SpaceGame/telemetry/LevelTelemetryJson.h>
 
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
@@ -7,17 +8,17 @@
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/missions/TestMissionManager.h>
-#include <SpaceGame/presentation/HUDManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/CollisionGridVisualizationComponent.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/support/mesh.h>
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
+#include <SpaceGamePresentation/presentation/HUDManager.h>
+#include <SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h>
+#include <SpaceGamePresentation/support/mesh.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/missions/TestMissionManager.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/invoke.h>
@@ -185,6 +186,8 @@ void ATestBatchOrchestrator::EndPlay(EEndPlayReason::Type const end_play_reason)
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
+    persist_finalized_telemetry_run();
+    level_presentation_.Reset();
     level_simulation_.Reset();
     level_definition_.Reset();
     world_collision_.restore_collision();
@@ -236,6 +239,8 @@ void ATestBatchOrchestrator::reset_for_new_level() {
     if (IsValid(player_ship)) {
         player_ship->unbind_simulation();
     }
+    persist_finalized_telemetry_run();
+    level_presentation_.Reset();
     level_simulation_.Reset();
     level_definition_.Reset();
     launched_paused_ = false;
@@ -448,30 +453,18 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
             errors.add(TEXT("Level presentation resources are incomplete"));
             return false;
         }
-        result->telemetry_metadata =
-            make_level_telemetry_run_metadata(world, mission_definition, presentation_enabled);
+        result->telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
         result->telemetry_metadata->level_id = level_definition_->metadata.id.value;
         result->telemetry_metadata->level_display_name = level_definition_->metadata.title;
         result->telemetry_metadata->source_sha256 = level_source_sha256_;
         result->telemetry_metadata->requested_duration_seconds =
             launch_options_.simulated_duration_seconds;
         result->telemetry_metadata->detailed_timing = launch_options_.detailed_timing;
-        result->telemetry_metadata->launch_state =
-            launch_options_.launch_mode == ml::ioj::ELevelLaunchMode::Paused ? TEXT("paused")
-                                                                             : TEXT("running");
-        result->telemetry_metadata->presentation_mode =
-            launch_options_.presentation_mode == ml::ioj::ELevelPresentationMode::SimulationOnly
-                ? TEXT("simulation_only")
-                : TEXT("visual");
         result->telemetry_metadata->stop_when_battle_resolved =
             launch_options_.stop_when_battle_resolved;
-        result->telemetry_metadata->results_navigation =
-            launch_options_.results_navigation == ml::ioj::ELevelResultsNavigation::Telemetry
-                ? TEXT("telemetry")
-                : TEXT("none");
-        level_simulation_.Emplace(MoveTemp(result.value()),
-                                  presentation_enabled ? &presentation : nullptr);
-        validate_proxy_handles();
+        initial_turret_transforms_ = result->turret_transforms;
+        level_simulation_.Emplace(MoveTemp(result.value()));
+        validate_entity_handles();
         return true;
     }
 
@@ -554,26 +547,26 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         errors.add(TEXT("Level presentation resources are incomplete"));
         return false;
     }
-    data.telemetry_metadata =
-        make_level_telemetry_run_metadata(world, mission_definition, presentation_enabled);
+    data.telemetry_metadata = make_level_telemetry_run_metadata(world, mission_definition);
     ml::validate_world_fighter_spawn_slots(data, errors);
     if (errors.has_errors()) {
         return false;
     }
-    level_simulation_.Emplace(MoveTemp(data), presentation_enabled ? &presentation : nullptr);
+    initial_turret_transforms_ = data.turret_transforms;
+    level_simulation_.Emplace(MoveTemp(data));
     auto const capital_count{capital_proxies.Num()};
     for (int32 i{}; i < capital_count; ++i) {
         capital_proxies[i]->set_entity_handle(get_capital_ships()->get_handle(i));
     }
     auto const turret_count{turret_proxies.Num()};
     for (int32 i{}; i < turret_count; ++i) {
-        turret_proxies[i]->set_entity_handle(get_turrets()->entities.handles[i]);
+        turret_proxies[i]->set_entity_handle(get_turrets()->get_read_view().entities.handles[i]);
     }
     auto const spinner_count{spinner_proxies.Num()};
     for (int32 i{}; i < spinner_count; ++i) {
-        spinner_proxies[i]->set_entity_handle(get_spinners()->entities.handles[i]);
+        spinner_proxies[i]->set_entity_handle(get_spinners()->get_read_view().entities.handles[i]);
     }
-    validate_proxy_handles();
+    validate_entity_handles();
     return true;
 }
 
@@ -682,10 +675,20 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
             FString::Printf(TEXT("Cannot start level:\n%s"), *simulation_errors.format()));
         return false;
     }
+    if (IsValid(player_ship) && get_player_ship_simulation()) {
+        player_ship->bind_simulation(*get_player_ship_simulation());
+    }
     bind_and_destroy_proxies();
     world_collision_.initialise_static_geometry(
         *world, level_config->collision_grid, get_spatial_query_manager().get_collision_system());
+    external_timings_.Reset();
+    telemetry_environment_ = make_level_telemetry_environment(*world);
     level_simulation_->finish_initialisation();
+    if (presentation_enabled) {
+        level_presentation_.Emplace(make_presentation_resources(),
+                                    level_simulation_->get_read_view(),
+                                    MoveTemp(initial_turret_transforms_));
+    }
     update_collision_bounds_visualization();
     level_simulation_->on_mission_evaluated = [this] { process_mission_result(); };
     level_simulation_->on_end_tick = [this](FLevelSimulation&) {
@@ -693,16 +696,13 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         process_mission_result();
         process_battle_run_end();
     };
-    level_simulation_->on_telemetry_persisted = [this](FString run_id, FString error) {
-        handle_telemetry_persisted(MoveTemp(run_id), MoveTemp(error));
-    };
     if (presentation_enabled) {
         hud_manager.initialise(hud_update_frequencies,
                                get_mission_manager(),
                                get_entity_registry(),
                                hud_tick_loop.tick_rate,
                                get_player_ship_simulation(),
-                               *level_config,
+                               level_config->get_visual_config(),
                                level_config->entity_overlay,
                                level_config->radar);
         if (IsValid(player_ship)) {
@@ -872,7 +872,12 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
         return;
     }
 
-    collision_grid_visualization->configure(level_config->collision_grid);
+    collision_grid_visualization->configure(
+        level_config->collision_grid.calculate_grid_dimensions(),
+        level_config->collision_grid.cell_size,
+        level_config->collision_grid.line_colour,
+        level_config->collision_grid.line_thickness,
+        level_config->collision_grid.show_grid);
     collision_grid_visualization->configure_collision_bounds(show_collision_bounds,
                                                              collision_bounds_max_draw_distance);
 }
@@ -897,12 +902,12 @@ void ATestBatchOrchestrator::update_collision_bounds_visualization() {
         get_spatial_query_manager().get_collision_system());
 }
 
-void ATestBatchOrchestrator::validate_proxy_handles() {
+void ATestBatchOrchestrator::validate_entity_handles() {
     if (auto const* player{get_player_ship_simulation()}) {
         check(get_entity_registry().is_valid_handle(player->registry_handle));
     }
-    get_capital_ships()->validate_proxy_handles();
-    get_turrets()->validate_proxy_handles();
+    get_capital_ships()->validate_entity_handles();
+    get_turrets()->validate_entity_handles();
 }
 
 void ATestBatchOrchestrator::Tick(float dt) {
@@ -914,9 +919,10 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
     if (get_state() != EOrchestratorState::Running) {
         return;
     }
+    auto const detailed_timing{get_level_telemetry_manager().detailed_timing_enabled()};
+    auto const timing_window{get_level_telemetry_manager().get_performance_window_count()};
     level_simulation_->advance(dt);
     update_collision_bounds_visualization();
-    auto const detailed_timing{get_level_telemetry_manager().detailed_timing_enabled()};
     if (presentation_enabled) {
         auto const hud_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
         hud_tick_loop.add_time(dt);
@@ -924,17 +930,27 @@ void ATestBatchOrchestrator::tick(time_type const dt) {
             hud_manager.tick(1);
         }
         if (detailed_timing) {
-            get_level_telemetry_manager().record_external_timing(
-                ELevelTelemetryTimingSystem::Hud, FPlatformTime::Seconds() - hud_started_at);
+            record_external_timing(timing_window,
+                                   ELevelTelemetryTimingSystem::Hud,
+                                   FPlatformTime::Seconds() - hud_started_at);
         }
     }
     auto const presentation_started_at{detailed_timing ? FPlatformTime::Seconds() : 0.0};
-    level_simulation_->commit_presentation(dt);
-    if (detailed_timing) {
-        get_level_telemetry_manager().record_external_timing(
-            ELevelTelemetryTimingSystem::Presentation,
-            FPlatformTime::Seconds() - presentation_started_at);
+    if (level_presentation_.IsSet()) {
+        level_presentation_->tick(dt, level_simulation_->get_read_view());
     }
+    if (auto* player{get_player_ship_simulation()};
+        player && player->consume_death_notification()) {
+        if (IsValid(player_ship)) {
+            player_ship->handle_simulation_death();
+        }
+    }
+    if (detailed_timing) {
+        record_external_timing(timing_window,
+                               ELevelTelemetryTimingSystem::Presentation,
+                               FPlatformTime::Seconds() - presentation_started_at);
+    }
+    persist_finalized_telemetry_run();
 }
 
 void ATestBatchOrchestrator::set_time_scale(time_type const scale) noexcept {
@@ -993,14 +1009,18 @@ void ATestBatchOrchestrator::prepare_level_button() {
 #endif
 
 auto ATestBatchOrchestrator::make_presentation_resources() const -> FLevelPresentationResources {
-    return {.lasers = laser_instances_,
-            .capital_ships = capital_instances_,
-            .fighters = fighter_instances_,
-            .turrets = turret_instances_,
-            .spinners = spinner_instances_,
-            .sparks = spark_renderer_,
-            .config = level_config,
-            .player = player_ship};
+    return {
+        .lasers = laser_instances_,
+        .capital_ships = capital_instances_,
+        .fighters = fighter_instances_,
+        .turrets = turret_instances_,
+        .spinners = spinner_instances_,
+        .sparks = spark_renderer_,
+        .config = level_config->get_visual_config(),
+        .player =
+            IsValid(player_ship)
+                ? TOptional<FPlayerPresentationResources>{player_ship->get_presentation_resources()}
+                : NullOpt};
 }
 auto ATestBatchOrchestrator::add_static_geometry(UPrimitiveComponent& component) -> bool {
     check(level_simulation_.IsSet());
@@ -1092,4 +1112,54 @@ void ATestBatchOrchestrator::handle_telemetry_persisted(FString run_id, FString 
     if (!subsystem->return_to_telemetry(MoveTemp(run_id), MoveTemp(error))) {
         UE_LOG(LogSandbox, Error, TEXT("Cannot navigate to completed telemetry run"));
     }
+}
+
+auto ATestBatchOrchestrator::take_finalized_telemetry_report() -> TOptional<FLevelTelemetryReport> {
+    if (!level_simulation_.IsSet()) {
+        return {};
+    }
+    auto record{get_level_telemetry_manager().take_finalized_run()};
+    if (!record.IsSet()) {
+        return {};
+    }
+    FLevelTelemetryReport report{MoveTemp(record.GetValue())};
+    report.metadata.environment = telemetry_environment_;
+    report.metadata.launch_state = launch_options_.launch_mode == ml::ioj::ELevelLaunchMode::Paused
+                                     ? TEXT("paused")
+                                     : TEXT("running");
+    report.metadata.results_navigation =
+        launch_options_.results_navigation == ml::ioj::ELevelResultsNavigation::Telemetry
+            ? TEXT("telemetry")
+            : TEXT("none");
+    report.metadata.presentation_enabled = presentation_enabled;
+    report.metadata.presentation_mode =
+        presentation_enabled ? TEXT("visual") : TEXT("simulation_only");
+    append_external_timings(report, external_timings_);
+    external_timings_.Reset();
+    return report;
+}
+void ATestBatchOrchestrator::persist_finalized_telemetry_run() {
+    if (GIsAutomationTesting) {
+        return;
+    }
+    auto finalized_report{take_finalized_telemetry_report()};
+    if (!finalized_report.IsSet()) {
+        return;
+    }
+    auto const& report{finalized_report.GetValue()};
+    auto const run_id{report.metadata.run_id};
+    auto const path{write_level_telemetry_run(report, level_telemetry_runs_directory())};
+    if (path) {
+        UE_LOG(LogSandbox, Display, TEXT("Wrote level telemetry run to '%s'"), **path);
+        handle_telemetry_persisted(run_id, {});
+    } else {
+        UE_LOG(LogSandbox, Error, TEXT("Failed to write level telemetry run: %s"), *path.error());
+        handle_telemetry_persisted(run_id, path.error());
+    }
+}
+
+void ATestBatchOrchestrator::record_external_timing(int32 const window_index,
+                                                    ELevelTelemetryTimingSystem const system,
+                                                    double const seconds) {
+    external_timings_.Add({window_index, system, seconds});
 }

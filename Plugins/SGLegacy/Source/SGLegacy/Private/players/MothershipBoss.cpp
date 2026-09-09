@@ -3,7 +3,7 @@
 #include "SandboxGameShared/constants/collision_channels.h"
 #include "SGLegacy/combat/DamageableShip.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/PointLightComponent.h"
 #include "Components/SceneComponent.h"

@@ -23,6 +23,7 @@ public class SandboxCoreTests : TestModuleRules
 		{
 			"Core",
 			"SandboxCore",
+            "SbxCoreExperiments",
 		});
     }
 }

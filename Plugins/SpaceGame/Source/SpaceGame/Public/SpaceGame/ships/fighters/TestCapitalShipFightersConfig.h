@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SpaceGame/combat/lasers/AttackDistanceBand.h"
-#include "SpaceGame/support/DrawDebugConfig.h"
+#include "SpaceGamePresentation/support/DrawDebugConfig.h"
+#include "SpaceGameSimulation/combat/lasers/AttackDistanceBand.h"
 
 #include "CoreMinimal.h"
 #include "Engine/DataAsset.h"

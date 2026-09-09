@@ -1,5 +1,6 @@
 #include <codegen/generator.h>
 
+#include "format_generated.h"
 #include "lowering.h"
 #include "lowering_utils.h"
 #include "validation.h"
@@ -257,16 +258,17 @@ auto render_modules(std::vector<Module> const& modules) -> std::vector<Generated
                 throw std::invalid_argument{"Duplicate generated output path: " +
                                             normalized.string()};
             }
-            result.push_back(GeneratedFile{normalized, render(*file)});
+            result.push_back(GeneratedFile{normalized, render(*file), file->format_generated});
         }
     }
     return result;
 }
 
-auto generate_files(std::vector<GeneratedFile> const& files,
+auto generate_files(std::vector<GeneratedFile> const& input_files,
                     std::filesystem::path const& project_root,
                     std::filesystem::path const& output_root,
                     bool check_only) -> int {
+    auto files{input_files};
     std::map<std::string, GeneratedFile const*> expected;
     for (auto const& file : files) {
         auto const relative{safe_relative_output_path(file.path, project_root)};
@@ -276,6 +278,14 @@ auto generate_files(std::vector<GeneratedFile> const& files,
         }
         if (!expected.emplace(detail::output_path_key(relative), &file).second) {
             throw std::invalid_argument{"Duplicate generated output path: " + path};
+        }
+    }
+
+    // Format before comparing or changing any destinations, including in --check mode.
+    for (auto& file : files) {
+        if (file.format_generated) {
+            file.content = detail::format_generated(
+                file.content, project_root / safe_relative_output_path(file.path, project_root));
         }
     }
 

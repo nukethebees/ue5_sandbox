@@ -5,7 +5,7 @@
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
 #include "SGLegacy/combat/weapons/ShipLaser.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Components/BoxComponent.h>
 #include <Engine/HitResult.h>

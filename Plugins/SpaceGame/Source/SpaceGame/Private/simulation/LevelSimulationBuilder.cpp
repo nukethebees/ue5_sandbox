@@ -1,10 +1,12 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
+#include <SpaceGame/levels/CompileLevelEvents.h>
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 
-#include <SpaceGame/entities/TestEntityType.h>
-#include <SpaceGame/simulation/EntityWorldBounds.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/support/mesh.h>
+#include <SpaceGamePresentation/support/mesh.h>
+#include <SpaceGameSimulation/entities/TestEntityType.h>
+#include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>

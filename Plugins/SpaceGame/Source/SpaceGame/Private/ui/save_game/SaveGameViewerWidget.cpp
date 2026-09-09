@@ -1,11 +1,12 @@
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SpaceGame/persistence/SaveGameBrowser.h"
 #include "SpaceGame/persistence/SaveProfileManager.h"
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
-#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "SSaveGameViewerView.h"
 
 #include <Engine/GameInstance.h>

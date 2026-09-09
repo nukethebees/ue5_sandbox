@@ -1,14 +1,15 @@
 #include "SpaceGame/ui/main_menu/MainMenuWidget.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SMainMenuView.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/main_menu/DebugSettingsWidget.h"
 #include "SpaceGame/ui/main_menu/LevelSelectWidget.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
 #include "SpaceGame/ui/save_game/SaveGameViewerWidget.h"
-#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
 #include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
+#include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Engine/GameInstance.h>
 #include <Kismet/KismetSystemLibrary.h>

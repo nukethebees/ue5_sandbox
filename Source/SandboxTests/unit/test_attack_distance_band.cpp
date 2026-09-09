@@ -1,4 +1,4 @@
-#include <SpaceGame/combat/lasers/AttackDistanceBand.h>
+#include <SpaceGameSimulation/combat/lasers/AttackDistanceBand.h>
 
 #include <CQTest.h>
 

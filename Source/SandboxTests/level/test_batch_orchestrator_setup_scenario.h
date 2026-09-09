@@ -9,6 +9,7 @@ enum class EOrchestratorSetupScenario : uint8 {
     SpawnMissingActors,
     SimulationClockConversions,
     LevelTelemetry,
+    PresentationFrameOrdering,
 };
 
 class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario {
@@ -34,6 +35,7 @@ class FTestBatchOrchestratorSetupScenario final : public FSimulationTestScenario
     void prepare_level();
     void simulation_clock_conversions();
     void level_telemetry();
+    void presentation_frame_ordering();
     void begin_level_telemetry();
     void kill_telemetry_test_entity();
     void on_level_telemetry_end_tick(ATestBatchOrchestrator& orchestrator);

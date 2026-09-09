@@ -2,7 +2,7 @@
 
 #include <GameFramework/Actor.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/missions/TestMissionManager.h>
+#include <SpaceGameSimulation/missions/TestMissionManager.h>
 
 #include "LevelMissionDefinition.generated.h"
 

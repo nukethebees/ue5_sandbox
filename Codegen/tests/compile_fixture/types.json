@@ -1,5 +1,7 @@
 {
   "types": {
+    "counting_allocator": {"spelling": "CountingAllocator", "header": "Project/CountingAllocator.h"},
+    "restricted_leaf": {"spelling": "RestrictedLeaf", "header": "Project/RestrictedLeaf.h"},
     "vector": {"spelling": "FVector2f", "header": "Project/Vector2f.h"},
     "vector2d": {"spelling": "FVector2d", "header": "Project/Vector2d.h"},
     "point": {"spelling": "FPoint2f", "header": "Project/Point2f.h"},

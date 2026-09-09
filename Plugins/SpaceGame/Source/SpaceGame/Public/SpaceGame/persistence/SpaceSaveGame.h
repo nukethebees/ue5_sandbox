@@ -1,8 +1,8 @@
 #pragma once
 
-#include <SpaceGame/missions/TestMissionFailReason.h>
-#include <SpaceGame/missions/TestMissionMode.h>
-#include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGameSimulation/missions/TestMissionFailReason.h>
+#include <SpaceGameSimulation/missions/TestMissionMode.h>
+#include <SpaceGameSimulation/missions/TestMissionState.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/SaveGame.h>

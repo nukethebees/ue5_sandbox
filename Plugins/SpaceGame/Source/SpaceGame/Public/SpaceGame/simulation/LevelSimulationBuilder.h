@@ -1,8 +1,8 @@
 #pragma once
 
 #include <SpaceGame/levels/LevelDefinition.h>
-#include <SpaceGame/levels/LevelStartErrors.h>
-#include <SpaceGame/simulation/LevelSimulation.h>
+#include <SpaceGameSimulation/levels/LevelStartErrors.h>
+#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
 #include <expected>
 

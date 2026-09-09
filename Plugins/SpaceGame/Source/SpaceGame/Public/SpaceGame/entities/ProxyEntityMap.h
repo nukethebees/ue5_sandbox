@@ -1,7 +1,7 @@
 #pragma once
 
-#include <SpaceGame/entities/TestEntityUniqueId.h>
 #include <SandboxNative/RegistryEntityHandle.h>
+#include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
 
 #include <Containers/Map.h>
 

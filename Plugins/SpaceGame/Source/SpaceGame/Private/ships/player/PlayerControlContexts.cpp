@@ -2,7 +2,7 @@
 
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Camera/CameraActor.h>
 #include <EnhancedInputComponent.h>

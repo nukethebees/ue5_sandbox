@@ -1,7 +1,7 @@
 #include "WarpingTarget.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "Sandbox/misc/learning/WarpVolume.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Components/BoxComponent.h>
 #include <Components/SceneComponent.h>

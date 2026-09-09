@@ -1,10 +1,10 @@
 #pragma once
 
-#include "SpaceGame/entities/TeamColours.h"
-#include "SpaceGame/entities/TestEntityRegistry.h"
-#include "SpaceGame/presentation/widgets/ShipHudKillData.h"
-#include "SpaceGame/simulation/LevelTelemetrySnapshot.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
+#include "SpaceGamePresentation/entities/TeamColours.h"
+#include "SpaceGamePresentation/presentation/widgets/ShipHudKillData.h"
+#include "SpaceGameSimulation/entities/TestEntityRegistry.h"
+#include "SpaceGameSimulation/simulation/LevelTelemetrySnapshot.h"
 
 #include <Input/UIActionBindingHandle.h>
 

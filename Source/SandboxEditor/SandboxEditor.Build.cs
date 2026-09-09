@@ -43,6 +43,8 @@ public class SandboxEditor : ModuleRules
             "SandboxUI",
             "SbxShadersExperiments",
             "SpaceGame",
+            "SpaceGameSimulation",
+            "SpaceGamePresentation",
             "SpaceGameS7",
             "Slate",
             "SlateCore",

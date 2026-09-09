@@ -2,8 +2,8 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <SpaceGame/missions/TestMissionFailReason.h>
-#include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGameSimulation/missions/TestMissionFailReason.h>
+#include <SpaceGameSimulation/missions/TestMissionState.h>
 
 #include <SandboxCore/time_series_data.h>
 

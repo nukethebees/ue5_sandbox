@@ -1,7 +1,8 @@
 #include "SpaceGame/ui/main_menu/MainMenuGameMode.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SpaceGame/ships/player/SpaceGamePlayerController.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <UObject/ConstructorHelpers.h>
 

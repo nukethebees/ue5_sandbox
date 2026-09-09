@@ -3,8 +3,8 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 #include <SandboxCore/time_series_data.h>
-#include <SpaceGame/missions/TestMissionMode.h>
-#include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGameSimulation/missions/TestMissionMode.h>
+#include <SpaceGameSimulation/missions/TestMissionState.h>
 #include <UObject/StrongObjectPtr.h>
 
 class USpaceGameLevelConfig;

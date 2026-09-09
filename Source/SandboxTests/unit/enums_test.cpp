@@ -1,4 +1,4 @@
-#include "SandboxGameShared/utilities/enums.h"
+#include "SandboxCoreEngine/enums.h"
 
 #include "Misc/AutomationTest.h"
 

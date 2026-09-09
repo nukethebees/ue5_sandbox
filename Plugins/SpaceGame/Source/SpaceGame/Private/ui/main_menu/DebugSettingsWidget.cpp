@@ -1,11 +1,12 @@
 #include "SpaceGame/ui/main_menu/DebugSettingsWidget.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SandboxUI/widgets/SettingsWidgets.h"
 #include "SpaceGame/persistence/SpaceSaveSubsystem.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGame/ui/common/HiveWidgets.h"
-#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Engine/GameInstance.h>
 #include <Widgets/Layout/SBorder.h>

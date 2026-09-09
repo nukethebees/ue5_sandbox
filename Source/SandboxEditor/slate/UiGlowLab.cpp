@@ -1,7 +1,7 @@
 #include "SandboxEditor/slate/UiGlowLab.h"
 
 #include "SandboxUI/EntityOverlay/SEntityOverlayWidget.h"
-#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
 
 #include "HAL/FileManager.h"
 #include "ImageCore.h"

@@ -1,10 +1,10 @@
 #include <SandboxTests/support/test_setup.h>
 
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/presentation/widgets/TeamEntityTableWidget.h>
-#include <SpaceGame/presentation/widgets/TopKillersWidget.h>
-#include <SpaceGame/ui/common/MenuButtonWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
+#include <SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h>
+#include <SpaceGamePresentation/presentation/widgets/TopKillersWidget.h>
+#include <SpaceGamePresentation/ui/common/MenuButtonWidget.h>
 
 #include <SandboxUI/widgets/SGraphPlot.h>
 

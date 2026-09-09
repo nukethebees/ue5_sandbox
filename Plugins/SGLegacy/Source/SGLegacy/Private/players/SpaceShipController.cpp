@@ -2,9 +2,9 @@
 
 #include "SGLegacy/players/ShipHealthComponent.h"
 #include "SGLegacy/players/SpaceShip.h"
-#include "SpaceGame/presentation/TestBatchGameUiData.h"
-#include "SpaceGame/presentation/widgets/ShipHudWidget.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGamePresentation/presentation/TestBatchGameUiData.h"
+#include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 #include "Engine/LocalPlayer.h"

@@ -1,13 +1,13 @@
 #pragma once
 
-#include "SandboxGameShared/players/SpeedResponse.h"
+#include "SandboxCoreEngine/SpeedResponse.h"
 #include "SGLegacy/combat/DamageableShip.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
-#include "SpaceGame/ships/common/BarrelRoll.h"
-#include "SpaceGame/ships/common/LaserFiringState.h"
-#include "SpaceGame/ships/common/ShipLaserMode.h"
-#include "SpaceGame/ships/common/SpaceShipCommon.h"
-#include "SpaceGame/ships/common/SpaceShipFlightModel.h"
+#include "SpaceGameSimulation/ships/common/BarrelRoll.h"
+#include "SpaceGameSimulation/ships/common/LaserFiringState.h"
+#include "SpaceGameSimulation/ships/common/ShipLaserMode.h"
+#include "SpaceGameSimulation/ships/common/SpaceShipCommon.h"
+#include "SpaceGameSimulation/ships/common/SpaceShipFlightModel.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Pawn.h"

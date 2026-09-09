@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "SpaceGame/ships/common/ShipHealth.h"
+#include "SpaceGameSimulation/ships/common/ShipHealth.h"
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"

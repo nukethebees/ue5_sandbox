@@ -5,6 +5,8 @@
     "dynamic_core.json",
     "core_layouts.json",
     "test_fixtures.json",
+    "single_allocation_experiment.json",
+    "soa_spacing_shapes.json",
     "collision.json",
     "dynamic_entities.json",
     "level_definition.json",

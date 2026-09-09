@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
-#include "SpaceGame/ui/style/GameUiStyle.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include "MainMenuWidget.generated.h"
 

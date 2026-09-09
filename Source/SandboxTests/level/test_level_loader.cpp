@@ -4,19 +4,19 @@
 #include <SandboxTests/support/time_series_test_data.h>
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/levels/LevelLoader.h>
-#include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
-#include <SpaceGame/presentation/widgets/BenchmarkHudWidget.h>
-#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
+#include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
+#include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/entities/TestEntityType.h>
 
 #include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -280,8 +280,7 @@ void FLevelLoaderCameraScenario::load_headless_fixture() {
         FOrchestratorEndTickTestHook::CreateRaw(this, &FLevelLoaderCameraScenario::sample_runtime));
     test_driver->timeline.finish_at(0.05);
     orchestrator.start_simulation();
-    checks.is_true(orchestrator.get_level_simulation() &&
-                       !orchestrator.get_level_simulation()->has_presentation(),
+    checks.is_true(orchestrator.get_level_simulation() && !orchestrator.is_presentation_enabled(),
                    TEXT("Headless startup has no presentation state"));
     checks.is_true(orchestrator.get_player_ship_simulation() == nullptr,
                    TEXT("Playerless battle does not create a dummy player simulation"));

@@ -1,6 +1,4 @@
-#include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/simulation/LevelSimulationConfig.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 
 auto make_simulation_config(FLaserWeaponConfig const& source) -> FSimulationLaserWeaponConfig {
     FSimulationLaserWeaponConfig result;
@@ -38,9 +36,6 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> FPlayerSimulatio
     result.laser = make_simulation_config(source.laser);
     result.laser_lock_on_transition_delay = source.laser_lock_on_transition_delay;
     result.laser_lock_on_distance = source.laser_lock_on_distance;
-    if (IsValid(source.team_visual_data)) {
-        result.team_colours = source.team_visual_data->build_team_colour_cache();
-    }
     return result;
 }
 
@@ -87,9 +82,6 @@ auto make_simulation_config(FFighterConfig const& source) -> FFighterSimulationC
     result.awareness_scan_frequency = source.awareness_scan_frequency;
     result.minimum_opportunistic_intercept_deviation_dot_product =
         source.minimum_opportunistic_intercept_deviation_dot_product;
-    if (IsValid(source.team_visual_data)) {
-        result.team_colours = source.team_visual_data->build_team_colour_cache();
-    }
     return result;
 }
 
@@ -101,9 +93,6 @@ auto make_simulation_config(FTurretConfig const& source) -> FTurretSimulationCon
     result.fire_point_offset = source.fire_point_offset;
     result.laser = make_simulation_config(source.laser);
     result.max_health = source.max_health;
-    if (IsValid(source.team_visual_data)) {
-        result.team_colours = source.team_visual_data->build_team_colour_cache();
-    }
     return result;
 }
 

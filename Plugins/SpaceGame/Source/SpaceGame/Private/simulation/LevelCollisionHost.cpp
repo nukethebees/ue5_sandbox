@@ -1,10 +1,10 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
 
 #include <SGCollision/mesh_data_extraction.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/entities/TestEntityType.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/entities/TestEntityType.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/container_ops.h>
 #include <SandboxCoreEngine/actor_utils.h>

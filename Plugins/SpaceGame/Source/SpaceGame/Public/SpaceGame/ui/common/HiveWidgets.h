@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpaceGame/ui/style/GameUiStyle.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <Widgets/SCompoundWidget.h>
 

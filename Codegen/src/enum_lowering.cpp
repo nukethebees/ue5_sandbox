@@ -330,7 +330,7 @@ auto lower_enum_module(EnumModuleSchema const& module,
     NodeListBuilder header_nodes;
     header_nodes.add(IncludeDependencies{}, 2);
     if (has_enum_arrays) {
-        header_nodes.add(Include{"SandboxGameShared/utilities/enum_array.h", false}, 2);
+        header_nodes.add(Include{"SandboxCore/enum_array.h", false}, 2);
     }
     if (has_reflected) {
         header_nodes.add(Include{module.settings.header.stem().string() + ".generated.h", false}, 2);

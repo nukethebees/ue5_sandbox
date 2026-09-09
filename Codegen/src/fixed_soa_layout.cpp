@@ -10,16 +10,17 @@ auto fixed_leaf_argument(FixedLeaf const& leaf) -> std::string {
     return join(leaf.path, "_");
 }
 
-auto build_fixed_layout(SoaSchema const& schema,
-                        std::map<std::string, SoaSchema const*> const& schemas,
-                        std::map<std::string, CppType> const& types,
-                        std::vector<std::string> prefix,
-                        std::set<std::string> ancestors) -> FixedLayout {
-    if (!schema.fixed.has_value()) {
+auto build_soa_layout(SoaSchema const& schema,
+                      std::map<std::string, SoaSchema const*> const& schemas,
+                      std::map<std::string, CppType> const& types,
+                      bool const fixed,
+                      std::vector<std::string> prefix,
+                      std::set<std::string> ancestors) -> FixedLayout {
+    if (fixed && !schema.fixed.has_value()) {
         throw std::invalid_argument{"SOA '" + schema.name + "' has no fixed configuration"};
     }
     if (!ancestors.insert(schema.name).second) {
-        throw std::invalid_argument{"Fixed SOA schema cycle at '" + schema.name + "'"};
+        throw std::invalid_argument{"SOA schema cycle at '" + schema.name + "'"};
     }
     auto resolved{resolve_members(schema, types)};
     FixedLayout result{.schema = &schema};
@@ -34,24 +35,39 @@ auto build_fixed_layout(SoaSchema const& schema,
         if (member_schema.kind == SoaMemberKind::array) {
             member.leaves.push_back(FixedLeaf{member_path, resolved[index].element_type});
         } else {
-            if (!member_schema.fixed_schema.has_value()) {
-                throw std::invalid_argument{"Fixed SOA '" + schema.name + "' nested member '" +
-                                            member_schema.name + "' has no fixed_schema"};
+            auto const& reference{fixed ? member_schema.fixed_schema : member_schema.nested_schema};
+            if (!reference.has_value()) {
+                throw std::invalid_argument{"SOA '" + schema.name + "' nested member '" +
+                                            member_schema.name + "' has no " +
+                                            (fixed ? "fixed_schema" : "nested_schema")};
             }
-            auto const found{schemas.find(*member_schema.fixed_schema)};
-            if (found == schemas.end() || !found->second->fixed.has_value()) {
-                throw std::invalid_argument{"Unknown fixed nested schema: " +
-                                            *member_schema.fixed_schema};
+            auto const found{schemas.find(*reference)};
+            if (found == schemas.end() || (fixed && !found->second->fixed.has_value())) {
+                throw std::invalid_argument{"Unknown nested schema: " + *reference};
             }
-            auto nested{build_fixed_layout(
-                *found->second, schemas, types, member_path, ancestors)};
+            if (!fixed && resolved[index].element_type.spelling != found->second->name) {
+                throw std::invalid_argument{"Nested SOA type does not match nested_schema: " +
+                                            member_schema.name};
+            }
+            auto nested{
+                build_soa_layout(*found->second, schemas, types, fixed, member_path, ancestors)};
             member.leaves = nested.leaves;
-            member.nested_storage_name = nested.schema->fixed->storage_name;
+            if (fixed) {
+                member.nested_storage_name = nested.schema->fixed->storage_name;
+            }
         }
         result.leaves.insert(result.leaves.end(), member.leaves.begin(), member.leaves.end());
         result.members.push_back(std::move(member));
     }
     return result;
+}
+
+auto build_fixed_layout(SoaSchema const& schema,
+                        std::map<std::string, SoaSchema const*> const& schemas,
+                        std::map<std::string, CppType> const& types,
+                        std::vector<std::string> prefix,
+                        std::set<std::string> ancestors) -> FixedLayout {
+    return build_soa_layout(schema, schemas, types, true, std::move(prefix), std::move(ancestors));
 }
 
 } // namespace codegen::detail

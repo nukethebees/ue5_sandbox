@@ -1,6 +1,6 @@
 #include "DebugLearning.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Components/SceneComponent.h>
 #include <Components/StaticMeshComponent.h>

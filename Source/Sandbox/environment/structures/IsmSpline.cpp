@@ -1,6 +1,6 @@
 #include "Sandbox/environment/structures/IsmSpline.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/InstancedStaticMeshComponent.h"
 #include "Components/SceneComponent.h"

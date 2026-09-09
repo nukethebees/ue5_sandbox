@@ -234,7 +234,7 @@ auto parse_fixed(Json const& value, std::string const& path) -> FixedSoaSchema {
 }
 
 auto parse_soa_member(Json const& value, std::string const& path) -> SoaMemberSchema {
-    reject_unknown(value, path, {"name", "kind", "type", "fixed_schema"});
+    reject_unknown(value, path, {"name", "kind", "type", "fixed_schema", "nested_schema"});
     auto const kind_name{required<std::string>(value, "kind", path)};
     SoaMemberKind kind;
     if (kind_name == "array") {
@@ -249,6 +249,7 @@ auto parse_soa_member(Json const& value, std::string const& path) -> SoaMemberSc
         .kind = kind,
         .type = parse_type_ref(required_value(value, "type", path), path + "/type"),
         .fixed_schema = optional<std::string>(value, "fixed_schema", path),
+        .nested_schema = optional<std::string>(value, "nested_schema", path),
     };
 }
 
@@ -265,7 +266,8 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
                     "using_declarations",
                     "equivalent_type",
                     "copy_element_memberwise",
-                    "fixed"});
+                    "fixed",
+                    "single_allocation"});
     std::vector<SoaMemberSchema> members;
     auto const& member_values{required_array(value, "members", path)};
     for (std::size_t index{0}; index < member_values.size(); ++index) {
@@ -303,6 +305,24 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
     if (value.contains("fixed")) {
         fixed = parse_fixed(value.at("fixed"), path + "/fixed");
     }
+    std::optional<std::string> single_allocation;
+    std::vector<SingleAllocationVariant> single_allocation_variants;
+    if (value.contains("single_allocation")) {
+        auto const experimental_path{path + "/single_allocation"};
+        auto const& configuration{value.at("single_allocation")};
+        reject_unknown(configuration, experimental_path, {"name", "variants"});
+        single_allocation = required<std::string>(configuration, "name", experimental_path);
+        if (auto const* variants{optional_array(configuration, "variants", experimental_path)}) {
+            for (auto const& variant : *variants) {
+                auto const variant_path{experimental_path + "/variants"};
+                reject_unknown(variant, variant_path, {"name", "allocator"});
+                single_allocation_variants.push_back(
+                    {required<std::string>(variant, "name", variant_path),
+                     parse_type_ref(required_value(variant, "allocator", variant_path),
+                                    variant_path + "/allocator")});
+            }
+        }
+    }
     return SoaSchema{
         .name = required<std::string>(value, "name", path),
         .view_name = optional<std::string>(value, "view_name", path),
@@ -316,6 +336,8 @@ auto parse_soa(Json const& value, std::string const& path) -> SoaSchema {
         .equivalent_type = std::move(equivalent_type),
         .copy_element_memberwise = value_or<bool>(value, "copy_element_memberwise", false, path),
         .fixed = std::move(fixed),
+        .single_allocation = std::move(single_allocation),
+        .single_allocation_variants = std::move(single_allocation_variants),
     };
 }
 
@@ -409,9 +431,8 @@ auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
     for (std::size_t index{0}; index < value_entries.size(); ++index) {
         auto const& entry{value_entries[index]};
         auto const entry_path{path + "/values/" + std::to_string(index)};
-        reject_unknown(entry,
-                       entry_path,
-                       {"name", "value", "display_name", "hidden", "serialized_name"});
+        reject_unknown(
+            entry, entry_path, {"name", "value", "display_name", "hidden", "serialized_name"});
         values.push_back(EnumeratorSchema{
             .name = required<std::string>(entry, "name", entry_path),
             .initializer = optional<std::string>(entry, "value", entry_path),
@@ -422,8 +443,7 @@ auto parse_enum(Json const& value, std::string const& path) -> EnumSchema {
     }
 
     std::vector<EnumConversion> conversions;
-    auto const conversion_names{
-        value_or<std::vector<std::string>>(value, "conversions", {}, path)};
+    auto const conversion_names{value_or<std::vector<std::string>>(value, "conversions", {}, path)};
     for (std::size_t index{0}; index < conversion_names.size(); ++index) {
         conversions.push_back(parse_enum_conversion(
             conversion_names[index], path + "/conversions/" + std::to_string(index)));
@@ -464,8 +484,8 @@ auto parse_static_table(Json const& value, std::string const& path) -> StaticTab
         reject_unknown(column, column_path, {"name", "type"});
         columns.push_back(StaticTableColumnSchema{
             .name = required<std::string>(column, "name", column_path),
-            .type = parse_type_ref(required_value(column, "type", column_path),
-                                   column_path + "/type"),
+            .type =
+                parse_type_ref(required_value(column, "type", column_path), column_path + "/type"),
         });
     }
 
@@ -478,8 +498,8 @@ auto parse_static_table(Json const& value, std::string const& path) -> StaticTab
             reject_unknown(group, group_path, {"name", "type", "columns"});
             groups.push_back(StaticTableGroupSchema{
                 .name = required<std::string>(group, "name", group_path),
-                .type = parse_type_ref(required_value(group, "type", group_path),
-                                       group_path + "/type"),
+                .type =
+                    parse_type_ref(required_value(group, "type", group_path), group_path + "/type"),
                 .columns = required<std::vector<std::string>>(group, "columns", group_path),
             });
         }
@@ -529,31 +549,40 @@ auto parse_setting_control_kind(std::string const& value, std::string const& pat
 }
 
 auto parse_setting(Json const& value, std::string const& path) -> SettingSchema {
-    reject_unknown(value,
-                   path,
-                   {"name", "label", "tooltip", "category", "value_type", "backend", "apply", "control"});
+    reject_unknown(
+        value,
+        path,
+        {"name", "label", "tooltip", "category", "value_type", "backend", "apply", "control"});
     auto const& control_value{required_object(value, "control", path)};
     auto const control_path{path + "/control"};
-    reject_unknown(control_value,
-                   control_path,
-                   {"kind", "options_provider", "availability_provider", "min", "max", "step", "custom_row"});
+    reject_unknown(
+        control_value,
+        control_path,
+        {"kind", "options_provider", "availability_provider", "min", "max", "step", "custom_row"});
     return SettingSchema{
         .name = required<std::string>(value, "name", path),
         .label = required<std::string>(value, "label", path),
         .tooltip = optional<std::string>(value, "tooltip", path),
         .category = required<std::string>(value, "category", path),
-        .value_type = parse_type_ref(required_value(value, "value_type", path), path + "/value_type"),
+        .value_type =
+            parse_type_ref(required_value(value, "value_type", path), path + "/value_type"),
         .backend = required<std::string>(value, "backend", path),
-        .apply_mode = parse_setting_apply_mode(required<std::string>(value, "apply", path), path + "/apply"),
-        .control = SettingControlSchema{
-            .kind = parse_setting_control_kind(required<std::string>(control_value, "kind", control_path), control_path + "/kind"),
-            .options_provider = optional<std::string>(control_value, "options_provider", control_path),
-            .availability_provider = optional<std::string>(control_value, "availability_provider", control_path),
-            .minimum = optional<double>(control_value, "min", control_path),
-            .maximum = optional<double>(control_value, "max", control_path),
-            .step = optional<double>(control_value, "step", control_path),
-            .custom_row = optional<std::string>(control_value, "custom_row", control_path),
-        },
+        .apply_mode =
+            parse_setting_apply_mode(required<std::string>(value, "apply", path), path + "/apply"),
+        .control =
+            SettingControlSchema{
+                .kind = parse_setting_control_kind(
+                    required<std::string>(control_value, "kind", control_path),
+                    control_path + "/kind"),
+                .options_provider =
+                    optional<std::string>(control_value, "options_provider", control_path),
+                .availability_provider =
+                    optional<std::string>(control_value, "availability_provider", control_path),
+                .minimum = optional<double>(control_value, "min", control_path),
+                .maximum = optional<double>(control_value, "max", control_path),
+                .step = optional<double>(control_value, "step", control_path),
+                .custom_row = optional<std::string>(control_value, "custom_row", control_path),
+            },
     };
 }
 
@@ -576,8 +605,7 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
         std::vector<EnumSchema> enums;
         auto const& values{required_array(value, "enums", path)};
         for (std::size_t index{0}; index < values.size(); ++index) {
-            enums.push_back(
-                parse_enum(values[index], path + "/enums/" + std::to_string(index)));
+            enums.push_back(parse_enum(values[index], path + "/enums/" + std::to_string(index)));
         }
         return EnumModuleSchema{
             .settings = std::move(settings),
@@ -596,13 +624,30 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                         "namespace",
                         "include_order",
                         "prelude",
-                        "structs"});
+                        "structs",
+                        "experimental_stdlib",
+                        "experimental_array_allocators"});
         std::vector<SoaSchema> structs;
         auto const& values{required_array(value, "structs", path)};
         for (std::size_t index{0}; index < values.size(); ++index) {
             structs.push_back(parse_soa(values[index], path + "/structs/" + std::to_string(index)));
         }
-        return SoaModuleSchema{std::move(settings), std::move(structs)};
+        std::vector<SoaAllocatorVariant> variants;
+        if (auto const* configurations{
+                optional_array(value, "experimental_array_allocators", path)}) {
+            for (auto const& configuration : *configurations) {
+                auto const variant_path{path + "/experimental_array_allocators"};
+                reject_unknown(configuration, variant_path, {"prefix", "allocator"});
+                variants.push_back(
+                    {required<std::string>(configuration, "prefix", variant_path),
+                     parse_type_ref(required_value(configuration, "allocator", variant_path),
+                                    variant_path + "/allocator")});
+            }
+        }
+        return SoaModuleSchema{std::move(settings),
+                               std::move(structs),
+                               value_or<bool>(value, "experimental_stdlib", false, path),
+                               std::move(variants)};
     }
     if (kind == "static_table") {
         reject_unknown(value,
@@ -619,8 +664,8 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
         std::vector<StaticTableSchema> tables;
         auto const& values{required_array(value, "tables", path)};
         for (std::size_t index{0}; index < values.size(); ++index) {
-            tables.push_back(parse_static_table(values[index],
-                                                path + "/tables/" + std::to_string(index)));
+            tables.push_back(
+                parse_static_table(values[index], path + "/tables/" + std::to_string(index)));
         }
         return StaticTableModuleSchema{
             .settings = std::move(settings),
@@ -684,7 +729,8 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
                     value_or<std::string>(facade_value, "method_access", "public", facade_path),
                 .friends =
                     value_or<std::vector<std::string>>(facade_value, "friends", {}, facade_path),
-                .friend_kind = value_or<std::string>(facade_value, "friend_kind", "class", facade_path),
+                .friend_kind =
+                    value_or<std::string>(facade_value, "friend_kind", "class", facade_path),
                 .definitions_in_source =
                     value_or<bool>(facade_value, "definitions_in_source", false, facade_path),
                 .reference_target = parse_facade_target_storage(
@@ -723,8 +769,8 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
         std::vector<SettingSchema> settings_list;
         auto const& setting_values{required_array(value, "settings", path)};
         for (std::size_t index{}; index < setting_values.size(); ++index) {
-            settings_list.push_back(parse_setting(setting_values[index],
-                                                  path + "/settings/" + std::to_string(index)));
+            settings_list.push_back(
+                parse_setting(setting_values[index], path + "/settings/" + std::to_string(index)));
         }
         return SettingsModuleSchema{
             .settings = std::move(settings),
@@ -802,13 +848,10 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
         for (std::size_t layout_index{0}; layout_index < layout_values.size(); ++layout_index) {
             auto const& layout{layout_values[layout_index]};
             auto const layout_path{path + "/layouts/" + std::to_string(layout_index)};
-            reject_unknown(layout,
-                           layout_path,
-                           {"name",
-                            "components",
-                            "input_members",
-                            "value_types",
-                            "export_specifier"});
+            reject_unknown(
+                layout,
+                layout_path,
+                {"name", "components", "input_members", "value_types", "export_specifier"});
             std::vector<HomogeneousValueSchema> value_types;
             auto const& type_values{required_array(layout, "value_types", layout_path)};
             for (std::size_t type_index{0}; type_index < type_values.size(); ++type_index) {
@@ -840,10 +883,9 @@ auto parse_module(Json const& value, std::string const& path) -> ModuleSchema {
             layouts.push_back(HomogeneousLayoutSchema{
                 .name = required<std::string>(layout, "name", layout_path),
                 .components = required<std::vector<std::string>>(layout, "components", layout_path),
-                .input_members = optional<std::vector<std::string>>(layout,
-                                                                    "input_members",
-                                                                    layout_path)
-                                     .value_or(std::vector<std::string>{}),
+                .input_members =
+                    optional<std::vector<std::string>>(layout, "input_members", layout_path)
+                        .value_or(std::vector<std::string>{}),
                 .value_types = std::move(value_types),
                 .export_specifier = optional<std::string>(layout, "export_specifier", layout_path),
             });
@@ -861,10 +903,8 @@ auto load_types(std::filesystem::path const& path) -> std::map<std::string, CppT
         auto const item_path{path.string() + "/types/" + key};
         reject_unknown(value, item_path, {"spelling", "header", "operations", "pass_by"});
         auto type{CppType{required<std::string>(value, "spelling", item_path)}};
-        if (auto pass_by{optional<std::string>(value, "pass_by", item_path)};
-            pass_by.has_value()) {
-            type.parameter_passing =
-                parse_parameter_passing(*pass_by, item_path + "/pass_by");
+        if (auto pass_by{optional<std::string>(value, "pass_by", item_path)}; pass_by.has_value()) {
+            type.parameter_passing = parse_parameter_passing(*pass_by, item_path + "/pass_by");
         }
         if (auto header{optional<std::string>(value, "header", item_path)}; header.has_value()) {
             type.dependencies.push_back(TypeDependency{type.spelling, std::move(header), {}});

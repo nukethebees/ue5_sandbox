@@ -4,7 +4,7 @@
 #include "EngineUtils.h"
 #include "Sandbox/environment/SandboxActorSpawner.h"
 #include "SGLegacy/players/MothershipBoss.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "EngineUtils.h"
 

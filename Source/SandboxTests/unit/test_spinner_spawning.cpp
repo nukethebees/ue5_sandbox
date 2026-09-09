@@ -1,8 +1,8 @@
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/simulation/SimulationClock.h>
-#include <SpaceGame/simulation/SpatialQueryManager.h>
+#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/simulation/SimulationClock.h>
+#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <SandboxCore/soa_vector_utils.h>
 

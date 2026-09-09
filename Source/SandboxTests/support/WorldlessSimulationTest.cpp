@@ -1,13 +1,14 @@
 #include "WorldlessSimulationTest.h"
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 
-#include <SpaceGame/entities/DirectDamageEvents.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
-#include <SpaceGame/simulation/LevelSimulationConfig.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/support/mesh.h>
+#include <SpaceGamePresentation/support/mesh.h>
+#include <SpaceGameSimulation/entities/DirectDamageEvents.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/simulation/LevelSimulationConfig.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>

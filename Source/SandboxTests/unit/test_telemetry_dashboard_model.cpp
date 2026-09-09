@@ -9,9 +9,8 @@
 #include <Misc/ScopeExit.h>
 
 namespace {
-auto make_catalog_record(FString run_id, FString level, FString launch)
-    -> FLevelTelemetryRunRecord {
-    FLevelTelemetryRunRecord record;
+auto make_catalog_record(FString run_id, FString level, FString launch) -> FLevelTelemetryReport {
+    FLevelTelemetryReport record;
     record.metadata.run_id = MoveTemp(run_id);
     record.metadata.map_name = level;
     record.metadata.level_id = FName{level};
@@ -43,7 +42,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(DerivesWeightedIntervalMetrics)
     {
-        FLevelTelemetryRunRecord record;
+        FLevelTelemetryReport record;
         record.loaded_schema_version = 1;
         record.metadata.tick_period_seconds = 1.0 / 60.0;
         record.completed_ticks_by_real_time.add(0.0, uint64{0});
@@ -80,7 +79,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(DerivesCurrentWorkloadAndRatesBySimulatedTime)
     {
-        FLevelTelemetryRunRecord record;
+        FLevelTelemetryReport record;
         FLevelTelemetryBattleSample begin;
         begin.simulated_elapsed_seconds = 0.0;
         begin.alive[0][0] = 2;
@@ -120,7 +119,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(ExcludesUnstableRequestedRatioAndRegressingCounters)
     {
-        FLevelTelemetryRunRecord record;
+        FLevelTelemetryReport record;
         record.metadata.tick_period_seconds = 1.0 / 60.0;
         record.completed_ticks_by_real_time.add(0.0, uint64{0});
         record.completed_ticks_by_real_time.add(0.5, uint64{30});
@@ -149,7 +148,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(RequestedScaleRatioIsNotCappedAtOneHundredPercent)
     {
-        FLevelTelemetryRunRecord record;
+        FLevelTelemetryReport record;
         record.metadata.tick_period_seconds = 1.0 / 60.0;
         record.completed_ticks_by_real_time.add(0.0, uint64{0});
         record.completed_ticks_by_real_time.add(0.5, uint64{30});
@@ -170,7 +169,7 @@ TEST_CLASS(TelemetryDashboardAnalysis, "Sandbox.UnitTests")
 
     TEST_METHOD(ExcludesTheFirstRealtimeIntervalAsWarmup)
     {
-        FLevelTelemetryRunRecord record;
+        FLevelTelemetryReport record;
         record.metadata.tick_period_seconds = 1.0 / 60.0;
         record.completed_ticks_by_real_time.add(0.0, uint64{0});
         record.completed_ticks_by_real_time.add(0.8, uint64{60});

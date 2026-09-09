@@ -21,7 +21,7 @@
 #include "ShooterGame/players/MyCharacterDelegates.h"
 #include "ShooterGame/players/PlayerSkills.h"
 #include "SandboxGameShared/players/TeamID.h"
-#include "SandboxGameShared/utilities/enums.h"
+#include "SandboxCoreEngine/enums.h"
 
 #include "MyCharacter.generated.h"
 

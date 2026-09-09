@@ -3,7 +3,7 @@
 #include <SandboxTests/support/SimulationTestScenario.h>
 
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/entities/TestEntityUniqueId.h>
+#include <SpaceGameSimulation/entities/TestEntityUniqueId.h>
 
 #include <SandboxNative/RegistryEntityHandle.h>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Blueprint/UserWidget.h"
-#include "SpaceGame/ui/style/GameUiStyle.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include "SaveGameViewerWidget.generated.h"
 

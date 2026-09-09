@@ -1,8 +1,8 @@
 #include "TestUniformFieldFly0.h"
 
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "TestUniformField.h"
 
 #include <Components/SceneComponent.h>

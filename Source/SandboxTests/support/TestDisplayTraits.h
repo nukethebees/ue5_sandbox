@@ -2,7 +2,7 @@
 
 #include "lex_to_string.h"
 
-#include <SandboxGameShared/utilities/enums.h>
+#include <SandboxCoreEngine/enums.h>
 
 #include <CoreMinimal.h>
 #include <Misc/StringFormatArg.h>

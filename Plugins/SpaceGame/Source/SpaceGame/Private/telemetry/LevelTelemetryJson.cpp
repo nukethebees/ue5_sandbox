@@ -463,7 +463,7 @@ auto level_telemetry_runs_directory() -> FString {
 }
 
 auto read_level_telemetry_run(FString const& path)
-    -> std::expected<FLevelTelemetryRunRecord, FString> {
+    -> std::expected<FLevelTelemetryReport, FString> {
     FString json;
     if (!FFileHelper::LoadFileToString(json, *path)) {
         return std::unexpected{FString::Printf(TEXT("Could not read telemetry file '%s'"), *path)};
@@ -476,7 +476,7 @@ auto read_level_telemetry_run(FString const& path)
 }
 
 auto deserialize_level_telemetry_run(FString const& json)
-    -> std::expected<FLevelTelemetryRunRecord, FString> {
+    -> std::expected<FLevelTelemetryReport, FString> {
     TSharedPtr<FJsonObject> root;
     auto reader{TJsonReaderFactory<>::Create(json)};
     if (!FJsonSerializer::Deserialize(reader, root) || !root.IsValid()) {
@@ -488,12 +488,12 @@ auto deserialize_level_telemetry_run(FString const& json)
     if (!schema) {
         return std::unexpected{schema.error()};
     }
-    if (*schema != 1 && *schema != FLevelTelemetryRunRecord::schema_version) {
+    if (*schema != 1 && *schema != FLevelTelemetryReport::schema_version) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported telemetry schema version %d"), *schema)};
     }
 
-    FLevelTelemetryRunRecord result;
+    FLevelTelemetryReport result;
     result.loaded_schema_version = *schema;
 #define READ_REQUIRED(destination, expression)            \
     do {                                                  \
@@ -976,9 +976,9 @@ auto deserialize_level_telemetry_run(FString const& json)
     return result;
 }
 
-auto serialize_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FString {
+auto serialize_level_telemetry_run(FLevelTelemetryReport const& record) -> FString {
     auto root{MakeShared<FJsonObject>()};
-    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryRunRecord::schema_version);
+    root->SetNumberField(TEXT("schema_version"), FLevelTelemetryReport::schema_version);
     root->SetStringField(TEXT("run_id"), record.metadata.run_id);
 
     auto level{MakeShared<FJsonObject>()};
@@ -1087,8 +1087,8 @@ auto serialize_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FS
     return output;
 }
 
-auto write_level_telemetry_run(FLevelTelemetryRunRecord const& record,
-                               FString const& output_directory) -> std::expected<FString, FString> {
+auto write_level_telemetry_run(FLevelTelemetryReport const& record, FString const& output_directory)
+    -> std::expected<FString, FString> {
     auto const json{serialize_level_telemetry_run(record)};
     if (json.IsEmpty()) {
         return std::unexpected{FString{TEXT("JSON serialization failed")}};

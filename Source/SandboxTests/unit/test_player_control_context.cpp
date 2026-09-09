@@ -3,22 +3,22 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/presentation/widgets/BenchmarkHudWidget.h>
-#include <SpaceGame/ships/common/LaserFiringState.h>
 #include <SpaceGame/ships/player/ObserverControlContext.h>
 #include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/SimulationClock.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/ui/main_menu/ControlChordCapture.h>
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
+#include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
+#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/ships/common/LaserFiringState.h>
+#include <SpaceGameSimulation/simulation/SimulationClock.h>
+#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <Camera/CameraActor.h>
 #include <CQTest.h>

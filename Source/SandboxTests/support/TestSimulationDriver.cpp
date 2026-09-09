@@ -4,12 +4,12 @@
 #include <SandboxTests/support/SpaceGameTestSettings.h>
 
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
-#include <SpaceGame/entities/DirectDamageEvents.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/entities/DirectDamageEvents.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

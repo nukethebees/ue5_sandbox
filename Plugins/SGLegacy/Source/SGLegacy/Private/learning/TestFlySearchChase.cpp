@@ -4,7 +4,7 @@
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Components/BoxComponent.h>
 #include <Engine/HitResult.h>

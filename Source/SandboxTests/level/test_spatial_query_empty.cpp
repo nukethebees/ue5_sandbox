@@ -6,8 +6,8 @@
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/entities/TestEntity.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/simulation/SpatialQueryManager.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxTests/support/TestActorSpawning.h>

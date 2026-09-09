@@ -4,8 +4,8 @@
 #include "Sandbox/utilities/FloatBounds.h"
 #include "SandboxGameShared/combat/BurstFire.h"
 #include "SandboxGameShared/players/VisionConfig.h"
-#include "SpaceGame/support/DrawDebugConfig.h"
-#include "SpaceGame/support/logging/ActorLoggingConfig.h"
+#include "SpaceGamePresentation/support/DrawDebugConfig.h"
+#include "SpaceGamePresentation/support/logging/ActorLoggingConfig.h"
 #include "TestFlyBase.h"
 
 #include "CoreMinimal.h"

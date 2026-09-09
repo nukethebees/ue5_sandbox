@@ -10,17 +10,17 @@
 #include <SandboxCore/time_series_data.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
-#include <SandboxGameShared/utilities/enums.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/missions/TestMissionManager.h>
-#include <SpaceGame/presentation/HUDManager.h>
+#include <SandboxCoreEngine/enums.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGamePresentation/presentation/HUDManager.h>
+#include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/missions/TestMissionManager.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
@@ -95,7 +95,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                    harness.get_registry(),
                    60.0,
                    simulation.get_player_ship_simulation(),
-                   config,
+                   config.get_visual_config(),
                    {},
                    {});
     checks.are_equal(0, hud.get_registered_hud_count(), TEXT("No HUD widgets are registered"));
@@ -649,7 +649,7 @@ auto FTestHUDManagerScenario::initialise_headless_hud_manager() -> bool {
                                      entity_registry,
                                      orchestrator->get_hud_tick_loop().tick_rate,
                                      orchestrator->get_player_ship_simulation(),
-                                     *orchestrator->get_level_config(),
+                                     orchestrator->get_level_config()->get_visual_config(),
                                      {},
                                      {});
     return true;

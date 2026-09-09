@@ -16,6 +16,7 @@ struct CppFile {
     std::vector<std::string> prologue;
     std::vector<std::string> epilogue;
     std::vector<std::string> include_order;
+    bool format_generated{false};
 };
 
 } // namespace codegen

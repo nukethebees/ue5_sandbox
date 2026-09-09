@@ -1,7 +1,7 @@
-#include "SpaceGame/presentation/EntityOverlaySource.h"
+#include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 
-#include "SpaceGame/entities/TestEntityType.h"
-#include "SpaceGame/entities/TestTeam.h"
+#include "SpaceGameSimulation/entities/TestEntityType.h"
+#include "SpaceGameSimulation/entities/TestTeam.h"
 
 #include <CQTest.h>
 

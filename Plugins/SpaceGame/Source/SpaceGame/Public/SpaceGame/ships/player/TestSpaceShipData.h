@@ -1,8 +1,8 @@
 #pragma once
 
-#include <SandboxGameShared/players/SpeedResponse.h>
-#include <SpaceGame/ships/common/BarrelRoll.h>
-#include <SpaceGame/support/DrawDebugConfig.h>
+#include <SandboxCoreEngine/SpeedResponse.h>
+#include <SpaceGamePresentation/support/DrawDebugConfig.h>
+#include <SpaceGameSimulation/ships/common/BarrelRoll.h>
 
 #include <SandboxCoreEngine/collision_settings.h>
 

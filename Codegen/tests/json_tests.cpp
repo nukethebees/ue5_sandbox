@@ -34,6 +34,18 @@ class TemporaryManifest {
     std::filesystem::path directory_;
 };
 
+TEST(Json, LoadsExperimentalStdlibSoa) {
+    TemporaryManifest files;
+    files.write("types.json", R"({"types":{}})");
+    files.write("manifest.json",
+                R"({"schema_version":11,"types":"types.json","modules":["modules.json"]})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"soa","name":"native","header":"Native.h","experimental_stdlib":true,"structs":[{"name":"Rows","members":[{"name":"xs","kind":"array","type":"float"}]}]}]})");
+    auto const manifest{load_manifest(files.path("manifest.json"))};
+    EXPECT_TRUE(std::get<SoaModuleSchema>(manifest.modules.front()).experimental_stdlib);
+}
+
 TEST(Json, LoadsTypedSoaManifest) {
     TemporaryManifest files;
     files.write(
@@ -83,6 +95,25 @@ TEST(Json, LoadsSettingsModules) {
     ASSERT_EQ(module.settings_list.size(), 1);
     EXPECT_EQ(module.settings_list.front().apply_mode, SettingApplyMode::deferred);
     EXPECT_EQ(module.settings_list.front().control.kind, SettingControlKind::toggle);
+}
+
+TEST(Json, LoadsExperimentalSingleAllocationConfiguration) {
+    TemporaryManifest files;
+    files.write("types.json", R"({"types":{}})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"soa","name":"rows","header":"Rows.h","source":"Rows.cpp","structs":[{"name":"Rows","members":[{"name":"child","kind":"nested","type":"Child","nested_schema":"Child"}],"single_allocation":{"name":"SingleRows"}}]}]})");
+    files.write("manifest.json",
+                R"({"schema_version":11,"types":"types.json","modules":["modules.json"]})");
+    auto const manifest{load_manifest(files.path("manifest.json"))};
+    auto const& schema{std::get<SoaModuleSchema>(manifest.modules.front()).structs.front()};
+    EXPECT_EQ(schema.single_allocation, "SingleRows");
+    EXPECT_EQ(schema.members.front().nested_schema, "Child");
+
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"soa","name":"rows","header":"Rows.h","structs":[{"name":"Rows","members":[{"name":"ids","kind":"array","type":"int32"}],"single_allocation":{"name":"SingleRows","allocator":"large_pages"}}]}]})");
+    EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);
 }
 
 TEST(Json, ReportsUnknownFieldsWithTheirPath) {
@@ -249,8 +280,7 @@ TEST(Json, LoadsEveryModuleKindAndStructuredTypeReference) {
     EXPECT_EQ(vector.fixed->containers, std::vector<std::string>{"TFixedVectorArray"});
 
     auto const& homogeneous{std::get<HomogeneousModuleSchema>(manifest.modules[2])};
-    EXPECT_EQ(homogeneous.layouts.front().input_members,
-              std::vector<std::string>({"U", "V"}));
+    EXPECT_EQ(homogeneous.layouts.front().input_members, std::vector<std::string>({"U", "V"}));
     auto const& value{homogeneous.layouts.front().value_types.front()};
     ASSERT_TRUE(value.equivalent_type.has_value());
     EXPECT_EQ(value.equivalent_type->name, "@vector");
@@ -379,15 +409,18 @@ TEST(Json, LoadsStaticTableModules) {
 }
 
 TEST(Json, RejectsUnknownEnumReflectionAndConversionValues) {
-    for (auto const& enum_body : {
-             R"({"name":"EMode","underlying_type":"uint8","reflection":"reflected","values":[{"name":"Value"}]})",
-             R"({"name":"EMode","underlying_type":"uint8","values":[{"name":"Value"}],"conversions":["text"]})",
-         }) {
+    for (
+        auto const& enum_body : {
+            R"({"name":"EMode","underlying_type":"uint8","reflection":"reflected","values":[{"name":"Value"}]})",
+            R"({"name":"EMode","underlying_type":"uint8","values":[{"name":"Value"}],"conversions":["text"]})",
+        }) {
         TemporaryManifest files;
         files.write("types.json", R"({"types":{}})");
-        files.write("modules.json",
-                    std::string{R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","source":"Modes.cpp","enums":[)"} +
-                        enum_body + "]}]}");
+        files.write(
+            "modules.json",
+            std::string{
+                R"({"modules":[{"kind":"enum","name":"modes","header":"Modes.h","source":"Modes.cpp","enums":[)"} +
+                enum_body + "]}]}");
         files.write("manifest.json",
                     R"({"schema_version":11,"types":"types.json","modules":["modules.json"]})");
         EXPECT_THROW(load_manifest(files.path("manifest.json")), ManifestError);

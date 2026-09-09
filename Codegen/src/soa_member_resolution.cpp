@@ -17,14 +17,22 @@ auto composed(std::string spelling, TypeDependency outer, CppType const& contain
 
 } // namespace
 
-auto resolve_members(SoaSchema const& schema,
-                     std::map<std::string, CppType> const& types)
+auto resolve_members(SoaSchema const& schema, std::map<std::string, CppType> const& types)
     -> std::vector<ResolvedMember> {
     std::vector<ResolvedMember> result;
     for (auto const& member : schema.members) {
         auto element{resolve_type(member.type, types)};
         if (member.kind == SoaMemberKind::array) {
             auto container{composed("TArray<" + element.spelling + ">", tarray, element)};
+            if (schema.array_allocator) {
+                auto const allocator{resolve_type(*schema.array_allocator, types)};
+                container = composed("TArray<" + element.spelling + ", " + allocator.spelling + ">",
+                                     tarray,
+                                     element);
+                container.dependencies.insert(container.dependencies.end(),
+                                              allocator.dependencies.begin(),
+                                              allocator.dependencies.end());
+            }
             container.member_operations.emplace(TypeOperation::remove_at_swap, "RemoveAtSwap");
             result.push_back(ResolvedMember{
                 .name = member.name,

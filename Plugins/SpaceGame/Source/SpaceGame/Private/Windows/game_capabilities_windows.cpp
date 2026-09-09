@@ -4,7 +4,7 @@
 
 #include "game_capabilities_windows.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Windows/AllowWindowsPlatformTypes.h"
 

@@ -4,7 +4,7 @@
 #include "SpaceGame/settings/GameSettings.generated.h"
 #include "SpaceGame/ui/main_menu/ControlChordCapture.h"
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
-#include "SpaceGame/ui/style/GameUiStyle.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <Widgets/SCompoundWidget.h>
 

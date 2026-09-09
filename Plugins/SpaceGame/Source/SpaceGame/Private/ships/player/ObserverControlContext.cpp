@@ -1,7 +1,7 @@
 #include <SpaceGame/ships/player/ObserverControlContext.h>
 
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Camera/CameraActor.h>
 #include <Engine/World.h>

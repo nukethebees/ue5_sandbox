@@ -1,7 +1,7 @@
 #pragma once
 
 #include "SpaceGame/telemetry/TelemetryDashboardModel.h"
-#include "SpaceGame/ui/style/GameUiStyle.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 
 #include <Blueprint/UserWidget.h>
 

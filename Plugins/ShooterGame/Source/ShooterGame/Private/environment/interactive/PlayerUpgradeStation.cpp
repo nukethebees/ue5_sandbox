@@ -6,7 +6,7 @@
 #include "ShooterGame/ui/in_world/PlayerPsiAbilitiesUpgradeWidget.h"
 #include "ShooterGame/ui/in_world/PlayerTechSkillsUpgradeWidget.h"
 #include "ShooterGame/ui/in_world/PlayerWeaponSkillsUpgradeWidget.h"
-#include "SandboxGameShared/utilities/enums.h"
+#include "SandboxCoreEngine/enums.h"
 
 #include "Blueprint/UserWidget.h"
 #include "Components/BoxComponent.h"

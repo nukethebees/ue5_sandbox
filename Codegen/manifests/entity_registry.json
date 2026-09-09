@@ -3,15 +3,15 @@
     {
       "kind": "soa",
       "name": "collision_damage_events_soa",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/CollisionDamageEventsSoA.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/CollisionDamageEventsSoA.cpp",
-      "header_include": "SpaceGame/entities/CollisionDamageEventsSoA.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/CollisionDamageEventsSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/CollisionDamageEventsSoA.cpp",
+      "header_include": "SpaceGameSimulation/entities/CollisionDamageEventsSoA.h",
       "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
       "prelude": ["class AActor;", "class UActorComponent;"],
       "structs": [
         {
           "name": "UnresolvedCollisionDamageEvents",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "operations": ["all"],
           "members": [
             {"name": "damaged_actors", "kind": "array", "type": "AActor*"},
@@ -23,7 +23,7 @@
         },
         {
           "name": "CollisionDamageEvents",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "operations": ["all"],
           "members": [
             {"name": "damage_amounts", "kind": "array", "type": "int32"},
@@ -37,13 +37,13 @@
     {
       "kind": "soa",
       "name": "entity_death_info",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/EntityDeathInfo.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/EntityDeathInfo.cpp",
-      "header_include": "SpaceGame/entities/EntityDeathInfo.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/EntityDeathInfo.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/EntityDeathInfo.cpp",
+      "header_include": "SpaceGameSimulation/entities/EntityDeathInfo.h",
       "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
       "structs": [{
         "name": "EntityDeathInfo",
-        "export_specifier": "SPACEGAME_API",
+        "export_specifier": "SPACEGAMESIMULATION_API",
         "operations": ["all"],
         "members": [
           {"name": "reasons", "kind": "array", "type": "@death_reason"},
@@ -74,13 +74,13 @@
     {
       "kind": "soa",
       "name": "test_entity_unique_entity_data_soa",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityUniqueEntityDataSoA.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityUniqueEntityDataSoA.cpp",
-      "header_include": "SpaceGame/entities/TestEntityUniqueEntityDataSoA.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityUniqueEntityDataSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityUniqueEntityDataSoA.cpp",
+      "header_include": "SpaceGameSimulation/entities/TestEntityUniqueEntityDataSoA.h",
       "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
       "structs": [{
         "name": "TestEntityUniqueEntityData",
-        "export_specifier": "SPACEGAME_API",
+        "export_specifier": "SPACEGAMESIMULATION_API",
         "operations": ["all"],
         "using_declarations": ["kills_type = uint32"],
         "members": [
@@ -98,13 +98,14 @@
     {
       "kind": "soa",
       "name": "test_entity_registry_data_soa",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityRegistryData.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityRegistryData.cpp",
-      "header_include": "SpaceGame/entities/TestEntityRegistryData.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityRegistryData.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityRegistryData.cpp",
+      "header_include": "SpaceGameSimulation/entities/TestEntityRegistryData.h",
       "namespace": "ml::entity_registry",
       "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
       "structs": [{
         "name": "EntityData",
+          "export_specifier": "SPACEGAMESIMULATION_API",
         "operations": ["all"],
         "members": [
           {"name": "locations", "kind": "nested", "type": "@vectors_3f"},
@@ -132,13 +133,13 @@
     {
       "kind": "soa",
       "name": "registry_entity_handles_soa",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/RegistryEntityHandles.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/RegistryEntityHandles.cpp",
-      "header_include": "SpaceGame/entities/RegistryEntityHandles.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/RegistryEntityHandles.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/RegistryEntityHandles.cpp",
+      "header_include": "SpaceGameSimulation/entities/RegistryEntityHandles.h",
       "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
       "structs": [{
         "name": "FRegistryEntityHandles",
-        "export_specifier": "SPACEGAME_API",
+        "export_specifier": "SPACEGAMESIMULATION_API",
         "operations": ["all"],
         "equivalent_type": "@registry_handle",
         "members": [

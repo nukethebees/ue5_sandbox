@@ -2,10 +2,10 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
-#include <SpaceGame/entities/TestEntityType.h>
-#include <SpaceGame/entities/TestTeam.h>
-#include <SpaceGame/missions/TestMissionState.h>
-#include <SpaceGame/presentation/HUDManager.h>
+#include <SpaceGamePresentation/presentation/HUDManager.h>
+#include <SpaceGameSimulation/entities/TestEntityType.h>
+#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGameSimulation/missions/TestMissionState.h>
 
 #include <SandboxCore/time_series_data.h>
 

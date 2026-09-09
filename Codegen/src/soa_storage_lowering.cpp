@@ -53,23 +53,20 @@ auto function_spec(FunctionSchema const& schema, std::map<std::string, CppType> 
     };
 }
 
-auto has_custom_function(std::vector<FunctionSchema> const& functions,
-                         std::string_view const name) -> bool {
-    return std::ranges::any_of(functions,
-                               [name](FunctionSchema const& function) {
-                                   return function.name == name;
-                               });
+auto has_custom_function(std::vector<FunctionSchema> const& functions, std::string_view const name)
+    -> bool {
+    return std::ranges::any_of(
+        functions, [name](FunctionSchema const& function) { return function.name == name; });
 }
 
 auto parameter_type(CppType type, ParameterPassing const passing) -> CppType {
-    return qualify(std::move(type),
-                   passing == ParameterPassing::value ? " const" : " const&");
+    return qualify(std::move(type), passing == ParameterPassing::value ? " const" : " const&");
 }
 
 } // namespace
 
-auto soa_function_spec(FunctionSchema const& schema,
-                       std::map<std::string, CppType> const& types) -> FunctionSpec {
+auto soa_function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
+    -> FunctionSpec {
     return function_spec(schema, types);
 }
 
@@ -98,13 +95,11 @@ auto soa_set_spec(SoaSchema const& schema,
             return std::nullopt;
         }
         auto equivalent_type{qualify(member.element_type, "::equivalent_type")};
-        parameters.emplace_back(
-            parameter_type(std::move(equivalent_type),
-                           member.container_type.operation_parameter_passing(
-                               TypeOperation::set_element)),
-            argument);
-        body.add(ExpressionStatement{
-            member.name + "." + *operation + "(index, " + argument + ")"});
+        parameters.emplace_back(parameter_type(std::move(equivalent_type),
+                                               member.container_type.operation_parameter_passing(
+                                                   TypeOperation::set_element)),
+                                argument);
+        body.add(ExpressionStatement{member.name + "." + *operation + "(index, " + argument + ")"});
     }
     return FunctionSpec{
         .name = "set",
@@ -116,8 +111,8 @@ auto soa_set_spec(SoaSchema const& schema,
     };
 }
 
-auto soa_add_spec(SoaSchema const& schema,
-                  std::vector<ResolvedMember> const& members) -> std::optional<FunctionSpec> {
+auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& members)
+    -> std::optional<FunctionSpec> {
     if (has_custom_function(schema.functions, "add")) {
         return std::nullopt;
     }
@@ -140,11 +135,10 @@ auto soa_add_spec(SoaSchema const& schema,
             return std::nullopt;
         }
         auto equivalent_type{qualify(member.element_type, "::equivalent_type")};
-        parameters.emplace_back(
-            parameter_type(std::move(equivalent_type),
-                           member.container_type.operation_parameter_passing(
-                               TypeOperation::add_element)),
-            argument);
+        parameters.emplace_back(parameter_type(std::move(equivalent_type),
+                                               member.container_type.operation_parameter_passing(
+                                                   TypeOperation::add_element)),
+                                argument);
         body.add(ExpressionStatement{member.name + "." + *operation + "(" + argument + ")"});
     }
     body.add(ReturnStatement{"index"});
@@ -289,10 +283,14 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
     }
     if (contains(StorageOperation::append_from)) {
         NodeListBuilder calls;
-        for (auto const& member : members) {
-            calls.add(ExpressionStatement{"ml::append_from(" + member.name + ", other." +
-                                              member.name + ")",
-                                          {container_ops, soa_concepts}});
+        auto const member_count{members.size()};
+        for (std::size_t index{}; index < member_count; ++index) {
+            auto const& member{members[index]};
+            auto const call{schema.members[index].nested_schema
+                                ? member.name + ".append_from(other." + member.name + ")"
+                                : "ml::append_from(" + member.name + ", other." + member.name +
+                                      ")"};
+            calls.add(ExpressionStatement{call, {container_ops, soa_concepts}});
         }
         result.push_back(FunctionSpec{
             .name = "append_from",

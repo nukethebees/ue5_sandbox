@@ -1,12 +1,12 @@
 #include "test_player_ship_vs_capital_scenario.h"
 
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
 
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/TestActorSpawning.h>

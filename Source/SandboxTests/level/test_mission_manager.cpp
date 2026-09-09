@@ -8,11 +8,11 @@
 
 #include <SandboxCore/time_series_data.h>
 
-#include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/missions/TestMissionManager.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

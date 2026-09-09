@@ -1,7 +1,7 @@
 #include "SGLegacy/players/ShipTrainingTarget.h"
 
 #include "SandboxGameShared/constants/collision_channels.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/BoxComponent.h"
 #include "Components/SceneComponent.h"
