@@ -22,6 +22,7 @@ struct FacadeSchema {
     std::vector<std::string> friends;
     std::string friend_kind{"class"};
     bool definitions_in_source{false};
+    bool reference_target{false};
 };
 
 } // namespace codegen

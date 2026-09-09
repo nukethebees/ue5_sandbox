@@ -3,10 +3,13 @@
 #include <SpaceGame/missions/TestMissionManager.h>
 
 namespace ml {
+FLevelEventManager::FLevelEventManager(test_capital_ships::Simulation& capital_ships,
+                                       test_static_turrets::Simulation& turrets,
+                                       FTestMissionManager& mission_manager) noexcept
+    : spawn_manager_{capital_ships, turrets}
+    , mission_manager_{mission_manager} {}
+
 void FLevelEventManager::initialise(FCompiledLevelEvents data,
-                                    test_capital_ships::Simulation& capital_ships,
-                                    test_static_turrets::Simulation& turrets,
-                                    FTestMissionManager& mission_manager,
                                     FRegistryEntityHandle const player_handle) {
     initialisation_ = MoveTemp(data.initialisation);
     schedule_ = MoveTemp(data.schedule);
@@ -17,8 +20,6 @@ void FLevelEventManager::initialise(FCompiledLevelEvents data,
     spawn_group_offset_ = 0;
     mission_group_offset_ = 0;
     spawn_manager_.initialise(initialisation_.entity_count,
-                              capital_ships,
-                              turrets,
                               schedule_.capital_spawns.get_const_view(),
                               schedule_.turret_spawns.get_const_view());
     if (initialisation_.player_entity_index != INDEX_NONE) {
@@ -27,9 +28,8 @@ void FLevelEventManager::initialise(FCompiledLevelEvents data,
     spawn_manager_.spawn_initial(data.initial_spawns.capital_spawns.get_const_view(),
                                  data.initial_spawns.turret_spawns.get_const_view());
 
-    mission_manager_ = &mission_manager;
-    mission_manager_->bind_level_event_data(schedule_.mission_events.values,
-                                            spawn_manager_.get_entity_handles());
+    mission_manager_.bind_level_event_data(schedule_.mission_events.values,
+                                           spawn_manager_.get_entity_handles());
 
     int32 spawn_group_count{};
     int32 mission_group_count{};
@@ -49,7 +49,7 @@ void FLevelEventManager::initialise(FCompiledLevelEvents data,
     }
     check(spawn_group_count == schedule_.spawn_groups.num());
     check(mission_group_count == schedule_.mission_events.groups.num());
-    mission_manager_->set_pending_objective_events(mission_tick_count);
+    mission_manager_.set_pending_objective_events(mission_tick_count);
 }
 
 auto FLevelEventManager::dispatch_tick(uint64 const tick) -> bool {
@@ -70,7 +70,7 @@ auto FLevelEventManager::dispatch_tick(uint64 const tick) -> bool {
         spawn_group_offset_ += counts.spawn_groups;
     }
     if (counts.mission_groups != 0) {
-        mission_manager_->consume_level_events(schedule_.mission_events.groups.get_const_view(
+        mission_manager_.consume_level_events(schedule_.mission_events.groups.get_const_view(
             mission_group_offset_, counts.mission_groups));
         mission_group_offset_ += counts.mission_groups;
     }
@@ -79,10 +79,9 @@ auto FLevelEventManager::dispatch_tick(uint64 const tick) -> bool {
 }
 
 void FLevelEventManager::configure_mission() {
-    check(mission_manager_);
     if (initialisation_.mission.IsSet()) {
-        mission_manager_->initialise_level_mission(initialisation_.mission.GetValue(),
-                                                   spawn_manager_.get_entity_handles());
+        mission_manager_.initialise_level_mission(initialisation_.mission.GetValue(),
+                                                  spawn_manager_.get_entity_handles());
     }
 }
 

@@ -29,9 +29,9 @@ void run_worldless_fighters_standby_transition(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
-    auto const enemy{capitals->get_handle(1)};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const enemy{capitals.get_handle(1)};
 
     struct Sample {
         int32 capital_count{};
@@ -40,9 +40,9 @@ void run_worldless_fighters_standby_transition(FAutomationTestBase& test,
     };
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
-        Sample sample{.capital_count = capitals->get_num_instances()};
-        sample.tasks.Append(fighters->get_tasks());
-        for (auto const handle : fighters->get_handles()) {
+        Sample sample{.capital_count = capitals.get_num_instances()};
+        sample.tasks.Append(fighters.get_tasks());
+        for (auto const handle : fighters.get_handles()) {
             sample.velocities.Add(harness.get_registry().get_velocity(handle));
         }
         samples.add(harness.get_time(), MoveTemp(sample));

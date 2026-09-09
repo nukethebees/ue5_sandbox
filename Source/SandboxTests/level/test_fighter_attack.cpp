@@ -45,8 +45,8 @@ void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
-    auto const clearance{fighters->collision_radius + 100.f};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const clearance{fighters.collision_radius + 100.f};
     auto const expanded_min{obstacle_min - FVector3f{clearance, clearance, clearance}};
     auto const expanded_max{obstacle_max + FVector3f{clearance, clearance, clearance}};
     bool fighter_spawned{};
@@ -55,7 +55,7 @@ void run_worldless_fighter_obstacle_avoidance(FAutomationTestBase& test,
     float maximum_x{-std::numeric_limits<float>::infinity()};
 
     harness.on_end_tick = [&](FLevelSimulation&) {
-        auto const locations{fighters->get_locations()};
+        auto const locations{fighters.get_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -135,7 +135,7 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
     FVector3f const clearance_extent{clearance, clearance, clearance};
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     auto const expanded_min{obstacle_bounds.Min - clearance_extent};
     auto const expanded_max{obstacle_bounds.Max + clearance_extent};
     bool entered_obstacle{};
@@ -143,7 +143,7 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
     float maximum_lateral_distance{};
     float maximum_x{-TNumericLimits<float>::Max()};
     harness.on_end_tick = [&](FLevelSimulation&) {
-        auto const locations{fighters->get_locations()};
+        auto const locations{fighters.get_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -156,7 +156,7 @@ void run_worldless_fighter_capital_obstruction(FAutomationTestBase& test,
             FMath::Max(maximum_lateral_distance, FVector2f{location.Y, location.Z}.Length());
         maximum_x = FMath::Max(maximum_x, location.X);
         saw_avoidance =
-            saw_avoidance || fighters->get_navigation_telemetry().avoiding_fighter_count > 0;
+            saw_avoidance || fighters.get_navigation_telemetry().avoiding_fighter_count > 0;
     };
     harness.timeline.finish_at(14.0);
     test.TestTrue(TEXT("Capital-obstruction timeline completes"),
@@ -177,7 +177,7 @@ void run_worldless_fighter_clear_navigation(FAutomationTestBase& test,
                                                 FVector3f{20000.f, 0.f, 0.f})};
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     FVector3f first_location{FVector3f::ZeroVector};
     FVector3f last_location{FVector3f::ZeroVector};
     bool recorded_first{};
@@ -186,7 +186,7 @@ void run_worldless_fighter_clear_navigation(FAutomationTestBase& test,
     bool saw_separation{};
     bool saw_avoidance{};
     harness.on_end_tick = [&](FLevelSimulation&) {
-        auto const locations{fighters->get_locations()};
+        auto const locations{fighters.get_locations()};
         if (locations.num() == 0) {
             return;
         }
@@ -195,7 +195,7 @@ void run_worldless_fighter_clear_navigation(FAutomationTestBase& test,
             first_location = last_location;
             recorded_first = true;
         }
-        auto const& telemetry{fighters->get_navigation_telemetry()};
+        auto const& telemetry{fighters.get_navigation_telemetry()};
         if (!recorded_first_movement && !last_location.Equals(first_location)) {
             recorded_first_movement = true;
             scanned_before_first_movement = telemetry.hard_trace_count > 0;
@@ -228,12 +228,12 @@ void run_worldless_fighter_separation(FAutomationTestBase& test,
         FVector3f{20000.f, 0.f, 0.f})};
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     float initial_distance{};
     float final_distance{};
     bool saw_separation{};
     harness.on_end_tick = [&](FLevelSimulation&) {
-        auto const locations{fighters->get_locations()};
+        auto const locations{fighters.get_locations()};
         if (locations.num() != 2) {
             return;
         }
@@ -243,7 +243,7 @@ void run_worldless_fighter_separation(FAutomationTestBase& test,
             initial_distance = final_distance;
         }
         saw_separation =
-            saw_separation || fighters->get_navigation_telemetry().separating_fighter_count == 2;
+            saw_separation || fighters.get_navigation_telemetry().separating_fighter_count == 2;
     };
     harness.timeline.finish_at(1.0);
     test.TestTrue(TEXT("Fighter-separation timeline completes"),
@@ -326,15 +326,15 @@ auto run_dense_navigation_fixture(USpaceGameLevelConfig const& config, int32 con
     result.collision_distance = data.fighter_radius * 2.f;
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     harness.on_end_tick = [&](FLevelSimulation&) {
-        auto const& telemetry{fighters->get_navigation_telemetry()};
+        auto const& telemetry{fighters.get_navigation_telemetry()};
         result.query_count += telemetry.separation_query_count;
         result.saw_immediate_risk = result.saw_immediate_risk || telemetry.immediate_risk_count > 0;
     };
     harness.timeline.finish_at(1.5);
     result.timeline_completed = harness.run_until_timeline_finished(2.0);
-    auto const locations{fighters->get_locations()};
+    auto const locations{fighters.get_locations()};
     result.locations.Reserve(locations.num());
     for (int32 i{}; i < locations.num(); ++i) {
         result.locations.Add(ml::get_vector3f(locations, i));
@@ -433,7 +433,7 @@ void run_worldless_fighter_hard_avoidance_authority(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     bool entered_obstacle{};
     bool saw_separation{};
     bool saw_avoidance{};
@@ -441,7 +441,7 @@ void run_worldless_fighter_hard_avoidance_authority(FAutomationTestBase& test,
     bool previously_avoiding{};
     float maximum_x{-TNumericLimits<float>::Max()};
     harness.on_end_tick = [&](FLevelSimulation&) {
-        auto const locations{fighters->get_locations()};
+        auto const locations{fighters.get_locations()};
         for (int32 i{}; i < locations.num(); ++i) {
             auto const location{ml::get_vector3f(locations, i)};
             entered_obstacle =
@@ -450,7 +450,7 @@ void run_worldless_fighter_hard_avoidance_authority(FAutomationTestBase& test,
                                      location.Z >= expanded_min.Z && location.Z <= expanded_max.Z);
             maximum_x = FMath::Max(maximum_x, location.X);
         }
-        auto const& telemetry{fighters->get_navigation_telemetry()};
+        auto const& telemetry{fighters.get_navigation_telemetry()};
         saw_separation = saw_separation || telemetry.separating_fighter_count > 0;
         auto const avoiding{telemetry.avoiding_fighter_count > 0};
         saw_avoidance = saw_avoidance || avoiding;
@@ -479,11 +479,11 @@ void run_worldless_fighter_navigation_frequency(FAutomationTestBase& test,
                                                 FVector3f{20000.f, 0.f, 0.f})};
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     int32 clear_queries{};
     bool saw_clear{};
     harness.on_end_tick = [&](FLevelSimulation&) {
-        auto const& telemetry{fighters->get_navigation_telemetry()};
+        auto const& telemetry{fighters.get_navigation_telemetry()};
         clear_queries += telemetry.separation_query_count;
         saw_clear = saw_clear || telemetry.clear_risk_count > 0;
     };
@@ -512,17 +512,17 @@ void run_worldless_fighter_attack(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
-    auto const enemy{capitals->get_handle(1)};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const enemy{capitals.get_handle(1)};
     struct Sample {
         int32 enemy_health{};
         TArray<ETestTeam> fighter_teams;
     };
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
-        Sample sample{.enemy_health = capitals->get_health(enemy)};
-        sample.fighter_teams.Append(fighters->get_teams());
+        Sample sample{.enemy_health = capitals.get_health(enemy)};
+        sample.fighter_teams.Append(fighters.get_teams());
         samples.add(harness.get_time(), MoveTemp(sample));
     };
     harness.timeline.finish_at(11.0);

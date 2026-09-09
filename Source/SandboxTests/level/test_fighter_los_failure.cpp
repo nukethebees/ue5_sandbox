@@ -27,14 +27,14 @@ void run_worldless_fighter_los_failure(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
-    auto const enemy{capitals->get_handle(1)};
-    auto const initial_enemy_health{capitals->get_health(enemy)};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const enemy{capitals.get_handle(1)};
+    auto const initial_enemy_health{capitals.get_health(enemy)};
     TArray<TArray<ETestTeam>> fighter_team_samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
         TArray<ETestTeam> teams;
-        teams.Append(fighters->get_teams());
+        teams.Append(fighters.get_teams());
         fighter_team_samples.Add(MoveTemp(teams));
     };
     harness.timeline.finish_at(30.0);
@@ -46,7 +46,7 @@ void run_worldless_fighter_los_failure(FAutomationTestBase& test,
             teams, ETestTeam::Blue, checks, TEXT("Only the blue hero team has fighters"));
     }
     check_health_decreased(initial_enemy_health,
-                           capitals->get_health(enemy),
+                           capitals.get_health(enemy),
                            checks,
                            TEXT("Enemy capital has sustained damage by the end of the test"));
 }

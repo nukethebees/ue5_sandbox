@@ -17,7 +17,6 @@ auto get_level_entity_handle(TConstArrayView<FRegistryEntityHandle> const level_
 }
 
 void FTestMissionManager::begin_play() {
-    check(entity_registry);
 
     initialise_entity_health_that_must_survive();
     initialise_entity_health_required_to_kill();
@@ -52,8 +51,8 @@ void FTestMissionManager::begin_play() {
             }
 
             if (resolved_kill_target <= 0) {
-                auto const hero_team{entity_registry->get_team(hero_entity_handles[0])};
-                resolved_kill_target = entity_registry->count_alive_not_on_team(hero_team);
+                auto const hero_team{entity_registry.get_team(hero_entity_handles[0])};
+                resolved_kill_target = entity_registry.count_alive_not_on_team(hero_team);
             }
 
             set_mission_state(ETestMissionState::Running);
@@ -67,9 +66,10 @@ void FTestMissionManager::begin_play() {
     }
 }
 
-void FTestMissionManager::bind_simulation_clock(FSimulationClock const& clock) noexcept {
-    simulation_clock.bind(clock);
-}
+FTestMissionManager::FTestMissionManager(FSimulationClock const& clock,
+                                         FTestEntityRegistry& in_entity_registry)
+    : entity_registry{in_entity_registry}
+    , simulation_clock{clock} {}
 
 void FTestMissionManager::initialise_level_mission(
     ml::FLevelMissionInitialisationData const& data,
@@ -216,11 +216,11 @@ void FTestMissionManager::set_level_identity(FName const new_level_id, FString d
 
 void FTestMissionManager::add_hero_entity(FRegistryEntityHandle handle) {
     check(mission_state == ETestMissionState::NotStarted);
-    check(entity_registry->is_valid_handle(handle));
+    check(entity_registry.is_valid_handle(handle));
     if (hero_entity_handles.Contains(handle)) {
         return;
     }
-    auto const id{entity_registry->find_unique_id(handle)};
+    auto const id{entity_registry.find_unique_id(handle)};
     hero_entity_handles.Add(handle);
     hero_entity_ids.Add(id);
 }
@@ -228,32 +228,32 @@ void FTestMissionManager::add_hero_entity(FRegistryEntityHandle handle) {
 void FTestMissionManager::add_entity_that_must_survive(FRegistryEntityHandle handle) {
     check(mission_state == ETestMissionState::NotStarted ||
           mission_state == ETestMissionState::Running);
-    check(entity_registry->is_valid_handle(handle));
+    check(entity_registry.is_valid_handle(handle));
     if (entity_handles_that_must_survive.Contains(handle)) {
         return;
     }
-    auto const id{entity_registry->find_unique_id(handle)};
+    auto const id{entity_registry.find_unique_id(handle)};
     entity_handles_that_must_survive.Add(handle);
     entity_ids_that_must_survive.Add(id);
-    entity_types_that_must_survive.Add(entity_registry->get_unique_entities().entity_types[id.id]);
+    entity_types_that_must_survive.Add(entity_registry.get_unique_entities().entity_types[id.id]);
     if (mission_state == ETestMissionState::Running) {
-        entity_health_that_must_survive.Emplace(entity_registry->get_health(handle));
+        entity_health_that_must_survive.Emplace(entity_registry.get_health(handle));
     }
 }
 
 void FTestMissionManager::add_entity_required_to_kill(FRegistryEntityHandle handle) {
     check(mission_state == ETestMissionState::NotStarted ||
           mission_state == ETestMissionState::Running);
-    check(entity_registry->is_valid_handle(handle));
+    check(entity_registry.is_valid_handle(handle));
     if (entity_handles_required_to_kill.Contains(handle)) {
         return;
     }
-    auto const id{entity_registry->find_unique_id(handle)};
+    auto const id{entity_registry.find_unique_id(handle)};
     entity_handles_required_to_kill.Add(handle);
     entity_ids_required_to_kill.Add(id);
-    entity_types_required_to_kill.Add(entity_registry->get_unique_entities().entity_types[id.id]);
+    entity_types_required_to_kill.Add(entity_registry.get_unique_entities().entity_types[id.id]);
     if (mission_state == ETestMissionState::Running) {
-        entity_health_required_to_kill.Emplace(entity_registry->get_health(handle));
+        entity_health_required_to_kill.Emplace(entity_registry.get_health(handle));
     }
 }
 
@@ -419,7 +419,7 @@ void FTestMissionManager::update_mission_kills() {
 
     mission_kills = 0;
     for (auto const id : hero_entity_ids) {
-        mission_kills += entity_registry->get_kills(id);
+        mission_kills += entity_registry.get_kills(id);
     }
 }
 
@@ -429,7 +429,7 @@ void FTestMissionManager::initialise_entity_health_that_must_survive() {
     check(entity_types_that_must_survive.Num() == entity_handles_that_must_survive.Num());
 
     for (auto const handle : entity_handles_that_must_survive) {
-        auto const health{entity_registry->get_health(handle)};
+        auto const health{entity_registry.get_health(handle)};
         entity_health_that_must_survive.Emplace(health);
     }
 }
@@ -442,13 +442,13 @@ void FTestMissionManager::update_entity_health_that_must_survive() {
         auto& health{entity_health_that_must_survive[i]};
         auto const handle{entity_handles_that_must_survive[i]};
         health.health =
-            entity_registry->is_valid_handle(handle) ? entity_registry->get_health(handle) : 0;
+            entity_registry.is_valid_handle(handle) ? entity_registry.get_health(handle) : 0;
     }
 }
 
 auto FTestMissionManager::entities_that_must_survive_are_alive() const -> bool {
     for (auto const handle : entity_handles_that_must_survive) {
-        if (!entity_registry->is_valid_alive(handle)) {
+        if (!entity_registry.is_valid_alive(handle)) {
             return false;
         }
     }
@@ -462,7 +462,7 @@ void FTestMissionManager::initialise_entity_health_required_to_kill() {
     check(entity_types_required_to_kill.Num() == entity_handles_required_to_kill.Num());
 
     for (auto const handle : entity_handles_required_to_kill) {
-        auto const health{entity_registry->get_health(handle)};
+        auto const health{entity_registry.get_health(handle)};
         entity_health_required_to_kill.Emplace(health);
     }
 }
@@ -475,13 +475,13 @@ void FTestMissionManager::update_entity_health_required_to_kill() {
         auto& health{entity_health_required_to_kill[i]};
         auto const handle{entity_handles_required_to_kill[i]};
         health.health =
-            entity_registry->is_valid_handle(handle) ? entity_registry->get_health(handle) : 0;
+            entity_registry.is_valid_handle(handle) ? entity_registry.get_health(handle) : 0;
     }
 }
 
 auto FTestMissionManager::entities_required_to_kill_are_dead() const -> bool {
     for (auto const handle : entity_handles_required_to_kill) {
-        if (entity_registry->is_valid_alive(handle)) {
+        if (entity_registry.is_valid_alive(handle)) {
             return false;
         }
     }

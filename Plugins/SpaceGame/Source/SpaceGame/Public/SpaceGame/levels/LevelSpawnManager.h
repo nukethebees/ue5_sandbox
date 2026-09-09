@@ -15,9 +15,14 @@ struct Simulation;
 namespace ml {
 class SPACEGAME_API FLevelSpawnManager {
   public:
+    FLevelSpawnManager(test_capital_ships::Simulation& capital_ships,
+                       test_static_turrets::Simulation& turrets) noexcept;
+    FLevelSpawnManager(FLevelSpawnManager const&) = delete;
+    FLevelSpawnManager(FLevelSpawnManager&&) = delete;
+    auto operator=(FLevelSpawnManager const&) -> FLevelSpawnManager& = delete;
+    auto operator=(FLevelSpawnManager&&) -> FLevelSpawnManager& = delete;
+
     void initialise(int32 entity_count,
-                    test_capital_ships::Simulation& capital_ships,
-                    test_static_turrets::Simulation& turrets,
                     FLevelCapitalSpawnEventsConstView capital_payloads,
                     FLevelTurretSpawnEventsConstView turret_payloads);
     void set_entity_handle(int32 entity_index, FRegistryEntityHandle handle);
@@ -34,8 +39,8 @@ class SPACEGAME_API FLevelSpawnManager {
 
     FLevelCapitalSpawnEventsConstView capital_payloads_{};
     FLevelTurretSpawnEventsConstView turret_payloads_{};
-    test_capital_ships::Simulation* capital_ships_{};
-    test_static_turrets::Simulation* turrets_{};
+    test_capital_ships::Simulation& capital_ships_;
+    test_static_turrets::Simulation& turrets_;
     TArray<FRegistryEntityHandle> entity_handles_{};
     TArray<FRegistryEntityHandle> target_handles_scratch_{};
 };

@@ -36,7 +36,7 @@ void run_worldless_player_ship_vs_capital(FAutomationTestBase& test,
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
     auto* const player{harness.get_simulation().get_player_ship_simulation()};
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     check(player);
     player->set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
     player->start_boost();
@@ -52,8 +52,8 @@ void run_worldless_player_ship_vs_capital(FAutomationTestBase& test,
         Sample sample{.player_location = player->transform.GetLocation(),
                       .registry_location =
                           FVector{harness.get_registry().get_location(player_handle)}};
-        sample.fighter_target_locations = to_vector3f_array(fighters->get_target_locations());
-        sample.fighter_locations = to_vector3f_array(fighters->get_locations());
+        sample.fighter_target_locations = to_vector3f_array(fighters.get_target_locations());
+        sample.fighter_locations = to_vector3f_array(fighters.get_locations());
         samples.add(harness.get_time(), MoveTemp(sample));
     };
     harness.timeline.finish_at(5.6);

@@ -165,6 +165,14 @@ auto render_signature(Function const& function) -> std::string {
                 break;
         }
     }
+    if (!function.declaration && !spec.member_initializers.empty()) {
+        std::vector<std::string> initializers;
+        initializers.reserve(spec.member_initializers.size());
+        for (auto const& [member, value] : spec.member_initializers) {
+            initializers.push_back(member + "{" + value + "}");
+        }
+        signature += "\n    : " + join(initializers, "\n    , ");
+    }
     if (spec.template_parameters.has_value()) {
         signature =
             "template <" + *spec.template_parameters + ">" +

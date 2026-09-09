@@ -36,12 +36,16 @@ struct SPACEGAME_API Simulation {
     using Entities = ml::test_lasers::Entities;
     using HitDetails = ml::test_lasers::HitDetails;
 
-    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
-    void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
-    void set_spatial_query_manager(FSpatialQueryManager& new_query_manager) noexcept;
+    Simulation(FSimulationClock const& clock,
+               FTestEntityRegistry& entity_registry,
+               FSpatialQueryManager& query_manager) noexcept;
+    Simulation(Simulation const&) = delete;
+    Simulation(Simulation&&) = delete;
+    auto operator=(Simulation const&) -> Simulation& = delete;
+    auto operator=(Simulation&&) -> Simulation& = delete;
 
     auto get_num_instances() const noexcept -> int32;
-    auto get_entity_registry() const noexcept -> FTestEntityRegistry const* {
+    auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
         return entity_registry;
     }
     auto get_number_spawned() const noexcept -> int32 { return number_spawned; }
@@ -82,8 +86,8 @@ struct SPACEGAME_API Simulation {
     friend struct ::FLaserPresentation;
     friend class ::FLaserPresentationIndexingTest;
 
-    FTestEntityRegistry* entity_registry{nullptr};
-    FSpatialQueryManager* query_manager{nullptr};
+    FTestEntityRegistry& entity_registry;
+    FSpatialQueryManager& query_manager;
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
 
     Entities entities;

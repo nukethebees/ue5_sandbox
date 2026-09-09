@@ -9,7 +9,7 @@
 namespace ml::test_static_turrets {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ml::test_static_turrets::Simulation& new_target);
+    PhaseInterface(ml::test_static_turrets::Simulation& new_target);
 
     void begin_play();
 
@@ -30,7 +30,7 @@ class SPACEGAME_API PhaseInterface {
     void end_tick();
 
     friend struct FLevelSimulation;
-    ml::test_static_turrets::Simulation* simulation{nullptr};
+    ml::test_static_turrets::Simulation& simulation;
 };
 } // namespace ml::test_static_turrets
 // clang-format on

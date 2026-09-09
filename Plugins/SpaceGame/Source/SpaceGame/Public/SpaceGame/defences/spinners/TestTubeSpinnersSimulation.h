@@ -20,20 +20,25 @@ class PhaseInterface;
 struct SPACEGAME_API Simulation {
     using EntityData = ml::test_tube_spinners::EntityData;
 
+    Simulation(FSimulationClock const& clock,
+               FTestEntityRegistry& entity_registry,
+               ml::test_lasers::Simulation& laser_simulation) noexcept;
+    Simulation(Simulation const&) = delete;
+    Simulation(Simulation&&) = delete;
+    auto operator=(Simulation const&) -> Simulation& = delete;
+    auto operator=(Simulation&&) -> Simulation& = delete;
+
     /* **************************************** */
     // Configuration
     /* **************************************** */
     void set_config(FSpinnerSimulationConfig const& new_config) noexcept;
-    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
-    void set_entity_registry(FTestEntityRegistry& new_registry) noexcept;
-    void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
-    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
-    auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
+    auto get_entity_registry() const -> FTestEntityRegistry const& { return entity_registry; }
+    auto get_laser_simulation() const -> ml::test_lasers::Simulation const& {
         return laser_simulation;
     }
 
@@ -80,8 +85,8 @@ struct SPACEGAME_API Simulation {
 
     FSpinnerSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
-    FTestEntityRegistry* entity_registry{nullptr};
-    ml::test_lasers::Simulation* laser_simulation{nullptr};
+    FTestEntityRegistry& entity_registry;
+    ml::test_lasers::Simulation& laser_simulation;
     EntityData entities{};
     TArray<int32> indices_ready_to_fire;
     ml::test_lasers::SpawnRequests new_lasers;

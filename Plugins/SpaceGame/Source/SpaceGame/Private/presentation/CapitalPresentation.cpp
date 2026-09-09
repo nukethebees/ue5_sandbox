@@ -218,15 +218,14 @@ void FCapitalPresentation::draw_debugging_shapes() const {
 
     auto const& capital_simulation{simulation()};
     auto const& entities{capital_simulation.entities};
-    auto const* const entity_registry{capital_simulation.entity_registry};
-    check(entity_registry);
+    auto const& entity_registry{capital_simulation.entity_registry};
     auto const n{capital_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
     for (int32 i{0}; i < n; ++i) {
         auto const ship_location{ml::get_vector3d(entities.locations, i)};
         auto const target_handle{entities.target_handles[i]};
-        if (entity_registry->is_valid_handle(target_handle)) {
-            FVector3d const target_location{entity_registry->get_location(target_handle)};
+        if (entity_registry.is_valid_handle(target_handle)) {
+            FVector3d const target_location{entity_registry.get_location(target_handle)};
             debug_drawer.draw_arrow(ship_location, target_location);
         }
 
@@ -249,13 +248,7 @@ void FCapitalPresentation::visual_log_state() const {
 #endif
 
     auto const& capital_simulation{simulation()};
-    auto const* const entity_registry{capital_simulation.entity_registry};
-    if (!entity_registry) {
-        UE_LOG(LogSandboxEntities,
-               Error,
-               TEXT("FCapitalPresentation::visual_log_state entity registry is null"));
-        return;
-    }
+    auto const& entity_registry{capital_simulation.entity_registry};
     if (!actor_config) {
         UE_LOG(LogSandboxEntities,
                Error,
@@ -296,10 +289,10 @@ void FCapitalPresentation::visual_log_state() const {
         auto const fighter_count{fighter_handles.Num()};
         for (int32 fighter_index{0}; fighter_index < fighter_count; ++fighter_index) {
             auto const fighter_handle{fighter_handles[fighter_index]};
-            if (!entity_registry->is_valid_alive(fighter_handle)) {
+            if (!entity_registry.is_valid_alive(fighter_handle)) {
                 continue;
             }
-            FVector const fighter_location{entity_registry->get_location(fighter_handle)};
+            FVector const fighter_location{entity_registry.get_location(fighter_handle)};
             UE_VLOG_SEGMENT_THICK(instances->GetOwner(),
                                   LogSandboxEntities,
                                   Log,
@@ -312,10 +305,10 @@ void FCapitalPresentation::visual_log_state() const {
         }
 
         auto const target_handle{entities.target_handles[capital_index]};
-        if (!entity_registry->is_valid_alive(target_handle)) {
+        if (!entity_registry.is_valid_alive(target_handle)) {
             continue;
         }
-        FVector const target_location{entity_registry->get_location(target_handle)};
+        FVector const target_location{entity_registry.get_location(target_handle)};
         UE_VLOG_WIRESPHERE(instances->GetOwner(),
                            LogSandboxTargeting,
                            Log,

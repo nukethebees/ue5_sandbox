@@ -3,10 +3,14 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/player/PlayerControlContexts.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/SimulationClock.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
 
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
@@ -33,7 +37,11 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     FBenchmarkControlInputs benchmark_input_;
     FGlobalControlInputs global_input_;
     FPlayerControlContexts contexts_;
-    ml::test_space_ship::Simulation ship_simulation_;
+    FSimulationClock clock_;
+    FTestEntityRegistry registry_;
+    ml::FSpatialQueryManager queries_{registry_};
+    ml::test_lasers::Simulation lasers_{clock_, registry_, queries_};
+    ml::test_space_ship::Simulation ship_simulation_{clock_, registry_, queries_, lasers_};
 
     BEFORE_EACH()
     {

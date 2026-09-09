@@ -8,9 +8,8 @@ void FCollisionSystem::update() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::update);
     rebuild_grid();
 }
-void FCollisionSystem::set_entity_registry(FTestEntityRegistry const& registry) {
-    uniform_grid_.set_entity_registry(registry);
-}
+FCollisionSystem::FCollisionSystem(FTestEntityRegistry const& registry) noexcept
+    : uniform_grid_{registry} {}
 void FCollisionSystem::rebuild_grid() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FCollisionSystem::rebuild_grid);
     uniform_grid_.rebuild_grid(entity_aabbs_);

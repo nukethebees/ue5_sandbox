@@ -17,23 +17,18 @@ namespace ml::test_tube_spinners {
 void Simulation::set_config(FSpinnerSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
-void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
-    simulation_clock.bind(clock);
-}
-void Simulation::set_entity_registry(FTestEntityRegistry& new_registry) noexcept {
-    entity_registry = &new_registry;
-}
-void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept {
-    laser_simulation = &new_simulation;
-}
+Simulation::Simulation(FSimulationClock const& clock,
+                       FTestEntityRegistry& in_entity_registry,
+                       ml::test_lasers::Simulation& in_laser_simulation) noexcept
+    : simulation_clock{clock}
+    , entity_registry{in_entity_registry}
+    , laser_simulation{in_laser_simulation} {}
 
 /* **************************************** */
 // Simulation phases
 /* **************************************** */
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_tube_spinners::Simulation::begin_play);
-    check(entity_registry);
-    check(laser_simulation);
     check(entity_radius > 0.f);
 
     auto const cooldown_tick_period{
@@ -108,7 +103,7 @@ void Simulation::spawn_instances(FVectors3f::ConstView const new_locations,
     entity_data.set_all_alive();
     checkCode(entity_data.validate_array_sizes());
 
-    auto new_entities{entity_registry->add_entities(entity_data.get_const_view())};
+    auto new_entities{entity_registry.add_entities(entity_data.get_const_view())};
 
     for (int32 i{0}; i < n; ++i) {
         appended.handles[i] = new_entities.registry_handles[i];
@@ -188,7 +183,7 @@ void Simulation::fire_lasers() {
         entities.next_fire_point_indices[index] = (fire_point_index + 1) % n_firing_points;
     }
 
-    laser_simulation->queue_laser_spawns(new_lasers);
+    laser_simulation.queue_laser_spawns(new_lasers);
 }
 
 /* **************************************** */

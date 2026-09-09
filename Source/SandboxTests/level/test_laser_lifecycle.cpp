@@ -60,10 +60,10 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto* const lasers{harness.get_simulation().get_lasers()};
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
-    auto const shooter{capitals->get_handle(0)};
-    auto const target{capitals->get_handle(1)};
+    auto& lasers{harness.get_simulation().get_lasers()};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const shooter{capitals.get_handle(0)};
+    auto const target{capitals.get_handle(1)};
     auto const initial_target_health{scenario == ELaserLifecycleScenario::SimultaneousLethalHits
                                          ? low_target_health
                                          : normal_target_health};
@@ -78,8 +78,8 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
         samples.add(harness.get_time(),
-                    Sample{lasers->get_num_instances(),
-                           lasers->get_number_spawned(),
+                    Sample{lasers.get_num_instances(),
+                           lasers.get_number_spawned(),
                            harness.get_registry().get_health(target),
                            harness.get_registry().count_alive(),
                            harness.get_registry().count_kills()});
@@ -114,7 +114,7 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
             requests.instigator_handles[i] = shooter;
             requests.colours[i] = FLinearColor::White;
         }
-        lasers->queue_laser_spawns(requests);
+        lasers.queue_laser_spawns(requests);
     });
     auto const end_time{scenario == ELaserLifecycleScenario::Miss ? expiry_test_end_time
                                                                   : collision_test_end_time};

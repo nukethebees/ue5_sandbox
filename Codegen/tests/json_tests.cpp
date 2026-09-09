@@ -262,6 +262,45 @@ TEST(Json, LoadsEveryModuleKindAndStructuredTypeReference) {
     EXPECT_EQ(umbrella.headers, std::vector<std::string>({"Vectors.h", "Values.h"}));
 }
 
+TEST(Json, LoadsReferenceFacadeTargetStorage) {
+    TemporaryManifest files;
+    files.write("types.json", R"({"types":{}})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"facade","name":"facade","header":"Facade.h","facade":{"name":"FFacade","target_type":"FTarget","target_member_name":"target","target_storage":"reference","methods":[{"name":"get","return_type":"int32"}]}}]})");
+    files.write("manifest.json",
+                R"({"schema_version":11,"types":"types.json","modules":["modules.json"]})");
+
+    auto const manifest{load_manifest(files.path("manifest.json"))};
+
+    ASSERT_EQ(manifest.modules.size(), 1);
+    auto const& facade{std::get<FacadeModuleSchema>(manifest.modules.front()).facade};
+    EXPECT_TRUE(facade.reference_target);
+}
+
+TEST(Json, RejectsUnknownFacadeTargetStorage) {
+    TemporaryManifest files;
+    files.write("types.json", R"({"types":{}})");
+    files.write(
+        "modules.json",
+        R"({"modules":[{"kind":"facade","name":"facade","header":"Facade.h","facade":{"name":"FFacade","target_type":"FTarget","target_member_name":"target","target_storage":"refrence","methods":[{"name":"get","return_type":"int32"}]}}]})");
+    files.write("manifest.json",
+                R"({"schema_version":11,"types":"types.json","modules":["modules.json"]})");
+
+    EXPECT_THROW(
+        {
+            try {
+                static_cast<void>(load_manifest(files.path("manifest.json")));
+            } catch (ManifestError const& error) {
+                auto const message{std::string{error.what()}};
+                EXPECT_NE(message.find("/facade/target_storage"), std::string::npos);
+                EXPECT_NE(message.find("'pointer' or 'reference'"), std::string::npos);
+                throw;
+            }
+        },
+        ManifestError);
+}
+
 TEST(Json, LoadsEnumModulesAndConversions) {
     TemporaryManifest files;
     files.write("types.json", R"({"types":{}})");

@@ -27,10 +27,10 @@ void run_worldless_spatial_query_line_of_sight(FAutomationTestBase& test,
     }
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
     TArray<FRegistryEntityHandle> expected;
     for (int32 i{}; i < locations.Num(); ++i) {
-        expected.Add(capitals->get_handle(i));
+        expected.Add(capitals.get_handle(i));
     }
 
     FVectors3f starts;

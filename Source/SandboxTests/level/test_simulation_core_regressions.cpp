@@ -72,7 +72,7 @@ void run_worldless_simulation_core_regression(FAutomationTestBase& test,
         return;
     }
 
-    auto const damaged_handle{simulation.get_capital_ships()->get_handle(0)};
+    auto const damaged_handle{simulation.get_capital_ships().get_handle(0)};
     struct DamageSample {
         int32 capital_count{};
         int32 registry_alive_count{};
@@ -85,7 +85,7 @@ void run_worldless_simulation_core_regression(FAutomationTestBase& test,
         auto const& telemetry{level.get_level_telemetry_manager().get_active_entity_count_data()};
         samples.add(harness.get_time(),
                     DamageSample{
-                        .capital_count = level.get_capital_ships()->get_num_instances(),
+                        .capital_count = level.get_capital_ships().get_num_instances(),
                         .registry_alive_count = registry.count_alive(),
                         .health = registry.is_valid_handle(damaged_handle)
                                     ? registry.get_health(damaged_handle)

@@ -50,9 +50,9 @@ void run_worldless_spatial_query_range(FAutomationTestBase& test,
     add_worldless_capital_spawn(data, FVector3f{1000.1f, 0.f, 0.f}, ETestTeam::Red);
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const ignored_origin{harness.get_simulation().get_capital_ships()->get_handle(0)};
-    auto const friendly{harness.get_simulation().get_capital_ships()->get_handle(1)};
-    auto const boundary_enemy{harness.get_simulation().get_capital_ships()->get_handle(2)};
+    auto const ignored_origin{harness.get_simulation().get_capital_ships().get_handle(0)};
+    auto const friendly{harness.get_simulation().get_capital_ships().get_handle(1)};
+    auto const boundary_enemy{harness.get_simulation().get_capital_ships().get_handle(2)};
     TStaticArray<FRegistryEntityHandle, 4> results;
     auto const count{
         harness.get_simulation().get_spatial_query_manager().collect_non_team_entities_in_range(

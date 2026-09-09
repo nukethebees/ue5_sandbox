@@ -27,18 +27,14 @@ namespace ml::test_static_turrets {
 void Simulation::set_config(FTurretSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
-void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
-    simulation_clock.bind(clock);
-}
-void Simulation::set_entity_registry(FTestEntityRegistry& new_registry) noexcept {
-    entity_registry = &new_registry;
-}
-void Simulation::set_spatial_query_manager(FSpatialQueryManager const& manager) noexcept {
-    spatial_query_manager = &manager;
-}
-void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept {
-    laser_simulation = &new_simulation;
-}
+Simulation::Simulation(FSimulationClock const& clock,
+                       FTestEntityRegistry& in_entity_registry,
+                       FSpatialQueryManager const& in_spatial_query_manager,
+                       ml::test_lasers::Simulation& in_laser_simulation) noexcept
+    : simulation_clock{clock}
+    , entity_registry{in_entity_registry}
+    , spatial_query_manager{in_spatial_query_manager}
+    , laser_simulation{in_laser_simulation} {}
 
 /* **************************************** */
 // Spawning
@@ -111,7 +107,7 @@ auto Simulation::register_turrets(SpawnDataConstView const spawn_data,
         new_entity_data.teams[i] = spawn_data.teams[i];
         new_entity_data.alive[i] = static_cast<uint8>(spawn_data.healths[i] > 0);
     }
-    auto const new_entities{entity_registry->add_entities(new_entity_data.get_const_view())};
+    auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
     auto new_handles{new_entities.registry_handles.to_array()};
     for (int32 local_index{}; local_index < n_to_add; ++local_index) {
         entities.handles[first_new_index + local_index] = new_handles[local_index];
@@ -147,9 +143,6 @@ void Simulation::handle_dead_entities() {
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestStaticTurretCount, 0);
-    check(entity_registry);
-    check(spatial_query_manager);
-    check(laser_simulation);
     check(entity_radius > 0.f);
     check(search_slice_size > 0);
 
@@ -180,7 +173,7 @@ void Simulation::queue_commands() {
 void Simulation::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::resolve_damage_events);
 
-    ml::batch::resolve_damage_events(*entity_registry,
+    ml::batch::resolve_damage_events(entity_registry,
                                      entities.handles,
                                      entities.healths,
                                      local_indices_to_remove,
@@ -192,7 +185,7 @@ void Simulation::update_entity_registry() {
 
     prepare_entity_update_data();
 
-    entity_registry->queue_entity_updates(
+    entity_registry.queue_entity_updates(
         {
             .indices = entities.handles,
             .data = entity_update_data.get_const_view(),
@@ -202,10 +195,10 @@ void Simulation::update_entity_registry() {
 void Simulation::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_static_turrets::Simulation::sync_from_registry);
 
-    entity_registry->refresh_entity_data(entities.target_handles,
-                                         entities.target_locations.get_view(),
-                                         entities.target_velocities.get_view(),
-                                         {});
+    entity_registry.refresh_entity_data(entities.target_handles,
+                                        entities.target_locations.get_view(),
+                                        entities.target_velocities.get_view(),
+                                        {});
 
     handle_dead_entities();
 }
@@ -294,7 +287,7 @@ void Simulation::perform_search_on_slice(int32 const job_index,
 
             ml::TFixedArray<FRegistryEntityHandle, 128> target_handles;
             target_handles.set_num_uninitialised(
-                spatial_query_manager->collect_non_team_entities_in_range(
+                spatial_query_manager.collect_non_team_entities_in_range(
                     turret_location, this_team, radius, target_handles.capacity_view()));
 
             entities.target_handles[i] = FRegistryEntityHandle{};
@@ -305,10 +298,10 @@ void Simulation::perform_search_on_slice(int32 const job_index,
             auto candidate_locations_view{candidate_locations.get_view()};
             for (int32 target_index{}; target_index < target_count; ++target_index) {
                 candidate_locations_view.set(
-                    target_index, entity_registry->get_location(target_handles[target_index]));
+                    target_index, entity_registry.get_location(target_handles[target_index]));
             }
 
-            spatial_query_manager->has_line_of_sight_to_targets(
+            spatial_query_manager.has_line_of_sight_to_targets(
                 ml::get_vector3f(entities.fire_point_locations, i),
                 candidate_locations.get_const_view(),
                 target_handles,
@@ -325,7 +318,7 @@ void Simulation::perform_search_on_slice(int32 const job_index,
                     if (has_line_of_sight[target_index] == 0) {
                         continue;
                     }
-                    if (this_team == entity_registry->get_team(target_handle)) {
+                    if (this_team == entity_registry.get_team(target_handle)) {
                         continue;
                     }
 
@@ -366,7 +359,7 @@ void Simulation::fire_at_enemies() {
             continue;
         }
 
-        if (!entity_registry->is_valid_alive(target_handle)) {
+        if (!entity_registry.is_valid_alive(target_handle)) {
             entities.target_handles[i].reset();
             continue;
         }
@@ -400,7 +393,7 @@ void Simulation::fire_at_enemies() {
     }
 
     hit_entity_handles.SetNumUninitialized(n_candidates, EAllowShrinking::No);
-    spatial_query_manager->trace_line_of_sight(
+    spatial_query_manager.trace_line_of_sight(
         start_locations.get_const_view(), end_locations.get_const_view(), hit_entity_handles);
 
     for (int32 candidate_index{0}; candidate_index < n_candidates; ++candidate_index) {
@@ -436,7 +429,7 @@ void Simulation::fire_at_enemies() {
                        colour_cache[entities.teams[i]]);
     }
 
-    laser_simulation->queue_laser_spawns(new_lasers);
+    laser_simulation.queue_laser_spawns(new_lasers);
 }
 auto Simulation::get_disengage_radius() const -> float {
     return config.detection_radius * 1.2f;
@@ -468,6 +461,6 @@ void Simulation::validate_array_sizes() const {
     entities.validate_array_sizes();
 }
 void Simulation::validate_proxy_handles() const {
-    entity_registry->validate_handles(entities.handles);
+    entity_registry.validate_handles(entities.handles);
 }
 } // namespace ml::test_static_turrets

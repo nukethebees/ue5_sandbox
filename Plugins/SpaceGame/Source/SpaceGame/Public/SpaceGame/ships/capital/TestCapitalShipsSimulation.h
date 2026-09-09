@@ -43,20 +43,25 @@ struct SPACEGAME_API Simulation {
     using FighterReassignment = ml::test_capital_ships::FighterReassignment;
     using EntityBuffers = ml::MultiBuffer<EntityTickData, 2>;
 
+    Simulation(FTestEntityRegistry& entity_registry,
+               FSpatialQueryManager const& spatial_query_manager,
+               ml::test_capital_ship_fighters::Simulation& fighters);
+    Simulation(Simulation const&) = delete;
+    Simulation(Simulation&&) = delete;
+    auto operator=(Simulation const&) -> Simulation& = delete;
+    auto operator=(Simulation&&) -> Simulation& = delete;
+
     /* **************************************** */
     // Configuration
     /* **************************************** */
     void set_config(FCapitalSimulationConfig const& new_config) noexcept;
-    void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
-    void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
-    void bind_fighters(ml::test_capital_ship_fighters::Simulation& fighters);
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
     auto is_valid(FRegistryEntityHandle handle) const noexcept -> bool;
-    auto get_entity_registry() const noexcept -> FTestEntityRegistry const* {
+    auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
         return entity_registry;
     }
     auto get_handle(int32 index) const -> FRegistryEntityHandle { return entities.handles[index]; }
@@ -153,8 +158,8 @@ struct SPACEGAME_API Simulation {
     friend class ::ml::FLevelSpawnManager;
 
     FCapitalSimulationConfig config{};
-    FTestEntityRegistry* entity_registry{nullptr};
-    FSpatialQueryManager const* spatial_query_manager{nullptr};
+    FTestEntityRegistry& entity_registry;
+    FSpatialQueryManager const& spatial_query_manager;
 
     EntityData entities{};
     EntityBuffers tick_buffers{};

@@ -8,13 +8,14 @@
 #include <SandboxCore/soa_vector_utils.h>
 
 namespace ml {
+FLevelSpawnManager::FLevelSpawnManager(test_capital_ships::Simulation& capital_ships,
+                                       test_static_turrets::Simulation& turrets) noexcept
+    : capital_ships_{capital_ships}
+    , turrets_{turrets} {}
+
 void FLevelSpawnManager::initialise(int32 const entity_count,
-                                    test_capital_ships::Simulation& capital_ships,
-                                    test_static_turrets::Simulation& turrets,
                                     FLevelCapitalSpawnEventsConstView const capital_payloads,
                                     FLevelTurretSpawnEventsConstView const turret_payloads) {
-    capital_ships_ = &capital_ships;
-    turrets_ = &turrets;
     capital_payloads_ = capital_payloads;
     turret_payloads_ = turret_payloads;
     entity_handles_.Reset();
@@ -79,14 +80,14 @@ void FLevelSpawnManager::spawn_capitals(FLevelCapitalSpawnEventsConstView const 
         .initial_spawn_delays = events.initial_fighter_spawn_delays,
         .spawn_cooldowns = events.fighter_spawn_cooldowns,
     };
-    auto const handles{capital_ships_->register_ships(spawn_data)};
+    auto const handles{capital_ships_.register_ships(spawn_data)};
     for (int32 i{}; i < count; ++i) {
         set_entity_handle(events.entity_indices[i], handles[i]);
     }
     for (int32 i{}; i < count; ++i) {
         auto const target_index{events.target_entity_indices[i]};
         if (target_index != INDEX_NONE) {
-            capital_ships_->set_target_handle(handles[i], get_handle(target_index));
+            capital_ships_.set_target_handle(handles[i], get_handle(target_index));
         }
     }
 }
@@ -98,12 +99,12 @@ void FLevelSpawnManager::spawn_turrets(FLevelTurretSpawnEventsConstView const ev
         .healths = events.healths,
         .laser_damages = events.laser_damages,
     };
-    auto const handles{turrets_->register_turrets(spawn_data, events.rotations)};
+    auto const handles{turrets_.register_turrets(spawn_data, events.rotations)};
     auto const count{events.num()};
-    turrets_->presentation_spawn_transforms.Reserve(count);
+    turrets_.presentation_spawn_transforms.Reserve(count);
     for (int32 i{}; i < count; ++i) {
         set_entity_handle(events.entity_indices[i], handles[i]);
-        turrets_->presentation_spawn_transforms.Emplace(
+        turrets_.presentation_spawn_transforms.Emplace(
             FRotator{ml::get_rotator3d(events.rotations, i)},
             FVector{ml::get_vector3f(events.locations, i)});
     }

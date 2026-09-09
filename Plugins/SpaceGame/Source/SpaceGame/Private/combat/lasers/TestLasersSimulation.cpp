@@ -32,24 +32,16 @@ void SpawnRequests::set_colours(FLinearColor const value) {
     ml::fill(colours, value);
 }
 
-void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
-    simulation_clock.bind(clock);
-}
-
-void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
-    entity_registry = &new_entity_registry;
-}
-
-void Simulation::set_spatial_query_manager(FSpatialQueryManager& new_query_manager) noexcept {
-    query_manager = &new_query_manager;
-}
+Simulation::Simulation(FSimulationClock const& clock,
+                       FTestEntityRegistry& in_entity_registry,
+                       FSpatialQueryManager& in_query_manager) noexcept
+    : entity_registry{in_entity_registry}
+    , query_manager{in_query_manager}
+    , simulation_clock{clock} {}
 
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_lasers::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestLaserCount, 0);
-    check(entity_registry);
-    check(query_manager);
-    check(simulation_clock.is_valid());
 
     number_spawned = 0;
     preallocate_instances();
@@ -105,7 +97,7 @@ void Simulation::process_pending_spawns() {
 
     pending_spawns.validate_array_sizes();
     auto const n_to_add{ml::num(pending_spawns)};
-    entity_registry->record_shots(pending_spawns.instigator_handles);
+    entity_registry.record_shots(pending_spawns.instigator_handles);
     if (n_to_add <= 0) {
         return;
     }
@@ -183,7 +175,7 @@ void Simulation::handle_collisions(float const dt) {
     });
 
     merge_collision_data();
-    entity_registry->queue_direct_damage_events(collision_damage_events);
+    entity_registry.queue_direct_damage_events(collision_damage_events);
 
     to_remove.Sort(TGreater<int32>{});
     remove_instances(to_remove);
@@ -218,7 +210,7 @@ void Simulation::check_collision_thread(int32 const job_index,
     auto const ignored_entities{
         TConstArrayView<FRegistryEntityHandle>{simulation.entities.instigator_handles}.Slice(
             i_start, trace_count)};
-    simulation.query_manager->get_collision_system().get_uniform_grid().trace_aabbs(
+    simulation.query_manager.get_collision_system().get_uniform_grid().trace_aabbs(
         data.traces.get_const_view(), data.trace_hits.get_view(), ignored_entities);
 
     for (int32 trace_index{}; trace_index < trace_count; ++trace_index) {

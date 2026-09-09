@@ -38,6 +38,12 @@ struct FCollisionGridTelemetrySnapshot {
 struct SPACEGAME_API CollisionUniformGrid {
     static inline FVector3f const origin{FVector3f::ZeroVector};
 
+    explicit CollisionUniformGrid(FTestEntityRegistry const& entity_registry) noexcept;
+    CollisionUniformGrid(CollisionUniformGrid const&) = delete;
+    CollisionUniformGrid(CollisionUniformGrid&&) = delete;
+    auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
+    auto operator=(CollisionUniformGrid&&) -> CollisionUniformGrid& = delete;
+
     auto is_configured() const noexcept -> bool;
 
     auto get_grid_dims() const noexcept -> FIntVector3;
@@ -45,8 +51,6 @@ struct SPACEGAME_API CollisionUniformGrid {
 
     auto get_cell_dims() const noexcept -> FVector3f;
     void set_cell_dims(FVector3f const cell_dims) noexcept;
-
-    void set_entity_registry(FTestEntityRegistry const& reg) noexcept;
 
     auto num_cells() const -> int32;
     auto get_non_empty_cell_count() const noexcept -> int32 {
@@ -136,7 +140,7 @@ struct SPACEGAME_API CollisionUniformGrid {
     auto to_index(FVector3f pos) const -> int32;
     void rebuild_static_grid();
 
-    FTestEntityRegistry const* entity_registry_{nullptr};
+    FTestEntityRegistry const& entity_registry_;
 
     FIntVector3 grid_dims_{FIntVector3::ZeroValue};
     FVector3f cell_dims_{FVector3f::ZeroVector};

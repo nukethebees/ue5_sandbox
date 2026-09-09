@@ -8,9 +8,10 @@
 
 namespace ml::test_space_ship {
 class SPACEGAME_API PhaseInterface {
-    private:
-    void bind(ml::test_space_ship::Simulation& new_target);
+    public:
+    PhaseInterface(ml::test_space_ship::Simulation& new_target);
 
+    private:
     void begin_play();
 
     void update_timers(float const dt);
@@ -24,7 +25,7 @@ class SPACEGAME_API PhaseInterface {
     void update_entity_registry();
 
     friend struct FLevelSimulation;
-    ml::test_space_ship::Simulation* simulation{nullptr};
+    ml::test_space_ship::Simulation& simulation;
 };
 } // namespace ml::test_space_ship
 // clang-format on

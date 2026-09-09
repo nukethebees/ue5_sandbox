@@ -234,18 +234,14 @@ auto Simulation::make_fire_point_candidate(FVector3f const target_location,
 void Simulation::set_config(FFighterSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
-void Simulation::bind_simulation_clock(FSimulationClock const& clock) noexcept {
-    simulation_clock.bind(clock);
-}
-void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
-    entity_registry = &new_entity_registry;
-}
-void Simulation::set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept {
-    spatial_query_manager = &new_query_manager;
-}
-void Simulation::set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept {
-    laser_simulation = &new_simulation;
-}
+Simulation::Simulation(FSimulationClock const& clock,
+                       FTestEntityRegistry& in_entity_registry,
+                       FSpatialQueryManager const& in_spatial_query_manager,
+                       ml::test_lasers::Simulation& in_laser_simulation) noexcept
+    : simulation_clock{clock}
+    , entity_registry{in_entity_registry}
+    , spatial_query_manager{in_spatial_query_manager}
+    , laser_simulation{in_laser_simulation} {}
 
 /* **************************************** */
 // Simulation phases
@@ -264,10 +260,6 @@ void Simulation::begin_play() {
     TRACE_COUNTER_SET(SandboxFighterNavigationNearby, 0);
     TRACE_COUNTER_SET(SandboxFighterNavigationActive, 0);
     TRACE_COUNTER_SET(SandboxFighterNavigationImmediate, 0);
-    check(entity_registry);
-    check(spatial_query_manager);
-    check(laser_simulation);
-    check(simulation_clock.is_valid());
     check(collision_radius > 0.f);
     check(fire_point_distance >= 0.f);
 
@@ -346,17 +338,17 @@ void Simulation::make_decisions() {
 
         auto const fighter_location{ml::get_vector3f(data.locations, i)};
         auto const target_handle{data.target_handles[i]};
-        if (entity_registry->is_valid_alive(target_handle) &&
+        if (entity_registry.is_valid_alive(target_handle) &&
             data.target_distance_sq[i] <= attack_engagement_threshold_sq) {
             continue;
         }
 
-        auto const n_nearby_entities{spatial_query_manager->collect_non_team_entities_in_range(
+        auto const n_nearby_entities{spatial_query_manager.collect_non_team_entities_in_range(
             fighter_location, data.teams[i], awareness_radius, nearby_entities)};
         auto const aim_direction{ml::get_vector3f(data.aim_directions, i)};
         for (int32 j{0}; j < n_nearby_entities; ++j) {
             auto const potential_target{nearby_entities[j]};
-            auto const potential_target_location{entity_registry->get_location(potential_target)};
+            auto const potential_target_location{entity_registry.get_location(potential_target)};
             auto const direction_to_target{
                 (potential_target_location - fighter_location).GetSafeNormal()};
             if (FVector3f::DotProduct(aim_direction, direction_to_target) > dot_threshold) {
@@ -459,20 +451,20 @@ void Simulation::resolve_damage_events() {
         Sandbox::test_capital_ship_fighters::Simulation::resolve_damage_events);
 
     auto& data{entity_buffers.current()};
-    ml::batch::resolve_damage_events(*entity_registry,
+    ml::batch::resolve_damage_events(entity_registry,
                                      data.entity_handles,
                                      data.healths,
                                      local_indices_to_remove,
                                      entity_death_info);
 
-    auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
+    auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
     auto const n_direct_damage{direct_damage.num()};
     for (int32 i{0}; i < n_direct_damage; ++i) {
         auto const local_index{data.entity_handles.Find(direct_damage.damaged_entities[i])};
         auto const instigator{direct_damage.instigators[i]};
         if (local_index != INDEX_NONE &&
-            (!entity_registry->is_valid_handle(instigator) ||
-             entity_registry->get_team(instigator) != data.teams[local_index])) {
+            (!entity_registry.is_valid_handle(instigator) ||
+             entity_registry.get_team(instigator) != data.teams[local_index])) {
             data.target_handles[local_index] = instigator;
         }
     }
@@ -485,7 +477,7 @@ void Simulation::update_entity_registry() {
     prepare_entity_update_data();
     FTestEntityRegistry::ConstView const view{entity_buffers.current().entity_handles,
                                               registry_update_data.get_const_view()};
-    entity_registry->queue_entity_updates(view, entity_death_info);
+    entity_registry.queue_entity_updates(view, entity_death_info);
 }
 void Simulation::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(
@@ -604,7 +596,7 @@ void Simulation::update_separation_observations() {
 
         auto const fighter_location{ml::get_vector3f(data.locations, fighter_index)};
         auto const fighter_handle{data.entity_handles[fighter_index]};
-        auto const n_nearby{spatial_query_manager->collect_entities_of_type_in_range(
+        auto const n_nearby{spatial_query_manager.collect_entities_of_type_in_range(
             fighter_location,
             ETestEntityType::CapitalShipFighter,
             separation_radius,
@@ -619,7 +611,7 @@ void Simulation::update_separation_observations() {
         float closest_distance_sq{TNumericLimits<float>::Max()};
         for (int32 neighbour_index{}; neighbour_index < n_nearby; ++neighbour_index) {
             auto const neighbour_handle{nearby_fighters[neighbour_index]};
-            auto const neighbour_location{entity_registry->get_location(neighbour_handle)};
+            auto const neighbour_location{entity_registry.get_location(neighbour_handle)};
             auto const offset{fighter_location - neighbour_location};
             auto const distance_sq{offset.SizeSquared()};
             closest_distance_sq = FMath::Min(closest_distance_sq, distance_sq);
@@ -831,16 +823,16 @@ void Simulation::execute_navigation_sweeps(float const clearance) {
     }
     FVector3f const moving_half_extent{clearance, clearance, clearance};
     line_of_sight_results.SetNumUninitialized(trace_count, EAllowShrinking::No);
-    spatial_query_manager->are_spheres_in_bounds(
+    spatial_query_manager.are_spheres_in_bounds(
         line_of_sight_ends.get_const_view(), clearance, line_of_sight_results);
     navigation_trace_hits.set_num(trace_count, EAllowShrinking::No);
     // Fighters contribute soft steering; solid entities (including the parent capital) block.
-    spatial_query_manager->sweep_closest_aabbs(line_of_sight_starts.get_const_view(),
-                                               line_of_sight_ends.get_const_view(),
-                                               moving_half_extent,
-                                               navigation_trace_hits.get_view(),
-                                               {},
-                                               ioj::ETraceEntityFilter::ExcludeCapitalShipFighters);
+    spatial_query_manager.sweep_closest_aabbs(line_of_sight_starts.get_const_view(),
+                                              line_of_sight_ends.get_const_view(),
+                                              moving_half_extent,
+                                              navigation_trace_hits.get_view(),
+                                              {},
+                                              ioj::ETraceEntityFilter::ExcludeCapitalShipFighters);
     navigation_telemetry.hard_trace_count += trace_count;
 }
 void Simulation::select_navigation_alternatives(float const safe_progress_time) {
@@ -1065,10 +1057,10 @@ void Simulation::set_target_handle(FRegistryEntityHandle const fighter_handle,
 }
 void Simulation::refresh_target_data() {
     auto& data{entity_buffers.current()};
-    entity_registry->refresh_entity_data(data.target_handles,
-                                         data.target_locations.get_view(),
-                                         data.target_velocities.get_view(),
-                                         data.target_radii);
+    entity_registry.refresh_entity_data(data.target_handles,
+                                        data.target_locations.get_view(),
+                                        data.target_velocities.get_view(),
+                                        data.target_radii);
     ml::dist_and_dist_sq(
         data.target_distances, data.target_distance_sq, data.locations, data.target_locations);
 }
@@ -1263,8 +1255,7 @@ void Simulation::commit_spawns() {
     new_spawn_entity_data.set_all_entity_types(ETestEntityType::CapitalShipFighter);
     ml::fill(new_spawn_entity_data.velocities, 0.f);
 
-    new_spawn_entity_handles =
-        entity_registry->add_entities(new_spawn_entity_data.get_const_view());
+    new_spawn_entity_handles = entity_registry.add_entities(new_spawn_entity_data.get_const_view());
     new_spawn_entity_handles.registry_handles.append_to(data.entity_handles);
     if (fighter_diagnostics::enabled.GetValueOnGameThread() != 0) {
         for (int32 i{}; i < n_new; ++i) {
@@ -1383,10 +1374,10 @@ void Simulation::handle_firing(TaskView const& data) {
         line_of_sight_ends.set(i, end);
     }
 
-    spatial_query_manager->have_clear_lines(line_of_sight_starts.get_const_view(),
-                                            line_of_sight_ends.get_const_view(),
-                                            line_of_sight_results,
-                                            firing_ignored_entities);
+    spatial_query_manager.have_clear_lines(line_of_sight_starts.get_const_view(),
+                                           line_of_sight_ends.get_const_view(),
+                                           line_of_sight_results,
+                                           firing_ignored_entities);
 
     for (int32 i{n_can_fire_before_los - 1}; i >= 0; --i) {
         auto const ship_index{can_fire[i]};
@@ -1435,10 +1426,10 @@ void Simulation::handle_firing(TaskView const& data) {
             firing_position_candidates.set(i, candidate.location);
         }
 
-        spatial_query_manager->have_clear_lines(line_of_sight_starts.get_const_view(),
-                                                line_of_sight_ends.get_const_view(),
-                                                line_of_sight_results,
-                                                firing_ignored_entities);
+        spatial_query_manager.have_clear_lines(line_of_sight_starts.get_const_view(),
+                                               line_of_sight_ends.get_const_view(),
+                                               line_of_sight_results,
+                                               firing_ignored_entities);
 
         for (int32 i{n_fighters - 1}; i >= 0; --i) {
             if (line_of_sight_results[i] == 0) {
@@ -1469,7 +1460,7 @@ void Simulation::handle_firing(TaskView const& data) {
     new_lasers.set_damages(laser_damage);
     new_lasers.set_speeds(laser_speed);
     new_lasers.set_max_distances(laser_max_distance);
-    laser_simulation->queue_laser_spawns(new_lasers);
+    laser_simulation.queue_laser_spawns(new_lasers);
 }
 
 /* **************************************** */

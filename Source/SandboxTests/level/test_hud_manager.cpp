@@ -70,13 +70,13 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     FWorldlessSimulationTest harness{MoveTemp(data)};
     auto& simulation{harness.get_simulation()};
     auto& mission{simulation.get_mission_manager()};
-    auto const* capitals{simulation.get_capital_ships()};
+    auto const& capitals{simulation.get_capital_ships()};
     auto const first_capital{first_capital_index == INDEX_NONE
                                  ? FRegistryEntityHandle{}
-                                 : capitals->get_handle(first_capital_index)};
+                                 : capitals.get_handle(first_capital_index)};
     auto const second_capital{second_capital_index == INDEX_NONE
                                   ? FRegistryEntityHandle{}
-                                  : capitals->get_handle(second_capital_index)};
+                                  : capitals.get_handle(second_capital_index)};
     if (needs_defence) {
         mission.set_save_mission_results(false);
         mission.set_mission_mode(ETestMissionMode::SurviveTime);

@@ -7,32 +7,33 @@
 #include "SpaceGame/ships/player/TestSpaceShipSimulation.h"
 
 namespace ml::test_space_ship {
-void PhaseInterface::bind(ml::test_space_ship::Simulation& new_target) {
-    simulation = &new_target;
+PhaseInterface::PhaseInterface(ml::test_space_ship::Simulation& new_target)
+    : simulation{new_target} {
+
 }
 
 void PhaseInterface::begin_play() {
-    simulation->begin_play();
+    simulation.begin_play();
 }
 
 void PhaseInterface::update_timers(float const dt) {
-    simulation->update_timers(dt);
+    simulation.update_timers(dt);
 }
 
 void PhaseInterface::move(float const dt) {
-    simulation->move(dt);
+    simulation.move(dt);
 }
 
 void PhaseInterface::queue_commands() {
-    simulation->queue_commands();
+    simulation.queue_commands();
 }
 
 void PhaseInterface::resolve_damage_events() {
-    simulation->resolve_damage_events();
+    simulation.resolve_damage_events();
 }
 
 void PhaseInterface::update_entity_registry() {
-    simulation->update_entity_registry();
+    simulation.update_entity_registry();
 }
 } // namespace ml::test_space_ship
 // clang-format on

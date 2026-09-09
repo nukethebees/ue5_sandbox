@@ -7,28 +7,29 @@
 #include "SpaceGame/combat/lasers/TestLasersSimulation.h"
 
 namespace ml::test_lasers {
-void PhaseInterface::bind(ml::test_lasers::Simulation& new_target) {
-    simulation = &new_target;
+PhaseInterface::PhaseInterface(ml::test_lasers::Simulation& new_target)
+    : simulation{new_target} {
+
 }
 
 void PhaseInterface::begin_play() {
-    simulation->begin_play();
+    simulation.begin_play();
 }
 
 void PhaseInterface::begin_tick() {
-    simulation->begin_tick();
+    simulation.begin_tick();
 }
 
 void PhaseInterface::simulate(float const dt) {
-    simulation->simulate(dt);
+    simulation.simulate(dt);
 }
 
 void PhaseInterface::commit_spawns() {
-    simulation->commit_spawns();
+    simulation.commit_spawns();
 }
 
 void PhaseInterface::end_tick() {
-    simulation->end_tick();
+    simulation.end_tick();
 }
 } // namespace ml::test_lasers
 // clang-format on

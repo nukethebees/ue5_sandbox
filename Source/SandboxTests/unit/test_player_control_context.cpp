@@ -3,6 +3,8 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
 
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -12,7 +14,9 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/SimulationClock.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
 #include <SpaceGame/ui/main_menu/ControlChordCapture.h>
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 
@@ -674,7 +678,11 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
     TEST_METHOD(NewSamplingSessionStartsWithNeutralControl)
     {
-        ml::test_space_ship::Simulation simulation;
+        FSimulationClock clock;
+        FTestEntityRegistry registry;
+        ml::FSpatialQueryManager queries{registry};
+        ml::test_lasers::Simulation lasers{clock, registry, queries};
+        ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
         simulation.start_sampling();
         simulation.set_ship_1d_control_y(1.0f);
         simulation.stop_sampling();
@@ -891,7 +899,11 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         context.set_ship(ship);
         TestRunner->TestFalse(TEXT("Ship context cannot bind before simulation initialization"),
                               context.can_bind());
-        ml::test_space_ship::Simulation simulation;
+        FSimulationClock clock;
+        FTestEntityRegistry registry;
+        ml::FSpatialQueryManager queries{registry};
+        ml::test_lasers::Simulation lasers{clock, registry, queries};
+        ml::test_space_ship::Simulation simulation{clock, registry, queries, lasers};
         ship->bind_simulation(simulation);
         TestRunner->TestTrue(TEXT("Ship context binds"), context.bind());
         TestRunner->TestTrue(TEXT("Ship context reports bound"), context.is_bound());

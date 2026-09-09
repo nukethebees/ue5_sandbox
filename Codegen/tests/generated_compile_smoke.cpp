@@ -207,6 +207,10 @@ void test_facades() {
     source_facade.bind(target);
     source_facade.set_value(42);
     check(source_facade.get() == 42);
+
+    FReferenceFacade reference_facade{target};
+    reference_facade.set_value(17);
+    check(reference_facade.get() == 17);
 }
 
 void test_enums() {

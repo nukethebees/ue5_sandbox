@@ -9,7 +9,7 @@
 namespace ml::test_capital_ships {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ml::test_capital_ships::Simulation& new_target);
+    PhaseInterface(ml::test_capital_ships::Simulation& new_target);
 
     void begin_play();
 
@@ -28,7 +28,7 @@ class SPACEGAME_API PhaseInterface {
     void end_tick();
 
     friend struct FLevelSimulation;
-    ml::test_capital_ships::Simulation* simulation{nullptr};
+    ml::test_capital_ships::Simulation& simulation;
 };
 } // namespace ml::test_capital_ships
 // clang-format on

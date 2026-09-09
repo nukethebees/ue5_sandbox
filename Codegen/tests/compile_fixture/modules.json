@@ -275,6 +275,22 @@
     },
     {
       "kind": "facade",
+      "name": "reference_facade_fixture",
+      "header": "ReferenceFacade.h",
+      "namespace": "codegen_compile_fixture",
+      "facade": {
+        "name": "FReferenceFacade",
+        "target_type": "@target",
+        "target_member_name": "target",
+        "target_storage": "reference",
+        "methods": [
+          {"name": "get", "return_type": "int32", "const": true},
+          {"name": "set_value", "return_type": "void", "parameters": [{"type": "int32 const", "name": "value"}], "target_name": "set"}
+        ]
+      }
+    },
+    {
+      "kind": "facade",
       "name": "source_facade_fixture",
       "header": "SourceFacade.h",
       "source": "SourceFacade.cpp",
@@ -310,6 +326,7 @@
         "Vector3.h",
         "InlineFacade.h",
         "SourceFacade.h"
+        ,"ReferenceFacade.h"
         ,"PlainEnums.h"
         ,"ReflectedEnums.h"
         ,"StaticTables.h"

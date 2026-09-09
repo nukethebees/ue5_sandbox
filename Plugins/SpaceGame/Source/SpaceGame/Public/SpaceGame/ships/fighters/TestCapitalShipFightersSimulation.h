@@ -68,23 +68,28 @@ struct SPACEGAME_API Simulation {
     using TaskViews = TStaticArray<TaskView, n_task_types>;
     using ConstTaskViews = TStaticArray<ConstTaskView, n_task_types>;
 
+    Simulation(FSimulationClock const& clock,
+               FTestEntityRegistry& entity_registry,
+               FSpatialQueryManager const& spatial_query_manager,
+               ml::test_lasers::Simulation& laser_simulation) noexcept;
+    Simulation(Simulation const&) = delete;
+    Simulation(Simulation&&) = delete;
+    auto operator=(Simulation const&) -> Simulation& = delete;
+    auto operator=(Simulation&&) -> Simulation& = delete;
+
     /* **************************************** */
     // Configuration
     /* **************************************** */
     void set_config(FFighterSimulationConfig const& new_config) noexcept;
-    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
-    void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
-    void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
-    void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
-    auto get_entity_registry() const noexcept -> FTestEntityRegistry const* {
+    auto get_entity_registry() const noexcept -> FTestEntityRegistry const& {
         return entity_registry;
     }
-    auto get_laser_simulation() const noexcept -> ml::test_lasers::Simulation const* {
+    auto get_laser_simulation() const noexcept -> ml::test_lasers::Simulation const& {
         return laser_simulation;
     }
     auto get_view(int32 offset, int32 width) -> EntityData::View;
@@ -311,8 +316,8 @@ struct SPACEGAME_API Simulation {
     float minimum_navigation_lookahead_time{};
 
     EntityBuffers entity_buffers{};
-    FTestEntityRegistry* entity_registry{nullptr};
-    FSpatialQueryManager const* spatial_query_manager{nullptr};
+    FTestEntityRegistry& entity_registry;
+    FSpatialQueryManager const& spatial_query_manager;
     RegistryEntityData registry_update_data;
 
     TestCapitalShipFighterSpawnQueue spawn_queue;
@@ -327,7 +332,7 @@ struct SPACEGAME_API Simulation {
     ConstTaskViews const_task_views{};
     TestCapitalShipFighterOrderQueue order_queue{};
 
-    ml::test_lasers::Simulation* laser_simulation{nullptr};
+    ml::test_lasers::Simulation& laser_simulation;
     ml::test_lasers::SpawnRequests new_lasers;
     TArray<float> aiming_dot_product_buffer;
 

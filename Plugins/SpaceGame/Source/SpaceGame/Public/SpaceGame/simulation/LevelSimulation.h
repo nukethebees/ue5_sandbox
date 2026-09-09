@@ -108,27 +108,27 @@ struct SPACEGAME_API FLevelSimulation {
     auto get_player_ship_simulation() const -> ml::test_space_ship::Simulation const* {
         return player_ship_simulation_.IsSet() ? &player_ship_simulation_.GetValue() : nullptr;
     }
-    auto get_lasers() -> ml::test_lasers::Simulation* { return &lasers_simulation_; }
-    auto get_lasers() const -> ml::test_lasers::Simulation const* { return &lasers_simulation_; }
-    auto get_capital_ships() -> ml::test_capital_ships::Simulation* {
-        return &capital_ships_simulation_;
+    auto get_lasers() -> ml::test_lasers::Simulation& { return lasers_simulation_; }
+    auto get_lasers() const -> ml::test_lasers::Simulation const& { return lasers_simulation_; }
+    auto get_capital_ships() -> ml::test_capital_ships::Simulation& {
+        return capital_ships_simulation_;
     }
-    auto get_capital_ships() const -> ml::test_capital_ships::Simulation const* {
-        return &capital_ships_simulation_;
+    auto get_capital_ships() const -> ml::test_capital_ships::Simulation const& {
+        return capital_ships_simulation_;
     }
-    auto get_capital_ship_fighters() -> ml::test_capital_ship_fighters::Simulation* {
-        return &capital_ship_fighters_simulation_;
+    auto get_capital_ship_fighters() -> ml::test_capital_ship_fighters::Simulation& {
+        return capital_ship_fighters_simulation_;
     }
-    auto get_capital_ship_fighters() const -> ml::test_capital_ship_fighters::Simulation const* {
-        return &capital_ship_fighters_simulation_;
+    auto get_capital_ship_fighters() const -> ml::test_capital_ship_fighters::Simulation const& {
+        return capital_ship_fighters_simulation_;
     }
-    auto get_turrets() -> ml::test_static_turrets::Simulation* { return &turrets_simulation_; }
-    auto get_turrets() const -> ml::test_static_turrets::Simulation const* {
-        return &turrets_simulation_;
+    auto get_turrets() -> ml::test_static_turrets::Simulation& { return turrets_simulation_; }
+    auto get_turrets() const -> ml::test_static_turrets::Simulation const& {
+        return turrets_simulation_;
     }
-    auto get_spinners() -> ml::test_tube_spinners::Simulation* { return &spinners_simulation_; }
-    auto get_spinners() const -> ml::test_tube_spinners::Simulation const* {
-        return &spinners_simulation_;
+    auto get_spinners() -> ml::test_tube_spinners::Simulation& { return spinners_simulation_; }
+    auto get_spinners() const -> ml::test_tube_spinners::Simulation const& {
+        return spinners_simulation_;
     }
     auto get_entity_registry() -> FTestEntityRegistry& { return entity_registry_; }
     auto get_entity_registry() const -> FTestEntityRegistry const& { return entity_registry_; }
@@ -156,7 +156,6 @@ struct SPACEGAME_API FLevelSimulation {
     /* **************************************** */
     void configure_subsystems(FLevelSimulationInitData const& data);
     void configure_player(ml::test_space_ship::FPlayerSpawnData const& spawn);
-    void bind_simulation_dependencies();
     void initialise_spatial_queries(FLevelSimulationInitData const& data);
     void begin_subsystems(FLevelSimulationInitData const& data);
     void initialise_events(FLevelSimulationInitData& data);
@@ -171,23 +170,23 @@ struct SPACEGAME_API FLevelSimulation {
     FSimulationClock clock_;
     EOrchestratorState state_{EOrchestratorState::Uninitialised};
     FTestEntityRegistry entity_registry_;
-    FTestMissionManager mission_manager_;
     ml::FSpatialQueryManager query_manager_;
-    ml::FLevelEventManager event_manager_;
-    TOptional<ml::test_space_ship::Simulation> player_ship_simulation_;
-    ml::test_space_ship::PhaseInterface player_ship_phase_;
     ml::test_lasers::Simulation lasers_simulation_;
     ml::test_lasers::PhaseInterface lasers_phase_;
-    FLevelTelemetryManager level_telemetry_manager_;
-    FFixedTickLoop telemetry_tick_loop_{};
-    TOptional<FLevelTelemetryRunMetadata> telemetry_metadata_{};
-    ml::test_capital_ships::Simulation capital_ships_simulation_;
-    ml::test_capital_ships::PhaseInterface capital_ships_phase_;
+    TOptional<ml::test_space_ship::Simulation> player_ship_simulation_;
+    TOptional<ml::test_space_ship::PhaseInterface> player_ship_phase_;
     ml::test_capital_ship_fighters::Simulation capital_ship_fighters_simulation_;
     ml::test_capital_ship_fighters::PhaseInterface capital_ship_fighters_phase_;
+    ml::test_capital_ships::Simulation capital_ships_simulation_;
+    ml::test_capital_ships::PhaseInterface capital_ships_phase_;
     ml::test_static_turrets::Simulation turrets_simulation_;
     ml::test_static_turrets::PhaseInterface turrets_phase_;
     ml::test_tube_spinners::Simulation spinners_simulation_;
     ml::test_tube_spinners::PhaseInterface spinners_phase_;
+    FTestMissionManager mission_manager_;
+    ml::FLevelEventManager event_manager_;
+    FLevelTelemetryManager level_telemetry_manager_;
+    FFixedTickLoop telemetry_tick_loop_{};
+    TOptional<FLevelTelemetryRunMetadata> telemetry_metadata_{};
     TOptional<FLevelPresentation> presentation_;
 };

@@ -10,12 +10,12 @@ class SPACEGAME_API SimulationClockInterface {
     using tick_type = uint64;
     using time_type = double;
 
-    SimulationClockInterface() = default;
     SimulationClockInterface(FSimulationClock const& orch);
 
-    bool is_valid() const noexcept;
-
-    void bind(FSimulationClock const& new_orchestrator) noexcept;
+    SimulationClockInterface(SimulationClockInterface const&) = delete;
+    SimulationClockInterface& operator=(SimulationClockInterface const&) = delete;
+    SimulationClockInterface(SimulationClockInterface&&) = delete;
+    SimulationClockInterface& operator=(SimulationClockInterface&&) = delete;
 
     auto frequency_to_tick_period(time_type const frequency) const noexcept -> tick_type;
 
@@ -25,6 +25,6 @@ class SPACEGAME_API SimulationClockInterface {
     auto get_simulation_time() const noexcept -> time_type;
     auto get_tick_period() const noexcept -> time_type;
   private:
-    FSimulationClock const* orchestrator{nullptr};
+    FSimulationClock const& orchestrator;
 };
 }

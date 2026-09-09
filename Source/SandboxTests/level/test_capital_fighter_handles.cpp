@@ -190,8 +190,8 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
     TArray<FRegistryEntityHandle> destroyed;
     TArray<FRegistryEntityHandle> kept;
     TArray<FRegistryEntityHandle> green_fighters_before_capital_kill;
@@ -200,21 +200,21 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
     auto capital_kill_checked{scenario == ECapitalFighterHandlesScenario::KillFightersOnly};
 
     harness.timeline.at(0.2, [&] {
-        checks.are_equal(3, capitals->get_num_instances(), TEXT("Three capitals are registered"));
-        auto const expected_fighters{3 * capitals->get_fighter_spawn_slots()};
+        checks.are_equal(3, capitals.get_num_instances(), TEXT("Three capitals are registered"));
+        auto const expected_fighters{3 * capitals.get_fighter_spawn_slots()};
         checks.are_equal(expected_fighters,
-                         fighters->get_num_instances(),
+                         fighters.get_num_instances(),
                          TEXT("Every capital spawns its fighter slots"));
         checks.are_equal(expected_fighters,
-                         capitals->get_fighter_handles().Num(),
+                         capitals.get_fighter_handles().Num(),
                          TEXT("Capital-owned and simulation fighter counts match"));
-        for (int32 i{}; i < capitals->get_num_instances(); ++i) {
-            checks.not_equal(capitals->get_handle(i),
-                             capitals->get_target_handle(i),
+        for (int32 i{}; i < capitals.get_num_instances(); ++i) {
+            checks.not_equal(capitals.get_handle(i),
+                             capitals.get_target_handle(i),
                              TEXT("Capital does not target itself"),
                              i);
         }
-        for (auto const target : fighters->get_target_handles()) {
+        for (auto const target : fighters.get_target_handles()) {
             checks.is_true(target.is_valid(), TEXT("Spawned fighter has a target"));
         }
         initial_checked = true;
@@ -223,7 +223,7 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
     auto next_time{0.4};
     if (scenario != ECapitalFighterHandlesScenario::KillCapital) {
         harness.timeline.at(next_time, [&] {
-            auto const handles{capitals->get_fighter_handles()};
+            auto const handles{capitals.get_fighter_handles()};
             for (int32 i{}; i < handles.Num(); ++i) {
                 (i % 2 == 0 ? destroyed : kept).Add(handles[i]);
             }
@@ -232,10 +232,10 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
         next_time += 0.2;
         harness.timeline.at(next_time, [&] {
             checks.are_equal(kept.Num(),
-                             fighters->get_num_instances(),
+                             fighters.get_num_instances(),
                              TEXT("Killed fighters are removed from the simulation"));
             checks.are_equal(kept.Num(),
-                             capitals->get_fighter_handles().Num(),
+                             capitals.get_fighter_handles().Num(),
                              TEXT("Killed fighters are removed from capital ownership"));
             for (auto const handle : destroyed) {
                 checks.is_true(harness.get_registry().is_valid_dead(handle),
@@ -248,28 +248,28 @@ void run_worldless_capital_fighter_handles(FAutomationTestBase& test,
     if (scenario != ECapitalFighterHandlesScenario::KillFightersOnly) {
         next_time += 0.2;
         harness.timeline.at(next_time, [&] {
-            auto const main_index{capitals->find_first_index_on_team(ETestTeam::Green)};
+            auto const main_index{capitals.find_first_index_on_team(ETestTeam::Green)};
             check(main_index.has_value());
             green_fighters_before_capital_kill =
-                TArray<FRegistryEntityHandle>{capitals->get_fighter_handles(*main_index)};
-            harness.queue_kills(TArray{capitals->get_target_handle(*main_index)});
+                TArray<FRegistryEntityHandle>{capitals.get_fighter_handles(*main_index)};
+            harness.queue_kills(TArray{capitals.get_target_handle(*main_index)});
         });
         next_time += 0.5;
         harness.timeline.at(next_time, [&] {
             checks.are_equal(2,
-                             capitals->get_num_instances(),
+                             capitals.get_num_instances(),
                              TEXT("Killed capital is removed from the simulation"));
-            auto const main_index{capitals->find_first_index_on_team(ETestTeam::Green)};
+            auto const main_index{capitals.find_first_index_on_team(ETestTeam::Green)};
             checks.is_true(main_index.has_value(), TEXT("Green capital survives"));
             if (main_index.has_value()) {
-                auto const remaining{capitals->get_fighter_handles(*main_index)};
+                auto const remaining{capitals.get_fighter_handles(*main_index)};
                 checks.are_equal(green_fighters_before_capital_kill.Num(),
                                  remaining.Num(),
                                  TEXT("Surviving capital keeps its fighters"));
                 for (auto const handle : remaining) {
                     checks.is_true(green_fighters_before_capital_kill.Contains(handle),
                                    TEXT("Surviving fighter retains capital ownership"));
-                    checks.is_true(fighters->get_target_handle(handle).is_valid(),
+                    checks.is_true(fighters.get_target_handle(handle).is_valid(),
                                    TEXT("Surviving fighter retargets"));
                 }
             }

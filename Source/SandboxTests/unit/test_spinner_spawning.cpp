@@ -1,5 +1,8 @@
+#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
 #include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGame/simulation/SimulationClock.h>
+#include <SpaceGame/simulation/SpatialQueryManager.h>
 
 #include <SandboxCore/soa_vector_utils.h>
 
@@ -22,9 +25,11 @@ TEST_CLASS(SpinnerSpawning, "Sandbox.UnitTests")
     TEST_METHOD(RepeatedAppendsPreserveRowsAndCooldowns)
     {
         using Access = ml::test_tube_spinners::FSpinnerSpawnTestAccess;
+        FSimulationClock clock;
         FTestEntityRegistry registry;
-        ml::test_tube_spinners::Simulation simulation;
-        simulation.set_entity_registry(registry);
+        ml::FSpatialQueryManager queries{registry};
+        ml::test_lasers::Simulation lasers{clock, registry, queries};
+        ml::test_tube_spinners::Simulation simulation{clock, registry, lasers};
         simulation.entity_radius = 17.f;
         auto& entities{Access::entities(simulation)};
         entities.laser_cooldowns.set_tick_value(23);

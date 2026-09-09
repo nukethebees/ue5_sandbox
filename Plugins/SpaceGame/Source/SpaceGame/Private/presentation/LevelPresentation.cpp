@@ -36,11 +36,11 @@ FLevelPresentation::FLevelPresentation(FLevelPresentationResources const& resour
     capital_ship_fighters.set_actor_config(&config.fighters);
     turrets.set_actor_config(&config.turrets);
     spinners.set_actor_config(&config.tube_spinners);
-    lasers.bind_simulation(*simulation.get_lasers());
-    capital_ships.bind_simulation(*simulation.get_capital_ships());
-    capital_ship_fighters.bind_simulation(*simulation.get_capital_ship_fighters());
-    turrets.bind_simulation(*simulation.get_turrets());
-    spinners.bind_simulation(*simulation.get_spinners());
+    lasers.bind_simulation(simulation.get_lasers());
+    capital_ships.bind_simulation(simulation.get_capital_ships());
+    capital_ship_fighters.bind_simulation(simulation.get_capital_ship_fighters());
+    turrets.bind_simulation(simulation.get_turrets());
+    spinners.bind_simulation(simulation.get_spinners());
     capital_ships.set_niagara_spawner(effects);
     lasers.clear_runtime_state_presentation();
     capital_ships.clear_runtime_state_presentation();

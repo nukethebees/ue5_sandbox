@@ -65,14 +65,14 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
     FWorldlessSimulationTest harness{MoveTemp(data)};
     auto& simulation{harness.get_simulation()};
     auto& manager{simulation.get_mission_manager()};
-    auto const* capitals{simulation.get_capital_ships()};
-    auto const hero{capitals->get_handle(hero_index)};
+    auto const& capitals{simulation.get_capital_ships()};
+    auto const hero{capitals.get_handle(hero_index)};
     auto const ordinary_enemy{ordinary_enemy_index == INDEX_NONE
                                   ? FRegistryEntityHandle{}
-                                  : capitals->get_handle(ordinary_enemy_index)};
+                                  : capitals.get_handle(ordinary_enemy_index)};
     auto const required_enemy{required_enemy_index == INDEX_NONE
                                   ? FRegistryEntityHandle{}
-                                  : capitals->get_handle(required_enemy_index)};
+                                  : capitals.get_handle(required_enemy_index)};
 
     manager.set_save_mission_results(false);
     switch (scenario) {
@@ -163,7 +163,7 @@ void run_worldless_mission_manager_scenario(FAutomationTestBase& test,
         harness.timeline
             .then_after(0.01, [&] { harness.queue_kills(TArray{ordinary_enemy}, hero); })
             .then_after(0.19, [&] {
-                auto const second_enemy{simulation.get_capital_ships()->get_handle(1)};
+                auto const second_enemy{simulation.get_capital_ships().get_handle(1)};
                 harness.queue_kills(TArray{second_enemy}, hero);
             });
     } else if (scenario == EScenario::SuccessIsTerminal) {

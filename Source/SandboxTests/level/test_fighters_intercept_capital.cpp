@@ -31,11 +31,11 @@ void run_worldless_fighters_intercept_capital(FAutomationTestBase& test,
 
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
-    auto const hero{capitals->get_handle(0)};
-    auto const original_target{capitals->get_handle(1)};
-    auto const intercept_target{capitals->get_handle(2)};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const hero{capitals.get_handle(0)};
+    auto const original_target{capitals.get_handle(1)};
+    auto const intercept_target{capitals.get_handle(2)};
 
     struct Sample {
         FRegistryEntityHandle parent_target;
@@ -44,9 +44,9 @@ void run_worldless_fighters_intercept_capital(FAutomationTestBase& test,
     TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](FLevelSimulation&) {
         Sample sample;
-        sample.parent_target = capitals->get_target_handle(0);
-        for (auto const fighter_handle : capitals->get_fighter_handles(0)) {
-            sample.fighter_targets.Add(fighters->get_target_handle(fighter_handle));
+        sample.parent_target = capitals.get_target_handle(0);
+        for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
+            sample.fighter_targets.Add(fighters.get_target_handle(fighter_handle));
         }
         samples.add(harness.get_time(), MoveTemp(sample));
     };
@@ -76,7 +76,7 @@ void run_worldless_fighters_intercept_capital(FAutomationTestBase& test,
                          TEXT("Final fighter target is blue capital"),
                          i);
     }
-    checks.are_equal(hero, capitals->get_handle(0), TEXT("Hero capital handle remains stable"));
+    checks.are_equal(hero, capitals.get_handle(0), TEXT("Hero capital handle remains stable"));
 }
 
 FFightersInterceptCapitalScenario::FFightersInterceptCapitalScenario(

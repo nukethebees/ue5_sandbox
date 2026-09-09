@@ -327,11 +327,11 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
     FSimulationClock clock;
     clock.initialise({});
     FTestEntityRegistry entity_registry;
-    ml::test_lasers::Simulation lasers;
-    ml::FSpatialQueryManager spatial_queries;
-    FLevelTelemetryManager telemetry_manager;
+    ml::FSpatialQueryManager spatial_queries{entity_registry};
+    ml::test_lasers::Simulation lasers{clock, entity_registry, spatial_queries};
+    FLevelTelemetryManager telemetry_manager{clock, entity_registry, lasers, spatial_queries};
 
-    telemetry_manager.initialise(clock, entity_registry, lasers, spatial_queries);
+    telemetry_manager.initialise();
     auto const& active_count_data{telemetry_manager.get_active_entity_count_data()};
     auto const& kill_count_data{telemetry_manager.get_cumulative_kill_count_data()};
     auto const& tick_series{telemetry_manager.get_tick_series()};
@@ -404,7 +404,7 @@ auto FLevelTelemetryManagerTest::RunTest(FString const&) -> bool {
               int32{0});
 
     clock.initialise({});
-    telemetry_manager.initialise(clock, entity_registry, lasers, spatial_queries);
+    telemetry_manager.initialise();
     TestEqual(TEXT("Reinitialisation records one active-count sample"),
               active_count_data.num(),
               int32{1});

@@ -205,13 +205,7 @@ void FFighterPresentation::visual_log_state() const {
 #endif
 
     auto const& fighter_simulation{simulation()};
-    auto const* const entity_registry{fighter_simulation.entity_registry};
-    if (!entity_registry) {
-        UE_LOG(LogSandboxEntities,
-               Error,
-               TEXT("FFighterPresentation::visual_log_state entity registry is null"));
-        return;
-    }
+    auto const& entity_registry{fighter_simulation.entity_registry};
     if (!actor_config) {
         UE_LOG(LogSandboxEntities,
                Error,
@@ -267,7 +261,7 @@ void FFighterPresentation::visual_log_state() const {
                               TEXT("Move destination"));
 
         auto const target_handle{data.target_handles[fighter_index]};
-        if (!entity_registry->is_valid_alive(target_handle)) {
+        if (!entity_registry.is_valid_alive(target_handle)) {
             continue;
         }
         FVector const target_location{ml::get_vector3f(data.target_locations, fighter_index)};
