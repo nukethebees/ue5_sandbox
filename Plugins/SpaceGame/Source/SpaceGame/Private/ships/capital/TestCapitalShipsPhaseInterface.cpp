@@ -7,40 +7,41 @@
 #include "SpaceGame/ships/capital/TestCapitalShipsSimulation.h"
 
 namespace ml::test_capital_ships {
-void PhaseInterface::bind(ml::test_capital_ships::Simulation& new_target) {
-    simulation = &new_target;
+PhaseInterface::PhaseInterface(ml::test_capital_ships::Simulation& new_target)
+    : simulation{new_target} {
+
 }
 
 void PhaseInterface::begin_play() {
-    simulation->begin_play();
+    simulation.begin_play();
 }
 
 void PhaseInterface::begin_tick() {
-    simulation->begin_tick();
+    simulation.begin_tick();
 }
 
 void PhaseInterface::update_timers(float const dt) {
-    simulation->update_timers(dt);
+    simulation.update_timers(dt);
 }
 
 void PhaseInterface::make_decisions() {
-    simulation->make_decisions();
+    simulation.make_decisions();
 }
 
 void PhaseInterface::resolve_damage_events() {
-    simulation->resolve_damage_events();
+    simulation.resolve_damage_events();
 }
 
 void PhaseInterface::update_entity_registry() {
-    simulation->update_entity_registry();
+    simulation.update_entity_registry();
 }
 
 void PhaseInterface::sync_from_registry() {
-    simulation->sync_from_registry();
+    simulation.sync_from_registry();
 }
 
 void PhaseInterface::end_tick() {
-    simulation->end_tick();
+    simulation.end_tick();
 }
 } // namespace ml::test_capital_ships
 // clang-format on

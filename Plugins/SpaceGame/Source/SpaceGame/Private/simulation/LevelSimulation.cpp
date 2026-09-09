@@ -11,26 +11,6 @@
 
 namespace ml::level_simulation {
 /* **************************************** */
-// Dependency binding
-/* **************************************** */
-template <typename... Systems>
-static void bind_clock(FSimulationClock const& clock, Systems&... systems) {
-    (systems.bind_simulation_clock(clock), ...);
-}
-template <typename... Systems>
-static void bind_registry(FTestEntityRegistry& registry, Systems&... systems) {
-    (systems.set_entity_registry(registry), ...);
-}
-template <typename... Systems>
-static void bind_queries(FSpatialQueryManager& queries, Systems&... systems) {
-    (systems.set_spatial_query_manager(queries), ...);
-}
-template <typename... Systems>
-static void bind_lasers(test_lasers::Simulation& lasers, Systems&... systems) {
-    (systems.set_laser_simulation(lasers), ...);
-}
-
-/* **************************************** */
 // Legacy initialization
 /* **************************************** */
 // Proxy-based runtime levels and worldless fixtures still supply legacy spawn arrays.
@@ -89,11 +69,27 @@ static auto make_legacy_level_initialisation(FLevelSimulationInitData const& dat
 // Construction and lifecycle
 /* **************************************** */
 FLevelSimulation::FLevelSimulation(FLevelSimulationInitData data,
-                                   FLevelPresentationResources const* presentation) {
+                                   FLevelPresentationResources const* presentation)
+    : query_manager_{entity_registry_}
+    , lasers_simulation_{clock_, entity_registry_, query_manager_}
+    , lasers_phase_{lasers_simulation_}
+    , capital_ship_fighters_simulation_{clock_,
+                                        entity_registry_,
+                                        query_manager_,
+                                        lasers_simulation_}
+    , capital_ship_fighters_phase_{capital_ship_fighters_simulation_}
+    , capital_ships_simulation_{entity_registry_, query_manager_, capital_ship_fighters_simulation_}
+    , capital_ships_phase_{capital_ships_simulation_}
+    , turrets_simulation_{clock_, entity_registry_, query_manager_, lasers_simulation_}
+    , turrets_phase_{turrets_simulation_}
+    , spinners_simulation_{clock_, entity_registry_, lasers_simulation_}
+    , spinners_phase_{spinners_simulation_}
+    , mission_manager_{clock_, entity_registry_}
+    , event_manager_{capital_ships_simulation_, turrets_simulation_, mission_manager_}
+    , level_telemetry_manager_{clock_, entity_registry_, lasers_simulation_, query_manager_} {
     clock_.initialise(data.clock_settings);
     telemetry_metadata_ = MoveTemp(data.telemetry_metadata);
     configure_subsystems(data);
-    bind_simulation_dependencies();
     initialise_spatial_queries(data);
     begin_subsystems(data);
     initialise_events(data);
@@ -154,7 +150,9 @@ void FLevelSimulation::configure_subsystems(FLevelSimulationInitData const& data
     spinners_simulation_.entity_radius = data.spinner_radius;
 }
 void FLevelSimulation::configure_player(ml::test_space_ship::FPlayerSpawnData const& spawn) {
-    auto& player{player_ship_simulation_.Emplace()};
+    auto& player{player_ship_simulation_.Emplace(
+        clock_, entity_registry_, query_manager_, lasers_simulation_)};
+    player_ship_phase_.Emplace(player);
     player.set_config(spawn.config);
     player.team = spawn.team;
     player.transform = spawn.transform;
@@ -169,65 +167,15 @@ void FLevelSimulation::configure_player(ml::test_space_ship::FPlayerSpawnData co
     player.laser_fire_rate = spawn.laser_fire_rate;
     player.health = spawn.health;
 }
-void FLevelSimulation::bind_simulation_dependencies() {
-    using namespace ml::level_simulation;
-
-    if (player_ship_simulation_.IsSet()) {
-        player_ship_phase_.bind(player_ship_simulation_.GetValue());
-    }
-    lasers_phase_.bind(lasers_simulation_);
-    capital_ships_phase_.bind(capital_ships_simulation_);
-    capital_ship_fighters_phase_.bind(capital_ship_fighters_simulation_);
-    turrets_phase_.bind(turrets_simulation_);
-    spinners_phase_.bind(spinners_simulation_);
-
-    capital_ships_simulation_.bind_fighters(capital_ship_fighters_simulation_);
-
-    if (player_ship_simulation_.IsSet()) {
-        player_ship_simulation_->bind_simulation_clock(clock_);
-    }
-    bind_clock(clock_,
-               lasers_simulation_,
-               capital_ship_fighters_simulation_,
-               turrets_simulation_,
-               spinners_simulation_,
-               mission_manager_);
-
-    if (player_ship_simulation_.IsSet()) {
-        player_ship_simulation_->set_entity_registry(entity_registry_);
-        player_ship_simulation_->set_spatial_query_manager(query_manager_);
-        player_ship_simulation_->set_lasers(lasers_simulation_);
-    }
-
-    bind_registry(entity_registry_,
-                  capital_ships_simulation_,
-                  turrets_simulation_,
-                  spinners_simulation_,
-                  capital_ship_fighters_simulation_,
-                  lasers_simulation_,
-                  mission_manager_);
-
-    bind_queries(query_manager_,
-                 lasers_simulation_,
-                 capital_ships_simulation_,
-                 capital_ship_fighters_simulation_,
-                 turrets_simulation_);
-
-    bind_lasers(lasers_simulation_,
-                capital_ship_fighters_simulation_,
-                turrets_simulation_,
-                spinners_simulation_);
-}
 void FLevelSimulation::initialise_spatial_queries(FLevelSimulationInitData const& data) {
-    query_manager_.initialise(
-        entity_registry_, data.grid_dimensions, data.cell_size, data.entity_bounds);
+    query_manager_.initialise(data.grid_dimensions, data.cell_size, data.entity_bounds);
     query_manager_.reserve_thread_buffers(
         FMath::Max(1, FPlatformMisc::NumberOfCoresIncludingHyperthreads()));
     query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(data.static_bounds);
 }
 void FLevelSimulation::begin_subsystems(FLevelSimulationInitData const& data) {
     if (player_ship_simulation_.IsSet()) {
-        player_ship_phase_.begin_play();
+        player_ship_phase_->begin_play();
     }
     capital_ships_phase_.begin_play();
     capital_ship_fighters_phase_.begin_play();
@@ -246,19 +194,14 @@ void FLevelSimulation::initialise_events(FLevelSimulationInitData& data) {
     auto const player_handle{player_ship_simulation_.IsSet()
                                  ? player_ship_simulation_->registry_handle
                                  : FRegistryEntityHandle{}};
-    event_manager_.initialise(MoveTemp(data.level_events),
-                              capital_ships_simulation_,
-                              turrets_simulation_,
-                              mission_manager_,
-                              player_handle);
+    event_manager_.initialise(MoveTemp(data.level_events), player_handle);
 }
 
 /* **************************************** */
 // Telemetry and mission results
 /* **************************************** */
 void FLevelSimulation::initialise_telemetry() {
-    level_telemetry_manager_.initialise(
-        clock_, entity_registry_, lasers_simulation_, query_manager_);
+    level_telemetry_manager_.initialise();
     telemetry_tick_loop_.tick_rate = 4.0;
     telemetry_tick_loop_.time_scale = 1.0;
     telemetry_tick_loop_.initialise();
@@ -372,7 +315,7 @@ void FLevelSimulation::advance(time_type const dt) {
 
             if (player_simulation_is_active()) {
                 measure(ELevelTelemetryTimingSystem::Player,
-                        [&] { player_ship_phase_.update_timers(clock_.tick_loop.tick_period); });
+                        [&] { player_ship_phase_->update_timers(clock_.tick_loop.tick_period); });
             }
             measure(ELevelTelemetryTimingSystem::Fighters, [&] {
                 capital_ship_fighters_phase_.update_timers(clock_.tick_loop.tick_period);
@@ -404,7 +347,7 @@ void FLevelSimulation::advance(time_type const dt) {
 
             if (player_simulation_is_active()) {
                 measure(ELevelTelemetryTimingSystem::Player,
-                        [&] { player_ship_phase_.move(clock_.tick_loop.tick_period); });
+                        [&] { player_ship_phase_->move(clock_.tick_loop.tick_period); });
             }
 
             measure(ELevelTelemetryTimingSystem::Fighters,
@@ -420,7 +363,7 @@ void FLevelSimulation::advance(time_type const dt) {
 
             if (player_simulation_is_active()) {
                 measure(ELevelTelemetryTimingSystem::Player,
-                        [&] { player_ship_phase_.queue_commands(); });
+                        [&] { player_ship_phase_->queue_commands(); });
             }
 
             measure(ELevelTelemetryTimingSystem::Fighters,
@@ -451,7 +394,7 @@ void FLevelSimulation::advance(time_type const dt) {
                 Sandbox::FLevelSimulation::advance::resolve_damage_events);
 
             if (player_simulation_is_active()) {
-                player_ship_phase_.resolve_damage_events();
+                player_ship_phase_->resolve_damage_events();
                 if (player_ship_simulation_->consume_death_notification() &&
                     presentation_.IsSet()) {
                     presentation_->handle_player_death();
@@ -472,7 +415,7 @@ void FLevelSimulation::advance(time_type const dt) {
                 Sandbox::FLevelSimulation::advance::update_entity_registry);
 
             if (player_simulation_is_active()) {
-                player_ship_phase_.update_entity_registry();
+                player_ship_phase_->update_entity_registry();
             }
 
             capital_ships_phase_.update_entity_registry();

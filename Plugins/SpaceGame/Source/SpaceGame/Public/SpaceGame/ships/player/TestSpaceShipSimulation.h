@@ -54,11 +54,16 @@ struct FPlayerSpawnData {
 struct SPACEGAME_API Simulation {
     using RegistryEntityData = ml::entity_registry::EntityData;
 
+    Simulation(FSimulationClock const& clock,
+               FTestEntityRegistry& entity_registry,
+               FSpatialQueryManager const& spatial_query_manager,
+               ml::test_lasers::Simulation& lasers);
+    Simulation(Simulation const&) = delete;
+    Simulation(Simulation&&) = delete;
+    auto operator=(Simulation const&) -> Simulation& = delete;
+    auto operator=(Simulation&&) -> Simulation& = delete;
+
     void set_config(FPlayerSimulationConfig const& new_config) noexcept;
-    void set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept;
-    void set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept;
-    void set_lasers(ml::test_lasers::Simulation& new_lasers) noexcept;
-    void bind_simulation_clock(FSimulationClock const& clock);
 
     void set_move_input(FVector2D input) noexcept;
     void set_lateral_move_input(float input) noexcept;
@@ -177,9 +182,9 @@ struct SPACEGAME_API Simulation {
     friend class PhaseInterface;
 
     FPlayerSimulationConfig config{};
-    FTestEntityRegistry* entity_registry{nullptr};
-    FSpatialQueryManager const* spatial_query_manager{nullptr};
-    ml::test_lasers::Simulation* lasers{nullptr};
+    FTestEntityRegistry& entity_registry;
+    FSpatialQueryManager const& spatial_query_manager;
+    ml::test_lasers::Simulation& lasers;
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
     bool death_notification_pending{false};
 };

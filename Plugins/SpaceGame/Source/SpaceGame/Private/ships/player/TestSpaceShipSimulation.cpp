@@ -20,28 +20,17 @@ void Simulation::set_config(FPlayerSimulationConfig const& new_config) noexcept 
     config = new_config;
 }
 
-void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
-    entity_registry = &new_entity_registry;
-}
-
-void Simulation::set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept {
-    spatial_query_manager = &new_query_manager;
-}
-
-void Simulation::set_lasers(ml::test_lasers::Simulation& new_lasers) noexcept {
-    lasers = &new_lasers;
-}
-
-void Simulation::bind_simulation_clock(FSimulationClock const& clock) {
-    simulation_clock.bind(clock);
-}
+Simulation::Simulation(FSimulationClock const& clock,
+                       FTestEntityRegistry& in_entity_registry,
+                       FSpatialQueryManager const& in_spatial_query_manager,
+                       ml::test_lasers::Simulation& in_lasers)
+    : entity_registry{in_entity_registry}
+    , spatial_query_manager{in_spatial_query_manager}
+    , lasers{in_lasers}
+    , simulation_clock{clock} {}
 
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::PlayerShipSimulation::begin_play);
-    check(entity_registry);
-    check(spatial_query_manager);
-    check(lasers);
-    check(simulation_clock.is_valid());
 
     velocity = FVector::ZeroVector;
     thrust_energy = config.thrust_energy_max;
@@ -93,7 +82,7 @@ void Simulation::resolve_damage_events() {
 
     auto const original_health{health.health};
     FRegistryEntityHandle killer{};
-    auto const& direct_damage{entity_registry->get_direct_damage_queue_view()};
+    auto const& direct_damage{entity_registry.get_direct_damage_queue_view()};
     auto const damage_count{direct_damage.num()};
     for (int32 i{0}; i < damage_count; ++i) {
         if (direct_damage.damaged_entities[i] != registry_handle) {
@@ -119,10 +108,10 @@ void Simulation::update_entity_registry() {
 
 void Simulation::register_with_entity_registry() {
     auto const new_entities{
-        entity_registry->add_entities(get_entity_update_data().get_const_view())};
+        entity_registry.add_entities(get_entity_update_data().get_const_view())};
     registry_handle = new_entities.registry_handles[0];
     unique_entity_id = new_entities.first_id;
-    check(entity_registry->is_valid_unique_id(unique_entity_id));
+    check(entity_registry.is_valid_unique_id(unique_entity_id));
 
     update_entity_registry();
 }
@@ -141,7 +130,7 @@ auto Simulation::get_entity_update_data() const -> RegistryEntityData {
 }
 
 void Simulation::queue_entity_update(EntityDeathInfo const& death_info) {
-    entity_registry->queue_entity_updates(
+    entity_registry.queue_entity_updates(
         FTestEntityRegistry::ConstView{
             {&registry_handle, 1},
             get_entity_update_data().get_const_view(),
@@ -381,7 +370,7 @@ void Simulation::update_laser_firing() {
             auto const middle{get_middle_socket()};
             auto const start{middle.GetLocation()};
             auto const end{start + middle.GetUnitAxis(EAxis::X) * config.laser_lock_on_distance};
-            auto const hit{spatial_query_manager->trace_closest(
+            auto const hit{spatial_query_manager.trace_closest(
                 FVector3f{start}, FVector3f{end}, registry_handle)};
             if (hit.hit && hit.entity.is_valid()) {
                 set_lock_on_target(hit.entity);
@@ -451,7 +440,7 @@ void Simulation::fire_lasers_from(TConstArrayView<FTransform> const fire_points)
     new_lasers.set_max_distances(config.laser.max_distance);
     new_lasers.set_colours(colour_cache[team]);
     ml::fill(new_lasers.instigator_handles, registry_handle);
-    lasers->queue_laser_spawns(new_lasers);
+    lasers.queue_laser_spawns(new_lasers);
 }
 
 void Simulation::upgrade_laser() noexcept {
@@ -517,7 +506,7 @@ auto Simulation::consume_death_notification() noexcept -> bool {
 }
 
 auto Simulation::get_kills() const -> int32 {
-    return entity_registry->get_kills(unique_entity_id);
+    return entity_registry.get_kills(unique_entity_id);
 }
 
 auto Simulation::get_speed() const noexcept -> float {

@@ -95,35 +95,37 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void set_player_ship(ATestSpaceShip& new_player_ship);
     void clear_player_ship();
     auto get_lasers() noexcept -> ml::test_lasers::Simulation* {
-        return level_simulation_.IsSet() ? level_simulation_->get_lasers() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_lasers() : nullptr;
     }
     auto get_lasers() const noexcept -> ml::test_lasers::Simulation const* {
-        return level_simulation_.IsSet() ? level_simulation_->get_lasers() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_lasers() : nullptr;
     }
     auto get_capital_ships() noexcept -> ml::test_capital_ships::Simulation* {
-        return level_simulation_.IsSet() ? level_simulation_->get_capital_ships() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_capital_ships() : nullptr;
     }
     auto get_capital_ships() const noexcept -> ml::test_capital_ships::Simulation const* {
-        return level_simulation_.IsSet() ? level_simulation_->get_capital_ships() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_capital_ships() : nullptr;
     }
     auto get_capital_ship_fighters() noexcept -> ml::test_capital_ship_fighters::Simulation* {
-        return level_simulation_.IsSet() ? level_simulation_->get_capital_ship_fighters() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_capital_ship_fighters()
+                                         : nullptr;
     }
     auto get_capital_ship_fighters() const noexcept
         -> ml::test_capital_ship_fighters::Simulation const* {
-        return level_simulation_.IsSet() ? level_simulation_->get_capital_ship_fighters() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_capital_ship_fighters()
+                                         : nullptr;
     }
     auto get_turrets() noexcept -> ml::test_static_turrets::Simulation* {
-        return level_simulation_.IsSet() ? level_simulation_->get_turrets() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_turrets() : nullptr;
     }
     auto get_turrets() const noexcept -> ml::test_static_turrets::Simulation const* {
-        return level_simulation_.IsSet() ? level_simulation_->get_turrets() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_turrets() : nullptr;
     }
     auto get_spinners() noexcept -> ml::test_tube_spinners::Simulation* {
-        return level_simulation_.IsSet() ? level_simulation_->get_spinners() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
     }
     auto get_spinners() const noexcept -> ml::test_tube_spinners::Simulation const* {
-        return level_simulation_.IsSet() ? level_simulation_->get_spinners() : nullptr;
+        return level_simulation_.IsSet() ? &level_simulation_->get_spinners() : nullptr;
     }
 
     auto get_entity_registry() noexcept -> FTestEntityRegistry& {

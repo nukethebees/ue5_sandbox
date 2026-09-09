@@ -820,6 +820,10 @@ void validate_facade(FacadeModuleSchema const& module,
     }
     validate_export_specifier(facade.export_specifier,
                               "Facade '" + facade.name + "' export specifier");
+    if (facade.reference_target && !facade.validation_lines.empty()) {
+        throw std::invalid_argument{"Facade '" + facade.name +
+                                    "' reference targets cannot have target validation"};
+    }
     if (facade.target_member_name == "bind") {
         throw std::invalid_argument{"Facade '" + facade.name +
                                     "' target member collides with bind"};
@@ -827,8 +831,11 @@ void validate_facade(FacadeModuleSchema const& module,
     for (auto const& dependency : facade.validation_dependencies) {
         validate_dependency(dependency, types, "Facade '" + facade.name + "'");
     }
-    std::set<std::string> method_signatures{
-        signature("bind", {resolve_type(facade.target_type, types).spelling + "&"}, false)};
+    std::set<std::string> method_signatures;
+    if (!facade.reference_target) {
+        method_signatures.insert(
+            signature("bind", {resolve_type(facade.target_type, types).spelling + "&"}, false));
+    }
     for (auto const& method : facade.methods) {
         require_identifier(method.name, "Facade '" + facade.name + "' method name");
         if (method.name == facade.target_member_name || method.name == facade.name) {

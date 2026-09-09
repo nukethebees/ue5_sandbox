@@ -40,10 +40,16 @@ class SPACEGAME_API FLevelTelemetryManager {
     using ActiveEntityCountData = FLevelTelemetrySnapshot::ActiveEntityCountData;
     using CumulativeKillCountData = FLevelTelemetrySnapshot::CumulativeKillCountData;
 
-    void initialise(FSimulationClock const& clock,
-                    FTestEntityRegistry const& entity_registry,
-                    ml::test_lasers::Simulation const& lasers,
-                    ml::FSpatialQueryManager const& spatial_queries);
+    FLevelTelemetryManager(FSimulationClock const& clock,
+                           FTestEntityRegistry const& entity_registry,
+                           ml::test_lasers::Simulation const& lasers,
+                           ml::FSpatialQueryManager const& spatial_queries) noexcept;
+    FLevelTelemetryManager(FLevelTelemetryManager const&) = delete;
+    FLevelTelemetryManager(FLevelTelemetryManager&&) = delete;
+    auto operator=(FLevelTelemetryManager const&) -> FLevelTelemetryManager& = delete;
+    auto operator=(FLevelTelemetryManager&&) -> FLevelTelemetryManager& = delete;
+
+    void initialise();
     void reset();
     void tick();
 
@@ -96,16 +102,17 @@ class SPACEGAME_API FLevelTelemetryManager {
                       FLevelMissionResult const* mission_result,
                       double monotonic_time);
 
-    FSimulationClock const* clock_{};
-    FTestEntityRegistry const* entity_registry_{};
-    ml::test_lasers::Simulation const* lasers_{};
-    ml::FSpatialQueryManager const* spatial_queries_{};
+    FSimulationClock const& clock_;
+    FTestEntityRegistry const& entity_registry_;
+    ml::test_lasers::Simulation const& lasers_;
+    ml::FSpatialQueryManager const& spatial_queries_;
     FLevelTelemetryCurrentState current_state_{};
     FLevelTelemetryRunRecord run_record_{};
     double run_started_at_{};
     bool run_recording_{};
     bool run_finalized_{};
     bool run_record_taken_{};
+    bool initialized_{};
     double next_battle_sample_seconds_{};
     TArray<double> frame_samples_{};
     TArray<double> simulation_tick_samples_{};

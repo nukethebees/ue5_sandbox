@@ -9,53 +9,46 @@
 #include "SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h"
 #include "SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h"
 
-#include "CoreMinimal.h"
 #include "SandboxNative/RegistryEntityHandle.h"
 
 namespace ml::test_capital_ship_fighters {
 class SPACEGAME_API CommandInterface {
     public:
-    void bind(ml::test_capital_ship_fighters::Simulation& new_target) {
-        fighters = &new_target;
+    CommandInterface(ml::test_capital_ship_fighters::Simulation& new_target)
+        : fighters{new_target} {
+
     }
 
     void queue_spawns(TestCapitalShipFighterSpawnQueue const& queue) {
-        check(fighters);
-        fighters->queue_spawns(queue);
+        fighters.queue_spawns(queue);
     }
 
     void queue_orders(TestCapitalShipFighterOrderQueue const& queue) {
-        check(fighters);
-        fighters->queue_orders(queue);
+        fighters.queue_orders(queue);
     }
 
     void self_destruct_fighter(FRegistryEntityHandle const handle) {
-        check(fighters);
-        fighters->self_destruct_fighter(handle);
+        fighters.self_destruct_fighter(handle);
     }
 
     ml::test_capital_ship_fighters::Simulation::RegistryEntityData const& get_new_spawn_entity_data() const {
-        check(fighters);
-        return fighters->get_new_spawn_entity_data();
+        return fighters.get_new_spawn_entity_data();
     }
 
     SpawnedEntityHandles const& get_new_spawn_entity_handles() const {
-        check(fighters);
-        return fighters->get_new_spawn_entity_handles();
+        return fighters.get_new_spawn_entity_handles();
     }
 
     int32 get_num_instances() const noexcept {
-        check(fighters);
-        return fighters->get_num_instances();
+        return fighters.get_num_instances();
     }
 
     FRegistryEntityHandle get_target_handle(FRegistryEntityHandle const fighter_handle) const noexcept {
-        check(fighters);
-        return fighters->get_target_handle(fighter_handle);
+        return fighters.get_target_handle(fighter_handle);
     }
 
     private:
-    ml::test_capital_ship_fighters::Simulation* fighters{nullptr};
+    ml::test_capital_ship_fighters::Simulation& fighters;
 };
 } // namespace ml::test_capital_ship_fighters
 // clang-format on

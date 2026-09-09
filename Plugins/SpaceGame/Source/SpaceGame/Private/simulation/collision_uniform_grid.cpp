@@ -100,17 +100,12 @@ void CollisionUniformGrid::set_cell_dims(FVector3f const cell_dims) noexcept {
     cell_dims_ = cell_dims;
 }
 
-void CollisionUniformGrid::set_entity_registry(FTestEntityRegistry const& reg) noexcept {
-    entity_registry_ = &reg;
-}
+CollisionUniformGrid::CollisionUniformGrid(FTestEntityRegistry const& entity_registry) noexcept
+    : entity_registry_{entity_registry} {}
 
 auto CollisionUniformGrid::is_configured() const noexcept -> bool {
     if (grid_dims_.X <= 0 || grid_dims_.Y <= 0 || grid_dims_.Z <= 0 || cell_dims_.X <= 0.0f ||
         cell_dims_.Y <= 0.0f || cell_dims_.Z <= 0.0f) {
-        return false;
-    }
-
-    if (entity_registry_ == nullptr) {
         return false;
     }
 
@@ -274,9 +269,9 @@ void CollisionUniformGrid::rebuild_grid(FEntityAABBs const& entity_aabbs) {
                *to_string(grid_dims_));
     }
 
-    auto const& entity_data{entity_registry_->get_entity_data()};
-    auto const entity_count{entity_registry_->get_num_elements()};
-    auto const gens{entity_registry_->get_generations()};
+    auto const& entity_data{entity_registry_.get_entity_data()};
+    auto const entity_count{entity_registry_.get_num_elements()};
+    auto const gens{entity_registry_.get_generations()};
 
     auto const n_cells{num_cells()};
 
@@ -724,7 +719,7 @@ void CollisionUniformGrid::trace_aabbs_impl(
                         static_assert(false, "Unsupported ignored entity mode.");
                     }
                     if constexpr (EntityFilter == ETraceEntityFilter::ExcludeCapitalShipFighters) {
-                        if (entity_registry_->get_entity_type(entities[i_entity]) ==
+                        if (entity_registry_.get_entity_type(entities[i_entity]) ==
                             ETestEntityType::CapitalShipFighter) {
                             continue;
                         }

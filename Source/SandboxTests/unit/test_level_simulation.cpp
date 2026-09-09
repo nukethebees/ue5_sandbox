@@ -94,15 +94,15 @@ void prepare_mission(FLevelSimulation& simulation) {
     mission.set_mission_mode(ETestMissionMode::KillEnemies);
     mission.set_kill_target(1);
     mission.set_save_mission_results(false);
-    mission.add_hero_entity(simulation.get_capital_ships()->get_handle(0));
-    mission.add_entity_required_to_kill(simulation.get_capital_ships()->get_handle(1));
+    mission.add_hero_entity(simulation.get_capital_ships().get_handle(0));
+    mission.add_entity_required_to_kill(simulation.get_capital_ships().get_handle(1));
     simulation.finish_initialisation();
 }
 
 void kill_enemy(FLevelSimulation& simulation) {
     DirectDamageEvents events;
-    events.damaged_entities.Add(simulation.get_capital_ships()->get_handle(1));
-    events.instigators.Add(simulation.get_capital_ships()->get_handle(0));
+    events.damaged_entities.Add(simulation.get_capital_ships().get_handle(1));
+    events.instigators.Add(simulation.get_capital_ships().get_handle(0));
     events.damage_amounts.Add(100);
     simulation.get_entity_registry().queue_direct_damage_events(events);
 }
@@ -148,10 +148,10 @@ auto FWorldlessLevelSimulationTest::RunTest(FString const&) -> bool {
     first.advance(dt);
     second.advance(dt);
     TestEqual(TEXT("Damage removes only the first battle's enemy"),
-              first.get_capital_ships()->get_num_instances(),
+              first.get_capital_ships().get_num_instances(),
               1);
     TestEqual(
-        TEXT("Other battle is unaffected"), second.get_capital_ships()->get_num_instances(), 2);
+        TEXT("Other battle is unaffected"), second.get_capital_ships().get_num_instances(), 2);
     auto result{first.get_mission_manager().take_result()};
     TestTrue(TEXT("Worldless mission produces a result"), result.IsSet());
     if (result.IsSet()) {
@@ -211,14 +211,14 @@ IMPLEMENT_SIMPLE_AUTOMATION_TEST(
 auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
     FLevelSimulation simulation{make_scheduled_battle()};
     TestEqual(TEXT("Tick-zero entities are available before finishing initialization"),
-              simulation.get_capital_ships()->get_num_instances(),
+              simulation.get_capital_ships().get_num_instances(),
               1);
     simulation.finish_initialisation();
     TestEqual(TEXT("Tick-zero increase survives authored mission configuration"),
               simulation.get_mission_manager().get_kill_target(),
               3);
     TestEqual(TEXT("Only tick-zero entities exist initially"),
-              simulation.get_capital_ships()->get_num_instances(),
+              simulation.get_capital_ships().get_num_instances(),
               1);
     TestTrue(TEXT("Future objectives prevent early completion"),
              simulation.get_mission_manager().has_pending_objective_events());
@@ -231,12 +231,12 @@ auto FLevelSimulationScheduledEventsTest::RunTest(FString const&) -> bool {
               simulation.get_mission_manager().get_kill_target(),
               3);
     TestEqual(TEXT("A fractional authoring time rounds up to the next tick"),
-              simulation.get_capital_ships()->get_num_instances(),
+              simulation.get_capital_ships().get_num_instances(),
               1);
 
     simulation.advance(dt);
     TestEqual(TEXT("The delayed entity spawns on its compiled tick"),
-              simulation.get_capital_ships()->get_num_instances(),
+              simulation.get_capital_ships().get_num_instances(),
               2);
     TestEqual(TEXT("The same-tick objective resolves the spawned entity handle"),
               simulation.get_mission_manager().get_entity_handles_required_to_kill().Num(),
@@ -270,7 +270,7 @@ auto FLevelSimulationLegacyInitialisationTest::RunTest(FString const&) -> bool {
         data.turret_transforms.Emplace(FRotator{0.0, 90.0, 0.0});
         FLevelSimulation simulation{MoveTemp(data)};
         simulation.finish_initialisation();
-        auto const& capitals{*simulation.get_capital_ships()};
+        auto const& capitals{simulation.get_capital_ships()};
         TestTrue(TEXT("Capital spawn indices map to registered handles"),
                  capitals.get_target_handle(0) == capitals.get_handle(1));
         auto const* player{simulation.get_player_ship_simulation()};
@@ -316,7 +316,7 @@ auto FLevelSimulationAuthoredInitialisationTest::RunTest(FString const&) -> bool
         FLevelSimulation simulation{MoveTemp(data)};
         simulation.finish_initialisation();
         TestEqual(TEXT("Authored mission or entity count prevents legacy capital spawns"),
-                  simulation.get_capital_ships()->get_num_instances(),
+                  simulation.get_capital_ships().get_num_instances(),
                   0);
     }
     return true;
@@ -339,8 +339,7 @@ auto FLevelSimulationInitialQueriesTest::RunTest(FString const&) -> bool {
               uint64{0});
     auto const dynamic_hit{queries.trace_closest({-1100.f, 0.f, 0.f}, {-900.f, 0.f, 0.f})};
     TestTrue(TEXT("Initial capital is queryable before the first tick"),
-             dynamic_hit.hit &&
-                 dynamic_hit.entity == simulation.get_capital_ships()->get_handle(0));
+             dynamic_hit.hit && dynamic_hit.entity == simulation.get_capital_ships().get_handle(0));
     auto const static_hit{queries.trace_closest({-100.f, 500.f, 0.f}, {100.f, 500.f, 0.f})};
     TestTrue(TEXT("Initial static collision is queryable before the first tick"),
              static_hit.hit && static_hit.static_geometry_index == 0);
@@ -377,7 +376,7 @@ auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
     simulation.advance(dt);
     simulation.advance(dt);
     TestTrue(TEXT("Turret has no enemy before the scheduled spawn"),
-             simulation.get_turrets()->get_target_handles()[0].is_null());
+             simulation.get_turrets().get_target_handles()[0].is_null());
     auto const previous_rebuilds{
         simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count};
     simulation.advance(dt);
@@ -385,8 +384,8 @@ auto FLevelSimulationSpawnQueriesTest::RunTest(FString const&) -> bool {
               simulation.get_spatial_query_manager().get_runtime_telemetry().grid_rebuild_count,
               previous_rebuilds + 2);
     TestTrue(TEXT("Decision phase acquires the enemy spawned in the same tick"),
-             simulation.get_turrets()->get_target_handles()[0] ==
-                 simulation.get_capital_ships()->get_handle(1));
+             simulation.get_turrets().get_target_handles()[0] ==
+                 simulation.get_capital_ships().get_handle(1));
     return true;
 }
 
@@ -426,8 +425,8 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
     FLevelSimulation headless{make_battle()};
     FLevelSimulation visible{make_battle(), &resources};
     TestEqual(TEXT("Presentation construction preserves initial entity count"),
-              visible.get_capital_ships()->get_num_instances(),
-              headless.get_capital_ships()->get_num_instances());
+              visible.get_capital_ships().get_num_instances(),
+              headless.get_capital_ships().get_num_instances());
     TestEqual(TEXT("Presentation construction leaves initialization open"),
               visible.get_state(),
               EOrchestratorState::Uninitialised);
@@ -503,9 +502,9 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
     FLevelSimulation simulation{make_battle()};
     prepare_mission(simulation);
-    auto* const lasers{simulation.get_lasers()};
+    auto& lasers{simulation.get_lasers()};
     FLaserPresentation presentation{*component};
-    presentation.bind_simulation(*lasers);
+    presentation.bind_simulation(lasers);
 
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -542,11 +541,11 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
                  .spawn_time = static_cast<float>(simulation.get_clock().get_simulation_time())});
         }
 
-        lasers->queue_laser_spawns(requests);
+        lasers.queue_laser_spawns(requests);
         simulation.advance(dt);
         presentation.update_visual_data();
 
-        auto const live_count{lasers->get_num_instances()};
+        auto const live_count{lasers.get_num_instances()};
         if (!TestEqual(TEXT("Presentation and simulation retain the same row count"),
                        presentation.material_data.Num(),
                        live_count)) {
@@ -554,7 +553,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         }
 
         for (int32 index{}; index < live_count; ++index) {
-            auto const id{FMath::RoundToInt(lasers->entities.colours[index].R)};
+            auto const id{FMath::RoundToInt(lasers.entities.colours[index].R)};
             auto const& expected{expected_material_data[id - 1]};
             auto const& actual{presentation.material_data[index]};
             auto const matches{actual.colour.X == expected.colour.R &&
@@ -585,7 +584,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     }
 
     TestTrue(TEXT("The test exercises removal churn"),
-             lasers->get_number_spawned() > lasers->get_num_instances());
+             lasers.get_number_spawned() > lasers.get_num_instances());
     return true;
 }
 

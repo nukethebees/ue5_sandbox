@@ -12,12 +12,18 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
     auto const& facade{module.facade};
     auto target_type{resolve_type(facade.target_type, types)};
     auto const definitions_in_source{facade.definitions_in_source};
-    auto bind{FunctionSpec{
-        .name = "bind",
-        .return_type = "void",
+    auto binding{FunctionSpec{
+        .name = facade.reference_target ? facade.name : "bind",
+        .return_type = facade.reference_target ? "" : "void",
         .parameters = {FunctionParameter{qualify(target_type, "&"), "new_target"}},
-        .body = {AssignmentStatement{facade.target_member_name, "&new_target"}},
+        .body = facade.reference_target ? Nodes{raw("")}
+                                        : Nodes{AssignmentStatement{facade.target_member_name,
+                                                                    "&new_target"}},
         .is_inline = !definitions_in_source,
+        .member_initializers = facade.reference_target
+                                   ? std::vector<std::pair<std::string, std::string>>{
+                                         {facade.target_member_name, "new_target"}}
+                                   : std::vector<std::pair<std::string, std::string>>{},
     }};
     std::vector<FunctionSpec> methods;
     for (auto const& method : facade.methods) {
@@ -40,7 +46,8 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         if (!facade.validation_lines.empty()) {
             body.add(raw(join_lines(facade.validation_lines)));
         }
-        auto call{facade.target_member_name + "->" + method.target_name.value_or(method.name) +
+        auto call{facade.target_member_name + (facade.reference_target ? "." : "->") +
+                  method.target_name.value_or(method.name) +
                   "(" + join(arguments, ", ") + ")"};
         auto const return_type{resolve_type(method.return_type, types)};
         if (return_type.spelling == "void") {
@@ -66,14 +73,16 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         destination.add(spec.is_inline ? header_function(spec) : declaration(spec), 2);
         has_public_nodes = has_public_nodes || access == "public";
     };
-    add_method(facade.bind_access, bind);
+    add_method(facade.bind_access, binding);
     for (auto const& method : methods) {
         add_method(facade.method_access, method);
     }
     for (auto const& friend_name : facade.friends) {
         private_nodes.add(FriendDeclaration{friend_name, facade.friend_kind}, 1);
     }
-    private_nodes.add(Member{qualify(target_type, "*"), facade.target_member_name, "nullptr"});
+    private_nodes.add(facade.reference_target
+                          ? Member{qualify(target_type, "&"), facade.target_member_name}
+                          : Member{qualify(target_type, "*"), facade.target_member_name, "nullptr"});
 
     NodeListBuilder class_nodes;
     if (has_public_nodes) {
@@ -111,7 +120,7 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
     };
     if (module.settings.source.has_value()) {
         NodeListBuilder definitions;
-        definitions.add(definition(bind, facade.name));
+        definitions.add(definition(binding, facade.name));
         for (auto const& method : methods) {
             definitions.new_lines(2).add(definition(method, facade.name));
         }

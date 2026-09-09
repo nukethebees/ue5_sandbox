@@ -7,28 +7,29 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h"
 
 namespace ml::test_tube_spinners {
-void PhaseInterface::bind(ml::test_tube_spinners::Simulation& new_target) {
-    simulation = &new_target;
+PhaseInterface::PhaseInterface(ml::test_tube_spinners::Simulation& new_target)
+    : simulation{new_target} {
+
 }
 
 void PhaseInterface::begin_play() {
-    simulation->begin_play();
+    simulation.begin_play();
 }
 
 void PhaseInterface::update_timers(float const dt) {
-    simulation->update_timers(dt);
+    simulation.update_timers(dt);
 }
 
 void PhaseInterface::move(float const dt) {
-    simulation->move(dt);
+    simulation.move(dt);
 }
 
 void PhaseInterface::queue_commands() {
-    simulation->queue_commands();
+    simulation.queue_commands();
 }
 
 void PhaseInterface::end_tick() {
-    simulation->end_tick();
+    simulation.end_tick();
 }
 } // namespace ml::test_tube_spinners
 // clang-format on

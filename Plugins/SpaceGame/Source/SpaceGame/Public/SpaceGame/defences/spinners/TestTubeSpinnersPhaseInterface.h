@@ -9,7 +9,7 @@
 namespace ml::test_tube_spinners {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ml::test_tube_spinners::Simulation& new_target);
+    PhaseInterface(ml::test_tube_spinners::Simulation& new_target);
 
     void begin_play();
 
@@ -22,7 +22,7 @@ class SPACEGAME_API PhaseInterface {
     void end_tick();
 
     friend struct FLevelSimulation;
-    ml::test_tube_spinners::Simulation* simulation{nullptr};
+    ml::test_tube_spinners::Simulation& simulation;
 };
 } // namespace ml::test_tube_spinners
 // clang-format on

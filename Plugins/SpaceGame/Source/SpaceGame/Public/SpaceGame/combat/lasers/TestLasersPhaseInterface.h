@@ -9,7 +9,7 @@
 namespace ml::test_lasers {
 class SPACEGAME_API PhaseInterface {
     private:
-    void bind(ml::test_lasers::Simulation& new_target);
+    PhaseInterface(ml::test_lasers::Simulation& new_target);
 
     void begin_play();
 
@@ -22,7 +22,7 @@ class SPACEGAME_API PhaseInterface {
     void end_tick();
 
     friend struct FLevelSimulation;
-    ml::test_lasers::Simulation* simulation{nullptr};
+    ml::test_lasers::Simulation& simulation;
 };
 } // namespace ml::test_lasers
 // clang-format on

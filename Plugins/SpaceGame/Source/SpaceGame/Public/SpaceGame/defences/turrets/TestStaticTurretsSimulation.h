@@ -29,22 +29,27 @@ struct SPACEGAME_API Simulation {
     using EntityData = ml::test_static_turrets::EntityData;
     using SpawnData = ml::test_static_turrets::SpawnData;
 
+    Simulation(FSimulationClock const& clock,
+               FTestEntityRegistry& entity_registry,
+               FSpatialQueryManager const& spatial_query_manager,
+               ml::test_lasers::Simulation& laser_simulation) noexcept;
+    Simulation(Simulation const&) = delete;
+    Simulation(Simulation&&) = delete;
+    auto operator=(Simulation const&) -> Simulation& = delete;
+    auto operator=(Simulation&&) -> Simulation& = delete;
+
     /* **************************************** */
     // Configuration
     /* **************************************** */
     void set_config(FTurretSimulationConfig const& new_config) noexcept;
-    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
-    void set_entity_registry(FTestEntityRegistry& new_registry) noexcept;
-    void set_spatial_query_manager(FSpatialQueryManager const& manager) noexcept;
-    void set_laser_simulation(ml::test_lasers::Simulation& new_simulation) noexcept;
 
     /* **************************************** */
     // Accessors
     /* **************************************** */
     auto get_num_instances() const noexcept -> int32;
     auto get_target_handles() const -> TConstArrayView<FRegistryEntityHandle>;
-    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
-    auto get_laser_simulation() const -> ml::test_lasers::Simulation const* {
+    auto get_entity_registry() const -> FTestEntityRegistry const& { return entity_registry; }
+    auto get_laser_simulation() const -> ml::test_lasers::Simulation const& {
         return laser_simulation;
     }
 
@@ -114,9 +119,9 @@ struct SPACEGAME_API Simulation {
 
     FTurretSimulationConfig config{};
     ml::test_batch_orchestrator::SimulationClockInterface simulation_clock;
-    FTestEntityRegistry* entity_registry{nullptr};
-    FSpatialQueryManager const* spatial_query_manager{nullptr};
-    ml::test_lasers::Simulation* laser_simulation{nullptr};
+    FTestEntityRegistry& entity_registry;
+    FSpatialQueryManager const& spatial_query_manager;
+    ml::test_lasers::Simulation& laser_simulation;
     EntityData entities{};
     EntityDeathInfo entity_death_info;
     RegistryEntityData entity_update_data;

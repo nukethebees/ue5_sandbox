@@ -45,13 +45,13 @@ void run_worldless_turret_acquisition_regression(
     harness.timeline.finish_at(0.5);
     test.TestTrue(TEXT("Turret acquisition timeline completes"),
                   harness.run_until_timeline_finished(1.0));
-    auto const* turrets{harness.get_simulation().get_turrets()};
-    checks.are_equal(count, turrets->get_num_instances(), TEXT("All turrets are registered"));
-    for (auto const target : turrets->get_target_handles()) {
+    auto const& turrets{harness.get_simulation().get_turrets()};
+    checks.are_equal(count, turrets.get_num_instances(), TEXT("All turrets are registered"));
+    for (auto const target : turrets.get_target_handles()) {
         checks.is_true(target.is_null(), TEXT("Invalid candidate does not become a target"));
     }
     checks.are_equal(0,
-                     harness.get_simulation().get_lasers()->get_number_spawned(),
+                     harness.get_simulation().get_lasers().get_number_spawned(),
                      TEXT("Turrets without valid targets do not fire"));
 }
 

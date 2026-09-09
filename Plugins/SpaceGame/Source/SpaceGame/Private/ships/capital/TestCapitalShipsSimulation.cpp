@@ -29,15 +29,12 @@ namespace ml::test_capital_ships {
 void Simulation::set_config(FCapitalSimulationConfig const& new_config) noexcept {
     config = new_config;
 }
-void Simulation::set_entity_registry(FTestEntityRegistry& new_entity_registry) noexcept {
-    entity_registry = &new_entity_registry;
-}
-void Simulation::set_spatial_query_manager(FSpatialQueryManager const& new_query_manager) noexcept {
-    spatial_query_manager = &new_query_manager;
-}
-void Simulation::bind_fighters(ml::test_capital_ship_fighters::Simulation& fighters) {
-    fighters_interface.bind(fighters);
-}
+Simulation::Simulation(FTestEntityRegistry& in_entity_registry,
+                       FSpatialQueryManager const& in_spatial_query_manager,
+                       ml::test_capital_ship_fighters::Simulation& fighters)
+    : entity_registry{in_entity_registry}
+    , spatial_query_manager{in_spatial_query_manager}
+    , fighters_interface{fighters} {}
 
 /* **************************************** */
 // Simulation phases
@@ -45,8 +42,6 @@ void Simulation::bind_fighters(ml::test_capital_ship_fighters::Simulation& fight
 void Simulation::begin_play() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::begin_play);
     TRACE_COUNTER_SET(SandboxTestCapitalShipCount, 0);
-    check(entity_registry);
-    check(spatial_query_manager);
     check(entity_radius > 0.f);
     ensureAlways(config.fighter_spawn_slots ==
                  config.fighter_spawn_slots_relative_transforms.Num());
@@ -68,8 +63,8 @@ void Simulation::make_decisions() {
     queue_fighter_spawns();
     refresh_fighter_handles();
     fighter_reassignment_queue.reset();
-    ml::batch::refresh_targets(*entity_registry,
-                               *spatial_query_manager,
+    ml::batch::refresh_targets(entity_registry,
+                               spatial_query_manager,
                                entities.target_handles,
                                indices_without_targets_buffer,
                                entities.teams,
@@ -78,7 +73,7 @@ void Simulation::make_decisions() {
 }
 void Simulation::resolve_damage_events() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::resolve_damage_events);
-    ml::batch::resolve_damage_events(*entity_registry,
+    ml::batch::resolve_damage_events(entity_registry,
                                      entities.handles,
                                      entities.healths,
                                      local_indices_to_remove,
@@ -87,8 +82,8 @@ void Simulation::resolve_damage_events() {
 void Simulation::update_entity_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::update_entity_registry);
     prepare_entity_update_data();
-    entity_registry->queue_entity_updates({entities.handles, entity_update_data.get_const_view()},
-                                          entity_death_info);
+    entity_registry.queue_entity_updates({entities.handles, entity_update_data.get_const_view()},
+                                         entity_death_info);
 }
 void Simulation::sync_from_registry() {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::test_capital_ships::Simulation::sync_from_registry);
@@ -182,7 +177,7 @@ auto Simulation::register_ships(SpawnDataConstView const spawn_data)
         new_entity_data.alive[i] = spawn_data.healths[i] > 0;
     }
 
-    auto const new_entities{entity_registry->add_entities(new_entity_data.get_const_view())};
+    auto const new_entities{entity_registry.add_entities(new_entity_data.get_const_view())};
     auto new_handles{new_entities.registry_handles.to_array()};
     for (int32 i{}; i < n_to_add; ++i) {
         entities.handles[first_new_index + i] = new_handles[i];
@@ -305,7 +300,7 @@ void Simulation::refresh_fighter_handles() {
 
     fighter_handles_scratch.Reset();
     auto const& previous{tick_buffers.previous()};
-    entity_registry->refresh_handles(fighter_handles);
+    entity_registry.refresh_handles(fighter_handles);
 
     auto const& spawn_data{fighters_interface.get_new_spawn_entity_data()};
     spawn_data.validate_array_sizes();
@@ -387,7 +382,7 @@ void Simulation::queue_fighter_orders() {
             }
 
             auto const fighter_target{fighters_interface.get_target_handle(fighter_handle)};
-            if (fighter_target.is_null() || entity_registry->is_valid_dead(fighter_target)) {
+            if (fighter_target.is_null() || entity_registry.is_valid_dead(fighter_target)) {
                 fighter_order_queue.add(fighter_handle,
                                         TestCapitalShipFighterOrderQueue::Order{
                                             .task = 0,
@@ -409,8 +404,8 @@ void Simulation::queue_fighter_orders() {
 /* **************************************** */
 void Simulation::set_target_handle(FRegistryEntityHandle const ship_handle,
                                    FRegistryEntityHandle const target_handle) {
-    check(entity_registry->is_valid_handle(ship_handle));
-    check(entity_registry->is_valid_handle(target_handle));
+    check(entity_registry.is_valid_handle(ship_handle));
+    check(entity_registry.is_valid_handle(target_handle));
     auto const entity_index{entities.handles.Find(ship_handle)};
     check(entity_index != INDEX_NONE);
     entities.target_handles[entity_index] = target_handle;
@@ -502,6 +497,6 @@ void Simulation::validate_array_sizes() const {
     entities.validate_array_sizes();
 }
 void Simulation::validate_proxy_handles() const {
-    entity_registry->validate_handles(entities.handles);
+    entity_registry.validate_handles(entities.handles);
 }
 } // namespace ml::test_capital_ships

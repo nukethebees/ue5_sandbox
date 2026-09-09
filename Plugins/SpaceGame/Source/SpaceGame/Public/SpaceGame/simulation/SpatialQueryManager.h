@@ -36,11 +36,13 @@ class FThreadBufferLease {
     ~FThreadBufferLease();
 
     FThreadBufferLease(FThreadBufferLease const&) = delete;
+    FThreadBufferLease(FThreadBufferLease&&) = delete;
     auto operator=(FThreadBufferLease const&) -> FThreadBufferLease& = delete;
+    auto operator=(FThreadBufferLease&&) -> FThreadBufferLease& = delete;
 
     auto get() const -> FThreadBuffers&;
   private:
-    FSpatialQueryManager const* manager;
+    FSpatialQueryManager const& manager;
     int32 index;
 };
 }
@@ -63,10 +65,13 @@ struct FLineTraceResult {
 
 struct SPACEGAME_API FSpatialQueryManager {
   public:
-    FSpatialQueryManager() = default;
+    explicit FSpatialQueryManager(FTestEntityRegistry const& entity_registry);
+    FSpatialQueryManager(FSpatialQueryManager const&) = delete;
+    FSpatialQueryManager(FSpatialQueryManager&&) = delete;
+    auto operator=(FSpatialQueryManager const&) -> FSpatialQueryManager& = delete;
+    auto operator=(FSpatialQueryManager&&) -> FSpatialQueryManager& = delete;
 
-    void initialise(FTestEntityRegistry const& entity_registry,
-                    FIntVector3 const grid_dimensions,
+    void initialise(FIntVector3 const grid_dimensions,
                     FVector3f const cell_size,
                     ioj::FEntityAABBs const& entity_bounds);
 
@@ -133,7 +138,7 @@ struct SPACEGAME_API FSpatialQueryManager {
     auto acquire_thread_buffer() const -> int32;
     void release_thread_buffer(int32 index) const;
 
-    FTestEntityRegistry const* entity_registry{nullptr};
+    FTestEntityRegistry const& entity_registry;
 
     mutable std::mutex thread_buffers_mutex;
     mutable TArray<FThreadBuffers> thread_buffers;

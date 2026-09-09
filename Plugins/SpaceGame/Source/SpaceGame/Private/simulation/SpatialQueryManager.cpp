@@ -220,15 +220,15 @@ auto collect_grid_entities_in_range(ml::ioj::CollisionUniformGrid const& grid,
 
 namespace ml::query_manager {
 FThreadBufferLease::FThreadBufferLease(FSpatialQueryManager const& in_manager)
-    : manager{&in_manager}
-    , index{manager->acquire_thread_buffer()} {}
+    : manager{in_manager}
+    , index{manager.acquire_thread_buffer()} {}
 
 FThreadBufferLease::~FThreadBufferLease() {
-    manager->release_thread_buffer(index);
+    manager.release_thread_buffer(index);
 }
 
 auto FThreadBufferLease::get() const -> FThreadBuffers& {
-    return manager->thread_buffers[index];
+    return manager.thread_buffers[index];
 }
 }
 
@@ -281,14 +281,15 @@ void FSpatialQueryManager::release_thread_buffer(int32 const index) const {
     --active_thread_buffer_count;
 }
 
-void FSpatialQueryManager::initialise(FTestEntityRegistry const& in_entity_registry,
-                                      FIntVector3 const grid_dimensions,
+FSpatialQueryManager::FSpatialQueryManager(FTestEntityRegistry const& in_entity_registry)
+    : entity_registry{in_entity_registry}
+    , collision{in_entity_registry} {}
+
+void FSpatialQueryManager::initialise(FIntVector3 const grid_dimensions,
                                       FVector3f const cell_size,
                                       ioj::FEntityAABBs const& entity_bounds) {
     reserve_thread_buffers(1);
 
-    entity_registry = &in_entity_registry;
-    collision.set_entity_registry(in_entity_registry);
     auto& uniform_grid{collision.get_uniform_grid()};
     uniform_grid.set_grid_dims(grid_dimensions);
     uniform_grid.set_cell_dims(cell_size);
@@ -408,7 +409,7 @@ auto FSpatialQueryManager::collect_non_team_entities_in_range(
         Sandbox::FSpatialQueryManager::collect_non_team_entities_in_range::loop);
     return collect_grid_entities_in_range(
         collision.get_uniform_grid(),
-        *entity_registry,
+        entity_registry,
         buffer_lease.get(),
         origin,
         radius,
@@ -431,7 +432,7 @@ auto FSpatialQueryManager::collect_entities_of_type_in_range(
     query_manager::FThreadBufferLease const buffer_lease{*this};
     return collect_grid_entities_in_range(
         collision.get_uniform_grid(),
-        *entity_registry,
+        entity_registry,
         buffer_lease.get(),
         origin,
         radius,
@@ -444,9 +445,9 @@ auto FSpatialQueryManager::collect_entities_of_type_in_range(
 
 auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team) const
     -> FRegistryEntityHandle {
-    auto const& entity_data{entity_registry->get_entity_data()};
-    auto const generations{entity_registry->get_generations()};
-    auto const n{entity_registry->get_num_elements()};
+    auto const& entity_data{entity_registry.get_entity_data()};
+    auto const generations{entity_registry.get_generations()};
+    auto const n{entity_registry.get_num_elements()};
 
     for (int32 i{0}; i < n; ++i) {
         if (!entity_data.alive[i]) {
@@ -463,9 +464,9 @@ auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team) const
 auto FSpatialQueryManager::get_any_non_team_entity(ETestTeam const team,
                                                    ETestEntityType const entity_type) const
     -> FRegistryEntityHandle {
-    auto const& entity_data{entity_registry->get_entity_data()};
-    auto const generations{entity_registry->get_generations()};
-    auto const n{entity_registry->get_num_elements()};
+    auto const& entity_data{entity_registry.get_entity_data()};
+    auto const generations{entity_registry.get_generations()};
+    auto const n{entity_registry.get_num_elements()};
 
     for (int32 i{0}; i < n; ++i) {
         if (!entity_data.alive[i]) {

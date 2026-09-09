@@ -91,7 +91,7 @@ void run_worldless_turret_combat(FAutomationTestBase& test,
     if (scenario == ETurretCombatScenario::KillEnemy) {
         checks.are_equal(1, registry.count_kills(), TEXT("One turret is killed"));
         checks.are_equal(6, registry.count_alive(), TEXT("Hero turrets remain alive"));
-        for (auto const target : harness.get_simulation().get_turrets()->get_target_handles()) {
+        for (auto const target : harness.get_simulation().get_turrets().get_target_handles()) {
             checks.is_true(target.is_null(), TEXT("Targets clear after the enemy dies"));
         }
         return;
@@ -123,7 +123,7 @@ void run_worldless_turret_line_of_sight_blocking(FAutomationTestBase& test,
         .at(2.0,
             [&] {
                 spawn_count_before_blocker =
-                    harness.get_simulation().get_lasers()->get_number_spawned();
+                    harness.get_simulation().get_lasers().get_number_spawned();
                 harness.get_simulation()
                     .get_spatial_query_manager()
                     .get_collision_system()
@@ -135,7 +135,7 @@ void run_worldless_turret_line_of_sight_blocking(FAutomationTestBase& test,
                   harness.run_until_timeline_finished(4.5));
     checks.is_greater_than(spawn_count_before_blocker, 0, TEXT("Turrets fire before blocking"));
     checks.are_equal(spawn_count_before_blocker,
-                     harness.get_simulation().get_lasers()->get_number_spawned(),
+                     harness.get_simulation().get_lasers().get_number_spawned(),
                      TEXT("Turrets stop firing after line of sight is blocked"));
 }
 
@@ -159,7 +159,7 @@ void run_worldless_turret_search_requires_line_of_sight(FAutomationTestBase& tes
     harness.timeline.finish_at(1.0);
     test.TestTrue(TEXT("Turret search timeline completes"),
                   harness.run_until_timeline_finished(1.5));
-    auto const targets{harness.get_simulation().get_turrets()->get_target_handles()};
+    auto const targets{harness.get_simulation().get_turrets().get_target_handles()};
     checks.are_equal(3, targets.Num(), TEXT("All turret targets are available"));
     if (targets.Num() != 3) {
         return;

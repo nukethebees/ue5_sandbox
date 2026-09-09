@@ -362,6 +362,31 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
     EXPECT_NE(struct_files[0].content.find("friend struct FOwner;"), std::string::npos);
 }
 
+TEST(Generator, LowersFacadeWithReferenceTarget) {
+    Manifest const manifest{
+        .schema_version = manifest_schema_version,
+        .types = {{"target", CppType{"FTarget", "Project/Target.h"}}},
+        .modules = {FacadeModuleSchema{
+            .settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
+            .facade = FacadeSchema{
+                .name = "FFacade",
+                .target_type = TypeRef{"@target"},
+                .target_member_name = "target",
+                .methods = {FacadeMethodSchema{.name = "get", .return_type = TypeRef{"int32"}}},
+                .reference_target = true,
+            },
+        }},
+    };
+
+    auto const files{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(files.size(), 1);
+    EXPECT_NE(files[0].content.find("FFacade(FTarget& new_target)"), std::string::npos);
+    EXPECT_NE(files[0].content.find(": target{new_target}"), std::string::npos);
+    EXPECT_NE(files[0].content.find("return target.get();"), std::string::npos);
+    EXPECT_NE(files[0].content.find("FTarget& target;"), std::string::npos);
+    EXPECT_EQ(files[0].content.find("bind("), std::string::npos);
+}
+
 TEST(Generator, LowersHomogeneousLayouts) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,

@@ -97,7 +97,6 @@ struct FTraceFixture {
 
         grid.set_grid_dims(fixture_grid_dims);
         grid.set_cell_dims(fixture_cell_dims);
-        grid.set_entity_registry(registry);
         grid.rebuild_grid(aabbs);
     }
 
@@ -191,7 +190,7 @@ struct FTraceFixture {
     }
 
     FTestEntityRegistry registry;
-    ioj::CollisionUniformGrid grid;
+    ioj::CollisionUniformGrid grid{registry};
     TArray<FRegistryEntityHandle> handles;
     ioj::FEntityAABBs aabbs;
 };
@@ -2106,8 +2105,7 @@ void FCollisionUniformGridTraceScenario::test_static_harvesting() {
     config.omitted_collision_actor_classes.Add(ASandboxTestOmittedCollisionActor::StaticClass());
 
     FTestEntityRegistry registry;
-    ioj::FCollisionSystem collision;
-    collision.set_entity_registry(registry);
+    ioj::FCollisionSystem collision{registry};
     auto& grid{collision.get_uniform_grid()};
     grid.set_grid_dims(config.calculate_grid_dimensions());
     grid.set_cell_dims(config.cell_size);

@@ -182,8 +182,7 @@ void FTurretPresentation::draw_debugging_shapes() const {
 
     auto const& turret_simulation{simulation()};
     auto const& entities{turret_simulation.entities};
-    auto const* const entity_registry{turret_simulation.entity_registry};
-    check(entity_registry);
+    auto const& entity_registry{turret_simulation.entity_registry};
     auto const n{turret_simulation.get_num_instances()};
     auto const text_offset{actor_config->debug_status_text_offset};
 
@@ -194,7 +193,7 @@ void FTurretPresentation::draw_debugging_shapes() const {
         if (draw_target_arrows_enabled) {
             auto const target_handle{entities.target_handles[i]};
 
-            if (entity_registry->is_valid_handle(target_handle)) {
+            if (entity_registry.is_valid_handle(target_handle)) {
                 auto const target_location{ml::get_vector3d(entities.target_locations, i)};
                 drawer.draw_line(turret_location, target_location);
             }

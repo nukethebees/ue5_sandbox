@@ -8,6 +8,7 @@
 
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace codegen {
@@ -25,6 +26,7 @@ struct FunctionSpec {
     std::optional<std::string> template_parameters;
     std::optional<std::string> requires_clause;
     FunctionFormatting formatting;
+    std::vector<std::pair<std::string, std::string>> member_initializers;
 };
 
 } // namespace codegen

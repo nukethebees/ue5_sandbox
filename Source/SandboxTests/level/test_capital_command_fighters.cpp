@@ -21,30 +21,30 @@ void run_worldless_capital_command_fighters(FAutomationTestBase& test,
     add_worldless_capital_spawn(data, FVector3f{17030.f, 12170.f, 4360.f}, ETestTeam::Red, 0);
     FWorldlessSimulationTest harness{MoveTemp(data)};
     harness.finish_initialisation();
-    auto const* capitals{harness.get_simulation().get_capital_ships()};
-    auto const* fighters{harness.get_simulation().get_capital_ship_fighters()};
-    auto const first_target{capitals->get_handle(1)};
+    auto const& capitals{harness.get_simulation().get_capital_ships()};
+    auto const& fighters{harness.get_simulation().get_capital_ship_fighters()};
+    auto const first_target{capitals.get_handle(1)};
     FRegistryEntityHandle second_target;
     harness.timeline
         .then_after(2.0 / 60.0,
                     [&] {
                         checks.are_equal(first_target,
-                                         capitals->get_target_handle(0),
+                                         capitals.get_target_handle(0),
                                          TEXT("Capital initially retains its configured target"));
-                        checks.is_greater_than(capitals->get_fighter_handles(0).Num(),
+                        checks.is_greater_than(capitals.get_fighter_handles(0).Num(),
                                                int32{0},
                                                TEXT("Main capital spawned fighters"));
                         harness.queue_kills(TArray{first_target});
                     })
         .then_after(2.0 / 60.0,
                     [&] {
-                        second_target = capitals->get_target_handle(0);
+                        second_target = capitals.get_target_handle(0);
                         checks.is_true(second_target.is_valid() && second_target != first_target,
                                        TEXT("Capital retargets after its first target dies"));
-                        for (auto const fighter_handle : capitals->get_fighter_handles(0)) {
+                        for (auto const fighter_handle : capitals.get_fighter_handles(0)) {
                             checks.are_equal(
                                 second_target,
-                                fighters->get_target_handle(fighter_handle),
+                                fighters.get_target_handle(fighter_handle),
                                 TEXT("Fighter follows the replacement capital target"));
                         }
                         auto const enemies{
@@ -53,11 +53,11 @@ void run_worldless_capital_command_fighters(FAutomationTestBase& test,
                     })
         .then_after(2.0 / 60.0,
                     [&] {
-                        for (auto const task : fighters->get_tasks()) {
+                        for (auto const task : fighters.get_tasks()) {
                             checks.are_equal(
                                 Task::Standby, task, TEXT("Fighter stands by with no enemies"));
                         }
-                        checks.is_greater_than(capitals->get_num_instances(),
+                        checks.is_greater_than(capitals.get_num_instances(),
                                                int32{0},
                                                TEXT("The main capital remains alive"));
                     })

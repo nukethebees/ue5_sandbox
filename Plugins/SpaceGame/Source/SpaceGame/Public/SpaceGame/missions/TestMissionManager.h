@@ -42,9 +42,14 @@ struct FLevelMissionResult {
 
 struct SPACEGAME_API FTestMissionManager {
   public:
+    FTestMissionManager(FSimulationClock const& clock, FTestEntityRegistry& entity_registry);
+    FTestMissionManager(FTestMissionManager const&) = delete;
+    FTestMissionManager(FTestMissionManager&&) = delete;
+    auto operator=(FTestMissionManager const&) -> FTestMissionManager& = delete;
+    auto operator=(FTestMissionManager&&) -> FTestMissionManager& = delete;
+
     void begin_play();
     void reset_runtime_state();
-    void bind_simulation_clock(FSimulationClock const& clock) noexcept;
     void mission_tick();
     auto complete_mission() -> bool;
 
@@ -127,9 +132,8 @@ struct SPACEGAME_API FTestMissionManager {
         return pending_objective_events_ > 0;
     }
 
-    auto get_entity_registry() const -> FTestEntityRegistry const* { return entity_registry; }
-    auto get_entity_registry() -> FTestEntityRegistry* { return entity_registry; }
-    void set_entity_registry(FTestEntityRegistry& reg) { entity_registry = &reg; }
+    auto get_entity_registry() const -> FTestEntityRegistry const& { return entity_registry; }
+    auto get_entity_registry() -> FTestEntityRegistry& { return entity_registry; }
   private:
     void set_mission_state(ETestMissionState const new_state,
                            ETestMissionFailReason const fail_reason = ETestMissionFailReason::None);
@@ -150,7 +154,7 @@ struct SPACEGAME_API FTestMissionManager {
 
     void queue_result();
     TOptional<FLevelMissionResult> pending_result_;
-    FTestEntityRegistry* entity_registry{nullptr};
+    FTestEntityRegistry& entity_registry;
 
     TArray<FRegistryEntityHandle> hero_entity_handles{};
     TArray<TestEntityUniqueId> hero_entity_ids{};

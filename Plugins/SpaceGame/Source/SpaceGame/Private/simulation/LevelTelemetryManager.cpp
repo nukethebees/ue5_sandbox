@@ -62,30 +62,31 @@ auto aggregate_timings(TArray<double> samples) -> FLevelTelemetryTimingAggregate
 
 }
 
-void FLevelTelemetryManager::initialise(FSimulationClock const& clock,
-                                        FTestEntityRegistry const& entity_registry,
-                                        ml::test_lasers::Simulation const& lasers,
-                                        ml::FSpatialQueryManager const& spatial_queries) {
+FLevelTelemetryManager::FLevelTelemetryManager(
+    FSimulationClock const& clock,
+    FTestEntityRegistry const& entity_registry,
+    ml::test_lasers::Simulation const& lasers,
+    ml::FSpatialQueryManager const& spatial_queries) noexcept
+    : clock_{clock}
+    , entity_registry_{entity_registry}
+    , lasers_{lasers}
+    , spatial_queries_{spatial_queries} {}
+
+void FLevelTelemetryManager::initialise() {
     reset();
-    clock_ = &clock;
-    entity_registry_ = &entity_registry;
-    lasers_ = &lasers;
-    spatial_queries_ = &spatial_queries;
+    initialized_ = true;
     update_current_state();
     sample_series();
 }
 
 void FLevelTelemetryManager::reset() {
-    clock_ = nullptr;
-    entity_registry_ = nullptr;
-    lasers_ = nullptr;
-    spatial_queries_ = nullptr;
     current_state_ = {};
     run_record_ = {};
     run_started_at_ = 0.0;
     run_recording_ = false;
     run_finalized_ = false;
     run_record_taken_ = false;
+    initialized_ = false;
     next_battle_sample_seconds_ = 0.0;
     frame_samples_.Reset();
     simulation_tick_samples_.Reset();
@@ -98,13 +99,10 @@ void FLevelTelemetryManager::reset() {
 }
 
 void FLevelTelemetryManager::tick() {
-    check(clock_ != nullptr);
-    check(entity_registry_ != nullptr);
-    check(lasers_ != nullptr);
-    check(spatial_queries_ != nullptr);
+    check(initialized_);
     update_current_state();
     sample_live_series();
-    auto const simulated_seconds{clock_->get_simulation_time()};
+    auto const simulated_seconds{clock_.get_simulation_time()};
     if (simulated_seconds + UE_DOUBLE_SMALL_NUMBER >= next_battle_sample_seconds_) {
         sample_series();
         sample_battle_state();
@@ -147,9 +145,9 @@ void FLevelTelemetryManager::record_external_timing(ELevelTelemetryTimingSystem 
 }
 
 auto FLevelTelemetryManager::make_snapshot() const -> FLevelTelemetrySnapshot {
-    check(clock_ != nullptr);
-    auto const completed_tick{clock_->get_completed_ticks()};
-    auto const tick_period{clock_->get_tick_period()};
+    check(initialized_);
+    auto const completed_tick{clock_.get_completed_ticks()};
+    auto const tick_period{clock_.get_tick_period()};
     checkf(FMath::IsFinite(tick_period) && tick_period > 0.0,
            TEXT("Level telemetry snapshots require a finite, positive tick period."));
     auto const& active_entity_count_data{run_record_.tick_series.active_entities};
@@ -184,17 +182,17 @@ auto FLevelTelemetryManager::make_snapshot() const -> FLevelTelemetrySnapshot {
 }
 
 void FLevelTelemetryManager::update_current_state() {
-    auto const spatial{spatial_queries_->get_runtime_telemetry()};
+    auto const spatial{spatial_queries_.get_runtime_telemetry()};
     current_state_.active_entities_by_team_and_type =
-        entity_registry_->count_alive_per_team_and_type();
+        entity_registry_.count_alive_per_team_and_type();
     current_state_.active_entities = sum(current_state_.active_entities_by_team_and_type);
-    current_state_.spawned_entities = entity_registry_->get_num_unique_ids_issued();
+    current_state_.spawned_entities = entity_registry_.get_num_unique_ids_issued();
     current_state_.destroyed_entities =
         current_state_.spawned_entities - current_state_.active_entities;
-    current_state_.kills = entity_registry_->count_kills();
-    current_state_.registry_slot_count = entity_registry_->get_num_elements();
-    current_state_.active_lasers = lasers_->get_num_instances();
-    current_state_.lasers_fired = lasers_->get_number_spawned();
+    current_state_.kills = entity_registry_.count_kills();
+    current_state_.registry_slot_count = entity_registry_.get_num_elements();
+    current_state_.active_lasers = lasers_.get_num_instances();
+    current_state_.lasers_fired = lasers_.get_number_spawned();
     current_state_.occupied_spatial_cell_count = spatial.occupied_dynamic_cell_count;
     current_state_.grid_rebuild_count = spatial.grid_rebuild_count;
     current_state_.range_query_count = spatial.range_query_count;
@@ -205,7 +203,7 @@ void FLevelTelemetryManager::update_current_state() {
 }
 
 void FLevelTelemetryManager::sample_live_series() {
-    auto const tick{clock_->get_completed_ticks()};
+    auto const tick{clock_.get_completed_ticks()};
     auto const add_if_changed{[tick](auto& data, auto const value) {
         if (data.is_empty() || data.last_value() != value) {
             data.add(tick, value);
@@ -229,11 +227,11 @@ void FLevelTelemetryManager::sample_live_series() {
     }
 
     add_if_changed(series.kills, current_state_.kills);
-    add_if_changed(series.requested_time_scale, clock_->get_time_scale());
+    add_if_changed(series.requested_time_scale, clock_.get_time_scale());
 }
 
 void FLevelTelemetryManager::sample_series(bool const force) {
-    auto const tick{clock_->get_completed_ticks()};
+    auto const tick{clock_.get_completed_ticks()};
     auto const add_if_changed{[tick, force](auto& data, auto const value) {
         if (data.is_empty() || data.last_value() != value || (force && data.last_time() != tick)) {
             data.add(tick, value);
@@ -267,11 +265,11 @@ void FLevelTelemetryManager::sample_series(bool const force) {
     add_if_changed(series.range_query_count, current_state_.range_query_count);
     add_if_changed(series.line_trace_count, current_state_.line_trace_count);
     add_if_changed(series.sweep_trace_count, current_state_.sweep_trace_count);
-    add_if_changed(series.requested_time_scale, clock_->get_time_scale());
+    add_if_changed(series.requested_time_scale, clock_.get_time_scale());
 }
 
 void FLevelTelemetryManager::sample_battle_state(bool const force) {
-    auto const tick{clock_->get_completed_ticks()};
+    auto const tick{clock_.get_completed_ticks()};
     auto& samples{run_record_.battle_samples};
     if (!force && !samples.IsEmpty() && samples.Last().completed_tick == tick) {
         return;
@@ -281,8 +279,8 @@ void FLevelTelemetryManager::sample_battle_state(bool const force) {
     }
     samples.Add(FLevelTelemetryBattleSample{
         .completed_tick = tick,
-        .simulated_elapsed_seconds = clock_->get_simulation_time(),
-        .combat = entity_registry_->get_combat_telemetry(),
+        .simulated_elapsed_seconds = clock_.get_simulation_time(),
+        .combat = entity_registry_.get_combat_telemetry(),
         .alive = current_state_.active_entities_by_team_and_type,
         .active_lasers = current_state_.active_lasers,
         .lasers_fired = current_state_.lasers_fired,
@@ -296,16 +294,16 @@ void FLevelTelemetryManager::sample_battle_state(bool const force) {
 }
 
 void FLevelTelemetryManager::begin_run(FLevelTelemetryRunMetadata metadata) {
-    check(clock_ != nullptr);
-    check(clock_->get_tick_rate() > 0.0);
-    check(clock_->get_tick_period() > 0.0);
-    check(clock_->get_time_scale() > 0.0);
+    check(initialized_);
+    check(clock_.get_tick_rate() > 0.0);
+    check(clock_.get_tick_period() > 0.0);
+    check(clock_.get_time_scale() > 0.0);
     check(!run_record_.tick_series.active_entities.is_empty());
     check(!run_record_.tick_series.requested_time_scale.is_empty());
 
-    metadata.tick_rate_hz = clock_->get_tick_rate();
-    metadata.tick_period_seconds = clock_->get_tick_period();
-    metadata.initial_requested_time_scale = clock_->get_time_scale();
+    metadata.tick_rate_hz = clock_.get_tick_rate();
+    metadata.tick_period_seconds = clock_.get_tick_period();
+    metadata.initial_requested_time_scale = clock_.get_time_scale();
     run_record_.metadata = MoveTemp(metadata);
     run_record_.completion = {};
     run_record_.completed_ticks_by_real_time.reset();
@@ -313,7 +311,7 @@ void FLevelTelemetryManager::begin_run(FLevelTelemetryRunMetadata metadata) {
     run_recording_ = true;
     run_finalized_ = false;
     run_record_taken_ = false;
-    add_realtime_sample(clock_->get_completed_ticks(), run_started_at_);
+    add_realtime_sample(clock_.get_completed_ticks(), run_started_at_);
     sample_battle_state(true);
     next_battle_sample_seconds_ = 1.0;
 }
@@ -324,14 +322,14 @@ void FLevelTelemetryManager::capture_realtime_sample() {
     }
 
     auto const now{FPlatformTime::Seconds()};
-    add_realtime_sample(clock_->get_completed_ticks(), now);
+    add_realtime_sample(clock_.get_completed_ticks(), now);
     close_performance_window(now);
 }
 
 void FLevelTelemetryManager::close_performance_window(double const monotonic_time) {
     FLevelTelemetryPerformanceWindow window;
     window.real_elapsed_seconds = wall_elapsed(monotonic_time);
-    window.completed_tick = clock_->get_completed_ticks();
+    window.completed_tick = clock_.get_completed_ticks();
     window.frame = aggregate_timings(MoveTemp(frame_samples_));
     window.game_thread = window.frame;
     window.simulation_tick = aggregate_timings(MoveTemp(simulation_tick_samples_));
@@ -404,7 +402,7 @@ void FLevelTelemetryManager::finalize_run(ELevelTelemetryRunEndReason const reas
         return;
     }
 
-    auto const completed_ticks{clock_->get_completed_ticks()};
+    auto const completed_ticks{clock_.get_completed_ticks()};
     update_current_state();
     sample_series();
     sample_battle_state(true);
@@ -418,7 +416,7 @@ void FLevelTelemetryManager::finalize_run(ELevelTelemetryRunEndReason const reas
     run_record_.completion.completed_utc = FDateTime::UtcNow().ToIso8601();
     run_record_.completion.world_end_reason = MoveTemp(world_end_reason);
     run_record_.completion.completed_ticks = completed_ticks;
-    run_record_.completion.simulated_elapsed_seconds = clock_->get_simulation_time();
+    run_record_.completion.simulated_elapsed_seconds = clock_.get_simulation_time();
     run_record_.completion.wall_elapsed_seconds = wall_elapsed(monotonic_time);
     if (mission_result != nullptr) {
         run_record_.completion.mission_mode = mission_result->mode;
