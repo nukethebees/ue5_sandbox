@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/telemetry/LevelTelemetryRunRecord.h>
+#include <SpaceGame/telemetry/LevelTelemetryReport.h>
 
 #include <expected>
 
@@ -55,7 +55,7 @@ struct SPACEGAME_API FTelemetryRunAnalysis {
         -> FTelemetryMetricSeries const*;
 };
 
-SPACEGAME_API auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record)
+SPACEGAME_API auto analyze_level_telemetry_run(FLevelTelemetryReport const& record)
     -> FTelemetryRunAnalysis;
 SPACEGAME_API auto telemetry_metric_title(ETelemetryDashboardMetric metric) -> FString;
 SPACEGAME_API auto telemetry_metric_units(ETelemetryDashboardMetric metric) -> FString;
@@ -88,12 +88,12 @@ class SPACEGAME_API FTelemetryRunCatalog {
         return level_filters_;
     }
     [[nodiscard]] auto get_selected_run_id() const -> FString const& { return selected_run_id_; }
-    [[nodiscard]] auto get_selected_record() const -> FLevelTelemetryRunRecord const* {
+    [[nodiscard]] auto get_selected_record() const -> FLevelTelemetryReport const* {
         return selected_record_.IsSet() ? &selected_record_.GetValue() : nullptr;
     }
     [[nodiscard]] auto get_selected_error() const -> FString const& { return selected_error_; }
     [[nodiscard]] auto get_baseline_run_id() const -> FString const& { return baseline_run_id_; }
-    [[nodiscard]] auto get_baseline_record() const -> FLevelTelemetryRunRecord const* {
+    [[nodiscard]] auto get_baseline_record() const -> FLevelTelemetryReport const* {
         return baseline_record_.IsSet() ? &baseline_record_.GetValue() : nullptr;
     }
     auto get_baseline_candidates() const -> TArray<FTelemetryRunSummary>;
@@ -112,9 +112,9 @@ class SPACEGAME_API FTelemetryRunCatalog {
     TArray<FString> level_filters_{};
     FString level_filter_{TEXT("All levels")};
     FString selected_run_id_{};
-    TOptional<FLevelTelemetryRunRecord> selected_record_{};
+    TOptional<FLevelTelemetryReport> selected_record_{};
     FString baseline_run_id_{};
-    TOptional<FLevelTelemetryRunRecord> baseline_record_{};
+    TOptional<FLevelTelemetryReport> baseline_record_{};
     FString selected_error_{};
     int32 unreadable_file_count_{};
     bool directory_exists_{};

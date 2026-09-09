@@ -1,8 +1,9 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
+#include <SpaceGame/simulation/SimulationConfigConversion.h>
 
-#include <SpaceGame/entities/TestTeamVisualData.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
-#include <SpaceGame/support/mesh.h>
+#include <SpaceGamePresentation/entities/TestTeamVisualData.h>
+#include <SpaceGamePresentation/support/mesh.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCoreEngine/uobject_utils.h>
 
@@ -43,7 +44,7 @@ auto ATestSpaceShip::make_spawn_data() const -> ml::test_space_ship::FPlayerSpaw
     ml::test_space_ship::FPlayerSpawnData result;
     result.team = team;
     result.transform = GetActorTransform();
-    result.visual_transform = ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity;
+    result.body_transform = ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity;
     result.flight_mode = flight_mode;
     result.control_mode = control_mode;
     result.laser_mode = laser_mode;
@@ -79,110 +80,16 @@ auto ATestSpaceShip::simulation() const -> ml::test_space_ship::Simulation const
     return const_cast<ATestSpaceShip*>(this)->simulation();
 }
 
-void ATestSpaceShip::begin_play_presentation() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::begin_play_presentation);
-    if (!actor_config) {
-        UE_LOG(LogSandbox, Fatal, TEXT("ATestSpaceShip actor_config is nullptr."));
-    }
-
-    ml::fatal_if_uobject_ptrs_invalid({
-        {
-            SANDBOX_NAMED_UOBJECT_PTR(ship_mesh),
-            SANDBOX_NAMED_UOBJECT_PTR(boost_pulse),
-            SANDBOX_NAMED_UOBJECT_PTR(boost_engine_effect),
-        },
-        {
-            SANDBOX_NAMED_UOBJECT_PTR(actor_config->team_visual_data),
-        },
-    });
-
-    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::left));
-    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::right));
-    RETURN_IF_FALSE(ship_mesh->DoesSocketExist(Sockets::middle));
-
-    configure_boost_pulse();
-    configure_boost_engine_effect();
-    presented_boost_brake_state = EBoostBrakeState::None;
-}
-
-void ATestSpaceShip::update_visual_data(float const dt) {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::update_visual_data);
-    log_config.tick(dt);
-
-    auto const& state{simulation()};
-    SetActorTransform(state.transform, false, nullptr, ETeleportType::TeleportPhysics);
-    ship_mesh->SetRelativeTransform(state.visual_transform);
-    boost_engine_effect->SetVectorParameter(TEXT("ship_velocity"), state.velocity);
-
-    if (presented_boost_brake_state != state.boost_brake_state) {
-        if (state.boost_brake_state == EBoostBrakeState::Boost) {
-            boost_pulse->Activate();
-            boost_engine_effect->Activate();
-        } else {
-            boost_engine_effect->Deactivate();
-        }
-        presented_boost_brake_state = state.boost_brake_state;
-    }
-    log_config.on_tick_end();
-}
-
-void ATestSpaceShip::commit_visual_data() {
-    TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::ATestSpaceShip::commit_visual_data);
-    draw_debug_shapes();
-}
-
 void ATestSpaceShip::handle_simulation_death() {
     auto player_ship_died{MoveTemp(on_player_ship_died)};
     player_ship_died.ExecuteIfBound();
     Destroy();
 }
 
-void ATestSpaceShip::configure_boost_pulse() {
-    boost_pulse->SetColorParameter(TEXT("colour"), actor_config->engine_colour);
-    boost_pulse->SetFloatParameter(TEXT("ring_colour_intensity"),
-                                   actor_config->boost_effect_colour_intensity);
-    boost_pulse->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                   actor_config->boost_effect_colour_intensity);
-}
-
-void ATestSpaceShip::configure_boost_engine_effect() {
-    boost_engine_effect->SetColorParameter(TEXT("colour"), actor_config->engine_colour);
-    boost_engine_effect->SetFloatParameter(TEXT("sparks_colour_intensity"),
-                                           actor_config->boost_effect_colour_intensity);
-}
-
 void ATestSpaceShip::configure_ship_mesh() {
     ship_mesh->SetCanEverAffectNavigation(false);
     ship_mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
     ship_mesh->SetGenerateOverlapEvents(false);
-}
-
-void ATestSpaceShip::draw_debug_shapes() {
-#if WITH_EDITORONLY_DATA
-    auto const& state{simulation()};
-    if (debug_forward_socket_direction) {
-        auto const middle{state.get_middle_socket()};
-        auto const start{middle.GetLocation()};
-        constexpr float length{5000.f};
-        auto const end{start + middle.GetUnitAxis(EAxis::X) * length};
-        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.f, 0, 10.f);
-    }
-
-    if (debug_forward_direction) {
-        auto const start{state.transform.GetLocation()};
-        constexpr float length{5000.f};
-        auto const end{start + state.transform.GetUnitAxis(EAxis::X) * length};
-        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.f, 0, 10.f);
-    }
-
-    if (debug_lock_on && state.laser_firing_mode == ELaserFiringState::lock_on_searching) {
-        auto const middle{state.get_middle_socket()};
-        auto const start{middle.GetLocation()};
-        auto const end{start + middle.GetUnitAxis(EAxis::X) * actor_config->laser_lock_on_distance};
-        DrawDebugLine(GetWorld(), start, end, FColor::Green, false, 0.f, 0, 10.f);
-        DrawDebugSphere(GetWorld(), end, debug_lock_on_sphere_radius, 8, FColor::Orange);
-    }
-#endif
 }
 
 auto ATestSpaceShip::get_entity_handle() const noexcept -> FRegistryEntityHandle {
@@ -414,3 +321,15 @@ auto ATestSpaceShip::get_speed_sample_index() const noexcept -> int32 {
     return simulation().speed_sample_index;
 }
 #endif
+
+auto ATestSpaceShip::get_presentation_resources() const -> FPlayerPresentationResources {
+    FPlayerPresentationResources resources{
+        RootComponent, ship_mesh, boost_pulse, boost_engine_effect};
+#if WITH_EDITORONLY_DATA
+    resources.debug_forward_socket_direction = debug_forward_socket_direction;
+    resources.debug_forward_direction = debug_forward_direction;
+    resources.debug_lock_on = debug_lock_on;
+    resources.debug_lock_on_sphere_radius = debug_lock_on_sphere_radius;
+#endif
+    return resources;
+}

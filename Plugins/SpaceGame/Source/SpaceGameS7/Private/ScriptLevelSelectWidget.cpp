@@ -1,12 +1,13 @@
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include "SScriptLevelSelectView.h"
 
 #include <SpaceGame/levels/LevelUnlock.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
-#include <SpaceGame/ui/style/SpaceGameUiTheme.h>
+#include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Engine/GameInstance.h>
 #include <IPlatformCrypto.h>

@@ -3,7 +3,7 @@
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
 #include "SGLegacy/learning/TestTurretsConfig.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCore/array_utils.h>
 #include <SandboxCore/interpolation.h>

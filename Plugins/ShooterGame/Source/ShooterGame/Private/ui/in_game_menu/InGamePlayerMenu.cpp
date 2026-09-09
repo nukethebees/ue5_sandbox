@@ -10,7 +10,7 @@
 #include "ShooterGame/ui/in_game_menu/ResearchMenuWidget.h"
 #include "ShooterGame/ui/in_game_menu/StatsMenuWidget.h"
 #include "ShooterGame/ui/widgets/TextButtonWidget.h"
-#include "SandboxGameShared/utilities/enums.h"
+#include "SandboxCoreEngine/enums.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

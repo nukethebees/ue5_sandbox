@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SandboxCore/test_timeline.h>
-#include <SpaceGame/simulation/LevelSimulation.h>
+#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
 #include <Misc/Optional.h>
 

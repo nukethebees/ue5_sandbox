@@ -1,7 +1,7 @@
 #pragma once
 
-#include "SpaceGame/levels/LevelTypes.h"
 #include "SpaceGame/persistence/SaveProfileManager.h"
+#include "SpaceGameSimulation/levels/LevelTypes.h"
 
 #include <CoreMinimal.h>
 #include <Subsystems/GameInstanceSubsystem.h>

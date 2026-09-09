@@ -1,6 +1,6 @@
 #include "SGLegacy/learning/TestFlyForward.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Engine/HitResult.h"
 #include "Engine/World.h"

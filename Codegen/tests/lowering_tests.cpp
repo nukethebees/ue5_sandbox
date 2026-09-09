@@ -199,7 +199,7 @@ TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
         }},
     })};
 
-    EXPECT_NE(output.header.find("#include \"SandboxGameShared/utilities/enum_array.h\""),
+    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""),
               std::string::npos);
     EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 count{2};\n};"),
               std::string::npos);
@@ -228,7 +228,7 @@ TEST(Lowering, EmitsTraitsForEnumArrayEnumsWithCountSentinels) {
         }},
     })};
 
-    EXPECT_NE(output.header.find("#include \"SandboxGameShared/utilities/enum_array.h\""),
+    EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""),
               std::string::npos);
     EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 count{static_cast<int32>(EMode::COUNT)};\n};"),
               std::string::npos);

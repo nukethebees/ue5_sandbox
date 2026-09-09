@@ -1,6 +1,6 @@
 #include "BenchmarkOrchestratorActor.h"
 
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include "Camera/CameraActor.h"
 #include "Engine/World.h"

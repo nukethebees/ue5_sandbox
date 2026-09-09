@@ -1,7 +1,8 @@
 #pragma once
+#include <SpaceGameSimulation/levels/LevelMissionMode.h>
 
-#include <SpaceGame/levels/LevelDefinitionSoA.h>
-#include <SpaceGame/levels/LevelTypes.h>
+#include <SpaceGameSimulation/levels/LevelDefinitionSoA.h>
+#include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <CoreMinimal.h>
 #include <Misc/TVariant.h>
@@ -26,13 +27,6 @@ struct SPACEGAME_API FLevelCameraDefinition {
     TArray<FLevelEntityId> target_entity_ids{};
     FVector offset_direction{FVector::ZeroVector};
     double distance{0.0};
-};
-
-enum class ELevelMissionMode : uint8 {
-    Unspecified,
-    SurviveTime,
-    KillEnemies,
-    KillEnemiesWithinTime,
 };
 
 struct SPACEGAME_API FLevelMissionDefinition {

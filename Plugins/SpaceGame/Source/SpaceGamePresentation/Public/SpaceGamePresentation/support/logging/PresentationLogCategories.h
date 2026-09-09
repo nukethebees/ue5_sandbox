@@ -1,0 +1,4 @@
+#pragma once
+#include <Logging/LogMacros.h>
+
+SPACEGAMEPRESENTATION_API DECLARE_LOG_CATEGORY_EXTERN(LogSandboxUI, Log, All);

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGame/levels/LevelTypes.h>
+#include <SpaceGameSimulation/levels/LevelTypes.h>
 
 #include <CoreMinimal.h>
 

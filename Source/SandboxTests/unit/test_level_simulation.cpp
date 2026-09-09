@@ -1,11 +1,18 @@
+#include <NiagaraComponent.h>
+#include <NiagaraSystem.h>
 #include <SandboxISMCComponent.h>
 #include <SandboxTests/support/SimulationTestAssets.h>
 #include <SandboxTests/support/test_setup.h>
+#include <SandboxTests/support/TestActorSpawning.h>
+#include <SandboxTests/support/TestNiagaraComponent.h>
+#include <SpaceGame/levels/CompileLevelEvents.h>
 #include <SpaceGame/levels/LevelDefinition.h>
-#include <SpaceGame/levels/LevelEventManager.h>
-#include <SpaceGame/simulation/LevelSimulation.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
+#include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
+#include <SpaceGameSimulation/levels/LevelEventManager.h>
+#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 
@@ -18,6 +25,19 @@
 #include <Misc/Paths.h>
 #include <Misc/ScopeExit.h>
 #include <Serialization/JsonSerializer.h>
+
+#include <type_traits>
+
+static_assert(std::is_const_v<std::remove_reference_t<
+                  decltype(std::declval<FCapitalReadView>().entities.locations.xs[0])>>);
+static_assert(
+    std::is_const_v<
+        std::remove_reference_t<decltype(std::declval<FFighterReadView>().entities.teams[0])>>);
+static_assert(
+    std::is_const_v<std::remove_reference_t<decltype(std::declval<FTurretReadView>().changes[0])>>);
+static_assert(std::is_const_v<std::remove_reference_t<
+                  decltype(std::declval<FLaserReadView>().entities.lifetimes_remaining[0])>>);
+static_assert(std::is_const_v<std::remove_pointer_t<decltype(FLevelReadView::registry)>>);
 
 namespace {
 auto make_battle() -> FLevelSimulationInitData {
@@ -132,7 +152,6 @@ auto FWorldlessLevelSimulationTest::RunTest(FString const&) -> bool {
               first.get_level_telemetry_manager().is_run_recording());
     first.pause();
     first.pause();
-    TestFalse(TEXT("No presentation resources are needed"), first.has_presentation());
     TestNull(TEXT("No player is needed"), first.get_player_ship_simulation());
     TestEqual(TEXT("Both capitals are registered"),
               first.get_entity_registry().get_num_alive_active_entities(),
@@ -421,9 +440,9 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
         owner->AddInstanceComponent(*slot);
         (*slot)->RegisterComponent();
     }
-    resources.config = config;
+    resources.config = config->get_visual_config();
     FLevelSimulation headless{make_battle()};
-    FLevelSimulation visible{make_battle(), &resources};
+    FLevelSimulation visible{make_battle()};
     TestEqual(TEXT("Presentation construction preserves initial entity count"),
               visible.get_capital_ships().get_num_instances(),
               headless.get_capital_ships().get_num_instances());
@@ -432,7 +451,7 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
               EOrchestratorState::Uninitialised);
     prepare_mission(headless);
     prepare_mission(visible);
-    TestTrue(TEXT("Components enable presentation"), visible.has_presentation());
+    FLevelPresentation presentation{resources, visible.get_read_view(), {}};
     using Samples = ml::TimeSeriesData<FTestEntityRegistry::EntityData>;
     Samples headless_samples;
     Samples visible_samples;
@@ -457,7 +476,16 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
         }
         headless.advance(dt);
         visible.advance(dt);
-        visible.commit_presentation(dt);
+        auto const prior_presentations{presentation.get_tick_count()};
+        TestEqual(
+            TEXT("Advancing does not present"), prior_presentations, static_cast<uint64>(tick));
+        presentation.tick(dt, visible.get_read_view());
+        TestEqual(TEXT("Exactly one presentation per frame"),
+                  presentation.get_tick_count(),
+                  prior_presentations + 1);
+        TestEqual(TEXT("Presentation sees the completed simulation"),
+                  presentation.get_last_completed_tick(),
+                  visible.get_clock().get_completed_ticks());
     }
     TestEqual(TEXT("Both executions record every tick"), headless_samples.num(), tick_count);
     TestEqual(TEXT("Both executions have matching sample counts"),
@@ -486,6 +514,220 @@ auto FLevelSimulationPresentationEquivalenceTest::RunTest(FString const&) -> boo
 }
 
 IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLevelPresentationFrameChangesTest,
+    "Sandbox.UnitTests.LevelSimulation.PresentationReconcilesCompleteFrames",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLevelPresentationFrameChangesTest::RunTest(FString const&) -> bool {
+    auto world{ml::get_editor_world()};
+    auto* config{ml::load_default_level_config()};
+    if (!TestTrue(TEXT("Editor world is available for presentation"), world.has_value()) ||
+        !TestTrue(TEXT("Presentation assets load"), IsValid(config))) {
+        return false;
+    }
+    auto* owner{world.value()->SpawnActor<AActor>()};
+    if (!TestTrue(TEXT("Presentation component owner is created"), IsValid(owner))) {
+        return false;
+    }
+    ON_SCOPE_EXIT {
+        owner->Destroy();
+    };
+    FLevelPresentationResources resources;
+    resources.lasers = NewObject<USandboxISMCComponent>(owner);
+    owner->AddInstanceComponent(resources.lasers);
+    resources.lasers->RegisterComponent();
+    resources.sparks = NewObject<USparkRendererComponent>(owner);
+    owner->AddInstanceComponent(resources.sparks);
+    resources.sparks->RegisterComponent();
+    for (auto** slot :
+         {&resources.capital_ships, &resources.fighters, &resources.turrets, &resources.spinners}) {
+        *slot = NewObject<UInstancedStaticMeshComponent>(owner);
+        owner->AddInstanceComponent(*slot);
+        (*slot)->RegisterComponent();
+    }
+    resources.config = config->get_visual_config();
+
+    FLevelSimulation simulation{make_scheduled_battle()};
+    simulation.finish_initialisation();
+    FLevelPresentation presentation{resources, simulation.get_read_view(), {}};
+    simulation.start();
+    auto const dt{simulation.get_clock().get_tick_period()};
+    simulation.on_end_tick = [](FLevelSimulation& level) {
+        if (level.get_clock().get_completed_ticks() == 3) {
+            DirectDamageEvents damage;
+            damage.damaged_entities.Add(level.get_capital_ships().get_handle(1));
+            damage.instigators.Add(level.get_capital_ships().get_handle(0));
+            damage.damage_amounts.Add(MAX_int32);
+            level.get_entity_registry().queue_direct_damage_events(damage);
+        }
+    };
+    simulation.advance(dt * 4.25);
+    auto const frame{simulation.get_read_view()};
+    TestEqual(TEXT("Four fixed ticks precede presentation"),
+              frame.clock->get_completed_ticks(),
+              uint64{4});
+    TestEqual(
+        TEXT("Simulation never ticks presentation"), presentation.get_tick_count(), uint64{0});
+    TestEqual(TEXT("Spawn and death survive later fixed ticks"), frame.capitals.changes.Num(), 2);
+    if (frame.capitals.changes.Num() == 2) {
+        TestEqual(TEXT("Spawn is recorded first"),
+                  frame.capitals.changes[0].kind,
+                  EEntityFrameChange::Spawn);
+        TestEqual(TEXT("Death follows spawn"),
+                  frame.capitals.changes[1].kind,
+                  EEntityFrameChange::RemoveSwap);
+        TestTrue(TEXT("Changes identify the same entity"),
+                 frame.capitals.changes[0].handle == frame.capitals.changes[1].handle);
+    }
+    TestEqual(TEXT("Death effect remains available"), frame.capitals.deaths.Num(), 1);
+    presentation.tick(static_cast<float>(dt * 4.25), frame);
+    TestEqual(
+        TEXT("One presentation follows all fixed ticks"), presentation.get_tick_count(), uint64{1});
+    TestEqual(TEXT("Presentation sees the last fixed tick"),
+              presentation.get_last_completed_tick(),
+              uint64{4});
+    TestEqual(TEXT("Spawned and destroyed instance is reconciled"),
+              resources.capital_ships->GetNumInstances(),
+              1);
+    TestTrue(TEXT("Fractional simulation time remains available"),
+             FMath::IsNearlyEqual(frame.interpolation_alpha(), 0.25));
+
+    simulation.advance(0.0);
+    auto const idle_frame{simulation.get_read_view()};
+    TestEqual(
+        TEXT("Zero-step frame has no previous changes"), idle_frame.capitals.changes.Num(), 0);
+    TestEqual(TEXT("Zero-step frame has no previous deaths"), idle_frame.capitals.deaths.Num(), 0);
+    presentation.tick(0.f, idle_frame);
+    TestEqual(
+        TEXT("Zero fixed ticks still presents once"), presentation.get_tick_count(), uint64{2});
+    TestEqual(
+        TEXT("Zero-step frame preserves instances"), resources.capital_ships->GetNumInstances(), 1);
+
+    FLevelPresentation attached{resources, simulation.get_read_view(), {}};
+    TestEqual(TEXT("Late attachment starts from live state"),
+              resources.capital_ships->GetNumInstances(),
+              1);
+    simulation.advance(dt);
+    attached.tick(static_cast<float>(dt), simulation.get_read_view());
+    TestEqual(TEXT("Late attachment does not replay old spawns"),
+              resources.capital_ships->GetNumInstances(),
+              1);
+
+    auto death_data{make_battle()};
+    death_data.clock_settings.tick_rate = 10.0;
+    FLevelSimulation deaths{MoveTemp(death_data)};
+    deaths.finish_initialisation();
+    resources.config.capital_ships.n_small_explosions = 3;
+    resources.config.capital_ships.small_death_explosion = NewObject<UNiagaraSystem>(owner);
+    resources.config.capital_ships.main_death_explosion = NewObject<UNiagaraSystem>(owner);
+    resources.config.capital_ships.time_between_explosions = 10.f;
+    resources.config.capital_ships.large_explosion_delay = 100.f;
+    FLevelPresentation death_effects{resources, deaths.get_read_view(), {}};
+    deaths.on_end_tick = [](FLevelSimulation& level) {
+        if (level.get_clock().get_completed_ticks() <= 2) {
+            DirectDamageEvents damage;
+            damage.damaged_entities.Add(level.get_capital_ships().get_handle(0));
+            damage.instigators.Add(level.get_capital_ships().get_handle(0));
+            damage.damage_amounts.Add(MAX_int32);
+            level.get_entity_registry().queue_direct_damage_events(damage);
+        }
+    };
+    deaths.start();
+    deaths.advance(0.425);
+    auto const death_frame{deaths.get_read_view()};
+    if (!TestEqual(TEXT("Deaths from two fixed ticks survive the frame"),
+                   death_frame.capitals.deaths.Num(),
+                   2)) {
+        return false;
+    }
+    TestNotEqual(TEXT("Separate fixed ticks retain separate death batches"),
+                 death_frame.capitals.deaths[0].batch_index,
+                 death_frame.capitals.deaths[1].batch_index);
+    death_effects.tick(0.f, death_frame);
+    auto const delays{death_effects.effects.get_times_remaining()};
+    TestEqual(
+        TEXT("Each death retains its two delayed small effects and main effect"), delays.Num(), 6);
+    int32 first_small_count{};
+    int32 second_small_count{};
+    for (auto const delay : delays) {
+        first_small_count += FMath::IsNearlyEqual(delay, 10.f) ? 1 : 0;
+        second_small_count += FMath::IsNearlyEqual(delay, 20.f) ? 1 : 0;
+    }
+    TestEqual(TEXT("Both tick batches start their small-effect sequence independently"),
+              first_small_count,
+              2);
+    TestEqual(
+        TEXT("Both tick batches retain their second delayed small effect"), second_small_count, 2);
+    death_effects.tick(0.f, death_frame);
+    TestEqual(TEXT("Repeated observation cannot enqueue the same death effects twice"),
+              death_effects.effects.get_times_remaining().Num(),
+              6);
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FPlayerBoostFrameOutputTest,
+    "Sandbox.UnitTests.LevelSimulation.BoostPulseSurvivesCompleteFrame",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
+    auto world{ml::get_editor_world()};
+    auto* config{ml::load_default_level_config()};
+    if (!TestTrue(TEXT("Editor world is available"), world.has_value()) ||
+        !TestTrue(TEXT("Player assets load"), IsValid(config))) {
+        return false;
+    }
+    auto* actor{ml::spawn_player_ship(
+        *world.value(), config->classes.player_ship_class, &config->player_ship)};
+    if (!TestTrue(TEXT("Player actor is available"), IsValid(actor))) {
+        return false;
+    }
+    ON_SCOPE_EXIT {
+        actor->Destroy();
+    };
+    auto data{make_battle()};
+    data.clock_settings.tick_rate = 10.0;
+    data.player = actor->make_spawn_data();
+    data.player->config.boost_depletion_time = 0.05f;
+    FLevelSimulation simulation{MoveTemp(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    auto* player{simulation.get_player_ship_simulation()};
+    auto resources{actor->get_presentation_resources()};
+    auto* pulse{NewObject<UTestNiagaraComponent>(actor)};
+    auto* engine{NewObject<UTestNiagaraComponent>(actor)};
+    resources.pulse = pulse;
+    resources.engine = engine;
+    FPlayerPresentation presentation{resources, config->player_ship, player->get_read_view()};
+    player->start_boost();
+    simulation.advance(0.325);
+    auto const frame{player->get_read_view()};
+    TestEqual(TEXT("Boost has already ended after multiple fixed ticks"),
+              frame.boost_brake_state,
+              EBoostBrakeState::None);
+    TestEqual(TEXT("Boost start remains observable without a consumer"),
+              frame.boost_start_sequence,
+              uint64{1});
+    presentation.tick(frame);
+    TestEqual(TEXT("Completed boost still triggers its pulse"), pulse->activation_count, uint64{1});
+    TestFalse(TEXT("Engine effect follows final nonboosting state"), engine->active);
+    pulse->Deactivate();
+    presentation.tick(frame);
+    TestEqual(
+        TEXT("Repeated observation does not replay the pulse"), pulse->activation_count, uint64{1});
+    FPlayerPresentation attached{resources, config->player_ship, frame};
+    attached.tick(frame);
+    TestEqual(TEXT("Late attachment does not replay historical boost starts"),
+              pulse->activation_count,
+              uint64{1});
+    simulation.advance(0.0);
+    TestEqual(TEXT("Zero-step frame preserves the boost sequence"),
+              player->get_read_view().boost_start_sequence,
+              uint64{1});
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
     FLaserPresentationIndexingTest,
     "Sandbox.UnitTests.LaserPresentation.MaterialRowsTrackSimulationThroughChurn",
     EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
@@ -504,7 +746,6 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
     prepare_mission(simulation);
     auto& lasers{simulation.get_lasers()};
     FLaserPresentation presentation{*component};
-    presentation.bind_simulation(lasers);
 
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
@@ -522,19 +763,17 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             auto const id{expected_material_data.Num() + 1};
             auto const initial_lifetime{
                 static_cast<float>((spawn == 0 ? 0.5 : 2.0 + static_cast<double>(id % 45)) * dt)};
-            auto const colour{FLinearColor{static_cast<float>(id),
-                                           static_cast<float>(id) + 0.25f,
-                                           static_cast<float>(id) + 0.5f}};
+            auto const colour{FLinearColor::White};
 
             ml::assign(
-                requests.locations, spawn, FVector3f{static_cast<float>(id * 10), 0.0f, 100000.0f});
+                requests.locations, spawn, FVector3f{0.0f, static_cast<float>(id * 10), 100000.0f});
             ml::assign(requests.rotations, spawn, FRotator3f::ZeroRotator);
             ml::assign(requests.base_velocities, spawn, FVector3f::ZeroVector);
             requests.damages[spawn] = 1;
             requests.speeds[spawn] = 1000.0f;
             requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
             requests.instigator_handles[spawn] = {};
-            requests.colours[spawn] = colour;
+            requests.sources[spawn] = {ETestTeam::White, ETestEntityType::TubeSpinner};
             expected_material_data.Add(
                 {.colour = colour,
                  .initial_lifetime = initial_lifetime,
@@ -543,6 +782,10 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
         lasers.queue_laser_spawns(requests);
         simulation.advance(dt);
+        if ((tick % 3) != 2 && tick + 1 != tick_count) {
+            continue;
+        }
+        presentation.view_ = lasers.get_read_view();
         presentation.update_visual_data();
 
         auto const live_count{lasers.get_num_instances()};
@@ -553,7 +796,8 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
         }
 
         for (int32 index{}; index < live_count; ++index) {
-            auto const id{FMath::RoundToInt(lasers.entities.colours[index].R)};
+            auto const id{
+                FMath::RoundToInt(lasers.get_read_view().entities.locations.ys[index] / 10.f)};
             auto const& expected{expected_material_data[id - 1]};
             auto const& actual{presentation.material_data[index]};
             auto const matches{actual.colour.X == expected.colour.R &&
@@ -585,6 +829,60 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
 
     TestTrue(TEXT("The test exercises removal churn"),
              lasers.get_number_spawned() > lasers.get_num_instances());
+    return true;
+}
+
+IMPLEMENT_SIMPLE_AUTOMATION_TEST(
+    FLaserFrameOutputsTest,
+    "Sandbox.UnitTests.LevelSimulation.ImpactsAccumulateAcrossFixedTicks",
+    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
+
+auto FLaserFrameOutputsTest::RunTest(FString const&) -> bool {
+    auto data{make_battle()};
+    data.clock_settings.tick_rate = 10.0;
+    FLevelSimulation simulation{MoveTemp(data)};
+    prepare_mission(simulation);
+    auto queue_shot = [](FLevelSimulation& level) {
+        ml::test_lasers::SpawnRequests requests;
+        requests.add_uninitialised(1);
+        requests.locations.set(0, FVector3f{700.f, 0.f, 0.f});
+        ml::assign(requests.rotations, 0, FRotator3f::ZeroRotator);
+        requests.base_velocities.set(0, FVector3f::ZeroVector);
+        requests.damages[0] = 1;
+        requests.speeds[0] = 2000.f;
+        requests.max_distances[0] = 10000.f;
+        requests.instigator_handles[0] = level.get_capital_ships().get_handle(0);
+        requests.sources[0] = {ETestTeam::Green, ETestEntityType::CapitalShipFighter};
+        level.get_lasers().queue_laser_spawns(requests);
+    };
+    queue_shot(simulation);
+    simulation.on_end_tick = [&](FLevelSimulation& level) {
+        if (level.get_clock().get_completed_ticks() == 1) {
+            queue_shot(level);
+        }
+    };
+    simulation.start();
+    simulation.advance(0.425);
+    auto const frame{simulation.get_read_view()};
+    TestEqual(
+        TEXT("Impacted lasers leave authoritative storage"), frame.lasers.get_num_instances(), 0);
+    TestEqual(TEXT("Both impacts survive the final empty fixed tick"), frame.lasers.hits.num(), 2);
+    TestEqual(TEXT("Impact tick indices remain aligned"), frame.lasers.hit_ticks.Num(), 2);
+    if (frame.lasers.hit_ticks.Num() == 2) {
+        TestEqual(TEXT("First impact keeps its deterministic tick"),
+                  frame.lasers.hit_ticks[0],
+                  uint64{1});
+        TestEqual(TEXT("Second impact keeps its deterministic tick"),
+                  frame.lasers.hit_ticks[1],
+                  uint64{2});
+        TestTrue(TEXT("Neutral source is retained after removal"),
+                 frame.lasers.hits.sources[0] ==
+                     FLaserSource{ETestTeam::Green, ETestEntityType::CapitalShipFighter});
+    }
+    simulation.advance(0.0);
+    TestEqual(TEXT("Next frame does not repeat consumed impacts"),
+              simulation.get_read_view().lasers.hits.num(),
+              0);
     return true;
 }
 

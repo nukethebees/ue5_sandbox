@@ -3,15 +3,15 @@
     {
       "kind": "soa",
       "name": "level_definition_soa",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/levels/LevelDefinitionSoA.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/levels/LevelDefinitionSoA.cpp",
-      "header_include": "SpaceGame/levels/LevelDefinitionSoA.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp",
+      "header_include": "SpaceGameSimulation/levels/LevelDefinitionSoA.h",
       "namespace": "ml",
       "include_order": ["SpaceGame/", "SandboxCore/"],
       "structs": [
         {
           "name": "FLevelEntityTable",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "operations": ["all"],
           "members": [
             {"name": "ids", "kind": "array", "type": "@level_entity_id"},
@@ -24,7 +24,7 @@
         },
         {
           "name": "FLevelSpawnGroups",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "operations": ["all"],
           "members": [
             {"name": "types", "kind": "array", "type": "@entity_type"},
@@ -34,7 +34,7 @@
         },
         {
           "name": "FLevelCapitalSpawnEvents",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "operations": ["all"],
           "members": [
             {"name": "entity_indices", "kind": "array", "type": "int32"},
@@ -49,7 +49,7 @@
         },
         {
           "name": "FLevelTurretSpawnEvents",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "operations": ["all"],
           "members": [
             {"name": "entity_indices", "kind": "array", "type": "int32"},
@@ -62,7 +62,7 @@
         },
         {
           "name": "FLevelMissionEventGroups",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "operations": ["all"],
           "members": [
             {"name": "types", "kind": "array", "type": "@level_mission_event_type"},

@@ -4,7 +4,7 @@
 
 #include "ShooterGame/combat/weapons/WeaponBase.h"
 #include "ShooterGame/inventory/InventoryComponent.h"
-#include "SandboxGameShared/utilities/enums.h"
+#include "SandboxCoreEngine/enums.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

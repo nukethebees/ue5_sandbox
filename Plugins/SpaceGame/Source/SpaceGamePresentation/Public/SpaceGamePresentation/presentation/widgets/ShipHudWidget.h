@@ -1,0 +1,182 @@
+#pragma once
+
+#include "SandboxUI/Radar/RadarFrameStore.h"
+#include "SandboxUI/Radar/RadarTypes.h"
+#include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
+#include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
+#include "SpaceGameSimulation/missions/TestMissionState.h"
+#include "SpaceGameSimulation/ships/common/ShipHealth.h"
+
+#include "CoreMinimal.h"
+#include "Blueprint/UserWidget.h"
+
+#include "ShipHudWidget.generated.h"
+
+class UImage;
+class UMaterialInterface;
+class UMaterialInstanceDynamic;
+class UNativeWidgetHost;
+class UBorder;
+
+class UShipSpeedWidget;
+class UShipHealthWidget;
+class UShipThrusterEnergyWidget;
+class UShipPointsWidget;
+
+class UValueWidget;
+class UVector2DWidget;
+class UDebugGraphWidget;
+class UForceStatusWidget;
+class UMissionStatusWidget;
+class SEntityOverlayWidget;
+class SRadarWidget;
+namespace ml::hud_manager {
+struct FMissionDataCache;
+}
+namespace ml::ioj {
+class FGameUiStyle;
+}
+
+UCLASS()
+class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
+  public:
+    GENERATED_BODY()
+
+    void set_speed(float value);
+    void apply_ui_style(ml::ioj::FGameUiStyle const& style) override;
+    void set_speed_widget_visibility(ESlateVisibility const new_visibility);
+
+    void set_health(FShipHealth value);
+    void set_health_widget_visibility(ESlateVisibility const new_visibility);
+
+    void set_energy(float value);
+    void set_energy_widget_visibility(ESlateVisibility const new_visibility);
+
+    void set_points(int32 value);
+    void set_points_widget_visibility(ESlateVisibility const new_visibility);
+
+    void set_stopwatch_time(float const time_s);
+    void set_stopwatch_widget_visibility(ESlateVisibility const new_visibility);
+
+    void set_fire_rate(FStringView const mission_status);
+    void set_fire_rate_visibility(ESlateVisibility const new_visibility);
+
+    void set_crosshair_positions(FVector2d near, FVector2d far);
+    void set_crosshair_targeting(bool targeting);
+    void set_crosshair_widget_visibility(ESlateVisibility const new_visibility);
+    void set_crosshair_distances(FHudCrosshairDistances const& value) {
+        crosshair_distances = value;
+    }
+    auto get_crosshair_distances() const noexcept -> FHudCrosshairDistances const& {
+        return crosshair_distances;
+    }
+
+    void set_lock_on_widget_position(FVector2d pos);
+    void set_lock_on_widget_visibility(bool const new_visibility);
+    void set_lock_on_widget_visibility(ESlateVisibility const new_visibility);
+
+    void set_target_speed(float value);
+
+    void set_selected_imc(FStringView value);
+
+    void set_turning(FVector2D value);
+    void set_moving(FVector2D value);
+    void set_desired_velocity_scale(FVector2D value);
+    void set_ship_velocity(FVector value);
+    void set_target_velocity(FVector value);
+    void set_control_mode(FStringView value);
+    void set_flight_mode(FStringView value);
+    void set_font_size(int32 const new_font_size);
+    auto get_font_size() const noexcept -> int32 { return font_size; }
+    void set_mission_state(ETestMissionState const new_state);
+    void set_mission_time(float const mission_time);
+    void set_mission_time_remaining(float const time_remaining);
+    void set_mission_enemies_remaining(int32 const enemies_remaining);
+
+    void set_radar_frame_store(FRadarFrameStoreConstPtr frame_store);
+    void set_radar_style(FRadarStyle const& style);
+
+#if WITH_EDITOR
+    void update_sampled_speed(TConstArrayView<FVector2d> samples, int32 oldest_index);
+#endif
+  protected:
+    void NativePreConstruct() override;
+    void NativeConstruct() override;
+    void NativeTick(FGeometry const& geometry, float delta_time) override;
+    auto RebuildWidget() -> TSharedRef<SWidget> override;
+    void ReleaseSlateResources(bool release_children) override;
+
+    void set_common_widget_properties();
+    void update_crosshair_colours();
+    void apply_radar_colours();
+    void set_widget_visibility_checked(UWidget* const widget,
+                                       ESlateVisibility const new_visibility);
+
+    UPROPERTY(meta = (BindWidget))
+    UShipSpeedWidget* speed_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UShipHealthWidget* health_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UShipThrusterEnergyWidget* energy_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UShipPointsWidget* points_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* stopwatch_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* fire_rate_widget{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* target_speed_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* selected_imc_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* turning_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* moving_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* desired_velocity_scale_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* ship_velocity_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* target_velocity_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* control_mode_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UValueWidget* flight_mode_widget{nullptr};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
+    int32 font_size{24};
+
+    UPROPERTY(meta = (BindWidget))
+    UImage* far_crosshair_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UImage* near_crosshair_widget{nullptr};
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "UI")
+    UMaterialInterface* crosshair_material{nullptr};
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+    UMaterialInstanceDynamic* near_crosshair_material_instance{nullptr};
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "UI")
+    UMaterialInstanceDynamic* far_crosshair_material_instance{nullptr};
+
+    FHudCrosshairDistances crosshair_distances{};
+    FRadarFrameStoreConstPtr radar_frame_store_;
+    FRadarStyle radar_style_;
+    TSharedPtr<SRadarWidget> radar_widget_;
+    FLinearColor entity_overlay_defend_colour_{};
+    FLinearColor reticle_normal_colour_{FLinearColor::Green};
+    FLinearColor reticle_warning_colour_{FLinearColor::Yellow};
+    FLinearColor reticle_danger_colour_{FLinearColor::Red};
+    bool crosshair_targeting_{};
+
+    UPROPERTY(meta = (BindWidget))
+    UNativeWidgetHost* radar_host{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UBorder* radar_background{nullptr};
+
+    UPROPERTY(meta = (BindWidget))
+    UImage* lock_on_widget{nullptr};
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(meta = (BindWidget))
+    UDebugGraphWidget* speed_graph{nullptr};
+#endif
+};

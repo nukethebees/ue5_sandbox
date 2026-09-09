@@ -12,6 +12,8 @@ public class SpaceGame : ModuleRules
 
         PublicDependencyModuleNames.AddRange(new string[]
         {
+            "SpaceGameSimulation",
+            "SpaceGamePresentation",
             "SandboxCore",
             "SandboxCoreEngine",
             "SandboxGameShared",

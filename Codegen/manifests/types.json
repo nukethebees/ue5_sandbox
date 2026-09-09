@@ -42,7 +42,7 @@
     },
     "death_reason": {
       "spelling": "ETestDeathReason",
-      "header": "SpaceGame/entities/TestDeathReason.h",
+      "header": "SpaceGameSimulation/entities/TestDeathReason.h",
       "pass_by": "value"
     },
     "collision_enabled": {
@@ -52,40 +52,40 @@
     },
     "entity_type": {
       "spelling": "ETestEntityType",
-      "header": "SpaceGame/entities/TestEntityType.h",
+      "header": "SpaceGameSimulation/entities/TestEntityType.h",
       "pass_by": "value"
     },
     "level_event_count": {
       "spelling": "ml::FLevelEventCount",
-      "header": "SpaceGame/levels/LevelEventGroupCounts.h",
+      "header": "SpaceGameSimulation/levels/LevelEventGroupCounts.h",
       "pass_by": "value"
     },
     "level_mission_event_type": {
       "spelling": "ml::ELevelMissionEventType",
-      "header": "SpaceGame/levels/LevelMissionEventType.h",
+      "header": "SpaceGameSimulation/levels/LevelMissionEventType.h",
       "pass_by": "value"
     },
     "fighter_order": {
       "spelling": "TestCapitalShipFighterOrder",
-      "header": "SpaceGame/ships/fighters/TestCapitalShipFighterOrder.h"
+      "header": "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrder.h"
     },
     "fighter_order_queue": {
       "spelling": "TestCapitalShipFighterOrderQueue",
-      "header": "SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h",
+      "header": "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h",
       "operations": {
         "remove_at_swap": "remove_at_swap"
       }
     },
     "fighter_spawn_queue": {
       "spelling": "TestCapitalShipFighterSpawnQueue",
-      "header": "SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueue.h",
+      "header": "SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueue.h",
       "operations": {
         "remove_at_swap": "remove_at_swap"
       }
     },
     "fighter_task": {
       "spelling": "ETestCapitalShipFightersTask",
-      "header": "SpaceGame/ships/fighters/TestCapitalShipFightersTask.h",
+      "header": "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersTask.h",
       "pass_by": "value"
     },
     "fstring": {
@@ -94,22 +94,22 @@
     },
     "entity_archetype_id": {
       "spelling": "ml::FEntityArchetypeId",
-      "header": "SpaceGame/levels/LevelTypes.h",
+      "header": "SpaceGameSimulation/levels/LevelTypes.h",
       "pass_by": "value"
     },
     "level_entity_id": {
       "spelling": "ml::FLevelEntityId",
-      "header": "SpaceGame/levels/LevelTypes.h",
+      "header": "SpaceGameSimulation/levels/LevelTypes.h",
       "pass_by": "value"
     },
     "level_team_id": {
       "spelling": "ml::FLevelTeamId",
-      "header": "SpaceGame/levels/LevelTypes.h",
+      "header": "SpaceGameSimulation/levels/LevelTypes.h",
       "pass_by": "value"
     },
     "index_span": {
       "spelling": "FIndexSpan",
-      "header": "SpaceGame/support/IndexSpan.h",
+      "header": "SpaceGameSimulation/support/IndexSpan.h",
       "pass_by": "value"
     },
     "instance_data": {
@@ -189,7 +189,7 @@
     },
     "team": {
       "spelling": "ETestTeam",
-      "header": "SpaceGame/entities/TestTeam.h",
+      "header": "SpaceGameSimulation/entities/TestTeam.h",
       "pass_by": "value"
     },
     "tick_countdown_8": {
@@ -208,7 +208,7 @@
     },
     "unique_id": {
       "spelling": "TestEntityUniqueId",
-      "header": "SpaceGame/entities/TestEntityUniqueId.h",
+      "header": "SpaceGameSimulation/entities/TestEntityUniqueId.h",
       "pass_by": "value"
     },
     "vector_2f": {
@@ -303,31 +303,36 @@
     },
     "test_fighters": {
       "spelling": "ml::test_capital_ship_fighters::Simulation",
-      "header": "SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h"
+      "header": "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h"
     },
     "spawned_entity_handles": {
       "spelling": "SpawnedEntityHandles",
-      "header": "SpaceGame/entities/TestEntityRegistry.h"
+      "header": "SpaceGameSimulation/entities/TestEntityRegistry.h"
     },
     "test_space_ship": {
       "spelling": "ml::test_space_ship::Simulation",
-      "header": "SpaceGame/ships/player/TestSpaceShipSimulation.h"
+      "header": "SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h"
     },
     "test_lasers": {
       "spelling": "ml::test_lasers::Simulation",
-      "header": "SpaceGame/combat/lasers/TestLasersSimulation.h"
+      "header": "SpaceGameSimulation/combat/lasers/TestLasersSimulation.h"
     },
     "test_capital_ships": {
       "spelling": "ml::test_capital_ships::Simulation",
-      "header": "SpaceGame/ships/capital/TestCapitalShipsSimulation.h"
+      "header": "SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h"
     },
     "test_static_turrets": {
       "spelling": "ml::test_static_turrets::Simulation",
-      "header": "SpaceGame/defences/turrets/TestStaticTurretsSimulation.h"
+      "header": "SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h"
     },
     "test_tube_spinners": {
       "spelling": "ml::test_tube_spinners::Simulation",
-      "header": "SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h"
+      "header": "SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h"
+    },
+    "laser_source": {
+      "spelling": "FLaserSource",
+      "header": "SpaceGameSimulation/combat/lasers/LaserSource.h",
+      "pass_by": "value"
     }
   }
 }

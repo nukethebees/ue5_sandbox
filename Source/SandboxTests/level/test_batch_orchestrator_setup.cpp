@@ -4,19 +4,19 @@
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGame/defences/spinners/TestTubeSpinnersSimulation.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
-#include <SpaceGame/missions/TestMissionManager.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
-#include <SpaceGame/ships/fighters/TestCapitalShipFightersSimulation.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/LevelTelemetryManager.h>
-#include <SpaceGame/simulation/SimulationClock.h>
-#include <SpaceGame/simulation/SimulationClockInterface.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/defences/spinners/TestTubeSpinnersSimulation.h>
+#include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/missions/TestMissionManager.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
+#include <SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSimulation.h>
+#include <SpaceGameSimulation/simulation/LevelTelemetryManager.h>
+#include <SpaceGameSimulation/simulation/SimulationClock.h>
+#include <SpaceGameSimulation/simulation/SimulationClockInterface.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxISMCComponent.h>
@@ -39,6 +39,9 @@ void FTestBatchOrchestratorSetupScenario::run() {
             break;
         case EOrchestratorSetupScenario::LevelTelemetry:
             level_telemetry();
+            break;
+        case EOrchestratorSetupScenario::PresentationFrameOrdering:
+            presentation_frame_ordering();
             break;
     }
 }
@@ -114,6 +117,106 @@ void FTestBatchOrchestratorSetupScenario::simulation_clock_conversions() {
                               uint64{60});
         TestRunner->TestEqual(
             TEXT("Duration periods round up"), clock.duration_to_tick_period(0.025), uint64{2});
+    });
+}
+
+void FTestBatchOrchestratorSetupScenario::presentation_frame_ordering() {
+    TestCommandBuilder.Do([this] {
+        auto& driver{initialise_test_driver()};
+        auto& orchestrator{driver.orchestrator};
+        driver.set_time_scale(1.0);
+        orchestrator.set_presentation_enabled(true);
+        orchestrator.start_simulation();
+        auto const* presentation{orchestrator.get_level_presentation()};
+        if (!checks.is_true(presentation != nullptr,
+                            TEXT("Orchestrator constructs presentation"))) {
+            SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
+            return;
+        }
+        orchestrator.get_level_telemetry_manager().begin_run(
+            FLevelTelemetryRunMetadata{.run_id = TEXT("frame-ordering"), .detailed_timing = true});
+        struct FFrameObservation {
+            uint64 completed_ticks{};
+            uint64 presentation_count{};
+        };
+        TimeSeriesData<FFrameObservation> observations;
+        orchestrator.set_end_tick_test_hook(FOrchestratorEndTickTestHook::CreateLambda(
+            [&observations](ATestBatchOrchestrator& owner) {
+                observations.add(
+                    owner.get_simulation_time(),
+                    FFrameObservation{owner.get_completed_ticks(),
+                                      owner.get_level_presentation()->get_tick_count()});
+                if (owner.get_completed_ticks() == 4) {
+                    owner.get_level_telemetry_manager().capture_realtime_sample();
+                }
+                if (owner.get_completed_ticks() == 6) {
+                    owner.get_level_simulation()->complete_telemetry_run(
+                        ELevelTelemetryRunEndReason::DurationReached);
+                }
+            }));
+        auto const dt{orchestrator.get_level_simulation()->get_clock().get_tick_period()};
+        orchestrator.tick(0.0);
+        checks.are_equal(uint64{1},
+                         presentation->get_tick_count(),
+                         TEXT("Zero fixed ticks still presents once"));
+        orchestrator.tick(dt * 4.25);
+        checks.are_equal(uint64{2},
+                         presentation->get_tick_count(),
+                         TEXT("Four fixed ticks produce only one new presentation"));
+        checks.are_equal(uint64{4},
+                         presentation->get_last_completed_tick(),
+                         TEXT("Presentation observes the final fixed tick"));
+        orchestrator.pause_simulation();
+        orchestrator.tick(dt);
+        checks.are_equal(
+            uint64{2}, presentation->get_tick_count(), TEXT("Paused frames freeze presentation"));
+        orchestrator.start_simulation();
+        orchestrator.tick(dt * 4.0);
+        orchestrator.clear_end_tick_test_hook();
+        checks.are_equal(
+            int32{6}, observations.num(), TEXT("Terminal tick stops the fixed-step loop"));
+        auto const sample_count{observations.num()};
+        for (int32 index{}; index < sample_count; ++index) {
+            auto const& sample{observations.value_at(index)};
+            checks.are_equal(static_cast<uint64>(index + 1),
+                             sample.completed_ticks,
+                             TEXT("Fixed ticks remain ordered"));
+            checks.are_equal(index < 4 ? uint64{1} : uint64{2},
+                             sample.presentation_count,
+                             TEXT("No presentation runs inside the fixed-step loop"));
+        }
+        checks.are_equal(uint64{3},
+                         presentation->get_tick_count(),
+                         TEXT("Terminal frame still presents exactly once"));
+        checks.are_equal(uint64{6},
+                         presentation->get_last_completed_tick(),
+                         TEXT("Terminal presentation observes the final completed tick"));
+        auto report{orchestrator.take_finalized_telemetry_report()};
+        if (checks.is_true(report.IsSet(), TEXT("Terminal frame produces a telemetry report"))) {
+            for (auto const system :
+                 {ELevelTelemetryTimingSystem::Hud, ELevelTelemetryTimingSystem::Presentation}) {
+                uint64 sample_total{};
+                for (auto const& window : report->performance_windows) {
+                    sample_total += window.systems[static_cast<int32>(system)].sample_count;
+                }
+                checks.are_equal(
+                    uint64{3},
+                    sample_total,
+                    TEXT("Telemetry includes zero-step, multi-step and terminal frames"));
+                if (checks.is_true(!report->performance_windows.IsEmpty(),
+                                   TEXT("Frame timing windows are retained"))) {
+                    checks.are_equal(
+                        uint64{2},
+                        report->performance_windows[0]
+                            .systems[static_cast<int32>(system)]
+                            .sample_count,
+                        TEXT("Closing-frame timing belongs to the window that just closed"));
+                }
+            }
+        }
+        checks.is_true(!orchestrator.take_finalized_telemetry_report().IsSet(),
+                       TEXT("Finalized report is consumed only once"));
+        SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
     });
 }
 

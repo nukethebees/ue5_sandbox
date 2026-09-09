@@ -3,10 +3,10 @@
 #include "SandboxGameShared/input/EnhancedInputMixin.hpp"
 #include "SandboxGameShared/logging/LogMsgMixin.hpp"
 #include "SGLegacy/players/BarrelRollInputData.h"
-#include "SpaceGame/presentation/HudCrosshairDistances.h"
-#include "SpaceGame/ships/common/LaserFiringState.h"
 #include "SpaceGame/ships/common/SpaceShipControllerInputs.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
+#include "SpaceGameSimulation/ships/common/LaserFiringState.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/PlayerController.h"

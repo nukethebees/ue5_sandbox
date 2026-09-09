@@ -3,7 +3,7 @@
 #include "SandboxGameShared/utilities/actor_utils.h"
 #include "SGLegacy/combat/weapons/ShipLaser.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Camera/CameraComponent.h"
 #include "Components/BoxComponent.h"

@@ -1,10 +1,10 @@
 #include "SpaceGame/ships/capital/TestCapitalShipProxy.h"
 
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
-#include "SpaceGame/entities/TestTeamUtils.h"
-#include "SpaceGame/entities/TestTeamVisualData.h"
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGamePresentation/entities/TestTeamVisualData.h"
+#include "SpaceGameSimulation/entities/TestTeamUtils.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_components.h>
 #include <SandboxCoreEngine/actor_utils.h>
@@ -21,9 +21,9 @@
 
 #if WITH_EDITOR
 #include <ScopedTransaction.h>
-#include <SpaceGame/simulation/EntityWorldBounds.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
-#include <SpaceGame/support/mesh.h>
+#include <SpaceGamePresentation/support/mesh.h>
+#include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 #endif
 
 ATestCapitalShipProxy::ATestCapitalShipProxy()

@@ -1,11 +1,12 @@
 #pragma once
+#include <SpaceGamePresentation/presentation/HudUpdateSettings.h>
 
 #include <Blueprint/UserWidget.h>
 #include <Containers/StaticArray.h>
 #include <CoreMinimal.h>
 #include <Engine/DataAsset.h>
 
-#include "SpaceGame/presentation/HudCrosshairDistances.h"
+#include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
 
 #include "TestBatchGameUiData.generated.h"
 
@@ -27,25 +28,6 @@ inline auto get_data_asset_path() -> FName {
 
 auto SPACEGAME_API get_data_asset() -> UTestBatchGameUiData*;
 }
-
-USTRUCT(BlueprintType)
-struct FTestBatchGameUiUpdateFrequencies {
-    GENERATED_BODY()
-
-    [[nodiscard]] auto to_array() const -> TStaticArray<float, 3> {
-        return {
-            player_status_update_period, entity_count_update_period, mission_status_update_period};
-    }
-
-    UPROPERTY(EditAnywhere, Category = "UI")
-    float player_status_update_period{0.25f};
-
-    UPROPERTY(EditAnywhere, Category = "UI")
-    float entity_count_update_period{0.25f};
-
-    UPROPERTY(EditAnywhere, Category = "UI")
-    float mission_status_update_period{0.25f};
-};
 
 UCLASS(BlueprintType)
 class SPACEGAME_API UTestBatchGameUiData : public UDataAsset {

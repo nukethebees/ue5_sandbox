@@ -1,7 +1,7 @@
 #include <SpaceGame/ships/player/GlobalPlayerInput.h>
 
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystemInterface.h>

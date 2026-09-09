@@ -1,14 +1,15 @@
 #include <SpaceGame/ships/player/PlayerHudLifecycle.h>
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <Engine/GameInstance.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
-#include <SpaceGame/presentation/widgets/BattleViewerHudWidget.h>
-#include <SpaceGame/presentation/widgets/BenchmarkHudWidget.h>
-#include <SpaceGame/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGamePresentation/presentation/widgets/BattleViewerHudWidget.h>
+#include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
+#include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 auto FPlayerHudLifecycle::initialise(ASpaceGamePlayerController& owner,
                                      ATestBatchOrchestrator* orchestrator,
@@ -172,7 +173,9 @@ auto FPlayerHudLifecycle::initialise_benchmark(ASpaceGamePlayerController& owner
         IsValid(game_subsystem)) {
         created_widget->apply_ui_style(game_subsystem->get_ui_style());
     }
-    created_widget->set_orchestrator(*orchestrator);
+    created_widget->set_tick_source([weak = TWeakObjectPtr<ATestBatchOrchestrator>{orchestrator}] {
+        return weak.IsValid() ? weak->get_benchmark_ticks_remaining() : TOptional<uint64>{};
+    });
     created_widget->end_requested.AddUObject(&owner,
                                              &ASpaceGamePlayerController::return_to_level_select);
     created_widget->AddToPlayerScreen(100);

@@ -1,0 +1,79 @@
+#include "SpaceGamePresentation/presentation/widgets/MissionEntityHealthRowWidget.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
+
+#include <SandboxCore/error_msg.h>
+#include <SandboxCoreEngine/uobject_utils.h>
+#include <SpaceGamePresentation/presentation/widgets/ShipHealthWidget.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyle.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
+
+#include <Components/HorizontalBox.h>
+#include <Components/HorizontalBoxSlot.h>
+#include <Components/TextBlock.h>
+
+void UMissionEntityHealthRowWidget::NativeConstruct() {
+    Super::NativeConstruct();
+
+    check(check_widget_bindings());
+}
+
+auto UMissionEntityHealthRowWidget::check_widget_bindings() const -> bool {
+    ml::FErrorMsg error_msg;
+    if (ml::report_invalid_uobject_ptrs(
+            {
+                SANDBOX_NAMED_UOBJECT_PTR(row_box),
+                SANDBOX_NAMED_UOBJECT_PTR(entity_name),
+                SANDBOX_NAMED_UOBJECT_PTR(health_widget),
+            },
+            error_msg)) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UMissionEntityHealthRowWidget: Invalid widget bindings: %s"),
+               *error_msg.message);
+        return false;
+    }
+
+    return true;
+}
+
+void UMissionEntityHealthRowWidget::set_entity(TestEntityUniqueId const unique_id,
+                                               ETestEntityType const entity_type) {
+    entity_name->SetText(FText::Format(INVTEXT("{0} {1}"),
+                                       FText::FromString(ml::get_entity_class_name(entity_type)),
+                                       unique_id.id));
+}
+
+void UMissionEntityHealthRowWidget::set_health(FShipHealth const health) {
+    health_widget->set_health(health);
+}
+
+void UMissionEntityHealthRowWidget::apply_hud_style(ml::ioj::FGameHudStyle const& style) {
+    ml::ioj::apply_text_style(*entity_name, style.caption_text);
+    health_widget->apply_hud_style(style);
+
+    auto* const entity_slot{Cast<UHorizontalBoxSlot>(entity_name->Slot)};
+    auto* const health_slot{Cast<UHorizontalBoxSlot>(health_widget->Slot)};
+    if (!entity_slot || !health_slot) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("UMissionEntityHealthRowWidget: Expected horizontal box child slots."));
+        return;
+    }
+
+    entity_slot->SetSize(FSlateChildSize{ESlateSizeRule::Automatic});
+    entity_slot->SetPadding(FMargin{0.0f, 0.0f, style.panel_padding.Right, 0.0f});
+    entity_slot->SetVerticalAlignment(VAlign_Center);
+
+    health_slot->SetSize(FSlateChildSize{ESlateSizeRule::Fill});
+    health_slot->SetHorizontalAlignment(HAlign_Fill);
+    health_slot->SetVerticalAlignment(VAlign_Center);
+}
+
+void UMissionEntityHealthRowWidget::set_font_size(int32 const new_font_size) {
+    font_size = new_font_size;
+
+    auto font{entity_name->GetFont()};
+    font.Size = font_size;
+    entity_name->SetFont(font);
+    health_widget->set_font_size(font_size);
+}

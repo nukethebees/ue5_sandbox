@@ -3,7 +3,7 @@
 #include "TestSaveProfileSource.h"
 
 #include "SpaceGame/persistence/SpaceSaveGame.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 

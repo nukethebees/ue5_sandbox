@@ -5,7 +5,7 @@
 #include <SpaceGame/ships/player/PlayerControlContexts.h>
 #include <SpaceGame/ships/player/PlayerHudLifecycle.h>
 #include <SpaceGame/ships/player/PlayerModalUi.h>
-#include <SpaceGame/support/logging/ActorLoggingConfig.h>
+#include <SpaceGamePresentation/support/logging/ActorLoggingConfig.h>
 #include "SpaceGamePlayerController.generated.h"
 
 class ATestBatchOrchestrator;

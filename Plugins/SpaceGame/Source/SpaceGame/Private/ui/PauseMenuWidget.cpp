@@ -1,13 +1,14 @@
 #include "SpaceGame/ui/PauseMenuWidget.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "LevelTelemetryPresentation.h"
-#include "SpaceGame/presentation/widgets/TeamEntityTableWidget.h"
-#include "SpaceGame/presentation/widgets/TopKillersWidget.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
-#include "SpaceGame/ui/common/MenuButtonWidget.h"
-#include "SpaceGame/ui/style/GameUiStyle.h"
-#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h"
+#include "SpaceGamePresentation/presentation/widgets/TopKillersWidget.h"
+#include "SpaceGamePresentation/ui/common/MenuButtonWidget.h"
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "SandboxUI/widgets/SGraphPlot.h"
 

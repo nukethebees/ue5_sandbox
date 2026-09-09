@@ -1,7 +1,7 @@
 #include "SpaceGame/defences/spinners/TestTubeSpinnerProxy.h"
 
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_components.h>
 #include <SandboxCoreEngine/actor_utils.h>

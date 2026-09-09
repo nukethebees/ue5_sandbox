@@ -1,6 +1,6 @@
 #include "Sandbox/misc/learning/TestLightShaft.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/StaticMeshComponent.h"
 #include "Engine/StaticMesh.h"

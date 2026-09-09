@@ -1,15 +1,15 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
-#include <SpaceGame/entities/TestTeamVisualData.h>
 #include <SpaceGame/input/ControlProfiles.h>
-#include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
+#include <SpaceGamePresentation/entities/TestTeamVisualData.h>
+#include <SpaceGameSimulation/missions/TestMissionManager.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Camera/CameraActor.h>
 #include <Engine/Engine.h>

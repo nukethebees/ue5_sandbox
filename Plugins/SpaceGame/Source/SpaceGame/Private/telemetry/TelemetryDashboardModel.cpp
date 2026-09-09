@@ -24,7 +24,7 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
     }
     double schema{};
     if (!root->TryGetNumberField(TEXT("schema_version"), schema) ||
-        (schema != 1.0 && schema != FLevelTelemetryRunRecord::schema_version)) {
+        (schema != 1.0 && schema != FLevelTelemetryReport::schema_version)) {
         return std::unexpected{
             FString::Printf(TEXT("Unsupported or missing schema in '%s'"), *path)};
     }
@@ -226,7 +226,7 @@ auto FTelemetryRunAnalysis::find_metric(ETelemetryDashboardMetric const metric) 
     return metrics.FindByPredicate([metric](auto const& value) { return value.metric == metric; });
 }
 
-auto analyze_level_telemetry_run(FLevelTelemetryRunRecord const& record) -> FTelemetryRunAnalysis {
+auto analyze_level_telemetry_run(FLevelTelemetryReport const& record) -> FTelemetryRunAnalysis {
     using namespace telemetry_dashboard;
     FTelemetryRunAnalysis result;
     TArray<FMetricBuilder> builders;

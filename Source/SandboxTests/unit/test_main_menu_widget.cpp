@@ -4,9 +4,9 @@
 #include <SpaceGame/ui/main_menu/MainMenuWidget.h>
 #include <SpaceGame/ui/main_menu/OptionsWidget.h>
 #include <SpaceGame/ui/save_game/SaveGameViewerWidget.h>
-#include <SpaceGame/ui/style/SpaceGameUiSettings.h>
-#include <SpaceGame/ui/style/SpaceGameUiTheme.h>
 #include <SpaceGame/ui/telemetry/TelemetryDashboardWidget.h>
+#include <SpaceGamePresentation/ui/style/SpaceGameUiSettings.h>
+#include <SpaceGamePresentation/ui/style/SpaceGameUiTheme.h>
 #include <SpaceGameS7/ScriptLevelSelectWidget.h>
 
 #include <CommonInputSettings.h>

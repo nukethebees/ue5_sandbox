@@ -3,7 +3,7 @@
 #include "AIController.h"
 
 #include "ShooterGame/logging/ShooterGameLogCategories.h"
-#include "SandboxGameShared/utilities/enums.h"
+#include "SandboxCoreEngine/enums.h"
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 

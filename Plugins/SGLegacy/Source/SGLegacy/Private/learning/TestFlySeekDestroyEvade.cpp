@@ -1,13 +1,13 @@
 #include "SGLegacy/learning/TestFlySeekDestroyEvade.h"
 
 #include "Sandbox/misc/learning/TestVolume.h"
+#include "SandboxCoreEngine/enums.h"
 #include "SandboxGameShared/utilities/actor_utils.h"
-#include "SandboxGameShared/utilities/enums.h"
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 #include "SandboxGameShared/utilities/vision_maths.h"
 #include "SandboxNative/spatial.h"
 #include "SGLegacy/combat/weapons/ShipLaser.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Components/ArrowComponent.h>
 #include <Components/BoxComponent.h>

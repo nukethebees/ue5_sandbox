@@ -1,10 +1,10 @@
 #include "test_capital_command_fighters_scenario.h"
 
-#include <SandboxGameShared/utilities/enums.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SandboxCoreEngine/enums.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
-#include <SpaceGame/ships/capital/TestCapitalShipsSimulation.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/ships/capital/TestCapitalShipsSimulation.h>
 
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/time_series_test_data.h>

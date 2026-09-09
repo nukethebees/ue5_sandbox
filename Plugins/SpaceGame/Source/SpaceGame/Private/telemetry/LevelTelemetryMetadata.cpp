@@ -1,8 +1,8 @@
 #include <SpaceGame/telemetry/LevelTelemetryMetadata.h>
 
 #include <SpaceGame/missions/LevelMissionDefinition.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Engine/GameInstance.h>
 #include <Engine/World.h>
@@ -34,10 +34,7 @@ auto world_type_name(EWorldType::Type const world_type) -> FString {
 }
 }
 
-auto make_level_telemetry_run_metadata(UWorld const& world,
-                                       FLevelMissionDefinition const& mission_definition,
-                                       bool const presentation_enabled)
-    -> FLevelTelemetryRunMetadata {
+auto make_level_telemetry_environment(UWorld const& world) -> FLevelTelemetryEnvironment {
     FLevelTelemetryEnvironment environment{
         .project_name = FApp::GetProjectName(),
         .engine_version = FEngineVersion::Current().ToString(),
@@ -74,13 +71,17 @@ auto make_level_telemetry_run_metadata(UWorld const& world,
                TEXT("Telemetry environment metadata is incomplete: game subsystem is unavailable"));
     }
 
+    return environment;
+}
+
+auto make_level_telemetry_run_metadata(UWorld const& world,
+                                       FLevelMissionDefinition const& mission_definition)
+    -> FLevelTelemetryRunMetadata {
     return {
         .run_id = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphensLower),
         .map_name = UGameplayStatics::GetCurrentLevelName(&world),
         .level_id = mission_definition.level_id,
         .level_display_name = mission_definition.level_display_name,
         .launched_utc = FDateTime::UtcNow().ToIso8601(),
-        .environment = MoveTemp(environment),
-        .presentation_enabled = presentation_enabled,
     };
 }

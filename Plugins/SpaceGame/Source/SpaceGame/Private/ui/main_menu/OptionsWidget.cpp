@@ -1,9 +1,10 @@
 #include "SpaceGame/ui/main_menu/OptionsWidget.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include "SGameOptionsView.h"
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <Engine/GameInstance.h>
 #include <Widgets/Text/STextBlock.h>

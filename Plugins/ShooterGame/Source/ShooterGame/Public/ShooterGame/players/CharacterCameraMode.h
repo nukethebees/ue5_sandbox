@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SandboxGameShared/utilities/enums.h>
+#include <SandboxCoreEngine/enums.h>
 
 #include "CoreMinimal.h"
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <SpaceGame/ui/main_menu/LevelSelectWidget.h>
-#include <SpaceGame/ui/style/GameUiStyle.h>
+#include <SpaceGamePresentation/ui/style/GameUiStyle.h>
 #include <SpaceGameS7/LevelScriptCatalog.h>
 
 #include "ScriptLevelSelectWidget.generated.h"

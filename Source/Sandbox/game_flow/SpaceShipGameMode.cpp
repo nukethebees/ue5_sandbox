@@ -1,7 +1,7 @@
 #include "SpaceShipGameMode.h"
 
 #include "Sandbox/environment/effects/ShipPostProcessing.h"
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Engine/World.h"
 #include "EngineUtils.h"

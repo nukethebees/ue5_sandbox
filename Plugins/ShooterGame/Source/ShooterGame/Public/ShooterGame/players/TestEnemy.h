@@ -12,7 +12,7 @@
 #include "ShooterGame/players/player_delegates.h"
 #include "SandboxGameShared/players/SandboxMobInterface.h"
 #include "SandboxGameShared/players/TeamID.h"
-#include "SandboxGameShared/utilities/enums.h"
+#include "SandboxCoreEngine/enums.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"

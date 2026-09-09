@@ -137,6 +137,9 @@ TEST_CLASS(SharedSimulation, "Sandbox.LevelTests")
     SHARED_SIMULATION_TEST(Orchestrator_LevelTelemetry,
                            ml::FTestBatchOrchestratorSetupScenario,
                            ml::EOrchestratorSetupScenario::LevelTelemetry)
+    SHARED_SIMULATION_TEST(Orchestrator_PresentationFrameOrdering,
+                           ml::FTestBatchOrchestratorSetupScenario,
+                           ml::EOrchestratorSetupScenario::PresentationFrameOrdering)
     SHARED_SIMULATION_TEST(Orchestrator_ResetForNewLevel, ml::FTestBatchOrchestratorResetScenario)
     SHARED_SIMULATION_TEST(LevelLoader_MaterialisesDefinition, ml::FLevelLoaderScenario)
     SHARED_SIMULATION_TEST(LevelLoader_MaterialisesPlayerlessCameraDefinition,
@@ -545,7 +548,6 @@ TEST_CLASS(TelemetryBenchmark, "SandboxBenchmarks.TelemetryBenchmark")
                 auto& telemetry{orchestrator->get_level_telemetry_manager()};
                 FLevelTelemetryRunMetadata metadata;
                 metadata.level_id = TEXT("spark-renderer-showcase");
-                metadata.presentation_mode = TEXT("simulation_only");
                 metadata.requested_duration_seconds = simulated_seconds;
                 metadata.initial_requested_time_scale = time_scale;
                 metadata.detailed_timing = detailed_timing;

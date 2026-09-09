@@ -1,6 +1,6 @@
 #include "Sandbox/environment/SandboxActorSpawner.h"
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include "Components/ArrowComponent.h"
 #include "Components/SceneComponent.h"

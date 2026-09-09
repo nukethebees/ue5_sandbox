@@ -1,11 +1,13 @@
 #pragma once
+#include <SpaceGame/telemetry/LevelTelemetryReport.h>
 
 #include <SpaceGame/missions/LevelMissionDefinition.h>
-#include <SpaceGame/presentation/HUDManager.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
-#include <SpaceGame/simulation/LevelSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/system/GameSubsystem.h>
+#include <SpaceGamePresentation/presentation/HUDManager.h>
+#include <SpaceGamePresentation/presentation/LevelPresentation.h>
+#include <SpaceGameSimulation/simulation/LevelSimulation.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Actor.h>
@@ -185,6 +187,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto get_level_simulation() const -> FLevelSimulation const* {
         return level_simulation_.IsSet() ? &level_simulation_.GetValue() : nullptr;
     }
+    auto get_level_presentation() const -> FLevelPresentation const* {
+        return level_presentation_.IsSet() ? &level_presentation_.GetValue() : nullptr;
+    }
+    auto take_finalized_telemetry_report() -> TOptional<FLevelTelemetryReport>;
     auto get_world_collision() -> ml::ioj::FLevelCollisionHost& { return world_collision_; }
     auto get_world_collision() const -> ml::ioj::FLevelCollisionHost const& {
         return world_collision_;
@@ -208,7 +214,7 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     auto begin_play() -> bool;
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
-    void validate_proxy_handles();
+    void validate_entity_handles();
     auto initialise_simulation(ml::FLevelStartErrors& errors) -> bool;
     void handle_level_start_failure(FString message);
     void process_mission_result();
@@ -250,6 +256,14 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     FHUDManager hud_manager;
     TOptional<FLevelSimulation> level_simulation_;
+    TOptional<FLevelPresentation> level_presentation_;
+    TArray<FTransform> initial_turret_transforms_;
+    void persist_finalized_telemetry_run();
+    void record_external_timing(int32 window_index,
+                                ELevelTelemetryTimingSystem system,
+                                double seconds);
+    TArray<FLevelExternalTimingSample> external_timings_;
+    FLevelTelemetryEnvironment telemetry_environment_;
     TOptional<ml::FLevelDefinition> level_definition_;
     bool launched_paused_{};
     ml::ioj::FLevelLaunchOptions launch_options_{};

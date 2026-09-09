@@ -1,4 +1,4 @@
-#include <SpaceGame/entities/TestEntityRegistry.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 
 #include <CQTest.h>
 

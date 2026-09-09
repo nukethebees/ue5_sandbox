@@ -1,6 +1,6 @@
 #pragma once
 
-#include "SpaceGame/ships/common/ShipLaserMode.h"
+#include "SpaceGameSimulation/ships/common/ShipLaserMode.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"

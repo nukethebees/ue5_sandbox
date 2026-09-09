@@ -3,9 +3,9 @@
     {
       "kind": "enum",
       "name": "game_ui_style_types",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ui/style/GameUiStyleTypes.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/ui/style/GameUiStyleTypes.cpp",
-      "header_include": "SpaceGame/ui/style/GameUiStyleTypes.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp",
+      "header_include": "SpaceGamePresentation/ui/style/GameUiStyleTypes.h",
       "helper_namespace": "ml::ioj",
       "enums": [
         {
@@ -13,7 +13,7 @@
           "underlying_type": "uint8",
           "reflection": "uenum",
           "enum_array": true,
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMEPRESENTATION_API",
           "values": [
             {"name": "Body"},
             {"name": "BodySecondary", "display_name": "Body Secondary"},
@@ -33,7 +33,7 @@
           "underlying_type": "uint8",
           "reflection": "uenum",
           "enum_array": true,
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMEPRESENTATION_API",
           "values": [
             {"name": "Primary"},
             {"name": "Secondary"}
@@ -45,7 +45,7 @@
           "underlying_type": "uint8",
           "reflection": "uenum",
           "enum_array": true,
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMEPRESENTATION_API",
           "values": [
             {"name": "Hive"},
             {"name": "Video"},
@@ -62,9 +62,9 @@
     {
       "kind": "enum",
       "name": "mission_modes",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionMode.cpp",
-      "header_include": "SpaceGame/missions/TestMissionMode.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionMode.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionMode.cpp",
+      "header_include": "SpaceGameSimulation/missions/TestMissionMode.h",
       "helper_namespace": "ml",
       "enums": [
         {
@@ -72,7 +72,7 @@
           "underlying_type": "uint8",
           "reflection": "uenum",
           "enum_array": true,
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "values": [
             {"name": "None", "serialized_name": "none"},
             {"name": "SurviveTime", "display_name": "Survive Time", "serialized_name": "survive_time"},
@@ -90,16 +90,16 @@
     {
       "kind": "enum",
       "name": "mission_states",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionState.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionState.cpp",
-      "header_include": "SpaceGame/missions/TestMissionState.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionState.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionState.cpp",
+      "header_include": "SpaceGameSimulation/missions/TestMissionState.h",
       "helper_namespace": "ml",
       "enums": [
         {
           "name": "ETestMissionState",
           "underlying_type": "uint8",
           "reflection": "uenum",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "values": [
             {"name": "NotStarted", "serialized_name": "not_started"},
             {"name": "Running", "serialized_name": "running"},
@@ -114,16 +114,16 @@
     {
       "kind": "enum",
       "name": "mission_fail_reasons",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/missions/TestMissionFailReason.cpp",
-      "header_include": "SpaceGame/missions/TestMissionFailReason.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReason.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/missions/TestMissionFailReason.cpp",
+      "header_include": "SpaceGameSimulation/missions/TestMissionFailReason.h",
       "helper_namespace": "ml",
       "enums": [
         {
           "name": "ETestMissionFailReason",
           "underlying_type": "uint8",
           "reflection": "uenum",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "values": [
             {"name": "None", "serialized_name": "none"},
             {"name": "PlayerKilled", "serialized_name": "player_killed"},
@@ -137,16 +137,16 @@
     {
       "kind": "enum",
       "name": "test_teams",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestTeam.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestTeam.cpp",
-      "header_include": "SpaceGame/entities/TestTeam.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeam.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestTeam.cpp",
+      "header_include": "SpaceGameSimulation/entities/TestTeam.h",
       "helper_namespace": "ml",
       "enums": [
         {
           "name": "ETestTeam",
           "underlying_type": "uint8",
           "reflection": "uenum",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "values": [
             {"name": "White", "serialized_name": "white"},
             {"name": "Red", "serialized_name": "red"},
@@ -163,15 +163,15 @@
     {
       "kind": "enum",
       "name": "level_telemetry_run_end_reasons",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/telemetry/LevelTelemetryRunEndReason.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/telemetry/LevelTelemetryRunEndReason.cpp",
-      "header_include": "SpaceGame/telemetry/LevelTelemetryRunEndReason.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/telemetry/LevelTelemetryRunEndReason.cpp",
+      "header_include": "SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h",
       "helper_namespace": "ml",
       "enums": [
         {
           "name": "ELevelTelemetryRunEndReason",
           "underlying_type": "uint8",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "values": [
             {"name": "MissionSucceeded", "serialized_name": "mission_succeeded"},
             {"name": "MissionFailed", "serialized_name": "mission_failed"},
@@ -187,16 +187,16 @@
     {
       "kind": "enum",
       "name": "test_entity_type",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/entities/TestEntityType.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/entities/TestEntityTypeEnum.cpp",
-      "header_include": "SpaceGame/entities/TestEntityType.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestEntityType.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/entities/TestEntityTypeEnum.cpp",
+      "header_include": "SpaceGameSimulation/entities/TestEntityType.h",
       "helper_namespace": "ml",
       "prelude": [
         "enum class ETestEntityType : uint8;",
         "namespace ml {",
-        "auto get_entity_display_name(ETestEntityType type) -> FString const&;",
-        "auto get_entity_class_name(ETestEntityType type) -> FString const&;",
-        "auto get_entity_short_name(ETestEntityType type) -> FString const&;",
+        "SPACEGAMESIMULATION_API auto get_entity_display_name(ETestEntityType type) -> FString const&;",
+        "SPACEGAMESIMULATION_API auto get_entity_class_name(ETestEntityType type) -> FString const&;",
+        "SPACEGAMESIMULATION_API auto get_entity_short_name(ETestEntityType type) -> FString const&;",
         "}"
       ],
       "enums": [
@@ -206,7 +206,7 @@
           "reflection": "uenum",
           "enum_array": true,
           "count": "COUNT",
-          "export_specifier": "SPACEGAME_API",
+          "export_specifier": "SPACEGAMESIMULATION_API",
           "values": [
             {"name": "PlayerShip", "display_name": "Player Ship", "serialized_name": "player_ship"},
             {"name": "Turret", "serialized_name": "turret"},

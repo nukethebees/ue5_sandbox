@@ -1,9 +1,10 @@
 #pragma once
+#include <SpaceGamePresentation/presentation/PlayerPresentation.h>
 
 #include <SpaceGame/entities/TestEntity.h>
-#include <SpaceGame/ships/player/TestSpaceShipSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/support/logging/ActorLoggingConfig.h>
+#include <SpaceGamePresentation/support/logging/ActorLoggingConfig.h>
+#include <SpaceGameSimulation/ships/player/TestSpaceShipSimulation.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Pawn.h>
@@ -24,7 +25,6 @@ class SPACEGAME_API ATestSpaceShip
     , public ITestEntity {
     GENERATED_BODY()
     friend class ATestBatchOrchestrator;
-    friend struct FLevelPresentation;
   public:
     struct Sockets {
         inline static FName const left{"Left"};
@@ -34,6 +34,7 @@ class SPACEGAME_API ATestSpaceShip
 
     ATestSpaceShip();
     auto make_spawn_data() const -> ml::test_space_ship::FPlayerSpawnData;
+    auto get_presentation_resources() const -> FPlayerPresentationResources;
     void bind_simulation(ml::test_space_ship::Simulation& new_simulation);
     void unbind_simulation();
     auto has_simulation() const noexcept -> bool { return bound_simulation != nullptr; }
@@ -107,14 +108,8 @@ class SPACEGAME_API ATestSpaceShip
     auto simulation() -> ml::test_space_ship::Simulation&;
     auto simulation() const -> ml::test_space_ship::Simulation const&;
 
-    void begin_play_presentation();
-    void update_visual_data(float dt);
-    void commit_visual_data();
     void handle_simulation_death();
-    void configure_boost_pulse();
-    void configure_boost_engine_effect();
     void configure_ship_mesh();
-    void draw_debug_shapes();
 
     FPlayerShipConfig const* actor_config{nullptr};
 
@@ -158,5 +153,4 @@ class SPACEGAME_API ATestSpaceShip
 #endif
 
     ml::test_space_ship::Simulation* bound_simulation{nullptr};
-    EBoostBrakeState presented_boost_brake_state{EBoostBrakeState::None};
 };

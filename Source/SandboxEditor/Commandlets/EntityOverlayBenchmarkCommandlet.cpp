@@ -1,8 +1,8 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
 
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
-#include "SpaceGame/entities/TestEntityRegistry.h"
-#include "SpaceGame/presentation/EntityOverlaySource.h"
+#include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
+#include "SpaceGameSimulation/entities/TestEntityRegistry.h"
 
 #include "HAL/FileManager.h"
 #include "Misc/FileHelper.h"

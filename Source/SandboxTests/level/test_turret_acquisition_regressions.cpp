@@ -5,12 +5,12 @@
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 

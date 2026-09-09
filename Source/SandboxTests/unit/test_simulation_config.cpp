@@ -7,12 +7,12 @@
 #include <SpaceGame/ships/capital/TestCapitalShipsConfig.h>
 #include <SpaceGame/ships/fighters/TestCapitalShipFightersConfig.h>
 #include <SpaceGame/ships/player/TestSpaceShipData.h>
-#include <SpaceGame/simulation/EntityWorldBounds.h>
 #include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SimulationConfig.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestSimulationConfig.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
+#include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 
 #include <CQTest.h>
 #include <Engine/StaticMesh.h>

@@ -2,14 +2,14 @@
 
 #include <Engine/GameInstance.h>
 #include <InputAction.h>
-#include <SpaceGame/missions/TestMissionManager.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
-#include <SpaceGame/support/logging/SandboxLogCategories.h>
 #include <SpaceGame/system/GameSubsystem.h>
 #include <SpaceGame/ui/common/GameUiRootLayout.h>
 #include <SpaceGame/ui/LevelCompletionWidget.h>
 #include <SpaceGame/ui/PauseMenuWidget.h>
+#include <SpaceGameSimulation/missions/TestMissionManager.h>
+#include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 /* **************************************** */
 // Root lifecycle

@@ -6,10 +6,10 @@
 #include <SandboxTests/support/time_series_test_data.h>
 #include <SandboxTests/support/WorldlessSimulationTest.h>
 
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 
 #include <SandboxCore/soa_rotator_utils.h>
 #include <SandboxCore/soa_vector_utils.h>
@@ -112,7 +112,7 @@ void run_worldless_laser_lifecycle(FAutomationTestBase& test,
                                           ? miss_max_distance
                                           : collision_max_distance;
             requests.instigator_handles[i] = shooter;
-            requests.colours[i] = FLinearColor::White;
+            requests.sources[i] = {ETestTeam::White, ETestEntityType::TubeSpinner};
         }
         lasers.queue_laser_spawns(requests);
     });
@@ -280,7 +280,7 @@ void FLaserLifecycleScenario::queue_projectiles() {
         requests.max_distances[i] =
             scenario_ == ELaserLifecycleScenario::Miss ? miss_max_distance : collision_max_distance;
         requests.instigator_handles[i] = shooter_handle;
-        requests.colours[i] = FLinearColor::White;
+        requests.sources[i] = {ETestTeam::White, ETestEntityType::TubeSpinner};
     }
     lasers->queue_laser_spawns(requests);
 }

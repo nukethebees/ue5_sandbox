@@ -1,10 +1,10 @@
-#include <SpaceGame/combat/lasers/TestLasersSimulation.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
-#include <SpaceGame/defences/turrets/TestStaticTurretsSimulation.h>
 #include <SpaceGame/entities/ProxyEntityMap.h>
-#include <SpaceGame/entities/TestEntityRegistry.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGameSimulation/combat/lasers/TestLasersSimulation.h>
+#include <SpaceGameSimulation/defences/turrets/TestStaticTurretsSimulation.h>
+#include <SpaceGameSimulation/entities/TestEntityRegistry.h>
 
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/test_setup.h>

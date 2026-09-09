@@ -21,7 +21,7 @@ public class Sandbox : ModuleRules
         CppCompileWarningSettings.ShortenSizeTToIntWarningLevel = WarningLevel.Error;
 
         PublicDependencyModuleNames.AddRange(new string[] {
-            "SpaceGame",
+            "SpaceGame", "SpaceGameSimulation", "SpaceGamePresentation",
             "SandboxGameShared",
             "SandboxNative",
             "SandboxCore",

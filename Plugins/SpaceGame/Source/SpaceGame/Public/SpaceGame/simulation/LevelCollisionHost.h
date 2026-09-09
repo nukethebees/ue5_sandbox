@@ -1,7 +1,7 @@
 #pragma once
-#include <SpaceGame/levels/LevelStartErrors.h>
-#include <SpaceGame/simulation/CollisionSystem.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
+#include <SpaceGameSimulation/levels/LevelStartErrors.h>
+#include <SpaceGameSimulation/simulation/CollisionSystem.h>
 
 #include <expected>
 

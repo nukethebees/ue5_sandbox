@@ -2,11 +2,11 @@
   "modules": [
     {
       "kind": "soa", "name": "test_capital_ship_fighters_soa",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFightersSoA.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFightersSoA.cpp",
-      "header_include": "SpaceGame/ships/fighters/TestCapitalShipFightersSoA.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFightersSoA.cpp",
+      "header_include": "SpaceGameSimulation/ships/fighters/TestCapitalShipFightersSoA.h",
       "namespace": "ml::test_capital_ship_fighters", "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
-      "structs": [{"name": "EntityData", "export_specifier": "SPACEGAME_API", "operations": ["all"], "members": [
+      "structs": [{"name": "EntityData", "export_specifier": "SPACEGAMESIMULATION_API", "operations": ["all"], "members": [
         {"name":"entity_handles","kind":"array","type":"@registry_handle"},
         {"name":"integral_biases","kind":"array","type":"uint32"},
         {"name":"float_biases","kind":"array","type":"float"},
@@ -43,29 +43,29 @@
     },
     {
       "kind": "soa", "name": "test_capital_ships_soa",
-      "header": "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/capital/TestCapitalShipsSoA.h",
-      "source": "Plugins/SpaceGame/Source/SpaceGame/Private/ships/capital/TestCapitalShipsSoA.cpp",
-      "header_include": "SpaceGame/ships/capital/TestCapitalShipsSoA.h",
+      "header": "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/capital/TestCapitalShipsSoA.h",
+      "source": "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/capital/TestCapitalShipsSoA.cpp",
+      "header_include": "SpaceGameSimulation/ships/capital/TestCapitalShipsSoA.h",
       "namespace": "ml::test_capital_ships", "include_order": ["SpaceGame/", "Sandbox/", "SandboxCore/"],
       "structs": [
-        {"name":"SpawnData","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+        {"name":"SpawnData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
           {"name":"target_handles","kind":"array","type":"@registry_handle"}, {"name":"locations","kind":"nested","type":"@vectors_3f"},
           {"name":"rotations","kind":"nested","type":"@rotators_f"}, {"name":"teams","kind":"array","type":"@team"},
           {"name":"healths","kind":"array","type":"int32"}, {"name":"initial_spawn_delays","kind":"array","type":"float"},
           {"name":"spawn_cooldowns","kind":"array","type":"float"}
         ]},
-        {"name":"EntityTickData","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+        {"name":"EntityTickData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
           {"name":"ships_ready_to_spawn_fighters_buffer","kind":"array","type":"int32"},
           {"name":"fighter_queue","kind":"nested","type":"@fighter_spawn_queue"}
         ]},
-        {"name":"EntityData","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+        {"name":"EntityData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
           {"name":"handles","kind":"array","type":"@registry_handle"}, {"name":"locations","kind":"nested","type":"@vectors_3f"},
           {"name":"rotations","kind":"nested","type":"@rotators_f"}, {"name":"fighter_spawn_timers","kind":"nested","type":"@countdown_timers"},
           {"name":"fighter_spawn_cooldowns","kind":"array","type":"float"}, {"name":"teams","kind":"array","type":"@team"},
           {"name":"healths","kind":"array","type":"int32"}, {"name":"capital_fighter_handle_spans","kind":"array","type":"@index_span"},
           {"name":"target_handles","kind":"array","type":"@registry_handle"}
         ]},
-        {"name":"FighterReassignment","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+        {"name":"FighterReassignment","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
           {"name":"capital_handles","kind":"array","type":"@registry_handle"}, {"name":"fighter_handles","kind":"array","type":"@registry_handle"}
         ],"functions":[{"name":"add","return_type":"void","inline":true,"parameters":[
           {"type":{"name":"@registry_handle","suffix":" const"},"name":"ch"}, {"type":{"name":"@registry_handle","suffix":" const"},"name":"fh"}
@@ -74,40 +74,54 @@
     },
     {
       "kind":"soa", "name":"test_lasers_soa",
-      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/combat/lasers/TestLasersSoA.h",
-      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/combat/lasers/TestLasersSoA.cpp",
-      "header_include":"SpaceGame/combat/lasers/TestLasersSoA.h", "namespace":"ml::test_lasers",
+      "header":"Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/combat/lasers/TestLasersSoA.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGameSimulation/Private/combat/lasers/TestLasersSoA.cpp",
+      "header_include":"SpaceGameSimulation/combat/lasers/TestLasersSoA.h", "namespace":"ml::test_lasers",
       "include_order":["SpaceGame/","Sandbox/","SandboxCore/"], "structs":[
-        {"name":"SpawnRequests","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+        {"name":"SpawnRequests","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
           {"name":"locations","kind":"nested","type":"@vectors_3f"}, {"name":"rotations","kind":"nested","type":"@rotators_f"},
           {"name":"base_velocities","kind":"nested","type":"@vectors_3f"}, {"name":"damages","kind":"array","type":"int32"},
           {"name":"speeds","kind":"array","type":"float"}, {"name":"max_distances","kind":"array","type":"float"},
-          {"name":"instigator_handles","kind":"array","type":"@registry_handle"}, {"name":"colours","kind":"array","type":"@linear_color"}
+          {"name":"instigator_handles","kind":"array","type":"@registry_handle"}, {"name":"sources","kind":"array","type":"@laser_source"
+            }
         ],"functions":[
           {"name":"set_damages","return_type":"void","parameters":[{"type":"int32 const","name":"value"}]},
           {"name":"set_speeds","return_type":"void","parameters":[{"type":"float const","name":"value"}]},
           {"name":"set_max_distances","return_type":"void","parameters":[{"type":"float const","name":"value"}]},
-          {"name":"set_colours","return_type":"void","parameters":[{"type":{"name":"@linear_color","suffix":" const"},"name":"value"}]}
+          {"name":"set_sources","return_type":"void","parameters":[{"type":{"name":"@laser_source","suffix":" const"},"name":"value"}]}
         ]},
-        {"name":"Entities","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
-          {"name":"colours","kind":"array","type":"@linear_color"},
+        {"name":"Entities","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
+          {"name":"sources","kind":"array","type":"@laser_source"
+            },
           {"name":"locations","kind":"nested","type":"@vectors_3f"}, {"name":"rotations","kind":"nested","type":"@rotators_f"},
           {"name":"velocities","kind":"nested","type":"@vectors_3f"}, {"name":"damages","kind":"array","type":"int32"},
           {"name":"lifetimes_remaining","kind":"array","type":"float"}, {"name":"instigator_handles","kind":"array","type":"@registry_handle"}
-        ]},
-        {"name":"HitDetails","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+        ,
+            {
+              "name": "initial_lifetimes",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "spawn_times",
+              "kind": "array",
+              "type": "float"
+            }
+          ]},
+        {"name":"HitDetails","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
           {"name":"locations","kind":"nested","type":"@vectors_3f"},
           {"name":"emission_directions","kind":"nested","type":"@vectors_3f"},
-          {"name":"colours","kind":"array","type":"@linear_color"}
+          {"name":"sources","kind":"array","type":"@laser_source"
+            }
         ]}
       ]
     },
     {
       "kind":"soa", "name":"test_capital_ship_fighter_spawn_queue_soa",
-      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h",
-      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.cpp",
-      "header_include":"SpaceGame/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h", "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
-      "structs":[{"name":"TestCapitalShipFighterSpawnQueue","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+      "header":"Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.cpp",
+      "header_include":"SpaceGameSimulation/ships/fighters/TestCapitalShipFighterSpawnQueueSoA.h", "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "structs":[{"name":"TestCapitalShipFighterSpawnQueue","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
         {"name":"locations","kind":"nested","type":"@vectors_3f"}, {"name":"rotations","kind":"nested","type":"@rotators_f"},
         {"name":"teams","kind":"array","type":"@team"}, {"name":"parents","kind":"array","type":"@registry_handle"},
         {"name":"targets","kind":"array","type":"@registry_handle"}
@@ -115,10 +129,10 @@
     },
     {
       "kind":"soa", "name":"test_capital_ship_fighter_order_queue",
-      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h",
-      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/ships/fighters/TestCapitalShipFighterOrderQueue.cpp",
-      "header_include":"SpaceGame/ships/fighters/TestCapitalShipFighterOrderQueue.h", "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
-      "structs":[{"name":"TestCapitalShipFighterOrderQueue","export_specifier":"SPACEGAME_API","operations":["all"],
+      "header":"Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGameSimulation/Private/ships/fighters/TestCapitalShipFighterOrderQueue.cpp",
+      "header_include":"SpaceGameSimulation/ships/fighters/TestCapitalShipFighterOrderQueue.h", "include_order":["SpaceGame/","Sandbox/","SandboxCore/"],
+      "structs":[{"name":"TestCapitalShipFighterOrderQueue","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],
         "using_declarations":["Task = ETestCapitalShipFightersTask","Order = TestCapitalShipFighterOrder"],
         "members":[{"name":"handles","kind":"array","type":"@registry_handle"}, {"name":"orders","kind":"array","type":"@fighter_order"},
           {"name":"tasks","kind":"array","type":"@fighter_task"}, {"name":"targets","kind":"array","type":"@registry_handle"}],
@@ -130,17 +144,17 @@
     },
     {
       "kind":"soa", "name":"test_static_turrets_soa",
-      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/defences/turrets/TestStaticTurretsSoA.h",
-      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/defences/turrets/TestStaticTurretsSoA.cpp",
-      "header_include":"SpaceGame/defences/turrets/TestStaticTurretsSoA.h", "namespace":"ml::test_static_turrets",
+      "header":"Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/turrets/TestStaticTurretsSoA.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/turrets/TestStaticTurretsSoA.cpp",
+      "header_include":"SpaceGameSimulation/defences/turrets/TestStaticTurretsSoA.h", "namespace":"ml::test_static_turrets",
       "include_order":["SpaceGame/","Sandbox/","SandboxCore/"], "structs":[
-      {"name":"SpawnData","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+      {"name":"SpawnData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
         {"name":"locations","kind":"nested","type":"@vectors_3f"},
         {"name":"teams","kind":"array","type":"@team"},
         {"name":"healths","kind":"array","type":"int32"},
         {"name":"laser_damages","kind":"array","type":"int32"}
       ]},
-      {"name":"EntityData","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+      {"name":"EntityData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
         {"name":"handles","kind":"array","type":"@registry_handle"}, {"name":"integral_biases","kind":"array","type":"uint32"},
         {"name":"locations","kind":"nested","type":"@vectors_3f"}, {"name":"fire_point_locations","kind":"nested","type":"@vectors_3f"},
         {"name":"rotations","kind":"nested","type":"@rotators_f"},
@@ -152,10 +166,10 @@
     },
     {
       "kind":"soa", "name":"test_tube_spinners_soa",
-      "header":"Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/defences/spinners/TestTubeSpinnersSoA.h",
-      "source":"Plugins/SpaceGame/Source/SpaceGame/Private/defences/spinners/TestTubeSpinnersSoA.cpp",
-      "header_include":"SpaceGame/defences/spinners/TestTubeSpinnersSoA.h", "namespace":"ml::test_tube_spinners",
-      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"], "structs":[{"name":"EntityData","export_specifier":"SPACEGAME_API","operations":["all"],"members":[
+      "header":"Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/defences/spinners/TestTubeSpinnersSoA.h",
+      "source":"Plugins/SpaceGame/Source/SpaceGameSimulation/Private/defences/spinners/TestTubeSpinnersSoA.cpp",
+      "header_include":"SpaceGameSimulation/defences/spinners/TestTubeSpinnersSoA.h", "namespace":"ml::test_tube_spinners",
+      "include_order":["SpaceGame/","Sandbox/","SandboxCore/"], "structs":[{"name":"EntityData","export_specifier":"SPACEGAMESIMULATION_API","operations":["all"],"members":[
         {"name":"handles","kind":"array","type":"@registry_handle"}, {"name":"locations","kind":"nested","type":"@vectors_3f"},
         {"name":"yaws","kind":"array","type":"float"}, {"name":"laser_cooldowns","kind":"nested","type":"@tick_countdown_16"},
         {"name":"next_fire_point_indices","kind":"array","type":"int32"}

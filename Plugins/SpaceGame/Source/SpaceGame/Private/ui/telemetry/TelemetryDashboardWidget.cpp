@@ -1,8 +1,9 @@
 #include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
+#include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
-#include "SpaceGame/support/logging/SandboxLogCategories.h"
 #include "SpaceGame/system/GameSubsystem.h"
-#include "SpaceGame/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"
+#include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "STelemetryDashboardView.h"
 
 #include <Engine/GameInstance.h>
