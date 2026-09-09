@@ -1,5 +1,6 @@
 find_package(GTest CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_program(SANDBOX_CLANG_FORMAT_EXECUTABLE NAMES clang-format REQUIRED)
 if(SANDBOX_KERNEL_BENCHMARKS)
   find_package(benchmark CONFIG REQUIRED)
   find_package(CpuFeatures CONFIG REQUIRED)
@@ -35,6 +36,7 @@ add_library(codegen-lib
   src/fixed_soa_container_lowering.cpp
   src/fixed_soa_storage_lowering.cpp
   src/generator.cpp
+  src/format_generated.cpp
   src/homogeneous_lowering.cpp
   src/homogeneous_storage_lowering.cpp
   src/homogeneous_view_lowering.cpp
@@ -45,12 +47,15 @@ add_library(codegen-lib
   src/soa_lowering.cpp
   src/soa_member_resolution.cpp
   src/soa_storage_lowering.cpp
+  src/single_allocation_soa_lowering.cpp
+  src/native_soa_lowering.cpp
   src/soa_view_lowering.cpp
   src/static_table_lowering.cpp
   src/validation.cpp
   src/vector_lowering.cpp
 )
 target_compile_features(codegen-lib PUBLIC cxx_std_23)
+target_compile_definitions(codegen-lib PRIVATE SANDBOX_CLANG_FORMAT_EXECUTABLE="${SANDBOX_CLANG_FORMAT_EXECUTABLE}")
 target_include_directories(codegen-lib PUBLIC include)
 target_link_libraries(codegen-lib PUBLIC nlohmann_json::nlohmann_json)
 
@@ -108,11 +113,13 @@ target_compile_features(codegen-generated-compile-tests PRIVATE cxx_std_23)
 target_include_directories(codegen-generated-compile-tests PRIVATE
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
   "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+  "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
 )
 
 add_executable(codegen-tests
   tests/ast_tests.cpp
   tests/fixed_soa_lowering_tests.cpp
+  tests/single_allocation_soa_tests.cpp
   tests/generator_tests.cpp
   tests/homogeneous_lowering_tests.cpp
   tests/json_tests.cpp
@@ -145,6 +152,24 @@ include(GoogleTest)
 gtest_discover_tests(codegen-tests PROPERTIES LABELS "unit;all;codegen")
 add_test(NAME CodegenGeneratedCompileSmoke COMMAND codegen-generated-compile-tests)
 set_tests_properties(CodegenGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
+foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
+  set(reject_target "codegen-reject-single-${restriction}")
+  add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_leaf.cpp)
+  add_dependencies(${reject_target} codegen-generated-compile-tests)
+  target_compile_features(${reject_target} PRIVATE cxx_std_23)
+  target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
+  target_include_directories(${reject_target} PRIVATE
+    "${CODEGEN_COMPILE_FIXTURE_OUTPUT}"
+    "${CODEGEN_COMPILE_FIXTURE_SOURCE}/stubs"
+    "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Source/SandboxCore/Public"
+  )
+  add_test(NAME "SingleAllocationRejects${restriction}"
+    COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+      "-DREJECT_TARGET=${reject_target}"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_single_allocation_leaf.cmake")
+  set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
+    LABELS "unit;all;codegen" RESOURCE_LOCK codegen-negative-build)
+endforeach()
 add_test(NAME CodegenCliChecksGeneratedFixture
   COMMAND sandbox-codegen
     --manifest "${CODEGEN_COMPILE_FIXTURE_SOURCE}/manifest.json"
@@ -212,3 +237,6 @@ add_custom_target(check-generated-code
 
 add_subdirectory(slate)
 add_subdirectory(kernel)
+if(SANDBOX_NATIVE_SOA_BENCHMARKS)
+  add_subdirectory(native_soa)
+endif()

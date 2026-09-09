@@ -1,5 +1,16 @@
 {
   "types": {
+    "soa_experiment_MimallocArrayAllocator": {"spelling": "MimallocArrayAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
+    "soa_experiment_FMemoryStorageAllocator": {"spelling": "ml::soa_storage::FMemoryStorageAllocator", "header": "SandboxCore/single_allocation_storage.h"},
+    "soa_experiment_MallocAllocator": {"spelling": "MallocAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
+    "soa_experiment_ReallocAllocator": {"spelling": "ReallocAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
+    "soa_experiment_Handle": {"spelling": "Handle", "header": "SbxCoreExperiments/soa_leaf_types.h"},
+    "soa_experiment_Task": {"spelling": "Task", "header": "SbxCoreExperiments/soa_leaf_types.h"},
+    "soa_experiment_Team": {"spelling": "Team", "header": "SbxCoreExperiments/soa_leaf_types.h"},
+    "soa_experiment_OddBytes": {"spelling": "OddBytes", "header": "SbxCoreExperiments/soa_leaf_types.h"},
+    "soa_experiment_Aligned32": {"spelling": "Aligned32", "header": "SbxCoreExperiments/soa_leaf_types.h"},
+    "soa_experiment_Aligned64": {"spelling": "Aligned64", "header": "SbxCoreExperiments/soa_leaf_types.h"},
+    "soa_experiment_Aligned256": {"spelling": "Aligned256", "header": "SbxCoreExperiments/soa_leaf_types.h"},
     "array_fill": {
       "spelling": "ml::fill",
       "header": "SandboxCore/array_utils.h"

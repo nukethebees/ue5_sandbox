@@ -1,0 +1,77 @@
+{
+  "modules": [{
+    "kind": "soa",
+    "name": "soa_spacing_shapes",
+    "header": "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h",
+    "source": "Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_spacing_shapes.cpp",
+    "header_include": "SbxCoreExperiments/soa_spacing_shapes.h",
+    "namespace": "ml::single_allocation_experiment",
+    "structs": [
+      {
+        "name": "SpacingDoubleVector", "export_specifier": "SBXCOREEXPERIMENTS_API", "operations": ["all"],
+        "members": [
+          {"name": "xs", "kind": "array", "type": "double"},
+          {"name": "ys", "kind": "array", "type": "double"},
+          {"name": "zs", "kind": "array", "type": "double"}
+        ]
+      },
+      {
+        "name": "SpacingDoubles", "export_specifier": "SBXCOREEXPERIMENTS_API", "operations": ["all"],
+        "single_allocation": {"name": "SingleSpacingDoubles"},
+        "members": [
+          {"name": "positions0", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"},
+          {"name": "velocities0", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"},
+          {"name": "positions1", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"},
+          {"name": "velocities1", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"},
+          {"name": "positions2", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"},
+          {"name": "velocities2", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"},
+          {"name": "positions3", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"},
+          {"name": "velocities3", "kind": "nested", "type": "SpacingDoubleVector", "nested_schema": "SpacingDoubleVector"}
+        ]
+      },
+      {
+        "name": "SpacingMixedBundle", "export_specifier": "SBXCOREEXPERIMENTS_API", "operations": ["all"],
+        "members": [
+          {"name": "flags", "kind": "array", "type": "uint8"},
+          {"name": "counters", "kind": "array", "type": "uint16"},
+          {"name": "counts", "kind": "array", "type": "uint32"},
+          {"name": "totals", "kind": "array", "type": "uint64"},
+          {"name": "payloads", "kind": "array", "type": "@soa_experiment_OddBytes"},
+          {"name": "values", "kind": "array", "type": "float"},
+          {"name": "rates", "kind": "array", "type": "double"}
+        ]
+      },
+      {
+        "name": "SpacingMixedWidths", "export_specifier": "SBXCOREEXPERIMENTS_API", "operations": ["all"],
+        "single_allocation": {"name": "SingleSpacingMixedWidths"},
+        "members": [
+          {"name": "bundle0", "kind": "nested", "type": "SpacingMixedBundle", "nested_schema": "SpacingMixedBundle"},
+          {"name": "bundle1", "kind": "nested", "type": "SpacingMixedBundle", "nested_schema": "SpacingMixedBundle"},
+          {"name": "bundle2", "kind": "nested", "type": "SpacingMixedBundle", "nested_schema": "SpacingMixedBundle"},
+          {"name": "bundle3", "kind": "nested", "type": "SpacingMixedBundle", "nested_schema": "SpacingMixedBundle"},
+          {"name": "bundle4", "kind": "nested", "type": "SpacingMixedBundle", "nested_schema": "SpacingMixedBundle"},
+          {"name": "bundle5", "kind": "nested", "type": "SpacingMixedBundle", "nested_schema": "SpacingMixedBundle"}
+        ]
+      },
+      {
+        "name": "SpacingAlignedBundle", "export_specifier": "SBXCOREEXPERIMENTS_API", "operations": ["all"],
+        "members": [
+          {"name": "positions", "kind": "array", "type": "float"},
+          {"name": "velocities", "kind": "array", "type": "float"},
+          {"name": "aligned32", "kind": "array", "type": "@soa_experiment_Aligned32"},
+          {"name": "aligned64", "kind": "array", "type": "@soa_experiment_Aligned64"},
+          {"name": "aligned256", "kind": "array", "type": "@soa_experiment_Aligned256"}
+        ]
+      },
+      {
+        "name": "SpacingAligned", "export_specifier": "SBXCOREEXPERIMENTS_API", "operations": ["all"],
+        "single_allocation": {"name": "SingleSpacingAligned"},
+        "members": [
+          {"name": "bundle0", "kind": "nested", "type": "SpacingAlignedBundle", "nested_schema": "SpacingAlignedBundle"},
+          {"name": "bundle1", "kind": "nested", "type": "SpacingAlignedBundle", "nested_schema": "SpacingAlignedBundle"},
+          {"name": "bundle2", "kind": "nested", "type": "SpacingAlignedBundle", "nested_schema": "SpacingAlignedBundle"}
+        ]
+      }
+    ]
+  }]
+}

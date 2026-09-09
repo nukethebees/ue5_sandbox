@@ -1,0 +1,331 @@
+{
+  "modules": [
+    {
+      "kind": "soa",
+      "name": "single_allocation_experiment",
+      "header": "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_types.h",
+      "source": "Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_types.cpp",
+      "header_include": "SbxCoreExperiments/soa_types.h",
+      "namespace": "ml::single_allocation_experiment",
+      "experimental_array_allocators": [
+        {"prefix": "Mimalloc", "allocator": "@soa_experiment_MimallocArrayAllocator"},
+        {"prefix": "Malloc", "allocator": "@soa_experiment_MallocAllocator"},
+        {"prefix": "Realloc", "allocator": "@soa_experiment_ReallocAllocator"}
+      ],
+      "structs": [
+        {
+          "name": "Vectors",
+          "members": [
+            {
+              "name": "xs",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "ys",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "zs",
+              "kind": "array",
+              "type": "float"
+            }
+          ],
+          "operations": [
+            "all"
+          ],
+          "export_specifier": "SBXCOREEXPERIMENTS_API"
+        },
+        {
+          "name": "Countdown8",
+          "members": [
+            {
+              "name": "counters",
+              "kind": "array",
+              "type": "int8"
+            }
+          ],
+          "operations": [
+            "all"
+          ],
+          "export_specifier": "SBXCOREEXPERIMENTS_API"
+        },
+        {
+          "name": "Countdown16",
+          "members": [
+            {
+              "name": "counters",
+              "kind": "array",
+              "type": "int16"
+            }
+          ],
+          "operations": [
+            "all"
+          ],
+          "export_specifier": "SBXCOREEXPERIMENTS_API"
+        },
+        {
+          "name": "PeriodicCountdown16",
+          "members": [
+            {
+              "name": "remaining_ticks",
+              "kind": "array",
+              "type": "int16"
+            },
+            {
+              "name": "periods",
+              "kind": "array",
+              "type": "int16"
+            }
+          ],
+          "operations": [
+            "all"
+          ],
+          "export_specifier": "SBXCOREEXPERIMENTS_API"
+        },
+        {
+          "name": "EntityData",
+          "export_specifier": "SBXCOREEXPERIMENTS_API",
+          "operations": [
+            "all"
+          ],
+          "members": [
+            {
+              "name": "entity_handles",
+              "kind": "array",
+              "type": "@soa_experiment_Handle"
+            },
+            {
+              "name": "integral_biases",
+              "kind": "array",
+              "type": "uint32"
+            },
+            {
+              "name": "float_biases",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "tasks",
+              "kind": "array",
+              "type": "@soa_experiment_Task"
+            },
+            {
+              "name": "locations",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "desired_move_locations",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "aim_directions",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "desired_aiming_directions",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "movement_directions",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "velocities",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "move_distances",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "speeds",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "teams",
+              "kind": "array",
+              "type": "@soa_experiment_Team"
+            },
+            {
+              "name": "healths",
+              "kind": "array",
+              "type": "int32"
+            },
+            {
+              "name": "parent_handles",
+              "kind": "array",
+              "type": "@soa_experiment_Handle"
+            },
+            {
+              "name": "awareness_scan_countdowns",
+              "kind": "nested",
+              "type": "Countdown8",
+              "nested_schema": "Countdown8"
+            },
+            {
+              "name": "navigation_update_countdowns",
+              "kind": "nested",
+              "type": "PeriodicCountdown16",
+              "nested_schema": "PeriodicCountdown16"
+            },
+            {
+              "name": "separation_steering",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "navigation_risk_tiers",
+              "kind": "array",
+              "type": "uint8"
+            },
+            {
+              "name": "navigation_lower_risk_scan_counts",
+              "kind": "array",
+              "type": "uint8"
+            },
+            {
+              "name": "avoidance_choice_indices",
+              "kind": "array",
+              "type": "int8"
+            },
+            {
+              "name": "avoidance_clear_scan_counts",
+              "kind": "array",
+              "type": "uint8"
+            },
+            {
+              "name": "attack_reposition_countdowns",
+              "kind": "nested",
+              "type": "Countdown16",
+              "nested_schema": "Countdown16"
+            },
+            {
+              "name": "attack_cooldowns",
+              "kind": "nested",
+              "type": "Countdown16",
+              "nested_schema": "Countdown16"
+            },
+            {
+              "name": "target_handles",
+              "kind": "array",
+              "type": "@soa_experiment_Handle"
+            },
+            {
+              "name": "target_locations",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "target_velocities",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "target_directions",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "intercept_times",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "target_distance_sq",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "target_distances",
+              "kind": "array",
+              "type": "float"
+            },
+            {
+              "name": "target_radii",
+              "kind": "array",
+              "type": "float"
+            }
+          ],
+          "single_allocation": {
+            "name": "SingleAllocationEntityData",
+            "variants": [{"name": "FMemorySingleEntityData", "allocator": "@soa_experiment_FMemoryStorageAllocator"}]
+          }
+        },
+        {
+          "name": "AlignmentData",
+          "export_specifier": "SBXCOREEXPERIMENTS_API",
+          "operations": [
+            "all"
+          ],
+          "members": [
+            {
+              "name": "bytes",
+              "kind": "array",
+              "type": "uint8"
+            },
+            {
+              "name": "odd",
+              "kind": "array",
+              "type": "@soa_experiment_OddBytes"
+            },
+            {
+              "name": "aligned32",
+              "kind": "array",
+              "type": "@soa_experiment_Aligned32"
+            },
+            {
+              "name": "nested",
+              "kind": "nested",
+              "type": "Vectors",
+              "nested_schema": "Vectors"
+            },
+            {
+              "name": "aligned64",
+              "kind": "array",
+              "type": "@soa_experiment_Aligned64"
+            },
+            {
+              "name": "small",
+              "kind": "array",
+              "type": "int8"
+            },
+            {
+              "name": "aligned256",
+              "kind": "array",
+              "type": "@soa_experiment_Aligned256"
+            },
+            {
+              "name": "handles",
+              "kind": "array",
+              "type": "@soa_experiment_Handle"
+            }
+          ],
+          "single_allocation": {
+            "name": "SingleAllocationAlignmentData",
+            "variants": [{"name": "FMemorySingleAlignmentData", "allocator": "@soa_experiment_FMemoryStorageAllocator"}]
+          }
+        }
+      ]
+    }
+  ]
+}

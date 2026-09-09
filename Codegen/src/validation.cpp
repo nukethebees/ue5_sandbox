@@ -329,16 +329,13 @@ void validate_settings(ModuleSettings const& settings) {
     require_unique_names(settings.include_order, "Module '" + settings.name + "' include order");
 }
 
-void validate_enum(EnumModuleSchema const& module,
-                   std::map<std::string, CppType> const& types) {
+void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType> const& types) {
     if (module.enums.empty()) {
-        throw std::invalid_argument{"Enum module '" + module.settings.name +
-                                    "' must have enums"};
+        throw std::invalid_argument{"Enum module '" + module.settings.name + "' must have enums"};
     }
     if (module.helper_namespace.has_value()) {
         require_qualified_identifier(*module.helper_namespace,
-                                     "Enum module '" + module.settings.name +
-                                         "' helper namespace");
+                                     "Enum module '" + module.settings.name + "' helper namespace");
     }
     std::set<std::string> enum_names;
     for (auto const& schema : module.enums) {
@@ -371,13 +368,11 @@ void validate_enum(EnumModuleSchema const& module,
             value_names.push_back(value.name);
             if (value.initializer.has_value()) {
                 require_value(*value.initializer,
-                              "Enum '" + schema.name + "' value '" + value.name +
-                                  "' initializer");
+                              "Enum '" + schema.name + "' value '" + value.name + "' initializer");
             }
             if (value.display_name.has_value()) {
                 require_value(*value.display_name,
-                              "Enum '" + schema.name + "' value '" + value.name +
-                                  "' display name");
+                              "Enum '" + schema.name + "' value '" + value.name + "' display name");
             }
             if (value.serialized_name.has_value()) {
                 require_value(*value.serialized_name,
@@ -404,8 +399,8 @@ void validate_enum(EnumModuleSchema const& module,
         if (schema.enum_array) {
             for (auto const& value : schema.values) {
                 if (value.initializer.has_value()) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
-                                                "' value '" + value.name +
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
+                                                value.name +
                                                 "' must not have an explicit initializer"};
                 }
             }
@@ -413,15 +408,13 @@ void validate_enum(EnumModuleSchema const& module,
             auto count_value{schema.values.end()};
             if (schema.count.has_value()) {
                 require_identifier(*schema.count, "Enum '" + schema.name + "' count");
-                count_value = std::find_if(schema.values.begin(),
-                                           schema.values.end(),
-                                           [&](auto const& value) {
-                                               return value.name == *schema.count;
-                                           });
+                count_value =
+                    std::find_if(schema.values.begin(),
+                                 schema.values.end(),
+                                 [&](auto const& value) { return value.name == *schema.count; });
                 if (count_value == schema.values.end()) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
-                                                "' count '" + *schema.count +
-                                                "' does not name an enum value"};
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name + "' count '" +
+                                                *schema.count + "' does not name an enum value"};
                 }
                 if (std::next(count_value) != schema.values.end()) {
                     throw std::invalid_argument{"Enum-array enum '" + schema.name +
@@ -440,9 +433,8 @@ void validate_enum(EnumModuleSchema const& module,
             for (auto const& value : schema.values) {
                 auto const is_count{schema.count.has_value() && value.name == *schema.count};
                 if (value.hidden && !is_count) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name +
-                                                "' value '" + value.name +
-                                                "' must not be hidden"};
+                    throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
+                                                value.name + "' must not be hidden"};
                 }
             }
         }
@@ -487,6 +479,20 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
         add_generated_type(schema.name);
         add_generated_type(schema.view_name.value_or(schema.name + "View"));
         add_generated_type(schema.const_view_name.value_or(schema.name + "ConstView"));
+        if (schema.single_allocation.has_value()) {
+            require_identifier(*schema.single_allocation, "Single-allocation owner");
+            add_generated_type(*schema.single_allocation);
+            add_generated_type(*schema.single_allocation + "Storage");
+            add_generated_type(schema.name + "SingleLayout");
+            add_generated_type(schema.name + "SingleView");
+            add_generated_type(schema.name + "SingleConstView");
+            for (auto const& variant : schema.single_allocation_variants) {
+                require_identifier(variant.name, "single-allocation allocator variant");
+                add_generated_type(variant.name);
+                add_generated_type(variant.name + "Storage");
+                validate_type(variant.allocator, types, "single-allocation allocator variant");
+            }
+        }
         if (schema.members.empty()) {
             throw std::invalid_argument{"SOA '" + schema.name + "' must have members"};
         }
@@ -501,6 +507,13 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             if (member.kind == SoaMemberKind::array && member.fixed_schema.has_value()) {
                 throw std::invalid_argument{"Array member '" + member.name +
                                             "' must not specify fixed_schema"};
+            }
+            if (member.kind == SoaMemberKind::array && member.nested_schema.has_value()) {
+                throw std::invalid_argument{"Array member '" + member.name +
+                                            "' must not specify nested_schema"};
+            }
+            if (member.nested_schema.has_value()) {
+                require_identifier(*member.nested_schema, "Nested SOA schema reference");
             }
         }
         require_unique_names(member_names, "SOA '" + schema.name + "' members");
@@ -554,6 +567,42 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             }
         }
     }
+    for (auto const& root : module.structs) {
+        if (!root.single_allocation) {
+            continue;
+        }
+        std::set<std::string> active;
+        auto visit = [&](auto&& self, SoaSchema const& schema) -> void {
+            if (!active.insert(schema.name).second) {
+                throw std::invalid_argument{"Cyclic single-allocation schema: " + schema.name};
+            }
+            std::set<std::string> accessors;
+            for (auto const& member : schema.members) {
+                auto const accessor{member.kind == SoaMemberKind::nested ? "view_" + member.name
+                                                                         : member.name};
+                if (!accessors.insert(accessor).second) {
+                    throw std::invalid_argument{"Duplicate compact view accessor: " + accessor};
+                }
+                if (member.name == "columns" || member.name == "validate" ||
+                    member.name == "column_data" || member.name == "column_data_unchecked" ||
+                    member.name == "capacity_blocks") {
+                    throw std::invalid_argument{"Member collides with compact view API: " +
+                                                member.name};
+                }
+                if (member.kind != SoaMemberKind::nested || !member.nested_schema) {
+                    continue;
+                }
+                auto const child{
+                    std::ranges::find(module.structs, *member.nested_schema, &SoaSchema::name)};
+                if (child == module.structs.end()) {
+                    throw std::invalid_argument{"Unknown nested schema: " + *member.nested_schema};
+                }
+                self(self, *child);
+            }
+            active.erase(schema.name);
+        };
+        visit(visit, root);
+    }
     for (auto const& schema : module.structs) {
         if (!schema.fixed.has_value()) {
             continue;
@@ -575,7 +624,7 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             }
         }
     }
-    if (!module.settings.source.has_value()) {
+    if (!module.settings.source.has_value() && !module.experimental_stdlib) {
         throw std::invalid_argument{"SOA module '" + module.settings.name +
                                     "' must have a source output"};
     }
@@ -619,8 +668,7 @@ void validate_static_table(StaticTableModuleSchema const& module,
 
         std::vector<std::string> column_names;
         for (auto const& column : table.columns) {
-            require_identifier(column.name,
-                               "Static table '" + table.name + "' column name");
+            require_identifier(column.name, "Static table '" + table.name + "' column name");
             if (generated_names.contains(column.name)) {
                 throw std::invalid_argument{"Static table '" + table.name + "' column '" +
                                             column.name + "' collides with generated API"};
@@ -812,7 +860,8 @@ void validate_facade(FacadeModuleSchema const& module,
         }
     }
     if (facade.friend_kind != "class" && facade.friend_kind != "struct") {
-        throw std::invalid_argument{"Facade '" + facade.name + "' friend_kind must be class or struct"};
+        throw std::invalid_argument{"Facade '" + facade.name +
+                                    "' friend_kind must be class or struct"};
     }
     require_unique_names(facade.friends, "Facade '" + facade.name + "' friends");
     for (auto const& friend_name : facade.friends) {
@@ -895,8 +944,8 @@ void validate_settings_module(SettingsModuleSchema const& module,
             require_value(*setting.tooltip, setting_context + " tooltip");
         }
         if (!category_names.contains(setting.category)) {
-            throw std::invalid_argument{setting_context + " has unknown category: " +
-                                        setting.category};
+            throw std::invalid_argument{setting_context +
+                                        " has unknown category: " + setting.category};
         }
         validate_type(setting.value_type, types, setting_context + " value");
         require_identifier(setting.backend, setting_context + " backend");
@@ -910,7 +959,8 @@ void validate_settings_module(SettingsModuleSchema const& module,
         }
 
         auto const has_range{setting.control.minimum.has_value() ||
-                             setting.control.maximum.has_value() || setting.control.step.has_value()};
+                             setting.control.maximum.has_value() ||
+                             setting.control.step.has_value()};
         auto const is_range{setting.control.kind == SettingControlKind::float_range ||
                             setting.control.kind == SettingControlKind::integer_range};
         if (is_range) {
@@ -931,7 +981,8 @@ void validate_settings_module(SettingsModuleSchema const& module,
         }
         if (setting.control.kind == SettingControlKind::custom) {
             if (!setting.control.custom_row.has_value()) {
-                throw std::invalid_argument{setting_context + " custom control requires custom_row"};
+                throw std::invalid_argument{setting_context +
+                                            " custom control requires custom_row"};
             }
             require_identifier(*setting.control.custom_row, setting_context + " custom row");
         } else if (setting.control.custom_row.has_value()) {

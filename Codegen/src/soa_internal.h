@@ -5,16 +5,15 @@
 
 namespace codegen::detail {
 
-auto resolve_members(SoaSchema const& schema,
-                     std::map<std::string, CppType> const& types)
+auto resolve_members(SoaSchema const& schema, std::map<std::string, CppType> const& types)
     -> std::vector<ResolvedMember>;
-auto soa_function_spec(FunctionSchema const& schema,
-                       std::map<std::string, CppType> const& types) -> FunctionSpec;
+auto soa_function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
+    -> FunctionSpec;
 auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
                           std::vector<ResolvedMember> const& members,
                           std::map<std::string, CppType> const& types) -> Nodes;
-auto soa_view_specs(std::vector<ResolvedMember> const& members,
-                    bool const_only) -> std::vector<FunctionSpec>;
+auto soa_view_specs(std::vector<ResolvedMember> const& members, bool const_only)
+    -> std::vector<FunctionSpec>;
 auto soa_view_struct_nodes(SoaSchema const& schema,
                            std::vector<ResolvedMember> const& members,
                            std::map<std::string, CppType> const& types,
@@ -27,10 +26,9 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
 auto soa_set_spec(SoaSchema const& schema,
                   std::vector<ResolvedMember> const& members,
                   bool is_const) -> std::optional<FunctionSpec>;
-auto soa_add_spec(SoaSchema const& schema,
-                  std::vector<ResolvedMember> const& members) -> std::optional<FunctionSpec>;
-auto soa_permutation_specs(std::vector<ResolvedMember> const& members)
-    -> std::vector<FunctionSpec>;
+auto soa_add_spec(SoaSchema const& schema, std::vector<ResolvedMember> const& members)
+    -> std::optional<FunctionSpec>;
+auto soa_permutation_specs(std::vector<ResolvedMember> const& members) -> std::vector<FunctionSpec>;
 auto soa_storage_node(SoaSchema const& schema,
                       std::vector<ResolvedMember> const& members,
                       std::string const& view_name,
@@ -44,5 +42,14 @@ auto lower_soa(SoaSchema const& schema,
 auto lower_fixed_nodes(SoaSchema const& schema,
                        std::map<std::string, SoaSchema const*> const& schemas,
                        std::map<std::string, CppType> const& types) -> Nodes;
+
+auto lower_single_allocation_node(SoaSchema const& schema,
+                                  std::map<std::string, SoaSchema const*> const& schemas,
+                                  std::map<std::string, CppType> const& types,
+                                  bool native = false) -> Node;
+
+auto lower_native_soa(SoaSchema const& schema,
+                      std::map<std::string, SoaSchema const*> const& schemas,
+                      std::map<std::string, CppType> const& types) -> LoweredSoa;
 
 } // namespace codegen::detail

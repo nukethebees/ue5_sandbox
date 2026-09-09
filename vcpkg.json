@@ -9,6 +9,10 @@
     "nlohmann-json"
   ],
   "features": {
+    "soa-mimalloc": {
+      "description": "Mimalloc comparisons for the experimental SoA reserve matrices",
+      "dependencies": ["mimalloc"]
+    },
     "kernel-benchmarks": {
       "description": "Native generated-kernel SIMD benchmarks and runtime dispatch",
       "dependencies": [

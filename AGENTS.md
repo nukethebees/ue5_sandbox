@@ -30,6 +30,7 @@ Unreal Engine 5.8 project.
 * Do not inspect Unreal Engine source unless needed to resolve an engine/API behaviour question.
 * Once enough context exists, implement rather than continuing exploration.
 * Prefer the smallest coherent change that fully implements the requested design.
+* Prefer reusable repository scripts over feeding inline Python code to the interpreter.
 * Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
 * When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
 * Store local development roadmaps under `.local/plans/`; never commit them.

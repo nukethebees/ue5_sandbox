@@ -6,6 +6,7 @@ enable_testing()
 
 option(SANDBOX_CODEGEN_ONLY "Configure only the standalone code generator" OFF)
 option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
+option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 
 add_subdirectory(Codegen)
@@ -465,8 +466,47 @@ add_custom_target(dev-core
 )
 
 if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
+  set(SANDBOX_SOA_SPACING_CPU_GROUP "0" CACHE STRING "Processor group for the pinned SoA confirmation")
+  set(SANDBOX_SOA_SPACING_CPU "2" CACHE STRING "Logical CPU within the group for the pinned SoA confirmation")
   add_low_level_test_suite(benchmarks SandboxCoreBenchmarks SandboxCore benchmark)
   add_dependencies(benchmarks check-generated-code)
+  add_custom_target(single-allocation-soa-spacing
+    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    USES_TERMINAL
+    VERBATIM
+  )
+  add_custom_target(single-allocation-soa-spacing-confirmation
+    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py" --suite confirmation
+      --cpu-group "${SANDBOX_SOA_SPACING_CPU_GROUP}" --cpu "${SANDBOX_SOA_SPACING_CPU}"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    USES_TERMINAL
+    VERBATIM
+  )
+  add_test(NAME SandboxCore.SingleAllocation.Spacing.ConfirmationSmoke
+    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
+      --suite confirmation --smoke --output-dir "${CMAKE_BINARY_DIR}/spacing-confirmation-smoke"
+      --cpu-group "${SANDBOX_SOA_SPACING_CPU_GROUP}" --cpu "${SANDBOX_SOA_SPACING_CPU}"
+  )
+  set_tests_properties(SandboxCore.SingleAllocation.Spacing.ConfirmationSmoke PROPERTIES TIMEOUT 300 LABELS "soa-spacing-smoke")
+  add_test(NAME SandboxCore.SingleAllocation.Spacing.ConfirmationReportTests
+    COMMAND uv run --no-project python "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/test_soa_spacing_confirmation.py"
+  )
+  set_tests_properties(SandboxCore.SingleAllocation.Spacing.ConfirmationReportTests PROPERTIES LABELS "soa-spacing-smoke")
+  add_test(NAME SandboxCore.SingleAllocation.Spacing.PipelineSmoke
+    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
+      --smoke --output-dir "${CMAKE_BINARY_DIR}/spacing-smoke"
+  )
+  set_tests_properties(SandboxCore.SingleAllocation.Spacing.PipelineSmoke PROPERTIES TIMEOUT 300 LABELS "soa-spacing-smoke")
+  add_custom_target(single-allocation-soa-plots
+    COMMAND uv run "${CMAKE_CURRENT_SOURCE_DIR}/Scripts/plot-single-allocation-soa-benchmarks.py"
+      --input "${CMAKE_BINARY_DIR}/Testing/Temporary/LastTest.log"
+      --output-dir "${CMAKE_BINARY_DIR}/single-allocation-soa-plots"
+    WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+    COMMENT "Plotting the single-allocation SoA comparison"
+    VERBATIM
+    USES_TERMINAL
+  )
 elseif(SANDBOX_TEST_SUITE STREQUAL "default")
   add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore low-level-core)
   add_low_level_test_suite(native-tests SandboxNativeTests SandboxNative low-level-native)

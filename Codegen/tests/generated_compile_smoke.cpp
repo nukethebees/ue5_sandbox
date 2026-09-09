@@ -15,6 +15,74 @@ namespace {
 
 using namespace codegen_compile_fixture;
 
+template <typename T>
+concept BorrowsOwner = requires(T&& owner) { std::forward<T>(owner).get_view(); };
+
+template <typename T>
+concept BorrowsConstOwner = requires(T&& owner) { std::forward<T>(owner).get_const_view(); };
+
+template <typename T>
+concept SlicesOwner = requires(T&& owner) { std::forward<T>(owner).slice(0, 0); };
+
+void test_single_allocation_ownership() {
+    using Owner = CountedParents;
+    static_assert(BorrowsOwner<Owner&> && BorrowsOwner<Owner const&>);
+    static_assert(!BorrowsOwner<Owner> && !BorrowsOwner<Owner const>);
+    static_assert(!BorrowsConstOwner<Owner> && !BorrowsConstOwner<Owner const>);
+    static_assert(!SlicesOwner<Owner> && !SlicesOwner<Owner const>);
+    static_assert(SlicesOwner<Owner::View> && SlicesOwner<Owner::ConstView>);
+    static_assert(std::is_nothrow_move_constructible_v<Owner>);
+    static_assert(std::is_nothrow_move_assignable_v<Owner>);
+    static_assert(!std::is_copy_assignable_v<Owner>);
+    {
+        Owner source;
+        source.reserve(0);
+        source.add_defaulted(0);
+        check(CountingAllocator::allocations == 0);
+        source.reserve(3);
+        check(CountingAllocator::allocations == 1 && CountingAllocator::frees == 0);
+        check(CountingAllocator::last_bytes == source.allocated_bytes());
+        check(CountingAllocator::last_alignment == Owner::allocation_alignment);
+        source.add_defaulted(source.capacity());
+        source.get_view().keys()[0] = 42;
+        check(CountingAllocator::allocations == 1);
+        source.add_defaulted(1);
+        check(CountingAllocator::allocations == 2 && CountingAllocator::frees == 1);
+        check(source.get_view().keys()[0] == 42);
+        auto* const pointer{source.get_view().keys().GetData()};
+        Owner moved{std::move(source)};
+        check(source.num() == 0 && source.capacity() == 0 && source.allocated_bytes() == 0);
+        check(CountingAllocator::allocations == 2 && CountingAllocator::frees == 1);
+        Owner destination;
+        destination.reserve(17);
+        check(CountingAllocator::allocations == 3);
+        destination = std::move(moved);
+        check(CountingAllocator::frees == 2);
+        check(moved.num() == 0 && moved.capacity() == 0);
+        auto& alias{destination};
+        destination = std::move(alias);
+        check(CountingAllocator::frees == 2);
+        check(destination.get_view().keys().GetData() == pointer);
+        auto const capacity{destination.capacity()};
+        destination.reset();
+        check(destination.num() == 0 && destination.capacity() == capacity);
+        check(CountingAllocator::frees == 2);
+        CountingAllocator::reject_allocation = true;
+        bool rejected{};
+        try {
+            destination.reserve(Owner::max_capacity);
+        } catch (std::bad_alloc const&) {
+            rejected = true;
+        }
+        CountingAllocator::reject_allocation = false;
+        check(rejected && destination.capacity() == capacity);
+        check(CountingAllocator::last_bytes ==
+              Owner::layout_bytes(Owner::max_capacity / Owner::capacity_granularity));
+        check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 2);
+    }
+    check(CountingAllocator::allocations == 3 && CountingAllocator::frees == 3);
+}
+
 void test_homogeneous_storage() {
     FValuesf values;
     values.add(3.0f, 30.0f);
@@ -238,8 +306,7 @@ void test_enums() {
     check(std::string_view{LexToDisplayString(EPlainFixture::ReadableName)} == "Readable Name");
     check(to_display_string_view(EPlainFixture::ReadableName) == "Readable Name");
     check(to_display_string(EPlainFixture::First) == "First");
-    check(std::string_view{LexToSerializedString(EPlainFixture::ReadableName)} ==
-          "readable_name");
+    check(std::string_view{LexToSerializedString(EPlainFixture::ReadableName)} == "readable_name");
     auto parsed{EPlainFixture::First};
     check(try_parse_serialized(TEXT("readable_name"), parsed));
     check(parsed == EPlainFixture::ReadableName);
@@ -269,15 +336,16 @@ void test_static_tables() {
     check(values.weights[1] == 0.0f && values.weights[2] == 3.0f);
 
     FStaticTableFixture other{};
-    values.apply_array_pairs(other, [](auto const& source_ids,
-                                       auto& destination_ids,
-                                       auto const& source_weights,
-                                       auto& destination_weights) {
-        destination_ids[FStaticTableFixture::third_index] =
-            source_ids[FStaticTableFixture::third_index];
-        destination_weights[FStaticTableFixture::third_index] =
-            source_weights[FStaticTableFixture::third_index];
-    });
+    values.apply_array_pairs(other,
+                             [](auto const& source_ids,
+                                auto& destination_ids,
+                                auto const& source_weights,
+                                auto& destination_weights) {
+                                 destination_ids[FStaticTableFixture::third_index] =
+                                     source_ids[FStaticTableFixture::third_index];
+                                 destination_weights[FStaticTableFixture::third_index] =
+                                     source_weights[FStaticTableFixture::third_index];
+                             });
     check(other.ids[2] == 30 && other.weights[2] == 3.0f);
 
     auto const& const_values{values};
@@ -307,6 +375,24 @@ void test_static_tables() {
 
 auto main() -> int {
     try {
+        test_single_allocation_ownership();
+        using SingleParents = codegen_compile_fixture::SingleParents;
+        static_assert(sizeof(SingleParents::View) == 16);
+        static_assert(!std::is_copy_constructible_v<SingleParents>);
+        static_assert(SingleParents::keys_offset(1) == 0);
+        static_assert(SingleParents::children_values_offset(1) == 64 * sizeof(int32) + 192);
+        static_assert(SingleParents::layout_bytes(1) == 128 * sizeof(int32) + 192);
+        SingleParents parents;
+        check(parents.get_view().columns().keys.GetData() == nullptr);
+        parents.add_defaulted(65);
+        parents.get_view().columns().children.values[64] = 37;
+        parents.reserve(129);
+        check(parents.capacity() == 192);
+        check(parents.get_const_view().view_children().values[64] == 37);
+        SingleParents moved{std::move(parents)};
+        check(parents.capacity() == 0);
+        moved.remove_at_swap(0, 1);
+        check(moved.get_view().columns().children.values[0] == 37);
         test_homogeneous_storage();
         test_dynamic_soa();
         test_fixed_soa_lifetimes();
