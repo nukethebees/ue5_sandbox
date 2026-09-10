@@ -646,6 +646,16 @@ add_custom_target(validate-ui-glow-material
   VERBATIM
 )
 
+add_custom_target(generate-world-soft-target-assets
+  COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    -run=GenerateWorldSoftTargetAssets -RenderOffscreen -AllowCommandletRendering
+    -unattended -nop4 -nosplash -nosound -stdout
+  DEPENDS editor
+  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+  USES_TERMINAL
+  VERBATIM
+)
+
 add_custom_target(ui-glow-lab
   COMMAND "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=UiGlowLab -RenderOffscreen -AllowCommandletRendering

@@ -29,6 +29,7 @@ struct FTestMissionManager;
 struct FLevelVisualConfig;
 class USimulationHudWidget;
 class UShipHudWidget;
+class UInstancedStaticMeshComponent;
 
 namespace ml::test_space_ship {
 struct Simulation;
@@ -161,7 +162,8 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
                     ml::test_space_ship::Simulation const* new_player_ship,
                     FLevelVisualConfig const& level_config,
                     FEntityOverlaySettings const& entity_overlay_settings,
-                    FRadarSettings const& radar_settings);
+                    FRadarSettings const& radar_settings,
+                    UInstancedStaticMeshComponent* soft_target_instances = nullptr);
     void deactivate();
     void tick(FPeriodicTickCountdown8::counter_type num_ticks);
     void force_sample();
@@ -203,11 +205,13 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
         FRegistryEntityHandle soft_target{};
         float soft_target_range_progress{0.0f};
         float soft_target_radius_pixels{0.0f};
+        float soft_target_world_units_per_pixel{0.0f};
         float soft_target_pulse_remaining{0.0f};
         bool soft_target_in_range{false};
         FRegistryEntityHandle fading_soft_target{};
         float fading_soft_target_range_progress{0.0f};
         float fading_soft_target_radius_pixels{0.0f};
+        float fading_soft_target_world_units_per_pixel{0.0f};
         float fading_soft_target_visibility_remaining{0.0f};
         bool fading_soft_target_in_range{false};
     };
@@ -222,7 +226,21 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     bool collect_player_flight_data();
     void update_entity_overlays(float delta_seconds);
     void update_entity_overlay_objective_roles();
-    void update_entity_overlay(FRegisteredHud& registration, float delta_seconds);
+    void update_entity_overlay(FRegisteredHud& registration,
+                               float delta_seconds,
+                               bool render_world_target);
+    void configure_world_soft_target_renderer();
+    void clear_world_soft_targets();
+    void add_world_soft_target(FRegistryEntityHandle handle,
+                               float range_progress,
+                               float indicator_radius_pixels,
+                               float world_units_per_pixel,
+                               float pulse,
+                               float visibility,
+                               bool in_range,
+                               FVector camera_location,
+                               FRotator camera_rotation,
+                               FEntityOverlayStyle const& style);
     void update_radars();
     void update_radar(FRegisteredHud& registration);
 #if WITH_EDITOR
@@ -267,6 +285,9 @@ struct SPACEGAMEPRESENTATION_API FHUDManager {
     float soft_target_pulse_duration_{0.15f};
     float soft_target_fade_out_duration_{0.15f};
     float seconds_per_tick_{0.0f};
+    TWeakObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
+    float soft_target_mesh_vertical_radius_{0.0f};
+    bool warned_multiple_world_target_views_{false};
     FRadarSettings radar_settings_;
     FRadarStyle radar_style_;
     FRadarContactColours radar_contact_colours_;

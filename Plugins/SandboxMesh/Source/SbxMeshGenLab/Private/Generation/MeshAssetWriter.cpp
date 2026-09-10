@@ -1,4 +1,5 @@
 #include "Generation/MeshAssetWriter.h"
+#include "SbxMeshGenLab/MeshAssetWriter.h"
 #include "SbxMeshGenLab/MeshMaterialRole.h"
 #include "SbxMeshGenLab/NativeMeshTypes.h"
 
@@ -365,6 +366,72 @@ auto write_generated_static_mesh_asset(FSbxMeshData const& mesh_data,
            Display,
            TEXT("Generated static mesh asset: %s"),
            *static_mesh->GetPathName());
+    return static_mesh;
+}
+
+auto write_static_mesh_asset(FSbxMeshData const& mesh_data,
+                             FString const& object_path,
+                             UMaterialInterface& material,
+                             FString const& generation_description) -> UStaticMesh* {
+    FText invalid_name_reason;
+    if (!FPackageName::IsValidObjectPath(object_path, &invalid_name_reason)) {
+        UE_LOG(LogSbxMeshGenLab,
+               Error,
+               TEXT("Invalid static mesh object path '%s': %s"),
+               *object_path,
+               *invalid_name_reason.ToString());
+        return nullptr;
+    }
+
+    auto const package_name{FPackageName::ObjectPathToPackageName(object_path)};
+    auto const asset_name{FPackageName::ObjectPathToObjectName(object_path)};
+    auto const package_filename{FPackageName::LongPackageNameToFilename(
+        package_name, FPackageName::GetAssetPackageExtension())};
+    auto& file_manager{IFileManager::Get()};
+    auto const output_directory{FPaths::GetPath(package_filename)};
+    if (!file_manager.MakeDirectory(*output_directory, true) &&
+        !file_manager.DirectoryExists(*output_directory)) {
+        UE_LOG(LogSbxMeshGenLab,
+               Error,
+               TEXT("Failed to create static mesh output directory: %s"),
+               *output_directory);
+        return nullptr;
+    }
+
+    auto* static_mesh{LoadObject<UStaticMesh>(nullptr, *object_path, nullptr, LOAD_NoWarn)};
+    auto const is_new_asset{static_mesh == nullptr};
+    auto* const package{is_new_asset ? CreatePackage(*package_name) : static_mesh->GetOutermost()};
+    if (package == nullptr) {
+        return nullptr;
+    }
+    if (is_new_asset) {
+        static_mesh = NewObject<UStaticMesh>(
+            package, FName{asset_name}, RF_Public | RF_Standalone | RF_Transactional);
+    }
+    if (static_mesh == nullptr || !build_static_mesh(*static_mesh, mesh_data, false, false)) {
+        return nullptr;
+    }
+
+    for (auto& static_material : static_mesh->GetStaticMaterials()) {
+        static_material.MaterialInterface = &material;
+    }
+    if (!generation_description.IsEmpty()) {
+        package->GetMetaData().SetValue(
+            static_mesh, TEXT("SandboxMesh.MeshGenLab.Generation"), *generation_description);
+    }
+    static_mesh->PostEditChange();
+    static_mesh->MarkPackageDirty();
+    if (is_new_asset) {
+        FAssetRegistryModule::AssetCreated(static_mesh);
+    }
+
+    FSavePackageArgs save_arguments{};
+    save_arguments.TopLevelFlags = RF_Public | RF_Standalone;
+    if (!UPackage::SavePackage(package, static_mesh, *package_filename, save_arguments)) {
+        UE_LOG(LogSbxMeshGenLab, Error, TEXT("Failed to save static mesh asset: %s"), *object_path);
+        return nullptr;
+    }
+    UE_LOG(LogSbxMeshGenLab, Display, TEXT("Generated static mesh asset: %s"), *object_path);
     return static_mesh;
 }
 

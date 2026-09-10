@@ -14,7 +14,10 @@
 
 #include <Algo/Sort.h>
 #include <Blueprint/WidgetLayoutLibrary.h>
+#include <Components/InstancedStaticMeshComponent.h>
+#include <Engine/StaticMesh.h>
 #include <GameFramework/PlayerController.h>
+#include <Materials/MaterialInterface.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
 #include <utility>
@@ -29,6 +32,23 @@ TRACE_DECLARE_INT_COUNTER(SandboxRadarCandidateCount, TEXT("Sandbox/Radar/Candid
 TRACE_DECLARE_INT_COUNTER(SandboxRadarVisibleCount, TEXT("Sandbox/Radar/VisibleCount"));
 TRACE_DECLARE_INT_COUNTER(SandboxRadarUploadBytes, TEXT("Sandbox/Radar/UploadBytes"));
 
+namespace ml::soft_target_world {
+inline constexpr int32 custom_data_count{5};
+inline constexpr int32 color_red_index{0};
+inline constexpr int32 color_green_index{1};
+inline constexpr int32 color_blue_index{2};
+inline constexpr int32 opacity_index{3};
+inline constexpr int32 intensity_index{4};
+
+auto uses_slate(ESoftTargetRenderMode const mode) -> bool {
+    return mode == ESoftTargetRenderMode::Slate || mode == ESoftTargetRenderMode::Both;
+}
+
+auto uses_world(ESoftTargetRenderMode const mode) -> bool {
+    return mode == ESoftTargetRenderMode::World3D || mode == ESoftTargetRenderMode::Both;
+}
+}
+
 void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_frequencies,
                              FTestMissionManager const& new_mission_manager,
                              FTestEntityRegistry const& new_entity_registry,
@@ -36,7 +56,8 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
                              ml::test_space_ship::Simulation const* const new_player_ship,
                              FLevelVisualConfig const& level_config,
                              FEntityOverlaySettings const& entity_overlay_settings,
-                             FRadarSettings const& radar_settings) {
+                             FRadarSettings const& radar_settings,
+                             UInstancedStaticMeshComponent* const soft_target_instances) {
     TRACE_CPUPROFILER_EVENT_SCOPE(Sandbox::FHUDManager::initialise);
     update_timers.reset();
     mission_data_buffers = {};
@@ -73,6 +94,9 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
     entity_registry = &new_entity_registry;
     player_ship = new_player_ship;
     entity_overlay_settings_ = entity_overlay_settings;
+    soft_target_instances_ = soft_target_instances;
+    warned_multiple_world_target_views_ = false;
+    configure_world_soft_target_renderer();
     radar_settings_ = sanitize_radar_settings(radar_settings);
     radar_style_.grid_opacity = radar_settings_.grid_opacity;
     radar_style_.core_cell_radius = radar_settings_.core_cell_radius;
@@ -176,11 +200,13 @@ void FHUDManager::initialise(FTestBatchGameUiUpdateFrequencies const& update_fre
         registration.soft_target = {};
         registration.soft_target_range_progress = 0.0f;
         registration.soft_target_radius_pixels = 0.0f;
+        registration.soft_target_world_units_per_pixel = 0.0f;
         registration.soft_target_pulse_remaining = 0.0f;
         registration.soft_target_in_range = false;
         registration.fading_soft_target = {};
         registration.fading_soft_target_range_progress = 0.0f;
         registration.fading_soft_target_radius_pixels = 0.0f;
+        registration.fading_soft_target_world_units_per_pixel = 0.0f;
         registration.fading_soft_target_visibility_remaining = 0.0f;
         registration.fading_soft_target_in_range = false;
     }
@@ -196,6 +222,7 @@ void FHUDManager::deactivate() {
     TRACE_COUNTER_SET(SandboxRadarVisibleCount, 0);
     TRACE_COUNTER_SET(SandboxRadarUploadBytes, 0);
     update_timers.reset();
+    clear_world_soft_targets();
     for (auto& registration : registered_huds) {
         auto* const hud{registration.hud.Get()};
         if (!IsValid(hud)) {
@@ -219,6 +246,9 @@ void FHUDManager::deactivate() {
     entity_overlay_objective_roles_.Reset();
     has_mission_data = false;
     seconds_per_tick_ = 0.0f;
+    soft_target_instances_ = nullptr;
+    soft_target_mesh_vertical_radius_ = 0.0f;
+    warned_multiple_world_target_views_ = false;
     state = EHUDManagerState::Disabled;
 #if WITH_EDITOR
     sampled_speed_data_buffers = {};
@@ -296,7 +326,14 @@ void FHUDManager::register_hud(USimulationHudWidget& hud) {
             update_entity_overlay_objective_roles();
         }
         if (entity_overlay_settings_.enabled) {
-            update_entity_overlay(registration, 0.0f);
+            auto const render_world_target{
+                ml::soft_target_world::uses_world(
+                    entity_overlay_settings_.soft_target_render_mode) &&
+                registration.ship_hud.IsValid() &&
+                registered_huds.IndexOfByPredicate([](FRegisteredHud const& candidate) {
+                    return candidate.ship_hud.IsValid();
+                }) == registered_huds.Num() - 1};
+            update_entity_overlay(registration, 0.0f, render_world_target);
         }
         if (radar_settings_.enabled) {
             update_radar(registration);
@@ -350,6 +387,7 @@ void FHUDManager::update_entity_overlays(float const delta_seconds) {
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, 0);
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, 0);
     TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes, 0);
+    clear_world_soft_targets();
     if (registered_huds.IsEmpty() ||
         (!entity_overlay_settings_.enabled && !radar_settings_.enabled)) {
         return;
@@ -359,8 +397,25 @@ void FHUDManager::update_entity_overlays(float const delta_seconds) {
     if (!entity_overlay_settings_.enabled) {
         return;
     }
+    auto world_target_rendered{false};
+    auto ship_hud_count{0};
     for (auto& registration : registered_huds) {
-        update_entity_overlay(registration, delta_seconds);
+        if (registration.ship_hud.IsValid()) {
+            ++ship_hud_count;
+        }
+        auto const render_world_target{
+            !world_target_rendered && registration.ship_hud.IsValid() &&
+            ml::soft_target_world::uses_world(entity_overlay_settings_.soft_target_render_mode)};
+        update_entity_overlay(registration, delta_seconds, render_world_target);
+        world_target_rendered |= render_world_target;
+    }
+    if (ship_hud_count > 1 && !warned_multiple_world_target_views_ &&
+        ml::soft_target_world::uses_world(entity_overlay_settings_.soft_target_render_mode)) {
+        UE_LOG(LogSandboxUI,
+               Warning,
+               TEXT("FHUDManager: World soft targets use the first registered ship HUD; "
+                    "multiple local views are not supported by the shared ISM renderer."));
+        warned_multiple_world_target_views_ = true;
     }
 }
 
@@ -391,7 +446,9 @@ void FHUDManager::update_entity_overlay_objective_roles() {
                 EEntityOverlayObjectiveRole::Destroy);
 }
 
-void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float const delta_seconds) {
+void FHUDManager::update_entity_overlay(FRegisteredHud& registration,
+                                        float const delta_seconds,
+                                        bool const render_world_target) {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::Collect);
     auto* const hud{registration.hud.Get()};
     if (!IsValid(hud)) {
@@ -414,6 +471,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float cons
         registration.soft_target = {};
         registration.soft_target_range_progress = 0.0f;
         registration.soft_target_radius_pixels = 0.0f;
+        registration.soft_target_world_units_per_pixel = 0.0f;
         registration.soft_target_pulse_remaining = 0.0f;
         registration.soft_target_in_range = false;
     };
@@ -421,6 +479,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float cons
         registration.fading_soft_target = {};
         registration.fading_soft_target_range_progress = 0.0f;
         registration.fading_soft_target_radius_pixels = 0.0f;
+        registration.fading_soft_target_world_units_per_pixel = 0.0f;
         registration.fading_soft_target_visibility_remaining = 0.0f;
         registration.fading_soft_target_in_range = false;
     };
@@ -492,6 +551,8 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float cons
         registration.fading_soft_target = registration.soft_target;
         registration.fading_soft_target_range_progress = registration.soft_target_range_progress;
         registration.fading_soft_target_radius_pixels = registration.soft_target_radius_pixels;
+        registration.fading_soft_target_world_units_per_pixel =
+            registration.soft_target_world_units_per_pixel;
         registration.fading_soft_target_visibility_remaining = soft_target_fade_out_duration_;
         registration.fading_soft_target_in_range = registration.soft_target_in_range;
     };
@@ -509,6 +570,7 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float cons
         registration.soft_target = soft_target.handle;
         registration.soft_target_range_progress = soft_target.range_progress;
         registration.soft_target_radius_pixels = soft_target.indicator_radius_pixels;
+        registration.soft_target_world_units_per_pixel = soft_target.world_units_per_pixel;
         registration.soft_target_in_range = soft_target.in_range;
     } else {
         if (soft_target.previous_target_can_fade) {
@@ -517,20 +579,50 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float cons
         clear_active_soft_target();
     }
 
-    frame.soft_target_range_progress = registration.soft_target_range_progress;
-    frame.soft_target_radius_pixels = registration.soft_target_radius_pixels;
-    frame.soft_target_pulse =
-        soft_target_pulse_duration_ > 0.0f
-            ? registration.soft_target_pulse_remaining / soft_target_pulse_duration_
-            : 0.0f;
-    frame.soft_target_in_range = registration.soft_target_in_range;
-    frame.fading_soft_target_range_progress = registration.fading_soft_target_range_progress;
-    frame.fading_soft_target_radius_pixels = registration.fading_soft_target_radius_pixels;
-    frame.fading_soft_target_visibility =
-        soft_target_fade_out_duration_ > 0.0f
-            ? registration.fading_soft_target_visibility_remaining / soft_target_fade_out_duration_
-            : 0.0f;
-    frame.fading_soft_target_in_range = registration.fading_soft_target_in_range;
+    auto const pulse{soft_target_pulse_duration_ > 0.0f
+                         ? registration.soft_target_pulse_remaining / soft_target_pulse_duration_
+                         : 0.0f};
+    auto const fading_visibility{soft_target_fade_out_duration_ > 0.0f
+                                     ? registration.fading_soft_target_visibility_remaining /
+                                           soft_target_fade_out_duration_
+                                     : 0.0f};
+
+    auto const render_slate_target{
+        ml::soft_target_world::uses_slate(entity_overlay_settings_.soft_target_render_mode)};
+    if (render_slate_target) {
+        frame.soft_target_range_progress = registration.soft_target_range_progress;
+        frame.soft_target_radius_pixels = registration.soft_target_radius_pixels;
+        frame.soft_target_pulse = pulse;
+        frame.soft_target_in_range = registration.soft_target_in_range;
+        frame.fading_soft_target_range_progress = registration.fading_soft_target_range_progress;
+        frame.fading_soft_target_radius_pixels = registration.fading_soft_target_radius_pixels;
+        frame.fading_soft_target_visibility = fading_visibility;
+        frame.fading_soft_target_in_range = registration.fading_soft_target_in_range;
+    }
+
+    if (render_world_target) {
+        auto const& style{hud->get_entity_overlay_style()};
+        add_world_soft_target(registration.soft_target,
+                              registration.soft_target_range_progress,
+                              registration.soft_target_radius_pixels,
+                              registration.soft_target_world_units_per_pixel,
+                              pulse,
+                              1.0f,
+                              registration.soft_target_in_range,
+                              camera_location,
+                              camera_rotation,
+                              style);
+        add_world_soft_target(registration.fading_soft_target,
+                              registration.fading_soft_target_range_progress,
+                              registration.fading_soft_target_radius_pixels,
+                              registration.fading_soft_target_world_units_per_pixel,
+                              0.0f,
+                              fading_visibility,
+                              registration.fading_soft_target_in_range,
+                              camera_location,
+                              camera_rotation,
+                              style);
+    }
 
     auto const result{collect_entity_overlay_instances(
         entity_registry->get_entity_data().get_const_view(),
@@ -541,15 +633,137 @@ void FHUDManager::update_entity_overlay(FRegisteredHud& registration, float cons
         entity_overlay_settings_.maximum_range,
         frame.instances,
         registration.entity_overlay_collector,
-        registration.soft_target.is_valid() ? registration.soft_target.index : INDEX_NONE,
-        registration.fading_soft_target.is_valid() ? registration.fading_soft_target.index
-                                                   : INDEX_NONE)};
+        render_slate_target && registration.soft_target.is_valid() ? registration.soft_target.index
+                                                                   : INDEX_NONE,
+        render_slate_target && registration.fading_soft_target.is_valid()
+            ? registration.fading_soft_target.index
+            : INDEX_NONE)};
     registration.entity_overlay_frame_store->publish();
 
     TRACE_COUNTER_SET(SandboxEntityOverlayCandidateCount, result.candidate_count);
     TRACE_COUNTER_SET(SandboxEntityOverlayInvalidHealthCount, result.invalid_health_count);
     TRACE_COUNTER_SET(SandboxEntityOverlayUploadBytes,
                       static_cast<int64>(result.candidate_count) * sizeof(FEntityOverlayInstance));
+}
+
+void FHUDManager::configure_world_soft_target_renderer() {
+    auto* const instances{soft_target_instances_.Get()};
+    if (!IsValid(instances)) {
+        if (ml::soft_target_world::uses_world(entity_overlay_settings_.soft_target_render_mode)) {
+            UE_LOG(LogSandboxUI,
+                   Error,
+                   TEXT("FHUDManager: World soft-target mode has no ISM component."));
+        }
+        return;
+    }
+
+    instances->ClearInstances();
+    instances->SetVisibility(false);
+    soft_target_mesh_vertical_radius_ = 0.0f;
+    if (!ml::soft_target_world::uses_world(entity_overlay_settings_.soft_target_render_mode)) {
+        return;
+    }
+    if (!IsValid(entity_overlay_settings_.soft_target_world_mesh) ||
+        !IsValid(entity_overlay_settings_.soft_target_world_material)) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("FHUDManager: World soft-target mesh or material is invalid."));
+        return;
+    }
+
+    instances->SetMobility(EComponentMobility::Movable);
+    instances->SetStaticMesh(entity_overlay_settings_.soft_target_world_mesh);
+    auto const material_count{instances->GetNumMaterials()};
+    for (int32 material_index{0}; material_index < material_count; ++material_index) {
+        instances->SetMaterial(material_index, entity_overlay_settings_.soft_target_world_material);
+    }
+    instances->SetNumCustomDataFloats(ml::soft_target_world::custom_data_count);
+    instances->SetCanEverAffectNavigation(false);
+    instances->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    instances->SetGenerateOverlapEvents(false);
+    instances->SetCastShadow(false);
+    instances->SetAffectDistanceFieldLighting(false);
+    instances->SetReceivesDecals(false);
+    instances->SetRemoveSwap();
+
+    soft_target_mesh_vertical_radius_ = static_cast<float>(
+        entity_overlay_settings_.soft_target_world_mesh->GetBounds().BoxExtent.Y);
+    if (soft_target_mesh_vertical_radius_ <= UE_SMALL_NUMBER) {
+        UE_LOG(LogSandboxUI,
+               Error,
+               TEXT("FHUDManager: World soft-target mesh has no vertical extent."));
+        return;
+    }
+    instances->SetVisibility(true);
+}
+
+void FHUDManager::clear_world_soft_targets() {
+    if (auto* const instances{soft_target_instances_.Get()}; IsValid(instances)) {
+        instances->ClearInstances();
+    }
+}
+
+void FHUDManager::add_world_soft_target(FRegistryEntityHandle const handle,
+                                        float const range_progress,
+                                        float const indicator_radius_pixels,
+                                        float const world_units_per_pixel,
+                                        float const pulse,
+                                        float const visibility,
+                                        bool const in_range,
+                                        FVector const camera_location,
+                                        FRotator const camera_rotation,
+                                        FEntityOverlayStyle const& style) {
+    auto* const instances{soft_target_instances_.Get()};
+    if (!IsValid(instances) || !instances->IsVisible() || !handle.is_valid() ||
+        !entity_registry->is_valid_alive(handle) || visibility <= 0.0f ||
+        world_units_per_pixel <= UE_SMALL_NUMBER ||
+        soft_target_mesh_vertical_radius_ <= UE_SMALL_NUMBER) {
+        return;
+    }
+
+    auto const entities{entity_registry->get_entity_data().get_const_view()};
+    auto const target_fit_radius{indicator_radius_pixels * world_units_per_pixel};
+    auto const closing_scale{FMath::Lerp(
+        FMath::Max(entity_overlay_settings_.soft_target_bracket_start_radius_multiplier, 1.0f),
+        1.0f,
+        FMath::Clamp(range_progress, 0.0f, 1.0f))};
+    auto const uniform_scale{target_fit_radius * closing_scale / soft_target_mesh_vertical_radius_};
+    if (!FMath::IsFinite(uniform_scale) || uniform_scale <= UE_SMALL_NUMBER) {
+        return;
+    }
+
+    FVector const location{entities.locations[handle.index]};
+    auto const facing_direction{(camera_location - location).GetSafeNormal()};
+    if (facing_direction.IsNearlyZero()) {
+        return;
+    }
+    auto const camera_up{FRotationMatrix{camera_rotation}.GetUnitAxis(EAxis::Z)};
+    auto const rotation{FRotationMatrix::MakeFromZY(facing_direction, camera_up).ToQuat()};
+    FTransform const transform{rotation, location, FVector{uniform_scale}};
+    auto const instance_index{instances->AddInstance(transform, true)};
+    if (instance_index == INDEX_NONE) {
+        UE_LOG(LogSandboxUI, Error, TEXT("FHUDManager: Failed to add world soft-target instance."));
+        return;
+    }
+
+    auto const color{in_range ? style.soft_target_in_range_color : style.soft_target_neutral_color};
+    auto const opacity{
+        FMath::Clamp((style.soft_target_opacity + pulse * style.soft_target_pulse_opacity_boost) *
+                         visibility * color.A,
+                     0.0f,
+                     1.0f)};
+    instances->SetCustomDataValue(
+        instance_index, ml::soft_target_world::color_red_index, color.R, false);
+    instances->SetCustomDataValue(
+        instance_index, ml::soft_target_world::color_green_index, color.G, false);
+    instances->SetCustomDataValue(
+        instance_index, ml::soft_target_world::color_blue_index, color.B, false);
+    instances->SetCustomDataValue(
+        instance_index, ml::soft_target_world::opacity_index, opacity, false);
+    instances->SetCustomDataValue(instance_index,
+                                  ml::soft_target_world::intensity_index,
+                                  1.0f + FMath::Clamp(pulse, 0.0f, 1.0f),
+                                  true);
 }
 
 void FHUDManager::update_radars() {

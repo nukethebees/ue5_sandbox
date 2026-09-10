@@ -77,6 +77,7 @@ public class SandboxEditor : ModuleRules
             "SandboxGameShared",
             "SandboxUI",
             "SbxShadersExperiments",
+            "SbxMeshGenLab",
             "SpaceGame",
             "SpaceGameSimulation",
             "SpaceGamePresentation",

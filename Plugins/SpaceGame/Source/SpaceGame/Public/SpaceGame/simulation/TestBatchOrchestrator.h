@@ -16,6 +16,7 @@
 
 class ATestSpaceShip;
 class UCollisionGridVisualizationComponent;
+class UInstancedStaticMeshComponent;
 class USandboxISMCComponent;
 class USparkRendererComponent;
 
@@ -327,6 +328,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     TObjectPtr<UInstancedStaticMeshComponent> turret_instances_;
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
     TObjectPtr<UInstancedStaticMeshComponent> spinner_instances_;
+    UPROPERTY(VisibleAnywhere, Category = "Sandbox|Presentation")
+    TObjectPtr<UInstancedStaticMeshComponent> soft_target_instances_;
 
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Sandbox")

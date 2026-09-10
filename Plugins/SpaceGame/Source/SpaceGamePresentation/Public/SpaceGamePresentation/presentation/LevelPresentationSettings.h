@@ -2,6 +2,16 @@
 
 #include "LevelPresentationSettings.generated.h"
 
+class UMaterialInterface;
+class UStaticMesh;
+
+UENUM(BlueprintType)
+enum class ESoftTargetRenderMode : uint8 {
+    Slate,
+    World3D,
+    Both,
+};
+
 USTRUCT(BlueprintType)
 struct FEntityOverlaySettings {
     GENERATED_BODY()
@@ -94,6 +104,15 @@ struct FEntityOverlaySettings {
               Category = "Entity Overlay|Soft Target",
               meta = (ClampMin = "0.0", Units = "s"))
     float soft_target_fade_out_duration{0.15f};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target|World")
+    ESoftTargetRenderMode soft_target_render_mode{ESoftTargetRenderMode::Slate};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target|World")
+    TObjectPtr<UStaticMesh> soft_target_world_mesh{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Entity Overlay|Soft Target|World")
+    TObjectPtr<UMaterialInterface> soft_target_world_material{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Entity Overlay")
     FLinearColor background_color{0.02f, 0.02f, 0.02f, 0.85f};

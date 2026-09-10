@@ -277,6 +277,35 @@ TEST_CLASS(EntityOverlayRegistrySource, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("In-range progress is complete"), in_range.range_progress, 1.0f);
     }
 
+    TEST_METHOD(ReportsWorldScaleSeparatelyFromClampedIndicatorRadius)
+    {
+        ml::entity_registry::EntityData entities;
+        add_entity(entities,
+                   {1000.0f, 0.0f, 0.0f},
+                   20,
+                   ETestEntityType::Turret,
+                   2.0f,
+                   true,
+                   ETestTeam::Red);
+
+        auto const distant{select_target(entities)};
+        TestRunner->TestTrue(TEXT("Projection scale is available for world marker scaling"),
+                             distant.world_units_per_pixel > 0.0f);
+        TestRunner->TestTrue(TEXT("Small projected targets still use the minimum indicator"),
+                             distant.indicator_radius_pixels >
+                                 2.0f / distant.world_units_per_pixel);
+
+        entities.radii[0] = 0.0f;
+        auto const zero_radius{select_target(entities)};
+        TestRunner->TestTrue(TEXT("Zero-radius targets still have a usable projection scale"),
+                             zero_radius.world_units_per_pixel > 0.0f);
+
+        entities.locations.xs[0] = 500.0f;
+        auto const nearer{select_target(entities)};
+        TestRunner->TestTrue(TEXT("World units per pixel shrink as the target approaches"),
+                             nearer.world_units_per_pixel < distant.world_units_per_pixel);
+    }
+
     TEST_METHOD(MarksActiveAndFadingOverlayInstances)
     {
         ml::entity_registry::EntityData entities;

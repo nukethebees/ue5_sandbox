@@ -159,8 +159,12 @@ ATestBatchOrchestrator::ATestBatchOrchestrator() {
     turret_instances_->SetupAttachment(RootComponent);
     spinner_instances_ = CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("Spinners"));
     spinner_instances_->SetupAttachment(RootComponent);
+    soft_target_instances_ =
+        CreateDefaultSubobject<UInstancedStaticMeshComponent>(TEXT("SoftTargets"));
+    soft_target_instances_->SetupAttachment(RootComponent);
 
     ml::set_actor_component_mobility(*this, EComponentMobility::Static);
+    soft_target_instances_->SetMobility(EComponentMobility::Movable);
 }
 
 void ATestBatchOrchestrator::PostLoad() {
@@ -752,7 +756,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                                get_player_ship_simulation(),
                                level_config->get_visual_config(),
                                level_config->entity_overlay,
-                               level_config->radar);
+                               level_config->radar,
+                               soft_target_instances_);
         if (IsValid(player_ship)) {
             if (auto* const controller{
                     Cast<ASpaceGamePlayerController>(player_ship->GetController())};

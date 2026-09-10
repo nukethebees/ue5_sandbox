@@ -18,6 +18,7 @@ struct FSoftTargetCandidate {
     float surface_distance{std::numeric_limits<float>::max()};
     float range_progress{0.0f};
     float indicator_radius_pixels{0.0f};
+    float world_units_per_pixel{0.0f};
     bool in_range{false};
 };
 
@@ -192,6 +193,18 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
             projected_radius = 0.0f;
         }
 
+        float world_units_per_pixel{};
+        if (world_radius > UE_SMALL_NUMBER && projected_radius > UE_SMALL_NUMBER) {
+            world_units_per_pixel = world_radius / projected_radius;
+        } else if (project_to_overlay(
+                       context.view, position + context.camera_right, projected_edge)) {
+            auto const projected_unit_radius{
+                FVector2f::Distance(projected_entity.pixels, projected_edge.pixels)};
+            if (projected_unit_radius > UE_SMALL_NUMBER) {
+                world_units_per_pixel = 1.0f / projected_unit_radius;
+            }
+        }
+
         auto const centre_distance{
             FVector2f::Distance(projected_entity.pixels, projected_aim.pixels)};
         auto const centre_score{FMath::Max(centre_distance - centre_tie_radius, 0.0f)};
@@ -220,6 +233,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
                                                  FMath::Clamp(projected_radius + bounds_padding,
                                                               minimum_indicator_radius,
                                                               maximum_indicator_radius),
+                                             .world_units_per_pixel = world_units_per_pixel,
                                              .in_range = in_range};
 
         if (candidate.handle == current_target) {
@@ -258,6 +272,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
         if (has_current_candidate) {
             return {.range_progress = current_candidate.range_progress,
                     .indicator_radius_pixels = current_candidate.indicator_radius_pixels,
+                    .world_units_per_pixel = current_candidate.world_units_per_pixel,
                     .in_range = current_candidate.in_range,
                     .previous_target_can_fade = true};
         }
@@ -266,6 +281,7 @@ auto select_soft_target(ml::entity_registry::EntityData::ConstView const entitie
     return {.handle = selected_candidate.handle,
             .range_progress = selected_candidate.range_progress,
             .indicator_radius_pixels = selected_candidate.indicator_radius_pixels,
+            .world_units_per_pixel = selected_candidate.world_units_per_pixel,
             .in_range = selected_candidate.in_range};
 }
 

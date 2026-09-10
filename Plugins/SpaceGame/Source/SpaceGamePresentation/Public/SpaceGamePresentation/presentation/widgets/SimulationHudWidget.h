@@ -32,6 +32,9 @@ class SPACEGAMEPRESENTATION_API USimulationHudWidget : public UUserWidget {
 
     void set_entity_overlay_frame_store(FEntityOverlayFrameStoreConstPtr frame_store);
     void set_entity_overlay_style(FEntityOverlayStyle const& style);
+    [[nodiscard]] auto get_entity_overlay_style() const -> FEntityOverlayStyle const& {
+        return entity_overlay_style_;
+    }
     [[nodiscard]] auto try_get_entity_overlay_view(FEntityOverlayView& view) const -> bool;
   protected:
     auto RebuildWidget() -> TSharedRef<SWidget> override;
