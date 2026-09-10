@@ -7,13 +7,17 @@
 
 #include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/single_allocation_storage.h"
+#include "SandboxCore/mimalloc_storage_allocator.h"
+#include "SandboxCore/single_allocation/operations.h"
+#include "SandboxCore/single_allocation/removal.h"
+#include "SandboxCore/single_allocation/vector_views.h"
 #include "SandboxCore/soa_concepts.h"
 
 #include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
+#include "Templates/MemoryOps.h"
 
 #include <utility>
 

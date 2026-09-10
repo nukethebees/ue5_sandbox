@@ -3,7 +3,7 @@
     "level_telemetry_entity_type_counts": {"spelling": "FTestEntityRegistry::EntityTypeCounts", "header": "SpaceGameSimulation/entities/TestEntityRegistry.h"},
     "level_telemetry_entity_counts": {"spelling": "FTestEntityRegistry::EntityCounts", "header": "SpaceGameSimulation/entities/TestEntityRegistry.h"},
     "soa_experiment_MimallocArrayAllocator": {"spelling": "MimallocArrayAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
-    "soa_experiment_FMemoryStorageAllocator": {"spelling": "ml::soa_storage::FMemoryStorageAllocator", "header": "SandboxCore/single_allocation_storage.h"},
+    "soa_experiment_FMemoryStorageAllocator": {"spelling": "ml::soa_storage::FMemoryStorageAllocator", "header": "SandboxCore/single_allocation/allocators.h"},
     "soa_experiment_MallocAllocator": {"spelling": "MallocAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
     "soa_experiment_ReallocAllocator": {"spelling": "ReallocAllocator", "header": "SbxCoreExperiments/soa_reference_allocators.h"},
     "soa_experiment_Handle": {"spelling": "Handle", "header": "SbxCoreExperiments/soa_leaf_types.h"},

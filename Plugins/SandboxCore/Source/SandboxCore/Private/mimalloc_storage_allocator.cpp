@@ -1,7 +1,7 @@
 #include <HAL/PlatformProcess.h>
 #include <Misc/Paths.h>
 #include <SandboxCore/mimalloc_storage_allocator.h>
-#include <SandboxCore/single_allocation_storage.h>
+#include <SandboxCore/single_allocation/runtime.h>
 
 #define MI_SHARED_LIB 1
 #include <mimalloc.h>

@@ -15,6 +15,9 @@
 
 #include "Windows/HideWindowsPlatformTypes.h"
 
+#undef far
+#undef near
+
 #include <bit>
 #include <type_traits>
 

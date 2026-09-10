@@ -41,7 +41,7 @@ Views capture a range, not a growing count. Growth, moving or destroying the own
 
 Owner borrowing functions require an lvalue, preventing accidental views from temporary owners. Temporary non-owning views can still be sliced. Explicit pointer-based view construction remains the caller's responsibility: the owner and backing storage must outlive every use.
 
-Nested schemas consisting of matching scalar `xs`/`ys` or `xs`/`ys`/`zs` columns use shared compact vector views. Their Unreal names are `ml::soa::Vector2View<T>`, `Vector2ConstView<T>`, `Vector3View<T>` and `Vector3ConstView<T>` (available through `SandboxCore/single_allocation_storage.h`). The native backend exposes the corresponding names in `ml::native_soa`. Both use the same implementation; Unreal component accessors return TArrayViews and native accessors return standard spans.
+Nested schemas consisting of matching scalar `xs`/`ys` or `xs`/`ys`/`zs` columns use shared compact vector views. Their Unreal names are `ml::soa::Vector2View<T>`, `Vector2ConstView<T>`, `Vector3View<T>` and `Vector3ConstView<T>` (available through `SandboxCore/single_allocation/vector_views.h`). The native backend exposes the corresponding names in `ml::native_soa`. Both use the same implementation; Unreal component accessors return TArrayViews and native accessors return standard spans.
 
 Each vector view is 16 bytes: a first-component pointer, a 32-bit byte stride, and a 32-bit row count. The generated layout guarantees equally spaced component columns. `slice`, `left` and `right` advance the first pointer while retaining the component stride, including for empty end slices. Mutable views convert to const views, but not the reverse. The vector view has no owner pointer or field-specific layout type.
 

@@ -204,10 +204,18 @@ auto lower_single_allocation_node(SoaSchema const& schema,
     auto const storage_name{name + "Storage"};
     auto const layout_name{schema.name + "SingleLayout"};
     auto const compact_view{schema.name + "SingleView"};
-    std::vector<TypeDependency> dependencies{
-        {"single_allocation_storage",
-         native ? "native_soa/storage.h" : "SandboxCore/single_allocation_storage.h",
-         {}}};
+    std::vector<TypeDependency> dependencies;
+    if (native) {
+        dependencies.push_back({"single_allocation_storage", "native_soa/storage.h", {}});
+    } else {
+        dependencies.push_back(
+            {"single_allocation_operations", "SandboxCore/single_allocation/operations.h", {}});
+        dependencies.push_back(
+            {"single_allocation_removal", "SandboxCore/single_allocation/removal.h", {}});
+        dependencies.push_back(
+            {"single_allocation_vector_views", "SandboxCore/single_allocation/vector_views.h", {}});
+        dependencies.push_back({"single_allocation_memory_ops", "Templates/MemoryOps.h", {}});
+    }
     std::string allocate{std::string{runtime} +
                          (native ? "allocate" : "MimallocStorageAllocator::allocate")};
     if (schema.single_allocation_allocator) {
@@ -216,6 +224,10 @@ auto lower_single_allocation_node(SoaSchema const& schema,
             dependencies.end(), allocator.dependencies.begin(), allocator.dependencies.end());
         allocate = allocator.spelling + "::allocate";
         free_data = allocator.spelling + "::free(data_)";
+    } else if (!native) {
+        dependencies.push_back({"single_allocation_mimalloc_allocator",
+                                "SandboxCore/mimalloc_storage_allocator.h",
+                                {}});
     }
     std::set<std::string> names;
     std::map<std::string, std::string> type_ids;

@@ -385,7 +385,7 @@ The normal production Unreal generator remains one TArray-backed implementation.
 | Single-allocation emission, shared by Unreal/native and allocator variants | `Codegen/src/single_allocation_soa_lowering.cpp` |
 | Reused nested flattening | `Codegen/src/fixed_soa_layout.cpp` |
 | Existing fixed lifetime design inspected for future extension | `Codegen/src/fixed_soa_storage_lowering.cpp`, `Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/fixed_storage.h` |
-| Common runtime control flow and explicit FMemory allocator | `Public/SbxCoreExperiments/single_allocation_storage.h` |
+| Common runtime control flow and explicit FMemory allocator | `Public/SandboxCore/single_allocation/operations.h`, `Public/SandboxCore/single_allocation/allocators.h` |
 | DLL loading and direct mimalloc allocation/free | `Private/mimalloc_storage_allocator.cpp` |
 | TArray Malloc/Realloc/mimalloc adapters | `Public/SbxCoreExperiments/soa_reference_allocators.h` |
 | Generated Unreal owners and views | `Public/SbxCoreExperiments/soa_types.h`, `Private/soa_types.cpp` |

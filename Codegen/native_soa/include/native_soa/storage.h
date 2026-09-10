@@ -1,9 +1,9 @@
 #pragma once
 
 #include <SandboxCore/compact_vector_view.h>
-#include <SandboxCore/single_allocation_view.h>
-
-#include <SandboxCore/single_allocation_layout.h>
+#include <SandboxCore/single_allocation/layout.h>
+#include <SandboxCore/single_allocation/removal.h>
+#include <SandboxCore/single_allocation/view.h>
 
 #include <algorithm>
 #include <cstddef>
