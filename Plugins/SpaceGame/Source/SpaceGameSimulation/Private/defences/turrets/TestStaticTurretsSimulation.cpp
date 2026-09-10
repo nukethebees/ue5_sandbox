@@ -9,6 +9,8 @@
 #include <SandboxCore/fixed_array.h>
 #include <SandboxCore/frame_array.h>
 #include <SandboxCore/frame_memory_resource.h>
+#include <SandboxCore/frame_rotators.h>
+#include <SandboxCore/frame_vectors.h>
 #include <SandboxCore/loop_bounds.h>
 #include <SandboxCore/projectile_intercept.h>
 #include <SandboxCore/soa_rotator_utils.h>
@@ -24,53 +26,6 @@ TRACE_DECLARE_INT_COUNTER(SandboxTestStaticTurretCount, TEXT("Sandbox/TestStatic
 namespace ml::test_static_turrets {
 namespace scratch {
 inline constexpr SIZE_T local_chunk_bytes{16 * 1024};
-
-struct FFrameVectors3f {
-    explicit FFrameVectors3f(std::pmr::memory_resource* const resource)
-        : xs{resource}
-        , ys{resource}
-        , zs{resource} {}
-
-    void reserve(int32 const count) {
-        xs.reserve(count);
-        ys.reserve(count);
-        zs.reserve(count);
-    }
-    void add(float const x, float const y, float const z) {
-        xs.add(x);
-        ys.add(y);
-        zs.add(z);
-    }
-    void add(FVector3f const value) { add(value.X, value.Y, value.Z); }
-    auto get_const_view() const -> FVectors3f::ConstView { return {xs, ys, zs}; }
-
-    TFrameArray<float> xs;
-    TFrameArray<float> ys;
-    TFrameArray<float> zs;
-};
-
-struct FFrameRotatorsf {
-    explicit FFrameRotatorsf(std::pmr::memory_resource* const resource)
-        : pitches{resource}
-        , yaws{resource}
-        , rolls{resource} {}
-
-    void reserve(int32 const count) {
-        pitches.reserve(count);
-        yaws.reserve(count);
-        rolls.reserve(count);
-    }
-    void add(FRotator3f const value) {
-        pitches.add(value.Pitch);
-        yaws.add(value.Yaw);
-        rolls.add(value.Roll);
-    }
-    auto get_const_view() const -> FRotatorsf::ConstView { return {pitches, yaws, rolls}; }
-
-    TFrameArray<float> pitches;
-    TFrameArray<float> yaws;
-    TFrameArray<float> rolls;
-};
 
 struct FFrameLaserSpawnRequests {
     explicit FFrameLaserSpawnRequests(std::pmr::memory_resource* const resource)
@@ -123,9 +78,9 @@ struct FFrameLaserSpawnRequests {
         };
     }
 
-    FFrameVectors3f locations;
-    FFrameRotatorsf rotations;
-    FFrameVectors3f base_velocities;
+    ::FFrameVectors3f locations;
+    ::FFrameRotatorsf rotations;
+    ::FFrameVectors3f base_velocities;
     TFrameArray<int32> damages;
     TFrameArray<float> speeds;
     TFrameArray<float> max_distances;
@@ -541,8 +496,8 @@ void Simulation::fire_at_enemies() {
                                                  scratch::local_chunk_bytes};
         TFrameArray<int32> candidate_indices{&local_resource};
         TFrameArray<FRegistryEntityHandle> hit_entity_handles{&local_resource};
-        scratch::FFrameVectors3f start_locations{&local_resource};
-        scratch::FFrameVectors3f end_locations{&local_resource};
+        FFrameVectors3f start_locations{&local_resource};
+        FFrameVectors3f end_locations{&local_resource};
         scratch::FFrameLaserSpawnRequests new_lasers{&local_resource};
         fire_at_enemies_with_scratch(
             candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
@@ -552,8 +507,8 @@ void Simulation::fire_at_enemies() {
 
     TFrameArray<int32> candidate_indices{&frame_memory_resource};
     TFrameArray<FRegistryEntityHandle> hit_entity_handles{&frame_memory_resource};
-    scratch::FFrameVectors3f start_locations{&frame_memory_resource};
-    scratch::FFrameVectors3f end_locations{&frame_memory_resource};
+    FFrameVectors3f start_locations{&frame_memory_resource};
+    FFrameVectors3f end_locations{&frame_memory_resource};
     scratch::FFrameLaserSpawnRequests new_lasers{&frame_memory_resource};
     fire_at_enemies_with_scratch(
         candidate_indices, hit_entity_handles, start_locations, end_locations, new_lasers);
