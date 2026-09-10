@@ -2261,6 +2261,66 @@ struct SingleAllocationEntityDataStorage
         Element<float>* target_distance_sq{};
         Element<float>* target_distances{};
         Element<float>* target_radii{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (entity_handles == nullptr) {
+                return {};
+            }
+            return {
+                entity_handles + offset,
+                integral_biases + offset,
+                float_biases + offset,
+                tasks + offset,
+                locations_xs + offset,
+                locations_ys + offset,
+                locations_zs + offset,
+                desired_move_locations_xs + offset,
+                desired_move_locations_ys + offset,
+                desired_move_locations_zs + offset,
+                aim_directions_xs + offset,
+                aim_directions_ys + offset,
+                aim_directions_zs + offset,
+                desired_aiming_directions_xs + offset,
+                desired_aiming_directions_ys + offset,
+                desired_aiming_directions_zs + offset,
+                movement_directions_xs + offset,
+                movement_directions_ys + offset,
+                movement_directions_zs + offset,
+                velocities_xs + offset,
+                velocities_ys + offset,
+                velocities_zs + offset,
+                move_distances + offset,
+                speeds + offset,
+                teams + offset,
+                healths + offset,
+                parent_handles + offset,
+                awareness_scan_countdowns_counters + offset,
+                navigation_update_countdowns_remaining_ticks + offset,
+                navigation_update_countdowns_periods + offset,
+                separation_steering_xs + offset,
+                separation_steering_ys + offset,
+                separation_steering_zs + offset,
+                navigation_risk_tiers + offset,
+                navigation_lower_risk_scan_counts + offset,
+                avoidance_choice_indices + offset,
+                avoidance_clear_scan_counts + offset,
+                attack_reposition_countdowns_counters + offset,
+                attack_cooldowns_counters + offset,
+                target_handles + offset,
+                target_locations_xs + offset,
+                target_locations_ys + offset,
+                target_locations_zs + offset,
+                target_velocities_xs + offset,
+                target_velocities_ys + offset,
+                target_velocities_zs + offset,
+                target_directions_xs + offset,
+                target_directions_ys + offset,
+                target_directions_zs + offset,
+                intercept_times + offset,
+                target_distance_sq + offset,
+                target_distances + offset,
+                target_radii + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -2272,11 +2332,7 @@ struct SingleAllocationEntityDataStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -2287,174 +2343,68 @@ struct SingleAllocationEntityDataStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + entity_handles_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + integral_biases_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + float_biases_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Task>*>(
-                data + tasks_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + locations_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + locations_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + locations_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_move_locations_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_move_locations_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_move_locations_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + aim_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + aim_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + aim_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_aiming_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_aiming_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_aiming_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + movement_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + movement_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + movement_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + velocities_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + velocities_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + velocities_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + move_distances_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + speeds_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Team>*>(
-                data + teams_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + healths_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + parent_handles_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + awareness_scan_countdowns_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + navigation_update_countdowns_remaining_ticks_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + navigation_update_countdowns_periods_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + separation_steering_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + separation_steering_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + separation_steering_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + navigation_risk_tiers_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + navigation_lower_risk_scan_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + avoidance_choice_indices_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + avoidance_clear_scan_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + attack_reposition_countdowns_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + attack_cooldowns_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + target_handles_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_locations_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_locations_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_locations_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_velocities_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_velocities_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_velocities_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + intercept_times_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_distance_sq_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_distances_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_radii_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.entity_handles += offset;
-        columns.integral_biases += offset;
-        columns.float_biases += offset;
-        columns.tasks += offset;
-        columns.locations_xs += offset;
-        columns.locations_ys += offset;
-        columns.locations_zs += offset;
-        columns.desired_move_locations_xs += offset;
-        columns.desired_move_locations_ys += offset;
-        columns.desired_move_locations_zs += offset;
-        columns.aim_directions_xs += offset;
-        columns.aim_directions_ys += offset;
-        columns.aim_directions_zs += offset;
-        columns.desired_aiming_directions_xs += offset;
-        columns.desired_aiming_directions_ys += offset;
-        columns.desired_aiming_directions_zs += offset;
-        columns.movement_directions_xs += offset;
-        columns.movement_directions_ys += offset;
-        columns.movement_directions_zs += offset;
-        columns.velocities_xs += offset;
-        columns.velocities_ys += offset;
-        columns.velocities_zs += offset;
-        columns.move_distances += offset;
-        columns.speeds += offset;
-        columns.teams += offset;
-        columns.healths += offset;
-        columns.parent_handles += offset;
-        columns.awareness_scan_countdowns_counters += offset;
-        columns.navigation_update_countdowns_remaining_ticks += offset;
-        columns.navigation_update_countdowns_periods += offset;
-        columns.separation_steering_xs += offset;
-        columns.separation_steering_ys += offset;
-        columns.separation_steering_zs += offset;
-        columns.navigation_risk_tiers += offset;
-        columns.navigation_lower_risk_scan_counts += offset;
-        columns.avoidance_choice_indices += offset;
-        columns.avoidance_clear_scan_counts += offset;
-        columns.attack_reposition_countdowns_counters += offset;
-        columns.attack_cooldowns_counters += offset;
-        columns.target_handles += offset;
-        columns.target_locations_xs += offset;
-        columns.target_locations_ys += offset;
-        columns.target_locations_zs += offset;
-        columns.target_velocities_xs += offset;
-        columns.target_velocities_ys += offset;
-        columns.target_velocities_zs += offset;
-        columns.target_directions_xs += offset;
-        columns.target_directions_ys += offset;
-        columns.target_directions_zs += offset;
-        columns.intercept_times += offset;
-        columns.target_distance_sq += offset;
-        columns.target_distances += offset;
-        columns.target_radii += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<Handle>(entity_handles_offset(blocks)),
+            pointer_at.template operator()<uint32>(integral_biases_offset(blocks)),
+            pointer_at.template operator()<float>(float_biases_offset(blocks)),
+            pointer_at.template operator()<Task>(tasks_offset(blocks)),
+            pointer_at.template operator()<float>(locations_xs_offset(blocks)),
+            pointer_at.template operator()<float>(locations_ys_offset(blocks)),
+            pointer_at.template operator()<float>(locations_zs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_move_locations_xs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_move_locations_ys_offset(blocks)),
+            pointer_at.template operator()<float>(desired_move_locations_zs_offset(blocks)),
+            pointer_at.template operator()<float>(aim_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(aim_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(aim_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_aiming_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_aiming_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(desired_aiming_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(movement_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(movement_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(movement_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(velocities_xs_offset(blocks)),
+            pointer_at.template operator()<float>(velocities_ys_offset(blocks)),
+            pointer_at.template operator()<float>(velocities_zs_offset(blocks)),
+            pointer_at.template operator()<float>(move_distances_offset(blocks)),
+            pointer_at.template operator()<float>(speeds_offset(blocks)),
+            pointer_at.template operator()<Team>(teams_offset(blocks)),
+            pointer_at.template operator()<int32>(healths_offset(blocks)),
+            pointer_at.template operator()<Handle>(parent_handles_offset(blocks)),
+            pointer_at.template operator()<int8>(awareness_scan_countdowns_counters_offset(blocks)),
+            pointer_at.template operator()<int16>(
+                navigation_update_countdowns_remaining_ticks_offset(blocks)),
+            pointer_at.template operator()<int16>(
+                navigation_update_countdowns_periods_offset(blocks)),
+            pointer_at.template operator()<float>(separation_steering_xs_offset(blocks)),
+            pointer_at.template operator()<float>(separation_steering_ys_offset(blocks)),
+            pointer_at.template operator()<float>(separation_steering_zs_offset(blocks)),
+            pointer_at.template operator()<uint8>(navigation_risk_tiers_offset(blocks)),
+            pointer_at.template operator()<uint8>(navigation_lower_risk_scan_counts_offset(blocks)),
+            pointer_at.template operator()<int8>(avoidance_choice_indices_offset(blocks)),
+            pointer_at.template operator()<uint8>(avoidance_clear_scan_counts_offset(blocks)),
+            pointer_at.template operator()<int16>(
+                attack_reposition_countdowns_counters_offset(blocks)),
+            pointer_at.template operator()<int16>(attack_cooldowns_counters_offset(blocks)),
+            pointer_at.template operator()<Handle>(target_handles_offset(blocks)),
+            pointer_at.template operator()<float>(target_locations_xs_offset(blocks)),
+            pointer_at.template operator()<float>(target_locations_ys_offset(blocks)),
+            pointer_at.template operator()<float>(target_locations_zs_offset(blocks)),
+            pointer_at.template operator()<float>(target_velocities_xs_offset(blocks)),
+            pointer_at.template operator()<float>(target_velocities_ys_offset(blocks)),
+            pointer_at.template operator()<float>(target_velocities_zs_offset(blocks)),
+            pointer_at.template operator()<float>(target_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(target_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(target_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(intercept_times_offset(blocks)),
+            pointer_at.template operator()<float>(target_distance_sq_offset(blocks)),
+            pointer_at.template operator()<float>(target_distances_offset(blocks)),
+            pointer_at.template operator()<float>(target_radii_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -2464,7 +2414,7 @@ struct SingleAllocationEntityDataStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<Handle>(columns.entity_handles, count);
         DefaultConstructItems<uint32>(columns.integral_biases, count);
         DefaultConstructItems<float>(columns.float_biases, count);
@@ -3905,6 +3855,66 @@ struct FMemorySingleEntityDataStorage
         Element<float>* target_distance_sq{};
         Element<float>* target_distances{};
         Element<float>* target_radii{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (entity_handles == nullptr) {
+                return {};
+            }
+            return {
+                entity_handles + offset,
+                integral_biases + offset,
+                float_biases + offset,
+                tasks + offset,
+                locations_xs + offset,
+                locations_ys + offset,
+                locations_zs + offset,
+                desired_move_locations_xs + offset,
+                desired_move_locations_ys + offset,
+                desired_move_locations_zs + offset,
+                aim_directions_xs + offset,
+                aim_directions_ys + offset,
+                aim_directions_zs + offset,
+                desired_aiming_directions_xs + offset,
+                desired_aiming_directions_ys + offset,
+                desired_aiming_directions_zs + offset,
+                movement_directions_xs + offset,
+                movement_directions_ys + offset,
+                movement_directions_zs + offset,
+                velocities_xs + offset,
+                velocities_ys + offset,
+                velocities_zs + offset,
+                move_distances + offset,
+                speeds + offset,
+                teams + offset,
+                healths + offset,
+                parent_handles + offset,
+                awareness_scan_countdowns_counters + offset,
+                navigation_update_countdowns_remaining_ticks + offset,
+                navigation_update_countdowns_periods + offset,
+                separation_steering_xs + offset,
+                separation_steering_ys + offset,
+                separation_steering_zs + offset,
+                navigation_risk_tiers + offset,
+                navigation_lower_risk_scan_counts + offset,
+                avoidance_choice_indices + offset,
+                avoidance_clear_scan_counts + offset,
+                attack_reposition_countdowns_counters + offset,
+                attack_cooldowns_counters + offset,
+                target_handles + offset,
+                target_locations_xs + offset,
+                target_locations_ys + offset,
+                target_locations_zs + offset,
+                target_velocities_xs + offset,
+                target_velocities_ys + offset,
+                target_velocities_zs + offset,
+                target_directions_xs + offset,
+                target_directions_ys + offset,
+                target_directions_zs + offset,
+                intercept_times + offset,
+                target_distance_sq + offset,
+                target_distances + offset,
+                target_radii + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -3916,11 +3926,7 @@ struct FMemorySingleEntityDataStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -3931,174 +3937,68 @@ struct FMemorySingleEntityDataStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + entity_handles_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + integral_biases_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + float_biases_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Task>*>(
-                data + tasks_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + locations_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + locations_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + locations_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_move_locations_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_move_locations_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_move_locations_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + aim_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + aim_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + aim_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_aiming_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_aiming_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + desired_aiming_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + movement_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + movement_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + movement_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + velocities_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + velocities_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + velocities_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + move_distances_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + speeds_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Team>*>(
-                data + teams_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + healths_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + parent_handles_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + awareness_scan_countdowns_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + navigation_update_countdowns_remaining_ticks_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + navigation_update_countdowns_periods_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + separation_steering_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + separation_steering_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + separation_steering_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + navigation_risk_tiers_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + navigation_lower_risk_scan_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + avoidance_choice_indices_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + avoidance_clear_scan_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + attack_reposition_countdowns_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int16>*>(
-                data + attack_cooldowns_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + target_handles_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_locations_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_locations_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_locations_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_velocities_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_velocities_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_velocities_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_directions_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_directions_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_directions_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + intercept_times_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_distance_sq_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_distances_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + target_radii_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.entity_handles += offset;
-        columns.integral_biases += offset;
-        columns.float_biases += offset;
-        columns.tasks += offset;
-        columns.locations_xs += offset;
-        columns.locations_ys += offset;
-        columns.locations_zs += offset;
-        columns.desired_move_locations_xs += offset;
-        columns.desired_move_locations_ys += offset;
-        columns.desired_move_locations_zs += offset;
-        columns.aim_directions_xs += offset;
-        columns.aim_directions_ys += offset;
-        columns.aim_directions_zs += offset;
-        columns.desired_aiming_directions_xs += offset;
-        columns.desired_aiming_directions_ys += offset;
-        columns.desired_aiming_directions_zs += offset;
-        columns.movement_directions_xs += offset;
-        columns.movement_directions_ys += offset;
-        columns.movement_directions_zs += offset;
-        columns.velocities_xs += offset;
-        columns.velocities_ys += offset;
-        columns.velocities_zs += offset;
-        columns.move_distances += offset;
-        columns.speeds += offset;
-        columns.teams += offset;
-        columns.healths += offset;
-        columns.parent_handles += offset;
-        columns.awareness_scan_countdowns_counters += offset;
-        columns.navigation_update_countdowns_remaining_ticks += offset;
-        columns.navigation_update_countdowns_periods += offset;
-        columns.separation_steering_xs += offset;
-        columns.separation_steering_ys += offset;
-        columns.separation_steering_zs += offset;
-        columns.navigation_risk_tiers += offset;
-        columns.navigation_lower_risk_scan_counts += offset;
-        columns.avoidance_choice_indices += offset;
-        columns.avoidance_clear_scan_counts += offset;
-        columns.attack_reposition_countdowns_counters += offset;
-        columns.attack_cooldowns_counters += offset;
-        columns.target_handles += offset;
-        columns.target_locations_xs += offset;
-        columns.target_locations_ys += offset;
-        columns.target_locations_zs += offset;
-        columns.target_velocities_xs += offset;
-        columns.target_velocities_ys += offset;
-        columns.target_velocities_zs += offset;
-        columns.target_directions_xs += offset;
-        columns.target_directions_ys += offset;
-        columns.target_directions_zs += offset;
-        columns.intercept_times += offset;
-        columns.target_distance_sq += offset;
-        columns.target_distances += offset;
-        columns.target_radii += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<Handle>(entity_handles_offset(blocks)),
+            pointer_at.template operator()<uint32>(integral_biases_offset(blocks)),
+            pointer_at.template operator()<float>(float_biases_offset(blocks)),
+            pointer_at.template operator()<Task>(tasks_offset(blocks)),
+            pointer_at.template operator()<float>(locations_xs_offset(blocks)),
+            pointer_at.template operator()<float>(locations_ys_offset(blocks)),
+            pointer_at.template operator()<float>(locations_zs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_move_locations_xs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_move_locations_ys_offset(blocks)),
+            pointer_at.template operator()<float>(desired_move_locations_zs_offset(blocks)),
+            pointer_at.template operator()<float>(aim_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(aim_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(aim_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_aiming_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(desired_aiming_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(desired_aiming_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(movement_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(movement_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(movement_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(velocities_xs_offset(blocks)),
+            pointer_at.template operator()<float>(velocities_ys_offset(blocks)),
+            pointer_at.template operator()<float>(velocities_zs_offset(blocks)),
+            pointer_at.template operator()<float>(move_distances_offset(blocks)),
+            pointer_at.template operator()<float>(speeds_offset(blocks)),
+            pointer_at.template operator()<Team>(teams_offset(blocks)),
+            pointer_at.template operator()<int32>(healths_offset(blocks)),
+            pointer_at.template operator()<Handle>(parent_handles_offset(blocks)),
+            pointer_at.template operator()<int8>(awareness_scan_countdowns_counters_offset(blocks)),
+            pointer_at.template operator()<int16>(
+                navigation_update_countdowns_remaining_ticks_offset(blocks)),
+            pointer_at.template operator()<int16>(
+                navigation_update_countdowns_periods_offset(blocks)),
+            pointer_at.template operator()<float>(separation_steering_xs_offset(blocks)),
+            pointer_at.template operator()<float>(separation_steering_ys_offset(blocks)),
+            pointer_at.template operator()<float>(separation_steering_zs_offset(blocks)),
+            pointer_at.template operator()<uint8>(navigation_risk_tiers_offset(blocks)),
+            pointer_at.template operator()<uint8>(navigation_lower_risk_scan_counts_offset(blocks)),
+            pointer_at.template operator()<int8>(avoidance_choice_indices_offset(blocks)),
+            pointer_at.template operator()<uint8>(avoidance_clear_scan_counts_offset(blocks)),
+            pointer_at.template operator()<int16>(
+                attack_reposition_countdowns_counters_offset(blocks)),
+            pointer_at.template operator()<int16>(attack_cooldowns_counters_offset(blocks)),
+            pointer_at.template operator()<Handle>(target_handles_offset(blocks)),
+            pointer_at.template operator()<float>(target_locations_xs_offset(blocks)),
+            pointer_at.template operator()<float>(target_locations_ys_offset(blocks)),
+            pointer_at.template operator()<float>(target_locations_zs_offset(blocks)),
+            pointer_at.template operator()<float>(target_velocities_xs_offset(blocks)),
+            pointer_at.template operator()<float>(target_velocities_ys_offset(blocks)),
+            pointer_at.template operator()<float>(target_velocities_zs_offset(blocks)),
+            pointer_at.template operator()<float>(target_directions_xs_offset(blocks)),
+            pointer_at.template operator()<float>(target_directions_ys_offset(blocks)),
+            pointer_at.template operator()<float>(target_directions_zs_offset(blocks)),
+            pointer_at.template operator()<float>(intercept_times_offset(blocks)),
+            pointer_at.template operator()<float>(target_distance_sq_offset(blocks)),
+            pointer_at.template operator()<float>(target_distances_offset(blocks)),
+            pointer_at.template operator()<float>(target_radii_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -4108,7 +4008,7 @@ struct FMemorySingleEntityDataStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<Handle>(columns.entity_handles, count);
         DefaultConstructItems<uint32>(columns.integral_biases, count);
         DefaultConstructItems<float>(columns.float_biases, count);
@@ -5178,6 +5078,23 @@ struct SingleAllocationAlignmentDataStorage
         Element<int8>* small{};
         Element<Aligned256>* aligned256{};
         Element<Handle>* handles{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (bytes == nullptr) {
+                return {};
+            }
+            return {
+                bytes + offset,
+                odd + offset,
+                aligned32 + offset,
+                nested_xs + offset,
+                nested_ys + offset,
+                nested_zs + offset,
+                aligned64 + offset,
+                small + offset,
+                aligned256 + offset,
+                handles + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -5189,11 +5106,7 @@ struct SingleAllocationAlignmentDataStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -5204,45 +5117,22 @@ struct SingleAllocationAlignmentDataStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bytes_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + odd_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned32>*>(
-                data + aligned32_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + nested_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + nested_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + nested_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned64>*>(
-                data + aligned64_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + small_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned256>*>(
-                data + aligned256_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + handles_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.bytes += offset;
-        columns.odd += offset;
-        columns.aligned32 += offset;
-        columns.nested_xs += offset;
-        columns.nested_ys += offset;
-        columns.nested_zs += offset;
-        columns.aligned64 += offset;
-        columns.small += offset;
-        columns.aligned256 += offset;
-        columns.handles += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<uint8>(bytes_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(odd_offset(blocks)),
+            pointer_at.template operator()<Aligned32>(aligned32_offset(blocks)),
+            pointer_at.template operator()<float>(nested_xs_offset(blocks)),
+            pointer_at.template operator()<float>(nested_ys_offset(blocks)),
+            pointer_at.template operator()<float>(nested_zs_offset(blocks)),
+            pointer_at.template operator()<Aligned64>(aligned64_offset(blocks)),
+            pointer_at.template operator()<int8>(small_offset(blocks)),
+            pointer_at.template operator()<Aligned256>(aligned256_offset(blocks)),
+            pointer_at.template operator()<Handle>(handles_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -5252,7 +5142,7 @@ struct SingleAllocationAlignmentDataStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<uint8>(columns.bytes, count);
         DefaultConstructItems<OddBytes>(columns.odd, count);
         DefaultConstructItems<Aligned32>(columns.aligned32, count);
@@ -5622,6 +5512,23 @@ struct FMemorySingleAlignmentDataStorage
         Element<int8>* small{};
         Element<Aligned256>* aligned256{};
         Element<Handle>* handles{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (bytes == nullptr) {
+                return {};
+            }
+            return {
+                bytes + offset,
+                odd + offset,
+                aligned32 + offset,
+                nested_xs + offset,
+                nested_ys + offset,
+                nested_zs + offset,
+                aligned64 + offset,
+                small + offset,
+                aligned256 + offset,
+                handles + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -5633,11 +5540,7 @@ struct FMemorySingleAlignmentDataStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -5648,45 +5551,22 @@ struct FMemorySingleAlignmentDataStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bytes_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + odd_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned32>*>(
-                data + aligned32_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + nested_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + nested_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + nested_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned64>*>(
-                data + aligned64_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int8>*>(
-                data + small_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned256>*>(
-                data + aligned256_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Handle>*>(
-                data + handles_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.bytes += offset;
-        columns.odd += offset;
-        columns.aligned32 += offset;
-        columns.nested_xs += offset;
-        columns.nested_ys += offset;
-        columns.nested_zs += offset;
-        columns.aligned64 += offset;
-        columns.small += offset;
-        columns.aligned256 += offset;
-        columns.handles += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<uint8>(bytes_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(odd_offset(blocks)),
+            pointer_at.template operator()<Aligned32>(aligned32_offset(blocks)),
+            pointer_at.template operator()<float>(nested_xs_offset(blocks)),
+            pointer_at.template operator()<float>(nested_ys_offset(blocks)),
+            pointer_at.template operator()<float>(nested_zs_offset(blocks)),
+            pointer_at.template operator()<Aligned64>(aligned64_offset(blocks)),
+            pointer_at.template operator()<int8>(small_offset(blocks)),
+            pointer_at.template operator()<Aligned256>(aligned256_offset(blocks)),
+            pointer_at.template operator()<Handle>(handles_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -5696,7 +5576,7 @@ struct FMemorySingleAlignmentDataStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<uint8>(columns.bytes, count);
         DefaultConstructItems<OddBytes>(columns.odd, count);
         DefaultConstructItems<Aligned32>(columns.aligned32, count);

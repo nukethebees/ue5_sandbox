@@ -885,6 +885,21 @@ struct SingleSpacingDoublesStorage
         Element<double>* velocities3_xs{};
         Element<double>* velocities3_ys{};
         Element<double>* velocities3_zs{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (positions0_xs == nullptr) {
+                return {};
+            }
+            return {
+                positions0_xs + offset,  positions0_ys + offset,  positions0_zs + offset,
+                velocities0_xs + offset, velocities0_ys + offset, velocities0_zs + offset,
+                positions1_xs + offset,  positions1_ys + offset,  positions1_zs + offset,
+                velocities1_xs + offset, velocities1_ys + offset, velocities1_zs + offset,
+                positions2_xs + offset,  positions2_ys + offset,  positions2_zs + offset,
+                velocities2_xs + offset, velocities2_ys + offset, velocities2_zs + offset,
+                positions3_xs + offset,  positions3_ys + offset,  positions3_zs + offset,
+                velocities3_xs + offset, velocities3_ys + offset, velocities3_zs + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -896,11 +911,7 @@ struct SingleSpacingDoublesStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -911,87 +922,36 @@ struct SingleSpacingDoublesStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions0_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions0_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions0_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities0_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities0_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities0_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions1_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions1_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions1_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities1_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities1_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities1_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions2_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions2_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions2_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities2_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities2_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities2_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions3_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions3_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + positions3_zs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities3_xs_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities3_ys_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + velocities3_zs_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.positions0_xs += offset;
-        columns.positions0_ys += offset;
-        columns.positions0_zs += offset;
-        columns.velocities0_xs += offset;
-        columns.velocities0_ys += offset;
-        columns.velocities0_zs += offset;
-        columns.positions1_xs += offset;
-        columns.positions1_ys += offset;
-        columns.positions1_zs += offset;
-        columns.velocities1_xs += offset;
-        columns.velocities1_ys += offset;
-        columns.velocities1_zs += offset;
-        columns.positions2_xs += offset;
-        columns.positions2_ys += offset;
-        columns.positions2_zs += offset;
-        columns.velocities2_xs += offset;
-        columns.velocities2_ys += offset;
-        columns.velocities2_zs += offset;
-        columns.positions3_xs += offset;
-        columns.positions3_ys += offset;
-        columns.positions3_zs += offset;
-        columns.velocities3_xs += offset;
-        columns.velocities3_ys += offset;
-        columns.velocities3_zs += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<double>(positions0_xs_offset(blocks)),
+            pointer_at.template operator()<double>(positions0_ys_offset(blocks)),
+            pointer_at.template operator()<double>(positions0_zs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities0_xs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities0_ys_offset(blocks)),
+            pointer_at.template operator()<double>(velocities0_zs_offset(blocks)),
+            pointer_at.template operator()<double>(positions1_xs_offset(blocks)),
+            pointer_at.template operator()<double>(positions1_ys_offset(blocks)),
+            pointer_at.template operator()<double>(positions1_zs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities1_xs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities1_ys_offset(blocks)),
+            pointer_at.template operator()<double>(velocities1_zs_offset(blocks)),
+            pointer_at.template operator()<double>(positions2_xs_offset(blocks)),
+            pointer_at.template operator()<double>(positions2_ys_offset(blocks)),
+            pointer_at.template operator()<double>(positions2_zs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities2_xs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities2_ys_offset(blocks)),
+            pointer_at.template operator()<double>(velocities2_zs_offset(blocks)),
+            pointer_at.template operator()<double>(positions3_xs_offset(blocks)),
+            pointer_at.template operator()<double>(positions3_ys_offset(blocks)),
+            pointer_at.template operator()<double>(positions3_zs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities3_xs_offset(blocks)),
+            pointer_at.template operator()<double>(velocities3_ys_offset(blocks)),
+            pointer_at.template operator()<double>(velocities3_zs_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -1001,7 +961,7 @@ struct SingleSpacingDoublesStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<double>(columns.positions0_xs, count);
         DefaultConstructItems<double>(columns.positions0_ys, count);
         DefaultConstructItems<double>(columns.positions0_zs, count);
@@ -2853,6 +2813,27 @@ struct SingleSpacingMixedWidthsStorage
         Element<OddBytes>* bundle5_payloads{};
         Element<float>* bundle5_values{};
         Element<double>* bundle5_rates{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (bundle0_flags == nullptr) {
+                return {};
+            }
+            return {
+                bundle0_flags + offset,    bundle0_counters + offset, bundle0_counts + offset,
+                bundle0_totals + offset,   bundle0_payloads + offset, bundle0_values + offset,
+                bundle0_rates + offset,    bundle1_flags + offset,    bundle1_counters + offset,
+                bundle1_counts + offset,   bundle1_totals + offset,   bundle1_payloads + offset,
+                bundle1_values + offset,   bundle1_rates + offset,    bundle2_flags + offset,
+                bundle2_counters + offset, bundle2_counts + offset,   bundle2_totals + offset,
+                bundle2_payloads + offset, bundle2_values + offset,   bundle2_rates + offset,
+                bundle3_flags + offset,    bundle3_counters + offset, bundle3_counts + offset,
+                bundle3_totals + offset,   bundle3_payloads + offset, bundle3_values + offset,
+                bundle3_rates + offset,    bundle4_flags + offset,    bundle4_counters + offset,
+                bundle4_counts + offset,   bundle4_totals + offset,   bundle4_payloads + offset,
+                bundle4_values + offset,   bundle4_rates + offset,    bundle5_flags + offset,
+                bundle5_counters + offset, bundle5_counts + offset,   bundle5_totals + offset,
+                bundle5_payloads + offset, bundle5_values + offset,   bundle5_rates + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -2864,11 +2845,7 @@ struct SingleSpacingMixedWidthsStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -2879,141 +2856,54 @@ struct SingleSpacingMixedWidthsStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bundle0_flags_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint16>*>(
-                data + bundle0_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + bundle0_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + bundle0_totals_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + bundle0_payloads_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle0_values_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + bundle0_rates_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bundle1_flags_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint16>*>(
-                data + bundle1_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + bundle1_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + bundle1_totals_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + bundle1_payloads_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle1_values_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + bundle1_rates_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bundle2_flags_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint16>*>(
-                data + bundle2_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + bundle2_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + bundle2_totals_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + bundle2_payloads_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle2_values_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + bundle2_rates_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bundle3_flags_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint16>*>(
-                data + bundle3_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + bundle3_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + bundle3_totals_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + bundle3_payloads_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle3_values_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + bundle3_rates_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bundle4_flags_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint16>*>(
-                data + bundle4_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + bundle4_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + bundle4_totals_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + bundle4_payloads_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle4_values_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + bundle4_rates_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint8>*>(
-                data + bundle5_flags_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint16>*>(
-                data + bundle5_counters_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint32>*>(
-                data + bundle5_counts_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + bundle5_totals_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<OddBytes>*>(
-                data + bundle5_payloads_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle5_values_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + bundle5_rates_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.bundle0_flags += offset;
-        columns.bundle0_counters += offset;
-        columns.bundle0_counts += offset;
-        columns.bundle0_totals += offset;
-        columns.bundle0_payloads += offset;
-        columns.bundle0_values += offset;
-        columns.bundle0_rates += offset;
-        columns.bundle1_flags += offset;
-        columns.bundle1_counters += offset;
-        columns.bundle1_counts += offset;
-        columns.bundle1_totals += offset;
-        columns.bundle1_payloads += offset;
-        columns.bundle1_values += offset;
-        columns.bundle1_rates += offset;
-        columns.bundle2_flags += offset;
-        columns.bundle2_counters += offset;
-        columns.bundle2_counts += offset;
-        columns.bundle2_totals += offset;
-        columns.bundle2_payloads += offset;
-        columns.bundle2_values += offset;
-        columns.bundle2_rates += offset;
-        columns.bundle3_flags += offset;
-        columns.bundle3_counters += offset;
-        columns.bundle3_counts += offset;
-        columns.bundle3_totals += offset;
-        columns.bundle3_payloads += offset;
-        columns.bundle3_values += offset;
-        columns.bundle3_rates += offset;
-        columns.bundle4_flags += offset;
-        columns.bundle4_counters += offset;
-        columns.bundle4_counts += offset;
-        columns.bundle4_totals += offset;
-        columns.bundle4_payloads += offset;
-        columns.bundle4_values += offset;
-        columns.bundle4_rates += offset;
-        columns.bundle5_flags += offset;
-        columns.bundle5_counters += offset;
-        columns.bundle5_counts += offset;
-        columns.bundle5_totals += offset;
-        columns.bundle5_payloads += offset;
-        columns.bundle5_values += offset;
-        columns.bundle5_rates += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<uint8>(bundle0_flags_offset(blocks)),
+            pointer_at.template operator()<uint16>(bundle0_counters_offset(blocks)),
+            pointer_at.template operator()<uint32>(bundle0_counts_offset(blocks)),
+            pointer_at.template operator()<uint64>(bundle0_totals_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(bundle0_payloads_offset(blocks)),
+            pointer_at.template operator()<float>(bundle0_values_offset(blocks)),
+            pointer_at.template operator()<double>(bundle0_rates_offset(blocks)),
+            pointer_at.template operator()<uint8>(bundle1_flags_offset(blocks)),
+            pointer_at.template operator()<uint16>(bundle1_counters_offset(blocks)),
+            pointer_at.template operator()<uint32>(bundle1_counts_offset(blocks)),
+            pointer_at.template operator()<uint64>(bundle1_totals_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(bundle1_payloads_offset(blocks)),
+            pointer_at.template operator()<float>(bundle1_values_offset(blocks)),
+            pointer_at.template operator()<double>(bundle1_rates_offset(blocks)),
+            pointer_at.template operator()<uint8>(bundle2_flags_offset(blocks)),
+            pointer_at.template operator()<uint16>(bundle2_counters_offset(blocks)),
+            pointer_at.template operator()<uint32>(bundle2_counts_offset(blocks)),
+            pointer_at.template operator()<uint64>(bundle2_totals_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(bundle2_payloads_offset(blocks)),
+            pointer_at.template operator()<float>(bundle2_values_offset(blocks)),
+            pointer_at.template operator()<double>(bundle2_rates_offset(blocks)),
+            pointer_at.template operator()<uint8>(bundle3_flags_offset(blocks)),
+            pointer_at.template operator()<uint16>(bundle3_counters_offset(blocks)),
+            pointer_at.template operator()<uint32>(bundle3_counts_offset(blocks)),
+            pointer_at.template operator()<uint64>(bundle3_totals_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(bundle3_payloads_offset(blocks)),
+            pointer_at.template operator()<float>(bundle3_values_offset(blocks)),
+            pointer_at.template operator()<double>(bundle3_rates_offset(blocks)),
+            pointer_at.template operator()<uint8>(bundle4_flags_offset(blocks)),
+            pointer_at.template operator()<uint16>(bundle4_counters_offset(blocks)),
+            pointer_at.template operator()<uint32>(bundle4_counts_offset(blocks)),
+            pointer_at.template operator()<uint64>(bundle4_totals_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(bundle4_payloads_offset(blocks)),
+            pointer_at.template operator()<float>(bundle4_values_offset(blocks)),
+            pointer_at.template operator()<double>(bundle4_rates_offset(blocks)),
+            pointer_at.template operator()<uint8>(bundle5_flags_offset(blocks)),
+            pointer_at.template operator()<uint16>(bundle5_counters_offset(blocks)),
+            pointer_at.template operator()<uint32>(bundle5_counts_offset(blocks)),
+            pointer_at.template operator()<uint64>(bundle5_totals_offset(blocks)),
+            pointer_at.template operator()<OddBytes>(bundle5_payloads_offset(blocks)),
+            pointer_at.template operator()<float>(bundle5_values_offset(blocks)),
+            pointer_at.template operator()<double>(bundle5_rates_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -3023,7 +2913,7 @@ struct SingleSpacingMixedWidthsStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<uint8>(columns.bundle0_flags, count);
         DefaultConstructItems<uint16>(columns.bundle0_counters, count);
         DefaultConstructItems<uint32>(columns.bundle0_counts, count);
@@ -4850,6 +4740,28 @@ struct SingleSpacingAlignedStorage
         Element<Aligned32>* bundle2_aligned32{};
         Element<Aligned64>* bundle2_aligned64{};
         Element<Aligned256>* bundle2_aligned256{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (bundle0_positions == nullptr) {
+                return {};
+            }
+            return {
+                bundle0_positions + offset,
+                bundle0_velocities + offset,
+                bundle0_aligned32 + offset,
+                bundle0_aligned64 + offset,
+                bundle0_aligned256 + offset,
+                bundle1_positions + offset,
+                bundle1_velocities + offset,
+                bundle1_aligned32 + offset,
+                bundle1_aligned64 + offset,
+                bundle1_aligned256 + offset,
+                bundle2_positions + offset,
+                bundle2_velocities + offset,
+                bundle2_aligned32 + offset,
+                bundle2_aligned64 + offset,
+                bundle2_aligned256 + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -4861,11 +4773,7 @@ struct SingleSpacingAlignedStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -4876,60 +4784,27 @@ struct SingleSpacingAlignedStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle0_positions_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle0_velocities_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned32>*>(
-                data + bundle0_aligned32_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned64>*>(
-                data + bundle0_aligned64_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned256>*>(
-                data + bundle0_aligned256_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle1_positions_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle1_velocities_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned32>*>(
-                data + bundle1_aligned32_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned64>*>(
-                data + bundle1_aligned64_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned256>*>(
-                data + bundle1_aligned256_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle2_positions_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<float>*>(
-                data + bundle2_velocities_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned32>*>(
-                data + bundle2_aligned32_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned64>*>(
-                data + bundle2_aligned64_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<Aligned256>*>(
-                data + bundle2_aligned256_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.bundle0_positions += offset;
-        columns.bundle0_velocities += offset;
-        columns.bundle0_aligned32 += offset;
-        columns.bundle0_aligned64 += offset;
-        columns.bundle0_aligned256 += offset;
-        columns.bundle1_positions += offset;
-        columns.bundle1_velocities += offset;
-        columns.bundle1_aligned32 += offset;
-        columns.bundle1_aligned64 += offset;
-        columns.bundle1_aligned256 += offset;
-        columns.bundle2_positions += offset;
-        columns.bundle2_velocities += offset;
-        columns.bundle2_aligned32 += offset;
-        columns.bundle2_aligned64 += offset;
-        columns.bundle2_aligned256 += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<float>(bundle0_positions_offset(blocks)),
+            pointer_at.template operator()<float>(bundle0_velocities_offset(blocks)),
+            pointer_at.template operator()<Aligned32>(bundle0_aligned32_offset(blocks)),
+            pointer_at.template operator()<Aligned64>(bundle0_aligned64_offset(blocks)),
+            pointer_at.template operator()<Aligned256>(bundle0_aligned256_offset(blocks)),
+            pointer_at.template operator()<float>(bundle1_positions_offset(blocks)),
+            pointer_at.template operator()<float>(bundle1_velocities_offset(blocks)),
+            pointer_at.template operator()<Aligned32>(bundle1_aligned32_offset(blocks)),
+            pointer_at.template operator()<Aligned64>(bundle1_aligned64_offset(blocks)),
+            pointer_at.template operator()<Aligned256>(bundle1_aligned256_offset(blocks)),
+            pointer_at.template operator()<float>(bundle2_positions_offset(blocks)),
+            pointer_at.template operator()<float>(bundle2_velocities_offset(blocks)),
+            pointer_at.template operator()<Aligned32>(bundle2_aligned32_offset(blocks)),
+            pointer_at.template operator()<Aligned64>(bundle2_aligned64_offset(blocks)),
+            pointer_at.template operator()<Aligned256>(bundle2_aligned256_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -4939,7 +4814,7 @@ struct SingleSpacingAlignedStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<float>(columns.bundle0_positions, count);
         DefaultConstructItems<float>(columns.bundle0_velocities, count);
         DefaultConstructItems<Aligned32>(columns.bundle0_aligned32, count);

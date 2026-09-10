@@ -878,6 +878,30 @@ struct FSingleAllocationHistoryRowsStorage
         Element<uint64>* line_trace_count{};
         Element<uint64>* sweep_trace_count{};
         Element<double>* requested_time_scale{};
+        auto operator+(size_type const offset) const noexcept -> DataPointers {
+            if (completed_ticks == nullptr) {
+                return {};
+            }
+            return {
+                completed_ticks + offset,
+                validity_masks + offset,
+                active_entities + offset,
+                active_entities_by_type + offset,
+                active_entities_by_team_and_type + offset,
+                spawned_entities + offset,
+                destroyed_entities + offset,
+                kills + offset,
+                registry_slot_count + offset,
+                active_lasers + offset,
+                lasers_fired + offset,
+                occupied_spatial_cell_count + offset,
+                grid_rebuild_count + offset,
+                range_query_count + offset,
+                line_trace_count + offset,
+                sweep_trace_count + offset,
+                requested_time_scale + offset,
+            };
+        }
     };
     template <typename Self>
     auto get_data(this Self& self) noexcept {
@@ -889,11 +913,7 @@ struct FSingleAllocationHistoryRowsStorage
     }
     template <typename Self>
     auto get_data(this Self& self, size_type const offset) noexcept {
-        using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, std::byte>;
-        if (self.data_ == nullptr) {
-            return DataPointers<Byte>{};
-        }
-        return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), offset);
+        return self.get_data() + offset;
     }
   private:
     friend struct ml::soa_storage::StorageOperations;
@@ -904,69 +924,31 @@ struct FSingleAllocationHistoryRowsStorage
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
         using Pointers = DataPointers<Byte>;
-        return {
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + completed_ticks_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + validity_masks_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + active_entities_offset(blocks))),
-            std::launder(
-                reinterpret_cast<
-                    typename Pointers::template Element<FTestEntityRegistry::EntityTypeCounts>*>(
-                    data + active_entities_by_type_offset(blocks))),
-            std::launder(reinterpret_cast<
-                         typename Pointers::template Element<FTestEntityRegistry::EntityCounts>*>(
-                data + active_entities_by_team_and_type_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + spawned_entities_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + destroyed_entities_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + kills_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + registry_slot_count_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + active_lasers_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + lasers_fired_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<int32>*>(
-                data + occupied_spatial_cell_count_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + grid_rebuild_count_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + range_query_count_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + line_trace_count_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<uint64>*>(
-                data + sweep_trace_count_offset(blocks))),
-            std::launder(reinterpret_cast<typename Pointers::template Element<double>*>(
-                data + requested_time_scale_offset(blocks))),
+        auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept {
+            return std::launder(
+                reinterpret_cast<typename Pointers::template Element<T>*>(data + offset));
         };
-    }
-    template <typename Byte>
-    static auto make_data_unchecked(Byte* const data,
-                                    byte_size_type const blocks,
-                                    size_type const offset) noexcept -> DataPointers<Byte> {
-        auto columns{make_data_unchecked(data, blocks)};
-        columns.completed_ticks += offset;
-        columns.validity_masks += offset;
-        columns.active_entities += offset;
-        columns.active_entities_by_type += offset;
-        columns.active_entities_by_team_and_type += offset;
-        columns.spawned_entities += offset;
-        columns.destroyed_entities += offset;
-        columns.kills += offset;
-        columns.registry_slot_count += offset;
-        columns.active_lasers += offset;
-        columns.lasers_fired += offset;
-        columns.occupied_spatial_cell_count += offset;
-        columns.grid_rebuild_count += offset;
-        columns.range_query_count += offset;
-        columns.line_trace_count += offset;
-        columns.sweep_trace_count += offset;
-        columns.requested_time_scale += offset;
-        return columns;
+        return {
+            pointer_at.template operator()<uint64>(completed_ticks_offset(blocks)),
+            pointer_at.template operator()<uint64>(validity_masks_offset(blocks)),
+            pointer_at.template operator()<int32>(active_entities_offset(blocks)),
+            pointer_at.template operator()<FTestEntityRegistry::EntityTypeCounts>(
+                active_entities_by_type_offset(blocks)),
+            pointer_at.template operator()<FTestEntityRegistry::EntityCounts>(
+                active_entities_by_team_and_type_offset(blocks)),
+            pointer_at.template operator()<int32>(spawned_entities_offset(blocks)),
+            pointer_at.template operator()<int32>(destroyed_entities_offset(blocks)),
+            pointer_at.template operator()<int32>(kills_offset(blocks)),
+            pointer_at.template operator()<int32>(registry_slot_count_offset(blocks)),
+            pointer_at.template operator()<int32>(active_lasers_offset(blocks)),
+            pointer_at.template operator()<int32>(lasers_fired_offset(blocks)),
+            pointer_at.template operator()<int32>(occupied_spatial_cell_count_offset(blocks)),
+            pointer_at.template operator()<uint64>(grid_rebuild_count_offset(blocks)),
+            pointer_at.template operator()<uint64>(range_query_count_offset(blocks)),
+            pointer_at.template operator()<uint64>(line_trace_count_offset(blocks)),
+            pointer_at.template operator()<uint64>(sweep_trace_count_offset(blocks)),
+            pointer_at.template operator()<double>(requested_time_scale_offset(blocks)),
+        };
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -976,7 +958,7 @@ struct FSingleAllocationHistoryRowsStorage
     // Typed mutations and growth
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
-        auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};
+        auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
         DefaultConstructItems<uint64>(columns.completed_ticks, count);
         DefaultConstructItems<uint64>(columns.validity_masks, count);
         DefaultConstructItems<int32>(columns.active_entities, count);

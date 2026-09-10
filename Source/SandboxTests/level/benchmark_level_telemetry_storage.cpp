@@ -8,10 +8,12 @@
 #include <Misc/CommandLine.h>
 #include <Misc/Parse.h>
 
-// clang-format off
-#include "Windows/WindowsHWrapper.h"
+#include "Windows/AllowWindowsPlatformTypes.h"
+
 #include <Psapi.h>
-// clang-format on
+#include <windows.h>
+
+#include "Windows/HideWindowsPlatformTypes.h"
 
 #include <bit>
 

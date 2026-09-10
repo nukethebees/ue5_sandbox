@@ -308,7 +308,14 @@ auto lower_single_allocation_node(SoaSchema const& schema,
         out << "    Element<" << leaf.type.spelling << ">* " << fixed_leaf_argument(leaf)
             << "{};\n";
     }
-    out << "};\n"
+    out << "    auto operator+(size_type const offset) const noexcept -> DataPointers {\n"
+        << "        if (" << fixed_leaf_argument(layout.leaves.front())
+        << " == nullptr) { return {}; }\n"
+        << "        return {\n";
+    for (auto const& leaf : layout.leaves) {
+        out << "            " << fixed_leaf_argument(leaf) << " + offset,\n";
+    }
+    out << "        };\n    }\n};\n"
         << "template <typename Self> auto get_data(this Self& self) noexcept {\n"
         << "    using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, "
            "std::byte>;\n"
@@ -317,36 +324,32 @@ auto lower_single_allocation_node(SoaSchema const& schema,
            "self.capacity_blocks());\n}\n"
         << "template <typename Self> auto get_data(this Self& self, size_type const offset) "
            "noexcept {\n"
-        << "    using Byte = std::conditional_t<std::is_const_v<Self>, std::byte const, "
-           "std::byte>;\n"
-        << "    if (self.data_ == nullptr) { return DataPointers<Byte>{}; }\n"
-        << "    return make_data_unchecked(static_cast<Byte*>(self.data_), self.capacity_blocks(), "
-           "offset);\n}\n\n"
+        << "    return self.get_data() + offset;\n}\n\n"
         << "private:\nfriend struct " << runtime << "StorageOperations;\n"
         << "/* **************************************** */\n// Column pointers\n/* "
            "**************************************** */\n"
         << "template <typename Byte> static auto make_data_unchecked(Byte* const data, "
            "byte_size_type const blocks) noexcept -> DataPointers<Byte> {\n"
-        << "    using Pointers = DataPointers<Byte>;\n    return {\n";
+        << "    using Pointers = DataPointers<Byte>;\n"
+        << "    auto const pointer_at = [data]<typename T>(byte_size_type const offset) noexcept "
+           "{\n"
+        << "        return std::launder(\n"
+        << "            reinterpret_cast<typename Pointers::template Element<T>*>(data + "
+           "offset));\n"
+        << "    };\n"
+        << "    return {\n";
     for (auto const& leaf : layout.leaves) {
         auto const id{fixed_leaf_argument(leaf)};
-        out << "        std::launder(reinterpret_cast<typename Pointers::template Element<"
-            << leaf.type.spelling << ">*>(data + " << id << "_offset(blocks))),\n";
+        out << "        pointer_at.template operator()<" << leaf.type.spelling << ">(" << id
+            << "_offset(blocks)),\n";
     }
     out << "    };\n}\n"
-        << "template <typename Byte> static auto make_data_unchecked(Byte* const data, "
-           "byte_size_type const blocks, size_type const offset) noexcept -> DataPointers<Byte> {\n"
-        << "    auto columns{make_data_unchecked(data, blocks)};\n";
-    for (auto const& leaf : layout.leaves) {
-        out << "    columns." << fixed_leaf_argument(leaf) << " += offset;\n";
-    }
-    out << "    return columns;\n}\n"
         << "auto capacity_blocks() const noexcept -> byte_size_type { return "
            "static_cast<byte_size_type>(capacity_ / capacity_granularity); }\n\n"
         << "/* **************************************** */\n// Typed mutations and growth\n/* "
            "**************************************** */\n"
         << "void default_construct_columns(size_type const first, size_type const count) {\n"
-        << "    auto const columns{make_data_unchecked(data_, capacity_blocks(), first)};\n";
+        << "    auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};\n";
     for (auto const& leaf : layout.leaves) {
         out << "    "
             << (native ? "std::uninitialized_value_construct_n<" : "DefaultConstructItems<")
